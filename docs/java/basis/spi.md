@@ -1,59 +1,59 @@
 ---
-title: Java SPI 机制详解
-description: 全面讲解Java SPI机制原理与应用：理解ServiceLoader服务发现机制、SPI在JDBC/Dubbo/Spring中的应用、与API对比及最佳实践。
+title: Java SPI Explained
+description: Learn the Java SPI mechanism, ServiceLoader, SPI use in JDBC, Dubbo, and Spring, and how SPI differs from API.
 category: Java
 tag:
-  - Java基础
+  - Java Fundamentals
 head:
   - - meta
     - name: keywords
-      content: Java SPI,SPI机制,ServiceLoader,服务发现,插件化,JDBC驱动加载,Dubbo扩展,SPI应用
+      content: Java SPI,SPI mechanism,ServiceLoader,service discovery,plugins,JDBC driver loading,Dubbo extensions
 ---
 
-> 本文来自 [Kingshion](https://github.com/jjx0708) 投稿。欢迎更多朋友参与到 JavaGuide 的维护工作，这是一件非常有意义的事情。详细信息请看：[JavaGuide 贡献指南](https://javaguide.cn/javaguide/contribution-guideline.html)。
+> Contributed by [Kingshion](https://github.com/jjx0708). Contributions to JavaGuide are welcome. See the [contribution guide](https://javaguide.cn/javaguide/contribution-guideline.html) for details.
 
-面向对象设计鼓励模块间基于接口而非具体实现编程，以降低模块间的耦合，遵循依赖倒置原则，并支持开闭原则（对扩展开放，对修改封闭）。然而，直接依赖具体实现会导致在替换实现时需要修改代码，违背了开闭原则。为了解决这个问题，SPI 应运而生，它提供了一种服务发现机制，允许在程序外部动态指定具体实现。这与控制反转（IoC）的思想相似，将组件装配的控制权移交给了程序之外。
+Object-oriented design encourages modules to depend on interfaces rather than concrete implementations. This reduces coupling, follows the dependency inversion principle, and supports the open-closed principle: open for extension, closed for modification. If code depends directly on an implementation, replacing it requires code changes. SPI addresses this with a service discovery mechanism that lets you specify implementations outside the program. This is similar to inversion of control (IoC), which moves component assembly outside the component itself.
 
-SPI 机制也解决了 Java 类加载体系中双亲委派模型带来的限制。[双亲委派模型](https://javaguide.cn/java/jvm/classloader.html)虽然保证了核心库的安全性和一致性，但也限制了核心库或扩展库加载应用程序类路径上的类（通常由第三方实现）。SPI 允许核心或扩展库定义服务接口，第三方开发者提供并部署实现，SPI 服务加载机制则在运行时动态发现并加载这些实现。例如，JDBC 4.0 及之后版本利用 SPI 自动发现和加载数据库驱动，开发者只需将驱动 JAR 包放置在类路径下即可，无需使用 `Class.forName()` 显式加载驱动类。
+SPI also addresses a limitation of Java's parent delegation model. The [parent delegation model](https://javaguide.cn/java/jvm/classloader.html) helps keep core libraries secure and consistent, but makes it difficult for core or extension libraries to load application classes, which are often provided by third parties. SPI lets core and extension libraries define service interfaces while third parties provide and deploy implementations. The service loader discovers and loads those implementations at runtime. For example, JDBC 4.0 and later use SPI to discover database drivers automatically; developers only need to put the driver JAR on the classpath instead of explicitly loading the driver with `Class.forName()`.
 
-## SPI 介绍
+## Introduction to SPI
 
-### 何谓 SPI?
+### What Is SPI?
 
-SPI 即 Service Provider Interface，字面意思就是：“服务提供者的接口”，我的理解是：专门提供给服务提供者或者扩展框架功能的开发者去使用的一个接口。
+SPI stands for **Service Provider Interface**. It's an interface intended for service providers or developers who extend a framework.
 
-SPI 将服务接口和具体的服务实现分离开来，将服务调用方和服务实现者解耦，能够提升程序的扩展性、可维护性。修改或者替换服务实现并不需要修改调用方。
+SPI separates the service interface from its implementation and decouples callers from providers. This improves extensibility and maintainability: you can replace or update a provider without changing the caller.
 
-很多框架都使用了 Java 的 SPI 机制，比如：Spring 框架、数据库加载驱动、日志接口、以及 Dubbo 的扩展实现等等。
+Many frameworks use Java SPI, including Spring, database driver loading, logging APIs, and Dubbo extensions.
 
 <img src="https://oss.javaguide.cn/github/javaguide/java/basis/spi/22e1830e0b0e4115a882751f6c417857tplv-k3u1fbpfcp-zoom-1.jpeg" style="zoom:50%;" />
 
-### SPI 和 API 有什么区别？
+### How Do SPI and API Differ?
 
-**那 SPI 和 API 有啥区别？**
+**What's the difference between SPI and API?**
 
-说到 SPI 就不得不说一下 API（Application Programming Interface） 了，从广义上来说它们都属于接口，而且很容易混淆。下面先用一张图说明一下：
+API stands for **Application Programming Interface**. Both SPI and API are interfaces in a broad sense and can be easy to confuse. The diagram below illustrates the difference:
 
 ![SPI VS API](https://oss.javaguide.cn/github/javaguide/java/basis/spi-vs-api.png)
 
-一般模块之间都是通过接口进行通讯，因此我们在服务调用方和服务实现方（也称服务提供者）之间引入一个“接口”。
+Modules usually communicate through interfaces, so an interface sits between the service caller and the service implementation, also called the provider.
 
-- 当实现方提供了接口和实现，我们可以通过调用实现方的接口从而拥有实现方给我们提供的能力，这就是 **API**。这种情况下，接口和实现都是放在实现方的包中。调用方通过接口调用实现方的功能，而不需要关心具体的实现细节。
-- 当接口存在于调用方这边时，这就是 **SPI**。由接口调用方确定接口规则，然后由不同的厂商根据这个规则对这个接口进行实现，从而提供服务。
+- If the implementation side provides both the interface and implementation, the caller uses the interface to access its capabilities. This is an **API**. Both the interface and implementation belong to the implementation provider, and callers don't need to know the implementation details.
+- If the interface belongs to the caller, it's an **SPI**. The caller defines the interface, and different vendors implement it to provide the service.
 
-举个通俗易懂的例子：公司 H 是一家科技公司，新设计了一款芯片，然后现在需要量产了，而市面上有好几家芯片制造业公司，这个时候，只要 H 公司指定好了这芯片生产的标准（定义好了接口标准），那么这些合作的芯片公司（服务提供者）就按照标准交付自家特色的芯片（提供不同方案的实现，但是给出来的结果是一样的）。
+For example, suppose company H designs a chip and needs to manufacture it at scale. If H defines the manufacturing standards, different chip manufacturers (service providers) can build their own versions that follow those standards and provide the same expected result.
 
-## 实战演示
+## A Practical Example
 
-SLF4J（Simple Logging Facade for Java）是 Java 的一个日志门面（接口），其具体实现有几种，比如：Logback、Log4j、Log4j2 等等，而且还可以切换，在切换日志具体实现的时候我们是不需要更改项目代码的，只需要在 Maven 依赖里面修改一些 pom 依赖就好了。
+SLF4J (Simple Logging Facade for Java) is a logging facade, or interface. It has several implementations, including Logback, Log4j, and Log4j2. You can switch implementations without changing project code; just update the Maven dependencies.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/basis/spi/image-20220723213306039-165858318917813.png)
 
-这就是依赖 SPI 机制实现的，那我们接下来就实现一个简易版本的日志框架。
+This is enabled by SPI. Let's build a simple logging framework to see how it works.
 
 ### Service Provider Interface
 
-新建一个 Java 项目 `service-provider-interface` 目录结构如下：（注意直接新建 Java 项目就好了，不用新建 Maven 项目，Maven 项目会涉及到一些编译配置，如果有私服的话，直接 deploy 会比较方便，但是没有的话，在过程中可能会遇到一些奇怪的问题。）
+Create a Java project named `service-provider-interface` with the following structure. Use a plain Java project rather than a Maven project for this example; Maven introduces additional build configuration and can cause issues if you don't have a private repository.
 
 ```plain
 │  service-provider-interface.iml
@@ -74,7 +74,7 @@ SLF4J（Simple Logging Facade for Java）是 Java 的一个日志门面（接口
                         Main.class
 ```
 
-新建 `Logger` 接口，这个就是 SPI， 服务提供者接口，后面的服务提供者就要针对这个接口进行实现。
+Create the `Logger` interface. This is the SPI, or service provider interface, that providers will implement.
 
 ```java
 package edu.jiangxuan.up.spi;
@@ -85,7 +85,7 @@ public interface Logger {
 }
 ```
 
-接下来就是 `LoggerService` 类，这个主要是为服务使用者（调用方）提供特定功能的。这个类也是实现 Java SPI 机制的关键所在，如果存在疑惑的话可以先往后面继续看。
+Next, create the `LoggerService` class, which provides functionality to service consumers (callers). This class is key to the Java SPI mechanism; continue reading if its purpose isn't clear yet.
 
 ```java
 package edu.jiangxuan.up.spi;
@@ -107,10 +107,10 @@ public class LoggerService {
         for (Logger log : loader) {
             list.add(log);
         }
-        // LoggerList 是所有 ServiceProvider
+        // loggerList contains all service providers.
         loggerList = list;
         if (!list.isEmpty()) {
-            // Logger 只取一个
+            // Use only the first Logger.
             logger = list.get(0);
         } else {
             logger = null;
@@ -123,7 +123,7 @@ public class LoggerService {
 
     public void info(String msg) {
         if (logger == null) {
-            System.out.println("info 中没有发现 Logger 服务提供者");
+            System.out.println("No Logger provider found for info.");
         } else {
             logger.info(msg);
         }
@@ -131,14 +131,14 @@ public class LoggerService {
 
     public void debug(String msg) {
         if (loggerList.isEmpty()) {
-            System.out.println("debug 中没有发现 Logger 服务提供者");
+            System.out.println("No Logger provider found for debug.");
         }
         loggerList.forEach(log -> log.debug(msg));
     }
 }
 ```
 
-新建 `Main` 类（服务使用者，调用方），启动程序查看结果。
+Create a `Main` class (the service consumer) and run it to see the result.
 
 ```java
 package org.spi.service;
@@ -153,20 +153,20 @@ public class Main {
 }
 ```
 
-程序结果：
+Output:
 
-> info 中没有发现 Logger 服务提供者
-> debug 中没有发现 Logger 服务提供者
+> No Logger provider found for info.
+> No Logger provider found for debug.
 
-此时我们只是空有接口，并没有为 `Logger` 接口提供任何的实现，所以输出结果中没有按照预期打印相应的结果。
+At this point, we have an interface but no implementation of `Logger`, so the expected log messages aren't printed.
 
-你可以使用命令或者直接使用 IDEA 将整个程序直接打包成 jar 包。
+Package the project as a JAR using a command or your IDE.
 
 ### Service Provider
 
-接下来新建一个项目用来实现 `Logger` 接口
+Next, create a project that implements the `Logger` interface.
 
-新建项目 `service-provider` 目录结构如下：
+Create a project named `service-provider` with the following structure:
 
 ```plain
 │  service-provider.iml
@@ -194,7 +194,7 @@ public class Main {
 
 ```
 
-新建 `Logback` 类
+Create the `Logback` class:
 
 ```java
 package edu.jiangxuan.up.spi.service;
@@ -204,48 +204,48 @@ import edu.jiangxuan.up.spi.Logger;
 public class Logback implements Logger {
     @Override
     public void info(String s) {
-        System.out.println("Logback info 打印日志：" + s);
+        System.out.println("Logback info: " + s);
     }
 
     @Override
     public void debug(String s) {
-        System.out.println("Logback debug 打印日志：" + s);
+        System.out.println("Logback debug: " + s);
     }
 }
 
 ```
 
-将 `service-provider-interface` 的 jar 导入项目中。
+Add the `service-provider-interface` JAR to the project.
 
-新建 lib 目录，然后将 jar 包拷贝过来，再添加到项目中。
+Create a `lib` directory, copy the JAR into it, and add it to the project.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/basis/spi/523d5e25198444d3b112baf68ce49daetplv-k3u1fbpfcp-watermark.png)
 
-再点击 OK。
+Then click **OK**.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/basis/spi/f4ba0aa71e9b4d509b9159892a220850tplv-k3u1fbpfcp-watermark.png)
 
-接下来就可以在项目中导入 jar 包里面的一些类和方法了，就像 JDK 工具类导包一样的。
+You can now import classes and methods from the JAR, just as you would use a JDK library.
 
-实现 `Logger` 接口，在 `src` 目录下新建 `META-INF/services` 文件夹，然后新建文件 `edu.jiangxuan.up.spi.Logger`（SPI 的全类名），文件里面的内容是：`edu.jiangxuan.up.spi.service.Logback`（Logback 的全类名，即 SPI 的实现类的包名 + 类名）。
+Implement `Logger`, then create a `META-INF/services` directory under `src`. Inside it, create a file named `edu.jiangxuan.up.spi.Logger` (the SPI's fully qualified name). Put `edu.jiangxuan.up.spi.service.Logback` in the file (the provider's fully qualified name: package plus class name).
 
-**这是 JDK SPI 机制 ServiceLoader 约定好的标准。**
+**This is the convention used by the JDK SPI mechanism and `ServiceLoader`.**
 
-这里先大概解释一下：调用 `ServiceLoader.load()` 会创建服务加载器。遍历 `ServiceLoader` 时，加载器会按需定位并实例化提供者；调用 `stream()` 时得到的是 `ServiceLoader.Provider` 流，可以先通过 `type()` 检查提供者类型，只有调用 `Provider.get()` 才会获取对应的服务提供者实例。`ServiceLoader` 会缓存已经加载的提供者。对于类路径上的提供者，配置文件位于 `META-INF/services`；对于 Java 9 及之后的命名模块，还可以通过模块描述符中的 `uses` 和 `provides ... with ...` 声明服务关系。
+Here's a brief explanation: `ServiceLoader.load()` creates a service loader. Iterating over it locates and instantiates providers as needed. Calling `stream()` returns a stream of `ServiceLoader.Provider` objects; you can inspect a provider's type with `type()` and create its instance with `Provider.get()`. `ServiceLoader` caches providers it has loaded. Classpath providers are declared in `META-INF/services`; named modules in Java 9 and later can declare services with `uses` and `provides ... with ...` in their module descriptors.
 
-所以会提出一些规范要求：文件名一定要是接口的全类名，然后里面的内容一定要是实现类的全类名，实现类可以有多个，直接换行就好了，多个实现类的时候，会一个一个的迭代加载。
+The configuration file must be named after the interface's fully qualified name and contain the fully qualified names of its implementations. It can list multiple implementations, one per line, which are loaded one at a time during iteration.
 
-接下来同样将 `service-provider` 项目打包成 jar 包，这个 jar 包就是服务提供方的实现。通常我们导入 maven 的 pom 依赖就有点类似这种，只不过我们现在没有将这个 jar 包发布到 maven 公共仓库中，所以在需要使用的地方只能手动的添加到项目中。
+Package the `service-provider` project as a JAR. This JAR contains the provider implementation. Adding a Maven dependency works similarly, but since this JAR isn't published to a public Maven repository, add it to the project manually.
 
-### 效果展示
+### See It in Action
 
-为了更直观的展示效果，我这里再新建一个专门用来测试的工程项目：`java-spi-test`
+To make the result clearer, create a separate test project named `java-spi-test`.
 
-然后先导入 `Logger` 的接口 jar 包，再导入具体的实现类的 jar 包。
+Add the JAR containing the `Logger` interface, then add the provider implementation JAR.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/basis/spi/image-20220723215812708-165858469599214.png)
 
-新建 Main 方法测试：
+Create a `main` method to test it:
 
 ```java
 package edu.jiangxuan.up.service;
@@ -255,57 +255,57 @@ import edu.jiangxuan.up.spi.LoggerService;
 public class TestJavaSPI {
     public static void main(String[] args) {
         LoggerService loggerService = LoggerService.getService();
-        loggerService.info("你好");
-        loggerService.debug("测试Java SPI 机制");
+        loggerService.info("Hello");
+        loggerService.debug("Testing Java SPI");
     }
 }
 ```
 
-运行结果如下：
+Output:
 
-> Logback info 打印日志：你好
-> Logback debug 打印日志：测试 Java SPI 机制
+> Logback info: Hello
+> Logback debug: Testing Java SPI
 
-说明导入 jar 包中的实现类生效了。
+This shows that the implementation from the JAR is working.
 
-如果我们不导入具体的实现类的 jar 包，那么此时程序运行的结果就会是：
+If you don't add the provider JAR, the program prints:
 
-> info 中没有发现 Logger 服务提供者
-> debug 中没有发现 Logger 服务提供者
+> No Logger provider found for info.
+> No Logger provider found for debug.
 
-通过使用 SPI 机制，可以看出服务（`LoggerService`）和 服务提供者两者之间的耦合度非常低，如果说我们想要换一种实现，那么其实只需要修改 `service-provider` 项目中针对 `Logger` 接口的具体实现就可以了，只需要换一个 jar 包即可，也可以有在一个项目里面有多个实现，这不就是 SLF4J 原理吗？
+SPI keeps the service (`LoggerService`) and provider loosely coupled. To switch implementations, change the provider in the `service-provider` project or replace its JAR. A project can also include multiple providers. This is similar to how SLF4J works.
 
-如果某一天需求变更了，此时需要将日志输出到消息队列，或者做一些别的操作，这个时候完全不需要更改 Logback 的实现，只需要新增一个服务实现（service-provider）可以通过在本项目里面新增实现也可以从外部引入新的服务实现 jar 包。我们可以在服务(LoggerService)中选择一个具体的 服务实现(service-provider) 来完成我们需要的操作。
+If requirements change—for example, to send logs to a message queue—you don't need to change the Logback implementation. Add another provider in the project or bring in a new provider JAR, then select the implementation in `LoggerService`.
 
-那么接下来我们具体来说说 Java SPI 工作的重点原理—— **ServiceLoader**。
+Next, let's look more closely at **`ServiceLoader`**, the core of Java SPI.
 
 ## ServiceLoader
 
-### ServiceLoader 具体实现
+### How ServiceLoader Works
 
-> 下面展示的是 JDK 8 的 `ServiceLoader` 实现。Java 9 及之后的版本增加了模块层、`stream()`、`findFirst()` 和 provider method 等机制，当前源码结构已经不同。
+> The following is the JDK 8 implementation of `ServiceLoader`. Java 9 and later added the module layer, `stream()`, `findFirst()`, and provider methods, so the current source is different.
 
-想要使用 Java 的 SPI 机制是需要依赖 `ServiceLoader` 来实现的，那么我们接下来看看 `ServiceLoader` 具体是怎么做的：
+Java SPI relies on `ServiceLoader`. Here's how it works:
 
-`ServiceLoader` 是 JDK 提供的一个工具类， 位于 `package java.util;` 包下。
+`ServiceLoader` is a utility class in the JDK's `java.util` package.
 
 ```plain
 A facility to load implementations of a service.
 ```
 
-这是 JDK 官方给的注释：**一种加载服务实现的工具。**
+The JDK describes it as **a facility to load implementations of a service.**
 
-再往下看，我们发现这个类是一个 `final` 类型的，所以是不可被继承修改，同时它实现了 `Iterable` 接口。之所以实现了迭代器，是为了方便后续我们能够通过迭代的方式得到对应的服务实现。
+`ServiceLoader` is a `final` class, so it can't be subclassed. It implements `Iterable` so you can retrieve service implementations by iterating over it.
 
 ```java
 public final class ServiceLoader<S> implements Iterable<S>{ xxx...}
 ```
 
-可以看到一个熟悉的常量定义：
+Notice this familiar constant:
 
 `private static final String PREFIX = "META-INF/services/";`
 
-下面是 `load` 方法：可以发现 `load` 方法支持两种重载后的入参；
+Here's the `load` method, which has two overloads:
 
 ```java
 public static <S> ServiceLoader<S> load(Class<S> service) {
@@ -331,13 +331,13 @@ public void reload() {
 }
 ```
 
-其解决第三方类加载的机制其实就蕴含在 `ClassLoader cl = Thread.currentThread().getContextClassLoader();` 中，`cl` 就是**线程上下文类加载器**（Thread Context ClassLoader）。这是每个线程持有的类加载器，JDK 的设计允许应用程序或容器（如 Web 应用服务器）设置这个类加载器，以便核心类库能够通过它来加载应用程序类。
+The mechanism for loading third-party classes is in `ClassLoader cl = Thread.currentThread().getContextClassLoader();`. The `cl` is the **thread context class loader**, which is held by each thread. The JDK allows applications and containers, such as Web application servers, to set it so core libraries can load application classes.
 
-线程上下文类加载器默认情况下是应用程序类加载器（Application ClassLoader），它负责加载 classpath 上的类。当核心库需要加载应用程序提供的类时，它可以使用线程上下文类加载器来完成。这样，即使是由引导类加载器加载的核心库代码，也能够加载并使用由应用程序类加载器加载的类。
+By default, the thread context class loader is the application class loader, which loads classes from the classpath. When a core library needs to load an application-provided class, it can use the thread context class loader. This lets core library code loaded by the bootstrap class loader load and use classes loaded by the application class loader.
 
-根据代码的调用顺序，在 `reload()` 方法中是通过一个内部类 `LazyIterator` 实现的。先继续往下面看。
+In this implementation, `reload()` creates a `LazyIterator`. Let's continue.
 
-`ServiceLoader` 实现了 `Iterable` 接口的方法后，具有了迭代的能力，在这个 `iterator` 方法被调用时，首先会在 `ServiceLoader` 的 `Provider` 缓存中进行查找，如果缓存中没有命中那么则在 `LazyIterator` 中进行查找。
+Because `ServiceLoader` implements `Iterable`, it can be iterated over. When `iterator()` is called, it first checks the provider cache. If there are no cached providers, it looks for implementations through `LazyIterator`.
 
 ```java
 
@@ -350,13 +350,13 @@ public Iterator<S> iterator() {
         public boolean hasNext() {
             if (knownProviders.hasNext())
                 return true;
-            return lookupIterator.hasNext(); // 调用 LazyIterator
+            return lookupIterator.hasNext(); // Calls LazyIterator.
         }
 
         public S next() {
             if (knownProviders.hasNext())
                 return knownProviders.next().getValue();
-            return lookupIterator.next(); // 调用 LazyIterator
+            return lookupIterator.next(); // Calls LazyIterator.
         }
 
         public void remove() {
@@ -367,7 +367,7 @@ public Iterator<S> iterator() {
 }
 ```
 
-在调用 `LazyIterator` 时，具体实现如下：
+Here's how `LazyIterator` works:
 
 ```java
 
@@ -390,7 +390,7 @@ private boolean hasNextService() {
     }
     if (configs == null) {
         try {
-            //通过PREFIX（META-INF/services/）和类名 获取对应的配置文件，得到具体的实现类
+            // Find the configuration file using PREFIX (META-INF/services/) and the service name.
             String fullName = PREFIX + service.getName();
             if (loader == null)
                 configs = ClassLoader.getSystemResources(fullName);
@@ -453,11 +453,11 @@ private S nextService() {
 }
 ```
 
-可能很多人看这个会觉得有点复杂，没关系，我这边实现了一个简单的 `ServiceLoader` 小模型，用来演示从类路径配置文件读取实现类名并创建实例的核心思路。它没有覆盖 JDK 实现的惰性加载、去重、错误处理、模块提供者等完整行为：
+This may look complicated, so here's a simplified `ServiceLoader` model that demonstrates reading provider names from classpath configuration files and creating instances. It doesn't implement all JDK behavior, such as lazy loading, deduplication, error handling, or module providers.
 
-### 自己实现一个 ServiceLoader
+### Implementing a Simple ServiceLoader
 
-我先把代码贴出来：
+Here's the code:
 
 ```java
 package edu.jiangxuan.up.service;
@@ -474,92 +474,91 @@ import java.util.List;
 
 public class MyServiceLoader<S> {
 
-    // 对应的接口 Class 模板
+    // The Class object for the service interface.
     private final Class<S> service;
 
-    // 对应实现类的 可以有多个，用 List 进行封装
+    // The provider instances; there can be more than one.
     private final List<S> providers = new ArrayList<>();
 
-    // 类加载器
+    // The class loader.
     private final ClassLoader classLoader;
 
-    // 暴露给外部使用的方法，通过调用这个方法可以开始加载自己定制的实现流程。
+    // Public entry point for loading providers.
     public static <S> MyServiceLoader<S> load(Class<S> service) {
         return new MyServiceLoader<>(service);
     }
 
-    // 构造方法私有化
+    // Keep the constructor private.
     private MyServiceLoader(Class<S> service) {
         this.service = service;
         this.classLoader = Thread.currentThread().getContextClassLoader();
         doLoad();
     }
 
-    // 关键方法，加载具体实现类的逻辑
+    // Load the provider implementations.
     private void doLoad() {
         try {
-            // 读取所有 jar 包里面 META-INF/services 包下面的文件，这个文件名就是接口名，然后文件里面的内容就是具体的实现类的路径加全类名
+            // Read the META-INF/services file from each JAR. The filename is the
+            // service interface name, and its contents are provider class names.
             Enumeration<URL> urls = classLoader.getResources("META-INF/services/" + service.getName());
-            // 挨个遍历取到的文件
+            // Iterate over the configuration files.
             while (urls.hasMoreElements()) {
-                // 取出当前的文件
+                // Get the current file.
                 URL url = urls.nextElement();
                 System.out.println("File = " + url.getPath());
-                // 建立链接
+                // Open a connection.
                 URLConnection urlConnection = url.openConnection();
                 urlConnection.setUseCaches(false);
-                // 获取文件输入流
+                // Get the file's input stream.
                 InputStream inputStream = urlConnection.getInputStream();
-                // 从文件输入流获取缓存
+                // Wrap the stream in a buffered reader.
                 BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-                // 从文件内容里面得到实现类的全类名
+                // Read a provider's fully qualified class name.
                 String className = bufferedReader.readLine();
 
                 while (className != null) {
-                    // 通过反射拿到实现类的实例
+                    // Load the provider class using reflection.
                     Class<?> clazz = Class.forName(className, false, classLoader);
-                    // 如果声明的接口跟这个具体的实现类是属于同一类型，（可以理解为Java的一种多态，接口跟实现类、父类和子类等等这种关系。）则构造实例
+                    // Create an instance if the class implements the service interface.
                     if (service.isAssignableFrom(clazz)) {
                         Constructor<? extends S> constructor = (Constructor<? extends S>) clazz.getConstructor();
                         S instance = constructor.newInstance();
-                        // 把当前构造的实例对象添加到 Provider的列表里面
+                        // Add the instance to the provider list.
                         providers.add(instance);
                     }
-                    // 继续读取下一行的实现类，可以有多个实现类，只需要换行就可以了。
+                    // Read the next provider class name. Each provider goes on a new line.
                     className = bufferedReader.readLine();
                 }
             }
         } catch (Exception e) {
-            System.out.println("读取文件异常。。。");
+            System.out.println("Error reading the configuration file.");
         }
     }
 
-    // 返回spi接口对应的具体实现类列表
+    // Return the implementations of the SPI.
     public List<S> getProviders() {
         return providers;
     }
 }
 ```
 
-关键信息基本已经通过代码注释描述出来了，
+The code comments explain the key details. The main steps are:
 
-主要的流程就是：
+1. Use the URL utilities to find the corresponding file under `/META-INF/services` in each JAR.
+2. Use the filename to identify the SPI interface.
+3. Read the provider class names from the file using an `InputStream`.
+4. Check that each class implements the SPI interface, then use reflection to create an instance.
+5. Add each instance to the provider list.
 
-1. 通过 URL 工具类从 jar 包的 `/META-INF/services` 目录下面找到对应的文件，
-2. 读取这个文件的名称找到对应的 spi 接口，
-3. 通过 `InputStream` 流将文件里面的具体实现类的全类名读取出来，
-4. 根据获取到的全类名，先判断跟 spi 接口是否为同一类型，如果是的，那么就通过反射的机制构造对应的实例对象，
-5. 将构造出来的实例对象添加到 `Providers` 的列表中。
+## Summary
 
-## 总结
+SPI dynamically locates and creates service providers. Classpath providers are declared in `META-INF/services/` configuration files. Providers in named modules are declared with `provides ... with ...` in the module descriptor.
 
-其实不难发现，SPI 机制的具体实现需要动态定位并创建服务提供者。类路径上的提供者需要在 `META-INF/services/` 配置文件中声明；命名模块中的提供者则通过模块描述符的 `provides ... with ...` 声明。
+SPI is used by many frameworks. Spring uses a similar approach, and Dubbo provides its own SPI extension mechanism. Their implementations differ from the JDK's, but the general idea is similar. Understanding JDK SPI can help you understand these frameworks.
 
-另外，SPI 机制在很多框架中都有应用：Spring 框架的基本原理也是类似的方式。还有 Dubbo 框架提供同样的 SPI 扩展机制，只不过 Dubbo 和 spring 框架中的 SPI 机制具体实现方式跟咱们今天学得这个有些细微的区别，不过整体的原理都是一致的，相信大家通过对 JDK 中 SPI 机制的学习，能够一通百通，加深对其他高深框架的理解。
+SPI can make interface design more flexible, but it also has drawbacks:
 
-通过 SPI 机制能够大大地提高接口设计的灵活性，但是 SPI 机制也存在一些缺点，比如：
-
-1. `ServiceLoader` 会惰性加载提供者；如果调用方为了选择实现而遍历全部提供者，仍可能产生额外开销；
-2. 单个 `ServiceLoader` 实例不保证多线程安全，若要跨线程共享需要由调用方进行同步。不同 `ServiceLoader` 实例同时调用 `load` 并不会因此必然发生并发冲突。
+1. `ServiceLoader` loads providers lazily. If the caller iterates over all providers to choose one, this can add overhead.
+2. A `ServiceLoader` instance isn't guaranteed to be thread-safe. Callers must synchronize if they share one across threads. Concurrent calls to `load` on separate `ServiceLoader` instances don't necessarily cause conflicts.
 
 <!-- @include: @article-footer.snippet.md -->

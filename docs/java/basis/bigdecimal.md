@@ -1,20 +1,20 @@
 ---
-title: BigDecimal 详解
-description: 详解BigDecimal使用方法：解决浮点数精度丢失问题，掌握加减乘除运算、RoundingMode舍入规则、compareTo比较方法，适用金融计算等高精度场景。
+title: BigDecimal Explained
+description: Learn to use BigDecimal for precise decimal arithmetic, including basic operations, rounding modes, comparisons, and financial calculations.
 category: Java
 tag:
-  - Java基础
+  - Java Fundamentals
 head:
   - - meta
     - name: keywords
-      content: BigDecimal,浮点数精度,小数运算,RoundingMode舍入模式,BigDecimal比较,金额计算,精度丢失
+      content: BigDecimal,floating-point precision,decimal arithmetic,RoundingMode,BigDecimal comparison,monetary calculations,precision loss
 ---
 
-《阿里巴巴 Java 开发手册》中提到：“为了避免精度丢失，可以使用 `BigDecimal` 来进行浮点数的运算”。
+The _Alibaba Java Coding Guidelines_ recommends using `BigDecimal` for floating-point calculations to avoid precision loss.
 
-浮点数的运算竟然还会有精度丢失的风险吗？确实会！
+Can floating-point calculations really lose precision? Yes.
 
-示例代码：
+For example:
 
 ```java
 float a = 2.0f - 1.9f;
@@ -24,38 +24,38 @@ System.out.println(b);// 0.099999905
 System.out.println(a == b);// false
 ```
 
-**为什么浮点数 `float` 或 `double` 运算的时候会有精度丢失的风险呢？**
+**Why can `float` and `double` calculations lose precision?**
 
-这个和计算机保存小数的机制有很大关系。我们知道计算机是二进制的，而且计算机在表示一个数字时，宽度是有限的。许多十进制小数转换为二进制后会无限循环，只能舍入为有限位数，因此存在精度损失的风险。不过，像 0.5、0.25 这样能够表示为有限二进制小数的值可以被精确表示。
+This is related to how computers represent decimal values. Computers use binary and have a limited number of bits to represent each number. Many decimal fractions become repeating binary fractions and must be rounded, which can lose precision. Values such as 0.5 and 0.25 have finite binary representations and can be represented exactly.
 
-就比如说十进制下的 0.2 就没办法精确转换成二进制小数：
+For example, decimal 0.2 has no exact finite binary representation:
 
 ```java
-// 0.2 转换为二进制数的过程为，不断乘以 2，直到不存在小数为止，
-// 在这个计算过程中，得到的整数部分从上到下排列就是二进制的结果。
+// To convert 0.2 to binary, repeatedly multiply the fractional part by 2.
+// The integer parts, read from top to bottom, form the binary representation.
 0.2 * 2 = 0.4 -> 0
 0.4 * 2 = 0.8 -> 0
 0.8 * 2 = 1.6 -> 1
 0.6 * 2 = 1.2 -> 1
-0.2 * 2 = 0.4 -> 0（发生循环）
+0.2 * 2 = 0.4 -> 0 (repeats)
 ...
 ```
 
-关于浮点数的更多内容，建议看一下[计算机系统基础（四）浮点数](http://kaito-kidd.com/2018/08/08/computer-system-float-point/)这篇文章。
+For more on floating-point numbers, see [Computer Systems Fundamentals (4): Floating-Point Numbers](http://kaito-kidd.com/2018/08/08/computer-system-float-point/).
 
-## BigDecimal 介绍
+## Introduction to BigDecimal
 
-`BigDecimal` 可以精确表示十进制数，并提供可显式指定精度和舍入规则的运算。不过，使用有限精度的 `MathContext`、执行需要舍入的除法，或将结果转换为 `float`、`double` 时，仍可能发生舍入。
+`BigDecimal` can represent decimal numbers precisely and lets you specify precision and rounding rules for calculations. Rounding can still occur when using a limited-precision `MathContext`, dividing with a rounding rule, or converting the result to `float` or `double`.
 
-通常情况下，大部分需要小数精确运算结果的业务场景（比如涉及到钱的场景）都是通过 `BigDecimal` 来做的。
+Most business calculations that require precise decimal results, such as monetary calculations, use `BigDecimal`.
 
-《阿里巴巴 Java 开发手册》中提到：**浮点数之间的等值判断，基本数据类型不能用 == 来比较，包装数据类型不能用 equals 来判断。**
+The _Alibaba Java Coding Guidelines_ also notes: **Don't compare floating-point values using `==` for primitive types or `equals()` for wrapper types.**
 
 ![](https://oss.javaguide.cn/javaguide/image-20211213101646884.png)
 
-具体原因我们在上面已经详细介绍了，这里就不多提了。
+The reason is described above.
 
-想要解决浮点数运算精度丢失这个问题，可以直接使用 `BigDecimal` 来定义小数的值，然后再进行小数的运算操作即可。
+To avoid this issue, create decimal values with `BigDecimal` and perform the calculations with it.
 
 ```java
 BigDecimal a = new BigDecimal("1.0");
@@ -68,19 +68,19 @@ BigDecimal y = b.subtract(c);
 System.out.println(x.compareTo(y));// 0
 ```
 
-## BigDecimal 常见方法
+## Common BigDecimal Methods
 
-### 创建
+### Creating Instances
 
-我们在使用 `BigDecimal` 时，为了防止精度丢失，推荐使用它的 `BigDecimal(String val)` 构造方法或者 `BigDecimal.valueOf(double val)` 静态方法来创建对象。
+To avoid precision loss when creating a `BigDecimal`, use the `BigDecimal(String val)` constructor or the `BigDecimal.valueOf(double val)` static method.
 
-《阿里巴巴 Java 开发手册》对这部分内容也有提到，如下图所示。
+The _Alibaba Java Coding Guidelines_ also covers this, as shown below.
 
 ![](https://oss.javaguide.cn/javaguide/image-20211213102222601.png)
 
-### 加减乘除
+### Addition, Subtraction, Multiplication, and Division
 
-`add` 方法用于将两个 `BigDecimal` 对象相加，`subtract` 方法用于将两个 `BigDecimal` 对象相减。`multiply` 方法用于将两个 `BigDecimal` 对象相乘，`divide` 方法用于将两个 `BigDecimal` 对象相除。
+Use `add` to add two `BigDecimal` values, `subtract` to subtract them, `multiply` to multiply them, and `divide` to divide them.
 
 ```java
 BigDecimal a = new BigDecimal("1.0");
@@ -88,11 +88,11 @@ BigDecimal b = new BigDecimal("0.9");
 System.out.println(a.add(b));// 1.9
 System.out.println(a.subtract(b));// 0.1
 System.out.println(a.multiply(b));// 0.90
-System.out.println(a.divide(b));// 无法除尽，抛出 ArithmeticException 异常
+System.out.println(a.divide(b));// Throws ArithmeticException because the result repeats.
 System.out.println(a.divide(b, 2, RoundingMode.HALF_UP));// 1.11
 ```
 
-这里需要注意的是，应根据业务是否允许舍入来选择 `divide` 的重载。要求结果精确时，可以使用不指定舍入规则的版本；结果无法精确表示时会抛出 `ArithmeticException`。允许舍入时，应显式指定 `scale` 和 `roundingMode`。`RoundingMode.UNNECESSARY` 用于断言结果无需舍入，如果实际需要舍入同样会抛出 `ArithmeticException`。
+Choose a `divide` overload based on whether rounding is allowed. If the result must be exact, use an overload without a rounding rule; it throws `ArithmeticException` when the result is a repeating decimal. If rounding is allowed, specify the `scale` and `roundingMode`. `RoundingMode.UNNECESSARY` asserts that no rounding is needed and also throws `ArithmeticException` if rounding would be required.
 
 ```java
 public BigDecimal divide(BigDecimal divisor, int scale, RoundingMode roundingMode) {
@@ -100,7 +100,7 @@ public BigDecimal divide(BigDecimal divisor, int scale, RoundingMode roundingMod
 }
 ```
 
-保留规则非常多，这里列举几种:
+There are several rounding modes. Here are a few:
 
 ```java
 public enum RoundingMode {
@@ -123,9 +123,9 @@ public enum RoundingMode {
 }
 ```
 
-### 大小比较
+### Comparing Values
 
-`a.compareTo(b)` : 返回 -1 表示 `a` 小于 `b`，0 表示 `a` 等于 `b`， 1 表示 `a` 大于 `b`。
+`a.compareTo(b)` returns -1 if `a` is less than `b`, 0 if they are equal, and 1 if `a` is greater than `b`.
 
 ```java
 BigDecimal a = new BigDecimal("1.0");
@@ -133,9 +133,9 @@ BigDecimal b = new BigDecimal("0.9");
 System.out.println(a.compareTo(b));// 1
 ```
 
-### 保留几位小数
+### Setting the Number of Decimal Places
 
-通过 `setScale` 方法设置保留几位小数以及保留规则。保留规则有挺多种，不需要记，IDEA 会提示。
+Use `setScale` to set the number of decimal places and the rounding mode. There are several modes; your IDE can show the available options.
 
 ```java
 BigDecimal m = new BigDecimal("1.255433");
@@ -143,13 +143,13 @@ BigDecimal n = m.setScale(3,RoundingMode.HALF_DOWN);
 System.out.println(n);// 1.255
 ```
 
-## BigDecimal 等值比较问题
+## Comparing BigDecimal Values for Equality
 
-《阿里巴巴 Java 开发手册》中提到：
+The _Alibaba Java Coding Guidelines_ notes:
 
 ![](https://oss.javaguide.cn/github/javaguide/java/basis/image-20220714161315993.png)
 
-`BigDecimal` 使用 `equals()` 方法进行等值比较出现问题的代码示例：
+This example shows a potential issue when comparing `BigDecimal` values with `equals()`:
 
 ```java
 BigDecimal a = new BigDecimal("1");
@@ -157,13 +157,13 @@ BigDecimal b = new BigDecimal("1.0");
 System.out.println(a.equals(b));//false
 ```
 
-这是因为 `equals()` 方法不仅仅会比较值的大小（value）还会比较精度（scale），而 `compareTo()` 方法比较的时候会忽略精度。
+`equals()` compares both the value and the scale, while `compareTo()` ignores the scale.
 
-1.0 的 scale 是 1，1 的 scale 是 0，因此 `a.equals(b)` 的结果是 false。
+The scale of 1.0 is 1, while the scale of 1 is 0, so `a.equals(b)` returns false.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/basis/image-20220714164706390.png)
 
-`compareTo()` 方法可以比较两个 `BigDecimal` 的值，如果相等就返回 0，如果第 1 个数比第 2 个数大则返回 1，反之返回-1。
+Use `compareTo()` to compare two `BigDecimal` values. It returns 0 if they are equal, 1 if the first is greater, and -1 if it is less.
 
 ```java
 BigDecimal a = new BigDecimal("1");
@@ -171,23 +171,23 @@ BigDecimal b = new BigDecimal("1.0");
 System.out.println(a.compareTo(b));//0
 ```
 
-## BigDecimal 工具类分享
+## A BigDecimal Utility Class
 
-网上有一个使用人数比较多的 `BigDecimal` 工具类，提供了多个静态方法来简化 `BigDecimal` 的操作。
+This commonly used `BigDecimal` utility class provides static methods for common operations.
 
-我对其进行了简单改进，分享一下源码：
+Here is a slightly improved version:
 
 ```java
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
- * 简化BigDecimal计算的小工具类
+ * A utility class for simplifying BigDecimal calculations.
  */
 public class BigDecimalUtil {
 
     /**
-     * 默认除法运算精度
+     * Default precision for division.
      */
     private static final int DEF_DIV_SCALE = 10;
 
@@ -195,11 +195,11 @@ public class BigDecimalUtil {
     }
 
     /**
-     * 使用 BigDecimal 进行加法运算，结果转换为 double 时仍可能发生舍入。
+     * Adds two values using BigDecimal. Converting the result to double may still round it.
      *
-     * @param v1 被加数
-     * @param v2 加数
-     * @return 两个参数的和
+     * @param v1 the first addend
+     * @param v2 the second addend
+     * @return the sum
      */
     public static double add(double v1, double v2) {
         BigDecimal b1 = BigDecimal.valueOf(v1);
@@ -208,11 +208,11 @@ public class BigDecimalUtil {
     }
 
     /**
-     * 使用 BigDecimal 进行减法运算，结果转换为 double 时仍可能发生舍入。
+     * Subtracts two values using BigDecimal. Converting the result to double may still round it.
      *
-     * @param v1 被减数
-     * @param v2 减数
-     * @return 两个参数的差
+     * @param v1 the minuend
+     * @param v2 the subtrahend
+     * @return the difference
      */
     public static double subtract(double v1, double v2) {
         BigDecimal b1 = BigDecimal.valueOf(v1);
@@ -221,11 +221,11 @@ public class BigDecimalUtil {
     }
 
     /**
-     * 使用 BigDecimal 进行乘法运算，结果转换为 double 时仍可能发生舍入。
+     * Multiplies two values using BigDecimal. Converting the result to double may still round it.
      *
-     * @param v1 被乘数
-     * @param v2 乘数
-     * @return 两个参数的积
+     * @param v1 the first factor
+     * @param v2 the second factor
+     * @return the product
      */
     public static double multiply(double v1, double v2) {
         BigDecimal b1 = BigDecimal.valueOf(v1);
@@ -234,25 +234,25 @@ public class BigDecimalUtil {
     }
 
     /**
-     * 提供（相对）精确的除法运算，当发生除不尽的情况时，精确到
-     * 小数点以后10位，以后的数字四舍六入五成双。
+     * Performs division, rounding to 10 decimal places with HALF_EVEN
+     * when the result is not exact.
      *
-     * @param v1 被除数
-     * @param v2 除数
-     * @return 两个参数的商
+     * @param v1 the dividend
+     * @param v2 the divisor
+     * @return the quotient
      */
     public static double divide(double v1, double v2) {
         return divide(v1, v2, DEF_DIV_SCALE);
     }
 
     /**
-     * 提供（相对）精确的除法运算。当发生除不尽的情况时，由scale参数指
-     * 定精度，以后的数字四舍六入五成双。
+     * Performs division, rounding to the specified scale with HALF_EVEN
+     * when the result is not exact.
      *
-     * @param v1    被除数
-     * @param v2    除数
-     * @param scale 表示表示需要精确到小数点以后几位。
-     * @return 两个参数的商
+     * @param v1 the dividend
+     * @param v2 the divisor
+     * @param scale the number of decimal places
+     * @return the quotient
      */
     public static double divide(double v1, double v2, int scale) {
         if (scale < 0) {
@@ -265,11 +265,11 @@ public class BigDecimalUtil {
     }
 
     /**
-     * 使用 HALF_EVEN 规则处理指定小数位。
+     * Rounds to the specified number of decimal places using HALF_EVEN.
      *
-     * @param v     需要四舍六入五成双的数字
-     * @param scale 小数点后保留几位
-     * @return 四舍六入五成双后的结果
+     * @param v the value to round
+     * @param scale the number of decimal places
+     * @return the rounded value
      */
     public static double round(double v, int scale) {
         if (scale < 0) {
@@ -282,10 +282,10 @@ public class BigDecimalUtil {
     }
 
     /**
-     * 转换为 Float，超出 float 精度或范围时可能发生舍入或溢出
+     * Converts to float. The value may be rounded or overflow its range.
      *
-     * @param v 需要被转换的数字
-     * @return 返回转换结果
+     * @param v the value to convert
+     * @return the converted value
      */
     public static float convertToFloat(double v) {
         BigDecimal b = BigDecimal.valueOf(v);
@@ -293,10 +293,11 @@ public class BigDecimalUtil {
     }
 
     /**
-     * 转换为 Int，不进行舍入；小数部分会被截断，超出范围时会丢失高位
+     * Converts to int without rounding. The fractional part is discarded,
+     * and values outside the int range lose their high-order bits.
      *
-     * @param v 需要被转换的数字
-     * @return 返回转换结果
+     * @param v the value to convert
+     * @return the converted value
      */
     public static int convertsToInt(double v) {
         BigDecimal b = BigDecimal.valueOf(v);
@@ -304,10 +305,11 @@ public class BigDecimalUtil {
     }
 
     /**
-     * 转换为 Long，不进行舍入；小数部分会被截断，超出范围时会丢失高位
+     * Converts to long without rounding. The fractional part is discarded,
+     * and values outside the long range lose their high-order bits.
      *
-     * @param v 需要被转换的数字
-     * @return 返回转换结果
+     * @param v the value to convert
+     * @return the converted value
      */
     public static long convertsToLong(double v) {
         BigDecimal b = BigDecimal.valueOf(v);
@@ -315,11 +317,11 @@ public class BigDecimalUtil {
     }
 
     /**
-     * 返回两个数中大的一个值
+     * Returns the greater of two values.
      *
-     * @param v1 需要被对比的第一个数
-     * @param v2 需要被对比的第二个数
-     * @return 返回两个数中大的一个值
+     * @param v1 the first value
+     * @param v2 the second value
+     * @return the greater value
      */
     public static double returnMax(double v1, double v2) {
         BigDecimal b1 = BigDecimal.valueOf(v1);
@@ -328,11 +330,11 @@ public class BigDecimalUtil {
     }
 
     /**
-     * 返回两个数中小的一个值
+     * Returns the smaller of two values.
      *
-     * @param v1 需要被对比的第一个数
-     * @param v2 需要被对比的第二个数
-     * @return 返回两个数中小的一个值
+     * @param v1 the first value
+     * @param v2 the second value
+     * @return the smaller value
      */
     public static double returnMin(double v1, double v2) {
         BigDecimal b1 = BigDecimal.valueOf(v1);
@@ -341,11 +343,11 @@ public class BigDecimalUtil {
     }
 
     /**
-     * 精确对比两个数字
+     * Compares two values precisely.
      *
-     * @param v1 需要被对比的第一个数
-     * @param v2 需要被对比的第二个数
-     * @return 如果两个数一样则返回0，如果第一个数比第二个数大则返回1，反之返回-1
+     * @param v1 the first value
+     * @param v2 the second value
+     * @return 0 if equal, 1 if the first is greater, or -1 if it is less
      */
     public static int compareTo(double v1, double v2) {
         BigDecimal b1 = BigDecimal.valueOf(v1);
@@ -356,14 +358,14 @@ public class BigDecimalUtil {
 }
 ```
 
-相关 issue：[建议对保留规则设置为 RoundingMode.HALF_EVEN,即四舍六入五成双,#2129](https://github.com/Snailclimb/JavaGuide/issues/2129)。
+Related issue: [Use RoundingMode.HALF_EVEN](https://github.com/Snailclimb/JavaGuide/issues/2129).
 
 ![RoundingMode.HALF_EVEN](https://oss.javaguide.cn/github/javaguide/java/basis/RoundingMode.HALF_EVEN.png)
 
-## 总结
+## Summary
 
-许多十进制小数无法用有限位二进制精确表示，因此使用 `float` 或 `double` 运算时存在精度丢失的风险。
+Many decimal fractions cannot be represented exactly with a finite number of binary digits, so `float` and `double` calculations can lose precision.
 
-不过，Java 提供了 `BigDecimal` 来操作浮点数。`BigDecimal` 的实现利用到了 `BigInteger`（用来操作大整数）, 所不同的是 `BigDecimal` 加入了小数位的概念。
+Java provides `BigDecimal` for decimal arithmetic. It builds on `BigInteger` and adds a scale to represent digits after the decimal point.
 
 <!-- @include: @article-footer.snippet.md -->

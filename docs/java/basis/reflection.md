@@ -1,37 +1,37 @@
 ---
-title: Java 反射机制详解
-description: 深入讲解Java反射机制原理与应用：掌握Class、Method、Field核心API，理解反射在Spring、MyBatis等框架中的应用，学习动态代理实现。
+title: Java Reflection Explained
+description: Learn Java reflection and its core Class, Method, and Field APIs, and see how frameworks such as Spring and MyBatis use reflection and dynamic proxies.
 category: Java
 tag:
-  - Java基础
+  - Java Fundamentals
 head:
   - - meta
     - name: keywords
-      content: Java反射,反射机制,Class类,Method方法,Field字段,动态代理,框架原理,运行时操作
+      content: Java reflection,reflection mechanism,Class,Method,Field,dynamic proxies,framework internals,runtime operations
 ---
 
-## 何为反射？
+## What Is Reflection?
 
-如果说大家研究过框架的底层原理或者咱们自己写过框架的话，一定对反射这个概念不陌生。
+If you've studied framework internals or written a framework, you're probably familiar with reflection.
 
-反射之所以被称为框架的灵魂，主要是因为它赋予了我们在运行时分析类以及执行类中方法的能力。
+Reflection is often called the soul of a framework because it lets a program inspect classes and invoke their methods at runtime.
 
-通过反射可以获取类的字段、方法、构造器等信息，并在访问控制和模块边界允许的情况下进行调用或读写。不同 API 的范围也不同，例如 `getMethods()` 返回可访问的 public 方法，而 `getDeclaredMethods()` 返回当前类声明的方法但不包含继承方法。
+Reflection can retrieve information about a class's fields, methods, and constructors, and can invoke or access them when access controls and module boundaries allow it. APIs also differ in scope: for example, `getMethods()` returns accessible public methods, while `getDeclaredMethods()` returns methods declared by the current class, excluding inherited methods.
 
-## 反射的应用场景了解么？
+## Where Is Reflection Used?
 
-像咱们平时大部分时候都是在写业务代码，很少会接触到直接使用反射机制的场景。
+Most application developers rarely use reflection directly in business code.
 
-但是，这并不代表反射没有用。相反，正是因为反射，你才能这么轻松地使用各种框架。像 Spring/Spring Boot、MyBatis 等等框架中都大量使用了反射机制。
+That doesn't mean reflection isn't useful. It's widely used by frameworks such as Spring, Spring Boot, and MyBatis, making them easier to use.
 
-**这些框架中也大量使用了动态代理，而动态代理的实现也依赖反射。**
+**These frameworks also use dynamic proxies, which rely on reflection.**
 
-比如下面是通过 JDK 实现动态代理的示例代码，其中就使用了反射类 `Method` 来调用指定的方法。
+The following JDK dynamic proxy example uses the reflection class `Method` to invoke a specific method.
 
 ```java
 public class DebugInvocationHandler implements InvocationHandler {
     /**
-     * 代理类中的真实对象
+     * The target object wrapped by the proxy.
      */
     private final Object target;
 
@@ -50,56 +50,56 @@ public class DebugInvocationHandler implements InvocationHandler {
 
 ```
 
-另外，像 Java 中的一大利器 **注解** 的实现也用到了反射。
+Java's powerful **annotations** also rely on reflection.
 
-为什么你使用 Spring 的时候，一个 `@Component` 注解就声明了一个类为 Spring Bean 呢？为什么你通过一个 `@Value` 注解就读取到配置文件中的值呢？究竟是怎么起作用的呢？
+How does Spring use `@Component` to register a class as a Spring bean? How does `@Value` read a value from a configuration file?
 
-这些都是因为你可以基于反射分析类，然后获取到类/属性/方法/方法的参数上的注解。你获取到注解之后，就可以做进一步的处理。
+Reflection lets a framework inspect a class and retrieve annotations on the class, its fields and methods, and method parameters. The framework can then process those annotations.
 
-## 谈谈反射机制的优缺点
+## Pros and Cons of Reflection
 
-**优点**：可以让咱们的代码更加灵活、为各种框架提供开箱即用的功能提供了便利
+**Pros:** Reflection makes code more flexible and helps frameworks provide convenient features.
 
-**缺点**：让我们在运行时有了分析操作类的能力，这同样也增加了安全问题。比如可以无视泛型参数的安全检查（泛型参数的安全检查发生在编译时）。另外，反射的性能也要稍差点，不过，对于框架来说实际是影响不大的。相关阅读：[Java Reflection: Why is it so slow?](https://stackoverflow.com/questions/1392351/java-reflection-why-is-it-so-slow)
+**Cons:** Runtime access to classes can introduce security risks. For example, reflection can bypass generic type checks, which happen at compile time. Reflection can also be slower, though the impact is often small for frameworks. See [Java Reflection: Why Is It So Slow?](https://stackoverflow.com/questions/1392351/java-reflection-why-is-it-so-slow).
 
-## 反射实战
+## Reflection in Practice
 
-### 获取 Class 对象的四种方式
+### Four Ways to Get a Class Object
 
-如果我们动态获取到这些信息，我们需要依靠 Class 对象。Class 类对象将一个类的方法、变量等信息告诉运行的程序。Java 提供了四种方式获取 Class 对象:
+To inspect a class dynamically, you need its `Class` object. It provides runtime information about the class, such as its methods and fields. Java offers four ways to get one:
 
-**1. 知道具体类的情况下可以使用：**
+**1. If the class is known at compile time:**
 
 ```java
 Class alunbarClass = TargetObject.class;
 ```
 
-这种方式适用于编译时已经知道具体类型的场景，获取类字面量本身不会触发类初始化。
+Use this when the type is known at compile time. Accessing a class literal doesn't initialize the class.
 
-**2. 通过 `Class.forName()` 传入类的全路径获取：**
+**2. Pass the fully qualified class name to `Class.forName()`:**
 
 ```java
 Class alunbarClass1 = Class.forName("cn.javaguide.TargetObject");
 ```
 
-**3. 通过对象实例 `instance.getClass()` 获取：**
+**3. Get it from an object with `instance.getClass()`:**
 
 ```java
 TargetObject o = new TargetObject();
 Class alunbarClass2 = o.getClass();
 ```
 
-**4. 通过类加载器 `xxxClassLoader.loadClass()` 传入类路径获取:**
+**4. Pass the class name to a class loader's `loadClass()`:**
 
 ```java
 ClassLoader.getSystemClassLoader().loadClass("cn.javaguide.TargetObject");
 ```
 
-通过类加载器获取 Class 对象不会进行初始化，意味着不进行包括初始化等一系列步骤，静态代码块和静态对象不会得到执行
+Loading a class with a class loader doesn't initialize it, so static initializer blocks and static field initializers don't run at that point.
 
-### 反射的一些基本操作
+### Basic Reflection Operations
 
-1. 创建一个我们要使用反射操作的类 `TargetObject`。
+1. Create a `TargetObject` class to inspect with reflection.
 
 ```java
 package cn.javaguide;
@@ -121,7 +121,7 @@ public class TargetObject {
 }
 ```
 
-2. 使用反射操作这个类的方法以及属性
+2. Use reflection to inspect and invoke its methods and access its fields.
 
 ```java
 package cn.javaguide;
@@ -133,12 +133,12 @@ import java.lang.reflect.Method;
 public class Main {
     public static void main(String[] args) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InstantiationException, InvocationTargetException, NoSuchFieldException {
         /**
-         * 获取 TargetObject 类的 Class 对象并且创建 TargetObject 类实例
+         * Get the Class object for TargetObject and create an instance.
          */
         Class<?> targetClass = Class.forName("cn.javaguide.TargetObject");
         TargetObject targetObject = (TargetObject) targetClass.getDeclaredConstructor().newInstance();
         /**
-         * 获取 TargetObject 类中定义的所有方法
+         * Get all methods declared in TargetObject.
          */
         Method[] methods = targetClass.getDeclaredMethods();
         for (Method method : methods) {
@@ -146,7 +146,7 @@ public class Main {
         }
 
         /**
-         * 获取指定方法并调用
+         * Get and invoke a specific method.
          */
         Method publicMethod = targetClass.getDeclaredMethod("publicMethod",
                 String.class);
@@ -154,18 +154,18 @@ public class Main {
         publicMethod.invoke(targetObject, "JavaGuide");
 
         /**
-         * 获取指定参数并对参数进行修改
+         * Get and modify a specific field.
          */
         Field field = targetClass.getDeclaredField("value");
-        //为了对类中的参数进行修改我们取消安全检查
+        // Disable access checks so the private field can be modified.
         field.setAccessible(true);
         field.set(targetObject, "JavaGuide");
 
         /**
-         * 调用 private 方法
+         * Invoke a private method.
          */
         Method privateMethod = targetClass.getDeclaredMethod("privateMethod");
-        //为了调用private方法我们取消安全检查
+        // Disable access checks so the private method can be invoked.
         privateMethod.setAccessible(true);
         privateMethod.invoke(targetObject);
     }
@@ -173,7 +173,7 @@ public class Main {
 
 ```
 
-输出内容：
+Output:
 
 ```plain
 publicMethod
@@ -182,8 +182,7 @@ I love JavaGuide
 value is JavaGuide
 ```
 
-**注意** : 有读者提到上面代码运行会抛出 `ClassNotFoundException` 异常，具体原因是你没有下面把这段代码的包名替换成自己创建的 `TargetObject` 所在的包。
-可以参考：<https://www.cnblogs.com/chanshuyi/p/head_first_of_reflection.html> 这篇文章。
+**Note:** The code above may throw `ClassNotFoundException` if you don't replace the package name in the class path below with the package containing your `TargetObject` class. See [this article](https://www.cnblogs.com/chanshuyi/p/head_first_of_reflection.html) for details.
 
 ```java
 Class<?> targetClass = Class.forName("cn.javaguide.TargetObject");

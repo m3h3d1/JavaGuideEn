@@ -1,166 +1,166 @@
 ---
-title: Java基础常见面试题总结(上)
+title: Common Java Interview Questions (Part 1)
 category: Java
-description: Java基础常见面试题总结：包含Java语言特点、JVM/JDK/JRE区别、字节码详解、基本数据类型、自动装箱拆箱、方法重载与重写等核心知识点，助力Java开发者面试通关。
+description: Common Java interview questions covering language features, the JVM/JDK/JRE, bytecode, primitive types, boxing and unboxing, and method overloading and overriding.
 tag:
-  - Java基础
+  - Java Basics
 head:
   - - meta
     - name: keywords
-      content: Java基础,JVM,JDK,JRE,Java SE,字节码,Java编译,自动装箱,基本数据类型,方法重载,Java面试题
+      content: Java basics,JVM,JDK,JRE,Java SE,bytecode,Java compilation,boxing,primitive types,method overloading,Java interview questions
 ---
 
-## 基础概念与常识
+## Basic Concepts
 
-### Java 语言有哪些特点？
+### What are the features of Java?
 
-1. 简单易学（语法简单，上手容易）；
-2. 面向对象（封装，继承，多态）；
-3. 平台无关性（Java 虚拟机实现平台无关性）；
-4. 支持多线程（C++ 语言没有内置的多线程机制，因此必须调用操作系统的多线程功能来进行多线程程序设计，而 Java 语言却提供了多线程支持）；
-5. 可靠性（具备异常处理和自动内存管理机制）；
-6. 安全性（Java 语言本身的设计就提供了多重安全防护机制如访问权限修饰符、限制程序直接访问操作系统资源）；
-7. 高效性（通过 Just In Time 编译器等技术的优化，Java 语言的运行效率还是非常不错的）；
-8. 支持网络编程并且很方便；
-9. 编译与解释并存；
+1. Easy to learn, with a relatively simple syntax;
+2. Object-oriented, with encapsulation, inheritance, and polymorphism;
+3. Platform-independent, thanks to the Java Virtual Machine (JVM);
+4. Supports multithreading. C++ added a standard threading library in C++11, while Java has included concurrency support from the start;
+5. Reliable, with exception handling and automatic memory management;
+6. Secure, with features such as access modifiers and restrictions on direct access to operating system resources;
+7. Efficient, with optimizations such as Just-in-Time (JIT) compilation;
+8. Provides convenient support for network programming;
+9. Combines compilation and interpretation;
 10. ……
 
-> **🐛 修正（参见：[issue#544](https://github.com/Snailclimb/JavaGuide/issues/544)）**：C++11 开始（2011 年的时候），C++ 就引入了多线程库，在 Windows、Linux、macOS 都可以使用 `std::thread` 和 `std::async` 来创建线程。参考链接：<http://www.cplusplus.com/reference/thread/thread/?kw=thread>
+> **🐛 Correction (see [issue #544](https://github.com/Snailclimb/JavaGuide/issues/544)):** C++ added a threading library in C++11 (released in 2011). On Windows, Linux, and macOS, you can use `std::thread` and `std::async` to create threads. Reference: <http://www.cplusplus.com/reference/thread/thread/?kw=thread>
 
-🌈 拓展一下：
+🌈 A little more context:
 
-“Write Once, Run Anywhere（一次编写，随处运行）”这句宣传口号，真心经典，流传了好多年！以至于，直到今天，依然有很多人觉得跨平台是 Java 语言最大的优势。实际上，跨平台已经不是 Java 最大的卖点了，各种 JDK 新特性也不是。目前市面上虚拟化技术已经非常成熟，比如你通过 Docker 就很容易实现跨平台了。在我看来，Java 强大的生态才是！
+“Write Once, Run Anywhere” is a classic slogan that has lasted for decades. Even today, many people consider portability Java's biggest advantage. In practice, portability is no longer Java's main selling point, and neither are the latest JDK features. Virtualization technologies are mature, and tools such as Docker make it easy to build portable applications. In my view, Java's strong ecosystem is its biggest advantage.
 
 ### Java SE vs Java EE
 
-- Java SE（Java Platform, Standard Edition）: Java 平台标准版，Java 编程语言的基础，它包含了支持 Java 应用程序开发和运行的核心类库以及虚拟机等核心组件。Java SE 可以用于构建桌面应用程序或简单的服务器应用程序。
-- Java EE（Java Platform, Enterprise Edition）：Java 平台企业版，建立在 Java SE 的基础上，包含了支持企业级应用程序开发和部署的标准和规范（比如 Servlet、JSP、EJB、JDBC、JPA、JTA、JavaMail、JMS）。 Java EE 可以用于构建分布式、可移植、健壮、可伸缩和安全的服务端 Java 应用程序，例如 Web 应用程序。
+- Java SE (Java Platform, Standard Edition) is the foundation of the Java platform. It includes the core libraries and runtime components needed to develop and run Java applications. Java SE can be used to build desktop applications and simple server applications.
+- Java EE (Java Platform, Enterprise Edition) is built on Java SE and defines standards for developing and deploying enterprise applications, including Servlet, JSP, EJB, JDBC, JPA, JTA, JavaMail, and JMS. It is used to build distributed, portable, robust, scalable, and secure server-side applications such as web applications.
 
-简单来说，Java SE 是 Java 的基础版本，Java EE 是 Java 的高级版本。Java SE 更适合开发桌面应用程序或简单的服务器应用程序，Java EE 更适合开发复杂的企业级应用程序或 Web 应用程序。
+In short, Java SE provides the core platform, while Java EE adds enterprise application specifications. Java SE is suitable for desktop and simple server applications; Java EE targets more complex enterprise and web applications.
 
-除了 Java SE 和 Java EE，还有一个 Java ME（Java Platform，Micro Edition）。Java ME 是 Java 的微型版本，主要用于开发嵌入式消费电子设备的应用程序，例如手机、PDA、机顶盒、冰箱、空调等。Java ME 无需重点关注，知道有这个东西就好了，现在已经用不上了。
+Java also has Java ME (Java Platform, Micro Edition), a smaller platform for applications on embedded consumer devices such as phones, PDAs, set-top boxes, refrigerators, and air conditioners. It is useful to know that Java ME exists, though it is rarely used today.
 
-### ⭐️ JVM vs JDK vs JRE
+### ⭐️ JVM vs. JDK vs. JRE
 
 #### JVM
 
-Java 虚拟机（Java Virtual Machine, JVM）是运行 Java 字节码的虚拟机。JVM 有针对不同系统的特定实现（Windows，Linux，macOS），目的是使用相同的字节码，它们都会给出相同的结果。字节码和不同系统的 JVM 实现是 Java 语言“一次编译，随处可以运行”的关键所在。
+The Java Virtual Machine (JVM) runs Java bytecode. JVM implementations are available for different operating systems, such as Windows, Linux, and macOS. They are designed to produce the same results from the same bytecode. Bytecode and platform-specific JVM implementations make Java's “Write Once, Run Anywhere” approach possible.
 
-如下图所示，不同编程语言（Java、Groovy、Kotlin、JRuby、Clojure ...）通过各自的编译器编译成 `.class` 文件，并最终通过 JVM 在不同平台（Windows、Mac、Linux）上运行。
+As shown below, languages such as Java, Groovy, Kotlin, JRuby, and Clojure can be compiled into `.class` files and run on different platforms (Windows, macOS, and Linux) through the JVM.
 
-![运行在 Java 虚拟机之上的编程语言](https://oss.javaguide.cn/github/javaguide/java/basis/java-virtual-machine-program-language-os.png)
+![Languages that run on the Java Virtual Machine](https://oss.javaguide.cn/github/javaguide/java/basis/java-virtual-machine-program-language-os.png)
 
-**JVM 并不是只有一种！只要满足 JVM 规范，每个公司、组织或者个人都可以开发自己的专属 JVM。** 也就是说我们平时接触到的 HotSpot VM 仅仅是是 JVM 规范的一种实现而已。
+**There is more than one JVM. Any company, organization, or individual can develop a JVM implementation as long as it meets the JVM specification.** HotSpot VM, which most of us use, is just one such implementation.
 
-除了我们平时最常用的 HotSpot VM 外，还有 J9 VM、Zing VM、JRockit VM 等 JVM。维基百科上就有常见 JVM 的对比：[Comparison of Java virtual machines](https://en.wikipedia.org/wiki/Comparison_of_Java_virtual_machines)，感兴趣的可以去看看。并且，你可以在 [Java SE Specifications](https://docs.oracle.com/javase/specs/index.html) 上找到各个版本的 JDK 对应的 JVM 规范。
+Besides the commonly used HotSpot VM, other JVMs include J9 VM, Zing VM, and JRockit VM. See [Comparison of Java virtual machines](https://en.wikipedia.org/wiki/Comparison_of_Java_virtual_machines) for an overview. The JVM specification for each JDK version is available in the [Java SE Specifications](https://docs.oracle.com/javase/specs/index.html).
 
 ![](https://oss.javaguide.cn/github/javaguide/java/basis/JavaSeSpecifications.jpg)
 
-#### JDK 和 JRE
+#### JDK and JRE
 
-JDK（Java Development Kit）是一个功能齐全的 Java 开发工具包，供开发者使用，用于创建和编译 Java 程序。它包含了 JRE（Java Runtime Environment），以及编译器 javac 和其他工具，如 javadoc（文档生成器）、jdb（调试器）、jconsole（监控工具）、javap（反编译工具）等。
+The JDK (Java Development Kit) is a full-featured toolkit for creating and compiling Java programs. It includes the JRE (Java Runtime Environment), the `javac` compiler, and other tools such as `javadoc` (documentation generator), `jdb` (debugger), `jconsole` (monitoring tool), and `javap` (class file disassembler).
 
-JRE 是运行已编译 Java 程序所需的环境，主要包含以下两个部分：
+The JRE is the environment needed to run compiled Java programs. It mainly consists of:
 
-1. **JVM** : 也就是我们上面提到的 Java 虚拟机。
-2. **Java 基础类库（Class Library）**：一组标准的类库，提供常用的功能和 API（如 I/O 操作、网络通信、数据结构等）。
+1. **JVM**: The Java Virtual Machine described above.
+2. **Java class libraries**: Standard libraries that provide common features and APIs, such as I/O, networking, and data structures.
 
-简单来说，JRE 只包含运行 Java 程序所需的环境和类库，而 JDK 不仅包含 JRE，还包括用于开发和调试 Java 程序的工具。
+In short, the JRE contains the environment and libraries needed to run Java programs. The JDK includes the JRE and tools for developing and debugging Java programs.
 
-如果需要编写、编译 Java 程序或使用 JDK 附带的开发工具，就需要安装 JDK。某些会在运行时编译 Java 源码的应用程序（如 JSP 转换为 Servlet）也可能需要 JDK。Java 核心反射 API 属于运行时类库，使用反射本身并不要求安装完整 JDK。
+Install the JDK if you need to write or compile Java programs, or use the development tools it provides. Some applications that compile Java source code at runtime (such as those that translate JSP into servlets) may also need the JDK. Java's core reflection API is part of the runtime libraries, so reflection alone does not require a full JDK.
 
-下图清晰展示了 JDK、JRE 和 JVM 的关系。
+The diagram below shows the relationship between the JDK, JRE, and JVM.
 
 ![jdk-include-jre](https://oss.javaguide.cn/github/javaguide/java/basis/jdk-include-jre.png)
 
-不过，从 JDK 9 开始，就不需要区分 JDK 和 JRE 的关系了，取而代之的是模块系统（JDK 被重新组织成 94 个模块）+ [jlink](http://openjdk.java.net/jeps/282) 工具（随 Java 9 一起发布的新命令行工具，用于生成自定义 Java 运行时映像，该映像仅包含给定应用程序所需的模块）。并且，从 JDK 11 开始，Oracle 不再提供单独的 JRE 下载。
+Starting with JDK 9, the module system and the [jlink](http://openjdk.java.net/jeps/282) tool changed how custom runtimes are created. The JDK was reorganized into modules, and `jlink` can create a custom runtime image containing only the modules an application needs. Oracle stopped providing separate JRE downloads starting with JDK 11.
 
-在 [Java 9 新特性概览](https://javaguide.cn/java/new-features/java9.html)这篇文章中，我在介绍模块化系统的时候提到：
+In [Overview of Java 9 Features](https://javaguide.cn/java/new-features/java9.html), the section on the module system explains:
 
-> 在引入了模块系统之后，JDK 被重新组织成 94 个模块。Java 应用可以通过新增的 jlink 工具，创建出只包含所依赖的 JDK 模块的自定义运行时镜像。这样可以极大的减少 Java 运行时环境的大小。
+> With the module system, the JDK was reorganized into modules. Java applications can use the new `jlink` tool to create a custom runtime image containing only the JDK modules they depend on. This can greatly reduce the size of the Java runtime environment.
 
-也就是说，可以用 jlink 根据自己的需求，创建一个更小的 runtime（运行时），而不是不管什么应用，都是同样的 JRE。
+In other words, `jlink` lets you create a smaller runtime tailored to your application instead of using the same JRE for every application.
 
-定制的、模块化的 Java 运行时映像有助于简化 Java 应用的部署和节省内存并增强安全性和可维护性。这对于满足现代应用程序架构的需求，如虚拟化、容器化、微服务和云原生开发，是非常重要的。
+Custom modular runtime images can simplify Java application deployment, save memory, and improve security and maintainability. These benefits matter for modern architectures such as virtualization, containers, microservices, and cloud-native development.
 
-### ⭐️ 什么是字节码？采用字节码的好处是什么？
+### ⭐️ What is bytecode, and what are its benefits?
 
-在 Java 中，JVM 可以理解的代码就叫做字节码（即扩展名为 `.class` 的文件），它不面向任何特定的处理器，只面向虚拟机。Java 语言通过字节码的方式，在一定程度上解决了传统解释型语言执行效率低的问题，同时又保留了解释型语言可移植的特点。所以， Java 程序运行时相对来说还是高效的（不过，和 C、 C++，Rust，Go 等语言还是有一定差距的），而且，由于字节码并不针对一种特定的机器，因此，Java 程序无须重新编译便可在多种不同操作系统的计算机上运行。
+In Java, bytecode is the code understood by the JVM and is stored in `.class` files. It targets the virtual machine rather than any specific processor. Bytecode helps Java address the performance limits of traditional interpreted languages while retaining their portability. As a result, Java programs can run efficiently (though they may still trail languages such as C, C++, Rust, and Go) and can run on different operating systems without recompilation.
 
-**Java 程序从源代码到运行的过程如下图所示**：
+**The diagram below shows how a Java program goes from source code to execution:**
 
-![Java程序转变为机器代码的过程](https://oss.javaguide.cn/github/javaguide/java/basis/java-code-to-machine-code.png)
+![How a Java program is translated into machine code](https://oss.javaguide.cn/github/javaguide/java/basis/java-code-to-machine-code.png)
 
-我们需要格外注意的是 `.class->机器码` 这一步。以 HotSpot 为例，JVM 加载字节码后可以先解释执行，并识别经常调用的方法和代码块（即热点代码），再由 **JIT（Just in Time Compilation）** 编译器将热点字节码编译为机器码。在当前 JVM 进程后续执行这些代码时，可以直接使用已编译的机器码。这也解释了我们为什么经常会说 **Java 是编译与解释共存的语言**。不过，JVM 规范并不要求具体实现必须包含解释器或 JIT 编译器。
+Pay particular attention to the `.class` to machine code step. In HotSpot, for example, the JVM can first interpret loaded bytecode and identify frequently called methods and code blocks (hot code). The **Just-in-Time (JIT) compiler** can then compile that hot bytecode into machine code, which the JVM process can use on subsequent executions. This is why Java is often described as a language that combines compilation and interpretation. The JVM specification does not require a particular implementation to include an interpreter or a JIT compiler.
 
-> 🌈 拓展阅读：
+> 🌈 Further reading:
 >
-> - [基本功 | Java 即时编译器原理解析及实践 - 美团技术团队](https://mp.weixin.qq.com/s/7PH8o1tbjLsM4-nOnjbwLw)
-> - [基于静态编译构建微服务应用 - 阿里巴巴中间件](https://mp.weixin.qq.com/s/4haTyXUmh8m-dBQaEzwDJw)
+> - [Java Fundamentals: How the JIT Compiler Works - Meituan Tech](https://mp.weixin.qq.com/s/7PH8o1tbjLsM4-nOnjbwLw)
+> - [Building Microservices with Static Compilation - Alibaba Middleware](https://mp.weixin.qq.com/s/4haTyXUmh8m-dBQaEzwDJw)
 
-![Java程序转变为机器代码的过程](https://oss.javaguide.cn/github/javaguide/java/basis/java-code-to-machine-code-with-jit.png)
+![How a Java program is translated into machine code with JIT](https://oss.javaguide.cn/github/javaguide/java/basis/java-code-to-machine-code-with-jit.png)
 
-> HotSpot 采用了惰性评估(Lazy Evaluation)的做法，根据二八定律，消耗大部分系统资源的只有那一小部分的代码（热点代码），而这也就是 JIT 所需要编译的部分。JVM 会根据代码每次被执行的情况收集信息并相应地做出一些优化，因此执行的次数越多，它的速度就越快。
+> HotSpot uses lazy evaluation. In line with the Pareto principle, a small portion of the code (the hot code) consumes most system resources, so that is the code JIT needs to compile. The JVM gathers information as code runs and uses it to optimize execution. As a result, frequently executed code can run faster over time.
 
-JDK、JRE、JVM、JIT 这四者的关系如下图所示。
+The diagram below shows the relationship between the JDK, JRE, JVM, and JIT.
 
-![JDK、JRE、JVM、JIT 这四者的关系](https://oss.javaguide.cn/github/javaguide/java/basis/jdk-jre-jvm-jit.png)
+![Relationship between the JDK, JRE, JVM, and JIT](https://oss.javaguide.cn/github/javaguide/java/basis/jdk-jre-jvm-jit.png)
 
-下面这张图是 JVM 的大致结构模型。
+The diagram below shows a simplified model of the JVM.
 
-![JVM 的大致结构模型](https://oss.javaguide.cn/github/javaguide/java/basis/jvm-rough-structure-model.png)
+![Simplified model of the JVM](https://oss.javaguide.cn/github/javaguide/java/basis/jvm-rough-structure-model.png)
 
-### ⭐️ 为什么说 Java 语言“编译与解释并存”？
+### ⭐️ Why is Java described as combining compilation and interpretation?
 
-其实这个问题我们讲字节码的时候已经提到过，因为比较重要，所以我们这里再提一下。
+We touched on this when discussing bytecode, but it is important enough to revisit.
 
-我们可以将高级编程语言按照程序的执行方式分为两种：
+High-level programming languages can be grouped by how they execute programs:
 
-- **编译型**：[编译型语言](https://zh.wikipedia.org/wiki/%E7%B7%A8%E8%AD%AF%E8%AA%9E%E8%A8%80) 会通过[编译器](https://zh.wikipedia.org/wiki/%E7%B7%A8%E8%AD%AF%E5%99%A8)将源代码一次性翻译成可被该平台执行的机器码。一般情况下，编译语言的执行速度比较快，开发效率比较低。常见的编译性语言有 C、C++、Go、Rust 等等。
-- **解释型**：[解释型语言](https://zh.wikipedia.org/wiki/%E7%9B%B4%E8%AD%AF%E8%AA%9E%E8%A8%80)会通过[解释器](https://zh.wikipedia.org/wiki/直譯器)一句一句的将代码解释（interpret）为机器代码后再执行。解释型语言开发效率比较快，执行速度比较慢。常见的解释性语言有 Python、JavaScript、PHP 等等。
+- **Compiled languages** translate source code into machine code for a target platform before execution. They generally run faster, while development can take longer. Common examples include C, C++, Go, and Rust.
+- **Interpreted languages** use an interpreter to translate and execute code one statement at a time. They can be quicker to develop with, but generally run more slowly. Common examples include Python, JavaScript, and PHP.
 
-![编译型语言和解释型语言](https://oss.javaguide.cn/github/javaguide/java/basis/compiled-and-interpreted-languages.png)
+![Compiled and interpreted languages](https://oss.javaguide.cn/github/javaguide/java/basis/compiled-and-interpreted-languages.png)
 
-根据维基百科介绍：
+According to Wikipedia:
 
-> 为了改善解释语言的效率而发展出的[即时编译](https://zh.wikipedia.org/wiki/即時編譯)技术，已经缩小了这两种语言间的差距。这种技术混合了编译语言与解释型语言的优点，它像编译语言一样，先把程序源代码编译成[字节码](https://zh.wikipedia.org/wiki/字节码)。到执行期时，再将字节码直译，之后执行。[Java](https://zh.wikipedia.org/wiki/Java)与[LLVM](https://zh.wikipedia.org/wiki/LLVM)是这种技术的代表产物。
+> Just-in-time compilation, developed to improve the performance of interpreted languages, has narrowed the gap between the two approaches. It combines advantages of compiled and interpreted languages: like a compiled language, it first compiles source code into bytecode; at runtime, the bytecode is interpreted and executed. Java and LLVM are examples of this approach.
 >
-> 相关阅读：[基本功 | Java 即时编译器原理解析及实践](https://mp.weixin.qq.com/s/7PH8o1tbjLsM4-nOnjbwLw)
+> Related reading: [How the Java JIT compiler works: concepts and practice](https://mp.weixin.qq.com/s/7PH8o1tbjLsM4-nOnjbwLw)
 
-**为什么说 Java 语言“编译与解释并存”？**
+**Why is Java described as combining compilation and interpretation?**
 
-这是因为常见的 Java 实现同时使用编译和解释技术：Java 源码先由编译器生成字节码（`.class` 文件），字节码可由 JVM 解释执行，也可在运行时由 JIT 编译为机器码。字节码并非必须由解释器执行，具体执行策略由 JVM 实现决定。
+Common Java implementations use both compilation and interpretation. The Java compiler first turns source code into bytecode (`.class` files). The JVM can interpret the bytecode or compile it into machine code at runtime with a JIT compiler. Bytecode does not have to be interpreted; the JVM implementation determines how it is executed.
 
-### AOT 有什么优点？为什么不全部使用 AOT 呢？
+### What are the benefits of AOT, and why not use it for everything?
 
-JDK 9 曾通过 JEP 295 引入实验性的 AOT（Ahead of Time Compilation）工具 `jaotc`，但该工具已在 JDK 17 中移除。因此，JDK 17 及之后的标准 JDK 不再包含这套内置 AOT 编译器；下文讨论的是一般意义上的 AOT，以及 GraalVM Native Image 等独立工具链（Native Image 是 GraalVM 提供的一项 AOT 技术，后文会进一步介绍 GraalVM）。和 JIT 不同，AOT 会在程序执行前将代码编译为机器码，能够减少运行时预热开销并改善启动速度，但具体的内存占用、峰值性能和适用场景取决于所使用的 AOT 实现与应用负载。
+JDK 9 introduced the experimental AOT (Ahead-of-Time Compilation) tool `jaotc` through JEP 295, but the tool was removed in JDK 17. Standard JDKs from JDK 17 onward no longer include this built-in AOT compiler. The discussion below covers AOT in general and separate toolchains such as GraalVM Native Image (an AOT technology provided by GraalVM, discussed later). Unlike JIT, AOT compiles code to machine code before execution. This can reduce runtime warmup and improve startup speed, though memory use, peak performance, and suitable use cases depend on the implementation and workload.
 
-下面的对比以常见的 HotSpot JIT 和 GraalVM Native Image 为例。不同 AOT 工具的实现方式并不完全相同，实际表现还会受到构建参数、应用负载，以及是否使用 PGO（Profile-Guided Optimization，即利用程序实际运行时收集的性能信息辅助优化）等因素影响。
+The comparison below uses HotSpot JIT and GraalVM Native Image as examples. AOT tools differ in implementation, and results also depend on build options, application workload, and whether PGO (Profile-Guided Optimization, which uses data collected during real program execution) is used.
 
-| 对比维度         | JIT（即时编译）                          | AOT（提前编译）                                    |
-| ---------------- | ---------------------------------------- | -------------------------------------------------- |
-| **编译时机**     | 运行时根据代码执行情况编译               | 构建阶段提前编译                                   |
-| **启动与预热**   | 启动后通常需要解释执行和编译热点代码     | 通常启动更快，不需要等待 JIT 预热                  |
-| **长期运行性能** | 可以利用运行时采集的信息持续优化热点代码 | 缺少完整的运行时信息，具体表现取决于实现和构建配置 |
-| **运行时内存**   | 需要保存编译器、性能数据和生成的机器码   | Native Image 等实现通常占用更少的运行时内存        |
-| **运行依赖**     | 需要 JVM 和相应运行时                    | Native Image 可以生成独立的本地可执行文件          |
-| **动态特性**     | 支持运行时加载、反射和字节码生成         | 闭世界分析工具通常需要元数据或构建期处理           |
-| **常见场景**     | 长时间运行、重视持续吞吐量的服务         | CLI、Serverless、弹性扩缩容和冷启动敏感的服务      |
+| Aspect                       | JIT (just-in-time compilation)                                  | AOT (ahead-of-time compilation)                                                   |
+| ---------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **When compilation happens** | Compiled at runtime based on code execution                     | Compiled ahead of time during the build                                           |
+| **Startup and warmup**       | Often interprets and compiles hot code after startup            | Usually starts faster, without JIT warmup                                         |
+| **Long-running performance** | Can continuously optimize hot code using runtime data           | Has less runtime information; results depend on implementation and build settings |
+| **Runtime memory**           | Stores the compiler, profiling data, and generated machine code | Implementations such as Native Image usually use less runtime memory              |
+| **Runtime requirements**     | Requires a JVM and its runtime                                  | Native Image can produce a standalone executable                                  |
+| **Dynamic features**         | Supports runtime loading, reflection, and bytecode generation   | Closed-world tools often need metadata or build-time processing                   |
+| **Common use cases**         | Long-running services that need sustained throughput            | CLI tools, Serverless, rapid scaling, and cold-start-sensitive services           |
 
 <img src="https://oss.javaguide.cn/github/javaguide/java/basis/jit-vs-aot.png" alt="JIT vs AOT" style="zoom: 25%;" />
 
-AOT 的优势主要体现在启动速度和运行时内存占用，比较适合冷启动频繁、实例生命周期较短或者需要快速扩容的应用。JIT 则能根据程序运行时收集到的信息优化热点代码，长时间运行的服务通常更容易发挥这方面的优势。二者的吞吐量和延迟表现不能只由编译方式直接下结论，还需要结合具体工具链和实际负载测试。
+AOT's main advantages are faster startup and lower runtime memory use. It can suit applications with frequent cold starts, short-lived instances, or rapid scaling needs. JIT can optimize hot code using information collected while the program runs, which often benefits long-running services. Compilation strategy alone does not determine throughput or latency; test the actual toolchain under a representative workload.
 
-提到 AOT 就不得不提 [GraalVM](https://www.graalvm.org/) 了！GraalVM 是一种高性能的 JDK（完整的 JDK 发行版本），它可以运行 Java 和其他 JVM 语言，以及 JavaScript、Python 等非 JVM 语言。 GraalVM 不仅能提供 AOT 编译，还能提供 JIT 编译。感兴趣的同学，可以去看看 GraalVM 的官方文档：<https://www.graalvm.org/latest/docs/>。如果觉得官方文档看着比较难理解的话，也可以找一些文章来看看，比如：
+Any discussion of AOT should mention [GraalVM](https://www.graalvm.org/). GraalVM is a high-performance JDK distribution that can run Java and other JVM languages, as well as non-JVM languages such as JavaScript and Python. It supports both AOT and JIT compilation. See the [GraalVM documentation](https://www.graalvm.org/latest/docs/) or these articles:
 
-- [基于静态编译构建微服务应用](https://mp.weixin.qq.com/s/4haTyXUmh8m-dBQaEzwDJw)
-- [走向 Native 化：Spring&Dubbo AOT 技术示例与原理讲解](https://cn.dubbo.apache.org/zh-cn/blog/2023/06/28/%e8%b5%b0%e5%90%91-native-%e5%8c%96springdubbo-aot-%e6%8a%80%e6%9c%af%e7%a4%ba%e4%be%8b%e4%b8%8e%e5%8e%9f%e7%90%86%e8%ae%b2%e8%a7%a3/)
+- [Building Microservice Applications with Static Compilation](https://mp.weixin.qq.com/s/4haTyXUmh8m-dBQaEzwDJw)
+- [Native Spring and Dubbo: AOT Examples and How They Work](https://cn.dubbo.apache.org/zh-cn/blog/2023/06/28/%e8%b5%b0%e5%90%91-native-%e5%8c%96springdubbo-aot-%e6%8a%80%e6%9c%af%e7%a4%ba%e4%be%8b%e4%b8%8e%e5%8e%9f%e7%90%86%e8%ae%b2%e8%a7%a3/)
 
-**既然 AOT 这么多优点，那为什么不全部使用这种编译方式呢？**
+**If AOT has so many benefits, why not use it everywhere?**
 
-以 GraalVM Native Image 为例，它在构建本地可执行文件时会进行闭世界分析：构建器从程序入口出发，分析哪些类、方法和字段可能在运行时被访问，只把可达代码和必要的元数据放进最终产物。程序依旧可以接收动态输入和创建对象；构建阶段完全未知的代码则不会自动进入分析结果。
+For example, GraalVM Native Image performs closed-world analysis when building a native executable. Starting from the program entry point, the builder analyzes which classes, methods, and fields may be accessed at runtime, and includes reachable code and required metadata in the final artifact. The program can still accept dynamic input and create objects, but code that is completely unknown at build time is not automatically included in the analysis.
 
-下面这段代码中的类名来自运行时参数，构建器无法仅靠静态调用关系确定要保留哪些类：
+In the following code, the class name comes from a runtime argument, so the builder cannot determine which classes to keep from static call relationships alone:
 
 ```java
 String className = args[0];
@@ -168,175 +168,175 @@ Class<?> clazz = Class.forName(className);
 Object instance = clazz.getDeclaredConstructor().newInstance();
 ```
 
-反射、动态代理和 JNI 在 Native Image 中仍然可以使用。对于静态分析无法推断的动态访问，通常需要[可达性元数据](https://www.graalvm.org/latest/reference-manual/native-image/metadata/)，提前声明运行时可能访问的类、方法、字段、代理接口和 JNI 元素。运行时动态加载未知类、生成并加载新字节码的限制会更严格，因为相关代码在构建阶段并不存在。
+Reflection, dynamic proxies, and JNI can still be used with Native Image. Dynamic access that static analysis cannot infer usually requires [reachability metadata](https://www.graalvm.org/latest/reference-manual/native-image/metadata/) to declare in advance the classes, methods, fields, proxy interfaces, and JNI elements that may be accessed at runtime. Dynamically loading unknown classes or generating and loading new bytecode at runtime is more restricted because that code does not exist during the build.
 
-Spring 使用 AOT 处理来适配这种执行方式。它会在构建阶段分析应用上下文，生成 Java 源码、代理字节码以及反射、资源和代理所需的 `RuntimeHints`。CGLIB 通常借助 ASM 在运行时生成代理类；到了 Native Image 场景，这类工作可以提前到构建阶段完成。框架或应用提供相应的构建期适配后，Spring、CGLIB 和 ASM 仍可参与 AOT 应用的构建与运行。具体机制可以参考 [Spring AOT 官方文档](https://docs.spring.io/spring-framework/reference/core/aot.html)。
+Spring uses AOT processing to support this execution model. At build time, it analyzes the application context and generates Java source, proxy bytecode, and `RuntimeHints` for reflection, resources, and proxies. CGLIB normally uses ASM to generate proxy classes at runtime; with Native Image, this work can be moved to the build. With the required build-time support from the framework or application, Spring, CGLIB, and ASM can still be used to build and run AOT applications. See the [official Spring AOT documentation](https://docs.spring.io/spring-framework/reference/core/aot.html).
 
-AOT 把一部分运行时工作和信息搬到了构建阶段，同时增加了构建时间、元数据维护和兼容性适配成本。对于依赖运行时动态加载、Java Agent 或大量动态字节码生成的应用，JIT 模式通常更省事；对于冷启动和内存占用敏感的应用，AOT 更有吸引力。
+AOT moves some runtime work and information to the build stage, but adds build time, metadata maintenance, and compatibility work. JIT is usually simpler for applications that rely on runtime class loading, Java agents, or extensive dynamic bytecode generation. AOT is more attractive when cold-start time and memory use are critical.
 
-### Oracle JDK vs OpenJDK
+### Oracle JDK vs. OpenJDK
 
-可能在看这个问题之前很多人和我一样并没有接触和使用过 OpenJDK。那么 Oracle JDK 和 OpenJDK 之间是否存在重大差异？下面我通过收集到的一些资料，为你解答这个被很多人忽视的问题。
+Before reading this, many people may not have used OpenJDK, just as I had not. Are there major differences between Oracle JDK and OpenJDK? Here is a summary of the available information.
 
-首先，2006 年 SUN 公司将 Java 开源，也就有了 OpenJDK。2009 年 Oracle 收购了 Sun 公司，于是自己在 OpenJDK 的基础上搞了一个 Oracle JDK。Oracle JDK 是不开源的，并且刚开始的几个版本（Java8 ~ Java11）还会相比于 OpenJDK 添加一些特有的功能和工具。
+Sun open-sourced Java in 2006, creating OpenJDK. Oracle acquired Sun in 2009 and developed Oracle JDK based on OpenJDK. Oracle JDK was not fully open source, and early versions (Java 8 through Java 11) included some additional features and tools.
 
-其次，对于 Java 7 而言，OpenJDK 和 Oracle JDK 是十分接近的。 Oracle JDK 是基于 OpenJDK 7 构建的，只添加了一些小功能，由 Oracle 工程师参与维护。
+For Java 7, OpenJDK and Oracle JDK were very similar. Oracle JDK was built from OpenJDK 7 with a few additions and was maintained with contributions from Oracle engineers.
 
-下面这段话摘自 Oracle 官方在 2012 年发表的一个博客：
+The following excerpt is from an Oracle blog post published in 2012:
 
-> 问：OpenJDK 存储库中的源代码与用于构建 Oracle JDK 的代码之间有什么区别？
+> Q: How does the source code in the OpenJDK repository differ from the code used to build Oracle JDK?
 >
-> 答：非常接近 - 我们的 Oracle JDK 版本构建过程基于 OpenJDK 7 构建，只添加了几个部分，例如部署代码，其中包括 Oracle 的 Java 插件和 Java WebStart 的实现，以及一些闭源的第三方组件，如图形光栅化器，一些开源的第三方组件，如 Rhino，以及一些零碎的东西，如附加文档或第三方字体。展望未来，我们的目的是开源 Oracle JDK 的所有部分，除了我们考虑商业功能的部分。
+> A: They are very close. Our Oracle JDK release process is based on OpenJDK 7, with a few additions, such as deployment code (including Oracle's Java plug-in and Java Web Start implementations), some closed-source third-party components such as a graphics rasterizer, some open-source third-party components such as Rhino, and a few other items such as extra documentation and third-party fonts. Going forward, our goal is to open-source every part of Oracle JDK except those we consider commercial features.
 
-最后，简单总结一下 Oracle JDK 和 OpenJDK 的区别：
+Here is a brief summary of the differences between Oracle JDK and OpenJDK:
 
-1. **是否开源**：OpenJDK 是一个参考模型并且是完全开源的，而 Oracle JDK 是基于 OpenJDK 实现的，并不是完全开源的（个人观点：众所周知，JDK 原来是 SUN 公司开发的，后来 SUN 公司又卖给了 Oracle 公司，Oracle 公司以 Oracle 数据库而著名，而 Oracle 数据库又是闭源的，这个时候 Oracle 公司就不想完全开源了，但是原来的 SUN 公司又把 JDK 给开源了，如果这个时候 Oracle 收购回来之后就把他给闭源，必然会引起很多 Java 开发者的不满，导致大家对 Java 失去信心，那 Oracle 公司收购回来不就把 Java 烂在手里了吗！然后，Oracle 公司就想了个骚操作，这样吧，我把一部分核心代码开源出来给你们玩，并且我要和你们自己搞的 JDK 区分下，你们叫 OpenJDK，我叫 Oracle JDK，我发布我的，你们继续玩你们的，要是你们搞出来什么好玩的东西，我后续发布 Oracle JDK 也会拿来用一下，一举两得！）OpenJDK 开源项目：[https://github.com/openjdk/jdk](https://github.com/openjdk/jdk)。
-2. **是否免费**：Oracle JDK 的许可取决于具体版本和更新版本。Oracle JDK 21 及之后的特定更新在 NFTC 有效期内允许包括商业生产在内的免费使用；例如，Oracle 计划对 JDK 21 更新采用 NFTC 至 2026 年 9 月，对 JDK 25 更新采用 NFTC 至 2028 年 9 月。免费期结束后改变的是后续更新的许可，已经下载的版本仍按下载时的许可证使用。Oracle 的 OpenJDK 构建则使用 GPLv2 + Classpath Exception。
-3. **功能性**：Oracle JDK 在 OpenJDK 的基础上添加了一些特有的功能和工具，比如 Java Flight Recorder（JFR，一种监控工具）、Java Mission Control（JMC，一种监控工具）等工具。不过，在 Java 11 之后，OracleJDK 和 OpenJDK 的功能基本一致，之前 OracleJDK 中的私有组件大多数也已经被捐赠给开源组织。
-4. **长期支持**：OpenJDK 项目本身不承诺商业 LTS 服务；Oracle 以及多家 OpenJDK 发行版厂商会为特定版本提供长期支持。Java 8、11、17、21、25 是 Oracle LTS 版本，Oracle 计划未来每两年发布一个 LTS 版本。
-5. **协议**：Oracle JDK 的许可证随版本和更新版本而异，可能是 NFTC 或 OTN；BCL 仅用于 2019 年 4 月 16 日之前发布的版本。Oracle OpenJDK 使用 GPLv2 + Classpath Exception。
+1. **Open source**: OpenJDK is an open-source reference implementation. Oracle JDK is based on OpenJDK but is not entirely open source. (My view: Sun developed the JDK and later sold it to Oracle. Oracle is known for its closed-source database, but Sun had already open-sourced the JDK. Closing it again after the acquisition could have damaged developers' confidence in Java. Oracle instead released some core code as OpenJDK, kept Oracle JDK as a separate distribution, and could incorporate useful community improvements into later releases.) [OpenJDK source repository](https://github.com/openjdk/jdk).
+2. **Cost**: Oracle JDK licensing depends on the release and update. Specific updates of Oracle JDK 21 and later are free for use, including commercial production, while the NFTC license applies. For example, Oracle plans to apply NFTC to JDK 21 updates through September 2026 and JDK 25 updates through September 2028. After a free-use period ends, the license changes for subsequent updates; versions already downloaded remain under the license that applied when they were downloaded. Oracle OpenJDK builds use GPLv2 with the Classpath Exception.
+3. **Features**: Oracle JDK historically added some features and tools to OpenJDK, such as Java Flight Recorder (JFR) and Java Mission Control (JMC), both monitoring tools. Since Java 11, Oracle JDK and OpenJDK have been largely feature-equivalent, and most formerly proprietary components have been contributed to open-source projects.
+4. **Long-term support**: The OpenJDK project itself does not provide commercial LTS services. Oracle and other OpenJDK distributors offer long-term support for selected releases. Java 8, 11, 17, 21, and 25 are Oracle LTS releases; Oracle plans to release an LTS version every two years.
+5. **License**: Oracle JDK's license varies by release and update and may be NFTC or OTN. BCL applies only to releases published before April 16, 2019. Oracle OpenJDK uses GPLv2 with the Classpath Exception.
 
-> 既然 Oracle JDK 这么好，那为什么还要有 OpenJDK？
+> If Oracle JDK is so good, why do we still need OpenJDK?
 >
-> 答：
+> A:
 >
-> 1. OpenJDK 是开源的，开源意味着你可以对它根据你自己的需要进行修改、优化，比如 Alibaba 基于 OpenJDK 开发了 Dragonwell8：[https://github.com/alibaba/dragonwell8](https://github.com/alibaba/dragonwell8)
-> 2. OpenJDK 是商业免费的（这也是为什么通过 yum 包管理器上默认安装的 JDK 是 OpenJDK 而不是 Oracle JDK）。虽然 Oracle JDK 也是商业免费（比如 JDK 8），但并不是所有版本都是免费的。
-> 3. OpenJDK 与 Oracle JDK 的特性版本都遵循六个月发布节奏；各发行版的更新与支持周期则可能不同。
+> 1. OpenJDK is open source, so you can modify and optimize it for your needs. For example, Alibaba built Dragonwell 8 based on OpenJDK: [https://github.com/alibaba/dragonwell8](https://github.com/alibaba/dragonwell8).
+> 2. OpenJDK can be used commercially at no cost. This is why package managers such as `yum` typically install OpenJDK rather than Oracle JDK by default. Some Oracle JDK versions are also free for commercial use, but this does not apply to every version.
+> 3. OpenJDK and Oracle JDK feature releases follow a six-month cadence, while update and support schedules may vary by distribution.
 >
-> 基于以上这些原因，OpenJDK 还是有存在的必要的！
+> For these reasons, OpenJDK still has an important role.
 
 ![oracle jdk release cadence](https://oss.javaguide.cn/github/javaguide/java/basis/oracle-jdk-release-cadence.jpg)
 
-**Oracle JDK 和 OpenJDK 如何选择？**
+**Which should you choose: Oracle JDK or OpenJDK?**
 
-建议选择 OpenJDK 或者基于 OpenJDK 的发行版，比如 AWS 的 Amazon Corretto，阿里巴巴的 Alibaba Dragonwell。
+Consider OpenJDK or a distribution based on it, such as Amazon Corretto from AWS or Alibaba Dragonwell.
 
-🌈 拓展一下：
+🌈 A little more context:
 
-- BCL 协议（Oracle Binary Code License Agreement）：可以使用 JDK（支持商用），但是不能进行修改。
-- OTN 协议（Oracle Technology Network License Agreement）：11 及之后新发布的 JDK 用的都是这个协议，可以自己私下用，但是商用需要付费。
+- BCL (Oracle Binary Code License Agreement): Allows use of the JDK, including commercially, but does not allow modification.
+- OTN (Oracle Technology Network License Agreement): Used for some JDK releases from version 11 onward. It allows personal use, but commercial use requires a paid license.
 
-### Java 和 C++ 的区别？
+### How does Java differ from C++?
 
-我知道很多人没学过 C++，但是面试官就是没事喜欢拿咱们 Java 和 C++ 比呀！没办法！！！就算没学过 C++，也要记下来。
+You may not have studied C++, but interviewers often compare it with Java. It is still useful to know the main differences.
 
-虽然，Java 和 C++ 都是面向对象的语言，都支持封装、继承和多态，但是，它们还是有挺多不相同的地方：
+Java and C++ are both object-oriented languages that support encapsulation, inheritance, and polymorphism, but they differ in several ways:
 
-- Java 不提供指针来直接访问内存，程序内存更加安全
-- Java 的类是单继承的，C++ 支持多重继承；虽然 Java 的类不可以多继承，但是接口可以多继承。
-- Java 有自动内存管理垃圾回收机制(GC)，不需要程序员手动释放无用内存。
-- C ++同时支持方法重载和操作符重载，但是 Java 只支持方法重载（操作符重载增加了复杂性，这与 Java 最初的设计思想不符）。
+- Java does not provide pointers for direct memory access, which helps make memory access safer.
+- Java classes support single inheritance, while C++ supports multiple inheritance. Java classes cannot inherit from multiple classes, but interfaces can extend multiple interfaces.
+- Java has automatic garbage collection (GC), so programmers do not need to manually free unused memory.
+- C++ supports both method and operator overloading, while Java supports method overloading but not operator overloading. Operator overloading can add complexity and was not part of Java's original design.
 - ……
 
-## 基本语法
+## Basic Syntax
 
-### 注释有哪几种形式？
+### What types of comments does Java support?
 
-Java 中的注释有三种：
+Java has three types of comments:
 
-1. **单行注释**：通常用于解释方法内某单行代码的作用。
+1. **Single-line comments**: Usually explain a line of code inside a method.
 
-2. **多行注释**：通常用于解释一段代码的作用。
+2. **Multiline comments**: Usually explain a block of code.
 
-3. **文档注释**：通常用于生成 Java 开发文档。
+3. **Documentation comments**: Usually used to generate Java API documentation.
 
-用的比较多的还是单行注释和文档注释，多行注释在实际开发中使用的相对较少。
+Single-line and documentation comments are the most common. Multiline comments are used less often in practice.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/basis/image-20220714112336911.png)
 
-在我们编写代码的时候，如果代码量比较少，我们自己或者团队其他成员还可以很轻易地看懂代码，但是当项目结构一旦复杂起来，我们就需要用到注释了。注释并不会执行（编译器在编译代码之前会把代码中的所有注释抹掉，字节码中不保留注释），是我们程序员写给自己看的，注释是你的代码说明书，能够帮助看代码的人快速地理清代码之间的逻辑关系。因此，在写程序的时候随手加上注释是一个非常好的习惯。
+When a codebase is small, you and your teammates may be able to understand it easily. As a project grows more complex, comments can help explain the logic. Comments are not executed; the compiler removes ordinary comments before compiling, so they are not present in bytecode. Comments act as notes for programmers and can help readers follow the relationships between parts of the code. Adding useful comments is a good habit.
 
-《Clean Code》这本书明确指出：
+The book _Clean Code_ makes this point:
 
-> **代码的注释不是越详细越好。实际上好的代码本身就是注释，我们要尽量规范和美化自己的代码来减少不必要的注释。**
+> **More comments do not necessarily make code better. Well-written code can explain itself, so aim to make code clear and reduce unnecessary comments.**
 >
-> **若编程语言足够有表达力，就不需要注释，尽量通过代码来阐述。**
+> **When a programming language is expressive enough, explain the intent through code where possible.**
 >
-> 举个例子：
+> For example:
 >
-> 去掉下面复杂的注释，只需要创建一个与注释所言同一事物的函数即可
+> The complex comment below can be replaced with a function whose name states the intent:
 >
 > ```java
 > // check to see if the employee is eligible for full benefits
 > if ((employee.flags & HOURLY_FLAG) && (employee.age > 65))
 > ```
 >
-> 应替换为
+> Replace it with:
 >
 > ```java
 > if (employee.isEligibleForFullBenefits())
 > ```
 
-### 标识符和关键字的区别是什么？
+### What is the difference between identifiers and keywords?
 
-在我们编写程序的时候，需要大量地为程序、类、变量、方法等取名字，于是就有了 **标识符**。简单来说， **标识符就是一个名字**。
+When writing programs, we need names for programs, classes, variables, and methods. These names are called **identifiers**. Simply put, **an identifier is a name**.
 
-有一些标识符，Java 语言已经赋予了其特殊的含义，只能用于特定的地方，这些特殊的标识符就是 **关键字**。简单来说，**关键字是被赋予特殊含义的标识符**。比如，在我们的日常生活中，如果我们想要开一家店，则要给这个店起一个名字，起的这个“名字”就叫标识符。但是我们店的名字不能叫“警察局”，因为“警察局”这个名字已经被赋予了特殊的含义，而“警察局”就是我们日常生活中的关键字。
+Some identifiers have a special meaning in Java and can only be used in specific contexts. These are **keywords**. In other words, **a keyword is an identifier with a reserved meaning**. For example, you can name a store, but you cannot use “police station” as its name because that phrase already has a specific meaning. In this analogy, “police station” is a keyword.
 
-### Java 语言关键字有哪些？
+### What are Java's keywords?
 
-| 分类                 | 关键字   |            |          |              |            |           |        |
-| :------------------- | -------- | ---------- | -------- | ------------ | ---------- | --------- | ------ |
-| 访问控制             | private  | protected  | public   |              |            |           |        |
-| 类，方法和变量修饰符 | abstract | class      | extends  | final        | implements | interface | native |
-|                      | new      | static     | strictfp | synchronized | transient  | volatile  | enum   |
-| 程序控制             | break    | continue   | return   | do           | while      | if        | else   |
-|                      | for      | instanceof | switch   | case         | default    | assert    |        |
-| 错误处理             | try      | catch      | throw    | throws       | finally    |           |        |
-| 包相关               | import   | package    |          |              |            |           |        |
-| 基本类型             | boolean  | byte       | char     | double       | float      | int       | long   |
-|                      | short    |            |          |              |            |           |        |
-| 变量引用             | super    | this       | void     |              |            |           |        |
-| 保留字               | goto     | const      |          |              |            |           |        |
+| Category                              | Keywords |            |          |              |            |           |        |
+| :------------------------------------ | -------- | ---------- | -------- | ------------ | ---------- | --------- | ------ |
+| Access control                        | private  | protected  | public   |              |            |           |        |
+| Class, method, and variable modifiers | abstract | class      | extends  | final        | implements | interface | native |
+|                                       | new      | static     | strictfp | synchronized | transient  | volatile  | enum   |
+| Flow control                          | break    | continue   | return   | do           | while      | if        | else   |
+|                                       | for      | instanceof | switch   | case         | default    | assert    |        |
+| Exception handling                    | try      | catch      | throw    | throws       | finally    |           |        |
+| Packages                              | import   | package    |          |              |            |           |        |
+| Primitive types                       | boolean  | byte       | char     | double       | float      | int       | long   |
+|                                       | short    |            |          |              |            |           |        |
+| Variable references                   | super    | this       | void     |              |            |           |        |
+| Reserved words                        | goto     | const      |          |              |            |           |        |
 
-> Tips：所有的关键字都是小写的，在 IDE 中会以特殊颜色显示。
+> **Tip:** All keywords are lowercase and usually appear in a distinct color in an IDE.
 >
-> `default` 这个关键字很特殊，既属于程序控制，也属于类，方法和变量修饰符，还属于访问控制。
+> The `default` keyword is unusual: it is used in flow control, as a method modifier, and in access control.
 >
-> - 在程序控制中，当在 `switch` 中匹配不到任何情况时，可以使用 `default` 来编写默认匹配的情况。
-> - 在类，方法和变量修饰符中，从 JDK8 开始引入了默认方法，可以使用 `default` 关键字来定义一个方法的默认实现。
-> - 在访问控制中，如果一个方法前没有任何修饰符，则默认会有一个修饰符 `default`，但是这个修饰符加上了就会报错。
+> - In a `switch` statement, `default` specifies the branch used when no other case matches.
+> - Since JDK 8, interfaces can use `default` to provide a default implementation for a method.
+> - A method with no access modifier has package-private access. Writing `default` as an access modifier is a compile-time error.
 
-⚠️ 注意：虽然 `true`, `false`, 和 `null` 看起来像关键字但实际上他们是字面值，同时你也不可以作为标识符来使用。
+⚠️ Note: `true`, `false`, and `null` may look like keywords, but they are literals. You also cannot use them as identifiers.
 
-官方文档：[https://docs.oracle.com/javase/tutorial/java/nutsandbolts/\_keywords.html](https://docs.oracle.com/javase/tutorial/java/nutsandbolts/_keywords.html)
+Official documentation: [Java Language Keywords](https://docs.oracle.com/javase/tutorial/java/nutsandbolts/_keywords.html)
 
-### ⭐️ 自增自减运算符
+### ⭐️ Increment and decrement operators
 
-在写代码的过程中，常见的一种情况是需要某个整数类型变量增加 1 或减少 1。Java 提供了自增运算符 (`++`) 和自减运算符 (`--`) 来简化这种操作。
+You will often need to increase or decrease an integer variable by 1. Java provides the increment (`++`) and decrement (`--`) operators for this.
 
-`++` 和 `--` 运算符可以放在变量之前，也可以放在变量之后：
+The `++` and `--` operators can appear before or after a variable:
 
-- **前缀形式**（例如 `++a` 或 `--a`）：先自增/自减变量的值，然后再使用该变量，例如，`b = ++a` 先将 `a` 增加 1，然后把增加后的值赋给 `b`。
-- **后缀形式**（例如 `a++` 或 `a--`）：先使用变量的当前值，然后再自增/自减变量的值。例如，`b = a++` 先将 `a` 的当前值赋给 `b`，然后再将 `a` 增加 1。
+- **Prefix form** (such as `++a` or `--a`): Change the variable first, then use its new value. For example, `b = ++a` increments `a` before assigning it to `b`.
+- **Postfix form** (such as `a++` or `a--`): Use the variable's current value first, then change it. For example, `b = a++` assigns the current value of `a` to `b`, then increments `a`.
 
-为了方便记忆，可以使用下面的口诀：**符号在前就先加/减，符号在后就后加/减**。
+To remember the order: **prefix changes the value first; postfix changes it afterward.**
 
 ```mermaid
 flowchart LR
-    %% 定义全局样式
+    %% Shared styles
     classDef step fill:#4CA497,color:#fff,rx:10,ry:10
     classDef example fill:#E99151,color:#fff,rx:10,ry:10
 
-    subgraph Prefix["前缀形式 ++a / --a"]
+    subgraph Prefix["Prefix form ++a / --a"]
         direction TB
         style Prefix fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-        P1["第一步：变量自增/自减"]:::step --> P2["第二步：使用新值参与运算"]:::step
-        P3["示例：b = ++a<br先 a=a+1，再 b=a"]:::example
+        P1["Step 1: increment/decrement the variable"]:::step --> P2["Step 2: use the new value"]:::step
+        P3["Example: b = ++a<br/>First a=a+1, then b=a"]:::example
     end
 
-    subgraph Suffix["后缀形式 a++ / a--"]
+    subgraph Suffix["Postfix form a++ / a--"]
         direction TB
         style Suffix fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-        S1["第一步：使用当前值参与运算"]:::step --> S2["第二步：变量自增/自减"]:::step
-        S3["示例：b = a++<br先 b=a，再 a=a+1"]:::example
+        S1["Step 1: use the current value"]:::step --> S2["Step 2: increment/decrement the variable"]:::step
+        S3["Example: b = a++<br/>First b=a, then a=a+1"]:::example
     end
 
     linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-下面来看一个考察自增自减运算符的高频笔试题：执行下面的代码后，`a`、`b`、 `c`、`d` 和 `e` 的值是？
+Here is a common exam question about increment and decrement operators: what are the values of `a`, `b`, `c`, `d`, and `e` after this code runs?
 
 ```java
 int a = 9;
@@ -346,165 +346,165 @@ int d = c--;
 int e = --d;
 ```
 
-答案：`a = 11`、`b = 9`、 `c = 11`、 `d = 10`、 `e = 10`。
+Answer: `a = 11`, `b = 9`, `c = 11`, `d = 10`, and `e = 10`.
 
-### ⭐️ 移位运算符
+### ⭐️ Shift operators
 
-移位运算符是最基本的运算符之一，几乎每种编程语言都包含这一运算符。移位操作中，被操作的数据被视为二进制数，移位就是将其向左或向右移动若干位的运算。
+Shift operators are among the most basic operators and are found in nearly every programming language. They treat the operand as a binary number and move its bits left or right by a specified number of positions.
 
-移位运算符在各种框架以及 JDK 自身的源码中使用还是挺广泛的，`HashMap`（JDK1.8） 中的 `hash` 方法的源码就用到了移位运算符：
+Shift operators are widely used in frameworks and the JDK itself. For example, the `hash` method in `HashMap` (JDK 8) uses them:
 
 ```java
 static final int hash(Object key) {
     int h;
-    // key.hashCode()：返回散列值也就是hashcode
-    // ^：按位异或
-    // >>>:无符号右移，忽略符号位，空位都以0补齐
+    // key.hashCode(): returns the hash code
+    // ^: bitwise XOR
+    // >>>: unsigned right shift; fills empty positions with 0
     return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
   }
 
 ```
 
-**使用移位运算符的主要原因**：
+**Why use shift operators?**
 
-1. **高效**：移位运算符直接对应于处理器的移位指令。现代处理器具有专门的硬件指令来执行这些移位操作，这些指令通常在一个时钟周期内完成。相比之下，乘法和除法等算术运算在硬件层面上需要更多的时钟周期来完成。
-2. **节省内存**：通过移位操作，可以使用一个整数（如 `int` 或 `long`）来存储多个布尔值或标志位，从而节省内存。
+1. **Efficiency**: Shift operators map directly to processor instructions. Modern processors have dedicated hardware instructions for shifts, which often complete in one clock cycle. Multiplication and division can take more cycles.
+2. **Memory savings**: A single integer such as `int` or `long` can store multiple boolean values or flags as bits.
 
-移位运算符最常用于快速乘以或除以 2 的幂次方。除此之外，它还在以下方面发挥着重要作用：
+Shift operators are often used to multiply or divide by powers of 2. They are also useful for:
 
-- **位字段管理**：例如存储和操作多个布尔值。
-- **哈希算法和加密解密**：通过移位和与、或等操作来混淆数据。
-- **数据压缩**：例如霍夫曼编码通过移位运算符可以快速处理和操作二进制数据，以生成紧凑的压缩格式。
-- **数据校验**：例如 CRC（循环冗余校验）通过移位和多项式除法生成和校验数据完整性。
-- **内存对齐**：通过移位操作，可以轻松计算和调整数据的对齐地址。
+- **Bit field management**: Store and manipulate multiple boolean values.
+- **Hashing and cryptography**: Combine shifts with bitwise AND and OR to transform data.
+- **Data compression**: Process binary data efficiently, for example when generating compact encodings.
+- **Data integrity checks**: CRC (cyclic redundancy check) uses shifts and polynomial division to calculate and verify checksums.
+- **Memory alignment**: Calculate and adjust aligned addresses.
 
-掌握最基本的移位运算符知识还是很有必要的，这不光可以帮助我们在代码中使用，还可以帮助我们理解源码中涉及到移位运算符的代码。
+Understanding the basics of shift operators helps you use them in your own code and read source code that uses them.
 
 ```mermaid
 flowchart TB
-    %% 定义全局样式，保持统一风格
+    %% Shared styles
     classDef left fill:#4CA497,color:#fff,rx:10,ry:10
     classDef right fill:#00838F,color:#fff,rx:10,ry:10
     classDef uright fill:#E99151,color:#fff,rx:10,ry:10
 
-    subgraph ShiftOps["Java 三种移位运算符"]
+    subgraph ShiftOps["Java's three shift operators"]
         direction TB
         style ShiftOps fill:#F0F2F5,stroke:#E0E6ED,stroke-width:1.5px
 
-        subgraph Left["左移 <<"]
+        subgraph Left["Left shift <<"]
             style Left fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-            L1["操作：向左移动 n 位"]:::left
-            L2["规则：高位丢弃，低位补 0"]:::left
-            L3["效果：相当于 × 2^n"]:::left
-            L4["示例：8 << 2 = 32"]:::left
+            L1["Operation: shift left by n bits"]:::left
+            L2["Rule: discard high bits, fill low bits with 0"]:::left
+            L3["Effect: equivalent to × 2^n"]:::left
+            L4["Example: 8 << 2 = 32"]:::left
         end
 
-        subgraph Right["带符号右移 >>"]
+        subgraph Right["Signed right shift >>"]
             style Right fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-            R1["操作：向右移动 n 位"]:::right
-            R2["规则：低位丢弃，高位补符号位"]:::right
-            R3["效果：相当于 ÷ 2^n"]:::right
-            R4["示例：-8 >> 2 = -2"]:::right
+            R1["Operation: shift right by n bits"]:::right
+            R2["Rule: discard low bits, fill high bits with the sign bit"]:::right
+            R3["Effect: equivalent to ÷ 2^n"]:::right
+            R4["Example: -8 >> 2 = -2"]:::right
         end
 
-        subgraph URight["无符号右移 >>>"]
+        subgraph URight["Unsigned right shift >>>"]
             style URight fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-            U1["操作：向右移动 n 位"]:::uright
-            U2["规则：低位丢弃，高位补 0"]:::uright
-            U3["效果：逻辑右移"]:::uright
-            U4["示例：-8 >>> 2 = 1073741822"]:::uright
+            U1["Operation: shift right by n bits"]:::uright
+            U2["Rule: discard low bits, fill high bits with 0"]:::uright
+            U3["Effect: logical right shift"]:::uright
+            U4["Example: -8 >>> 2 = 1073741822"]:::uright
         end
     end
 
     linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-Java 中有三种移位运算符：
+Java has three shift operators:
 
-- `<<` :左移运算符，向左移若干位，高位丢弃，低位补零。`x << n`，相当于 x 乘以 2 的 n 次方（不溢出的情况下）。
-- `>>` :带符号右移，向右移若干位，高位补符号位，低位丢弃。正数高位补 0，负数高位补 1。`x >> n`，相当于 x 除以 2 的 n 次方。
-- `>>>` :无符号右移，忽略符号位，空位都以 0 补齐。
+- `<<`: Left shift. Discard high bits and fill low bits with 0. If there is no overflow, `x << n` is equivalent to multiplying `x` by 2 to the power of `n`.
+- `>>`: Signed right shift. Discard low bits and fill high bits with the sign bit (0 for positive values, 1 for negative values). `x >> n` is similar to dividing `x` by 2 to the power of `n`.
+- `>>>`: Unsigned right shift. Ignore the sign and fill empty positions with 0.
 
-虽然移位运算本质上可以分为左移和右移，但在实际应用中，右移操作需要考虑符号位的处理方式。
+Although shifts are either left or right, right shifts must account for how the sign bit is handled.
 
-由于 `double`，`float` 在二进制中的表现比较特殊，因此不能来进行移位操作。
+`double` and `float` values have a different binary representation and cannot be shifted.
 
-移位操作符实际上支持的类型只有 `int` 和 `long`，编译器在对 `short`、`byte`、`char` 类型进行移位前，都会将其转换为 `int` 类型再操作。
+Shift operators work with `int` and `long`. Before shifting a `short`, `byte`, or `char`, the compiler promotes it to `int`.
 
-**如果移位的位数超过数值所占有的位数会怎样？**
+**What happens when the shift distance is greater than or equal to the number of bits in the value?**
 
-当 int 类型左移/右移位数大于等于 32 位操作时，会先求余（%）后再进行左移/右移操作。也就是说左移/右移 32 位相当于不进行移位操作（32%32=0），左移/右移 42 位相当于左移/右移 10 位（42%32=10）。当 long 类型进行左移/右移操作时，由于 long 对应的二进制是 64 位，因此求余操作的基数也变成了 64。
+For an `int`, Java masks the shift distance to its lowest 5 bits, so shifting by 32 is the same as shifting by 0, and shifting by 42 is the same as shifting by 10 (`42 % 32 = 10`). For a `long`, the distance is masked to its lowest 6 bits because it has 64 bits.
 
-也就是说：`x<<42` 等同于 `x<<10`，`x>>42` 等同于 `x>>10`，`x >>>42` 等同于 `x >>> 10`。
+Thus, `x << 42` is equivalent to `x << 10`, `x >> 42` to `x >> 10`, and `x >>> 42` to `x >>> 10`.
 
-**左移运算符代码示例**：
+**Example of the left shift operator:**
 
 ```java
 int i = -1;
-System.out.println("初始数据：" + i);
-System.out.println("初始数据对应的二进制字符串：" + Integer.toBinaryString(i));
+System.out.println("Initial value: " + i);
+System.out.println("Binary representation of the initial value: " + Integer.toBinaryString(i));
 i <<= 10;
-System.out.println("左移 10 位后的数据 " + i);
-System.out.println("左移 10 位后的数据对应的二进制字符 " + Integer.toBinaryString(i));
+System.out.println("Value after shifting left by 10 bits: " + i);
+System.out.println("Binary representation after shifting left by 10 bits: " + Integer.toBinaryString(i));
 ```
 
-输出：
+Output:
 
 ```plain
-初始数据：-1
-初始数据对应的二进制字符串：11111111111111111111111111111111
-左移 10 位后的数据 -1024
-左移 10 位后的数据对应的二进制字符 11111111111111111111110000000000
+Initial value: -1
+Binary representation of the initial value: 11111111111111111111111111111111
+Value after shifting left by 10 bits: -1024
+Binary representation after shifting left by 10 bits: 11111111111111111111110000000000
 ```
 
-由于左移位数大于等于 32 位操作时，会先求余（%）后再进行左移操作，所以下面的代码左移 42 位相当于左移 10 位（42%32=10），输出结果和前面的代码一样。
+Because an `int` shift distance is masked to 5 bits, shifting left by 42 is equivalent to shifting left by 10 (`42 % 32 = 10`). The following code produces the same output as the previous example.
 
 ```java
 int i = -1;
-System.out.println("初始数据：" + i);
-System.out.println("初始数据对应的二进制字符串：" + Integer.toBinaryString(i));
+System.out.println("Initial value: " + i);
+System.out.println("Binary representation of the initial value: " + Integer.toBinaryString(i));
 i <<= 42;
-System.out.println("左移 10 位后的数据 " + i);
-System.out.println("左移 10 位后的数据对应的二进制字符 " + Integer.toBinaryString(i));
+System.out.println("Value after shifting left by 10 bits: " + i);
+System.out.println("Binary representation after shifting left by 10 bits: " + Integer.toBinaryString(i));
 ```
 
-右移运算符使用类似，篇幅问题，这里就不做演示了。
+Right shift operators work similarly, so they are not shown here.
 
-### continue、break 和 return 的区别是什么？
+### What is the difference between `continue`, `break`, and `return`?
 
-在循环结构中，当循环条件不满足或者循环次数达到要求时，循环会正常结束。但是，有时候可能需要在循环的过程中，当发生了某种条件之后，提前终止循环，这就需要用到下面几个关键词：
+Loops end normally when their condition is no longer met or the required number of iterations is reached. Sometimes, you need to change the flow before then. These keywords help:
 
-1. `continue`：指跳出当前的这一次循环，继续下一次循环。
-2. `break`：指跳出整个循环体，继续执行循环下面的语句。
+1. `continue` skips the rest of the current iteration and starts the next one.
+2. `break` exits the loop and continues with the statement after it.
 
-`return` 用于跳出所在方法，结束该方法的运行。return 一般有两种用法：
+`return` exits the current method. It is commonly used in two ways:
 
-1. `return;`：直接使用 return 结束方法执行，用于没有返回值函数的方法
-2. `return value;`：return 一个特定值，用于有返回值函数的方法
+1. `return;` ends a method that does not return a value.
+2. `return value;` ends a method and returns a value.
 
 ```mermaid
 flowchart TB
-    subgraph Method["方法体"]
+    subgraph Method["Method body"]
         direction TB
         style Method fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-        Start["方法开始"] --> Loop
+        Start["Method starts"] --> Loop
 
-        subgraph Loop["循环体 for/while"]
+        subgraph Loop["Loop body: for/while"]
             direction TB
             style Loop fill:#F0F2F5,stroke:#E0E6ED,stroke-width:1.5px
-            L1["循环条件判断"] -->|"满足"| L2["执行循环体"]
-            L2 --> L3{{"遇到关键字？"}}
-            L3 -->|"continue"| Continue["跳过本次<br/>继续下一次循环"]
-            L3 -->|"break"| Break["跳出整个循环"]
-            L3 -->|"无"| L1
+            L1["Check loop condition"] -->|"true"| L2["Run loop body"]
+            L2 --> L3{{"Keyword encountered?"}}
+            L3 -->|"continue"| Continue["Skip this iteration<br/>continue with the next"]
+            L3 -->|"break"| Break["Exit the loop"]
+            L3 -->|"none"| L1
             Continue --> L1
         end
 
-        Break --> AfterLoop["循环后的代码"]
-        L1 -->|"不满足"| AfterLoop
-        AfterLoop --> L4{{"遇到 return？"}}
-        L4 -->|"是"| Return["结束整个方法"]
-        L4 -->|"否"| End["方法正常结束"]
+        Break --> AfterLoop["Code after the loop"]
+        L1 -->|"false"| AfterLoop
+        AfterLoop --> L4{{"return encountered?"}}
+        L4 -->|"yes"| Return["End the method"]
+        L4 -->|"no"| End["Method ends normally"]
     end
 
     classDef start fill:#E99151,color:#fff,rx:10,ry:10
@@ -520,7 +520,7 @@ flowchart TB
     linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-思考一下：下列语句的运行结果是什么？
+What is the output of the following code?
 
 ```java
 public static void main(String[] args) {
@@ -550,7 +550,7 @@ public static void main(String[] args) {
 }
 ```
 
-运行结果：
+Output:
 
 ```plain
 0
@@ -562,37 +562,37 @@ xixi
 haha
 ```
 
-## ⭐️ 基本数据类型
+## ⭐️ Primitive Data Types
 
-### Java 中的几种基本数据类型了解么？
+### What primitive data types does Java have?
 
-Java 中有 8 种基本数据类型，分别为：
+Java has eight primitive data types:
 
-- 6 种数字类型：
-  - 4 种整数型：`byte`、`short`、`int`、`long`
-  - 2 种浮点型：`float`、`double`
-- 1 种字符类型：`char`
-- 1 种布尔型：`boolean`。
+- Six numeric types:
+  - Four integer types: `byte`, `short`, `int`, and `long`
+  - Two floating-point types: `float` and `double`
+- One character type: `char`
+- One boolean type: `boolean`.
 
 ```mermaid
 flowchart TB
-    Root["Java 8种基本数据类型"] --> Numeric["数字类型（6种）"]
-    Root --> Char["字符类型"]
-    Root --> Bool["布尔类型"]
+    Root["Java's 8 primitive types"] --> Numeric["Numeric types (6)"]
+    Root --> Char["Character type"]
+    Root --> Bool["Boolean type"]
 
-    Numeric --> IntType["整数型（4种）"]
-    Numeric --> FloatType["浮点型（2种）"]
+    Numeric --> IntType["Integer types (4)"]
+    Numeric --> FloatType["Floating-point types (2)"]
 
-    IntType --> byte["byte<br/>8位"]
-    IntType --> short["short<br/>16位"]
-    IntType --> int["int<br/>32位"]
-    IntType --> long["long<br/>64位"]
+    IntType --> byte["byte<br/>8 bits"]
+    IntType --> short["short<br/>16 bits"]
+    IntType --> int["int<br/>32 bits"]
+    IntType --> long["long<br/>64 bits"]
 
-    FloatType --> float["float<br/>32位"]
-    FloatType --> double["double<br/>64位"]
+    FloatType --> float["float<br/>32 bits"]
+    FloatType --> double["double<br/>64 bits"]
 
-    Char --> char["char<br/>16位"]
-    Bool --> boolean["boolean<br/>存储大小未规定"]
+    Char --> char["char<br/>16 bits"]
+    Bool --> boolean["boolean<br/>storage size unspecified"]
 
     classDef root fill:#E99151,color:#fff,rx:10,ry:10
     classDef category fill:#00838F,color:#fff,rx:10,ry:10
@@ -605,72 +605,72 @@ flowchart TB
     linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-这 8 种基本数据类型的默认值以及所占空间的大小如下：
+The default values and sizes of these eight primitive types are shown below:
 
-| 基本类型  | 位数   | 字节   | 默认值   | 取值范围                                                                                       |
-| :-------- | :----- | :----- | :------- | ---------------------------------------------------------------------------------------------- |
-| `byte`    | 8      | 1      | 0        | -128 ~ 127                                                                                     |
-| `short`   | 16     | 2      | 0        | -32768（-2^15） ~ 32767（2^15 - 1）                                                            |
-| `int`     | 32     | 4      | 0        | -2147483648 ~ 2147483647                                                                       |
-| `long`    | 64     | 8      | 0L       | -9223372036854775808（-2^63） ~ 9223372036854775807（2^63 -1）                                 |
-| `char`    | 16     | 2      | '\u0000' | 0 ~ 65535（2^16 - 1）                                                                          |
-| `float`   | 32     | 4      | 0f       | 约 -3.4028235E38 ~ 3.4028235E38，最小正非零值约 1.4E-45，另含 ±0、±∞、NaN                      |
-| `double`  | 64     | 8      | 0d       | 约 -1.7976931348623157E308 ~ 1.7976931348623157E308，最小正非零值约 4.9E-324，另含 ±0、±∞、NaN |
-| `boolean` | 未规定 | 未规定 | false    | true、false                                                                                    |
+| Primitive type | Bits          | Bytes         | Default value | Range                                                                                                                                          |
+| :------------- | :------------ | :------------ | :------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `byte`         | 8             | 1             | 0             | -128 ~ 127                                                                                                                                     |
+| `short`        | 16            | 2             | 0             | -32768（-2^15） ~ 32767（2^15 - 1）                                                                                                            |
+| `int`          | 32            | 4             | 0             | -2147483648 ~ 2147483647                                                                                                                       |
+| `long`         | 64            | 8             | 0L            | -9223372036854775808（-2^63） ~ 9223372036854775807（2^63 -1）                                                                                 |
+| `char`         | 16            | 2             | '\u0000'      | 0 ~ 65535（2^16 - 1）                                                                                                                          |
+| `float`        | 32            | 4             | 0f            | Approximately -3.4028235E38 to 3.4028235E38; smallest positive nonzero value about 1.4E-45; also includes ±0, ±∞, and NaN                      |
+| `double`       | 64            | 8             | 0d            | Approximately -1.7976931348623157E308 to 1.7976931348623157E308; smallest positive nonzero value about 4.9E-324; also includes ±0, ±∞, and NaN |
+| `boolean`      | Not specified | Not specified | false         | true, false                                                                                                                                    |
 
-可以看到，像 `byte`、`short`、`int`、`long` 能表示的最大正数都减 1 了。这是为什么呢？这是因为在二进制补码表示法中，最高位是用来表示符号的（0 表示正数，1 表示负数），其余位表示数值部分。所以，如果我们要表示最大的正数，我们需要把除了最高位之外的所有位都设为 1。如果我们再加 1，就会导致溢出，变成一个负数。
+Notice that the maximum positive value for `byte`, `short`, `int`, and `long` is one less than the corresponding power of two. In two's-complement representation, the highest bit indicates the sign (0 for nonnegative, 1 for negative), while the remaining bits encode the value. Setting all remaining bits to 1 gives the largest positive value; adding 1 overflows into a negative value.
 
-对于 `boolean`，官方文档未明确定义，它依赖于 JVM 厂商的具体实现。逻辑上理解是占用 1 位，但是实际中会考虑计算机高效存储因素。
+The Java specification does not define the storage size of `boolean`; it depends on the JVM implementation. Although a boolean has two logical states and could be represented with one bit, implementations may use more space for efficient storage.
 
-另外，Java 的每种基本类型所占存储空间的大小不会像其他大多数语言那样随机器硬件架构的变化而变化。这种所占存储空间大小的不变性是 Java 程序比用其他大多数语言编写的程序更具可移植性的原因之一（《Java 编程思想》2.2 节有提到）。
+Unlike many languages, the storage size of Java's primitive types does not vary with the machine's hardware architecture. This consistency is one reason Java programs are portable (see section 2.2 of _Thinking in Java_).
 
-**注意：**
+**Notes:**
 
-1. 整数字面量默认按 `int` 解析；超出 `int` 范围或需要显式写成 `long` 字面量时，应在数值后加 **L**。能通过赋值转换表示的 `int` 字面量可以直接赋给 `long`，例如 `long n = 1;`。
-2. 带小数点或指数的浮点字面量默认是 `double`，赋给 `float` 时通常需要加 **f 或 F**；整数字面量在可转换时可直接赋给 `float`，例如 `float n = 1;`。
-3. `char a = 'h'`char :单引号，`String a = "hello"` :双引号。
+1. Integer literals are `int` by default. Add **L** to a value that exceeds the `int` range or to explicitly make it a `long` literal. An `int` literal that fits can be assigned to a `long`, for example, `long n = 1;`.
+2. Floating-point literals with a decimal point or exponent are `double` by default. Add **f** or **F** when assigning one to a `float`. An integer literal can be assigned to a `float` when the conversion is valid, for example, `float n = 1;`.
+3. `char a = 'h'` uses single quotes, while `String a = "hello"` uses double quotes.
 
-这八种基本类型都有对应的包装类分别为：`Byte`、`Short`、`Integer`、`Long`、`Float`、`Double`、`Character`、`Boolean`。
+Each of the eight primitive types has a corresponding wrapper class: `Byte`, `Short`, `Integer`, `Long`, `Float`, `Double`, `Character`, and `Boolean`.
 
-### 基本类型和包装类型的区别？
+### What is the difference between primitive and wrapper types?
 
-- **用途**：除了定义一些常量和局部变量之外，我们在其他地方比如方法参数、对象属性中很少会使用基本类型来定义变量。并且，包装类型可用于泛型，而基本类型不可以。
-- **存储方式**：基本数据类型的局部变量保存在当前栈帧的局部变量表中，基本数据类型的实例字段属于对象状态。包装类型属于对象类型，其实例通常分配在堆中，但 JIT 可能通过逃逸分析和标量替换消除实际分配。
-- **占用空间**：相比于包装类型（对象类型）， 基本数据类型占用的空间往往非常小。
-- **默认值**：成员变量包装类型不赋值就是 `null`，而基本类型有默认值且不是 `null`。
-- **比较方式**：对于基本数据类型来说，`==` 比较的是值。对于包装数据类型来说，`==` 比较两个引用是否指向同一个对象（或都为 `null`）。比较包装对象表示的数值通常使用 `equals()` 或相应的 `compare()`/`compareTo()` 方法。
+- **Use cases**: Primitive types are common for constants and local variables. Wrapper types are often used for method parameters and object fields, and are required in generics.
+- **Storage**: Primitive local variables are stored in the current stack frame's local variable table; primitive instance fields are part of an object's state. Wrapper instances are objects and are usually allocated on the heap, though the JIT may eliminate allocations through escape analysis and scalar replacement.
+- **Size**: Primitive values generally use less space than wrapper objects.
+- **Default values**: An uninitialized wrapper field defaults to `null`; primitive fields have a type-specific default value.
+- **Comparison**: For primitive values, `==` compares values. For wrappers, `==` compares whether the references point to the same object (or are both `null`). Use `equals()`, `compare()`, or `compareTo()` to compare the represented values.
 
-**为什么说对象实例通常存在于堆中呢？** JVM 规范将堆定义为分配类实例和数组的运行时数据区。不过，JIT 可以通过逃逸分析和标量替换消除某些对象的实际分配，这不等同于必须把完整对象分配到栈上。
+**Why are objects usually said to live on the heap?** The JVM specification defines the heap as the runtime area from which class instances and arrays are allocated. However, the JIT may eliminate some allocations through escape analysis and scalar replacement. This does not mean that a complete object must be allocated on the stack.
 
-⚠️ 注意：**基本数据类型存放在栈中是一个常见的误区！** 基本数据类型的存储位置取决于变量种类：局部变量保存在栈帧的局部变量表中，实例字段属于堆中对象的一部分；静态字段属于类，具体存储方式由 JVM 实现决定，不能笼统地说在方法区或元空间中。
+⚠️ Note: **It is a common misconception that primitive values are always stored on the stack.** Storage depends on the kind of variable: local variables are kept in a stack frame's local variable table, instance fields are part of heap objects, and static fields belong to the class. Their exact storage is JVM-specific, so it is inaccurate to say they are always in the method area or Metaspace.
 
 ```java
 public class Test {
-    // 成员变量，存放在堆中
+    // Instance field, part of the object
     int a = 10;
-    // 静态字段的存储属于 JVM 实现细节；在 JDK 8 及之后的 HotSpot 中位于 Java 堆。
-    // 变量属于类，不属于对象。
+    // Static field storage is JVM-specific; in HotSpot since JDK 8, it is on the Java heap.
+    // This variable belongs to the class, not an object.
     static int b = 20;
 
     public void method() {
-        // 局部变量，存放在栈中
+        // Local variable in the stack frame
         int c = 30;
-        static int d = 40; // 编译错误，不能在方法中使用 static 修饰局部变量
+        static int d = 40; // Compile error: local variables cannot be static
     }
 }
 ```
 
-### 包装类型的缓存机制了解么？
+### How does wrapper type caching work?
 
-Java 基本数据类型的包装类型的大部分都用到了缓存机制来提升性能。
+Most Java primitive wrapper classes use caching to improve performance.
 
-`Byte`,`Short`,`Integer`,`Long` 这 4 种包装类默认创建了数值 **[-128，127]** 的相应类型的缓存数据，`Character` 创建了数值在 **[0,127]** 范围的缓存数据，`Boolean` 直接返回 `TRUE` or `FALSE`。
+The `Byte`, `Short`, `Integer`, and `Long` wrappers cache values from **-128 to 127** by default. `Character` caches values from **0 to 127**, and `Boolean` returns the predefined `TRUE` or `FALSE` instance.
 
-对于 `Integer`，可以通过 JVM 参数 `-XX:AutoBoxCacheMax=<size>` 修改缓存上限，但不能修改下限 -128。实际使用时，并不建议设置过大的值，避免浪费内存，甚至是 OOM。
+For `Integer`, the JVM option `-XX:AutoBoxCacheMax=<size>` can raise the cache's upper limit, but not its lower limit of -128. Avoid setting it too high, as this can waste memory or even cause an out-of-memory error.
 
-对于 `Byte`,`Short`,`Long` ,`Character` 没有类似 `-XX:AutoBoxCacheMax` 参数可以修改，因此缓存范围是固定的，无法通过 JVM 参数调整。`Boolean` 则直接返回预定义的 `TRUE` 和 `FALSE` 实例，没有缓存范围的概念。
+`Byte`, `Short`, `Long`, and `Character` have no equivalent option for changing their cache ranges, so those ranges are fixed. `Boolean` always returns its predefined `TRUE` or `FALSE` instance, so it has no cache range.
 
-**Integer 缓存源码：**
+**Integer cache source:**
 
 ```java
 public static Integer valueOf(int i) {
@@ -688,7 +688,7 @@ private static class IntegerCache {
 }
 ```
 
-**`Character` 缓存源码:**
+**`Character` cache source:**
 
 ```java
 public static Character valueOf(char c) {
@@ -709,7 +709,7 @@ private static class CharacterCache {
 }
 ```
 
-**`Boolean` 缓存源码：**
+**`Boolean` cache source:**
 
 ```java
 public static Boolean valueOf(boolean b) {
@@ -717,25 +717,25 @@ public static Boolean valueOf(boolean b) {
 }
 ```
 
-如果超出对应范围仍然会去创建新的对象，缓存的范围区间的大小只是在性能和资源之间的权衡。
+Values outside the cached ranges may result in new objects. The cache size is a tradeoff between performance and resource use.
 
-两种浮点数类型的包装类 `Float`,`Double` 并没有实现缓存机制。
+The floating-point wrappers `Float` and `Double` do not implement caching.
 
 ```java
 Integer i1 = 33;
 Integer i2 = 33;
-System.out.println(i1 == i2);// 输出 true
+System.out.println(i1 == i2);// prints true
 
 Float i11 = 333f;
 Float i22 = 333f;
-System.out.println(i11 == i22);// 输出 false
+System.out.println(i11 == i22);// prints false
 
 Double i3 = 1.2;
 Double i4 = 1.2;
-System.out.println(i3 == i4);// 输出 false
+System.out.println(i3 == i4);// prints false
 ```
 
-下面我们来看一个问题：下面的代码的输出结果是 `true` 还是 `false` 呢？
+What does the following code print: `true` or `false`?
 
 ```java
 Integer i1 = 40;
@@ -743,39 +743,39 @@ Integer i2 = new Integer(40);
 System.out.println(i1==i2);
 ```
 
-`Integer i1=40` 这一行代码会发生装箱，也就是说这行代码等价于 `Integer i1=Integer.valueOf(40)`。因此，`i1` 直接使用的是缓存中的对象。而 `Integer i2 = new Integer(40)` 会直接创建新的对象。
+The line `Integer i1 = 40` performs boxing and is equivalent to `Integer i1 = Integer.valueOf(40)`. So `i1` uses the cached object. By contrast, `new Integer(40)` creates a new object.
 
-因此，答案是 `false`。你答对了吗？
+Therefore, the answer is `false`.
 
-记住：**所有整型包装类对象之间值的比较，全部使用 equals 方法比较**。
+Remember: **Use `equals()` to compare the values of integer wrapper objects.**
 
 ![](https://oss.javaguide.cn/github/javaguide/up-1ae0425ce8646adfb768b5374951eeb820d.png)
 
-### 自动装箱与拆箱了解吗？原理是什么？
+### What are boxing and unboxing, and how do they work?
 
-**什么是自动拆装箱？**
+**What are autoboxing and unboxing?**
 
-- **装箱（Boxing）**：将基本类型用它们对应的引用类型包装起来；
-- **拆箱（Unboxing）**：将包装类型转换为基本数据类型；
+- **Boxing** converts a primitive value to its corresponding wrapper type.
+- **Unboxing** converts a wrapper value to its corresponding primitive type.
 
 ```mermaid
 flowchart LR
-  subgraph Row["装箱与拆箱对比"]
+  subgraph Row["Boxing and unboxing"]
     direction LR
     style Row fill:#F0F2F5,stroke:#E0E6ED,stroke-width:1.5px
 
-    subgraph Unboxing["拆箱过程"]
+    subgraph Unboxing["Unboxing"]
       direction LR
       style Unboxing fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-      D["Integer obj"] -->|"自动拆箱"| E["obj.intValue()"]
-      E --> F["int 基本类型"]
+      D["Integer obj"] -->|"automatic unboxing"| E["obj.intValue()"]
+      E --> F["primitive int"]
     end
 
-    subgraph Boxing["装箱过程"]
+    subgraph Boxing["Boxing"]
       direction LR
       style Boxing fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-      A["int i = 10"] -->|"自动装箱"| B["Integer.valueOf(10)"]
-      B --> C["Integer 对象"]
+      A["int i = 10"] -->|"autoboxing"| B["Integer.valueOf(10)"]
+      B --> C["Integer object"]
     end
   end
 
@@ -788,14 +788,14 @@ flowchart LR
   linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-举例：
+For example:
 
 ```java
-Integer i = 10;  //装箱
-int n = i;   //拆箱
+Integer i = 10;  // boxing
+int n = i;       // unboxing
 ```
 
-上面这两行代码对应的字节码为：
+The bytecode corresponding to these two lines is:
 
 ```java
    L1
@@ -827,18 +827,18 @@ int n = i;   //拆箱
     RETURN
 ```
 
-从字节码中，我们发现装箱其实就是调用了 包装类的 `valueOf()` 方法，拆箱其实就是调用了 `xxxValue()` 方法。
+The bytecode shows that boxing calls the wrapper's `valueOf()` method, while unboxing calls its `xxxValue()` method.
 
-因此，
+So:
 
-- `Integer i = 10` 等价于 `Integer i = Integer.valueOf(10)`
-- `int n = i` 等价于 `int n = i.intValue()`;
+- `Integer i = 10` is equivalent to `Integer i = Integer.valueOf(10)`.
+- `int n = i` is equivalent to `int n = i.intValue()`.
 
-注意：**如果频繁拆装箱的话，也会严重影响系统的性能。我们应该尽量避免不必要的拆装箱操作。**
+Note: **Frequent boxing and unboxing can hurt performance. Avoid unnecessary conversions.**
 
 ```java
 private static long sum() {
-    // 应该使用 long 而不是 Long
+    // Use long instead of Long
     Long sum = 0L;
     for (long i = 0; i <= Integer.MAX_VALUE; i++)
         sum += i;
@@ -846,40 +846,40 @@ private static long sum() {
 }
 ```
 
-### 为什么浮点数运算的时候会有精度丢失的风险？
+### Why can floating-point arithmetic lose precision?
 
-浮点数运算精度丢失代码演示：
+The following code demonstrates precision loss in floating-point arithmetic:
 
 ```java
 float a = 2.0f - 1.9f;
 float b = 1.8f - 1.7f;
-System.out.printf("%.9f",a);// 0.100000024
+System.out.printf("%.9f", a);// 0.100000024
 System.out.println(b);// 0.099999905
 System.out.println(a == b);// false
 ```
 
-**为什么会出现这个问题呢？**
+**Why does this happen?**
 
-这个和计算机保存浮点数的机制有很大关系。计算机使用有限位宽的二进制格式表示 `float` 和 `double`，许多十进制小数转换为二进制后会无限循环，只能舍入为有限位数，因此存在精度损失的风险。不过，像 0.5、0.25 这样能够表示为有限二进制小数的值可以被精确表示。
+This is due to how computers represent floating-point numbers. A `float` or `double` uses a binary format with a limited number of bits. Many decimal fractions have repeating binary expansions, so they must be rounded to fit, which can cause precision loss. Values such as 0.5 and 0.25 have finite binary representations and can be represented exactly.
 
-就比如说十进制下的 0.2 就没办法精确转换成二进制小数：
+For example, decimal 0.2 cannot be represented exactly as a binary fraction:
 
 ```java
-// 0.2 转换为二进制数的过程为，不断乘以 2，直到不存在小数为止，
-// 在这个计算过程中，得到的整数部分从上到下排列就是二进制的结果。
+// To convert 0.2 to binary, repeatedly multiply the fractional part by 2.
+// The resulting integer parts, read from top to bottom, form the binary digits.
 0.2 * 2 = 0.4 -> 0
 0.4 * 2 = 0.8 -> 0
 0.8 * 2 = 1.6 -> 1
 0.6 * 2 = 1.2 -> 1
-0.2 * 2 = 0.4 -> 0（发生循环）
+0.2 * 2 = 0.4 -> 0 (cycle repeats)
 ...
 ```
 
-关于浮点数的更多内容，建议看一下[计算机系统基础（四）浮点数](http://kaito-kidd.com/2018/08/08/computer-system-float-point/)这篇文章。
+For more about floating-point numbers, see [Computer Systems Basics (4): Floating-Point Numbers](http://kaito-kidd.com/2018/08/08/computer-system-float-point/).
 
-### 如何解决浮点数运算的精度丢失问题？
+### How can you avoid precision loss in floating-point arithmetic?
 
-`BigDecimal` 可以精确表示十进制数，并提供可显式指定精度和舍入规则的运算。使用有限精度、舍入除法或转换为 `float`、`double` 时仍可能发生舍入。通常情况下，大部分需要十进制精确运算结果的业务场景（比如涉及到钱的场景）都会使用 `BigDecimal`。
+`BigDecimal` can represent decimal values precisely and provides operations with explicitly specified precision and rounding rules. Rounding can still occur with finite precision, rounded division, or conversion to `float` or `double`. `BigDecimal` is commonly used in business scenarios that require accurate decimal results, such as financial calculations.
 
 ```java
 BigDecimal a = new BigDecimal("1.0");
@@ -891,19 +891,19 @@ BigDecimal y = b.subtract(c);
 
 System.out.println(x); /* 0.2 */
 System.out.println(y); /* 0.20 */
-// 比较内容，不是比较值
+// Compare scale and value, not just the numeric value.
 System.out.println(Objects.equals(x, y)); /* false */
-// 比较值相等用相等compareTo，相等返回0
+// Use compareTo() to compare numeric value; equal values return 0.
 System.out.println(0 == x.compareTo(y)); /* true */
 ```
 
-关于 `BigDecimal` 的详细介绍，可以看看我写的这篇文章：[BigDecimal 详解](https://javaguide.cn/java/basis/bigdecimal.html)。
+For a detailed introduction to `BigDecimal`, see [BigDecimal in Detail](https://javaguide.cn/java/basis/bigdecimal.html).
 
-### 超过 long 整型的数据应该如何表示？
+### How should you represent an integer larger than `long`?
 
-基本数值类型都有一个表达范围，如果超过这个范围就会有数值溢出的风险。
+Primitive numeric types have a limited range. Values outside that range can overflow.
 
-在 Java 中，64 位 long 整型是最大的整数类型。
+In Java, the 64-bit `long` is the largest primitive integer type.
 
 ```java
 long l = Long.MAX_VALUE;
@@ -911,71 +911,71 @@ System.out.println(l + 1); // -9223372036854775808
 System.out.println(l + 1 == Long.MIN_VALUE); // true
 ```
 
-`BigInteger` 内部使用 `int[]` 数组来存储任意大小的整形数据。
+`BigInteger` uses an `int[]` internally to store integers of arbitrary size.
 
-相对于常规整数类型的运算来说，`BigInteger` 运算的效率会相对较低。
+`BigInteger` operations are generally slower than operations on primitive integer types.
 
-## 变量
+## Variables
 
-### ⭐️ 成员变量与局部变量的区别？
+### ⭐️ What is the difference between instance fields and local variables?
 
-| 对比维度 | 成员变量（字段）                                                                | 局部变量                                                 |
-| -------- | ------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| 定义位置 | 定义在类中，方法之外；分为实例变量和静态变量                                    | 定义在方法、构造方法或代码块中                           |
-| 修饰符   | 可以使用访问控制修饰符、`static`、`final` 等                                    | 不能使用访问控制修饰符和 `static`，可以使用 `final`      |
-| 存储方式 | 实例字段属于对象状态；静态字段属于类，具体存储由 JVM 实现决定                   | 在 JVM 的执行模型中保存在栈帧的局部变量表中              |
-| 生存时间 | 实例变量随对象存在；静态变量随类存在，直到类卸载                                | 与所在代码块的执行及作用域有关，方法结束后对应栈帧被销毁 |
-| 默认值   | 有类型对应的默认值，如 `0`、`false`、`null`；`final` 字段还必须满足明确赋值规则 | 没有默认值；可以先声明不赋值，但读取前必须明确赋值       |
+| Aspect        | Instance fields                                                                                                      | Local variables                                                                                   |
+| ------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Where defined | In a class, outside methods; includes instance and static fields                                                     | In a method, constructor, or code block                                                           |
+| Modifiers     | Can use access modifiers, `static`, `final`, and others                                                              | Cannot use access modifiers or `static`; can use `final`                                          |
+| Storage       | Instance fields are part of object state; static field storage is JVM-specific                                       | Stored in the stack frame's local variable table in the JVM execution model                       |
+| Lifetime      | Instance fields exist with their object; static fields exist while their class is loaded                             | Tied to scope and execution; the stack frame is destroyed when the method returns                 |
+| Default value | Has a type-specific default such as `0`, `false`, or `null`; `final` fields must also meet definite assignment rules | No default value; may be declared without an initial value but must be assigned before being read |
 
-方法参数和构造方法参数在 JLS 中属于单独的变量类别，调用时由实参初始化，不能把它们和方法体内尚未赋值的局部变量混为一谈。另外，局部引用变量和它指向的对象也要区分：引用保存在局部变量表中，对象通常分配在堆中。JIT 优化可能消除部分实际存储。
+Method and constructor parameters are separate variable categories in the JLS and are initialized from arguments when the method or constructor is called. They should not be confused with local variables in the method body that have not yet been assigned. Also distinguish a local reference from the object it points to: the reference is stored in the local variable table, while the object is usually allocated on the heap. JIT optimizations may eliminate some physical storage.
 
-**为什么成员变量有默认值？**
+**Why do fields have default values?**
 
-JLS 规定，类变量、实例变量和数组元素在创建时会被初始化为各自类型的默认值，例如数值类型为 0、`boolean` 为 `false`、引用类型为 `null`。局部变量不进行默认初始化，并受“明确赋值”（definite assignment）规则约束：在读取局部变量前，编译器必须能够确定它已经被赋值。这里是语言规范直接规定的两套初始化规则，并不是因为编译器无法预测成员变量何时赋值。
+The JLS specifies that class variables, instance variables, and array elements are initialized to their type's default value when created: for example, numeric types to 0, `boolean` to `false`, and reference types to `null`. Local variables are not initialized by default and are subject to definite assignment rules: the compiler must be able to determine that a local variable has been assigned before it is read. These are separate rules in the language specification, not a result of the compiler being unable to predict when a field will be assigned.
 
-**`final` 成员变量并不是默认初始化的例外。** 默认初始化与编译器的明确赋值检查是两回事：`final` 字段仍然必须由程序完成一次明确赋值，可以在声明时初始化；未在声明时初始化的实例 `final` 字段必须在每个构造方法正常结束前完成赋值（也可通过实例初始化块完成），静态 `final` 字段则必须在静态初始化块中完成赋值。
+**`final` fields are not exempt from default initialization.** Default initialization and the compiler's definite assignment checks are separate. A `final` field still needs an explicit assignment in the program. It can be initialized at its declaration; an instance `final` field initialized later must be assigned before every constructor completes normally (or in an instance initializer), while a static `final` field must be assigned in a static initializer.
 
-局部变量可以先声明，再赋值，也可以一直不读取：
+You can declare a local variable and assign it later, or leave it unused:
 
 ```java
-int unused; // 合法：只声明、不读取，不要求赋值
+int unused; // Valid: declared but never read, so no assignment is required.
 int count;
-// System.out.println(count); // 编译错误：读取前没有明确赋值
+// System.out.println(count); // Compile error: count is not definitely assigned before being read.
 count = 10;
-System.out.println(count); // 合法
+System.out.println(count); // Valid
 ```
 
-参考：[JLS §4.12.5 变量的初始值](https://docs.oracle.com/javase/specs/jls/se21/html/jls-4.html#jls-4.12.5)、[JLS §8.3.1.2 final 字段](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html#jls-8.3.1.2)。
+References: [JLS §4.12.5 Initial Values of Variables](https://docs.oracle.com/javase/specs/jls/se21/html/jls-4.html#jls-4.12.5), [JLS §8.3.1.2 `final` Fields](https://docs.oracle.com/javase/specs/jls/se21/html/jls-8.html#jls-8.3.1.2).
 
-成员变量与局部变量代码示例：
+Example of instance fields and local variables:
 
 ```java
 public class VariableExample {
 
-    // 成员变量
+    // Instance fields
     private String name;
     private int age;
 
-    // 方法中的局部变量
+    // Local variables in a method
     public void method() {
-        int num1 = 10; // 栈中分配的局部变量
-        String str = "Hello, world!"; // 栈中分配的局部变量
+        int num1 = 10; // Local variable in the stack frame
+        String str = "Hello, world!"; // Local variable in the stack frame
         System.out.println(num1);
         System.out.println(str);
     }
 
-    // 带参数的方法中的局部变量
+    // Local variables in a method with parameters
     public void method2(int num2) {
-        int sum = num2 + 10; // 栈中分配的局部变量
+        int sum = num2 + 10; // Local variable in the stack frame
         System.out.println(sum);
     }
 
-    // 构造方法中的局部变量
+    // Local variables in a constructor
     public VariableExample(String name, int age) {
-        this.name = name; // 对成员变量进行赋值
-        this.age = age; // 对成员变量进行赋值
-        int num3 = 20; // 栈中分配的局部变量
-        String str2 = "Hello, " + this.name + "!"; // 栈中分配的局部变量
+        this.name = name; // Assign the field
+        this.age = age; // Assign the field
+        int num3 = 20; // Local variable in the stack frame
+        String str2 = "Hello, " + this.name + "!"; // Local variable in the stack frame
         System.out.println(num3);
         System.out.println(str2);
     }
@@ -983,86 +983,86 @@ public class VariableExample {
 
 ```
 
-### 静态变量有什么作用？
+### What are static variables used for?
 
-静态变量也就是被 `static` 关键字修饰的变量。它可以被类的所有实例共享，无论一个类创建了多少个对象，它们都共享同一份静态变量。也就是说，静态变量只会被分配一次内存，即使创建多个对象，这样可以节省内存。
+A static variable is declared with the `static` keyword. It is shared by all instances of the class, so every object uses the same variable. It is allocated once regardless of how many objects are created.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/basis/java-basis-variables-static-variable.png)
 
-静态变量是通过类名来访问的，例如 `StaticVariableExample.staticVar`（如果被 `private` 关键字修饰就无法这样访问了）。
+Access a static variable through its class, for example, `StaticVariableExample.staticVar` (unless it is `private`).
 
 ```java
 public class StaticVariableExample {
-    // 静态变量
+    // Static variable
     public static int staticVar = 0;
 }
 ```
 
-通常情况下，静态变量会被 `final` 关键字修饰成为常量。
+Static variables are often declared `final` to make them constants.
 
 ```java
 public class ConstantVariableExample {
-    // 常量
+    // Constant
     public static final int constantVar = 0;
 }
 ```
 
-### 字符型常量和字符串常量的区别？
+### What is the difference between character and string literals?
 
-- **形式** : 字符常量是单引号引起的一个字符，字符串常量是双引号引起的 0 个或若干个字符。
-- **含义** : 字符常量是一个 `char` 值，表示 UTF-16 代码单元，可以参与数值运算；字符串常量是对 `String` 对象的引用，不是语言层面暴露的内存地址。
-- **占用空间**：`char` 值是 16 位无符号整数。`String` 对象的内存占用属于 JVM 实现细节，不能通过字符串编码后的字节数直接得出。
+- **Form**: A character literal is one character in single quotes. A string literal is zero or more characters in double quotes.
+- **Meaning**: A character literal is a `char` value representing a UTF-16 code unit and can be used in numeric operations. A string literal is a reference to a `String` object; it is not a memory address exposed by the language.
+- **Size**: A `char` value is a 16-bit unsigned integer. The memory used by a `String` object is JVM-specific and cannot be determined from the byte length of its encoded text.
 
-⚠️ 注意 `char` 在 Java 中占两个字节。
+⚠️ Note that `char` uses two bytes in Java.
 
-字符型常量和字符串常量代码示例：
+Example of character and string literals:
 
 ```java
 public class StringExample {
-    // 字符型常量
+    // Character literal
     public static final char LETTER_A = 'A';
 
-    // 字符串常量
+    // String literal
     public static final String GREETING_MESSAGE = "Hello, world!";
     public static void main(String[] args) {
-        System.out.println("字符型常量占用的字节数为："+Character.BYTES);
-        System.out.println("字符串使用 UTF-8 编码后的字节数为："+GREETING_MESSAGE.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
+        System.out.println("Bytes used by a char value: " + Character.BYTES);
+        System.out.println("Bytes in the string's UTF-8 encoding: " + GREETING_MESSAGE.getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
     }
 }
 ```
 
-输出：
+Output:
 
 ```plain
-字符型常量占用的字节数为：2
-字符串使用 UTF-8 编码后的字节数为：13
+Bytes used by a char value: 2
+Bytes in the string's UTF-8 encoding: 13
 ```
 
-## 方法
+## Methods
 
-### 什么是方法的返回值？方法有哪几种类型？
+### What is a method's return value? What types of methods are there?
 
-**方法的返回值** 是指我们获取到的某个方法体中的代码执行后产生的结果！（前提是该方法可能产生结果）。返回值的作用是接收出结果，使得它可以用于其他的操作！
+**A method's return value** is the result produced when its body runs, if the method produces a result. The caller can use that value in other operations.
 
-我们可以按照方法的返回值和参数类型将方法分为下面这几种：
+Methods can be grouped by whether they take parameters and return a value:
 
-**1、无参数无返回值的方法**
+**1. No parameters and no return value**
 
 ```java
 public void f1() {
     //......
 }
-// 下面这个方法也没有返回值，虽然用到了 return
+// This method also has no return value, even though it uses return.
 public void f(int a) {
     if (...) {
-        // 表示结束方法的执行，下方的输出语句不会执行
+        // End the method; the print statement below will not run.
         return;
     }
     System.out.println(a);
 }
 ```
 
-**2、有参数无返回值的方法**
+**2. Parameters but no return value**
 
 ```java
 public void f2(Parameter 1, ..., Parameter n) {
@@ -1070,7 +1070,7 @@ public void f2(Parameter 1, ..., Parameter n) {
 }
 ```
 
-**3、有返回值无参数的方法**
+**3. Return value but no parameters**
 
 ```java
 public int f3() {
@@ -1079,7 +1079,7 @@ public int f3() {
 }
 ```
 
-**4、有返回值有参数的方法**
+**4. Parameters and a return value**
 
 ```java
 public int f4(int a, int b) {
@@ -1087,37 +1087,37 @@ public int f4(int a, int b) {
 }
 ```
 
-### 静态方法为什么不能调用非静态成员？
+### Why can't a static method call an instance member directly?
 
-静态方法在静态上下文中执行，没有隐式的当前实例 `this`，因此不能直接访问实例成员。静态方法仍然可以通过一个显式的对象引用访问该对象的实例成员，这与类加载或成员是否已经“分配内存”无关。
+A static method runs in a static context and has no implicit current instance (`this`), so it cannot access instance members directly. It can still access an instance member through an explicit object reference. This is unrelated to whether the class has been loaded or memory has been allocated for a member.
 
 ```java
 public class Example {
-    // 定义一个字符型常量
+    // Declare a character constant
     public static final char LETTER_A = 'A';
 
-    // 定义一个字符串常量
+    // Declare a string constant
     public static final String GREETING_MESSAGE = "Hello, world!";
 
     public static void main(String[] args) {
-        // 输出字符型常量的值
-        System.out.println("字符型常量的值为：" + LETTER_A);
+        // Print the character constant
+        System.out.println("Character constant: " + LETTER_A);
 
-        // 输出字符串常量的值
-        System.out.println("字符串常量的值为：" + GREETING_MESSAGE);
+        // Print the string constant
+        System.out.println("String constant: " + GREETING_MESSAGE);
     }
 }
 ```
 
-### ⭐️ 静态方法和实例方法有何不同？
+### ⭐️ How do static methods differ from instance methods?
 
-**1、调用方式**
+**1. How to call them**
 
-在外部调用静态方法时，可以使用 `类名.方法名` 的方式，也可以使用 `对象.方法名` 的方式，而实例方法只有后面这种方式。也就是说，**调用静态方法可以无需创建对象**。
+You can call a static method with either `ClassName.methodName` or `object.methodName`. An instance method requires an object. In other words, **you can call a static method without creating an object**.
 
-不过，需要注意的是一般不建议使用 `对象.方法名` 的方式来调用静态方法。这种方式非常容易造成混淆，静态方法不属于类的某个对象而是属于这个类。
+It is generally best not to call a static method with `object.methodName`, since this can be confusing. A static method belongs to the class, not to a particular object.
 
-因此，一般建议使用 `类名.方法名` 的方式来调用静态方法。
+So it is generally better to call static methods with `ClassName.methodName`.
 
 ```java
 public class Person {
@@ -1130,81 +1130,81 @@ public class Person {
     }
     public static void main(String[] args) {
         Person person = new Person();
-        // 调用实例方法
+        // Call an instance method
         person.method();
-        // 调用静态方法
+        // Call a static method
         Person.staicMethod()
     }
 }
 ```
 
-**2、访问类成员是否存在限制**
+**2. Restrictions on accessing members**
 
-静态方法在访问本类的成员时，只允许访问静态成员（即静态成员变量和静态方法），不允许访问实例成员（即实例成员变量和实例方法），而实例方法不存在这个限制。
+When accessing members of its class, a static method can directly access only static members (static fields and methods), not instance members (instance fields and methods). Instance methods have no such restriction.
 
-### ⭐️ 重载和重写有什么区别？
+### ⭐️ What is the difference between overloading and overriding?
 
-> 重载就是同样的一个方法能够根据输入数据的不同，做出不同的处理
+> Overloading lets methods with the same name handle different inputs in different ways.
 >
-> 重写就是当子类继承自父类的相同方法，输入数据一样，但要做出有别于父类的响应时，你就要覆盖父类方法
+> Overriding lets a subclass provide a different implementation of an inherited method while keeping the same inputs.
 
-#### 重载
+#### Overloading
 
-发生在同一个类中（或者父类和子类之间），方法名必须相同，参数类型不同、个数不同、顺序不同，方法返回值和访问修饰符可以不同。
+Overloading can occur within the same class or across a superclass and subclass. The methods must have the same name but different parameter types, counts, or order. Their return types and access modifiers may differ.
 
-《Java 核心技术》这本书是这样介绍重载的：
+_Core Java_ describes overloading as follows:
 
-> 如果多个方法(比如 `StringBuilder` 的构造方法)有相同的名字、不同的参数， 便产生了重载。
+> When several methods (such as the constructors of `StringBuilder`) have the same name but different parameters, they are overloaded.
 >
 > ```java
 > StringBuilder sb = new StringBuilder();
 > StringBuilder sb2 = new StringBuilder("HelloWorld");
 > ```
 >
-> 编译器必须挑选出具体执行哪个方法，它通过用各个方法给出的参数类型与特定方法调用所使用的值类型进行匹配来挑选出相应的方法。 如果编译器找不到匹配的参数， 就会产生编译时错误， 因为根本不存在匹配， 或者没有一个比其他的更好(这个过程被称为重载解析(overloading resolution))。
+> The compiler must choose which method to call. It compares the parameter types of each method with the types of the values used in the call. If it cannot find a match, or if no match is better than the others, compilation fails. This process is called overload resolution.
 >
-> Java 允许重载任何方法， 而不只是构造器方法。
+> Java allows any method to be overloaded, not just constructors.
 
-综上：重载就是同一个类中多个同名方法根据不同的传参来执行不同的逻辑处理。
+In short, overloading lets methods with the same name perform different logic based on their parameters.
 
-#### 重写
+#### Overriding
 
-重写是子类实例方法与父类可访问实例方法之间的声明关系，由编译器按规则检查；运行期发生的是对重写方法的动态分派。
+Overriding is a declaration relationship between a subclass instance method and an accessible superclass instance method, checked by the compiler. At runtime, calls to the overridden method are dynamically dispatched.
 
-1. 方法名、参数列表必须相同，子类方法返回值类型应比父类方法返回值类型更小或相等，抛出的异常范围小于等于父类，访问修饰符范围大于等于父类。
-2. 如果父类方法访问修饰符为 `private/final/static` 则子类就不能重写该方法，但是被 `static` 修饰的方法能够被再次声明。
-3. 构造方法无法被重写
+1. The method name and parameter list must match. The subclass method's return type must be the same as, or a subtype of, the superclass method's return type. It cannot throw broader checked exceptions, and its access level cannot be more restrictive.
+2. A subclass cannot override a superclass method declared `private`, `final`, or `static`. A `static` method can be hidden by another static method with the same signature.
+3. Constructors cannot be overridden.
 
-#### 总结
+#### Summary
 
-综上：**重写就是子类对父类方法的重新改造，外部样子不能改变，内部逻辑可以改变。**
+In short, **overriding lets a subclass change a superclass method's implementation while keeping its method signature.**
 
-| 区别点         | 重载 (Overloading)                                                                   | 重写 (Overriding)                                                                            |
-| -------------- | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
-| **发生范围**   | 同一个类中。                                                                         | 父类与子类之间（存在继承关系）。                                                             |
-| **方法签名**   | 方法名**必须相同**，但**参数列表必须不同**（参数的类型、个数或顺序至少有一项不同）。 | 方法名、参数列表**必须完全相同**。                                                           |
-| **返回类型**   | 与返回值类型**无关**，可以任意修改。                                                 | 子类方法的返回类型必须与父类方法的返回类型**相同**，或者是其**子类**。                       |
-| **访问修饰符** | 与访问修饰符**无关**，可以任意修改。                                                 | 子类方法的访问权限**不能低于**父类方法的访问权限。（public > protected > default > private） |
-| **绑定时期**   | 编译时绑定或称静态绑定                                                               | 运行时绑定 (Run-time Binding) 或称动态绑定                                                   |
+| Aspect               | Overloading                                                                                | Overriding                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| **Where it occurs**  | Usually within the same class.                                                             | Between a superclass and subclass (inheritance required).                                                     |
+| **Method signature** | The name **must match**, but the parameter lists **must differ** in type, count, or order. | The name and parameter list **must match exactly**.                                                           |
+| **Return type**      | Not part of overload selection; it may differ.                                             | Must match the superclass return type or be a subtype.                                                        |
+| **Access modifier**  | May differ.                                                                                | Cannot be more restrictive than the superclass method. (`public` > `protected` > package-private > `private`) |
+| **Binding**          | Compile-time (static) binding                                                              | Runtime (dynamic) binding                                                                                     |
 
-**方法的重写要遵循“两同两小一大”**（以下内容摘录自《疯狂 Java 讲义》，[issue#892](https://github.com/Snailclimb/JavaGuide/issues/892)）：
+**Overriding follows the “two same, two narrower, one broader” rule** (from _Crazy Java Lectures_, [issue #892](https://github.com/Snailclimb/JavaGuide/issues/892)):
 
-- “两同”即方法名相同、形参列表相同；
-- “两小”指的是子类方法返回值类型应比父类方法返回值类型更小或相等，子类方法声明抛出的异常类应比父类方法声明抛出的异常类更小或相等；
-- “一大”指的是子类方法的访问权限应比父类方法的访问权限更大或相等。
+- “Two same” means the method name and parameter list are the same.
+- “Two narrower” means the subclass method's return type is the same as or a subtype of the superclass return type, and its declared exceptions are the same as or narrower than the superclass method's.
+- “One broader” means the subclass method's access level is the same as or broader than the superclass method's.
 
-⭐️ 关于 **重写的返回值类型** 这里需要额外多说明一下，上面的表述不太清晰准确：如果方法的返回类型是 void 和基本数据类型，则返回值重写时不可修改。但是如果方法的返回值是引用类型，重写时是可以返回该引用类型的子类的。
+⭐️ **A note on return types when overriding:** The rule above can be stated more precisely. A method returning `void` or a primitive type cannot change its return type when overridden. A method returning a reference type can return a subtype of that type.
 
 ```java
 public class Hero {
     public String name() {
-        return "超级英雄";
+        return "superhero";
     }
 }
 public class SuperMan extends Hero{
     @Override
     public String name() {
-        return "超人";
+        return "Superman";
     }
     public Hero hero() {
         return new Hero();
@@ -1214,7 +1214,7 @@ public class SuperMan extends Hero{
 public class SuperSuperMan extends SuperMan {
     @Override
     public String name() {
-        return "超级超级英雄";
+        return "super-superhero";
     }
 
     @Override
@@ -1224,9 +1224,9 @@ public class SuperSuperMan extends SuperMan {
 }
 ```
 
-### 什么是可变长参数？
+### What are variable-length arguments?
 
-从 Java5 开始，Java 支持定义可变长参数，所谓可变长参数就是允许在调用方法时传入不定长度的参数。就比如下面这个方法就可以接受 0 个或者多个参数。
+Since Java 5, methods can declare variable-length arguments (varargs), allowing callers to pass any number of arguments. For example, the following method accepts zero or more arguments.
 
 ```java
 public static void method1(String... args) {
@@ -1234,7 +1234,7 @@ public static void method1(String... args) {
 }
 ```
 
-另外，可变参数只能作为函数的最后一个参数，但其前面可以有也可以没有任何其他参数。
+Varargs must be the last parameter in a method declaration, but may be preceded by any number of other parameters.
 
 ```java
 public static void method2(String arg1, String... args) {
@@ -1242,17 +1242,17 @@ public static void method2(String arg1, String... args) {
 }
 ```
 
-**遇到方法重载的情况怎么办呢？会优先匹配固定参数还是可变参数的方法呢？**
+**When overloaded methods include both fixed-arity and varargs versions, which one is selected?**
 
-答案是会优先匹配固定参数的方法，因为固定参数的方法匹配度更高。
+The fixed-arity method is preferred because it is a more specific match.
 
-我们通过下面这个例子来证明一下。
+The following example demonstrates this.
 
 ```java
 /**
- * 微信搜 JavaGuide 回复"面试突击"即可免费领取个人原创的 Java 面试手册
+ * Search for JavaGuide on WeChat and reply "Interview Prep" to get the original Java interview guide for free.
  *
- * @author Guide哥
+ * @author Guide
  * @date 2021/12/13 16:52
  **/
 public class VariableLengthArgument {
@@ -1274,7 +1274,7 @@ public class VariableLengthArgument {
 }
 ```
 
-输出：
+Output:
 
 ```plain
 ab
@@ -1284,7 +1284,7 @@ c
 d
 ```
 
-另外，Java 的可变参数编译后实际会被转换成一个数组，我们看编译后生成的 `class` 文件就可以看出来了。
+Java varargs are compiled into an array, as you can see in the generated `.class` file.
 
 ```java
 public class VariableLengthArgument {
@@ -1303,11 +1303,11 @@ public class VariableLengthArgument {
 }
 ```
 
-## 参考
+## References
 
 - What is the difference between JDK and JRE?：<https://stackoverflow.com/questions/1906445/what-is-the-difference-between-jdk-and-jre>
 - Oracle vs OpenJDK：<https://www.educba.com/oracle-vs-openjdk/>
 - Differences between Oracle JDK and OpenJDK：<https://stackoverflow.com/questions/22358071/differences-between-oracle-jdk-and-openjdk>
-- 彻底弄懂 Java 的移位操作符：<https://juejin.cn/post/6844904025880526861>
+- [A Complete Guide to Java Shift Operators](https://juejin.cn/post/6844904025880526861)
 
 <!-- @include: @article-footer.snippet.md -->

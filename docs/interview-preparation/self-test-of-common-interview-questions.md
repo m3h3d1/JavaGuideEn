@@ -1,5 +1,5 @@
 ---
-title: Common Interview Questions: Self-Assessment (Members Only)
+title: "Common Interview Questions: Self-Assessment (Members Only)"
 description: Test yourself on frequently asked Java backend interview questions, presented in interview format with hints and importance ratings. Use this guide to find gaps and focus your review before an interview.
 category: Knowledge Planet
 icon: "mdi:shield-lock-outline"

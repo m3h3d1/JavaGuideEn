@@ -1,50 +1,50 @@
 ---
-title: Java 语法糖详解
-description: 深入剖析Java语法糖原理：详解自动装箱拆箱、泛型擦除、增强for、可变参数、枚举、Lambda等语法糖的编译期实现机制，避免使用误区。
+title: Java Syntactic Sugar Explained
+description: Learn how Java syntactic sugar works, including boxing and unboxing, type erasure, enhanced for loops, varargs, enums, and lambdas.
 category: Java
 tag:
-  - Java基础
+  - Java Fundamentals
 head:
   - - meta
     - name: keywords
-      content: Java语法糖,自动装箱拆箱,泛型擦除,增强for循环,可变参数,枚举,内部类,Lambda表达式,语法糖原理
+      content: Java syntactic sugar,boxing and unboxing,type erasure,enhanced for loop,varargs,enums,inner classes,Lambda expressions
 ---
 
-> 作者：Hollis
+> Author: Hollis
 >
-> 原文：<https://mp.weixin.qq.com/s/o4XdEMq1DL-nBS-f8Za5Aw>
+> Original article: <https://mp.weixin.qq.com/s/o4XdEMq1DL-nBS-f8Za5Aw>
 
-语法糖是大厂 Java 面试常问的一个知识点。
+Syntactic sugar is a common topic in Java interviews at large tech companies.
 
-本文从 Java 编译原理角度，深入字节码及 class 文件，抽丝剥茧，了解 Java 中的语法糖原理及用法，帮助大家在学会如何使用 Java 语法糖的同时，了解这些语法糖背后的原理。
+This article examines Java compilation, bytecode, and class files to explain how syntactic sugar works and how to use it.
 
-## 什么是语法糖？
+## What Is Syntactic Sugar?
 
-**语法糖（Syntactic Sugar）** 也称糖衣语法，是英国计算机学家 Peter.J.Landin 发明的一个术语，指在计算机语言中添加的某种语法，这种语法对语言的功能并没有影响，但是更方便程序员使用。简而言之，语法糖让程序更加简洁，有更高的可读性。
+**Syntactic sugar** is a term coined by British computer scientist Peter J. Landin. It refers to syntax that doesn't change what a language can do but makes it easier for programmers to use. In short, syntactic sugar makes code shorter and more readable.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/basis/syntactic-sugar/image-20220818175953954.png)
 
-> 有意思的是，在编程领域，除了语法糖，还有语法盐和语法糖精的说法，篇幅有限这里不做扩展了。
+> In programming, there are also terms such as syntactic salt and syntactic saccharin, but they are outside the scope of this article.
 
-我们所熟知的编程语言中几乎都有语法糖。作者认为，语法糖的多少是评判一个语言够不够牛逼的标准之一。很多人说 Java 是一个“低糖语言”，其实从 Java 7 开始 Java 语言层面上一直在添加各种糖，主要是在“Project Coin”项目下研发。尽管现在 Java 有人还是认为现在的 Java 是低糖，未来还会持续向着“高糖”的方向发展。
+Most programming languages have some syntactic sugar. The author considers the amount of syntactic sugar one way to judge a language. Java is often called a “low-sugar language,” but Java has added new syntax since Java 7, much of it developed under Project Coin. Java may continue to add more.
 
-## Java 中有哪些常见的语法糖？
+## Common Syntactic Sugar in Java
 
-前面提到过，语法糖的存在主要是方便开发人员使用。但其实， **Java 虚拟机并不支持这些语法糖。这些语法糖在编译阶段就会被还原成简单的基础语法结构，这个过程就是解语法糖。**
+As mentioned above, syntactic sugar makes code easier to write. However, **the Java virtual machine doesn't support this syntax directly. The compiler translates it into simpler language constructs during compilation; this is called desugaring.**
 
-说到编译，大家肯定都知道，Java 语言中，`javac` 命令可以将后缀名为 `.java` 的源文件编译为后缀名为 `.class` 的可以运行于 Java 虚拟机的字节码。如果你去看 `com.sun.tools.javac.main.JavaCompiler` 的源码，你会发现在 `compile()` 中有一个步骤就是调用 `desugar()`，这个方法就是负责解语法糖的实现的。
+The `javac` command compiles `.java` source files into `.class` bytecode that runs on the JVM. In the source code for `com.sun.tools.javac.main.JavaCompiler`, the `compile()` method calls `desugar()`, which handles desugaring.
 
-Java 中最常用的语法糖主要有泛型、变长参数、条件编译、自动拆装箱、内部类等。本文主要来分析下这些语法糖背后的原理。一步一步剥去糖衣，看看其本质。
+Common examples of Java syntactic sugar include generics, varargs, conditional compilation, boxing and unboxing, and inner classes. This article looks at how these features work under the hood.
 
-我们这里会用到[反编译](https://mp.weixin.qq.com/s?__biz=MzI3NzE0NjcwMg==&mid=2650120609&idx=1&sn=5659f96310963ad57d55b48cee63c788&chksm=f36bbc80c41c3596a1e4bf9501c6280481f1b9e06d07af354474e6f3ed366fef016df673a7ba&scene=21#wechat_redirect)，你可以通过 [Decompilers online](http://www.javadecompilers.com/) 对 Class 文件进行在线反编译。
+This article uses [decompilation](https://mp.weixin.qq.com/s?__biz=MzI3NzE0NjcwMg==&mid=2650120609&idx=1&sn=5659f96310963ad57d55b48cee63c788&chksm=f36bbc80c41c3596a1e4bf9501c6280481f1b9e06d07af354474e6f3ed366fef016df673a7ba&scene=21#wechat_redirect). You can also use [Decompilers online](http://www.javadecompilers.com/) to decompile class files.
 
-### switch 支持 String 与枚举
+### switch with String and Enums
 
-前面提到过，从 Java 7 开始，Java 语言中的语法糖在逐渐丰富，其中一个比较重要的就是 Java 7 中 `switch` 开始支持 `String`。
+As mentioned earlier, Java has added more syntactic sugar since Java 7. One notable addition was support for `String` in `switch` statements.
 
-在开始之前先科普下，早期 Java 的 `switch` 支持 `byte`、`short`、`char`、`int` 以及对应的包装类型，不支持 `boolean`、`long`、`float`、`double`。`char` 表示 UTF-16 代码单元，并不是 ASCII 类型。之后，Java 又增加了对枚举和 `String` 等引用类型的支持。
+Early versions of Java supported `byte`, `short`, `char`, `int`, and their wrapper types in `switch` statements, but not `boolean`, `long`, `float`, or `double`. A `char` represents a UTF-16 code unit, not an ASCII type. Java later added support for reference types such as enums and `String`.
 
-那么接下来看下 `switch` 对 `String` 的支持，有以下代码：
+Here's an example of `switch` with `String`:
 
 ```java
 public class switchDemoString {
@@ -64,7 +64,7 @@ public class switchDemoString {
 }
 ```
 
-反编译后内容如下：
+After decompilation:
 
 ```java
 public class switchDemoString
@@ -93,21 +93,21 @@ public class switchDemoString
 }
 ```
 
-从这份特定版本 `javac` 生成并反编译的代码可以看到，**字符串 `switch` 被转换成了 `hashCode()` 分派和 `equals()` 校验。** 这是编译器实现策略，不是 JLS 强制规定的字节码形式。
+In this output, generated by a particular `javac` version and then decompiled, **the string `switch` is translated into `hashCode()` dispatch followed by `equals()` checks.** This is a compiler implementation strategy, not a bytecode form required by the JLS.
 
-仔细看下可以发现，进行 `switch` 的实际是哈希值，然后通过使用 `equals` 方法比较进行安全检查，这个检查是必要的，因为哈希可能会发生碰撞。因此它的性能是不如使用枚举进行 `switch` 或者使用纯整数常量，但这也不是很差。
+The `switch` operates on hash values and uses `equals()` for verification. This check is necessary because hash collisions can occur. This approach may be slower than switching on an enum or integer constant, but the difference is usually small.
 
-### 泛型
+### Generics
 
-我们都知道，很多语言都是支持泛型的，但是很多人不知道的是，不同的编译器对于泛型的处理方式是不同的，通常情况下，一个编译器处理泛型有两种方式：`Code specialization` 和 `Code sharing`。C++和 C#是使用 `Code specialization` 的处理机制，而 Java 使用的是 `Code sharing` 的机制。
+Many languages support generics, but compilers handle them differently. Common approaches include `Code specialization` and `Code sharing`. C++ and C# use code specialization, while Java uses code sharing.
 
-> Code sharing 方式为每个泛型类型创建唯一的字节码表示，并且将该泛型类型的实例都映射到这个唯一的字节码表示上。将多种泛型类形实例映射到唯一的字节码表示是通过类型擦除（`type erasure`）实现的。
+> With code sharing, one bytecode representation is created for each generic type, and all instances of that generic type use the same representation. Type erasure maps different parameterized types to this shared bytecode.
 
-也就是说，**对于 Java 虚拟机来说，他根本不认识 `Map<String, String> map` 这样的语法。需要在编译阶段通过类型擦除的方式进行解语法糖。**
+In other words, **the JVM doesn't recognize syntax such as `Map<String, String> map`. The compiler desugars it through type erasure.**
 
-类型擦除的主要过程如下：1.将所有的泛型参数用其最左边界（最顶级的父类型）类型替换。 2.移除所有的类型参数。
+Type erasure mainly involves two steps: 1. Replace each type parameter with its leftmost bound (the most general parent type). 2. Remove all type parameters.
 
-以下代码：
+For example:
 
 ```java
 Map<String, String> map = new HashMap<String, String>();
@@ -116,7 +116,7 @@ map.put("wechat", "Hollis");
 map.put("blog", "www.hollischuang.com");
 ```
 
-解语法糖之后会变成：
+After desugaring:
 
 ```java
 Map map = new HashMap();
@@ -125,7 +125,7 @@ map.put("wechat", "Hollis");
 map.put("blog", "www.hollischuang.com");
 ```
 
-以下代码：
+For example:
 
 ```java
 public static <A extends Comparable<A>> A max(Collection<A> xs) {
@@ -140,7 +140,7 @@ public static <A extends Comparable<A>> A max(Collection<A> xs) {
 }
 ```
 
-类型擦除后会变成：
+After type erasure:
 
 ```java
  public static Comparable max(Collection xs){
@@ -156,13 +156,13 @@ public static <A extends Comparable<A>> A max(Collection<A> xs) {
 }
 ```
 
-**虚拟机中没有泛型，只有普通类和普通方法，所有泛型类的类型参数在编译时都会被擦除，泛型类并没有自己独有的 `Class` 类对象。比如并不存在 `List<String>.class` 或是 `List<Integer>.class`，而只有 `List.class`。**
+**The JVM has ordinary classes and methods, not generic types. Generic type parameters are erased at compile time, so a generic class doesn't have a separate `Class` object for each type argument. For example, there is no `List<String>.class` or `List<Integer>.class`; there is only `List.class`.**
 
-### 自动装箱与拆箱
+### Boxing and Unboxing
 
-自动装箱就是 Java 自动将原始类型值转换成对应的对象，比如将 int 的变量转换成 Integer 对象，这个过程叫做装箱，反之将 Integer 对象转换成 int 类型值，这个过程叫做拆箱。因为这里的装箱和拆箱是自动进行的非人为转换，所以就称作为自动装箱和拆箱。原始类型 byte, short, char, int, long, float, double 和 boolean 对应的封装类为 Byte, Short, Character, Integer, Long, Float, Double, Boolean。
+Boxing is the automatic conversion of a primitive value to its corresponding wrapper object, such as converting an `int` to an `Integer`. Unboxing is the reverse conversion. The wrapper types for `byte`, `short`, `char`, `int`, `long`, `float`, `double`, and `boolean` are `Byte`, `Short`, `Character`, `Integer`, `Long`, `Float`, `Double`, and `Boolean`.
 
-先来看个自动装箱的代码：
+Here's an example of boxing:
 
 ```java
  public static void main(String[] args) {
@@ -171,7 +171,7 @@ public static <A extends Comparable<A>> A max(Collection<A> xs) {
 }
 ```
 
-反编译后代码如下:
+After decompilation:
 
 ```java
 public static void main(String args[])
@@ -181,7 +181,7 @@ public static void main(String args[])
 }
 ```
 
-再来看个自动拆箱的代码：
+Here's an example of unboxing:
 
 ```java
 public static void main(String[] args) {
@@ -191,7 +191,7 @@ public static void main(String[] args) {
 }
 ```
 
-反编译后代码如下：
+After decompilation:
 
 ```java
 public static void main(String args[])
@@ -201,20 +201,20 @@ public static void main(String args[])
 }
 ```
 
-从反编译得到内容可以看出，在装箱的时候自动调用的是 `Integer` 的 `valueOf(int)` 方法。而在拆箱的时候自动调用的是 `Integer` 的 `intValue` 方法。
+The decompiled code shows that boxing calls `Integer.valueOf(int)` and unboxing calls `Integer.intValue()`.
 
-所以，**装箱过程是通过调用包装器的 valueOf 方法实现的，而拆箱过程是通过调用包装器的 xxxValue 方法实现的。**
+So, **boxing calls the wrapper's `valueOf` method, while unboxing calls its `xxxValue` method.**
 
-### 可变长参数
+### Varargs
 
-可变参数(`variable arguments`)是在 Java 1.5 中引入的一个特性。它允许一个方法把任意数量的值作为参数。
+Varargs (variable arguments) were introduced in Java 5. They let a method accept any number of values.
 
-看下以下可变参数代码，其中 `print` 方法接收可变参数：
+In this example, the `print` method accepts varargs:
 
 ```java
 public static void main(String[] args)
     {
-        print("Holis", "公众号:Hollis", "博客：www.hollischuang.com", "QQ：907607222");
+        print("Hollis", "WeChat account: Hollis", "Blog: www.hollischuang.com", "QQ: 907607222");
     }
 
 public static void print(String... strs)
@@ -226,7 +226,7 @@ public static void print(String... strs)
 }
 ```
 
-反编译后代码：
+After decompilation:
 
 ```java
  public static void main(String args[])
@@ -244,13 +244,13 @@ public static transient void print(String strs[])
 }
 ```
 
-从反编译后代码可以看出，可变参数在被使用的时候，他首先会创建一个数组，数组的长度就是调用该方法是传递的实参的个数，然后再把参数值全部放到这个数组当中，然后再把这个数组作为参数传递到被调用的方法中。（注：`transient` 仅在修饰成员变量时有意义，此处 “修饰方法” 是由于在 javassist 中使用相同数值分别表示 `transient` 以及 `vararg`，见 [此处](https://github.com/jboss-javassist/javassist/blob/7302b8b0a09f04d344a26ebe57f29f3db43f2a3e/src/main/javassist/bytecode/AccessFlag.java#L32)。）
+The decompiled code shows that a varargs call first creates an array whose length matches the number of arguments, places the values in it, and passes the array to the method. (Note: `transient` applies to fields. Its appearance as a method modifier here is due to Javassist using the same numeric value for `transient` and `vararg`; see [the source](https://github.com/jboss-javassist/javassist/blob/7302b8b0a09f04d344a26ebe57f29f3db43f2a3e/src/main/javassist/bytecode/AccessFlag.java#L32).)
 
-### 枚举
+### Enums
 
-Java SE5 提供了一种新的类型-Java 的枚举类型，关键字 `enum` 可以将一组具名的值的有限集合创建为一种新的类型，而这些具名的值可以作为常规的程序组件使用，这是一种非常有用的功能。
+Java SE 5 introduced enum types. The `enum` keyword lets you define a type consisting of a fixed set of named values, which can be used as regular program components.
 
-要想看源码，首先得有一个类吧，那么枚举类型到底是什么类呢？是 `enum` 吗？答案很明显不是，`enum` 就和 `class` 一样，只是一个关键字，他并不是一个类，那么枚举是由什么类维护的呢，我们简单的写一个枚举：
+To inspect the source, first define an enum. What kind of class is an enum? Is it `enum`? No. Like `class`, `enum` is a keyword, not a class. Here's a simple enum:
 
 ```java
 public enum t {
@@ -258,10 +258,10 @@ public enum t {
 }
 ```
 
-然后我们使用反编译，看看这段代码到底是怎么实现的，反编译后代码内容如下：
+Decompile it to see how it's implemented:
 
 ```java
-// 枚举的二进制名称仍为 t，Java 标识符区分大小写
+// The enum's binary name is still t; Java identifiers are case-sensitive.
 public final class t extends Enum
 {
     private t(String s, int i)
@@ -296,15 +296,15 @@ public final class t extends Enum
 }
 ```
 
-通过反编译后代码我们可以看到，`public final class t extends Enum`，说明，该类继承了 `Enum` 类；当前枚举没有包含常量专属类体，因此它隐式为 `final`。
+The decompiled code shows `public final class t extends Enum`, meaning the enum extends `Enum`. This enum has no constant-specific class bodies, so it's implicitly `final`.
 
-**使用 `enum` 定义的枚举类会直接继承 `Enum`，因此不能显式继承其他类，也不能被普通类继承。没有常量专属类体的枚举类隐式为 `final`；只要有枚举常量声明了专属类体，枚举类就隐式为 `sealed`，这些专属类体对应其许可的匿名子类。**
+**An enum declared with `enum` extends `Enum`, so it can't explicitly extend another class or be extended by an ordinary class. An enum with no constant-specific class bodies is implicitly `final`. If any enum constant has a class body, the enum is implicitly `sealed`, and those bodies correspond to its permitted anonymous subclasses.**
 
-### 内部类
+### Inner Classes
 
-内部类又称为嵌套类，可以把内部类理解为外部类的一个普通成员。
+An inner class, also called a nested class, can be thought of as a member of its enclosing class.
 
-**内部类之所以也是语法糖，是因为它仅仅是一个编译时的概念，`outer.java` 里面定义了一个内部类 `inner`，一旦编译成功，就会生成两个完全不同的 `.class` 文件，分别是 `outer.class` 和 `outer$inner.class`。不过，JLS 明确禁止嵌套类与任一外围类或接口具有相同的简单名称。**
+**Inner classes are considered syntactic sugar because they are a source-level concept. If `outer.java` defines an inner class named `inner`, compiling the file produces separate class files: `outer.class` and `outer$inner.class`. The JLS prohibits a nested class from having the same simple name as any enclosing class or interface.**
 
 ```java
 public class OuterClass {
@@ -336,7 +336,7 @@ public class OuterClass {
 }
 ```
 
-以上代码编译后会生成两个 class 文件：`OuterClass$InnerClass.class`、`OuterClass.class`。当我们尝试对 `OuterClass.class` 文件进行反编译的时候，命令行会打印以下内容：`Parsing OuterClass.class...Parsing inner class OuterClass$InnerClass.class... Generating OuterClass.jad`。他会把两个文件全部进行反编译，然后一起生成一个 `OuterClass.jad` 文件。文件内容如下：
+The code above compiles into two class files: `OuterClass$InnerClass.class` and `OuterClass.class`. When you decompile `OuterClass.class`, the command line prints `Parsing OuterClass.class...Parsing inner class OuterClass$InnerClass.class... Generating OuterClass.jad`. The decompiler processes both files and generates a single `OuterClass.jad` file:
 
 ```java
 public class OuterClass
@@ -378,12 +378,12 @@ public class OuterClass
 }
 ```
 
-**为什么内部类可以使用外部类的 private 属性**：
+**Why can an inner class access private members of its enclosing class?**
 
-我们在 InnerClass 中增加一个方法，打印外部类的 userName 属性
+Add a method to `InnerClass` that prints the enclosing class's `userName` field:
 
 ```java
-//省略其他属性
+// Other members omitted.
 public class OuterClass {
     private String userName;
     ......
@@ -395,13 +395,13 @@ public class OuterClass {
     }
 }
 
-// 此时，使用javap -p命令对OuterClass反编译结果：
+// Decompiled OuterClass output using javap -p:
 public classOuterClass {
     private String userName;
     ......
     static String access$000(OuterClass);
 }
-// 此时，InnerClass的反编译结果：
+// Decompiled InnerClass output:
 class OuterClass$InnerClass {
     final OuterClass this$0;
     ......
@@ -410,7 +410,7 @@ class OuterClass$InnerClass {
 
 ```
 
-实际上，在编译完成之后，inner 实例内部通常会有指向 outer 实例的引用 `this$0`。在 JDK 10 及更早版本生成的 class 文件中，编译器通常通过类似 `access$000` 的合成访问方法实现嵌套类之间的 private 成员访问，因此反编译后的 `printOut()` 方法大致如下。JDK 11 起引入基于 nest 的访问控制，同一 nest 中的类可以直接访问彼此的 private 成员，通常不再需要这类合成访问方法：
+After compilation, an inner class instance usually has a `this$0` reference to its enclosing instance. In class files generated by JDK 10 and earlier, the compiler typically used synthetic access methods such as `access$000` to let nested classes access one another's private members. The decompiled `printOut()` method might look like this. JDK 11 introduced nest-based access control, which lets classes in the same nest access each other's private members directly, usually without synthetic access methods:
 
 ```java
 public void printOut() {
@@ -418,18 +418,18 @@ public void printOut() {
 }
 ```
 
-补充：
+Additional notes:
 
-1. 在 JDK 10 及更早版本的典型 `javac` 输出中，匿名内部类、局部内部类、静态内部类也可能通过合成访问方法获取 private 属性；JDK 11 起通常使用 nest-based access control。
-2. 静态内部类没有 `this$0` 的引用
-3. 匿名内部类、局部内部类通过复制使用局部变量，该变量初始化之后就不能被修改。以下是一个案例：
+1. Typical `javac` output from JDK 10 and earlier may also use synthetic access methods for anonymous, local, and static nested classes to access private fields. JDK 11 and later typically use nest-based access control.
+2. A static nested class has no `this$0` reference.
+3. Anonymous and local classes capture local variables by copying them. The variables can't be changed after initialization. For example:
 
 ```java
 public class OuterClass {
     private String userName;
 
     public void test(){
-        //这里i初始化为1后就不能再被修改
+        // Once initialized to 1, i can't be changed.
         int i=1;
         class Inner{
             public void printName(){
@@ -441,11 +441,11 @@ public class OuterClass {
 }
 ```
 
-反编译后：
+After decompilation:
 
 ```java
-//javap命令反编译Inner的结果
-//i被复制进内部类，且为final
+// Output from decompiling Inner with javap.
+// i is copied into the inner class and is final.
 class OuterClass$1Inner {
   final int val$i;
   final OuterClass this$0;
@@ -455,11 +455,11 @@ class OuterClass$1Inner {
 
 ```
 
-### 条件编译
+### Conditional Compilation
 
-—般情况下，程序中的每一行代码都要参加编译。但有时候出于对程序代码优化的考虑，希望只对其中一部分内容进行编译，此时就需要在程序中加上条件，让编译器只对满足条件的代码进行编译，将不满足条件的代码舍弃，这就是条件编译。
+Normally, every line of a program is compiled. Sometimes you may want to compile only part of the code, for example, for optimization. Conditional compilation uses conditions to tell the compiler which code to keep and which to discard.
 
-如在 C 或 CPP 中，可以通过预处理语句来实现条件编译。其实在 Java 中也可实现条件编译。我们先来看一段代码：
+In C and C++, preprocessor directives can be used for conditional compilation. Java can also do this. Consider the following code:
 
 ```java
 public class ConditionalCompilation {
@@ -478,7 +478,7 @@ public class ConditionalCompilation {
 }
 ```
 
-反编译后代码如下：
+After decompilation:
 
 ```java
 public class ConditionalCompilation
@@ -497,15 +497,15 @@ public class ConditionalCompilation
 }
 ```
 
-首先，我们发现，在反编译后的代码中没有 `System.out.println("Hello, ONLINE!");`，这其实就是条件编译。当 `if(ONLINE)` 为 false 的时候，编译器就没有对其内的代码进行编译。
+Notice that the decompiled code doesn't contain `System.out.println("Hello, ONLINE!");`. This is conditional compilation: because `if (ONLINE)` is false, the compiler removed the code inside the branch.
 
-所以，**Java 语法的条件编译，是通过判断条件为常量的 if 语句实现的。其原理也是 Java 语言的语法糖。根据 if 判断条件的真假，编译器直接把分支为 false 的代码块消除。通过该方式实现的条件编译，必须在方法体内实现，而无法在整个 Java 类的结构或者类的属性上进行条件编译，这与 C/C++的条件编译相比，确实更有局限性。在 Java 语言设计之初并没有引入条件编译的功能，虽有局限，但是总比没有更强。**
+Therefore, **Java conditional compilation uses `if` statements with constant conditions. The compiler removes branches whose condition is false. This approach is limited to method bodies and can't conditionally compile class structure or fields, unlike C and C++. Java didn't include a dedicated conditional compilation feature, but this approach provides some of the same benefits.**
 
-### 断言
+### Assertions
 
-在 Java 中，`assert` 关键字是从 JAVA SE 1.4 引入的，为了避免和老版本的 Java 代码中使用了 `assert` 关键字导致错误，Java 在执行的时候默认是不启动断言检查的（这个时候，所有的断言语句都将忽略！），如果要开启断言检查，则需要用开关 `-enableassertions` 或 `-ea` 来开启。
+Java introduced the `assert` keyword in Java SE 1.4. To avoid breaking older code that used `assert` as an identifier, assertion checking is disabled by default. When disabled, assertion statements are ignored. Enable them with `-enableassertions` or `-ea`.
 
-看一段包含断言的代码：
+Here's an example with assertions:
 
 ```java
 public class AssertTest {
@@ -513,14 +513,14 @@ public class AssertTest {
         int a = 1;
         int b = 1;
         assert a == b;
-        System.out.println("公众号：Hollis");
+        System.out.println("WeChat account: Hollis");
         assert a != b : "Hollis";
-        System.out.println("博客：www.hollischuang.com");
+        System.out.println("Blog: www.hollischuang.com");
     }
 }
 ```
 
-反编译后代码如下：
+After decompilation:
 
 ```java
 public class AssertTest {
@@ -549,13 +549,13 @@ static final boolean $assertionsDisabled = !com/hollis/suguar/AssertTest.desired
 }
 ```
 
-很明显，反编译之后的代码要比我们自己的代码复杂的多。所以，使用了 assert 这个语法糖我们节省了很多代码。**其实断言的底层实现就是 if 语句，如果断言结果为 true，则什么都不做，程序继续执行，如果断言结果为 false，则程序抛出 `AssertionError` 来打断程序的执行。**`-enableassertions` 会设置\$assertionsDisabled 字段的值。
+The decompiled code is much more complex than the original. The `assert` syntax saves you from writing that code yourself. **Assertions are implemented using `if` statements: if the condition is true, execution continues; if it's false, the program throws `AssertionError`.** The `-enableassertions` option sets the value of the `$assertionsDisabled` field.
 
-### 数值字面量
+### Numeric Literals
 
-在 java 7 中，数值字面量，不管是整数还是浮点数，都允许在数字之间插入任意多个下划线。这些下划线不会对字面量的数值产生影响，目的就是方便阅读。
+Since Java 7, numeric literals—integers and floating-point numbers—can include underscores between digits. The underscores don't affect the value; they improve readability.
 
-比如：
+For example:
 
 ```java
 public class Test {
@@ -566,7 +566,7 @@ public class Test {
 }
 ```
 
-反编译后：
+After decompilation:
 
 ```java
 public class Test
@@ -579,26 +579,26 @@ public class Test
 }
 ```
 
-反编译结果中看不到 `_`，是因为它只是源代码中字面量语法的一部分，不会影响数值，也不会被记录到 class 文件中。**编译器必须识别并校验 `_` 的位置，然后把字面量的数值写入字节码。**
+The decompiled code doesn't show `_` because underscores are only part of the source syntax; they don't change the value or appear in the class file. **The compiler validates their placement, then writes the literal's value to the bytecode.**
 
-### for-each
+### Enhanced for Loops
 
-增强 for 循环（`for-each`）相信大家都不陌生，日常开发经常会用到的，他会比 for 循环要少写很多代码，那么这个语法糖背后是如何实现的呢？
+Enhanced for loops (`for-each`) are common in day-to-day development and require less code than a traditional `for` loop. How are they implemented?
 
 ```java
 public static void main(String... args) {
-    String[] strs = {"Hollis", "公众号：Hollis", "博客：www.hollischuang.com"};
+    String[] strs = {"Hollis", "WeChat account: Hollis", "Blog: www.hollischuang.com"};
     for (String s : strs) {
         System.out.println(s);
     }
-    List<String> strList = ImmutableList.of("Hollis", "公众号：Hollis", "博客：www.hollischuang.com");
+    List<String> strList = ImmutableList.of("Hollis", "WeChat account: Hollis", "Blog: www.hollischuang.com");
     for (String s : strList) {
         System.out.println(s);
     }
 }
 ```
 
-反编译后代码如下：
+After decompilation:
 
 ```java
 public static transient void main(String args[])
@@ -622,13 +622,13 @@ public static transient void main(String args[])
 }
 ```
 
-代码很简单，**for-each 的实现原理其实就是使用了普通的 for 循环和迭代器。**
+The implementation is simple: **enhanced for loops are translated into regular `for` loops or iterator calls.**
 
-### try-with-resource
+### try-with-resources
 
-Java 里，对于文件操作 IO 流、数据库连接等开销非常昂贵的资源，用完之后必须及时通过 close 方法将其关闭，否则资源会一直处于打开状态，可能会导致内存泄露等问题。
+In Java, expensive resources such as file I/O streams and database connections must be closed promptly after use. Otherwise, they remain open and may cause resource leaks.
 
-关闭资源的常用方式就是在 `finally` 块里是释放，即调用 `close` 方法。比如，我们经常会写这样的代码：
+One common way to close resources is to call `close()` in a `finally` block. For example:
 
 ```java
 public static void main(String[] args) {
@@ -653,7 +653,7 @@ public static void main(String[] args) {
 }
 ```
 
-从 Java 7 开始，jdk 提供了一种更好的方式关闭资源，使用 `try-with-resources` 语句，改写一下上面的代码，效果如下：
+Since Java 7, the JDK has provided a better way to close resources: the `try-with-resources` statement. The code above can be rewritten as follows:
 
 ```java
 public static void main(String... args) {
@@ -668,7 +668,7 @@ public static void main(String... args) {
 }
 ```
 
-看，这简直是一大福音啊，虽然我之前一般使用 `IOUtils` 去关闭流，并不会使用在 `finally` 中写很多代码的方式，但是这种新的语法糖看上去好像优雅很多呢。看下他的背后：
+The `try-with-resources` syntax is much more concise than writing the cleanup code in a `finally` block. Here's what it looks like after compilation:
 
 ```java
 public static transient void main(String args[])
@@ -707,25 +707,25 @@ public static transient void main(String args[])
 }
 ```
 
-**其实背后的原理也很简单，那些我们没有做的关闭资源的操作，编译器都帮我们做了。所以，再次印证了，语法糖的作用就是方便程序员的使用，但最终还是要转成编译器认识的语言。**
+**The compiler generates the resource-closing code for you. This shows how syntactic sugar makes code easier to write but is ultimately translated into constructs the compiler understands.**
 
-### Lambda 表达式
+### Lambda Expressions
 
-关于 lambda 表达式，有人可能会有质疑，因为网上有人说他并不是语法糖。其实我想纠正下这个说法。**Lambda 表达式不是匿名内部类的语法糖，但是他也是一个语法糖。实现方式其实是依赖了几个 JVM 底层提供的 lambda 相关 api。**
+Some people say that lambda expressions aren't syntactic sugar. To clarify: **a lambda expression isn't syntactic sugar for an anonymous inner class, but it is still syntactic sugar. Its implementation relies on several lambda-related APIs provided by the JVM.**
 
-先来看一个简单的 lambda 表达式。遍历一个 list：
+Here's a simple lambda expression that iterates over a list:
 
 ```java
 public static void main(String... args) {
-    List<String> strList = ImmutableList.of("Hollis", "公众号：Hollis", "博客：www.hollischuang.com");
+    List<String> strList = ImmutableList.of("Hollis", "WeChat account: Hollis", "Blog: www.hollischuang.com");
 
     strList.forEach( s -> { System.out.println(s); } );
 }
 ```
 
-为啥说他并不是内部类的语法糖呢，前面讲内部类我们说过，内部类在编译之后会有两个 class 文件，但是，包含 lambda 表达式的类编译后只有一个文件。
+Why isn't a lambda just an inner class? As discussed above, compiling an inner class produces two class files. A class containing a lambda expression produces only one.
 
-反编译后代码如下:
+After decompilation:
 
 ```java
 public static /* varargs */ void main(String ... args) {
@@ -738,13 +738,13 @@ private static /* synthetic */ void lambda$main$0(String s) {
 }
 ```
 
-可以看到，在 `forEach` 方法中，其实是调用了 `java.lang.invoke.LambdaMetafactory#metafactory` 方法，该方法的第四个参数 `implMethod` 指定了方法实现。可以看到这里其实是调用了一个 `lambda$main$0` 方法进行了输出。
+The `forEach` call invokes `java.lang.invoke.LambdaMetafactory#metafactory`. Its fourth argument, `implMethod`, specifies the method implementation. Here, output is handled by a generated `lambda$main$0` method.
 
-再来看一个稍微复杂一点的，先对 List 进行过滤，然后再输出：
+Here's a slightly more complex example that filters a list before printing the results:
 
 ```java
 public static void main(String... args) {
-    List<String> strList = ImmutableList.of("Hollis", "公众号：Hollis", "博客：www.hollischuang.com");
+    List<String> strList = ImmutableList.of("Hollis", "WeChat account: Hollis", "Blog: www.hollischuang.com");
 
     List HollisList = strList.stream().filter(string -> string.contains("Hollis")).collect(Collectors.toList());
 
@@ -752,7 +752,7 @@ public static void main(String... args) {
 }
 ```
 
-反编译后代码如下：
+After decompilation:
 
 ```java
 public static /* varargs */ void main(String ... args) {
@@ -770,15 +770,15 @@ private static /* synthetic */ boolean lambda$main$0(String string) {
 }
 ```
 
-两个 lambda 表达式分别调用了 `lambda$main$1` 和 `lambda$main$0` 两个方法。
+The two lambda expressions call `lambda$main$1` and `lambda$main$0`, respectively.
 
-**所以，lambda 表达式的实现其实是依赖了一些底层的 api，在编译阶段，编译器会把 lambda 表达式进行解糖，转换成调用内部 api 的方式。**
+**Lambda expressions rely on low-level APIs. During compilation, the compiler desugars them into calls to internal APIs.**
 
-## 可能遇到的坑
+## Common Pitfalls
 
-### 泛型
+### Generics
 
-**一、当泛型遇到重载**
+**1. Generics and overloading**
 
 ```java
 public class GenericTypes {
@@ -793,13 +793,13 @@ public class GenericTypes {
 }
 ```
 
-上面这段代码，有两个重载的函数，因为他们的参数类型不同，一个是 `List<String>` 另一个是 `List<Integer>`，但是，这段代码是编译通不过的。因为我们前面讲过，参数 `List<Integer>` 和 `List<String>` 编译之后都被擦除了，变成了一样的原生类型 List，擦除动作导致这两个方法的特征签名变得一模一样。
+The code above declares two overloaded methods with different parameter types, `List<String>` and `List<Integer>`, but it doesn't compile. Both parameter types are erased to the raw type `List`, so the methods have the same signature.
 
-**二、当泛型遇到 catch**
+**2. Generics and catch clauses**
 
-泛型的类型参数不能用在 Java 异常处理的 catch 语句中。因为异常处理是由 JVM 在运行时刻来进行的。由于类型信息被擦除，JVM 是无法区分两个异常类型 `MyException<String>` 和 `MyException<Integer>` 的
+Generic type parameters can't be used in a Java `catch` clause. Exception handling happens at runtime, and type erasure means the JVM can't distinguish between exception types such as `MyException<String>` and `MyException<Integer>`.
 
-**三、当泛型内包含静态变量**
+**3. Static fields in generic classes**
 
 ```java
 public class StaticTest{
@@ -817,14 +817,13 @@ class GT<T>{
 }
 ```
 
-以上代码输出结果为：2！
+The code above prints `2`.
 
-有些同学可能会误认为泛型类是不同的类，对应不同的字节码，其实
-由于经过类型擦除，所有的泛型类实例都关联到同一份字节码上，泛型类的静态变量是共享的。上面例子里的 `GT<Integer>.var` 和 `GT<String>.var` 其实是一个变量。
+Some may assume that different type arguments create different classes and bytecode. In fact, type erasure maps all instances of the generic class to the same bytecode, so its static fields are shared. `GT<Integer>.var` and `GT<String>.var` in this example refer to the same variable.
 
-### 自动装箱与拆箱
+### Boxing and Unboxing
 
-**对象相等比较**
+**Comparing Objects for Equality**
 
 ```java
 public static void main(String[] args) {
@@ -837,20 +836,20 @@ public static void main(String[] args) {
 }
 ```
 
-输出结果：
+Output:
 
 ```plain
 a == b is false
 c == d is true
 ```
 
-在 Java 5 中，在 Integer 的操作上引入了一个新功能来节省内存和提高性能。整型对象通过使用相同的对象引用实现了缓存和重用。
+Java 5 introduced a feature to save memory and improve performance for `Integer` values. Integer objects in a certain range are cached and reused.
 
-> 适用于整数值区间-128 至 +127。
+> This applies to integer values from -128 to +127.
 >
-> 只适用于自动装箱。使用构造函数创建对象不适用。
+> It applies only to autoboxing, not to objects created with a constructor.
 
-### 增强 for 循环
+### Enhanced for Loops
 
 ```java
 for (Student stu : students) {
@@ -859,16 +858,16 @@ for (Student stu : students) {
 }
 ```
 
-会抛出 `ConcurrentModificationException` 异常。
+This throws `ConcurrentModificationException`.
 
-这里涉及集合的 **fail-fast（快速失败）** 机制。以 `ArrayList` 为例，其内部维护了一个 `modCount` 计数器，每次对集合结构进行修改（如添加、删除）时都会递增该计数器。当创建 `Iterator` 时，会将当前的 `modCount` 记录为 `expectedModCount`。在每次调用 `next()` 时，`Iterator` 都会检查 `modCount` 是否等于 `expectedModCount`，如果不等，说明集合在遍历期间被其他方式修改了，就会抛出 `java.util.ConcurrentModificationException` 异常。
+This involves the collection's **fail-fast** mechanism. For example, `ArrayList` maintains a `modCount` counter that increments when its structure changes, such as when an element is added or removed. When an `Iterator` is created, it stores the current `modCount` as `expectedModCount`. Each call to `next()` checks whether the values match. If they don't, the collection was modified during iteration and `java.util.ConcurrentModificationException` is thrown.
 
-所以 `Iterator` 在工作的时候是不允许被迭代的对象被改变的。但你可以使用 `Iterator` 本身的方法 `remove()` 来删除对象，`Iterator.remove()` 方法会在删除元素后同步更新 `expectedModCount`，从而避免触发该异常。
+Therefore, don't modify a collection directly while iterating over it. You can remove elements using the iterator's own `remove()` method, which updates `expectedModCount` after removal and avoids this exception.
 
-## 总结
+## Summary
 
-前面介绍了 12 种 Java 中常用的语法糖。所谓语法糖就是提供给开发人员便于开发的一种语法而已。但是这种语法只有开发人员认识。要想被执行，需要进行解糖，即转成 JVM 认识的语法。当我们把语法糖解糖之后，你就会发现其实我们日常使用的这些方便的语法，其实都是一些其他更简单的语法构成的。
+This article introduced 12 common examples of Java syntactic sugar. These features make code easier to write, but the compiler must desugar them into constructs the JVM can execute. Once desugared, the convenient syntax becomes simpler language constructs.
 
-有了这些语法糖，我们在日常开发的时候可以大大提升效率，但是同时也要避过度使用。使用之前最好了解下原理，避免掉坑。
+Syntactic sugar can make everyday development more efficient, but avoid overusing it. Understanding how it works can help prevent common mistakes.
 
 <!-- @include: @article-footer.snippet.md -->

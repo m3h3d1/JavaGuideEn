@@ -1,5 +1,5 @@
 ---
-title: Full-Stack Roadmap for Backend Developers (2026): Building Frontend and Delivery Skills in the AI Era
+title: "Full-Stack Roadmap for Backend Developers (2026): Building Frontend and Delivery Skills in the AI Era"
 description: A 2026 full-stack roadmap for backend developers. Learn how AI coding tools can help you build frontend skills, understand component design, state management, API integration, permissions, deployment, and end-to-end delivery.
 category: Learning Roadmaps
 head:

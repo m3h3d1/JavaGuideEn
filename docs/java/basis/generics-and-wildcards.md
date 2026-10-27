@@ -1,38 +1,38 @@
 ---
-title: 泛型&通配符详解
-description: 全面解析Java泛型与通配符：深入理解类型擦除机制、上界下界通配符用法、PECS原则应用，掌握泛型编程核心技巧。
+title: Java Generics and Wildcards Explained
+description: Learn Java generics, type erasure, bounded wildcards, the PECS principle, and common generic programming techniques.
 category: Java
 tag:
-  - Java基础
+  - Java Fundamentals
 head:
   - - meta
     - name: keywords
-      content: Java泛型,通配符,类型擦除,泛型边界,PECS原则,泛型方法,上界下界通配符,泛型接口
+      content: Java generics,wildcards,type erasure,generic bounds,PECS principle,generic methods,bounded wildcards,generic interfaces
 ---
 
-## 泛型
+## Generics
 
-### 什么是泛型？有什么作用？
+### What Are Generics, and Why Use Them?
 
-**Java 泛型（Generics）** 是 JDK 5 中引入的一个新特性。使用泛型参数，可以增强代码的可读性以及稳定性。**如无特别说明，以下行为以 Java 8 为准。**
+**Java generics** were introduced in JDK 5. Generic parameters improve code readability and type safety. **Unless noted otherwise, examples assume Java 8.**
 
-编译器可以对泛型参数进行检测，并且通过泛型参数可以指定传入的对象类型。比如 `ArrayList<Person> persons = new ArrayList<Person>()` 这行代码指明了该 `ArrayList` 只能传入 `Person` 类型的对象，如果传入其他类型会报错（JDK 7 起可写 `new ArrayList<>()`，由编译器推断类型参数）。
+The compiler checks generic types and ensures that only the specified type is passed. For example, `ArrayList<Person> persons = new ArrayList<Person>()` means that the list accepts `Person` objects; passing another type causes a compile-time error. Since JDK 7, you can write `new ArrayList<>()` and let the compiler infer the type argument.
 
 ```java
 ArrayList<E> extends AbstractList<E>
 ```
 
-并且，原生 `List` 返回类型是 `Object`，需要手动转换类型才能使用，使用泛型后编译器自动转换。
+The raw `List` type returns elements as `Object`, so you need to cast them before use. With generics, the compiler handles the cast.
 
-### 泛型的使用方式有哪几种？
+### How Can You Use Generics?
 
-泛型一般有三种使用方式:**泛型类**、**泛型接口**、**泛型方法**。
+Generics are commonly used with **generic classes**, **generic interfaces**, and **generic methods**.
 
-**1.泛型类**：
+**1. Generic class:**
 
 ```java
-//此处T可以随便写为任意标识，常见的如T、E、K、V等形式的参数常用于表示泛型
-//在实例化泛型类时，必须指定T的具体类型
+// T can be any valid identifier. Common type parameter names include T, E, K, and V.
+// Specify a type argument when creating an instance of a generic class.
 public class Generic<T>{
 
     private T key;
@@ -47,14 +47,14 @@ public class Generic<T>{
 }
 ```
 
-如何实例化泛型类：
+Create an instance of a generic class:
 
 ```java
 Generic<Integer> genericInteger = new Generic<Integer>(123456);
-// JDK 7 起可写：new Generic<>(123456)
+// Since JDK 7, you can write: new Generic<>(123456)
 ```
 
-**2.泛型接口**：
+**2. Generic interface:**
 
 ```java
 public interface Generator<T> {
@@ -62,7 +62,7 @@ public interface Generator<T> {
 }
 ```
 
-实现泛型接口，不指定类型：
+Implement the generic interface without specifying the type:
 
 ```java
 class GeneratorImpl<T> implements Generator<T>{
@@ -73,7 +73,7 @@ class GeneratorImpl<T> implements Generator<T>{
 }
 ```
 
-实现泛型接口，指定类型：
+Implement the generic interface with a specific type:
 
 ```java
 class GeneratorImpl implements Generator<String> {
@@ -84,7 +84,7 @@ class GeneratorImpl implements Generator<String> {
 }
 ```
 
-**3.泛型方法**：
+**3. Generic method:**
 
 ```java
    public static < E > void printArray( E[] inputArray )
@@ -96,71 +96,71 @@ class GeneratorImpl implements Generator<String> {
     }
 ```
 
-使用：
+Usage:
 
 ```java
-// 创建不同类型数组： Integer, Double 和 Character
+// Create arrays of different types: Integer, Double, and Character.
 Integer[] intArray = { 1, 2, 3 };
 String[] stringArray = { "Hello", "World" };
 printArray( intArray  );
 printArray( stringArray  );
 ```
 
-### 项目中哪里用到了泛型？
+### Where Are Generics Used in Projects?
 
-- 自定义接口通用返回结果 `CommonResult<T>` 通过参数 `T` 可根据具体的返回类型动态指定结果的数据类型
-- 定义 `Excel` 处理类 `ExcelUtil<T>` 用于动态指定 `Excel` 导出的数据类型
-- 构建集合工具类（参考 `Collections` 中的 `sort`, `binarySearch` 方法）。
+- A generic API response such as `CommonResult<T>` can specify the result type with `T`.
+- An Excel utility such as `ExcelUtil<T>` can specify the type of data to export.
+- Collection utilities such as `Collections.sort` and `Collections.binarySearch` use generics.
 - ……
 
-### 什么是泛型擦除机制？为什么要擦除？
+### What Is Type Erasure, and Why Is It Used?
 
-**Java 泛型通过类型擦除实现：泛型实例在运行时不保留具体类型实参，但类文件仍可在 `Signature` 等属性中保留泛型声明信息，并可通过反射 API 读取。**
+**Java implements generics with type erasure: generic instances don't retain their concrete type arguments at runtime, though class files can preserve generic declarations in attributes such as `Signature`, which reflection APIs can read.**
 
-编译器会在编译期间会动态地将泛型 `T` 擦除为 `Object` 或将 `T extends xxx` 擦除为其限定类型 `xxx`。
+During compilation, the compiler erases `T` to `Object`, or erases `T extends SomeType` to its bound, `SomeType`.
 
-类型擦除让泛型代码能够与引入泛型之前的 Java 类库和二进制代码保持兼容。编译器会通过必要的类型转换和桥方法维持类型安全与多态语义。
+Type erasure allows generic code to remain compatible with Java libraries and bytecode from before generics were introduced. The compiler inserts casts and bridge methods as needed to preserve type safety and polymorphism.
 
-这里说的可能有点抽象，我举个例子：
+Here's an example:
 
 ```java
 List<Integer> list = new ArrayList<>();
 
 list.add(12);
-//1.编译期间直接添加会报错
+// 1. Adding this directly fails at compile time.
 list.add("a");
 Class<? extends List> clazz = list.getClass();
 Method add = clazz.getDeclaredMethod("add", Object.class);
-//2.运行期间通过反射添加，是可以的
+// 2. Reflection can add it at runtime.
 add.invoke(list, "kl");
 
 System.out.println(list)
 ```
 
-再来举一个例子 : 由于泛型擦除的问题，下面的方法重载会报错。
+Here's another example: the following overloads cause a compile-time error because of type erasure.
 
 ```java
 public void print(List<String> list)  { }
 public void print(List<Integer> list) { }
 ```
 
-![泛型擦除的问题](https://oss.javaguide.cn/github/javaguide/java/basis/generics-runtime-erasure.png)
+![Type erasure in Java generics](https://oss.javaguide.cn/github/javaguide/java/basis/generics-runtime-erasure.png)
 
-原因也很简单，泛型擦除之后，`List<String>` 与 `List<Integer>` 在编译以后都变成了 `List`。
+After type erasure, both `List<String>` and `List<Integer>` become `List`.
 
-**既然编译器要把泛型擦除，那为什么还要用泛型呢？用 Object 代替不行吗？**
+**If the compiler erases generic types, why use generics instead of `Object`?**
 
-这个问题其实在变相考察泛型的作用：
+This question is really asking what generics provide:
 
-- 使用泛型可在编译期间进行类型检测。
+- Generics provide compile-time type checking.
 
-- 使用 `Object` 类型需要手动添加强制类型转换，降低代码可读性，提高出错概率。
+- Using `Object` requires manual casts, which makes code harder to read and easier to get wrong.
 
-- 泛型可以使用自限定类型如 `T extends Comparable`。
+- Generics support bounded type parameters, such as `T extends Comparable`.
 
-### 什么是桥方法？
+### What Are Bridge Methods?
 
-桥方法(`Bridge Method`) 用于继承泛型类时保证多态。
+The compiler uses **bridge methods** to preserve polymorphism when a generic class is extended.
 
 ```java
 class Node<T> {
@@ -175,7 +175,7 @@ class Node<T> {
 class MyNode extends Node<Integer> {
     public MyNode(Integer data) { super(data); }
 
-  	// Node<T> 泛型擦除后为 setData(Object data)，而子类 MyNode 中并没有重写该方法，所以编译器会加入该桥方法保证多态
+    // Node<T>.setData(T) erases to setData(Object). The compiler generates this bridge method to preserve polymorphism.
    	public void setData(Object data) {
         setData((Integer) data);
     }
@@ -187,22 +187,21 @@ class MyNode extends Node<Integer> {
 }
 ```
 
-⚠️**注意**：桥方法为编译器自动生成，非手写。
+⚠️ **Note:** Bridge methods are generated by the compiler; you don't write them yourself.
 
-### 泛型有哪些限制？为什么？
+### What Are the Limitations of Generics, and Why?
 
-泛型的限制一般是由泛型擦除机制导致的。擦除为 `Object` 后无法进行类型判断
+Many limitations of generics result from type erasure. Once a type is erased to `Object`, some type information is unavailable at runtime.
 
-- 可以声明 `T` 类型的变量，但不能直接通过 `new T()` 实例化类型参数。
-- 泛型参数不能是基本类型。因为基本类型不是 `Object` 子类，应该用基本类型对应的引用类型代替。
-- 不能实例化泛型参数的数组。擦除后为 `Object` 后无法进行类型判断。
-- 不能实例化泛型数组。
-- 泛型无法使用 `instanceof` 对类型参数 T 做运行期判断；`getClass()` 在擦除后也无法区分不同泛型实参（如 `List<String>` 与 `List<Integer>` 均得到 `List.class`）。
-- 不能实现两个不同泛型参数的同一接口，擦除后多个父类的桥方法将冲突
-- 类的 `static` 上下文不能引用该类声明的类型参数，但静态泛型方法可以声明并使用自己的类型参数
+- You can declare a variable of type `T`, but you can't instantiate it directly with `new T()`.
+- Type arguments can't be primitive types. Use their wrapper types instead.
+- You can't create an array of a type parameter or a parameterized type because the erased type doesn't provide enough information for runtime checks.
+- You can't use `instanceof` to check a type parameter at runtime. After erasure, `getClass()` also can't distinguish `List<String>` from `List<Integer>`; both return `List.class`.
+- A class can't implement the same interface with different type arguments because erasure causes method signature conflicts.
+- A class's static context can't refer to its type parameters. A static generic method can declare and use its own type parameters.
 - ……
 
-### 以下代码是否能编译，为什么？
+### Will This Code Compile? Why or Why Not?
 
 ```java
 public final class Algorithm {
@@ -212,7 +211,7 @@ public final class Algorithm {
 }
 ```
 
-无法编译，因为 x 和 y 都会被擦除为 `Object` 类型， `Object` 无法使用 `>` 进行比较
+It won't compile because `x` and `y` are erased to `Object`, which can't be compared with `>`.
 
 ```java
 public class Singleton<T> {
@@ -228,95 +227,95 @@ public class Singleton<T> {
 }
 ```
 
-无法编译，因为类的静态字段和静态方法不能引用类声明的类型参数 `T`。静态方法可以声明自己的类型参数，例如 `public static <T> T getInstance()`。
+It won't compile because a class's static fields and methods can't refer to the class's type parameter `T`. A static method can declare its own type parameter, for example, `public static <T> T getInstance()`.
 
-## 通配符
+## Wildcards
 
-### 什么是通配符？有什么作用？
+### What Are Wildcards, and Why Use Them?
 
-泛型类型是固定的，某些场景下使用起来不太灵活，于是，通配符就来了！通配符可以允许类型参数变化，用来解决泛型无法协变的问题。
+Generic types are fixed, which can be restrictive in some cases. Wildcards allow more flexible type arguments and help address the invariance of generic types.
 
-举个例子：
+For example:
 
 ```java
-// 限制类型为 Person 的子类
+// Restrict the type to Person or one of its subtypes.
 <? extends Person>
-// 限制类型为 Manager 的父类
+// Restrict the type to Manager or one of its supertypes.
 <? super Manager>
 ```
 
-### 通配符？和常用的泛型 T 之间有什么区别？
+### How Does the Wildcard `?` Differ from a Type Parameter Such as `T`?
 
-- `T` 可以用于声明变量或常量而 `?` 不行。
-- `T` 一般用于声明泛型类或方法，通配符 `?` 一般用于泛型方法的调用代码和形参。
-- `T` 在编译期会被擦除为限定类型或 `Object`。通配符 `?` 在方法内部会被编译器「捕获」为某个具体但未知的类型（capture），因此不能向 `List<?>` 写入除 `null` 外的元素，但可配合泛型方法使用。
+- You can use `T` to declare a variable or constant; you can't use `?` this way.
+- `T` is commonly used to declare generic classes or methods. `?` is commonly used in type arguments, such as method parameters.
+- The compiler erases `T` to its bound or `Object`. Inside a method, the compiler captures `?` as a specific but unknown type. You can't add anything except `null` to a `List<?>`, though a generic method can work with the captured type.
 
-### 什么是无界通配符？
+### What Is an Unbounded Wildcard?
 
-无界通配符可以接收任何泛型类型数据，用于实现不依赖于具体类型参数的简单方法，可以捕获参数类型并交由泛型方法进行处理。
+An unbounded wildcard accepts any generic type. It's useful for simple methods that don't depend on the specific type argument, or when a generic method can capture and handle that type.
 
 ```java
 void testMethod(Person<?> p) {
-  // 泛型方法自行处理
+  // The generic method handles the value.
 }
 ```
 
-**`List<?>` 和 `List` 有区别吗？** 当然有！
+**Is there a difference between `List<?>` and `List`?** Yes.
 
-- `List<?> list` 表示 `list` 的元素类型是**某个未知但固定的类型**（即「存在某一类型 `T`，list 是 `List<T>`」），因此编译器不允许向其中添加除 `null` 外的任何元素，以避免类型不安全。
-- `List list` 是原生类型（raw type），会绕过部分泛型类型检查，并不等同于 `List<Object>`。向其中添加元素通常会产生未检查警告，并可能把类型错误推迟到运行时。
+- `List<?> list` means the element type is **unknown but fixed** (there is some type `T` such that the list is a `List<T>`). The compiler therefore prevents adding anything except `null` to avoid type errors.
+- `List list` is a raw type. It bypasses some generic type checks and isn't the same as `List<Object>`. Adding an element usually produces an unchecked warning and can defer type errors until runtime.
 
 ```java
 List<?> list = new ArrayList<>();
-list.add("sss");//报错
+list.add("sss");// Compile-time error.
 List list2 = new ArrayList<>();
-list2.add("sss");//警告信息
+list2.add("sss");// Unchecked warning.
 ```
 
-### 什么是上边界通配符？什么是下边界通配符？
+### What Are Upper-Bounded and Lower-Bounded Wildcards?
 
-在使用泛型的时候，我们还可以为传入的泛型类型实参进行上下边界的限制，如：**类型实参只准传入某种类型的父类或某种类型的子类**。
+You can restrict generic type arguments with upper or lower bounds. For example, an argument may be required to be a subtype or supertype of a particular type.
 
-**上边界通配符 `extends`** 表示类型实参必须是指定类型或其子类型。
+An **upper-bounded wildcard, `extends`**, means the type argument must be the specified type or one of its subtypes.
 
-举个例子：
+For example:
 
 ```java
-// 限制必须是 Person 类的子类
+// Restrict the type to Person or one of its subtypes.
 <? extends Person>
 ```
 
-类型边界可以设置多个，还可以对 `T` 类型进行限制。
+You can specify multiple bounds and also bound a type parameter `T`:
 
 ```java
 <T extends T1 & T2>
 <T extends XXX>
 ```
 
-**下边界通配符 `super`** 表示类型实参必须是指定类型或其父类型。
+A **lower-bounded wildcard, `super`**, means the type argument must be the specified type or one of its supertypes.
 
-举个例子：
+For example:
 
 ```java
-//  限制必须是 Employee 类的父类
+// Restrict the type to Employee or one of its supertypes.
 List<? super Employee>
 ```
 
-**`? extends xxx` 和 `? super xxx` 有什么区别?**
+**What's the difference between `? extends T` and `? super T`?**
 
-两者接收类型实参的范围不同。对于 `List<? extends Xxx>`，可以读取为 `Xxx`，但除 `null` 外不能安全写入；对于 `List<? super Xxx>`，可以写入 `Xxx` 及其子类型，读取结果只能安全地视为 `Object`。
+They accept different ranges of type arguments. With `List<? extends T>`, you can read values as `T`, but can't safely add anything except `null`. With `List<? super T>`, you can add `T` and its subtypes, but values can only be safely read as `Object`.
 
-**PECS 原则（Producer Extends, Consumer Super）**：从数据结构**取**元素时用 `extends`（生产者，Producer）；向数据结构**写**元素时用 `super`（消费者，Consumer）。例如：`List<? extends Number>` 只能从中读取 `Number`，不能写入；`List<? super Integer>` 可以写入 `Integer` 及其子类，读取时得到的是 `Object`。`Collections.copy(List<? super T> dest, List<? extends T> src)` 就是典型用法：从 `src` 读、往 `dest` 写。
+**PECS (Producer Extends, Consumer Super):** Use `extends` when reading from a data structure (a producer) and `super` when writing to one (a consumer). For example, you can read `Number` values from `List<? extends Number>` but can't add values to it. You can add `Integer` values to `List<? super Integer>`, but reads return `Object`. `Collections.copy(List<? super T> dest, List<? extends T> src)` is a typical example: it reads from `src` and writes to `dest`.
 
-**`T extends xxx` 和 `? extends xxx` 又有什么区别？**
+**What's the difference between `T extends SomeType` and `? extends SomeType`?**
 
-`T extends xxx` 用于声明带上界的类型参数，擦除后为 `xxx`；`? extends xxx` 用于参数化类型中的通配符实参，可出现在字段、局部变量、方法参数和返回类型等位置。
+`T extends SomeType` declares a bounded type parameter, which is erased to `SomeType`. `? extends SomeType` is a wildcard type argument that can be used in fields, local variables, method parameters, and return types.
 
-**`Class<?>` 和 `Class` 的区别？**
+**What's the difference between `Class<?>` and `Class`?**
 
-直接使用 Class 的话会有一个类型警告，使用 `Class<?>` 则没有，因为 Class 是一个泛型类，接收原生类型会产生警告
+Using raw `Class` produces a type warning because `Class` is generic. `Class<?>` avoids that warning.
 
-### 以下代码是否能编译，为什么？
+### Will This Code Compile? Why or Why Not?
 
 ```java
 class Shape { /* ... */ }
@@ -329,7 +328,7 @@ Node<Circle> nc = new Node<>();
 Node<Shape>  ns = nc;
 ```
 
-不能，因为 `Node<Circle>` 不是 `Node<Shape>` 的子类
+It won't compile because `Node<Circle>` isn't a subtype of `Node<Shape>`.
 
 ```java
 class Shape { /* ... */ }
@@ -344,7 +343,7 @@ ChildNode<Circle> nc = new ChildNode<>();
 Node<Circle>  ns = nc;
 ```
 
-可以编译，`ChildNode<Circle>` 是 `Node<Circle>` 的子类
+It compiles because `ChildNode<Circle>` is a subtype of `Node<Circle>`.
 
 ```java
 public static void print(List<? extends Number> list) {
@@ -354,9 +353,9 @@ public static void print(List<? extends Number> list) {
 }
 ```
 
-可以编译，`List<? extends Number>` 可以往外取元素，但是无法调用 `add()` 添加元素。
+It compiles. You can read values from `List<? extends Number>`, but can't use `add()` to add an element.
 
-## 参考
+## References
 
-- Java 官方文档： https://docs.oracle.com/javase/tutorial/java/generics/index.html
-- Java 基础 一文搞懂泛型：https://www.cnblogs.com/XiiX/p/14719568.html
+- [Java Generics Tutorial](https://docs.oracle.com/javase/tutorial/java/generics/index.html)
+- [Java Generics Explained](https://www.cnblogs.com/XiiX/p/14719568.html)

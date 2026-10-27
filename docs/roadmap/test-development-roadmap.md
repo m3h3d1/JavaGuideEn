@@ -1,5 +1,5 @@
 ---
-title: Test Development Roadmap (2026): From Software Testing to Quality Engineering in the AI Era
+title: "Test Development Roadmap (2026): From Software Testing to Quality Engineering in the AI Era"
 description: A 2026 roadmap for software testing and test development. Covers computer science fundamentals, programming languages, testing theory, API and UI automation, performance testing, CI/CD, test platforms, AI-assisted testing, and testing LLM applications.
 category: Learning Roadmaps
 head:

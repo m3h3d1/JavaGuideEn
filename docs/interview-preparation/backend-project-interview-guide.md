@@ -1,5 +1,5 @@
 ---
-title: How to Present a Backend Project in an Interview: From Introduction to Challenges and Incidents
+title: "How to Present a Backend Project in an Interview: From Introduction to Challenges and Incidents"
 description: A guide to preparing for Java backend project interviews. Covers project introductions, responsibilities, request flows, technology choices, performance improvements, production incidents, metrics, and common follow-up questions.
 category: Interview Preparation
 tag:
