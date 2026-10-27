@@ -1,34 +1,34 @@
-## 星球其他资源
+## More Knowledge Planet Resources
 
-[知识星球](../about-the-author/zhishixingqiu-two-years.md)除了提供了 **《Java 面试指北》** 、 **《Java 必读源码系列》**（目前已经整理了 Dubbo 2.6.x 、Netty 4.x、SpringBoot2.1 的源码）、 **《手写 RPC 框架》** 、**《Kafka 常见面试题/知识点总结》** 等多个专属小册，还有读书活动、学习打卡、简历修改、免费提问、海量 Java 优质面试资源以及各种不定时的福利。
+[Knowledge Planet](../about-the-author/zhishixingqiu-two-years.md) offers several exclusive guides, including the **Java Interview Guide**, the **Essential Java Source Code Series** (currently covering the source code of Dubbo 2.6.x, Netty 4.x, and Spring Boot 2.1), a **Build an RPC Framework from Scratch** guide, and **Common Kafka Interview Questions and Topics**. It also offers reading groups, study check-ins, resume reviews, free Q&A, a large collection of Java interview resources, and occasional perks.
 
-![知识星球专栏概览](https://oss.javaguide.cn/xingqiu/image-20220211231206733.png)
+![Overview of Knowledge Planet guides](https://oss.javaguide.cn/xingqiu/image-20220211231206733.png)
 
-![星球 PDF 面试手册](https://oss.javaguide.cn/xingqiu/image-20220723120918434.png)
+![Knowledge Planet PDF interview handbook](https://oss.javaguide.cn/xingqiu/image-20220723120918434.png)
 
-下面是星球提供的部分服务（点击下方图片即可获取知识星球的详细介绍）：
+Here are some of the services included (click the image for details about Knowledge Planet):
 
-[![星球服务](https://oss.javaguide.cn/xingqiu/xingqiufuwu.png)](../about-the-author/zhishixingqiu-two-years.md)
+[![Knowledge Planet services](https://oss.javaguide.cn/xingqiu/xingqiufuwu.png)](../about-the-author/zhishixingqiu-two-years.md)
 
-下面是今年收到了部分好评，每一条都是真实存在的。我看到很多培训班或者机构通过虚构一些不存在的好评来欺骗他人购买高价服务（行业内非常常见），真的很难理解。
+Here are some recent reviews from members. They are all genuine. Some training companies and agencies make up reviews to sell expensive services, which is unfortunately common in the industry.
 
-![球友对星球的真实评价](https://oss.javaguide.cn/xingqiu/praise-that-the-planet-received.png)
+![Genuine member reviews of Knowledge Planet](https://oss.javaguide.cn/xingqiu/praise-that-the-planet-received.png)
 
-**我有自己的原则，不割韭菜，用心做内容，真心希望帮助到你！** 如果你感兴趣的话，不妨花 3 分钟左右看看星球的详细介绍：[JavaGuide 知识星球详细介绍](../about-the-author/zhishixingqiu-two-years.md) 。
+**I don't use hard-sell tactics. I focus on making useful content and hope it helps.** If you're interested, take about three minutes to read the [full introduction to JavaGuide's Knowledge Planet](../about-the-author/zhishixingqiu-two-years.md).
 
-## 加入星球（限时优惠）
+## Join Knowledge Planet (Limited-Time Offer)
 
-已经坚持维护**六年**，内容持续更新，虽白菜价（**0.4 元/天**）但质量很高，主打一个良心！
+The community has been maintained for **six years**, with new content added regularly. Membership costs **¥0.40 per day** and includes a range of resources.
 
-目前星球正在做活动，两本书的价格，就能让你拥有上万培训班的服务！这里再提供一张 **30** 元的优惠卷（价格马上上调，老用户扫码续费半价 ）：
+There's currently a special offer: for about the price of two books, you get access to services that training programs may charge over **¥10,000** for. Here's a **¥30** coupon. Prices are expected to increase; existing members can renew at half price by scanning the QR code.
 
-![知识星球30元优惠卷](https://oss.javaguide.cn/xingqiu/xingqiuyouhuijuan-30.jpg)
+![¥30 Knowledge Planet coupon](https://oss.javaguide.cn/xingqiu/xingqiuyouhuijuan-30.jpg)
 
-🚀 **入圈必做**（干货满满，一定要看！）：
+🚀 **After joining, start here**:
 
-1. [星球使用指南](https://t.zsxq.com/0d18KSarv)
-2. [优质主题汇总](https://t.zsxq.com/12uSKgTIm)
+1. [Knowledge Planet User Guide](https://t.zsxq.com/0d18KSarv)
+2. [Curated Topics](https://t.zsxq.com/12uSKgTIm)
 
-**无任何套路，无任何潜在收费项。用心做内容，不割韭菜！**
+**No gimmicks or hidden fees. The focus is on creating useful content.**
 
-不过， **一定要确定需要再进** 。并且， **三天之内觉得内容不满意可以全额退款** 。
+Please join only if you think it meets your needs. If you're not satisfied within three days, you can get a full refund.

@@ -1,26 +1,26 @@
-## ⭐️ RAG 实战项目推荐
+## ⭐️ Recommended RAG Project
 
-推荐一个笔者开源的实战项目，基于 Spring Boot 4.0 + Java 21 + Spring AI + PostgreSQL + pgvector + RustFS + Redis，实现简历智能分析、AI模拟面试、知识库 RAG 检索等核心功能。非常适合作为学习和简历项目，学习门槛低。
+Here's an open-source hands-on project built with Spring Boot 4.0, Java 21, Spring AI, PostgreSQL, pgvector, RustFS, and Redis. It includes resume analysis, AI mock interviews, and RAG-based knowledge base search. It's suitable as a learning and portfolio project, with a gentle learning curve.
 
-**系统架构如下**：
+**System architecture:**
 
-![系统架构图](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/interview-guide-architecture-diagram.png)
+![System architecture diagram](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/interview-guide-architecture-diagram.png)
 
-**效果图：**
+**Screenshots:**
 
-![Skill 出题 + JD 解析](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-skill-jd-parse.png)
+![Skill question generation and job description analysis](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-skill-jd-parse.png)
 
-![简历分析详情](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-resume-analysis-detail.png)
+![Resume analysis details](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-resume-analysis-detail.png)
 
-完整代码完全免费开源，没有 Pro 版本或者付费版！
+The full source code is free and open source, with no Pro or paid edition.
 
-**项目地址** （欢迎 Star 鼓励）：
+**Project repositories** (Stars are welcome):
 
-- Github：<https://github.com/Snailclimb/interview-guide>
-- Gitee：<https://gitee.com/SnailClimb/interview-guide>
+- GitHub: <https://github.com/Snailclimb/interview-guide>
+- Gitee: <https://gitee.com/SnailClimb/interview-guide>
 
-项目详细介绍和系统学习教程地址（星球专属，性价比很高）： [《SpringAI 智能面试平台+RAG 知识库》](https://javaguide.cn/zhuanlan/interview-guide.html)。
+The detailed project introduction and learning tutorial are available to Knowledge Planet members: [Spring AI Interview Assistant and RAG Knowledge Base](https://javaguide.cn/zhuanlan/interview-guide.html).
 
-内容安排如下（已经更完，一共 18w+ 字）
+The tutorial is complete and contains more than **180,000 words**:
 
-![配套教程内容概览](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/tutorial-overview.png)
+![Tutorial contents overview](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/tutorial-overview.png)
