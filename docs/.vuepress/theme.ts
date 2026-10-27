@@ -235,7 +235,7 @@ const buildSeoDescription = (page, app) => {
 };
 
 export default hopeTheme({
-  hostname: "https://javaguide.cn/",
+  hostname: "https://m3h3d1.github.io/",
   logo: "/logo.png",
   favicon: "/favicon.ico",
 
@@ -244,7 +244,7 @@ export default hopeTheme({
     url: "https://javaguide.cn/article/",
   },
 
-  repo: "https://github.com/Snailclimb/JavaGuide",
+  repo: "https://github.com/m3h3d1/JavaGuideEn",
   docsDir: "docs",
   pure: true,
   focus: false,
@@ -293,7 +293,7 @@ export default hopeTheme({
   plugins: {
     blog: true,
     seo: {
-      canonical: "https://javaguide.cn",
+      canonical: "https://m3h3d1.github.io/JavaGuideEn",
       fallBackImage: "https://javaguide.cn/logo.png",
       ogp: (ogp, page, app) => ({
         ...ogp,
@@ -315,7 +315,7 @@ export default hopeTheme({
               "@type": "WebSite",
               name: "JavaGuide",
               alternateName: "Java Interview Guide",
-              url: "https://javaguide.cn/",
+              url: "https://m3h3d1.github.io/JavaGuideEn/",
               inLanguage: "en-US",
               description:
                 "JavaGuide is a guide to Java interviews and backend engineering, covering Java, MySQL, Redis, Spring, distributed systems, and system design.",

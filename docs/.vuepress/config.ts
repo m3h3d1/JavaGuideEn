@@ -10,6 +10,7 @@ const mermaidComponentPath = require.resolve(
 
 export default defineUserConfig({
   dest: "./dist",
+  base: "/JavaGuideEn/",
 
   title: "JavaGuide",
   description:
