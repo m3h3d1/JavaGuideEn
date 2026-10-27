@@ -1,94 +1,94 @@
 ---
-title: 校招没有实习经历怎么办？实习经历怎么写？
-description: 校招没有实习经历也能上岸：从补强项目经验、持续优化简历到系统准备技术面试，给出可执行的提升路径与注意事项，帮助你在没有大厂实习的情况下提高面试通过率。
-category: 面试准备
+title: No Internship Experience for Campus Recruiting? How to Describe Internships on Your Resume
+description: You can still succeed in campus recruiting without internship experience. This guide offers practical ways to strengthen projects, improve your resume, and prepare for technical interviews, even without an internship at a large company.
+category: Interview Preparation
 icon: "mdi:chart-timeline-variant"
 head:
   - - meta
     - name: keywords
-      content: 校招,实习经历,没有实习怎么办,项目经验,简历优化,技术面试准备,Java后端,秋招
+      content: campus recruiting,internship experience,no internship,project experience,resume improvement,technical interview preparation,Java backend,fall recruiting
 ---
 
 <!-- @include: @small-advertisement.snippet.md -->
 
-由于目前的面试太卷，对于犹豫是否要找实习的同学来说，个人建议不论是本科生还是研究生都应该在参加校招面试之前，争取一下不错的实习机会，尤其是大厂的实习机会，日常实习或者暑期实习都可以。当然，如果大厂实习面不上，中小厂实习也是可以接受的。
+Interviews are very competitive these days. If you are unsure whether to look for an internship, I recommend trying to get a good one before campus recruiting, whether you are an undergraduate or graduate student. Internships at large companies are especially valuable, but a semester or summer internship at a smaller company is also worthwhile.
 
-不过，现在的实习是真难找，这两年有非常多的同学没有找到实习，有一部分甚至是 211/985 名校的同学。实习难找是一方面原因，国内很多学校的导师压根不放实习，这也是很棘手的问题。
+Internships can be very hard to find. Many students have gone without one in the past few years, including some from top universities. Competition is one reason; at many universities, advisors also do not allow students to intern, which creates another challenge.
 
-## 没有实习经历怎么办？
+## What if you have no internship experience?
 
-如果实在是找不到合适的实习的话，那也没办法，我们应该多花时间去把下面这三件事情给做好：
+If you cannot find a suitable internship, focus on doing these three things well:
 
-1. 补强项目经历
-2. 持续完善简历
-3. 准备技术面试
+1. Strengthen your project experience.
+2. Keep improving your resume.
+3. Prepare for technical interviews.
 
-### 补强项目经历
+### Strengthen your project experience
 
-校招没有实习经历的话，找工作比较吃亏（没办法，太卷了），需要在项目经历部分多发力弥补一下。
+Without an internship, campus recruiting can be more difficult because competition is high. Put extra effort into the project section of your resume to make up for it.
 
-建议你尽全力地去补强自己的项目经历，完善现有的项目或者去做更有亮点的项目，尽可能地通过项目经历去弥补一些。
+Do your best to improve existing projects or build ones with stronger highlights. Use your project experience to show what you can do.
 
-你面试中的重点就是你的项目经历涉及到的知识点，如果你的项目经历比较简单的话，面试官直接不知道问啥了。另外，你的项目经历中不涉及的知识点，但在技能介绍中提到的知识点也很大概率会被问到。像 Redis 这种基本是面试 Java 后端岗位必备的技能，我觉得大部分面试官应该都会问。
+Interviewers often focus on topics from your projects. If your project is very simple, they may not have much to ask about. They are also likely to ask about technologies you list in your skills section, even if they are not used in your projects. Redis, for example, is a common requirement for Java backend roles, and most interviewers will ask about it.
 
-推荐阅读一下网站的这篇文章：[项目经验指南](https://javaguide.cn/interview-preparation/project-experience-guide.html)。
+See the [Project Experience Guide](https://javaguide.cn/interview-preparation/project-experience-guide.html).
 
-### 完善简历
+### Improve your resume
 
-一定一定一定要重视简历啊！建议至少花 2~3 天时间来专门完善自己的简历。并且，后续还要持续完善。
+Take your resume seriously. Spend at least **two to three days** working on it, and continue improving it afterward.
 
-对于面试官来说，筛选简历的时候会比较看重下面这些维度：
+When screening resumes, interviewers often consider:
 
-1. **实习/工作经历**：看你是否有不错的实习经历，大厂且与面试岗位相关的实习/工作经历最佳。
-2. **获奖经历**：如果有含金量比较高（知名度较高的赛事比如 ACM、阿里云天池）的获奖经历的话，也是加分点，尤其是对于校招来说，这类求职者属于是很多大厂争抢的对象（但不是说获奖了就能进大厂，还是要面试表现还可以）。对于社招来说，获奖经历作用相对较小，通常会更看重过往的工作经历和项目经验。
-3. **项目经验**：项目经验对于面试来说非常重要，面试官会重点关注，同时也是有水平的面试提问的重点。
-4. **技能匹配度**：看你的技能是否满足岗位的需求。在投递简历之前，一定要确认一下自己的技能介绍中是否缺少一些你要投递的对应岗位的技能要求。
-5. **学历**：相对其他行业来说，程序员求职面试对于学历的包容度还是比较高的，只要你在其他方面有过人之出的话，也是可以弥补一下学历的缺陷的。你要知道，很多行业比如律师、金融，学历就是敲门砖，学历没达到要求，直接面试机会都没有。不过，由于现在面试越来越卷，一些大厂、国企和研究所也开始卡学历了，很多岗位都要求 211/985，甚至必须需要硕士学历。总之，学历很难改变，学校较差的话，就投递那些对学历没有明确要求的公司即可，努力提升自己的其他方面的硬实力。
+1. **Internship and work experience**: An internship at a large company that relates to the role is especially valuable.
+2. **Awards**: Awards from well-known competitions, such as ACM contests or Alibaba Cloud Tianchi, can help, especially in campus recruiting. Candidates with these awards may attract interest from large companies, though an award alone does not guarantee an offer; interview performance still matters. Awards usually have less impact in experienced-hire recruiting, where work and project experience matter more.
+3. **Project experience**: Interviewers pay close attention to projects and often use them as a basis for follow-up questions.
+4. **Skill fit**: Make sure your skills match the requirements of the roles you are applying for. Check that your resume covers the relevant skills before you submit it.
+5. **Education**: Compared with some other fields, software roles can be more flexible about educational background. Strong experience in other areas may help offset a less prestigious school. In fields such as law and finance, a degree may be a strict requirement for getting an interview. As competition rises, some large companies, state-owned enterprises, and research institutes also set stricter education requirements, such as a 211 or 985 university or a master's degree. You cannot easily change your education, so if your school is less well-known, apply to companies without strict degree requirements and strengthen the skills you can control.
 
-对于大部分求职者来说，实习/工作经历、项目经验、技能匹配度更重要一些。不过，不排除一些公司会因为学历卡人。
+For most candidates, internships or work experience, projects, and skill fit matter most. Some companies may still screen candidates based on education.
 
-详细的程序员简历编写指南可以参考这篇文章：[程序员简历编写指南(重要)](https://javaguide.cn/interview-preparation/resume-guide.html)。
+For more detail, see the [Programmer Resume Guide](https://javaguide.cn/interview-preparation/resume-guide.html).
 
-### 准备技术面试
+### Prepare for technical interviews
 
-面试之前一定要提前准备一下常见的面试题也就是八股文：
+Before the interview, prepare for common technical questions:
 
-- 自己面试中可能涉及哪些知识点、那些知识点是重点。
-- 面试中哪些问题会被经常问到、面试中自己该如何回答。(强烈不推荐死记硬背，第一：通过背这种方式你能记住多少？能记住多久？第二：背题的方式的学习很难坚持下去！)
+- Which topics might come up, and which ones matter most?
+- Which questions are asked frequently, and how will you answer them? I strongly recommend against memorizing answers: how much can you remember and for how long? Studying by rote is also hard to sustain.
 
-不同类型的公司对于技能的要求侧重点是不同的比如腾讯、字节可能更重视计算机基础比如网络、操作系统这方面的内容。阿里、美团这种可能更重视你的项目经历、实战能力。
+Different companies emphasize different skills. Tencent and ByteDance may focus more on computer science fundamentals such as networking and operating systems, while Alibaba and Meituan may care more about projects and hands-on ability.
 
-一定不要抱着一种思想，觉得八股文或者基础问题的考查意义不大。如果你抱着这种思想复习的话，那效果可能不会太好。实际上，个人认为还是很有意义的，八股文或者基础性的知识在日常开发中也会需要经常用到。例如，线程池这块的拒绝策略、核心参数配置什么的，如果你不了解，实际项目中使用线程池可能就用的不是很明白，容易出现问题。而且，其实这种基础性的问题是最容易准备的，像各种底层原理、系统设计、场景题以及深挖你的项目这类才是最难的！
+Do not assume technical interview questions or fundamentals are unimportant. They also come up in daily development. For example, if you do not understand thread-pool rejection policies or how to set core parameters, you may use thread pools incorrectly and cause problems in a project. Fundamentals are among the easier topics to prepare. Low-level implementation details, system design, scenario questions, and deep project follow-ups are harder.
 
-八股文资料首推我的 [《Java 面试指北》](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html) 和 [JavaGuide](https://javaguide.cn/home.html) 。里面不仅仅是原创八股文，还有很多对实际开发有帮助的干货。除了我的资料之外，你还可以去网上找一些其他的优质的文章、视频来看。
+I recommend the [Java Interview Guide](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html) and [JavaGuide](https://javaguide.cn/home.html). They include original interview material as well as practical development advice. You can also look for other good articles and videos online.
 
-如果你想要系统准备 Java 后端面试但又不知道如何开始的，可以参考 [Java 后端面试通关计划（后端通用）](https://javaguide.cn/interview-preparation/backend-interview-plan.html)。
+If you are unsure how to organize your Java backend preparation, see the [Java Backend Interview Plan](https://javaguide.cn/interview-preparation/backend-interview-plan.html).
 
-## 实习经历在简历上一般怎么写比较出彩？
+## How should you describe an internship on your resume?
 
-实习经历的描述一定要避免空谈，尽量列举出你在实习期间取得的成就和具体贡献，使用具体的数据和指标来量化你的工作成果。
+Avoid vague claims. Describe specific contributions and results, using data and metrics to show what you achieved.
 
-示例（这里假设项目细节放在实习经历这里介绍，你也可以选择将实习经历参与的项目放到项目经历中）：
+Here are examples. Assume the details of the project are described in the internship section; you could also put those projects in a separate project section.
 
-1. 负责订单模块核心流程开发，实现订单状态的精确流转，并保障与库存、支付等模块的数据一致性。
-2. 负责行为风控黑名单看板的开发，支持查看拉黑用户、批量拉黑以及取消拉黑。
-3. 基于 Redisson + AOP 封装限流组件，实现对核心接口（如付费、课程搜索）的限流，有效防止恶意请求冲击。
-4. 优化用户统计模块性能，利用 CompletableFuture 并行加载多维度数据（如用户增长、课程活跃度），，平均相应时间从 3.5s 降低到 1s。
-5. 封装通用数据脱敏组件，通过自定义 Jackson 注解实现对手机号、邮箱等敏感信息的自动、无侵入式脱敏。
-6. 优化文件上传模块，基于 MinIO 实现了文件的分片上传、断点续传以及极速秒传功能。
-7. 排查并解决扣费模块由于扣费父任务和反作弊子任务使用同一个线程池导致的死锁问题，通过线程池隔离策略根除该隐患。
-8. 实习期间独立负责 7 个功能需求与 3 个线上问题修复，代码均一次性通过评审与测试。
+1. Owned core order flows, implementing accurate state transitions and maintaining consistency with inventory and payment modules.
+2. Built a dashboard for behavior-based risk blacklists, with tools to view, add, and remove blocked users in bulk.
+3. Built a rate-limiting component with Redisson and AOP to protect core endpoints, such as payments and course search, from malicious traffic.
+4. Improved the user statistics module with CompletableFuture to load multiple dimensions in parallel, including user growth and course activity, reducing average response time from 3.5 seconds to one second.
+5. Built a reusable data-masking component that uses custom Jackson annotations to mask sensitive information such as phone numbers and email addresses automatically, without invasive changes to application code.
+6. Improved the file-upload module with MinIO, adding multipart uploads, resumable uploads, and instant upload for existing files.
+7. Diagnosed and fixed a deadlock caused by a billing parent task and an anti-fraud child task sharing a thread pool. Thread-pool isolation removed the underlying risk.
+8. Independently delivered seven feature requests and fixed three production issues during the internship; all changes passed code review and testing on the first attempt.
 
-下面是[星球](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html)一位球友分享的实习经历介绍，整体写的还是非常不错的：
+Here is an internship description shared by a Knowledge Planet member. It is a strong example:
 
-![实习经历模板](https://oss.javaguide.cn/github/javaguide/interview-preparation/qiuyou-shixijingli-demo.png)
+![Internship experience example](https://oss.javaguide.cn/github/javaguide/interview-preparation/qiuyou-shixijingli-demo.png)
 
-📌关于实习经历这块再多提一点：很多同学实习期间可能接触不到什么实际的开发任务，大部分时间可能都是在熟悉和维护项目。
+📌 A final note on internships: Many students may not get substantial development tasks during an internship. Much of their time may go to learning and maintaining the project.
 
-对于这种情况，应对思路是一套组合拳：首先，你肯定是要和 mentor 沟通继续争取做一些有价值的工作，这样你的实习经历才更有价值，简历上自然就能够有东西可写。记得找一个 mentor 不那么忙的时候沟通，放低姿态，真诚一些，表明自己现有的工作已经认真完成，想要承担更多责任的意愿。其次，不管是否能够争取到这种机会，你都要自己有意识地寻找项目中适合自己研究的功能点（比如同组其他实习生干的活），进行深度挖掘。重点关注以下几个方面：
+If that happens, take a two-part approach. First, talk with your mentor and ask for more meaningful work. This can give you stronger internship experience and more to discuss on your resume. Choose a time when your mentor is not too busy, be humble and sincere, explain that you have completed your current tasks carefully, and say you would like to take on more responsibility. Second, whether or not that works, proactively study features in the project that interest you, such as work assigned to other interns. Dig into questions like these:
 
-1. **这个功能是干嘛的？** 它解决了什么业务痛点？给哪个业务方用的？整个流程是怎样的？
-2. **它是怎么实现的？** 用了哪些关键技术、框架或者设计模式？核心代码的逻辑是怎样的？
-3. **为什么要这么设计？** 当初设计的时候有没有别的方案？现在这个方案好在哪，又有什么潜在的坑？如果让你来做，你会怎么设计？
+1. **What does this feature do?** What business problem does it solve, who uses it, and what is the end-to-end flow?
+2. **How is it implemented?** Which technologies, frameworks, or design patterns does it use? What does the core code do?
+3. **Why was it designed this way?** Were other approaches considered? What are the strengths and potential problems of the chosen design? How would you design it?
 
-只要你把具体的功能点彻底搞懂，那就可以在简历上合理包装成自己的成果。除了功能点开发之外，也可以包装一些合适的问题排查解决经历，这样能够体现你解决问题的能力。 面试时也不用太担心自己“露馅”，只要你选择的内容不属于那些显然不会交给实习生完成的高难度任务，并且能清晰地讲明白，就不会有问题。
+Once you understand a feature thoroughly, you can reasonably present it on your resume as your own achievement. You can also present relevant debugging and problem-solving work to demonstrate your ability to solve problems. Do not worry too much about being “found out”: as long as you choose work that is plausible for an intern and can explain it clearly, you should be fine.

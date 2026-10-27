@@ -1,300 +1,295 @@
 ---
-title: 程序员简历编写指南
-description: 程序员简历编写指南：从筛选逻辑出发讲清简历结构、项目经历与技能描述写法，提供简历模板与避坑建议，帮助你提高简历通过率并让面试官更好地深挖你的亮点。
-category: 面试准备
+title: Programmer Resume Guide
+description: A practical guide to resume structure, project experience, and skills, based on how resumes are screened. Includes templates and common pitfalls to help you get more interviews and give interviewers a clear path to your strengths.
+category: Interview Preparation
 icon: "mdi:account-tie-outline"
 head:
   - - meta
     - name: keywords
-      content: 程序员简历,Java简历,简历优化,项目经历写法,简历模板,校招简历,社招简历,面试准备
+      content: programmer resume,Java resume,resume review,project experience,resume templates,new-grad resume,experienced-hire resume,interview preparation
 ---
 
-::: tip 友情提示
-本文节选自 **[《Java 面试指北》](../zhuanlan/java-mian-shi-zhi-bei.md)**。这是一份教你如何更高效地准备面试的小册，涵盖常见八股文（系统设计、常见框架、分布式、高并发 ……）、优质面经等内容。
+::: tip A note
+This article is adapted from the **[Java Interview Guide](../zhuanlan/java-mian-shi-zhi-bei.md)**, a companion resource to JavaGuide covering system design, common frameworks, distributed systems, high concurrency, and interview experiences.
 :::
 
-## 前言
+## Introduction
 
-一份好的简历可以在整个申请面试以及面试过程中起到非常重要的作用。
+A good resume matters throughout the application process and in the interview itself.
 
-**为什么说简历很重要呢？** 我们可以从下面几点来说：
+**Why does your resume matter?** Here are two reasons:
 
-**1、简历就像是我们的一个门面一样，它在很大程度上决定了是否能够获得面试机会。**
+**1. Your resume is your first impression and can determine whether you get an interview.**
 
-- 假如你是网申，你的简历必然会经过 HR 的筛选，一张简历 HR 可能也就花费 10 秒钟左右看一下，然后决定你能否进入面试。
-- 假如你是内推，如果你的简历没有什么优势的话，就算是内推你的人再用心，也无能为力。
+- For an online application, HR will screen your resume. They may spend only about ten seconds deciding whether to move you to the interview stage.
+- For a referral, the person referring you can only do so much if your resume does not make your strengths clear.
 
-另外，就算你通过了第一轮的筛选获得面试机会，后面的面试中，面试官也会根据你的简历来判断你究竟是否值得他花费很多时间去面试。
+Even after you pass the initial screening, interviewers use your resume to decide which parts of your experience deserve a closer look.
 
-**2、简历上的内容很大程度上决定了面试官提问的侧重点。**
+**2. Your resume largely determines what interviewers ask about.**
 
-- 一般情况下你的简历上注明你会的东西才会被问到（Java 基础、集合、并发、MySQL、Redis 、Spring、Spring Boot 这些算是每个人必问的），比如写了你熟练使用 Redis,那面试官就很大概率会问你 Redis 的一些问题，再比如你写了你在项目中使用了消息队列，那面试官大概率问很多消息队列相关的问题。
-- 技能熟练度在很大程度上也决定了面试官提问的深度。
+- Interviewers usually ask about the skills you list. Java fundamentals, collections, concurrency, MySQL, Redis, Spring, and Spring Boot are common topics. If you say you are proficient with Redis, expect questions about it. If you mention a message queue in a project, expect follow-ups about message queues.
+- The proficiency level you claim also affects how deeply interviewers explore a topic.
 
-在不夸大自己能力的情况下，写出一份好的简历也是一项很棒的能力。一般情况下，技术能力和学习能力比较厉害的，写出来的简历也比较棒！
+Writing a strong resume without overstating your abilities is a valuable skill. People with strong technical and learning skills often know how to present those strengths well, too.
 
-## 简历模板
+## Resume templates
 
-简历的样式真的非常非常重要！！！如果你的简历样式丑到没朋友的话，面试官真的没有看下去的欲望。一天处理上百份的简历的痛苦，你不懂！
+Visual presentation matters. If a resume is difficult to read, interviewers may not want to continue. Recruiters can review hundreds of resumes in a day, so make yours easy to scan.
 
-我这里的话，推荐大家使用 Markdown 语法写简历，然后再将 Markdown 格式转换为 PDF 格式后进行简历投递。如果你对 Markdown 语法不太了解的话，可以花半个小时简单看一下 Markdown 语法说明: <http://www.markdown.cn/>。
+I recommend writing your resume in Markdown and exporting it as a PDF. If you are unfamiliar with Markdown, you can learn the basics in about half an hour: <http://www.markdown.cn/>.
 
-下面是我收集的一些还不错的简历模板：
+Here are some resume templates and tools:
 
-- 适合中文的简历模板收集（推荐，开源免费）：<https://github.com/dyweb/awesome-resume-for-chinese>
-- 木及简历（推荐，部分免费） ： <https://www.mujicv.com/>
-- 简单简历（推荐，部分免费）：<https://easycv.cn/>
-- 极简简历（免费）： <https://www.polebrief.com/index>
-- Markdown 简历排版工具（开源免费）：<https://resume.mdnice.com/>
-- 站长简历（收费，支持 AI 生成）：<https://jianli.chinaz.com/>
-- typora+markdown+css 自定义简历模板 ：<https://github.com/Snailclimb/typora-markdown-resume>
-- 超级简历（部分收费） ： <https://www.wondercv.com/>
+- Chinese resume templates (recommended, open source and free): <https://github.com/dyweb/awesome-resume-for-chinese>
+- MujiCV (recommended, some features are free): <https://www.mujicv.com/>
+- Simple Resume (recommended, some features are free): <https://easycv.cn/>
+- Polebrief (free): <https://www.polebrief.com/index>
+- Markdown resume formatter (open source and free): <https://resume.mdnice.com/>
+- Chinaz Resume (paid, with AI generation): <https://jianli.chinaz.com/>
+- Custom resume templates with Typora, Markdown, and CSS: <https://github.com/Snailclimb/typora-markdown-resume>
+- WonderCV (some features are paid): <https://www.wondercv.com/>
 
-上面这些简历模板大多是只有 1 页内容，很难展现足够的信息量。如果你不是顶级大牛（比如 ACM 大赛获奖）的话，我建议还是尽可能多写一点可以突出你自己能力的内容（校招生 2 页之内，社招生 3 页之内，记得精炼语言，不要过多废话）。
+Most of these templates are limited to one page, which may not leave enough room for your experience. Unless you have exceptional credentials, such as an ACM competition award, include enough detail to show your strengths. As a general guide, keep new-grad resumes to two pages and experienced-hire resumes to three. Be concise and avoid filler.
 
-再总结几点 **简历排版的注意事项**：
+A few **resume formatting tips**:
 
-- 尽量简洁，不要太花里胡哨。
-- 技术名词最好规范大小写比较好，比如 java->Java ，spring boot -> Spring Boot 。这个虽然有些面试官不会介意，但是很多面试官都会在意这个细节的。
-- 中文和数字英文之间加上空格的话看起来会舒服一点。
+- Keep the layout simple and avoid unnecessary decoration.
+- Use standard capitalization for technical terms, such as `Java` rather than `java` and `Spring Boot` rather than `spring boot`. Some interviewers care about this detail.
+- Add spaces between Chinese text and English words or numbers when they appear together; it improves readability.
 
-另外，知识星球里还有真实的简历模板可供参考，地址：<https://t.zsxq.com/12ypxGNzU> （需加入[知识星球](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html)获取）。
+The Knowledge Planet community also has real resume examples: <https://t.zsxq.com/12ypxGNzU> (available to [members](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html)).
 
 ![](https://oss.javaguide.cn/javamianshizhibei/image-20230918073550606.png)
 
-## 简历内容
+## Resume content
 
-### 个人信息
+### Personal information
 
-- 最基本的 ：姓名（身份证上的那个）、年龄、电话、籍贯、联系方式、邮箱地址
-- 潜在加分项 ： Github 地址、博客地址（如果技术博客和 Github 上没有什么内容的话，就不要写了）
+- **Essential**: legal name, age, phone number, place of origin, contact information, and email address.
+- **Optional**: GitHub profile and blog. Leave them out if they do not contain relevant technical work.
 
-示例：
+Example:
 
 ![](https://oss.javaguide.cn/zhishixingqiu/20210428212337599.png)
 
-**简历要不要放照片呢？** 很多人写简历的时候都有这个问题。
+**Should you include a photo?** This is a common question.
 
-其实放不放都行，影响不大，完全不用在意这个问题。除非，你投递的岗位明确要求要放照片。 不过，如果要放的话，不要放生活照，还是应该放正规一些的照片比如证件照。
+Either choice is fine and usually has little impact, unless the role specifically requires a photo. If you include one, use a professional headshot rather than a casual photo.
 
-### 求职意向
+### Target role
 
-你想要应聘什么岗位，希望在什么城市。另外，你也可以将求职意向放到个人信息这块写。
+State which role you are applying for and your preferred location. You can put this in the personal information section as well.
 
-示例：
+Example:
 
 ![](https://oss.javaguide.cn/zhishixingqiu/20210428212410288.png)
 
-### 教育经历
+### Education
 
-教育经历也不可或缺。通过教育经历的介绍，你要确保能让面试官就可以知道你的学历、专业、毕业学校以及毕业的日期。
+Include your degree, major, school, and graduation dates so interviewers can quickly understand your education background.
 
-示例：
+Example:
 
-> 北京理工大学 硕士，软件工程 2019.09 - 2022.01
-> 湖南大学 学士，应用化学 2015.09 ~ 2019.06
+> Beijing Institute of Technology, M.Eng. in Software Engineering, Sep 2019–Jan 2022
+>
+> Hunan University, B.Sc. in Applied Chemistry, Sep 2015–Jun 2019
 
-### 专业技能
+### Technical skills
 
-先问一下你自己会什么，然后看看你意向的公司需要什么。一般 HR 可能并不太懂技术，所以他在筛选简历的时候可能就盯着你专业技能的关键词来看。对于公司有要求而你不会的技能，你可以花几天时间学习一下，然后在简历上可以写上自己了解这个技能。
+Start by listing the skills you have, then compare them with the requirements of your target roles. HR may not have a technical background, so they often screen for keywords. If a company asks for a skill you do not yet have, you can spend a few days learning the basics and list it as a skill you are familiar with.
 
-下面是一份最新的 Java 后端开发技能清单，你可以根据自身情况以及岗位招聘要求做动态调整，核心思想就是尽可能满足岗位招聘的所有技能要求。
+The template below lists common Java backend development skills. Adjust it to match your experience and the job description; the goal is to cover the role's requirements honestly.
 
-![Java 后端技能模板](https://oss.javaguide.cn/zhishixingqiu/jinengmuban.png)
+![Java backend skills template](https://oss.javaguide.cn/zhishixingqiu/jinengmuban.png)
 
-我这里再单独放一个我看过的某位同学的技能介绍，我们来找找问题。
+Here is a skills section from a candidate's resume. Let's identify some issues:
 
 ![](https://oss.javaguide.cn/zhishixingqiu/up-a58d644340f8ce5cd32f9963f003abe4233.png)
 
-上图中的技能介绍存在的问题：
+Issues with the skills section above:
 
-- 技术名词最好规范大小写比较好，比如 java->Java ，spring boot -> Spring Boot 。这个虽然有些面试官不会介意，但是很多面试官都会在意这个细节的。
-- 技能介绍太杂，没有亮点。不需要全才，某个领域做得好就行了！
-- 对 Java 后台开发的部分技能比如 Spring Boot 的熟悉度仅仅为了解，无法满足企业的要求。
+- Use standard capitalization for technical terms, such as `Java` rather than `java` and `Spring Boot` rather than `spring boot`. Some interviewers care about this detail.
+- The skills list is unfocused and does not highlight a strength. You do not need to be good at everything; show where you are strong.
+- Some Java backend skills, such as Spring Boot, are listed only as “familiar,” which may not meet an employer's expectations.
 
-### 实习经历/工作经历（重要）
+### Internships and work experience (important)
 
-工作经历针对社招，实习经历针对校招。
+Work experience is generally for experienced-hire candidates; internships are generally for new-grad candidates.
 
-工作经历建议采用时间倒序的方式来介绍。实习经历和工作经历都需要简单突出介绍自己在职期间主要做了什么。
+List work experience in reverse chronological order. For each role or internship, briefly highlight your main contributions.
 
-示例：
+Example:
 
-> **XXX 公司 （201X 年 X 月 ~ 201X 年 X 月 ）**
+> **XXX Company (Month 201X–Month 201X)**
 >
-> - **职位**：Java 后端开发工程师
-> - **工作内容**：主要负责 XXX
+> - **Role**: Java Backend Developer
+> - **Responsibilities**: Primarily responsible for XXX
 
-### 项目经历（重要）
+### Project experience (important)
 
-简历上有一两个项目经历很正常，但是真正能把项目经历很好的展示给面试官的非常少。
+It is common to list one or two projects, but many candidates struggle to present them well. Project descriptions are often too long, too brief, or missing a clear highlight.
 
-很多求职者的项目经历介绍都会面临过于啰嗦、过于简单、没突出亮点等问题。
+Use this template:
 
-项目经历介绍模板如下：
-
-> 项目名称（字号要大一些）
+> **Project name** (use a larger font)
 >
-> 2017-05~2018-06 淘宝 Java 后端开发工程师
+> May 2017–June 2018 · Java Backend Developer, Taobao
 >
-> - **项目描述** : 简单描述项目是做什么的。
-> - **技术栈** ：用了什么技术（如 Spring Boot + MySQL + Redis + Mybatis-plus + Spring Security + Oauth2）
-> - **工作内容/个人职责** : 简单描述自己做了什么，解决了什么问题，带来了什么实质性的改善。突出自己的能力，不要过于平淡的叙述。
-> - **个人收获（可选）** : 从这个项目中你学会了那些东西，使用到了那些技术，学会了那些新技术的使用。通常是可以不用写个人收获的，因为你在个人职责介绍中写的东西已经表明了自己的主要收获。
-> - **项目成果（可选）** :简单描述这个项目取得了什么成绩。
+> - **Project summary**: Briefly explain what the project does.
+> - **Tech stack**: List the technologies used, such as Spring Boot, MySQL, Redis, MyBatis-Plus, Spring Security, and OAuth 2.0.
+> - **Contributions and responsibilities**: Explain what you did, what problem you solved, and what improved. Highlight your skills instead of listing routine tasks.
+> - **What you learned (optional)**: Mention useful skills or technologies you picked up. This is usually unnecessary if your responsibilities already show what you learned.
+> - **Project results (optional)**: Briefly state the project's outcomes.
 
-**1、项目经历应该突出自己做了什么，简单概括项目基本情况。**
+**1. Focus on your contribution and briefly describe the project.**
 
-项目介绍尽量压缩在两行之内，不需要介绍太多，但也不要随便几个字就介绍完了。
+Keep the project summary to about two lines. Include enough context to make it clear, but do not spend too much space on it.
 
-另外，个人收获和项目成果都是可选的，如果选择写的话，也不要花费太多篇幅，记住你的重点是介绍工作内容/个人职责。
+What you learned and the project results are optional. If you include them, keep them brief; your main focus should be your responsibilities and contributions.
 
-**2、技术架构直接写技术名词就行，不要再介绍技术是干嘛的了，没意义，属于无效介绍。**
+**2. List technology names in the architecture section; do not explain what each technology does.** That explanation usually adds little value.
 
 ![](https://oss.javaguide.cn/github/javaguide/interview-preparation/46c92fbc5160e65dd85c451143177144.png)
 
-**3、尽量减少纯业务的个人职责介绍，对于面试不太友好。尽量再多挖掘一些亮点（6~8 条个人职责介绍差不多了，做好筛选），最好可以体现自己的综合素质，比如你是如何协调项目组成员协同开发的或者在遇到某一个棘手的问题的时候你是如何解决的又或者说你在这个项目优化了某个模块的性能。**
+**3. Avoid describing only routine business tasks. Find a few contributions that show your range.** Around six to eight responsibility bullets is usually enough. You might explain how you coordinated development with teammates, solved a difficult problem, or improved a module's performance.
 
-即使不是你做的功能模块或者解决的问题，你只要搞懂吃透了就能拿来自己用，适当润色即可！
+Even if you did not build a feature or solve a problem yourself, you can still use it as a project highlight once you understand it thoroughly; polish the wording as needed.
 
-像性能优化方向上的亮点面试之前也比较容易准备，但也不要都是性能优化相关的，这种也算是一个极端。
+Performance improvements are often easy to prepare before an interview, but do not make every bullet about performance. That can become one-sided.
 
-另外，技术优化取得的成果尽量要量化一下：
+Whenever possible, quantify the outcome of technical improvements:
 
-- 使用 xxx 技术解决了 xxx 问题，系统 QPS 从 xxx 提高到了 xxx。
-- 使用 xxx 技术了优化了 xxx 接口，系统 QPS 从 xxx 提高到了 xxx。
-- 使用 xxx 技术解决了 xxx 问题，查询速度优化了 xxx，系统 QPS 达到 10w+。
-- 使用 xxx 技术优化了 xxx 模块，响应时间从 2s 降低到 0.2s。
-- ……
+- Used **XXX** to solve **YYY**, increasing system QPS from **A** to **B**.
+- Optimized the **XXX** endpoint using **YYY**, increasing system QPS from **A** to **B**.
+- Used **XXX** to solve **YYY**, improving query speed by **Z** and reaching 100,000+ QPS.
+- Optimized the **XXX** module using **YYY**, reducing response time from two seconds to 0.2 seconds.
+- …
 
-个人职责介绍示例（这里只是举例，不要照搬，结合自己项目经历自己去写，不然面试的时候容易被问倒） ：
+Example responsibility bullets (do not copy them directly; tailor them to your own projects, or you may be unable to answer follow-up questions):
 
-- 基于 Spring Cloud Gateway + Spring Security OAuth2 + JWT 实现微服务统一认证授权和鉴权，使用 RBAC 权限模型实现动态权限控制。
-- 参与项目订单模块的开发，负责订单创建、删除、查询等功能，基于 Spring 状态机实现订单状态流转。
-- 商品和订单搜索场景引入 Elasticsearch，并且实现了相关商品推荐以及搜索提示功能。
-- 整合 Canal + RabbitMQ 将 MySQL 增量数据（如商品、订单数据）同步到 Elasticsearch。
-- 利用 RabbitMQ 官方提供的延迟队列插件实现延时任务场景比如订单超时自动取消、优惠券过期提醒、退款处理。
-- 消息推送系统引入 RabbitMQ 实现异步处理、削峰填谷和服务解耦，最高推送速度 10w/s，单日最大消息量 2000 万。
-- 使用 MAT 工具分析 dump 文件解决了广告服务新版本上线后导致大量的服务超时告警的问题。
-- 排查并解决扣费模块由于扣费父任务和反作弊子任务使用同一个线程池导致的死锁问题。
-- 基于 EasyExcel 实现广告投放数据的导入导出，通过 MyBatis 批处理插入数据，基于任务表实现异步。
-- 负责用户统计模块的开发，使用 CompletableFuture 并行加载后台用户统计模块的数据信息，平均相应时间从 3.5s 降低到 1s。
-- 基于 Sentinel 对核心场景(如用户登入注册、收货地址查询等)进行限流、降级，保护系统，提升用户体验。
-- 热门数据（如首页、热门博客）使用 Redis+Caffeine 两级缓存，解决了缓存击穿和穿透问题，查询速度毫秒级，QPS 30w+。
-- 使用 CompletableFuture 优化购物车查询模块，对获取用户信息、商品详情、优惠券信息等异步 RPC 调用进行编排，响应时间从 2s 降低为 0.2s。
-- 搭建 EasyMock 服务，用于模拟第三方平台接口，方便了在网络隔离情况下的接口对接工作。
-- 基于 SkyWalking + Elasticsearch 搭建分布式链路追踪系统实现全链路监控。
+- Implemented unified authentication and authorization for microservices using Spring Cloud Gateway, Spring Security OAuth 2.0, and JWT, with dynamic access control based on RBAC.
+- Contributed to the order module, building order creation, deletion, and query features and using a Spring state machine to manage order transitions.
+- Added Elasticsearch for product and order search, including product recommendations and search suggestions.
+- Integrated Canal and RabbitMQ to sync incremental MySQL data, such as product and order records, to Elasticsearch.
+- Used RabbitMQ's delayed-message plugin for tasks such as automatic cancellation of expired orders, coupon expiration reminders, and refund processing.
+- Added RabbitMQ to a notification system for asynchronous processing, load leveling, and service decoupling. The peak delivery rate reached 100,000 messages per second, with up to 20 million messages per day.
+- Used MAT to analyze a heap dump and resolve widespread service-timeout alerts after a new version of the advertising service was deployed.
+- Diagnosed and fixed a deadlock in the billing module caused by a parent billing task and an anti-fraud subtask sharing a thread pool.
+- Built advertising data import and export with EasyExcel, inserted records in batches with MyBatis, and used a task table for asynchronous processing.
+- Developed the user statistics module and used CompletableFuture to load data concurrently, reducing average response time from 3.5 seconds to one second.
+- Used Sentinel for rate limiting and graceful degradation in key scenarios, including registration, login, and address lookup.
+- Added Redis and Caffeine as a two-level cache for popular data, including the homepage and popular blogs, addressing cache breakdown and penetration. Query times reached the millisecond range, with QPS above 300,000.
+- Used CompletableFuture to coordinate asynchronous RPC calls for user, product, and coupon data in the shopping cart module, reducing response time from two seconds to 0.2 seconds.
+- Set up EasyMock to simulate third-party APIs, making integration work possible in an isolated network environment.
+- Built distributed tracing and end-to-end monitoring with SkyWalking and Elasticsearch.
 
-**4、如果你觉得你的项目技术比较落后的话，可以自己私下进行改进。重要的是让项目比较有亮点，通过什么方式就无所谓了。**
+**4. If your project's technology stack is dated, you can improve it on your own time.** The important thing is to give the project a clear strength; how you do that is up to you.
 
-项目经历这部分对于简历来说非常重要，[《Java 面试指北》](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html)的面试准备篇有好几篇关于优化项目经历的文章，建议你仔细阅读一下，应该会对你有帮助。
+Project experience is an important part of your resume. The interview preparation section of the [Java Interview Guide](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html) has several articles on improving project descriptions; they are worth reading.
 
 ![](https://oss.javaguide.cn/zhishixingqiu/4e11dbc842054e53ad6c5f0445023eb5~tplv-k3u1fbpfcp-zoom-1.png)
 
-**5、避免个人职责介绍都是围绕一个技术点来写，非常不可取。**
+**5. Do not make every responsibility bullet about the same technology.**
 
 ![](https://oss.javaguide.cn/zhishixingqiu/image-20230424222513028.png)
 
-**6、避免模糊性描述，介绍要具体（技术+场景+效果），也要注意精简语言（避免堆砌技术词，省略不必要的描述）。**
+**6. Avoid vague wording. Be specific about the technology, scenario, and result, and keep the writing concise.** Do not pile up technology names or include unnecessary details.
 
 ![](https://oss.javaguide.cn/github/javaguide/interview-preparation/project-experience-avoiding-ambiguity-descriptio.png)
 
-### 荣誉奖项（可选）
+### Awards (optional)
 
-如果你有含金量比较高的竞赛（比如 ACM、阿里的天池大赛）的获奖经历的话，荣誉奖项这块内容一定要写一下！并且，你还可以将荣誉奖项这块内容适当往前放，放在一个更加显眼的位置。
+If you have a significant competition award, such as an ACM contest or Alibaba's Tianchi competition, include it. You can place this section near the top of your resume to make it more visible.
 
-### 校园经历（可选）
+### Campus activities (optional)
 
-如果有比较亮眼的校园经历的话就简单写一下，没有就不写！
+Briefly mention noteworthy campus activities. Leave this section out if you do not have relevant experience.
 
-### 个人评价
+### Personal summary
 
-**个人评价就是对自己的解读，一定要用简洁的语言突出自己的特点和优势，避免废话！** 像勤奋、吃苦这些比较虚的东西就不要扯了，面试官看着这种个人评价就烦。
+Use a concise personal summary to highlight your strengths. Avoid filler or vague claims such as “hard-working” and “willing to put in long hours”; interviewers rarely find them useful.
 
-我们可以从下面几个角度来写个人评价：
+You can write about:
 
-- 文档编写能力、学习能力、沟通能力、团队协作能力
-- 对待工作的态度以及个人的责任心
-- 能承受的工作压力以及对待困难的态度
-- 对技术的追求、对代码质量的追求
-- 分布式、高并发系统开发或维护经验
+- Writing, learning, communication, and teamwork skills.
+- Your attitude toward work and sense of responsibility.
+- How you handle pressure and difficult problems.
+- Your interest in technology and code quality.
+- Experience developing or maintaining distributed and high-concurrency systems.
 
-列举 3 个实际的例子：
+Here are three examples based on real experience:
 
-- 学习能力较强，大三参加国家软件设计大赛的时候快速上手 Python 写了一个可配置化的爬虫系统。
-- 具有团队协作精神，大三参加国家软件设计大赛的时候协调项目组内 5 名开发同学，并对编码遇到困难的同学提供帮助，最终顺利在 1 个月的时间完成项目的核心功能。
-- 项目经验丰富，在校期间主导过多个企业级项目的开发。
+- **Fast learner**: Quickly learned Python during my third year to build a configurable web crawler for a national software design competition.
+- **Team player**: Coordinated five developers in a national software design competition and helped teammates resolve coding issues; we completed the core features in one month.
+- **Project experience**: Led the development of several enterprise projects while at university.
 
-## STAR 法则和 FAB 法则
+## STAR and FAB methods
 
-### STAR 法则（Situation Task Action Result）
+### STAR (Situation, Task, Action, Result)
 
-相信大家一定听说过 STAR 法则。对于面试，你可以将这个法则用在自己的简历以及和面试官沟通交流的过程中。
+The STAR method can help you structure your resume and communicate with interviewers. Its name comes from the first letters of four words:
 
-STAR 法则由下面 4 个单词组成（STAR 法则的名字就是由它们的首字母组成）：
+- **Situation**: What was happening?
+- **Task**: What were you responsible for?
+- **Action**: What did you do?
+- **Result**: What was the outcome?
 
-- **Situation：** 情景。 事情是在什么情况下发生的？
-- **Task：** 任务。你的任务是什么？
-- **Action：** 行动。你做了什么？
-- **Result：** 结果。最终的结果怎样？
+### FAB (Feature, Advantage, Benefit)
 
-### FAB 法则（Feature Advantage Benefit）
+The FAB method is also used in sales. Its name comes from:
 
-除了 STAR 法则，你还需要了解在销售行业经常用到的一个叫做 FAB 的法则。
+- **Feature**: What are your strengths or distinguishing qualities?
+- **Advantage**: What do you do better than others?
+- **Benefit**: What value would an employer gain by hiring you?
 
-FAB 法则由下面 3 个单词组成（FAB 法则的名字就是由它们的首字母组成）：
+In short, **FAB helps interviewers understand your strengths and the value you can bring to a company.**
 
-- **Feature：** 你的特征/优势是什么？
-- **Advantage：** 比别人好在哪些地方；
-- **Benefit：** 如果雇佣你，招聘方会得到什么好处。
+## Tips
 
-简单来说，**FAB 法则主要是让你的面试官知道你的优势和你能为公司带来的价值。**
+### Keep the page count reasonable
 
-## 建议
+Be concise and highlight your strengths. As a general guide, keep a new-grad resume to two pages and an experienced-hire resume to three. If you have more to say, you do not have to squeeze everything onto one page; prioritize a clean, readable layout.
 
-### 避免页数过多
+After reviewing thousands of resumes, I have seen a few that were close to ten pages long. That's a lot to get through.
 
-精简表述，突出亮点。校招简历建议不要超过 2 页，社招简历建议不要超过 3 页。如果内容过多的话，不需要非把内容压缩到一页，保持排版干净整洁就可以了。
+![A resume that is too long](https://oss.javaguide.cn/zhishixingqiu/image-20230508223646164.png)
 
-看了几千份简历，有少部分同学的简历页数都接近 10 页了，让我头皮发麻。
+### Avoid vague language
 
-![简历页数过多](https://oss.javaguide.cn/zhishixingqiu/image-20230508223646164.png)
+Avoid subjective claims and vague adjectives. Keep the wording clear and the structure easy to follow.
 
-### 避免语义模糊
+For example:
 
-尽量避免主观表述，少一点语义模糊的形容词。表述要简洁明了，简历结构要清晰。
+- **Weak**: I played a very important role on the team.
+- **Stronger**: As the backend lead, I led the design and development of the backend system.
 
-举例：
+### Use a clear layout
 
-- 不好的表述：我在团队中扮演了很重要的角色。
-- 好的表述：我作为后端技术负责人，领导团队完成后端项目的设计与开发。
+Resume layout matters. You do not need decorative design, but the structure should be clear and easy to read.
 
-### 注意简历样式
+### Other advice
 
-简历样式同样很重要，一定要注意！不必追求花里胡哨，但要尽量保证结构清晰且易于阅读。
+- Submit your resume as a PDF, not a Word document or another format.
+- Do not list skills you do not have. Keep your resume truthful; clear, polished wording is fine.
+- List work experience in reverse chronological order. For internships, put the most relevant experience first.
+- Present your project experience clearly. Focus on what you did and your contributions, not just what the project does.
+- List projects in reverse chronological order. Choose two or three strong projects rather than listing many without clear highlights.
+- During interview preparation, focus on the claims in your resume, especially your projects and skills.
+- Interviews and day-to-day work are different. Guide the conversation toward areas you know well, but remember that earning the offer you want still requires strong skills.
 
-### 其他
+## Resume reviews
 
-- 一定要使用 PDF 格式投递，不要使用 Word 或者其他格式投递。这是最基本的！
-- 不会的东西就不要写在简历上了。注意简历真实性，适当润色没有问题。
-- 工作经历建议采用时间倒序的方式来介绍，实习经历建议将最有价值的放在最前面。
-- 将自己的项目经历完美的展示出来非常重要，重点是突出自己做了什么（挖掘亮点），而不是介绍项目是做什么的。
-- 项目经历建议以时间倒序排序，另外项目经历不在于多（精选 2~3 即可），而在于有亮点。
-- 准备面试的过程中应该将你写在简历上的东西作为重点，尤其是项目经历上和技能介绍上的。
-- 面试和工作是两回事，聪明的人会把面试官往自己擅长的领域领，其他人则被面试官牵着鼻子走。虽说面试和工作是两回事，但是你要想要获得自己满意的 offer ，你自身的实力必须要强。
+So far, I have provided free resume reviews to **6,000+** Knowledge Planet members. Because of limited time, this service is available only to members. To request a review, join the [official JavaGuide Knowledge Planet](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html#%E7%AE%80%E5%8E%86%E4%BF%AE%E6%94%B9) (follow the link for details).
 
-## 简历修改
+![Resume review](https://oss.javaguide.cn/xingqiu/%E7%AE%80%E5%8E%86%E4%BF%AE%E6%94%B92.jpg)
 
-到目前为止，我至少帮助 **6000+** 位球友提供了免费的简历修改服务。由于个人精力有限，修改简历仅限加入星球的读者，需要帮看简历的话，可以加入 [**JavaGuide 官方知识星球**](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html#%E7%AE%80%E5%8E%86%E4%BF%AE%E6%94%B9)（点击链接查看详细介绍）。
+Membership costs about one percent of a typical training program, while offering in-depth content and a wide range of services for Java learners and interview candidates.
 
-![img](https://oss.javaguide.cn/xingqiu/%E7%AE%80%E5%8E%86%E4%BF%AE%E6%94%B92.jpg)
+Here are some of the services included (click the image for details about Knowledge Planet):
 
-虽然收费只有培训班/训练营的百分之一，但是知识星球里的内容质量更高，提供的服务也更全面，非常适合准备 Java 面试和学习 Java 的同学。
+[![Knowledge Planet services](https://oss.javaguide.cn/xingqiu/xingqiufuwu.png)](../about-the-author/zhishixingqiu-two-years.md)
 
-下面是星球提供的部分服务（点击下方图片即可获取知识星球的详细介绍）：
+Here's a limited-time coupon:
 
-[![星球服务](https://oss.javaguide.cn/xingqiu/xingqiufuwu.png)](../about-the-author/zhishixingqiu-two-years.md)
-
-这里再提供一份限时专属优惠卷：
-
-![知识星球30元优惠卷](https://oss.javaguide.cn/xingqiu/xingqiuyouhuijuan-30.jpg)
+![¥30 Knowledge Planet coupon](https://oss.javaguide.cn/xingqiu/xingqiuyouhuijuan-30.jpg)

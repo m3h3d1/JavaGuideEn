@@ -1,23 +1,23 @@
 ---
-title: 优质面经汇总(付费)
-description: 优质面经汇总：整理 30+ 篇高质量 Java 后端校招/社招面经与复盘，总结高频考点与面试策略，适合对照自测与查缺补漏。
-category: 知识星球
+title: Java Backend Interview Experiences (Paid)
+description: A collection of more than 30 detailed Java backend interview accounts from new-grad and experienced-hire candidates. Summarizes common topics and interview strategies for self-assessment and review.
+category: Knowledge Planet
 icon: "mdi:chart-timeline-variant"
 head:
   - - meta
     - name: keywords
-      content: Java面经,校招面经,社招面经,大厂面经,面试经验,面经汇总,Java后端面试,付费专栏
+      content: Java interview experiences,new-grad interviews,experienced-hire interviews,large-company interviews,interview reviews,Java backend interviews,paid resource
 ---
 
-古人云:“**他山之石，可以攻玉**” 。善于学习借鉴别人的面试的成功经验或者失败的教训，可以让自己少走许多弯路。
+As the saying goes, **“By learning from others, we can improve ourselves.”** Studying other people's interview successes and mistakes can help you avoid unnecessary detours.
 
-在 **[《Java 面试指北》](../zhuanlan/java-mian-shi-zhi-bei.md)** 的 **「面经篇」** ，我分享了 30+ 篇高质量的 Java 后端面经，有校招的，也有社招的，有大厂的，也有中小厂的。
+In the **Interview Experience** section of the [Java Interview Guide](../zhuanlan/java-mian-shi-zhi-bei.md), I share more than 30 Java backend interview accounts, from new-grad and experienced-hire candidates at both large and smaller companies.
 
-如果你是非科班的同学，也能在这些文章中找到对应的非科班的同学写的面经。
+People without a computer science background can also find interview accounts from candidates with a similar background.
 
 ![](https://oss.javaguide.cn/githubjuejinjihua/thinkimage-20220612185810480.png)
 
-并且，[知识星球](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html)还有专门分享面经和面试题的专题，里面会分享很多优质的面经和面试题。
+The [Knowledge Planet](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html) community also has a section for interview experiences and questions, with many curated examples.
 
 ![](https://oss.javaguide.cn/xingqiu/image-20220304120018731.png)
 
@@ -25,11 +25,11 @@ head:
 
 ![](https://oss.javaguide.cn/xingqiu/image-20220628101805897.png)
 
-相比于牛客网或者其他网站的面经，《Java 面试指北》中整理的面经质量更高，并且，我会提供优质的参考资料。
+Compared with interview accounts on Nowcoder and other sites, the ones collected in the **Java Interview Guide** are more detailed and include useful reference materials.
 
-有很多同学要说了：“为什么不直接给出具体答案呢？”。主要原因有如下两点：
+Some readers ask, “Why not provide a direct answer to every question?” There are two main reasons:
 
-1. 参考资料解释的要更详细一些，还可以顺便让你把相关的知识点复习一下。
-2. 给出的参考资料基本都是我的原创，假如后续我想对面试问题的答案进行完善，就不需要挨个把之前的面经写的答案给修改了（面试中的很多问题都是比较类似的）。当然了，我的原创文章也不太可能覆盖到面试的每个点，部分面试问题的答案，我是精选的其他技术博主写的优质文章，文章质量都很高。
+1. Reference materials often explain the topic in more depth and help you review related concepts at the same time.
+2. Most of the references are my original articles. If I improve an answer later, I can update the source article rather than editing the same answer in each interview account. Many interview questions are similar. My own articles do not cover every topic, so some answers link to carefully selected articles by other technical writers.
 
 <!-- @include: @planet.snippet.md -->

@@ -1,270 +1,268 @@
 ---
-title: 后端项目面试怎么讲？从项目介绍到技术难点和故障复盘
-description: Java 后端项目面试准备指南，讲清项目介绍、个人职责、核心链路、技术选型、性能优化、线上故障、量化指标和常见追问的准备方法。
-category: 面试准备
+title: How to Present a Backend Project in an Interview: From Introduction to Challenges and Incidents
+description: A guide to preparing for Java backend project interviews. Covers project introductions, responsibilities, request flows, technology choices, performance improvements, production incidents, metrics, and common follow-up questions.
+category: Interview Preparation
 tag:
-  - Java面试
-  - 后端面试
-  - 项目经验
-  - 项目深挖
+  - Java Interviews
+  - Backend Interviews
+  - Project Experience
+  - Project Deep Dives
 sitemap:
   changefreq: monthly
   priority: 0.9
 head:
   - - meta
     - name: keywords
-      content: 后端项目面试,Java项目面试,项目介绍,项目深挖,技术选型,项目难点,线上故障,性能优化,Java面试
+      content: backend project interviews,Java project interviews,project introduction,project deep dives,technology choices,project challenges,production incidents,performance optimization,Java interviews
 ---
 
-“介绍一下你做的项目。”
+“Tell me about a project you worked on.”
 
-“这是一个基于 Spring Boot 开发的微服务项目，使用了 MySQL、Redis、Kafka、Elasticsearch……”
+“It’s a microservices project built with Spring Boot, using MySQL, Redis, Kafka, Elasticsearch…”
 
-很多项目介绍到这里就说不下去了。面试官再问一句“为什么要用 Kafka”，回答很容易卡住。Java、MySQL、Redis 的常见面试题可以提前背熟，项目追问却会一直落到真实的业务约束、代码实现和验证结果，背一段固定稿子只能应付开场。
+Many project introductions stop there. If the interviewer asks, “Why did you use Kafka?”, candidates can get stuck. You can memorize common Java, MySQL, and Redis questions ahead of time, but project follow-ups depend on real business constraints, code, and evidence. A rehearsed script only gets you through the opening.
 
-## 面试官想从项目里了解什么？
+## What do interviewers want to learn from your project?
 
-面试官会从项目里确认几件事：你是否理解项目服务的业务，一条请求如何流转；你具体负责哪些代码、数据和上下游；遇到问题时怎样定位原因、比较方案并验证结果；简历里的技术和指标能不能经得起追问。
+Interviewers use your project to check whether you understand its business and request flows; what code, data, and dependencies you were responsible for; how you diagnose problems, compare options, and verify results; and whether the technologies and metrics on your resume hold up to questions.
 
-校招面试不会要求每个项目都达到大型生产系统的复杂度。一个自己做过、能够讲透的单体项目，通常比照着教程搭出的微服务项目更稳。社招会继续追问流量、容量、故障、灰度、回滚以及团队协作，回答时需要提供更多生产证据。
+New-grad projects do not have to match the complexity of a large production system. A monolith you built and understand well is often a safer choice than a microservices project copied from a tutorial. Experienced-hire interviews may go further into traffic, capacity, incidents, gradual rollouts, rollbacks, and teamwork. Support your answers with production evidence where possible.
 
-## 面试前先整理一张项目底稿
+## Prepare a project brief before the interview
 
-给简历上的每个重点项目单独整理一份底稿，不必写成文章，自己能看懂、面试前能快速回忆即可。
+Create a short brief for each key project on your resume. It does not need to read like an article; make it easy for you to understand and review before an interview.
 
-| 要整理的内容 | 需要回答的问题                                                 |
-| ------------ | -------------------------------------------------------------- |
-| 业务背景     | 项目给谁用？解决什么问题？最重要的业务链路是什么？             |
-| 系统范围     | 有哪些模块？依赖哪些外部系统？数据从哪里来、到哪里去？         |
-| 个人职责     | 哪些需求、接口或模块由你负责？参与到什么程度？                 |
-| 核心链路     | 一次请求会经过哪些服务、缓存、数据库和消息队列？               |
-| 技术选型     | 为什么使用当前方案？比较过哪些方案？付出了什么代价？           |
-| 难点与故障   | 遇到过什么具体问题？怎么定位、修复和验证？                     |
-| 项目指标     | 流量、延迟、错误率、数据量、资源消耗和优化结果有哪些可靠记录？ |
+| What to prepare          | Questions to answer                                                                                               |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| Business context         | Who used the project? What problem did it solve? What was the key business flow?                                  |
+| System scope             | What modules did it contain? Which external systems did it depend on? Where did data come from and go?            |
+| Your responsibilities    | Which requirements, APIs, or modules did you own? How involved were you?                                          |
+| Core request flow        | Which services, caches, databases, and message queues did a request pass through?                                 |
+| Technology choices       | Why did you choose this solution? What alternatives did you compare, and what were the trade-offs?                |
+| Challenges and incidents | What specifically happened? How did you diagnose, fix, and verify it?                                             |
+| Project metrics          | What reliable records do you have for traffic, latency, error rates, data volume, resource use, and improvements? |
 
-底稿最后留一栏，专门写自己没有参与的部分。例如数据库表由你设计，部署和容量规划由基础架构团队负责，就按实际情况回答。面试官通常能接受职责范围有限，编造参与经历的风险反而更大。
+At the end of the brief, note the parts you did not work on. For example, you designed the database schema while the infrastructure team handled deployment and capacity planning. Answer based on what you actually did. Interviewers usually accept a limited scope of responsibility; inventing experience is much riskier.
 
-## 项目介绍应该怎么讲？
+## How should you introduce a project?
 
-30 秒和 3 分钟两个版本都要准备。面试官只想快速了解时使用短版本；对方让你详细介绍时，再补充架构、职责和重点工作。
+Prepare both a 30-second and a three-minute version. Use the shorter one when the interviewer wants a quick overview; add architecture, responsibilities, and key work when they ask for more detail.
 
-### 30 秒版本
+### The 30-second version
 
-30 秒版本只保留四项内容：项目解决的问题、主要用户或业务、你的职责、一项准备深入讲的工作。
+Keep it to four points: the problem the project solves, its users or business, your responsibilities, and one piece of work you can discuss in depth.
 
-例如：
+For example:
 
-> 这是一个面向企业内部采购人员的订单系统，主要覆盖商品查询、下单、审批和订单履约。我在项目中负责订单创建和超时关闭两条链路，包括表结构设计、接口开发、幂等处理和监控接入。项目里投入时间最多的是订单创建链路的性能优化，后面我可以详细介绍当时如何定位慢请求。
+> This is an order system for internal procurement teams. It covers product search, ordering, approvals, and fulfillment. I owned the order creation and timeout-cancellation flows, including schema design, API implementation, idempotency, and monitoring. I spent the most time improving the order creation flow, and I can explain how I diagnosed its slow requests.
 
-这段话没有罗列所有中间件，但给面试官留下了几个可以继续问的点：订单状态、幂等、超时关闭和性能优化。
+This introduction does not list every piece of middleware, but it gives the interviewer follow-up topics: order states, idempotency, timeout cancellation, and performance improvements.
 
-### 3 分钟版本
+### The three-minute version
 
-3 分钟版本按下面的顺序展开：
+Expand in this order:
 
-1. 项目的业务背景和用户。
-2. 系统包含哪些主要模块，核心请求如何流转。
-3. 自己负责的模块和职责范围。
-4. 一两个有证据的难点或结果。
+1. The business context and users.
+2. The main system modules and request flow.
+3. The modules you owned and your scope of responsibility.
+4. One or two challenges or results supported by evidence.
 
-仍然以订单系统为例：
+Here is a longer example using the order system:
 
-> 系统主要给采购和财务人员使用，负责商品查询、订单创建、审批、支付状态同步和履约查询。后端按订单、库存和审批模块拆分，订单创建时会先校验请求和价格，再创建订单并预占库存；成功后发送消息，由下游完成审批通知等异步任务。
+> The system is used by procurement and finance teams for product search, order creation, approvals, payment status updates, and fulfillment queries. The backend is divided into order, inventory, and approval modules. When an order is created, the system validates the request and price, creates the order, and reserves inventory. On success, it publishes a message so downstream tasks, such as approval notifications, can run asynchronously.
 >
-> 我负责订单创建和超时关闭。订单创建需要处理重复提交、库存不足以及消息发送失败；超时关闭需要避免关闭已经支付的订单。我主要完成了接口、状态流转、幂等和补偿任务，并接入了相关监控。后来一次版本上线后，订单查询接口的长尾延迟上升，我参与了问题定位和优化。我们根据 Trace 和慢 SQL 找到查询条件与联合索引不匹配的问题，调整索引后又做了相同数据量下的对比压测。
+> I owned order creation and timeout cancellation. Order creation had to handle duplicate submissions, insufficient inventory, and message-send failures. Timeout cancellation had to avoid closing orders that were already paid. I implemented the APIs, state transitions, idempotency, and compensation tasks, and added monitoring. After a release, tail latency increased for order queries, and I helped investigate and improve it. Traces and slow SQL showed that the query conditions did not match the composite index. We changed the index and ran a comparison load test with the same data volume.
 
-这是一个示例，不要直接把里面的职责和故障换个项目名放进简历。自己的项目没有消息队列，就讲同步调用；没有真实压测数据，也可以说明测试环境和验证方法，不要临时编一个 QPS。
+This is an example of structure; do not copy its responsibilities and incident, then just change the project name. If your project has no message queue, explain the synchronous calls. If you do not have real load-test results, describe the test environment and method instead of inventing a QPS figure.
 
-## 架构图怎么讲？
+## How should you explain an architecture diagram?
 
-项目架构图适合按一次真实请求来讲。用户请求从网关进入，经过哪个服务，读取哪些缓存和数据库，什么任务进入消息队列，失败后怎么处理。讲完主链路，再补一条异常链路。
+Walk through a real request. Explain how it enters through the gateway, which services it passes through, which caches and databases it reads, which tasks go to a message queue, and what happens on failure. After the main path, describe one failure path.
 
-架构里每出现一个组件，最好都能回答三个问题：
+For every component in the diagram, be ready to answer:
 
-- 它在这条链路里承担什么工作？
-- 去掉它会发生什么？
-- 它不可用时，系统怎样处理？
+- What does it do in this flow?
+- What would happen if you removed it?
+- How does the system behave if it is unavailable?
 
-如果项目使用 Redis 缓存商品信息，还要准备缓存未命中后的数据库查询、缓存过期策略、热点数据、数据一致性以及 Redis 故障时的降级方式。只回答“Redis 性能高，所以用 Redis”，通常很快就会进入知识盲区。
+If your project caches product data in Redis, prepare to explain what happens on a cache miss, the expiration strategy, hot keys, data consistency, and fallback behavior during a Redis outage. “Redis is fast, so we used Redis” will quickly lead to questions you may not be ready for.
 
-架构图也不要画得太大。一张图塞进网关、注册中心、配置中心、十几个微服务和所有中间件，介绍时很难找到重点。面试用架构图保留项目范围和一条核心链路就够了，复杂项目可以再准备一张模块图或时序图。
+Keep the diagram focused. A drawing with a gateway, registry, configuration center, a dozen microservices, and every piece of middleware can be hard to explain. Show the project scope and one core request flow. For a complex project, prepare a separate module diagram or sequence diagram.
 
-## 怎么说明自己的职责？
+## How should you explain your responsibilities?
 
-“负责订单模块开发”提供的信息很少。继续说清需求范围、代码范围和协作范围：
+“I worked on the order module” says very little. Explain your scope across requirements, code, and collaboration:
 
-- 需求范围：订单创建、取消、超时关闭，还是整个订单域。
-- 代码范围：接口、表结构、状态机、定时任务、消息消费分别参与到什么程度。
-- 协作范围：是否参与方案评审，和库存、支付、测试、运维如何配合。
-- 结果范围：上线、灰度、监控和后续维护是否由自己跟进。
+- **Requirements**: Did you work on order creation, cancellation, timeout handling, or the entire order domain?
+- **Code**: How much did you do for APIs, schemas, state machines, scheduled jobs, and message consumers?
+- **Collaboration**: Did you join design reviews? How did you work with inventory, payments, QA, and operations?
+- **Delivery**: Did you follow through on launch, gradual rollout, monitoring, and maintenance?
 
-校招项目就直接说明这是个人项目或课程项目，以及哪些部分参考了教程。自己在教程基础上增加过功能、补过测试、改过表结构，就重点讲这些改动。面试官关注的是你有没有真正动手和思考，不需要把个人项目包装成大厂生产系统。
+For a new-grad project, say whether it was personal or coursework and which parts followed a tutorial. If you added a feature, wrote tests, or changed the schema, focus on those changes. Interviewers want to know whether you actually built and thought about the project; you do not have to present a personal project as a large company's production system.
 
-## 技术选型怎么回答？
+## How should you explain technology choices?
 
-回答技术选型时，把问题、约束、候选方案和验证结果说全。
+Cover the problem, constraints, candidate solutions, and verification results.
 
-假设面试官问：“订单超时关闭为什么使用延迟消息？”
+Suppose the interviewer asks, “Why did you use delayed messages to close expired orders?” Be ready to explain:
 
-回答时需要交代：
+1. Why the payment state needs to be checked later, how many tasks there are, and how precise the delay must be.
+2. The limitations of scanning the database on a schedule, Redis expiration notifications, timing wheels, and delayed messages.
+3. Why the project chose delayed messages, including the effect of existing infrastructure, operational cost, and team experience.
+4. How the system handles duplicate, delayed, or lost messages and consumer failures.
 
-1. 订单创建后需要在指定时间检查支付状态，任务量和延迟精度有什么要求。
-2. 定时扫描数据库、Redis 过期通知、时间轮和延迟消息分别有什么限制。
-3. 当前项目为什么选择延迟消息，现有基础设施、运维成本和团队经验是否影响决策。
-4. 消息重复、延迟、丢失或者消费者故障时如何处理。
+There is no universally correct choice outside the project's constraints. A small project may be fine with a scheduled scan of unpaid orders and suitable indexes. A larger order volume and an established message-queue platform may make delayed messages a reasonable choice. Explain why the solution fits the conditions and acknowledge its limits.
 
-离开项目条件，选型没有标准答案。小型项目用定时任务扫描待支付订单，配合合适的索引和分片处理，可能已经够用；团队已有成熟的消息队列，订单量又比较大时，可以考虑延迟消息。面试回答应说明当前条件下为什么这样选，同时承认方案的限制。
+Using Redis, Kafka, or Elasticsearch only proves that the project includes those components. To show that you understand the work, be ready to discuss:
 
-引入 Redis、Kafka 或 Elasticsearch 只能说明项目使用了这些组件。能够解释下面这些问题，才说明你掌握了这部分工作：
+- Which data Redis caches, how the keys are designed, and how expiration is set.
+- How Kafka topics and partitions are designed, and how producer failures and duplicate consumption are handled.
+- How Elasticsearch documents are modeled and indexes updated, and how query results are validated.
+- How you choose a shard key and handle expansion and cross-shard queries after sharding.
 
-- Redis 缓存的是哪些数据，Key 怎么设计，过期时间怎么定。
-- Kafka 的 Topic 和分区怎么设计，生产失败和重复消费怎么处理。
-- Elasticsearch 里的文档如何建模，索引如何更新，查询结果为什么可信。
-- 分库分表以后如何选择分片键，扩容和跨分片查询怎么处理。
+If your project is not large enough to need a technology, describe it as a learning exercise or experiment. Do not claim that it solved a production bottleneck that did not exist.
 
-项目没有达到相应规模时，可以把某项技术作为学习和实验说明，不要声称它解决了并不存在的生产瓶颈。
+## How should you describe a project challenge?
 
-## 项目难点怎么讲？
+“The schedule was tight” and “requirements changed often” can be real difficulties, but technical interviews usually look for a concrete engineering problem that supports follow-up questions.
 
-“时间比较紧”“需求经常变”确实会增加工作难度，但技术面试通常希望听到一个能够继续追问的工程问题。
+Look for something you actually worked on, such as:
 
-从自己确实做过的事情里找材料，常见的有：
+- **Correctness**: Duplicate orders, oversold inventory, invalid state transitions, monetary precision, or inconsistent data.
+- **Performance**: Slow SQL, a lower cache hit rate, lock contention, thread-pool backlogs, or GC pauses.
+- **Reliability**: Dependency timeouts, message backlogs, exhausted connection pools, release incidents, or traffic spikes.
+- **Engineering**: Refactoring legacy code, gradual migrations, compatibility with old data, or cross-team API changes.
 
-- 正确性问题：重复下单、库存超卖、状态错乱、金额精度、数据不一致。
-- 性能问题：慢 SQL、缓存命中率下降、锁竞争、线程池堆积、GC 停顿。
-- 稳定性问题：依赖超时、消息积压、连接池耗尽、发布故障、流量突增。
-- 工程问题：历史代码改造、灰度迁移、兼容旧数据、跨团队接口变更。
-
-一个难点至少应该讲清下面这条过程：
+Explain at least this sequence:
 
 ```text
-现象和影响 → 已知约束 → 排查或分析 → 方案比较
-→ 实施过程 → 验证结果 → 遗留问题
+Symptoms and impact → constraints → investigation or analysis → options considered
+→ implementation → verification → remaining issues
 ```
 
-例如“查询接口很慢”还不是完整难点。继续说明哪些请求慢、从什么时候开始、P95/P99 如何变化、数据库扫描了多少行、最终改了索引还是查询逻辑、相同数据和流量下如何验证。没有留存当时的数字，就说明观察过哪些指标以及结论来自什么证据。
+“The query endpoint was slow” is not enough. Explain which requests were slow, when it started, how P95/P99 changed, how many database rows were scanned, whether you changed the index or query, and how you verified the result with the same data volume and traffic. If you did not record the numbers, describe the metrics you observed and the evidence behind your conclusion.
 
-## 性能优化怎么讲？
+## How should you explain a performance improvement?
 
-项目中的性能优化很容易被追问，因为“接口耗时从 2 秒降到 200 ms”后面还跟着很多问题：
+Performance improvements invite follow-up questions. If you say, “We reduced endpoint latency from two seconds to 200 ms,” expect questions such as:
 
-- 2 秒和 200 ms 分别在哪里测量？
-- 数据量、并发数和机器配置是否相同？
-- 看的是平均耗时还是 P95/P99？
-- 瓶颈究竟在应用、数据库、缓存还是下游服务？
-- 优化以后有没有增加数据一致性风险和维护成本？
+- Where did you measure the two seconds and 200 ms?
+- Were the data volume, concurrency, and machine configuration the same?
+- Are those average response times or P95/P99?
+- Was the bottleneck in the application, database, cache, or a downstream service?
+- Did the change increase consistency risks or maintenance costs?
 
-准备性能优化案例时，保留一组可核对的材料：优化前后的 Trace、执行计划、GC 日志、压测配置、监控截图或者测试报告。公司材料不方便带走，可以记录经过脱敏的结论和排查过程。
+Keep evidence you can check: before-and-after traces, query plans, GC logs, load-test settings, monitoring screenshots, or test reports. If company data cannot leave the company, write down a sanitized summary and investigation process.
 
-回答时把这些信息连起来：
+Connect the answer from start to finish:
 
-> 某接口在什么流量和数据量下出现什么问题；我根据哪些指标把问题缩小到哪个环节；比较过哪些方案，最后改了什么；使用什么环境和指标验证；上线后继续观察了什么；这个改动带来了哪些成本。
+> Under what traffic and data volume did the endpoint have a problem? Which metrics narrowed it down? What options did I compare and what did I change? How and where did I verify it? What did I monitor after release? What costs did the change introduce?
 
-缓存、异步和并行处理经常能改善响应时间，也会引入缓存一致性、消息可靠性、线程安全和下游压力。把这些代价说出来，比单独强调性能数字更可信。
+Caching, asynchronous processing, and parallelism can reduce response times, but may introduce cache consistency, message delivery, thread-safety, and downstream load concerns. Discussing the trade-offs makes your answer more credible than citing a performance number alone.
 
-## 线上故障怎么讲？
+## How should you describe a production incident?
 
-一次故障按时间顺序回答：
+Walk through an incident in chronological order:
 
-1. **发现问题**：告警、用户反馈或者发布观察发现了什么。
-2. **确认影响**：哪些接口、用户和实例受到影响，错误率和延迟如何变化。
-3. **紧急止血**：回滚、摘除实例、限流、降级或关闭功能。
-4. **保留证据**：日志、Trace、线程栈、Heap Dump、GC 日志以及变更记录。
-5. **定位根因**：提出过哪些假设，怎么排除错误方向，最后用什么证据确认。
-6. **修复验证**：代码或配置改了什么，怎样测试、灰度和观察。
-7. **避免复发**：补了哪些监控、测试、容量限制或发布检查。
+1. **Detection**: What did an alert, user report, or release check reveal?
+2. **Impact**: Which endpoints, users, and instances were affected? How did the error rate and latency change?
+3. **Mitigation**: Did you roll back, remove instances, rate-limit, degrade, or disable a feature?
+4. **Evidence**: What logs, traces, thread dumps, heap dumps, GC logs, and change records did you save?
+5. **Root cause**: What hypotheses did you test, how did you rule out false leads, and what evidence confirmed the cause?
+6. **Fix and verification**: What code or configuration changed? How did you test, roll out, and monitor it?
+7. **Prevention**: What monitoring, tests, capacity limits, or release checks did you add?
 
-排障时采取过临时措施，也要说明它的副作用。例如重启实例能够暂时恢复服务，但会丢失现场；盲目扩容可能把压力继续传给数据库。完整的排查方法可以参考：[Java 后端线上问题排查](../java/jvm/jvm-in-action.md)。
+Explain the side effects of temporary mitigations. Restarting an instance may restore service but destroy evidence. Scaling out without a diagnosis may push more load onto the database. For a fuller troubleshooting method, see [Troubleshooting Java Backend Production Issues](../java/jvm/jvm-in-action.md).
 
-## 项目指标怎么准备？
+## How should you prepare project metrics?
 
-指标要能说明项目规模、问题影响或改动结果，不需要为了显得项目大而堆数字。
+Use metrics to explain system scale, impact, or results. You do not need to pile on numbers to make a project sound large.
 
-| 指标                 | 适合说明什么         | 常见误区                           |
-| -------------------- | -------------------- | ---------------------------------- |
-| QPS/TPS              | 流量和系统吞吐       | 只报峰值，不说明统计位置和时间范围 |
-| P95/P99              | 长尾请求体验         | 只看平均响应时间                   |
-| 错误率               | 请求失败情况         | 把业务拒绝和系统错误混在一起       |
-| 数据量               | 查询、存储和迁移规模 | 只说总量，不说明增长速度和冷热分布 |
-| CPU、内存、GC        | 应用资源与 JVM 状态  | 只报优化后的数字，没有对照条件     |
-| 队列积压、连接池等待 | 系统内部排队         | 只扩容，不确认下游处理能力         |
+| Metric                                 | What it can show                    | Common mistake                                                |
+| -------------------------------------- | ----------------------------------- | ------------------------------------------------------------- |
+| QPS/TPS                                | Traffic and system throughput       | Giving a peak without saying where or when it was measured    |
+| P95/P99                                | Tail latency                        | Reporting only average response time                          |
+| Error rate                             | Failed requests                     | Mixing business rejections with system errors                 |
+| Data volume                            | Query, storage, or migration scale  | Giving the total without growth rate or hot/cold distribution |
+| CPU, memory, and GC                    | Application resources and JVM state | Reporting only the improved number without a baseline         |
+| Queue backlog and connection-pool wait | Internal queues                     | Scaling out without checking downstream capacity              |
 
-真实项目没有现成指标时，可以在测试环境补测，但要明确说明数据来自测试环境。机器配置、数据量、并发模型和测试时长也要一起记录，测试数字不能冒充生产数据。
+If your project has no existing metrics, you can measure it in a test environment, but say clearly that the data is from testing. Record the machine, data volume, concurrency model, and test duration. Do not present test results as production data.
 
-## 常见项目追问怎么准备？
+## How should you prepare for common project follow-ups?
 
-把简历放在面前，沿着里面的技术栈逐项追问。下面这组问题适合多数 Java 后端项目：
+Put your resume in front of you and ask follow-up questions about each technology. These questions apply to many Java backend projects:
 
-### 业务和架构
+### Business and architecture
 
-- 项目最重要的业务链路是什么？
-- 系统里哪个环节最容易出问题？
-- 如果流量增加到当前的几倍，最先出现瓶颈的可能在哪里？
-- 单体和微服务是如何选择的？拆分服务以后增加了哪些成本？
+- What is the project's most important business flow?
+- Which part of the system is most likely to fail?
+- If traffic increased several times over, where would the first bottleneck likely appear?
+- Why was a monolith or microservices architecture chosen? What costs did the split introduce?
 
-### 数据库和缓存
+### Database and caching
 
-- 核心表如何设计？为什么选择这个主键和索引？
-- 慢 SQL 是怎么发现的？执行计划里看了哪些字段？
-- 哪些数据放入缓存？缓存失效后如何处理？
-- 缓存和数据库不一致时，业务可以接受多长时间？
+- How are the core tables designed? Why did you choose those primary keys and indexes?
+- How did you identify slow SQL? Which fields in the execution plan did you inspect?
+- Which data is cached? What happens when the cache expires?
+- How much inconsistency between the cache and database can the business tolerate?
 
-### 消息和一致性
+### Messaging and consistency
 
-- 为什么要发送这条消息，同步调用是否可行？
-- 生产者发送失败、消费者重复处理和消息积压分别怎么办？
-- 本地事务提交成功但消息发送失败如何处理？
-- 接口幂等依赖什么业务唯一标识？
+- Why send this message? Would a synchronous call work?
+- How do you handle producer failures, duplicate consumption, and message backlogs?
+- What happens if the local transaction commits but sending the message fails?
+- Which business identifier makes the API idempotent?
 
-### 并发和稳定性
+### Concurrency and reliability
 
-- 线程池参数根据什么设置？队列满了会发生什么？
-- 下游接口变慢时，超时、重试、限流和熔断怎么配合？
-- Redis、数据库或消息队列不可用时，项目还能提供哪些能力？
-- 发布出现问题时，如何回滚并确认数据没有损坏？
+- How did you choose the thread-pool parameters? What happens when the queue is full?
+- How do timeouts, retries, rate limits, and circuit breakers work together when a downstream service slows down?
+- What can the project still do if Redis, the database, or the message queue is unavailable?
+- How would you roll back a bad release and confirm that data was not corrupted?
 
-不必为每个问题准备一段标准答案。把问题对应到自己的代码、表结构、配置和监控，回答时会自然很多。
+You do not need a scripted answer to every question. Connect each one to your code, schema, configuration, or monitoring; the answers will sound more natural.
 
-## 校招和社招的准备重点有什么不同？
+## How do new-grad and experienced-hire interviews differ?
 
-校招项目通常继续追问基础知识和实现细节。例如使用了 HashMap、线程池、Redis，面试官可能从项目切到数据结构、并发和缓存问题。准备时要保证简历上出现的技术都掌握基本原理，并且能找到对应代码。
+New-grad interviews tend to probe fundamentals and implementation details. If you used HashMap, a thread pool, or Redis, the interviewer may switch from the project to data structures, concurrency, or caching. Know the basic principles behind every technology on your resume and be able to find it in the code.
 
-社招会关心项目规模和工程取舍：需求由谁提出，方案如何评审，上线如何灰度，故障如何处理，指标是否改善，和其他团队如何协作。只讲代码实现往往不够，还要补齐方案和上线后的部分。
+Experienced-hire interviews focus more on project scale and engineering trade-offs: who defined the requirements, how the design was reviewed, how the release was rolled out, how incidents were handled, whether metrics improved, and how you worked with other teams. Code-level details alone may not be enough; explain the design and post-release work too.
 
-工作年限越长，面试官越可能追问“为什么当时没有选择另一种方案”和“如果重新做会怎么改”。这类问题可以诚实回答历史条件，当时的时间、团队能力、基础设施和业务规模都可能影响选择。
+The more experience you have, the more likely interviewers are to ask why you chose one solution over another or what you would change if you rebuilt it. Answer honestly and explain the constraints at the time: schedule, team skills, infrastructure, and business scale all matter.
 
-## 如何避免项目过度包装？
+## How do you avoid overselling a project?
 
-下面这些描述很容易招来超出准备范围的追问：
+These claims invite follow-up questions you may not be able to answer:
 
-- 把团队项目写成独立负责。
-- 把阅读过方案写成已经在线上落地。
-- 把单机测试结果写成生产 QPS。
-- 为了显得复杂，给项目加上实际没有使用的中间件。
-- 只记住教程给出的结论，没有看过项目代码和配置。
+- Presenting a team project as work you owned alone.
+- Saying a design was deployed in production when you only read about it.
+- Presenting a single-machine test as production QPS.
+- Adding middleware the project never used to make it sound more complex.
+- Memorizing a tutorial's conclusions without looking at the code or configuration.
 
-项目可以优化表达，职责和结果不能虚构。某个方案只是做过调研或 Demo，就直接说明：“线上最后没有采用，我负责过方案验证，得到的结论是……”。这样的回答也经得起后续追问。
+You can polish how you describe a project, but do not invent responsibilities or results. If you only researched or prototyped an approach, say so: “We did not use this in production. I validated the approach and found that…” That answer can hold up to follow-up questions.
 
-## 面试前自查
+## Final self-check before the interview
 
-面试前找一张白纸，在不看资料的情况下完成下面这些事情：
+Take a blank sheet of paper and, without notes:
 
-- 用 30 秒和 3 分钟分别介绍项目。
-- 画出一条核心请求链路和一条失败链路。
-- 说清三个本人负责的功能以及对应代码位置。
-- 准备一个技术选型、一个性能问题和一次故障或缺陷修复。
-- 给简历上的每个数字补充统计口径和验证材料。
-- 针对每个中间件回答“为什么使用、如何失败、怎样观测”。
+- Introduce the project in 30 seconds and in three minutes.
+- Draw one core request flow and one failure flow.
+- Name three features you personally owned and where they are implemented.
+- Prepare one technology choice, one performance issue, and one incident or bug fix.
+- Give the measurement method and evidence for every number on your resume.
+- For each middleware component, explain why you used it, how it can fail, and how you monitor it.
 
-如果某个问题只能回答组件定义，回到项目代码或文档再查一遍。项目介绍不需要讲得很炫，能让面试官沿着你的回答继续问，而你手里又有真实细节可以接住，基本就够用了。
+If you can only define a component, review the project code or documentation. Your introduction does not have to sound impressive. It is enough to give the interviewer clear follow-up questions and have real details to answer them with.
 
-## 相关阅读
+## Related reading
 
-- [项目经验指南](./project-experience-guide.md)
-- [程序员简历编写指南](./resume-guide.md)
-- [Java 后端线上问题排查](../java/jvm/jvm-in-action.md)
-- [高性能系统设计面试题](../high-performance/high-performance-system-interview-questions.md)
-- [高可用系统设计面试题](../high-availability/high-availability-system-interview-questions.md)
-- [性能测试和压力测试入门](../high-availability/performance-test.md)
+- [Project Experience Guide](./project-experience-guide.md)
+- [Programmer Resume Guide](./resume-guide.md)
+- [Troubleshooting Java Backend Production Issues](../java/jvm/jvm-in-action.md)
+- [High-Performance System Design Interview Questions](../high-performance/high-performance-system-interview-questions.md)
+- [High-Availability System Design Interview Questions](../high-availability/high-availability-system-interview-questions.md)
+- [Introduction to Performance and Load Testing](../high-availability/performance-test.md)
 
 <!-- @include: @article-footer.snippet.md -->

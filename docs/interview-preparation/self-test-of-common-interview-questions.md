@@ -1,21 +1,21 @@
 ---
-title: 常见面试题自测(付费)
-description: 常见面试题自测：按面试提问方式整理Java后端高频问题，提供提示与重要程度标注，适合面试前自测、定位短板、针对性复习。
-category: 知识星球
+title: Common Interview Questions: Self-Assessment (Members Only)
+description: Test yourself on frequently asked Java backend interview questions, presented in interview format with hints and importance ratings. Use this guide to find gaps and focus your review before an interview.
+category: Knowledge Planet
 icon: "mdi:shield-lock-outline"
 head:
   - - meta
     - name: keywords
-      content: 面试题自测,Java面试题,八股文自测,查缺补漏,面试复习,高频考点,Java后端面试,付费内容
+      content: interview question self-assessment, Java interview questions, Java interview prep self-test, identify knowledge gaps, interview review, frequently asked topics, Java backend interview, members-only content
 ---
 
-面试之前，强烈建议大家多拿常见的面试题来进行自测，检查一下自己的掌握情况，这是一种非常实用的备战技术面试的小技巧。
+Before an interview, I strongly recommend testing yourself with common interview questions to see how well you know the material. It's a practical way to prepare for a technical interview.
 
-在 **[《Java 面试指北》](../zhuanlan/java-mian-shi-zhi-bei.md)** 的 **「技术面试题自测篇」** ，我总结了 Java 面试中最重要的知识点的最常见的面试题并按照面试提问的方式展现出来。
+In the **Technical Interview Self-Assessment** section of **[The Java Interview Guide](../zhuanlan/java-mian-shi-zhi-bei.md)**, I've collected common questions about the most important Java interview topics and presented them in the same way an interviewer might ask them.
 
-![《Java 面试指北》技术面试题自测篇](https://oss.javaguide.cn/javamianshizhibei/self-test.png)
+![Technical Interview Self-Assessment section of The Java Interview Guide](https://oss.javaguide.cn/javamianshizhibei/self-test.png)
 
-每道题我都会给出**提示与思路**，并用 ⭐ 标注重要程度：⭐ 越多，说明面试越爱问，就越值得多花一些时间准备。
+Each question comes with **hints and an approach**, and ⭐ markers show its importance. The more stars a question has, the more often it tends to come up in interviews, so it's worth spending more time on.
 
 ![](https://oss.javaguide.cn/javamianshizhibei/self-test-key-points.png)
 
