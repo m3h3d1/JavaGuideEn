@@ -1,79 +1,79 @@
 ---
 home: true
 icon: "mdi:home-outline"
-title: JavaGuide（Java 面试 & 后端通用知识体系）
-description: JavaGuide 是 GitHub 156K+ Star 的 Java 面试与后端知识体系指南，免费开源，系统覆盖 Java、计算机基础、数据库、分布式、高并发、高可用、系统设计与 AI 应用开发，适合校招、社招、跳槽和后端能力体系化复习。
+title: JavaGuide (Java Interview and Backend Engineering Guide)
+description: JavaGuide is a free, open-source guide to Java interviews and backend engineering with 156K+ GitHub Stars. It covers computer science fundamentals, databases, distributed systems, high concurrency, high availability, system design, and AI application development.
 heroImage: /logo.svg
 heroText: JavaGuide
-tagline: GitHub 156K+ Star 的 Java 面试与后端知识体系，覆盖计算机基础、数据库、分布式、高并发、系统设计与 AI 应用开发
+tagline: A 156K+ Star Java interview and backend engineering guide, covering computer science, databases, distributed systems, system design, and AI application development.
 sitemap:
   changefreq: weekly
   priority: 0.9
 head:
   - - meta
     - name: keywords
-      content: JavaGuide,Java面试,Java面试指南,Java八股文,后端面试,后端开发,数据库面试,MySQL面试,Redis面试,分布式,高并发,高性能,高可用,系统设计,消息队列,缓存,计算机网络,Linux,AI面试,AI应用开发,Agent,RAG,MCP,LLM,AI编程
+      content: JavaGuide,Java interviews,Java interview guide,backend interviews,backend development,database interviews,MySQL,Redis,distributed systems,high concurrency,high performance,high availability,system design,message queues,caching,computer networks,Linux,AI interviews,AI application development,Agent,RAG,MCP,LLM,AI coding
   - - meta
     - property: og:image
       content: https://javaguide.cn/logo.png
 actions:
-  - text: 开始阅读
+  - text: Start reading
     link: /home.md
     type: primary
-  - text: 知识星球
+  - text: Knowledge Planet
     link: /about-the-author/zhishixingqiu-two-years.md
     type: default
 footer: |-
-  <a href="https://beian.miit.gov.cn/" target="_blank">鄂ICP备2020015769号-1</a> | 主题: <a href="https://theme-hope.vuejs.press/" target="_blank">VuePress Theme Hope</a>
+  <a href="https://beian.miit.gov.cn/" target="_blank">MIIT filing number: 鄂ICP备2020015769号-1</a> | Theme: <a href="https://theme-hope.vuejs.press/" target="_blank">VuePress Theme Hope</a>
 ---
 
 <!-- markdownlint-disable MD033 -->
 
-## 核心入口
+## Start here
 
-- **后端面试主线**：[后端面试指南](./home.md)（⭐网站核心）：系统整理 Java 面试八股文和后端高频面试题，覆盖 Java 基础、集合、并发、JVM、Spring、MySQL、Redis、分布式、高并发、高可用和系统设计。
-- **计算机基础**：[计算机基础面试指南](./cs-basics/)：系统梳理计算机网络、操作系统、数据结构与算法等后端面试底层基础，适合补齐基础短板。
-- **AI 应用开发**：[AI 应用开发面试指南](./ai/)（⭐新增）：面向后端开发者梳理大模型基础、Prompt、Agent、RAG、MCP、LLM API 工程和 AI 系统设计等高频知识；如果想系统学习，可以配合 [AI 应用开发与 Agent 学习路线（2026 最新版）](./roadmap/java-to-ai-roadmap.md) 和 [后端转 AI Agent 学习建议（2026 最新版）](./roadmap/backend-to-ai-agent-roadmap.md)。
-- **AI 编程实战**：[AI 编程实践指南](./ai-coding/)（⭐新增）：聚焦 Claude Code、Codex、AI IDE、CLI Agent、上下文管理和 AI 辅助开发工作流，帮助你把 AI 真正用进日常编码。
-- **学习路线**：[学习路线合集（2026 最新版）](./roadmap/)：整理 Java 后端、AI 应用开发、AI Agent 和全栈开发等方向的系统学习建议。
-- **延伸资料**：
-  - [《Java 面试指北》](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html)：四年打磨，和 JavaGuide 开源版的内容互补，带你从零开始系统准备后端面试！
-  - [《后端面试高频系统设计&场景题》](https://javaguide.cn/zhuanlan/back-end-interview-high-frequency-system-design-and-scenario-questions.html)：30+ 道高频系统设计和场景面试，助你应对当下中大厂面试趋势。
-  - [⭐AI 智能面试辅助平台 + RAG 知识库](https://javaguide.cn/zhuanlan/interview-guide.html)：基于 Spring Boot 4.0 + Java 21 + Spring AI 2.0 的大模型实战项目，适合作为学习和简历项目。
+- **Backend interview guide**: [Java and Backend Interview Guide](./home.md) (⭐ the site's main guide) covers Java fundamentals, collections, concurrency, the JVM, Spring, MySQL, Redis, distributed systems, high concurrency, high availability, and system design.
+- **Computer science fundamentals**: [Computer Science Interview Guide](./cs-basics/) covers computer networks, operating systems, data structures, and algorithms—the foundations behind backend engineering.
+- **AI application development**: [AI Application Development Interview Guide](./ai/) (⭐ new) introduces LLMs, prompting, agents, RAG, MCP, LLM API engineering, and AI system design. For a structured learning path, see the [AI Application Development and Agent Roadmap (2026)](./roadmap/java-to-ai-roadmap.md) and [A Backend Developer's Guide to Learning AI Agents (2026)](./roadmap/backend-to-ai-agent-roadmap.md).
+- **AI-assisted coding**: [AI Coding Guide](./ai-coding/) (⭐ new) covers Claude Code, Codex, AI IDEs, CLI agents, context management, and AI-assisted development workflows.
+- **Learning roadmaps**: [Learning Roadmaps](./roadmap/) offers structured paths for Java backend development, AI application development, AI agents, and full-stack development.
+- **More resources**:
+  - [Java Interview Guide](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html) complements the open-source JavaGuide and offers a structured path to preparing for backend interviews.
+  - [Popular Backend System Design and Scenario Questions](https://javaguide.cn/zhuanlan/back-end-interview-high-frequency-system-design-and-scenario-questions.html) covers more than 30 common system design and scenario questions.
+  - [⭐ AI Interview Assistant and RAG Knowledge Base](https://javaguide.cn/zhuanlan/interview-guide.html) is a hands-on project built with Spring Boot 4.0, Java 21, and Spring AI 2.0.
 
-## 精选文章
+## Featured guides
 
-- **后端面试路径**：[Java 后端面试通关计划](./interview-preparation/backend-interview-plan.md)、[Java 学习路线（2026 最新版）](./interview-preparation/java-roadmap.md)、[Java 后端面试重点总结](./interview-preparation/key-points-of-interview.md)。不知道从哪里开始复习时，优先看这一组。
-- **Java 与数据库高频题**：[Java 基础](./java/basis/java-basic-questions-01.md)、[Java 集合](./java/collection/java-collection-questions-01.md)、[Java 并发](./java/concurrent/java-concurrent-questions-01.md)、[JVM](./java/jvm/README.md)、[MySQL](./database/mysql/mysql-questions-01.md)、[Redis](./database/redis/redis-questions-01.md)。适合集中刷语言、运行时和数据存储相关的核心问题。
-- **架构与中间件高频题**：[分布式](./distributed-system/distributed-system-interview-questions.md)、[微服务](./distributed-system/microservices-interview-questions.md)、[消息队列](./high-performance/message-queue/message-queue-interview-questions.md)、[高性能](./high-performance/high-performance-system-interview-questions.md)、[高可用](./high-availability/high-availability-system-interview-questions.md)、[系统设计](./system-design/system-design-questions.md)。适合准备社招、中高级岗位和项目场景追问。
-- **计算机基础补强**：[计算机网络](./cs-basics/network/other-network-questions.md)、[操作系统](./cs-basics/operating-system/operating-system-basic-questions-01.md)、[进程和线程](./cs-basics/operating-system/process-and-thread.md)、[数据结构与算法](./cs-basics/algorithms/)。适合补齐校招、社招和大厂面试都绕不开的基础能力。
-- **AI 应用开发进阶**：[AI 应用开发与 Agent 学习路线（2026 最新版）](./roadmap/java-to-ai-roadmap.md)、[后端转 AI Agent 学习建议（2026 最新版）](./roadmap/backend-to-ai-agent-roadmap.md)、[AI 应用开发知识体系](./ai/)、[LLM API 工程实践](./ai/llm-basis/llm-api-engineering.md)、[RAG 基础概念](./ai/rag/rag-basis.md)、[AI 应用系统设计](./ai/system-design/ai-application-architecture.md)。适合后端开发者先明确学习路径，再从模型调用走向可上线的 AI 应用。
-- **AI 编程效率提升**：[AI 编程实战指南](./ai-coding/)、[Claude Code 使用指南](./ai-coding/practices/claudecode-tips.md)、[Codex 使用指南](./ai-coding/practices/codex-best-practices.md)、[AI IDE 选型与实践](./ai-coding/practices/ai-ide.md)。适合把 AI 编程工具真正接入日常开发、重构和排障流程。
+- **Interview preparation**: [Java Backend Interview Plan](./interview-preparation/backend-interview-plan.md), [Java Learning Roadmap (2026)](./interview-preparation/java-roadmap.md), and [Key Topics for Java Backend Interviews](./interview-preparation/key-points-of-interview.md). Start here if you're not sure how to organize your preparation.
+- **Java and databases**: [Java Fundamentals](./java/basis/java-basic-questions-01.md), [Java Collections](./java/collection/java-collection-questions-01.md), [Java Concurrency](./java/concurrent/java-concurrent-questions-01.md), [JVM](./java/jvm/README.md), [MySQL](./database/mysql/mysql-questions-01.md), and [Redis](./database/redis/redis-questions-01.md). These guides cover common questions about the language, runtime, and data stores.
+- **Architecture and middleware**: [Distributed Systems](./distributed-system/distributed-system-interview-questions.md), [Microservices](./distributed-system/microservices-interview-questions.md), [Message Queues](./high-performance/message-queue/message-queue-interview-questions.md), [High Performance](./high-performance/high-performance-system-interview-questions.md), [High Availability](./high-availability/high-availability-system-interview-questions.md), and [System Design](./system-design/system-design-questions.md). Useful for experienced-role interviews and deeper discussions about real projects.
+- **Computer science fundamentals**: [Computer Networks](./cs-basics/network/other-network-questions.md), [Operating Systems](./cs-basics/operating-system/operating-system-basic-questions-01.md), [Processes and Threads](./cs-basics/operating-system/process-and-thread.md), and [Data Structures and Algorithms](./cs-basics/algorithms/). These topics are useful for both graduate and experienced-role interviews.
+- **AI application development**: [AI Application Development and Agent Roadmap (2026)](./roadmap/java-to-ai-roadmap.md), [A Backend Developer's Guide to Learning AI Agents (2026)](./roadmap/backend-to-ai-agent-roadmap.md), [AI Application Development](./ai/), [LLM API Engineering](./ai/llm-basis/llm-api-engineering.md), [RAG Fundamentals](./ai/rag/rag-basis.md), and [AI Application System Design](./ai/system-design/ai-application-architecture.md). Follow a learning path from model APIs to deployable AI applications.
+- **AI coding tools**: [AI Coding Guide](./ai-coding/), [Claude Code Tips](./ai-coding/practices/claudecode-tips.md), [Codex Best Practices](./ai-coding/practices/codex-best-practices.md), and [AI IDEs](./ai-coding/practices/ai-ide.md). Learn how to use AI tools in everyday development, refactoring, and troubleshooting.
 
-## 关于 JavaGuide
+## About JavaGuide
 
-JavaGuide 是一份面向 Java 和后端开发者的开源知识库，已在 GitHub 获得 **156K+ Star**。项目从 Java 面试复习出发，逐步扩展为覆盖后端核心技术、工程实践和 AI 应用开发的系统化学习指南。
+JavaGuide is an open-source knowledge base for Java and backend developers. It began as a resource for Java interview preparation and has grown into a structured guide to backend technologies, engineering practices, and AI application development.
 
-JavaGuide 自 2018 年开源以来持续维护，累计提交 **6200+** commit ，共有 **640+** 多位贡献者共同参与维护和完善。
+The project has been maintained since 2018, with more than 6,200 commits and contributions from over 640 people.
 
-![JavaGuide 目前的 Star、Fork、Issue 和 PR 情况](https://oss.javaguide.cn/github/javaguide/intro/javaguide-star-issue-pr.png)
+![JavaGuide's current stars, forks, issues, and pull requests](https://oss.javaguide.cn/github/javaguide/intro/javaguide-star-issue-pr.png)
 
-网站内容覆盖：
+The site covers:
 
-- **后端面试**：Java 基础、集合、并发、JVM、MySQL、Redis、分布式、系统设计等核心知识。
-- **AI 应用开发**：大模型（LLM）基础、Agent 智能体、RAG 检索增强生成、MCP 协议等前沿技术。
+- **Backend interviews**: Java fundamentals, collections, concurrency, the JVM, MySQL, Redis, distributed systems, and system design.
+- **AI application development**: LLM fundamentals, AI agents, retrieval-augmented generation (RAG), and the Model Context Protocol (MCP).
 
-真心希望能够把这个项目做好，真正能够帮助到有需要的朋友！
+We hope this guide helps developers who are learning and preparing for interviews.
 
-如果觉得 JavaGuide 的内容对你有帮助的话，还请点个免费的 Star（绝不强制点 Star，觉得内容不错有收获再点赞就好），这是对我最大的鼓励，感谢各位一路同行，共勉！传送门：[GitHub](https://github.com/Snailclimb/JavaGuide) | [Gitee](https://gitee.com/SnailClimb/JavaGuide)。
+If you find JavaGuide useful, consider giving it a free ⭐ on [GitHub](https://github.com/Snailclimb/JavaGuide) or [Gitee](https://gitee.com/SnailClimb/JavaGuide). Your support helps the project grow.
 
-- [项目介绍](./javaguide/intro.md)（JavaGuide 的诞生）
-- [贡献指南](./javaguide/contribution-guideline.md)（期待你的贡献，奖励丰富）
-- [常见问题](./javaguide/faq.md)（统一回复大家的一些疑问）
+- [About the project](./javaguide/intro.md)
+- [Contribution guide](./javaguide/contribution-guideline.md)
+- [Frequently asked questions](./javaguide/faq.md)
 
-## PDF 版本 & 微信联系
+## PDF resources and contact
 
-- 如果你更喜欢 **PDF**（比如通勤/离线阅读/打印学习），扫描下方二维码，后台回复“**PDF**”即可获取最新版（持续更新，详细介绍见：**[2026 最新后端面试 PDF 资料](./interview-preparation/pdf-interview-javaguide.md)**）。
-- 如果你想加我的微信，可以扫描下方二维码，后台回复“**微信**”。我会在朋友圈分享一些优质技术内容、学习资料和项目更新。
+- For offline reading or printing, scan the QR code below and reply **PDF** to receive the latest edition. See [2026 Backend Interview PDF Resources](./interview-preparation/pdf-interview-javaguide.md) for details.
+- To connect with the author on WeChat, scan the QR code below and reply **WeChat**. The author shares technical articles, learning resources, and project updates there.
 
-<img src="https://oss.javaguide.cn/github/javaguide/gongzhonghao-javaguide.png" alt="JavaGuide 公众号" style="zoom: 43%; display: block; margin: 0 auto;" />
+<img src="https://oss.javaguide.cn/github/javaguide/gongzhonghao-javaguide.png" alt="JavaGuide WeChat account" style="zoom: 43%; display: block; margin: 0 auto;" />

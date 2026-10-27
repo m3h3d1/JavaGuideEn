@@ -3,140 +3,140 @@ import { ICONS } from "./constants.js";
 
 export const aiCoding = arraySidebar([
   {
-    text: "入门",
+    text: "Getting Started",
     icon: ICONS.BASIC,
     children: [
       {
-        text: "AI 编程开放性面试题",
+        text: "Open-Ended AI Coding Interview Questions",
         link: "practices/ai-ide",
       },
       {
-        text: "AI 编程选 CLI 还是 IDE？",
+        text: "AI Coding: CLI or IDE?",
         link: "practices/cli-vs-ide",
       },
     ],
   },
   {
-    text: "Claude Code 与 Codex",
+    text: "Claude Code and Codex",
     icon: ICONS.CODE,
     children: [
       {
-        text: "⭐️Claude Code 使用指南",
+        text: "⭐️Claude Code Guide",
         link: "practices/claudecode-tips",
       },
       {
-        text: "Claude Code 核心命令详解",
+        text: "Claude Code Commands Explained",
         link: "practices/claudecode-commands",
       },
       {
-        text: "⭐️OpenAI Codex 最佳实践指南",
+        text: "⭐️OpenAI Codex Best Practices",
         link: "practices/codex-best-practices",
       },
       {
-        text: "高颜值 Claude Code 替代 OMP",
+        text: "A Polished OMP Alternative for Claude Code",
         link: "practices/oh-my-pi",
       },
       {
-        text: "Ghostty 安装、配置和常见技巧",
+        text: "Installing and Configuring Ghostty: Tips and Tricks",
         link: "practices/ghostty",
       },
       {
-        text: "Claude Code Agent View 多会话管理",
+        text: "Managing Multiple Sessions with Claude Code Agent View",
         link: "practices/claudecode-agentview",
       },
     ],
   },
   {
-    text: "Claude Code 原理",
+    text: "How Claude Code Works",
     icon: ICONS.CODE,
     prefix: "principles/",
     children: [
       {
-        text: "Claude Code 上下文管理",
+        text: "Claude Code Context Management",
         link: "claude-code-context-management",
       },
       {
-        text: "Claude Code 记忆系统",
+        text: "Claude Code Memory System",
         link: "claude-code-memory",
       },
       {
-        text: "Claude Code Skills 原理",
+        text: "How Claude Code Skills Work",
         link: "claude-code-skills",
       },
       {
-        text: "Claude Code Hooks 原理",
+        text: "How Claude Code Hooks Work",
         link: "claude-code-hooks",
       },
       {
-        text: "Claude Code 多 Agent 机制",
+        text: "Claude Code Multi-Agent System",
         link: "claude-code-multi-agent",
       },
     ],
   },
   {
-    text: "规范与提效",
+    text: "Standards and Productivity",
     icon: ICONS.PERFORMANCE,
     children: [
       {
-        text: "⭐️Vibe Coding 实用技巧总结",
+        text: "⭐️Practical Vibe Coding Tips",
         link: "practices/the-cool-tricks-for-vibe-coding",
       },
       {
-        text: "Spec Coding 规范驱动编程",
+        text: "Spec Coding: Specification-Driven Development",
         link: "practices/spec-coding",
       },
       {
-        text: "⭐️CLAUDE.md 最佳实践",
+        text: "⭐️CLAUDE.md Best Practices",
         link: "practices/claude-md-best-practices",
       },
       {
-        text: "⭐️AI 编程必备 Skills 推荐",
+        text: "⭐️Essential Skills for AI Coding",
         link: "practices/programmer-essential-skills",
       },
       {
-        text: "AI 编程 Skills 选型与精简",
+        text: "Choosing and Pruning AI Coding Skills",
         link: "practices/skill-selection-and-pruning",
       },
       {
-        text: "mattpocock/skills 深度使用指南",
+        text: "A Deep Dive into mattpocock/skills",
         link: "practices/mattpocock-skills",
       },
       {
-        text: "一个好用的 AI 绘图 Skill",
+        text: "A Useful AI Diagramming Skill",
         link: "practices/drawio-chart-skill",
       },
     ],
   },
   {
-    text: "AI 编程实战",
+    text: "AI Coding in Practice",
     icon: ICONS.PROJECT,
     children: [
       {
-        text: "IDEA + Qoder 插件多场景实战",
+        text: "IDEA and Qoder Plugins in Practice",
         link: "cases/idea-qoder-plugin",
       },
       {
-        text: "Trae + MiniMax 多场景实战",
+        text: "Trae and MiniMax in Practice",
         link: "cases/trae-m2.7",
       },
       {
-        text: "Claude Code 接入第三方模型实战",
+        text: "Using Third-Party Models with Claude Code",
         link: "cases/cc-glm5.1",
       },
       {
-        text: "DeepSeek V4 + Claude Code 实战",
+        text: "DeepSeek V4 and Claude Code in Practice",
         link: "cases/deepseek-v4-claude-code",
       },
       {
-        text: "MiniMax M3 + Claude Code 实战",
+        text: "MiniMax M3 and Claude Code in Practice",
         link: "cases/cc-m3",
       },
       {
-        text: "Kimi K3 多场景实战",
+        text: "Kimi K3 in Practice",
         link: "cases/kimi-k3",
       },
       {
-        text: "IDEA + CC GUI 插件实战",
+        text: "IDEA and CC GUI Plugin in Practice",
         link: "project/cc-guide",
       },
     ],

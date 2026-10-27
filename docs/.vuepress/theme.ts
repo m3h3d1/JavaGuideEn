@@ -17,7 +17,7 @@ const docsearchOptions =
         indexName: docsearchIndexName,
         locales: {
           "/": {
-            placeholder: "搜索 JavaGuide",
+            placeholder: "Search JavaGuide",
           },
         },
       }
@@ -73,43 +73,43 @@ const legacyRedirects = {
 
 const segmentDisplayNames = {
   ai: "AI",
-  "ai-coding": "AI 编程",
-  algorithms: "算法",
-  basis: "基础知识",
-  books: "技术书籍",
-  collection: "Java 集合",
-  concurrent: "Java 并发",
-  "cs-basics": "计算机基础",
-  "data-structure": "数据结构",
-  database: "数据库",
-  "distributed-process-coordination": "分布式协调",
-  "distributed-system": "分布式系统",
+  "ai-coding": "AI Coding",
+  algorithms: "Algorithms",
+  basis: "Fundamentals",
+  books: "Technical Books",
+  collection: "Java Collections",
+  concurrent: "Java Concurrency",
+  "cs-basics": "Computer Science",
+  "data-structure": "Data Structures",
+  database: "Databases",
+  "distributed-process-coordination": "Distributed Coordination",
+  "distributed-system": "Distributed Systems",
   docker: "Docker",
   elasticsearch: "Elasticsearch",
-  framework: "开发框架",
+  framework: "Frameworks",
   git: "Git",
   gradle: "Gradle",
-  "high-availability": "高可用",
-  "high-performance": "高性能",
-  "interview-preparation": "面试准备",
+  "high-availability": "High Availability",
+  "high-performance": "High Performance",
+  "interview-preparation": "Interview Preparation",
   io: "Java IO",
   java: "Java",
   javaguide: "JavaGuide",
   jvm: "JVM",
-  "message-queue": "消息队列",
+  "message-queue": "Message Queues",
   mysql: "MySQL",
-  network: "计算机网络",
-  "new-features": "Java 新特性",
-  "open-source-project": "开源项目",
-  "operating-system": "操作系统",
-  protocol: "分布式协议与算法",
+  network: "Computer Networks",
+  "new-features": "Java Features",
+  "open-source-project": "Open-Source Projects",
+  "operating-system": "Operating Systems",
+  protocol: "Distributed Protocols and Algorithms",
   rag: "RAG",
   redis: "Redis",
   rpc: "RPC",
-  security: "安全",
+  security: "Security",
   sql: "SQL",
-  "system-design": "系统设计",
-  tools: "开发工具",
+  "system-design": "System Design",
+  tools: "Developer Tools",
   zookeeper: "ZooKeeper",
 };
 
@@ -162,32 +162,27 @@ const trimDescription = (description) => {
 
   const trimmed = description.slice(0, MAX_META_DESCRIPTION_LENGTH);
   const lastStop = Math.max(
-    trimmed.lastIndexOf("。"),
-    trimmed.lastIndexOf("！"),
-    trimmed.lastIndexOf("？"),
+    trimmed.lastIndexOf("."),
+    trimmed.lastIndexOf("!"),
+    trimmed.lastIndexOf("?"),
     trimmed.lastIndexOf(";"),
-    trimmed.lastIndexOf("；"),
   );
 
   if (lastStop >= MIN_META_DESCRIPTION_LENGTH - 5)
     return trimmed.slice(0, lastStop + 1);
 
-  const lastSoftStop = Math.max(
-    trimmed.lastIndexOf("，"),
-    trimmed.lastIndexOf("、"),
-    trimmed.lastIndexOf(","),
-  );
+  const lastSoftStop = trimmed.lastIndexOf(",");
 
   if (lastSoftStop >= MIN_META_DESCRIPTION_LENGTH - 5) {
-    const base = trimmed.slice(0, lastSoftStop).replace(/[，、,;\s]+$/, "");
-    const result = `${base}等核心内容。`;
+    const base = trimmed.slice(0, lastSoftStop).replace(/[,;\s]+$/, "");
+    const result = `${base}, and related topics.`;
 
     return result.length <= MAX_META_DESCRIPTION_LENGTH
       ? result
-      : `${result.slice(0, MAX_META_DESCRIPTION_LENGTH - 1)}。`;
+      : `${result.slice(0, MAX_META_DESCRIPTION_LENGTH - 1).trimEnd()}…`;
   }
 
-  return `${description.slice(0, MAX_META_DESCRIPTION_LENGTH - 1)}。`;
+  return `${description.slice(0, MAX_META_DESCRIPTION_LENGTH - 1).trimEnd()}…`;
 };
 
 const buildSeoDescription = (page, app) => {
@@ -200,17 +195,17 @@ const buildSeoDescription = (page, app) => {
 
   if (page.path === "/")
     return trimDescription(
-      "JavaGuide 是一份面向 Java 后端开发者和面试准备人群的学习指南，系统覆盖 Java 基础、集合、并发、JVM、MySQL、Redis、分布式、高并发、高可用、系统设计、消息队列、计算机基础和 AI 应用开发等核心知识，适合校招社招复习、查缺补漏和规划学习路线。",
+      "JavaGuide is a study guide for Java backend developers and interview candidates. It covers Java fundamentals, collections, concurrency, the JVM, MySQL, Redis, distributed systems, high concurrency, high availability, system design, message queues, computer science, and AI application development. Use it to prepare for interviews, review key topics, and plan your learning.",
     );
 
   if (page.path === "/home.html")
     return trimDescription(
-      "JavaGuide 首页聚合 Java 后端学习路线、核心知识体系和高频面试题入口，覆盖 Java 基础、并发、JVM、数据库、Redis、分布式、系统设计、高性能、高可用、计算机基础和 AI 应用开发，帮助读者快速定位重点内容。",
+      "The JavaGuide home page brings together Java backend learning roadmaps, core topic guides, and popular interview questions. It covers Java fundamentals, concurrency, the JVM, databases, Redis, distributed systems, system design, high performance, high availability, computer science, and AI application development.",
     );
 
   if (page.path === "/404.html")
     return trimDescription(
-      "JavaGuide 页面未找到提示页，帮助读者返回 Java 面试指南、后端通用面试知识、计算机基础、数据库、Redis、分布式、系统设计和 AI 应用开发等核心内容入口，继续定位学习资料、面试题总结和实践文章。",
+      "This page could not be found. Continue exploring JavaGuide's Java interview guide, backend topics, computer science fundamentals, databases, Redis, distributed systems, system design, and AI application development resources.",
     );
 
   const title = normalizeDescriptionText(page.title);
@@ -226,9 +221,9 @@ const buildSeoDescription = (page, app) => {
   const topic = getPathTopic(page) || title || category[0] || "JavaGuide";
   const pageText = getPageText(page, app);
   const parts = [
-    existingDescription || (title ? `${title}：` : ""),
-    focusItems.length ? `重点围绕 ${focusItems.join("、")} 等内容展开。` : "",
-    `结合 JavaGuide 知识体系梳理 ${topic} 的核心概念、实践方法、常见问题和高频面试考点，覆盖原理分析、使用场景、方案对比与经验总结，适合后端开发者系统学习、面试复习、快速定位重点内容和查缺补漏。`,
+    existingDescription || (title ? `${title}: ` : ""),
+    focusItems.length ? `Key topics include ${focusItems.join(", ")}. ` : "",
+    `This page uses JavaGuide's topic guides to explain ${topic}: core concepts, practical approaches, common questions, and interview topics. It covers how things work, when to use them, trade-offs, and lessons from practice.`,
     pageText && !existingDescription.includes(pageText.slice(0, 24))
       ? pageText
       : "",
@@ -258,7 +253,7 @@ export default hopeTheme({
   navbar,
   sidebar,
   footer:
-    '<a href="https://beian.miit.gov.cn/" target="_blank">鄂ICP备2020015769号-1</a>',
+    '<a href="https://beian.miit.gov.cn/" target="_blank">Hubei ICP filing no. 鄂ICP备2020015769号-1</a>',
   displayFooter: true,
 
   pageInfo: ["Author", "Category", "Tag", "Original", "Word", "ReadingTime"],
@@ -319,11 +314,11 @@ export default hopeTheme({
               "@context": "https://schema.org",
               "@type": "WebSite",
               name: "JavaGuide",
-              alternateName: "Java 面试指南",
+              alternateName: "Java Interview Guide",
               url: "https://javaguide.cn/",
-              inLanguage: "zh-CN",
+              inLanguage: "en-US",
               description:
-                "JavaGuide 是一份 Java 面试和后端通用面试指南，覆盖 Java、MySQL、Redis、Spring、分布式和系统设计等核心知识。",
+                "JavaGuide is a guide to Java interviews and backend engineering, covering Java, MySQL, Redis, Spring, distributed systems, and system design.",
               publisher: {
                 "@type": "Person",
                 name: "Guide",
@@ -339,54 +334,54 @@ export default hopeTheme({
             JSON.stringify({
               "@context": "https://schema.org",
               "@type": "ItemList",
-              name: "Java 面试核心内容",
+              name: "Core Java Interview Topics",
               itemListElement: [
                 {
                   "@type": "ListItem",
                   position: 1,
-                  name: "Java 基础面试题",
+                  name: "Java Fundamentals Interview Questions",
                   url: "https://javaguide.cn/java/basis/java-basic-questions-01.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 2,
-                  name: "Java 集合面试题",
+                  name: "Java Collections Interview Questions",
                   url: "https://javaguide.cn/java/collection/java-collection-questions-01.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 3,
-                  name: "Java 并发面试题",
+                  name: "Java Concurrency Interview Questions",
                   url: "https://javaguide.cn/java/concurrent/java-concurrent-questions-01.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 4,
-                  name: "JVM 面试题",
+                  name: "JVM Interview Questions",
                   url: "https://javaguide.cn/java/jvm/memory-area.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 5,
-                  name: "Spring 面试题",
+                  name: "Spring Interview Questions",
                   url: "https://javaguide.cn/system-design/framework/spring/spring-knowledge-and-questions-summary.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 6,
-                  name: "MySQL 面试题",
+                  name: "MySQL Interview Questions",
                   url: "https://javaguide.cn/database/mysql/mysql-questions-01.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 7,
-                  name: "Redis 面试题",
+                  name: "Redis Interview Questions",
                   url: "https://javaguide.cn/database/redis/redis-questions-01.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 8,
-                  name: "系统设计面试题",
+                  name: "System Design Interview Questions",
                   url: "https://javaguide.cn/system-design/system-design-questions.html",
                 },
               ],
@@ -400,42 +395,42 @@ export default hopeTheme({
             JSON.stringify({
               "@context": "https://schema.org",
               "@type": "ItemList",
-              name: "AI 应用开发面试核心内容",
+              name: "Core AI Application Development Interview Topics",
               itemListElement: [
                 {
                   "@type": "ListItem",
                   position: 1,
-                  name: "AI 应用开发面试指南",
+                  name: "AI Application Development Interview Guide",
                   url: "https://javaguide.cn/ai/interview-questions/ai-interview-guide.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 2,
-                  name: "大模型基础面试题",
+                  name: "LLM Fundamentals Interview Questions",
                   url: "https://javaguide.cn/ai/interview-questions/llm-interview-questions.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 3,
-                  name: "AI Agent 面试题",
+                  name: "AI Agent Interview Questions",
                   url: "https://javaguide.cn/ai/interview-questions/agent-interview-questions.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 4,
-                  name: "RAG 面试题",
+                  name: "RAG Interview Questions",
                   url: "https://javaguide.cn/ai/interview-questions/rag-interview-questions.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 5,
-                  name: "AI 系统设计面试题",
+                  name: "AI System Design Interview Questions",
                   url: "https://javaguide.cn/ai/interview-questions/ai-system-design-interview-questions.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 6,
-                  name: "AI 应用系统设计",
+                  name: "AI Application System Design",
                   url: "https://javaguide.cn/ai/system-design/ai-application-architecture.html",
                 },
               ],
@@ -449,42 +444,42 @@ export default hopeTheme({
             JSON.stringify({
               "@context": "https://schema.org",
               "@type": "ItemList",
-              name: "计算机基础面试核心内容",
+              name: "Core Computer Science Interview Topics",
               itemListElement: [
                 {
                   "@type": "ListItem",
                   position: 1,
-                  name: "计算机网络常见面试题",
+                  name: "Common Computer Networking Interview Questions",
                   url: "https://javaguide.cn/cs-basics/network/other-network-questions.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 2,
-                  name: "操作系统常见面试题",
+                  name: "Common Operating Systems Interview Questions",
                   url: "https://javaguide.cn/cs-basics/operating-system/operating-system-basic-questions-01.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 3,
-                  name: "线性数据结构",
+                  name: "Linear Data Structures",
                   url: "https://javaguide.cn/cs-basics/data-structure/linear-data-structure.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 4,
-                  name: "十大经典排序算法",
+                  name: "Ten Classic Sorting Algorithms",
                   url: "https://javaguide.cn/cs-basics/algorithms/10-classical-sorting-algorithms.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 5,
-                  name: "HTTP 与 HTTPS",
+                  name: "HTTP and HTTPS",
                   url: "https://javaguide.cn/cs-basics/network/http-vs-https.html",
                 },
                 {
                   "@type": "ListItem",
                   position: 6,
-                  name: "TCP 三次握手和四次挥手",
+                  name: "TCP Three-Way Handshake and Four-Way Teardown",
                   url: "https://javaguide.cn/cs-basics/network/tcp-connection-and-disconnection.html",
                 },
               ],
@@ -516,7 +511,7 @@ export default hopeTheme({
 
     photoSwipe: false,
 
-    // 申请到 DocSearch key 后配置上面的环境变量；在此之前关闭本地搜索索引。
+    // Configure the environment variables above after obtaining a DocSearch key. Until then, local search indexing is disabled.
     ...(docsearchOptions ? { docsearch: docsearchOptions } : {}),
     search: false,
   },

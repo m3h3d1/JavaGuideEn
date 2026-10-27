@@ -3,17 +3,17 @@ import { ICONS } from "./constants.js";
 
 export const books = arraySidebar([
   {
-    text: "计算机基础",
+    text: "Computer Science",
     link: "cs-basics",
     icon: ICONS.COMPUTER,
   },
   {
-    text: "数据库",
+    text: "Databases",
     link: "database",
     icon: ICONS.DATABASE,
   },
   {
-    text: "搜索引擎",
+    text: "Search Engines",
     link: "search-engine",
     icon: ICONS.SEARCH,
   },
@@ -23,13 +23,13 @@ export const books = arraySidebar([
     icon: ICONS.JAVA,
   },
   {
-    text: "软件质量",
+    text: "Software Quality",
     link: "software-quality",
     icon: ICONS.HIGH_AVAILABLE,
   },
 
   {
-    text: "分布式",
+    text: "Distributed Systems",
     link: "distributed-system",
     icon: ICONS.DISTRIBUTED,
   },

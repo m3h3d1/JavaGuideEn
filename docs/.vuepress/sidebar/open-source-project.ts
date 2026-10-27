@@ -3,12 +3,12 @@ import { ICONS } from "./constants.js";
 
 export const openSourceProject = arraySidebar([
   {
-    text: "技术教程",
+    text: "Technical Guides",
     link: "tutorial",
     icon: ICONS.BOOK,
   },
   {
-    text: "实战项目",
+    text: "Hands-on Projects",
     link: "practical-project",
     icon: ICONS.PROJECT,
   },
@@ -18,22 +18,22 @@ export const openSourceProject = arraySidebar([
     icon: ICONS.MACHINE_LEARNING,
   },
   {
-    text: "系统设计",
+    text: "System Design",
     link: "system-design",
     icon: ICONS.DESIGN,
   },
   {
-    text: "工具类库",
+    text: "Tools and Libraries",
     link: "tool-library",
     icon: ICONS.LIBRARY,
   },
   {
-    text: "开发工具",
+    text: "Developer Tools",
     link: "tools",
     icon: ICONS.TOOL,
   },
   {
-    text: "大数据",
+    text: "Big Data",
     link: "big-data",
     icon: ICONS.BIG_DATA,
   },

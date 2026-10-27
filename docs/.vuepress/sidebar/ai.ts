@@ -3,38 +3,55 @@ import { ICONS } from "./constants.js";
 
 export const ai = arraySidebar([
   {
-    text: "入门总览",
+    text: "Getting Started",
     icon: ICONS.BASIC,
-    children: [{ text: "⭐️AI 核心概念总览", link: "ai-core-concepts" }],
+    children: [
+      { text: "⭐️AI Core Concepts at a Glance", link: "ai-core-concepts" },
+    ],
   },
   {
-    text: "面试题",
+    text: "Interview Questions",
     icon: ICONS.INTERVIEW,
     prefix: "interview-questions/",
     children: [
-      { text: "⭐️AI 应用开发面试指南", link: "ai-interview-guide" },
-      { text: "大模型基础面试题总结", link: "llm-interview-questions" },
-      { text: "AI Agent 面试题总结", link: "agent-interview-questions" },
-      { text: "Agent 项目面试实战", link: "agent-project-interview-guide" },
-      { text: "RAG 面试题总结", link: "rag-interview-questions" },
       {
-        text: "AI 系统设计面试题总结",
+        text: "⭐️AI Application Development Interview Guide",
+        link: "ai-interview-guide",
+      },
+      {
+        text: "LLM Fundamentals Interview Questions",
+        link: "llm-interview-questions",
+      },
+      {
+        text: "AI Agent Interview Questions",
+        link: "agent-interview-questions",
+      },
+      {
+        text: "AI Agent Project Interview Guide",
+        link: "agent-project-interview-guide",
+      },
+      { text: "RAG Interview Questions", link: "rag-interview-questions" },
+      {
+        text: "AI System Design Interview Questions",
         link: "ai-system-design-interview-questions",
       },
     ],
   },
   {
-    text: "大模型基础",
+    text: "LLM Fundamentals",
     icon: ICONS.MACHINE_LEARNING,
     prefix: "llm-basis/",
     children: [
-      { text: "万字拆解 LLM 运行机制", link: "llm-operation-mechanism" },
-      { text: "大模型 API 调用工程实践", link: "llm-api-engineering" },
       {
-        text: "大模型结构化输出详解",
+        text: "How LLMs Work: An In-Depth Guide",
+        link: "llm-operation-mechanism",
+      },
+      { text: "Engineering LLM API Calls", link: "llm-api-engineering" },
+      {
+        text: "Structured Outputs from LLMs",
         link: "structured-output-function-calling",
       },
-      { text: "AI 应用评测体系", link: "llm-evaluation" },
+      { text: "Evaluating AI Applications", link: "llm-evaluation" },
     ],
   },
   {
@@ -42,16 +59,22 @@ export const ai = arraySidebar([
     icon: ICONS.CHAT,
     prefix: "agent/",
     children: [
-      { text: "⭐️AI Agent 核心概念详解", link: "agent-basis" },
-      { text: "⭐️AI Agent 记忆系统详解", link: "agent-memory" },
-      { text: "多 Agent 协作系统设计", link: "multi-agent" },
-      { text: "提示词工程实战指南", link: "prompt-engineering" },
-      { text: "上下文工程实战指南", link: "context-engineering" },
-      { text: "万字详解 Agent Skills", link: "skills" },
-      { text: "万字拆解 MCP 协议", link: "mcp" },
-      { text: "Harness Engineering 详解", link: "harness-engineering" },
-      { text: "AI 工作流详解", link: "workflow-graph-loop" },
-      { text: "Loop Engineering 详解", link: "loop-engineering" },
+      { text: "⭐️AI Agent Fundamentals", link: "agent-basis" },
+      { text: "⭐️AI Agent Memory Systems", link: "agent-memory" },
+      { text: "Designing Multi-Agent Systems", link: "multi-agent" },
+      {
+        text: "Practical Guide to Prompt Engineering",
+        link: "prompt-engineering",
+      },
+      {
+        text: "Practical Guide to Context Engineering",
+        link: "context-engineering",
+      },
+      { text: "Agent Skills: An In-Depth Guide", link: "skills" },
+      { text: "The MCP Protocol: An In-Depth Guide", link: "mcp" },
+      { text: "Harness Engineering Explained", link: "harness-engineering" },
+      { text: "AI Workflows Explained", link: "workflow-graph-loop" },
+      { text: "Loop Engineering Explained", link: "loop-engineering" },
     ],
   },
   {
@@ -59,37 +82,40 @@ export const ai = arraySidebar([
     icon: ICONS.SEARCH,
     prefix: "rag/",
     children: [
-      { text: "⭐️RAG 基础概念详解", link: "rag-basis" },
+      { text: "⭐️RAG Fundamentals", link: "rag-basis" },
       {
-        text: "RAG 文档处理与切分策略",
+        text: "RAG Document Processing and Chunking Strategies",
         link: "rag-document-processing",
       },
       {
-        text: "⭐️RAG 向量索引算法和向量数据库",
+        text: "⭐️RAG Vector Indexing Algorithms and Vector Databases",
         link: "rag-vector-store",
       },
       {
-        text: "RAG 知识库文档更新策略",
+        text: "Updating Documents in a RAG Knowledge Base",
         link: "rag-knowledge-update",
       },
-      { text: "GraphRAG 详解", link: "graphrag" },
-      { text: "RAG 检索优化", link: "rag-optimization" },
-      { text: "RAG 评测与线上可观测性", link: "rag-evaluation" },
+      { text: "GraphRAG Explained", link: "graphrag" },
+      { text: "RAG Retrieval Optimization", link: "rag-optimization" },
+      {
+        text: "RAG Evaluation and Production Observability",
+        link: "rag-evaluation",
+      },
     ],
   },
   {
-    text: "AI 系统设计",
+    text: "AI System Design",
     icon: ICONS.DESIGN,
     prefix: "system-design/",
     children: [
       {
-        text: "AI 应用系统设计",
+        text: "AI Application System Design",
         link: "ai-application-architecture",
       },
-      { text: "LLM/Agent 安全实战", link: "llm-security" },
-      { text: "大模型网关详解", link: "llm-gateway" },
-      { text: "AI 可观测性与 Trace", link: "ai-observability" },
-      { text: "AI 语音技术详解", link: "ai-voice" },
+      { text: "Practical LLM and Agent Security", link: "llm-security" },
+      { text: "LLM Gateways Explained", link: "llm-gateway" },
+      { text: "AI Observability and Tracing", link: "ai-observability" },
+      { text: "AI Voice Technology Explained", link: "ai-voice" },
     ],
   },
 ]);

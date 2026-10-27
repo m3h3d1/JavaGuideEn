@@ -16,7 +16,7 @@ import {
 } from "./constants.js";
 
 export default sidebar({
-  // 应该把更精确的路径放置在前边
+  // More specific paths should come first
   "/ai-coding/": aiCoding,
   "/ai/": ai,
   "/roadmap/": roadmap,
@@ -26,43 +26,49 @@ export default sidebar({
   "/about-the-author/": aboutTheAuthor,
   "/high-quality-technical-articles/": highQualityTechnicalArticles,
   "/zhuanlan/": zhuanlan,
-  // 必须放在最后面
+  // Must be placed last
   "/": [
     {
-      text: "项目介绍",
+      text: "About the Project",
       icon: ICONS.STAR,
       collapsible: true,
       prefix: "javaguide/",
       children: ["intro", "use-suggestion", "contribution-guideline", "faq"],
     },
     {
-      text: "面试准备（必看）",
+      text: "Interview Preparation (Start Here)",
       icon: ICONS.INTERVIEW,
       collapsible: true,
       prefix: "interview-preparation/",
       children: [
         {
-          text: "面试准备知识体系",
+          text: "Interview Preparation Guide",
           link: "/interview-preparation/",
         },
-        { text: "⭐Java 后端面试通关计划", link: "backend-interview-plan" },
         {
-          text: "⭐如何高效准备 Java 面试？",
+          text: "⭐ Java Backend Interview Plan",
+          link: "backend-interview-plan",
+        },
+        {
+          text: "⭐How to Prepare for Java Interviews",
           link: "teach-you-how-to-prepare-for-the-interview-hand-in-hand",
         },
-        { text: "⭐程序员简历编写指南", link: "resume-guide" },
+        { text: "⭐Programmer Resume Guide", link: "resume-guide" },
         {
-          text: "⭐Java 后端面试重点总结",
+          text: "⭐Key Topics for Java Backend Interviews",
           link: "key-points-of-interview",
         },
         {
-          text: "Java 面试 + 后端面试 PDF 资料",
+          text: "Java and Backend Interview PDFs",
           link: "pdf-interview-javaguide",
         },
-        { text: "Java 学习路线", link: "java-roadmap" },
-        { text: "⭐项目经验指南", link: "project-experience-guide" },
+        { text: "Java Learning Roadmap", link: "java-roadmap" },
         {
-          text: "⭐后端项目面试怎么讲？",
+          text: "⭐Project Experience Guide",
+          link: "project-experience-guide",
+        },
+        {
+          text: "⭐How to Present Backend Projects in Interviews?",
           link: "backend-project-interview-guide",
         },
         "how-to-handle-interview-nerves",
@@ -76,24 +82,24 @@ export default sidebar({
       prefix: "java/",
       children: [
         {
-          text: "Java 知识体系",
+          text: "Java Guide",
           link: "/java/",
         },
         {
-          text: "基础",
+          text: "Fundamentals",
           prefix: "basis/",
           icon: ICONS.BASIC,
           children: [
             {
-              text: "⭐Java 基础常见面试题（上）",
+              text: "⭐ Java Fundamentals: Common Interview Questions (Part 1)",
               link: "java-basic-questions-01",
             },
             {
-              text: "⭐Java 基础常见面试题（中）",
+              text: "⭐ Java Fundamentals: Common Interview Questions (Part 2)",
               link: "java-basic-questions-02",
             },
             {
-              text: "⭐Java 基础常见面试题（下）",
+              text: "⭐ Java Fundamentals: Common Interview Questions (Part 3)",
               link: "java-basic-questions-03",
             },
             createImportantSection([
@@ -104,7 +110,7 @@ export default sidebar({
               "proxy",
               "bigdecimal",
               {
-                text: "Java 金额类型选择",
+                text: "Choosing a Java Type for Monetary Values",
                 link: "money-long-vs-bigdecimal",
               },
               "unsafe",
@@ -114,16 +120,16 @@ export default sidebar({
           ],
         },
         {
-          text: "集合",
+          text: "Collections",
           prefix: "collection/",
           icon: ICONS.CONTAINER,
           children: [
             {
-              text: "⭐Java 集合常见面试题（上）",
+              text: "⭐Common Java Collections Interview Questions (Part 1)",
               link: "java-collection-questions-01",
             },
             {
-              text: "⭐Java 集合常见面试题（下）",
+              text: "⭐Common Java Collections Interview Questions (Part 2)",
               link: "java-collection-questions-02",
             },
             "java-collection-precautions-for-use",
@@ -141,24 +147,24 @@ export default sidebar({
           ],
         },
         {
-          text: "并发编程",
+          text: "Concurrency",
           prefix: "concurrent/",
           icon: ICONS.PERFORMANCE,
           children: [
             {
-              text: "⭐Java 并发常见面试题（上）",
+              text: "⭐Common Java Concurrency Interview Questions (Part 1)",
               link: "java-concurrent-questions-01",
             },
             {
-              text: "⭐Java 并发常见面试题（中）",
+              text: "⭐Common Java Concurrency Interview Questions (Part 2)",
               link: "java-concurrent-questions-02",
             },
             {
-              text: "⭐Java 并发常见面试题（下）",
+              text: "⭐Common Java Concurrency Interview Questions (Part 3)",
               link: "java-concurrent-questions-03",
             },
             createImportantSection([
-              { text: "Java 锁详解", link: "java-lock" },
+              { text: "Java Locks Explained", link: "java-lock" },
               "optimistic-lock-and-pessimistic-lock",
               "cas",
               "jmm",
@@ -187,7 +193,7 @@ export default sidebar({
           collapsible: true,
           children: [
             {
-              text: "⭐JVM 常见面试题总结",
+              text: "⭐Common JVM Interview Questions",
               link: "jvm-interview-questions",
             },
             "memory-area",
@@ -198,13 +204,13 @@ export default sidebar({
             "jvm-parameters-intro",
             "jdk-monitoring-and-troubleshooting-tools",
             {
-              text: "Java 后端线上问题排查",
+              text: "Troubleshooting Java Backend Production Issues",
               link: "jvm-in-action",
             },
           ],
         },
         {
-          text: "新特性",
+          text: "New Features",
           prefix: "new-features/",
           icon: ICONS.FEATURED,
           collapsible: true,
@@ -230,23 +236,23 @@ export default sidebar({
       ],
     },
     {
-      text: "数据库",
+      text: "Databases",
       icon: ICONS.DATABASE,
       prefix: "database/",
       collapsible: true,
       children: [
         {
-          text: "数据库知识体系",
+          text: "Database Guide",
           link: "/database/",
         },
         {
-          text: "基础",
+          text: "Fundamentals",
           icon: ICONS.BASIC,
           children: [
             "basis",
             "nosql",
             {
-              text: "字符集详解",
+              text: "Character Sets Explained",
               link: "character-set",
             },
             {
@@ -270,21 +276,24 @@ export default sidebar({
           prefix: "mysql/",
           icon: ICONS.MYSQL,
           children: [
-            { text: "⭐MySQL 常见面试题总结", link: "mysql-questions-01" },
+            {
+              text: "⭐Common MySQL Interview Questions",
+              link: "mysql-questions-01",
+            },
             "mysql-high-performance-optimization-specification-recommendations",
             createImportantSection([
               "mysql-index",
               "mysql-index-invalidation",
               {
-                text: "MySQL三大日志详解",
+                text: "MySQL Three Main Logs Explained",
                 link: "mysql-logs",
               },
               {
-                text: "MySQL备份与恢复",
+                text: "MySQL Backup and Recovery",
                 link: "mysql-backup-and-restore",
               },
               {
-                text: "MySQL同步ES方案",
+                text: "MySQL-to-Elasticsearch Synchronization",
                 link: "mysql-to-elasticsearch-sync",
               },
               "transaction-isolation-level",
@@ -305,11 +314,11 @@ export default sidebar({
           children: [
             "cache-basics",
             {
-              text: "⭐Redis 常见面试题总结（上）",
+              text: "⭐Common Redis Interview Questions (Part 1)",
               link: "redis-questions-01",
             },
             {
-              text: "⭐Redis 常见面试题总结（下）",
+              text: "⭐Common Redis Interview Questions (Part 2)",
               link: "redis-questions-02",
             },
             createImportantSection([
@@ -343,13 +352,13 @@ export default sidebar({
       ],
     },
     {
-      text: "开发工具",
+      text: "Developer Tools",
       icon: ICONS.TOOL,
       prefix: "tools/",
       collapsible: true,
       children: [
         {
-          text: "开发工具知识体系",
+          text: "Developer Tools Guide",
           link: "/tools/",
         },
         {
@@ -357,8 +366,8 @@ export default sidebar({
           icon: ICONS.MAVEN,
           prefix: "maven/",
           children: [
-            { text: "Maven 核心概念总结", link: "maven-core-concepts" },
-            { text: "Maven 最佳实践", link: "maven-best-practices" },
+            { text: "Maven Core Concepts", link: "maven-core-concepts" },
+            { text: "Maven Best Practices", link: "maven-best-practices" },
           ],
         },
         {
@@ -387,7 +396,7 @@ export default sidebar({
       ],
     },
     {
-      text: "常用框架",
+      text: "Common Frameworks",
       prefix: "system-design/framework/",
       icon: ICONS.COMPONENT,
       collapsible: true,
@@ -398,11 +407,11 @@ export default sidebar({
           prefix: "spring/",
           children: [
             {
-              text: "Spring 常见面试题总结",
+              text: "Common Spring Interview Questions",
               link: "spring-knowledge-and-questions-summary",
             },
             {
-              text: "Spring Boot 常见面试题总结",
+              text: "Common Spring Boot Interview Questions",
               link: "springboot-knowledge-and-questions-summary",
             },
             "spring-common-annotations",
@@ -418,24 +427,24 @@ export default sidebar({
           ],
         },
         {
-          text: "MyBatis 常见面试题总结",
+          text: "Common MyBatis Interview Questions",
           link: "mybatis/mybatis-interview",
         },
         "netty",
       ],
     },
     {
-      text: "系统设计",
+      text: "System Design",
       icon: ICONS.DESIGN,
       prefix: "system-design/",
       collapsible: true,
       children: [
         {
-          text: "系统设计知识体系",
+          text: "System Design Guide",
           link: "/system-design/",
         },
         {
-          text: "基础知识",
+          text: "Fundamentals",
           prefix: "basis/",
           icon: ICONS.BASIC,
           collapsible: true,
@@ -445,13 +454,13 @@ export default sidebar({
             "naming",
             "refactoring",
             {
-              text: "单元测试指南",
+              text: "Unit Testing Guide",
               link: "unit-test",
             },
           ],
         },
         {
-          text: "认证授权",
+          text: "Authentication and Authorization",
           prefix: "security/",
           icon: ICONS.SECURITY,
           collapsible: true,
@@ -464,7 +473,7 @@ export default sidebar({
           ],
         },
         {
-          text: "数据安全",
+          text: "Data Security",
           prefix: "security/",
           icon: ICONS.SECURITY,
           collapsible: true,
@@ -477,11 +486,11 @@ export default sidebar({
           ],
         },
         {
-          text: "⭐系统设计常见面试题总结",
+          text: "⭐Common System Design Interview Questions",
           link: "system-design-questions",
         },
         {
-          text: "⭐设计模式常见面试题总结",
+          text: "⭐Common Design Pattern Interview Questions",
           link: "https://interview.javaguide.cn/system-design/design-pattern.html",
         },
         "state-machine-and-workflow",
@@ -490,89 +499,104 @@ export default sidebar({
       ],
     },
     {
-      text: "分布式",
+      text: "Distributed Systems",
       icon: ICONS.DISTRIBUTED,
       prefix: "distributed-system/",
       collapsible: true,
       children: [
         {
-          text: "分布式系统入门",
+          text: "Distributed Systems: An Introduction",
           link: "distributed-system-intro",
         },
         {
-          text: "⭐分布式高频面试题",
+          text: "⭐Popular Distributed Systems Interview Questions",
           link: "distributed-system-interview-questions",
         },
         {
-          text: "⭐微服务高频面试题",
+          text: "⭐Popular Microservices Interview Questions",
           link: "microservices-interview-questions",
         },
         {
-          text: "理论&算法&协议",
+          text: "Theory, Algorithms, and Protocols",
           icon: ICONS.ALGORITHM,
           prefix: "protocol/",
           collapsible: true,
           children: [
             {
-              text: "理论&算法&协议专题",
+              text: "Theory, Algorithms, and Protocols",
               link: "/distributed-system/protocol/",
             },
-            { text: "CAP定理与BASE理论详解", link: "cap-and-base-theorem" },
+            { text: "The CAP and BASE Theorems", link: "cap-and-base-theorem" },
             {
-              text: "分布式协调详解",
+              text: "Distributed Coordination Explained",
               link: "centralized-and-decentralized",
             },
-            { text: "拜占庭将军问题", link: "byzantine-generals-problem" },
-            { text: "Paxos算法详解", link: "paxos-algorithm" },
-            { text: "Raft算法详解", link: "raft-algorithm" },
-            { text: "ZAB协议详解", link: "zab" },
-            { text: "Gossip协议详解", link: "gossip-protocol" },
-            { text: "一致性哈希算法详解", link: "consistent-hashing" },
+            {
+              text: "The Byzantine Generals Problem",
+              link: "byzantine-generals-problem",
+            },
+            { text: "The Paxos Algorithm", link: "paxos-algorithm" },
+            { text: "The Raft Algorithm", link: "raft-algorithm" },
+            { text: "The ZAB Protocol", link: "zab" },
+            { text: "The Gossip Protocol", link: "gossip-protocol" },
+            { text: "Consistent Hashing", link: "consistent-hashing" },
           ],
         },
         {
-          text: "API网关",
+          text: "API Gateways",
           icon: ICONS.GATEWAY,
           children: [
-            { text: "API网关基础知识总结", link: "api-gateway" },
+            { text: "API Gateway Fundamentals", link: "api-gateway" },
             {
-              text: "Spring Cloud Gateway面试题总结",
+              text: "Spring Cloud Gateway Interview Questions",
               link: "spring-cloud-gateway-questions",
             },
           ],
         },
         {
-          text: "分布式ID",
+          text: "Distributed IDs",
           icon: ICONS.ID,
           children: [
-            { text: "分布式ID生成方案详解", link: "distributed-id" },
-            { text: "分布式ID设计实战指南", link: "distributed-id-design" },
+            {
+              text: "Distributed ID Generation Methods",
+              link: "distributed-id",
+            },
+            {
+              text: "Practical Guide to Distributed ID Design",
+              link: "distributed-id-design",
+            },
           ],
         },
         {
-          text: "分布式锁",
+          text: "Distributed Locks",
           icon: ICONS.LOCK,
           children: [
-            { text: "分布式锁入门介绍", link: "distributed-lock" },
             {
-              text: "分布式锁常见实现方案总结",
+              text: "Introduction to Distributed Locks",
+              link: "distributed-lock",
+            },
+            {
+              text: "Common Ways to Implement Distributed Locks",
               link: "distributed-lock-implementations",
             },
           ],
         },
         {
-          text: "分布式事务",
+          text: "Distributed Transactions",
           icon: ICONS.TRANSACTION,
           children: [
-            { text: "分布式事务解决方案总结", link: "distributed-transaction" },
+            {
+              text: "Distributed Transaction Solutions",
+              link: "distributed-transaction",
+            },
           ],
         },
         {
-          text: "分布式配置中心",
+          text: "Distributed Configuration Centers",
           icon: ICONS.MAVEN,
           children: [
             {
-              text: "分布式配置中心面试题总结",
+              text: "Distributed Configuration Center Interview Questions",
               link: "distributed-configuration-center",
             },
           ],
@@ -583,9 +607,9 @@ export default sidebar({
           icon: ICONS.RPC,
           collapsible: true,
           children: [
-            { text: "RPC专题", link: "/distributed-system/rpc/" },
-            { text: "RPC基础知识总结", link: "rpc-intro" },
-            { text: "Dubbo面试题总结", link: "dubbo" },
+            { text: "RPC", link: "/distributed-system/rpc/" },
+            { text: "RPC Fundamentals", link: "rpc-intro" },
+            { text: "Dubbo Interview Questions", link: "dubbo" },
           ],
         },
         {
@@ -595,24 +619,27 @@ export default sidebar({
           collapsible: true,
           children: [
             {
-              text: "ZooKeeper专题",
+              text: "ZooKeeper",
               link: "/distributed-system/distributed-process-coordination/zookeeper/",
             },
-            { text: "ZooKeeper入门指南", link: "zookeeper-intro" },
-            { text: "ZooKeeper进阶详解", link: "zookeeper-plus" },
-            { text: "ZooKeeper实战教程", link: "zookeeper-in-action" },
+            {
+              text: "ZooKeeper Getting Started Guide",
+              link: "zookeeper-intro",
+            },
+            { text: "Advanced ZooKeeper Topics", link: "zookeeper-plus" },
+            { text: "ZooKeeper in Practice", link: "zookeeper-in-action" },
           ],
         },
       ],
     },
     {
-      text: "高性能",
+      text: "High Performance",
       icon: ICONS.PERFORMANCE,
       prefix: "high-performance/",
       collapsible: true,
       children: [
         {
-          text: "⭐高性能系统设计高频面试题",
+          text: "⭐Popular High-Performance System Design Interview Questions",
           link: "high-performance-system-interview-questions",
         },
         {
@@ -621,14 +648,17 @@ export default sidebar({
           children: ["cdn"],
         },
         {
-          text: "负载均衡",
+          text: "Load Balancing",
           icon: ICONS.LOAD_BALANCING,
           children: [
-            { text: "负载均衡原理及算法详解", link: "load-balancing" },
+            {
+              text: "Load Balancing Principles and Algorithms",
+              link: "load-balancing",
+            },
           ],
         },
         {
-          text: "数据库优化",
+          text: "Database Optimization",
           icon: ICONS.MYSQL,
           children: [
             "read-and-write-separation-and-library-subtable",
@@ -638,13 +668,13 @@ export default sidebar({
           ],
         },
         {
-          text: "消息队列",
+          text: "Message Queues",
           prefix: "message-queue/",
           icon: ICONS.MQ,
           collapsible: true,
           children: [
             {
-              text: "⭐消息队列高频面试题",
+              text: "⭐Popular Message Queue Interview Questions",
               link: "message-queue-interview-questions",
             },
             "message-queue",
@@ -657,41 +687,41 @@ export default sidebar({
       ],
     },
     {
-      text: "高可用",
+      text: "High Availability",
       icon: ICONS.HIGH_AVAILABLE,
       prefix: "high-availability/",
       collapsible: true,
       children: [
         {
-          text: "⭐高可用系统面试题总结",
+          text: "⭐High-Availability System Interview Questions",
           link: "high-availability-system-interview-questions",
         },
         {
-          text: "高可用系统设计指南",
+          text: "High-Availability System Design Guide",
           link: "high-availability-system-design",
         },
         {
-          text: "⭐接口幂等方案总结",
+          text: "⭐API Idempotency Strategies",
           link: "idempotency",
         },
         {
-          text: "⭐服务限流详解",
+          text: "⭐Service Rate Limiting",
           link: "limit-request",
         },
         {
-          text: "⭐超时和重试机制详解",
+          text: "⭐Timeouts and Retries",
           link: "timeout-and-retry",
         },
         {
-          text: "服务降级与熔断详解",
+          text: "Service Degradation and Circuit Breakers",
           link: "fallback-and-circuit-breaker",
         },
         {
-          text: "冗余设计详解",
+          text: "Redundancy Design",
           link: "redundancy",
         },
         {
-          text: "性能测试入门",
+          text: "Performance Testing: An Introduction",
           link: "performance-test",
         },
       ],

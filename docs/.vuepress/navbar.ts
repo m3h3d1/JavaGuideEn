@@ -1,49 +1,57 @@
 import { navbar } from "vuepress-theme-hope";
 
 export default navbar([
-  { text: "后端开发", icon: "mdi:language-java", link: "/home.md" },
-  { text: "计算机基础", icon: "mdi:desktop-classic", link: "/cs-basics/" },
-  { text: "AI应用开发", icon: "mdi:robot-outline", link: "/ai/" },
-  { text: "AI编程", icon: "mdi:code-tags", link: "/ai-coding/" },
+  { text: "Backend Development", icon: "mdi:language-java", link: "/home.md" },
   {
-    text: "推荐阅读",
+    text: "Computer Science",
+    icon: "mdi:desktop-classic",
+    link: "/cs-basics/",
+  },
+  { text: "AI Applications", icon: "mdi:robot-outline", link: "/ai/" },
+  { text: "AI Coding", icon: "mdi:code-tags", link: "/ai-coding/" },
+  {
+    text: "Recommended",
     icon: "mdi:book-open-page-variant-outline",
     children: [
-      { text: "学习路线", icon: "mdi:map-outline", link: "/roadmap/" },
-      { text: "开源项目", icon: "mdi:github", link: "/open-source-project/" },
+      { text: "Learning Roadmaps", icon: "mdi:map-outline", link: "/roadmap/" },
       {
-        text: "技术书籍",
+        text: "Open-Source Projects",
+        icon: "mdi:github",
+        link: "/open-source-project/",
+      },
+      {
+        text: "Technical Books",
         icon: "mdi:book-open-page-variant-outline",
         link: "/books/",
       },
       {
-        text: "程序人生",
+        text: "Life as a Developer",
         icon: "mdi:code-tags",
         link: "/high-quality-technical-articles/",
       },
     ],
   },
   {
-    text: "网站相关",
+    text: "About This Site",
     icon: "mdi:information-outline",
     children: [
       {
-        text: "关于作者",
+        text: "About the Author",
         icon: "mdi:account-edit-outline",
         link: "/about-the-author/",
       },
       {
-        text: "PDF下载",
+        text: "Download PDFs",
         icon: "mdi:file-pdf-box",
         link: "/interview-preparation/pdf-interview-javaguide.md",
       },
       {
-        text: "面试突击",
+        text: "Interview Crash Course",
         icon: "mdi:file-pdf-box",
         link: "https://interview.javaguide.cn/home.html",
       },
       {
-        text: "更新历史",
+        text: "Changelog",
         icon: "mdi:history",
         link: "/timeline/",
       },
