@@ -1,141 +1,141 @@
 ---
-title: 后端开发者全栈学习路线（2026 最新版）：AI 时代如何补齐前端和交付能力
-description: 面向后端开发者的 2026 最新版全栈学习路线，结合 AI 编程工具讲解如何补齐前端能力、理解组件拆分、状态管理、接口联调、权限、部署和独立交付能力。
-category: 学习路线
+title: Full-Stack Roadmap for Backend Developers (2026): Building Frontend and Delivery Skills in the AI Era
+description: A 2026 full-stack roadmap for backend developers. Learn how AI coding tools can help you build frontend skills, understand component design, state management, API integration, permissions, deployment, and end-to-end delivery.
+category: Learning Roadmaps
 head:
   - - meta
     - name: keywords
-      content: 全栈学习路线,2026全栈学习路线,后端转全栈,AI时代全栈,前端学习建议,后端开发者前端学习,AI编程,Java全栈,Vue3,React,前后端分离
+      content: full-stack roadmap, 2026 full-stack roadmap, backend to full-stack, full-stack in the AI era, frontend learning guide, frontend for backend developers, AI-assisted coding, Java full-stack, Vue 3, React, frontend-backend separation
 ---
 
-这是面向后端开发者的全栈学习路线 2026 最新版。后台经常有人问我：
+This is the 2026 edition of my full-stack roadmap for backend developers. I often get questions like these:
 
-> 后端要不要学前端？
+> Should backend developers learn frontend?
 >
-> AI 都能写页面了，我还要不要系统学 Vue、React？
+> AI can build pages now. Do I still need to study Vue or React systematically?
 >
-> 全栈以后会越来越吃香吗？
+> Will full-stack developers be in greater demand?
 
-我的判断比较直接：如果你是 Java / Go 后端，想提升独立交付能力，全栈值得学。但学习方式要换一换，别再按几年前那种路线，把 HTML、CSS、JavaScript、框架源码、工程化、Node 全部从头啃一遍，再等自己“准备好了”才写页面。
+My answer is straightforward: if you're a Java / Go backend developer who wants to deliver more independently, learning full-stack development is worthwhile. But the way you learn should change. Don't follow the old path of studying HTML, CSS, JavaScript, framework internals, tooling, and Node from scratch, then waiting until you're “ready” to build a page.
 
-AI 时代，全栈能力的重点已经变了。
+The focus of full-stack skills has changed in the AI era.
 
-过去，全栈更像一个人硬学两套技术栈。现在更像是后端开发者保住自己的工程底座，再借助 AI 快速补齐前端、交互、联调和部署这几块短板。你不一定要成为专业前端，但至少要能把一个后台管理功能从数据库、接口、页面、权限、部署一路跑通。
+In the past, full-stack development was more like one person struggling to learn two entire tech stacks. Now, backend developers can keep their engineering foundation and use AI to quickly fill gaps in frontend development, interactions, API integration, and deployment. You don't have to become a professional frontend developer, but you should be able to take an admin feature all the way from the database and API through the UI and permissions to deployment.
 
-这篇主要写给后端同学。目标很明确：看懂页面、改得动组件、讲得清交互，最后能独立交付一个完整功能。
+This guide is mainly for backend developers. The goal is clear: understand a page, make changes to its components, explain its interactions, and ultimately deliver a complete feature independently.
 
-## 先校准目标：全栈要能交付完整功能
+## Set the Right Goal: Deliver Complete Features
 
-有些同学理解的全栈，是后端会写一点页面，前端会写一点接口。
+Some developers think being full-stack means knowing a little page development on the backend side and a little API development on the frontend side.
 
-这还不够。
+That's not enough.
 
-真正有用的全栈能力，至少要能串起一条完整链路：
+Useful full-stack skills should let you connect the whole workflow:
 
 ```text
-需求理解 -> 页面结构 -> 接口设计 -> 数据建模 -> 权限控制 -> 联调测试 -> 部署上线 -> 问题排查
+Understand requirements -> Page structure -> API design -> Data modeling -> Access control -> Integration testing -> Deployment -> Troubleshooting
 ```
 
-你做一个用户管理页面，不能只会让 AI 生成表格。你要知道筛选条件怎么映射到后端查询参数，分页字段怎么约定，新增和编辑要不要共用弹窗，按钮权限从哪里来，接口失败时页面怎么提示，刷新后状态要不要保留。
+When building a user management page, you can't stop at asking AI to generate a table. You need to know how filters map to backend query parameters, how to agree on pagination fields, whether create and edit should share a dialog, where button permissions come from, what the page should show when an API fails, and whether state should persist after a refresh.
 
-这些问题都不难，日常开发每天都会碰到。
+These questions aren't difficult; they come up in everyday development.
 
-极客时间《全栈工程师修炼指南》里有一个观点我很认同：先成为合格的软件工程师，再谈全栈。算法、数据结构、英文阅读、技术比较、动手实践，这些基础不会因为你换成全栈路线就消失。全栈覆盖面更宽，反而更需要你有判断力，知道什么该深挖，什么先够用。
+There's an idea in Geek Time's _A Guide to Becoming a Full-Stack Engineer_ that I agree with: become a competent software engineer first, then talk about full-stack development. Algorithms, data structures, reading technical material in English, comparing technologies, and hands-on practice don't stop mattering when you choose a full-stack path. Full-stack work covers more ground, so judgment matters even more: you need to know what to study deeply and what only needs to be good enough for now.
 
-不过这里也要说清楚一个边界：后端转全栈，不等于短时间内补齐专业前端几年的积累。复杂动效、前端性能极限优化、低代码搭建器、跨端架构，这些方向都可以很深。大多数后端同学第一阶段不用碰这么远，先把业务页面做稳。
+There's also an important boundary to keep in mind: moving from backend to full-stack doesn't mean catching up in a short time with years of a professional frontend developer's experience. Complex animations, extreme frontend performance optimization, low-code builders, and cross-platform architecture can each be deep specialties. Most backend developers don't need to go that far at first. Start by building reliable business pages.
 
-## AI 降低学习门槛，工程责任还在
+## AI Makes Learning Easier, but You Still Own the Engineering
 
-AI 编程工具对全栈学习最大的帮助，是把“第一版能跑起来”的成本压低了。
+The biggest benefit of AI coding tools for full-stack learning is that they lower the cost of getting a first version running.
 
-以前后端写前端，卡点很多：CSS 写不明白，组件库不会用，状态管理绕晕，接口联调一堆跨域和类型问题。现在你把需求、接口字段、页面结构讲清楚，AI 很快能给你生成一个列表页、表单页、详情页。
+Backend developers used to hit many roadblocks when writing frontend code: unclear CSS, unfamiliar component libraries, confusing state management, and cross-origin or typing issues during API integration. Now, if you explain the requirements, API fields, and page structure clearly, AI can quickly generate a list, form, or detail page.
 
-但这只是起点。
+But that's only a starting point.
 
-AI 生成的页面经常会有几个问题：
+AI-generated pages often have a few problems:
 
-- 状态重复，一份数据在多个组件里各存一份。
-- 请求位置混乱，有的放页面组件，有的放子组件。
-- 只写成功态，没处理 loading、空数据、接口异常和权限隐藏。
-- 样式只适配当前屏幕，换个宽度就溢出。
-- 类型定义随手写，字段名和后端 DTO 对不上。
+- State is duplicated, with the same data stored separately in multiple components.
+- Requests are scattered, with some in the page component and others in child components.
+- Only the success state is implemented; loading, empty data, API errors, and permission-based visibility are ignored.
+- Styles fit the current screen but overflow at a different width.
+- Types are written casually, and field names don't match the backend DTO.
 
-这些问题不一定马上报错，但项目功能一多，维护成本会慢慢冒出来。
+These problems may not cause errors right away, but as a project grows, they gradually make it harder to maintain.
 
-所以你用 AI 学全栈时，不能只问“帮我写一个页面”。更好的问法是让它解释现有组件树、标出数据流、说明接口调用位置，再让它给出拆组件建议和 Review 结论。
+When using AI to learn full-stack development, don't just ask, “Write a page for me.” A better approach is to ask it to explain the existing component tree, map the data flow, show where API calls happen, and suggest how to split components, then review its conclusions.
 
-比如你可以这样提需求：
+For example, you could ask:
 
 ```text
-你是一个前端代码审查助手。
-请阅读这个用户管理页面，重点检查：
-1. 组件职责是否过重；
-2. 查询条件、分页和表格数据的状态是否重复；
-3. 接口请求是否集中管理；
-4. loading、空数据、错误提示是否完整；
-5. 权限按钮是否和后端权限码保持一致。
+You are a frontend code review assistant.
+Read this user management page and focus on the following:
+1. Are any components taking on too many responsibilities?
+2. Is state duplicated across filters, pagination, and table data?
+3. Are API requests managed in one place?
+4. Are loading, empty data, and error states handled completely?
+5. Do permission-controlled buttons match the permission codes used by the backend?
 
-只输出问题和修改建议，不要直接重写代码。
+Output only issues and suggested changes. Do not rewrite the code.
 ```
 
-这类 prompt 比“帮我优化代码”更有用。它逼你关注结构、状态、接口、异常和权限，也会慢慢把前端思维补起来。
+This kind of prompt is more useful than “Optimize my code.” It makes you focus on structure, state, APIs, errors, and permissions, while helping you gradually develop a frontend mindset.
 
-## 后端同学应该先学哪一块前端
+## What Frontend Topics Should Backend Developers Learn First?
 
-后端转全栈，学习顺序最好按真实开发链路来。
+For backend developers moving into full-stack work, it's best to learn in the order you'd encounter things in real development.
 
-第一步先看懂一个业务页面怎么跑，标签、样式细节和框架源码可以后面再补。
+First, learn to understand how a business page works. You can pick up tags, styling details, and framework internals later.
 
-拿一个后台管理系统里的列表页来说，它通常包括这些东西：
+A list page in an admin system usually includes:
 
-- 查询表单：关键词、状态、时间范围、所属部门。
-- 表格：字段展示、格式化、空值处理、操作按钮。
-- 分页：page、pageSize、total、排序字段。
-- 弹窗：新增、编辑、详情、删除确认。
-- 权限：按钮是否可见，接口是否能调用。
-- 异常态：接口超时、参数错误、无数据、无权限。
+- Search form: keywords, status, date range, and department.
+- Table: displayed and formatted fields, handling empty values, and action buttons.
+- Pagination: `page`, `pageSize`, `total`, and sort fields.
+- Dialogs: create, edit, view details, and confirm deletion.
+- Permissions: whether a button is visible and whether its API can be called.
+- Error states: request timeout, invalid parameters, no data, and no permission.
 
-你先把这些看懂，比从 CSS 选择器开始背更快进入工作状态。
+Understanding these pieces will get you productive faster than starting by memorizing CSS selectors.
 
-接着补组件拆分。一个页面里哪些东西应该抽成组件，哪些留在页面层，主要看复用和职责。搜索表单、表格列配置、编辑弹窗、字典选择器，这些经常能独立出来。页面层负责组织数据和动作，组件层负责展示和局部交互。
+Next, learn how to split components. What to extract and what to keep in the page mainly depends on reuse and responsibility. Search forms, table column definitions, edit dialogs, and dictionary selectors can often be separate components. The page organizes data and actions; components handle presentation and local interactions.
 
-然后补状态管理。后端同学容易把前端状态想得太简单，觉得页面数据就是接口返回值。实际开发里，筛选条件、分页参数、弹窗开关、选中行、表单临时值、接口 loading、错误信息，都是状态。状态放错地方，页面就会出现“改了筛选条件但表格没刷新”“关闭弹窗后表单残留上次数据”这种问题。
+Then learn state management. Backend developers often underestimate frontend state and assume page data is just the API response. In practice, filters, pagination parameters, dialog visibility, selected rows, temporary form values, API loading, and error messages are all state. Put state in the wrong place, and you get issues like “I changed the filters, but the table didn't refresh” or “The old form values are still there after I closed the dialog.”
 
-最后再补路由、权限、打包、测试和性能。它们很重要，但不用第一天就铺开。
+Finally, learn routing, permissions, bundling, testing, and performance. They're important, but you don't need to tackle all of them on day one.
 
-## 一条适合后端的全栈学习路线
+## A Full-Stack Learning Path for Backend Developers
 
-如果你已经能独立写 Java / Go 后端接口，可以按下面的节奏来。
+If you can already build Java / Go backend APIs independently, you can follow this schedule.
 
-### 阶段一：先能改页面，1 到 2 周
+### Stage 1: Make Changes to a Page (1–2 Weeks)
 
-目标很具体：拿一个现成后台项目，能跑起来，能改一个列表页。
+The goal is specific: get an existing admin project running and make a change to one list page.
 
-建议选 Vue 3 + TypeScript + Element Plus，或者 React + TypeScript + Ant Design。不要同时学两个框架，选一个就行。Java 后端同学如果公司里用 Vue，就直接学 Vue；如果团队用 React，就学 React。
+Choose Vue 3 + TypeScript + Element Plus, or React + TypeScript + Ant Design. Don't learn both frameworks at once; pick one. If your company uses Vue, learn Vue. If your team uses React, learn React.
 
-这一阶段只抓几件事：
+Focus on a few things during this stage:
 
-- 页面目录结构：路由、页面、组件、API、类型定义分别放在哪里。
-- 组件基础：props、emit、slot，或者 React 里的 props、state、hooks。
-- 接口调用：axios/fetch 怎么封装，请求和响应拦截器在哪里。
-- 表单和表格：查询、重置、分页、新增、编辑、删除。
-- 类型定义：前端类型怎么和后端 DTO 对齐。
+- Page directory structure: where routes, pages, components, APIs, and type definitions live.
+- Component basics: `props`, `emit`, and `slot`, or `props`, `state`, and hooks in React.
+- API calls: how `axios` / `fetch` is wrapped, and where request and response interceptors live.
+- Forms and tables: search, reset, pagination, create, edit, and delete.
+- Type definitions: how frontend types line up with backend DTOs.
 
-练习时别写 TodoList。直接写一个“用户管理”或者“文章管理”页面，至少包含 5 个接口：列表、详情、新增、编辑、删除。
+Don't practice with a TodoList. Build a “user management” or “article management” page directly, with at least five APIs: list, details, create, edit, and delete.
 
-做完这一个页面，你会比看 20 小时入门课更清楚自己缺什么。
+After building this page, you'll have a clearer sense of what you're missing than you would after watching 20 hours of beginner courses.
 
-### 阶段二：补前后端协作，1 到 2 周
+### Stage 2: Learn Frontend-Backend Collaboration (1–2 Weeks)
 
-后端同学做全栈，优势在接口和数据。这个优势要保住。
+As a backend developer moving into full-stack work, your strengths are APIs and data. Keep them.
 
-你要学会从页面反推接口，提前想清楚页面需要哪些查询参数、返回字段和错误提示。比如一个带筛选和分页的列表，接口至少要考虑：
+Learn to work backward from the page to the APIs. Decide in advance which query parameters, response fields, and error messages the page needs. For example, a filtered and paginated list might need:
 
 ```text
 GET /api/users?page=1&pageSize=20&keyword=guide&status=enabled
 ```
 
-返回值最好稳定：
+The response should have a stable structure:
 
 ```json
 {
@@ -146,145 +146,145 @@ GET /api/users?page=1&pageSize=20&keyword=guide&status=enabled
 }
 ```
 
-新增和编辑接口要想清楚字段校验放哪里。前端可以做基础校验，比如手机号格式、必填项；后端仍然要做最终校验，不能相信浏览器传来的数据。
+For create and edit APIs, decide where field validation belongs. The frontend can do basic checks, such as phone number formats and required fields. The backend still needs to perform final validation; never trust data sent by the browser.
 
-权限也要前后端一起看。前端隐藏按钮只是体验，后端接口鉴权才是安全边界。按钮权限码、菜单权限、接口权限最好能复用同一套权限模型，否则后面会出现页面看不到按钮但接口还能直接调的问题。
+Permissions also need to be handled on both sides. Hiding a button in the frontend improves the user experience; authorization checks on backend APIs provide the security boundary. It's best to reuse the same permission model for button, menu, and API permissions. Otherwise, a button might be hidden while its API can still be called directly.
 
-这一阶段练的是联调能力。你要能同时打开浏览器 DevTools、后端日志、数据库记录，看一次点击到底发生了什么。
+This stage is about integration skills. You should be able to keep the browser DevTools, backend logs, and database records open at the same time and see what happens after a click.
 
-### 阶段三：学一个成熟后台脚手架，2 到 3 周
+### Stage 3: Study a Mature Admin Starter Kit (2–3 Weeks)
 
-掘金那篇全栈路线里反复提到后台管理系统和快速开发框架，这个方向很适合后端同学。
+That full-stack roadmap article on Juejin repeatedly mentions admin systems and rapid development frameworks. This area is a good fit for backend developers.
 
-原因很简单：企业里大量全栈需求集中在后台系统、运营平台、权限系统、流程系统、数据看板。它们的页面形态稳定，业务价值也很明确。
+The reason is simple: many enterprise full-stack requirements involve admin systems, operations platforms, permission systems, workflow systems, and data dashboards. Their page patterns are consistent, and their business value is clear.
 
-你可以选一个成熟脚手架来读：
+Choose a mature starter kit to read through:
 
-- Vue 方向：Vue 3 + TypeScript + Element Plus / Ant Design Vue。
-- React 方向：React + TypeScript + Ant Design。
-- 后端方向：Spring Boot + MyBatis / MyBatis-Plus + Sa-Token / Spring Security。
+- Vue: Vue 3 + TypeScript + Element Plus / Ant Design Vue.
+- React: React + TypeScript + Ant Design.
+- Backend: Spring Boot + MyBatis / MyBatis-Plus + Sa-Token / Spring Security.
 
-重点放在它对共性问题的处理方式上：
+Focus on how it handles common needs:
 
-- 登录态怎么保存，Token 什么时候刷新。
-- 菜单和路由怎么从后端返回。
-- 按钮权限怎么控制。
-- API 请求怎么统一处理错误。
-- 表单校验规则怎么组织。
-- 字典、枚举、上传、导出这些通用能力放在哪里。
+- How is the logged-in session stored, and when is the token refreshed?
+- How are menus and routes returned by the backend?
+- How are button permissions enforced?
+- How are API errors handled consistently?
+- How are form validation rules organized?
+- Where do shared capabilities such as dictionaries, enums, uploads, and exports live?
 
-读脚手架时，可以让 AI 帮你画出模块关系，但最后要自己跑一遍。尤其是权限、路由、请求封装这三块，只看解释很容易以为懂了，改一次菜单权限就知道有没有真懂。
+You can ask AI to map the relationships between modules as you read the starter kit, but run it yourself too. Permissions, routing, and request wrappers are especially easy to think you understand from an explanation alone. Try changing a menu permission and you'll find out whether you really understand them.
 
-### 阶段四：补部署、测试和排障，1 到 2 周
+### Stage 4: Learn Deployment, Testing, and Troubleshooting (1–2 Weeks)
 
-很多全栈学习路线会把部署放到最后一句带过。
+Many full-stack roadmaps mention deployment in a single sentence at the end.
 
-这块不能省。
+Don't skip it.
 
-能本地跑起来，只能说明你会开发；能部署到一台服务器，接上域名、HTTPS、Nginx、日志和自动化发布，才接近真实交付。
+Getting a project running locally only shows that you can develop it. Deploying it to a server, configuring a domain, HTTPS, Nginx, logs, and automated releases is much closer to delivering a real feature.
 
-最小练习可以这样做：
+A minimal exercise could look like this:
 
-- 前端打包生成静态文件。
-- Nginx 托管前端，并把 `/api` 代理到后端服务。
-- 后端用 Docker 或 systemd 部署。
-- 数据库单独部署，准备初始化 SQL。
-- 配置 HTTPS。
-- 写一个最简单的 GitHub Actions 或云效流水线，完成打包和部署。
+- Build the frontend into static files.
+- Use Nginx to serve the frontend and proxy `/api` to the backend service.
+- Deploy the backend with Docker or `systemd`.
+- Deploy the database separately and prepare initialization SQL.
+- Configure HTTPS.
+- Write a basic GitHub Actions or Yunxiao pipeline to build and deploy the app.
 
-测试也不用一上来追求很全。先给后端关键接口写单测，前端至少补几个关键页面的手工测试清单：查询、分页、新增、编辑、删除、无权限、接口失败。
+You don't need comprehensive test coverage at first. Start with unit tests for key backend APIs, and at least create a manual test checklist for important frontend pages: search, pagination, create, edit, delete, no permission, and API failure.
 
-如果你能把一次发布讲清楚：代码怎么打包、配置放哪里、环境变量怎么注入、日志在哪里看、回滚怎么做，你的全栈能力就已经越过“会写页面”这一层了。
+If you can explain a release clearly—how the code is built, where configuration lives, how environment variables are injected, where to view logs, and how to roll back—your full-stack skills have moved beyond simply “knowing how to build pages.”
 
-## AI 应该怎么参与全栈开发
+## How to Use AI in Full-Stack Development
 
-AI 最适合参与三类工作。
+AI is most useful for three kinds of work.
 
-第一类是解释已有项目。让它帮你读目录结构、组件树、接口封装、权限逻辑，比自己盲翻文件更快。
+First, use it to explain an existing project. Asking it to read the directory structure, component tree, API wrappers, and permission logic is faster than blindly browsing files.
 
-第二类是生成第一版代码。比如根据接口字段生成表格列、表单项、TypeScript 类型、API 调用函数。这里可以省很多重复劳动。
+Second, use it to generate a first draft. For example, it can generate table columns, form fields, TypeScript types, and API functions from API fields. This can save a lot of repetitive work.
 
-第三类是做 Review。让它从组件职责、状态重复、异常态、权限、类型一致性几个角度挑问题。
+Third, use it for code review. Ask it to look for problems with component responsibilities, duplicate state, error states, permissions, and type consistency.
 
-但不要让 AI 接管设计判断。
+But don't hand design decisions over to AI.
 
-比如一个编辑弹窗是做成独立路由，还是页面内弹窗；筛选条件要不要同步到 URL；表格列配置是写死还是走后端配置；这些决策和业务使用方式有关。AI 可以给选项，你要做取舍。
+For example, whether an edit dialog should be a separate route or a dialog within the page, whether filters should sync to the URL, and whether table column definitions should be hard-coded or configured by the backend all depend on how the business uses them. AI can suggest options; you need to make the trade-offs.
 
-我更建议保留一份自己的全栈开发提示词模板，每次做页面前先让 AI 输出页面方案，确认后再写代码：
+I recommend keeping your own full-stack development prompt template. Before building a page, ask AI to propose a plan, review it, and then start coding:
 
 ```text
-请根据下面的业务需求，先给出前后端实现方案，不要写代码。
+Based on the business requirements below, propose a frontend and backend implementation plan. Do not write code yet.
 
-要求：
-1. 列出页面模块和组件拆分；
-2. 设计需要的后端接口和请求参数；
-3. 标出页面状态：查询条件、分页、弹窗、loading、错误信息；
-4. 标出权限点；
-5. 列出至少 5 个异常场景。
+Requirements:
+1. List the page sections and proposed component breakdown.
+2. Design the required backend APIs and request parameters.
+3. Identify page state: filters, pagination, dialogs, loading, and error messages.
+4. Identify permission checks.
+5. List at least five error scenarios.
 ```
 
-方案过一遍，再让它分文件生成代码。这个顺序能减少返工。
+Review the plan first, then ask it to generate code in separate files. This order reduces rework.
 
-## 怎么练最有效
+## The Most Effective Way to Practice
 
-最有效的练习是找一个真实业务页面重写，刷课只放在遇到具体盲区时补。
+The most effective exercise is to rebuild a real business page. Use courses only to fill specific gaps as you encounter them.
 
-可以从下面 3 个小项目里选一个：
+Choose one of these three small projects:
 
-- 后台管理：用户、角色、菜单、权限、字典、操作日志。
-- 内容系统：文章、分类、标签、发布状态、评论审核。
-- 简历/面试助手：简历上传、解析记录、问题列表、模拟面试结果。
+- Admin system: users, roles, menus, permissions, dictionaries, and operation logs.
+- Content system: articles, categories, tags, publication status, and comment moderation.
+- Resume / interview assistant: resume uploads, parsing records, question lists, and mock interview results.
 
-不要贪大。第一个版本控制在 7 天内做完，功能少一点也没关系，但链路要完整。
+Don't take on too much. Finish the first version within seven days. It's fine to have fewer features, but the full workflow should work.
 
-建议按这个标准验收：
+Use these criteria to review it:
 
-- 至少 3 个页面：列表页、编辑页或弹窗、详情页。
-- 至少 5 个接口：列表、详情、新增、编辑、删除。
-- 至少 2 类权限：菜单权限和按钮权限。
-- 至少 5 个异常场景：无数据、接口失败、无权限、表单校验失败、重复提交。
-- 至少 1 次部署：能在服务器或云环境访问。
+- At least three pages: a list page, an edit page or dialog, and a details page.
+- At least five APIs: list, details, create, edit, and delete.
+- At least two kinds of permissions: menu permissions and button permissions.
+- At least five error scenarios: no data, API failure, no permission, form validation failure, and duplicate submission.
+- At least one deployment: it can be accessed on a server or in a cloud environment.
 
-做到这里，你已经有一个可以放进简历的小项目了。后面再补缓存、消息队列、文件上传、导入导出、审计日志、数据看板，会自然很多。
+Once you've done this, you have a small project you can put on your resume. Later, you can add caching, message queues, file uploads, import and export, audit logs, and data dashboards.
 
-## 面试时怎么讲全栈能力
+## How to Talk About Full-Stack Skills in an Interview
 
-不要只说“我会 Vue”或者“我用 AI 写过页面”。
+Don't just say “I know Vue” or “I've used AI to write pages.”
 
-这样太轻。
+That's too vague.
 
-更好的表达是讲完整交付：
+It's better to describe how you delivered a complete feature:
 
-- 我负责过某个功能从表结构、接口、页面到上线的完整实现。
-- 前端用 Vue 3 / React + TypeScript，后端用 Spring Boot。
-- 页面包含查询、分页、编辑弹窗、按钮权限、异常提示。
-- 后端做了参数校验、权限校验和操作日志。
-- 我用 AI 辅助生成了表单和表格的初版代码，但最终自己调整了组件拆分、接口封装和异常态。
+- I handled a feature from the database schema and APIs through the page and deployment.
+- The frontend used Vue 3 / React + TypeScript, and the backend used Spring Boot.
+- The page included search, pagination, an edit dialog, button permissions, and error messages.
+- The backend handled parameter validation, permission checks, and operation logs.
+- I used AI to generate a first draft of the forms and tables, then adjusted the component breakdown, API wrappers, and error states myself.
 
-如果面试官继续追问，你要能讲清楚几个细节：
+If the interviewer asks follow-up questions, you should be able to explain details like these:
 
-- 为什么分页参数这样设计？
-- 前端按钮隐藏和后端权限校验有什么区别？
-- 表单校验前后端各做什么？
-- 接口失败时页面如何提示？
-- 部署后前端刷新 404 怎么处理？
-- Nginx 怎么代理后端接口？
+- Why were the pagination parameters designed this way?
+- What's the difference between hiding a frontend button and checking permissions on the backend?
+- What validation happens on the frontend and backend?
+- How does the page handle API failures?
+- How do you handle a 404 when refreshing the frontend after deployment?
+- How does Nginx proxy backend API requests?
 
-能答到这个粒度，全栈就不再是简历上的一个标签。
+If you can answer at this level of detail, full-stack is more than just a label on your resume.
 
-## 最后给一个学习顺序
+## A Suggested Study Schedule
 
-如果你是 Java 后端，我建议这样排：
+If you're a Java backend developer, here's the order I'd recommend:
 
-1. 用 1 周看懂 Vue 3 或 React 的基础写法，只选一个。
-2. 用 1 周做一个列表页，包含查询、分页、新增、编辑、删除。
-3. 用 1 周把权限、路由、请求封装、错误处理补上。
-4. 用 2 周读一个后台脚手架，重点看登录、菜单、权限、API 封装。
-5. 用 1 周完成部署，补 Nginx、Docker、HTTPS 和日志排查。
-6. 后续每个月重写一个真实页面，逐步补文件上传、导入导出、图表、WebSocket、数据看板。
+1. Spend one week understanding the basics of Vue 3 or React; choose one.
+2. Spend one week building a list page with search, pagination, create, edit, and delete.
+3. Spend one week adding permissions, routing, request wrappers, and error handling.
+4. Spend two weeks reading an admin starter kit, focusing on login, menus, permissions, and API wrappers.
+5. Spend one week deploying it and learning Nginx, Docker, HTTPS, and log troubleshooting.
+6. After that, rebuild one real page each month and gradually add file uploads, imports and exports, charts, WebSockets, and data dashboards.
 
-英语也别完全丢。全栈技术更新快，很多框架文档、Issue、RFC 都是英文。你不一定要练到流利口语，但英文阅读要能跟上官方文档，这会直接影响你排查问题的速度。
+Don't neglect English, either. Full-stack technologies change quickly, and many framework docs, issues, and RFCs are in English. You don't need fluent spoken English, but you should be able to keep up with the official documentation. It directly affects how quickly you can troubleshoot problems.
 
-全栈这条路最怕学成“前端懂一点，后端也忘了”。后端基本功还是你的主线：接口设计、数据库、缓存、权限、事务、部署、监控，这些别丢。前端和 AI 编程工具负责扩大你的交付半径，原来的后端优势仍然要留住。
+The biggest risk on this path is ending up knowing a little frontend while forgetting your backend skills. Backend fundamentals remain your main strength: API design, databases, caching, permissions, transactions, deployment, and monitoring. Frontend skills and AI coding tools expand what you can deliver, while you keep the advantages you already have as a backend developer.
 
-先从一个页面开始。
+Start with one page.

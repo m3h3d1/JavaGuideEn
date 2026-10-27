@@ -1,30 +1,30 @@
 ---
-title: 学习路线合集（2026 最新版）：Java 后端、AI Agent、AI 应用开发、全栈与测开
-description: JavaGuide 2026 最新版学习路线合集，整理 Java 后端、AI 应用开发、AI Agent、AI 编程、全栈开发和测试开发等方向的系统学习建议。
-category: 学习路线
+title: Learning Roadmaps (2026): Java Backend, AI Agents, AI Application Development, Full-Stack, and Test Development
+description: A collection of JavaGuide's 2026 learning roadmaps for Java backend development, AI applications, AI agents, AI-assisted coding, full-stack development, and test development.
+category: Learning Roadmaps
 head:
   - - meta
     - name: keywords
-      content: 学习路线,2026学习路线,Java学习路线,Java后端学习路线,AI学习路线,Agent学习路线,全栈学习路线,测开学习路线,测试开发学习路线,AI应用开发,AI编程
+      content: learning roadmaps, 2026 learning roadmaps, Java learning roadmap, Java backend roadmap, AI learning roadmap, agent learning roadmap, full-stack roadmap, test development roadmap, AI application development, AI-assisted coding
 ---
 
-这里统一整理 JavaGuide 中适合按路线学习的内容，帮助你根据目标选择 2026 最新版学习路径，而不是在大量文章里来回跳。
+This page brings together JavaGuide's learning roadmaps to help you choose a path for your goals instead of jumping between articles. These are the latest editions for 2026.
 
-如果你正在准备后端面试，优先看 Java 后端路线；如果你已经有 Java/Go 后端基础，想进入 AI 应用开发或 Agent 方向，可以从 AI 应用开发路线开始；如果你希望提升独立交付能力，可以看全栈学习建议；如果你想准备测试开发、自动化测试或 AI 测试方向，可以看测开学习路线。
+If you're preparing for a backend interview, start with the Java backend roadmap. If you already have a Java or Go backend foundation and want to move into AI application development or agents, start with the AI application development roadmap. If you want to deliver complete features independently, see the full-stack roadmap. If you're preparing for test development, test automation, or AI testing, see the test development roadmap.
 
-## 后端方向
+## Backend Development
 
-- [Java 后端学习路线（2026 最新版）](./java-roadmap.md)：从 Java 基础、集合、并发、JVM、Spring、数据库、分布式到项目实践，适合 Java 后端系统学习和求职准备。
+- [Java Backend Roadmap (2026)](./java-roadmap.md): Covers Java fundamentals, collections, concurrency, the JVM, Spring, databases, distributed systems, and hands-on projects. Suitable for structured Java backend study and job preparation.
 
-## AI 方向
+## AI
 
-- [Java/Go 开发者 AI 应用开发与 Agent 学习路线（2026 最新版）](./java-to-ai-roadmap.md)：面向后端开发者，按大模型基础、LLM API、Prompt、RAG、Agent、工程化和项目实战拆解学习路径。
-- [后端开发者转型 AI Agent 学习建议（2026 最新版）](./backend-to-ai-agent-roadmap.md)：先判断是否适合转型，再看 Java AI 与 Python AI 怎么选、能投什么岗位、应该如何学习。
+- [AI Application Development and Agent Roadmap for Java and Go Developers (2026)](./java-to-ai-roadmap.md): A learning path for backend developers covering LLM fundamentals, LLM APIs, prompts, RAG, agents, production engineering, and projects.
+- [A Roadmap for Backend Developers Moving into AI Agents (2026)](./backend-to-ai-agent-roadmap.md): First consider whether a career move makes sense, then compare Java AI and Python AI, explore relevant roles, and plan what to learn.
 
-## 全栈方向
+## Full-Stack Development
 
-- [后端开发者全栈学习路线（2026 最新版）](./full-stack-roadmap.md)：结合 AI 编程工具，讲清后端开发者如何补齐前端能力，逐步具备独立交付完整功能的能力。
+- [Full-Stack Roadmap for Backend Developers (2026)](./full-stack-roadmap.md): Explains how backend developers can build frontend skills with AI coding tools and gradually learn to deliver complete features independently.
 
-## 测试开发方向
+## Test Development
 
-- [测试开发学习路线（2026 最新版）](./test-development-roadmap.md)：面向测开、自动化测试和质量工程方向，覆盖测试理论、接口/UI/性能自动化、CI/CD、测试平台、AI 辅助测试和 AI 应用评测。
+- [Test Development Roadmap (2026)](./test-development-roadmap.md): Covers testing fundamentals, API/UI/performance automation, CI/CD, testing platforms, AI-assisted testing, and AI application evaluation for test development, test automation, and quality engineering.

@@ -1,504 +1,504 @@
 ---
-title: 测试开发学习路线（2026 最新版）：AI 时代如何从测试走向质量工程
-description: 面向测试开发和软件测试方向的 2026 最新版学习路线，覆盖计算机基础、编程语言、测试理论、接口自动化、UI 自动化、性能测试、CI/CD、测试平台、AI 辅助测试和大模型应用测试。
-category: 学习路线
+title: Test Development Roadmap (2026): From Software Testing to Quality Engineering in the AI Era
+description: A 2026 roadmap for software testing and test development. Covers computer science fundamentals, programming languages, testing theory, API and UI automation, performance testing, CI/CD, test platforms, AI-assisted testing, and testing LLM applications.
+category: Learning Roadmaps
 head:
   - - meta
     - name: keywords
-      content: 测试开发学习路线,测开学习路线,软件测试学习路线,2026测开学习路线,AI测试,自动化测试,接口测试,UI自动化测试,性能测试,测试平台,质量工程
+      content: test development roadmap, test engineering roadmap, software testing roadmap, 2026 testing roadmap, AI testing, test automation, API testing, UI test automation, performance testing, test platform, quality engineering
 ---
 
-你好，我是 Guide。这是面向测试开发方向的学习路线 2026 最新版。
+Hi, I'm Guide. This is the 2026 edition of my learning roadmap for test development.
 
-后台经常有同学问：
+I often get questions like these:
 
-> Java 后端太卷了，能不能转测开？
+> Backend development in Java is so competitive. Can I move into test development?
 >
-> 测开是不是比开发简单一点？
+> Is test development a little easier than software development?
 >
-> AI 都能写测试用例了，测试岗位以后还值得学吗？
+> AI can write test cases now. Is a career in testing still worth pursuing?
 
-我的判断比较直接：测开可以作为一个不错的求职方向，但别把它理解成“后端学不动后的备选”。测试开发工程师（Software Development Engineer in Test，简称 SDET）确实在测试体系里更偏技术，但它要求你能把编程、测试理论、工程工具、业务理解和质量保障串起来。
+My answer is straightforward: test development can be a good career path, but don't treat it as a fallback for when backend development gets too hard. A Software Development Engineer in Test (SDET) works on the more technical side of testing, but the role requires you to connect programming, testing theory, engineering tools, business understanding, and quality assurance.
 
-如果只是会点手工测试、会点 Postman、会写几条 Selenium 脚本，在现在的环境里竞争力不太够。更好的方向是：能写自动化框架，能接 CI/CD，能看日志和监控定位问题，能做接口、UI、性能和稳定性验证，还能把 AI 用在用例生成、脚本维护、日志分析、缺陷归因和 AI 应用评测里。
+Knowing a little manual testing, Postman, and Selenium isn't enough to stand out in today's market. A stronger skill set includes building automation frameworks, integrating them with CI/CD, diagnosing issues from logs and monitoring, testing APIs, UIs, performance, and reliability, and using AI for test generation, script maintenance, log analysis, defect diagnosis, and AI application evaluation.
 
-这篇路线主要写给三类同学：
+This roadmap is mainly for three groups:
 
-- 计算机相关专业，想准备测试开发、自动化测试、质量工程方向的同学。
-- 已经在做功能测试，想补编程和自动化能力的同学。
-- 有 Java / Python / 后端基础，想把求职方向扩展到测开的同学。
+- Computer science students preparing for test development, test automation, or quality engineering roles.
+- People already doing functional testing who want to build their programming and automation skills.
+- Developers with Java / Python or backend experience who want to broaden their job options to include test development.
 
-先提醒一句：如果你未来的长期目标是纯业务开发，测开经历未必总能无缝迁回开发岗。测开的项目成果更多体现为质量体系、自动化效率、问题定位和平台能力，和业务功能开发的叙事不完全一样。后续想回开发岗也可以，但简历和面试表达要提前设计好。
+One thing to keep in mind: if your long-term goal is pure feature development, experience in test development may not always transfer seamlessly back to a development role. Test development projects tend to demonstrate quality systems, automation efficiency, troubleshooting, and platform skills; they tell a different story from feature development. You can return to a development role later, but plan how you'll present your experience on your resume and in interviews.
 
-## 先理解测开到底在做什么
+## What Does Test Development Involve?
 
-传统测试更关注“这个功能有没有问题”。测开还要往前多走几步：为什么这个问题会漏掉？以后能不能自动发现？这类问题能不能沉淀成工具、平台或流程？
+Traditional testing focuses on “Does this feature have a problem?” Test development goes further: Why did the problem slip through? Can we detect it automatically next time? Can we turn this kind of check into a tool, platform, or process?
 
-在真实团队里，测开的工作可能包括这些：
+In a real team, test development work may include:
 
-- 参与需求评审，提前识别边界条件、异常流程和风险点。
-- 设计测试用例，覆盖功能、接口、兼容性、安全、性能和稳定性。
-- 编写接口自动化、UI 自动化、App 自动化脚本。
-- 建设自动化测试框架，管理测试数据、测试环境和测试报告。
-- 把自动化用例接入 Jenkins、GitHub Actions、GitLab CI 等流水线。
-- 做性能压测，分析吞吐量、响应时间、错误率、CPU、内存、数据库和缓存指标。
-- 开发测试平台，例如用例管理、自动化调度、报告聚合、覆盖率分析和精准测试。
-- 测试 AI 应用，例如 RAG 问答、智能客服、Agent 工具调用、多模态应用。
+- Joining requirements reviews to identify edge cases, error paths, and risks early.
+- Designing test cases for functionality, APIs, compatibility, security, performance, and reliability.
+- Writing API, UI, and mobile app automation scripts.
+- Building automation frameworks and managing test data, environments, and reports.
+- Integrating automated tests into pipelines such as Jenkins, GitHub Actions, and GitLab CI.
+- Running performance tests and analyzing throughput, response times, error rates, CPU, memory, database, and cache metrics.
+- Building test platforms for case management, automation scheduling, report aggregation, coverage analysis, and targeted testing.
+- Testing AI applications such as RAG question answering, intelligent customer service, agent tool calls, and multimodal applications.
 
-所以，测开的代码主要落在测试框架、测试工具、质量平台和问题定位脚本上。代码量可能没有业务开发大，但对工程链路的理解要更完整。
+Test development code is mainly used for test frameworks, test tools, quality platforms, and troubleshooting scripts. There may be less code than in feature development, but you need a more complete understanding of the engineering workflow.
 
-## AI 时代，测开要多学什么
+## What Should Test Developers Learn in the AI Era?
 
-AI 对测试的影响已经很明显了。
+AI is already having a clear impact on testing.
 
-一方面，AI 可以帮你提高测试效率。比如根据需求文档生成测试点，帮你补边界用例，改写接口自动化脚本，分析失败日志，生成性能测试报告初稿。以前写 20 条用例要半小时，现在可以先让 AI 出第一版，再由你审查和补充。
+On one hand, AI can make testing more efficient. It can generate test points from requirements, suggest edge cases, revise API automation scripts, analyze failure logs, and draft performance reports. Instead of spending half an hour writing 20 test cases, you can ask AI for a first draft and then review and improve it.
 
-另一方面，AI 应用本身也需要测试。传统系统通常是确定性的，接口返回字段错了就是错了；AI 应用更麻烦，同一个问题可能有不同回答，回答看起来流畅但事实不一定对，RAG 检索可能没召回正确材料，Agent 可能选错工具或编错参数。
+On the other hand, AI applications need testing too. Traditional systems are usually deterministic: if an API returns the wrong field, it's wrong. AI applications are more complicated. The same question can get different answers; a fluent answer may still be false; RAG retrieval may miss the right material; and an agent may choose the wrong tool or generate invalid parameters.
 
-这意味着测开需要补一块新的能力：**评估不确定系统的质量**。
+That means test developers need a new skill: **evaluating the quality of nondeterministic systems**.
 
-你至少要知道这些问题怎么测：
+You should at least know how to test questions like these:
 
-- Prompt 是否容易被注入攻击绕过？
-- RAG 是否召回了正确文档，回答有没有忠实于检索材料？
-- 大模型输出的 JSON 是否稳定，字段缺失时系统怎么兜底？
-- Agent 调用工具时，工具选择、参数生成、执行结果回填是否正确？
-- 多轮对话里，上下文污染、历史记忆和权限边界有没有问题？
-- 模型切换、Prompt 调整、Embedding 更新后，质量是变好了还是变差了？
+- Can prompt injection bypass the prompt's protections?
+- Does RAG retrieve the right documents, and does the answer stay faithful to them?
+- Is the LLM's JSON output consistent, and what happens if a field is missing?
+- When an agent calls a tool, are tool selection, parameter generation, and result handling correct?
+- In multi-turn conversations, are there problems with context contamination, conversation memory, or permission boundaries?
+- After changing models, prompts, or embeddings, did quality improve or get worse?
 
-AI 不能替代好的测试判断。它能帮你更快地产出候选用例和脚本，但最终要由你判断覆盖是否完整、断言是否有效、失败是否真的暴露了问题。
+AI can't replace sound testing judgment. It can help you produce candidate cases and scripts faster, but you still need to decide whether coverage is complete, assertions are useful, and a failure really points to a problem.
 
-## 测开学习路线概览
+## Test Development Roadmap at a Glance
 
-如果你从零开始，可以按这条顺序走：
+If you're starting from scratch, follow this order:
 
 ```text
-计算机基础 -> 编程语言 -> 数据库/Linux/Git/Docker -> 测试理论
--> 接口自动化 -> UI/App 自动化 -> 性能测试 -> CI/CD 与质量工程
--> AI 辅助测试 -> AI 应用测试 -> 项目和面试表达
+Computer science fundamentals -> Programming language -> Databases / Linux / Git / Docker -> Testing theory
+-> API automation -> UI / mobile app automation -> Performance testing -> CI/CD and quality engineering
+-> AI-assisted testing -> AI application testing -> Projects and interview preparation
 ```
 
-不要一上来就学一堆工具。工具可以很快上手，但测开真正拉开差距的是三件事：
+Don't start by learning a pile of tools. Tools are quick to pick up; what sets test developers apart comes down to three things:
 
-- 能不能写出可维护的测试代码，少写一次性脚本。
-- 能不能把自动化接进工程流程，跑在 CI 和日常回归里。
-- 能不能解释一次失败背后的原因，给出日志、数据和链路证据。
+- Can you write maintainable test code instead of one-off scripts?
+- Can you integrate automation into engineering workflows so it runs in CI and routine regression testing?
+- Can you explain why a test failed and support your diagnosis with logs, data, and trace evidence?
 
-## 阶段一：补计算机基础
+## Stage 1: Build Your Computer Science Fundamentals
 
-测开面试也会问计算机基础，尤其是校招、实习和大厂面试。
+Test development interviews also cover computer science fundamentals, especially for new-grad, internship, and large-company roles.
 
-不用按考研 408 的深度全啃一遍，但下面这些内容要能讲清楚：
+You don't need to study all of these at the depth of the 408 graduate entrance exam, but you should be able to explain:
 
-- 计算机网络：HTTP/HTTPS、TCP/UDP、三次握手和四次挥手、DNS、Cookie / Session / Token、常见状态码、浏览器输入 URL 后发生了什么。
-- 操作系统：进程和线程、上下文切换、死锁、内存管理、I/O、Linux 文件权限和常用命令。
-- 数据结构与算法：数组、链表、栈、队列、哈希表、树、堆、排序、二分、双指针、DFS / BFS、动态规划基础。
-- 基本系统设计意识：缓存、限流、超时、重试、日志、监控、降级。
+- **Computer networks:** HTTP/HTTPS, TCP/UDP, the three-way handshake and four-way termination, DNS, cookies / sessions / tokens, common status codes, and what happens after you enter a URL in a browser.
+- **Operating systems:** processes and threads, context switching, deadlocks, memory management, I/O, Linux file permissions, and common commands.
+- **Data structures and algorithms:** arrays, linked lists, stacks, queues, hash tables, trees, heaps, sorting, binary search, two pointers, DFS / BFS, and basic dynamic programming.
+- **Basic system design:** caching, rate limiting, timeouts, retries, logging, monitoring, and graceful degradation.
 
-测开问计网时，经常会贴近排障场景。比如页面加载慢怎么查，接口偶发超时怎么定位，App 抓包看到 401 / 403 / 500 分别可能是什么原因。你不能只背概念，要能顺着请求链路说。
+Networking interview questions for test developers often involve troubleshooting scenarios. For example: How would you investigate a slow page load? How would you diagnose an occasional API timeout? What might HTTP 401 / 403 / 500 responses seen in an App capture indicate? You need to reason through the request flow, not just memorize definitions.
 
-可以配合 JavaGuide 里的内容学习：
+You can study these topics with JavaGuide:
 
-- [计算机网络常见面试题](../cs-basics/network/other-network-questions.md)
-- [操作系统常见面试题](../cs-basics/operating-system/operating-system-basic-questions-01.md)
-- [进程和线程](../cs-basics/operating-system/process-and-thread.md)
-- [Linux 常用命令总结](../cs-basics/operating-system/linux-intro.md)
-- [数据结构与算法](../cs-basics/algorithms/)
+- [Common Computer Networking Interview Questions](../cs-basics/network/other-network-questions.md)
+- [Common Operating System Interview Questions](../cs-basics/operating-system/operating-system-basic-questions-01.md)
+- [Processes and Threads](../cs-basics/operating-system/process-and-thread.md)
+- [Common Linux Commands](../cs-basics/operating-system/linux-intro.md)
+- [Data Structures and Algorithms](../cs-basics/algorithms/)
 
-算法不用刷到后端开发岗那么极限，但基本题要做。测试开发依然是技术岗，笔试和一面遇到算法题很正常。
+You don't need to grind algorithms as intensely as you would for a backend development role, but you should solve the fundamentals. Test development is still a technical role, and coding tests and first-round interviews commonly include algorithm questions.
 
-## 阶段二：选一门主语言，再补一门辅助语言
+## Stage 2: Choose a Primary Language and Add a Secondary One
 
-测开绕不开编程。
+Test development requires programming.
 
-语言选择不必纠结太久。Java 和 Python 都能做测开，只是侧重点不一样：
+Don't spend too long agonizing over which language to choose. Both Java and Python work; they just have different strengths:
 
-| 语言          | 更适合的场景                                                        | 建议                                                                      |
-| ------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Java          | 已经有 Java 基础、目标公司技术栈偏 Java、想做测试平台或后端质量工具 | 直接用 Java 投测开也可以，重点补 JUnit、TestNG、Rest Assured、Spring Boot |
-| Python        | 想快速写脚本、接口自动化、数据处理、日志分析、AI 工具链调用         | 很适合测开入门，重点补 pytest、requests、Playwright、Locust               |
-| Java + Python | 想覆盖更广的岗位和项目                                              | Java 做平台和工程底座，Python 做自动化脚本和 AI 辅助工具                  |
+| Language      | Best suited for                                                                                                              | Recommendation                                                                                                  |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Java          | People who already know Java, target companies using a Java stack, or want to build test platforms and backend quality tools | Java is fine for test development. Focus on JUnit, TestNG, Rest Assured, and Spring Boot.                       |
+| Python        | Scripting, API automation, data processing, log analysis, and calling AI tools                                               | A good language to start with. Focus on pytest, requests, Playwright, and Locust.                               |
+| Java + Python | People who want to qualify for a wider range of roles and projects                                                           | Use Java for platforms and the engineering foundation, and Python for automation scripts and AI-assisted tools. |
 
-如果你本来就是 Java 后端，不要为了测开把 Java 扔掉重新学 Python。Java 的 Spring Boot、MySQL、Redis、接口设计、单元测试、日志排查经验都能迁移到测开，简历里也更好讲。
+If you're already a Java backend developer, don't throw away Java and start learning Python just to move into test development. Your Spring Boot, MySQL, Redis, API design, unit testing, and log troubleshooting experience all transfer, and are easier to explain on your resume.
 
-如果你没有明显语言基础，短期准备测开可以先学 Python。它写接口自动化、数据处理、批量脚本和 AI API 调用更轻。
+If you don't already have a strong background in a language, Python is a good starting point for preparing for test development. It's more lightweight for API automation, data processing, batch scripts, and AI API calls.
 
-这一阶段至少要做到：
+By the end of this stage, you should be able to:
 
-- 能写基本程序，理解函数、类、异常、集合、文件读写和网络请求。
-- 能用测试框架写单元测试，例如 Java 的 JUnit / Mockito，Python 的 pytest。
-- 能封装 HTTP 请求，处理 Token、Header、Cookie、参数化和断言。
-- 能读懂项目目录结构，知道代码、配置、测试、日志分别放在哪里。
-- 能写一点简单服务，例如 Spring Boot 或 Flask / FastAPI，用来练接口测试。
+- Write basic programs and understand functions, classes, exceptions, collections, file I/O, and network requests.
+- Write unit tests with a testing framework, such as Java's JUnit / Mockito or Python's pytest.
+- Wrap HTTP requests and handle tokens, headers, cookies, parameterization, and assertions.
+- Read a project's directory structure and know where code, configuration, tests, and logs live.
+- Write a simple service, such as one using Spring Boot or Flask / FastAPI, to practice API testing.
 
-Java 相关内容可以看：
+For Java, see:
 
-- [Java 基础常见面试题](../java/basis/java-basic-questions-01.md)
-- [Java 集合常见面试题](../java/collection/java-collection-questions-01.md)
-- [Java 单元测试](../system-design/basis/unit-test.md)
+- [Common Java Fundamentals Interview Questions](../java/basis/java-basic-questions-01.md)
+- [Common Java Collections Interview Questions](../java/collection/java-collection-questions-01.md)
+- [Java Unit Testing](../system-design/basis/unit-test.md)
 
-## 阶段三：补数据库、Linux、Git、Docker 和 CI/CD
+## Stage 3: Learn Databases, Linux, Git, Docker, and CI/CD
 
-测开的工作不只发生在浏览器页面上。很多问题最后都要落到数据、环境、日志和发布流程上。
+Test development doesn't happen only in browser pages. Many issues eventually lead back to data, environments, logs, or release workflows.
 
-数据库这块，MySQL 是重点。你至少要会：
+MySQL is a priority. You should be able to:
 
-- 写常见 SQL：查询、过滤、排序、分页、聚合、关联查询。
-- 看懂表结构，知道主键、唯一索引、普通索引、外键的影响。
-- 理解事务、隔离级别、脏读、不可重复读、幻读。
-- 用 SQL 构造测试数据，验证接口返回和数据库状态是否一致。
-- 能解释慢 SQL、索引失效、连接数耗尽这类常见问题。
+- Write common SQL queries for filtering, sorting, pagination, aggregation, and joins.
+- Read a table schema and understand the effects of primary keys, unique indexes, regular indexes, and foreign keys.
+- Understand transactions, isolation levels, dirty reads, non-repeatable reads, and phantom reads.
+- Use SQL to create test data and check that API responses match the database state.
+- Explain common problems such as slow queries, unused indexes, and exhausted connections.
 
-Linux 主要用于部署、日志查看和排障。常用命令要熟：`cd`、`ls`、`cat`、`tail`、`grep`、`awk`、`sed`、`ps`、`top`、`df`、`du`、`curl`、`netstat` / `ss`。
+Linux is mainly used for deployment, reading logs, and troubleshooting. Be comfortable with commands such as `cd`, `ls`, `cat`, `tail`, `grep`, `awk`, `sed`, `ps`, `top`, `df`, `du`, `curl`, and `netstat` / `ss`.
 
-Git 要会分支、提交、合并、解决冲突、回滚和查看提交历史。Docker 要会拉镜像、写简单 Dockerfile、启动容器、挂载配置、查看日志。CI/CD 至少要知道流水线怎么触发、怎么执行测试、怎么生成报告、失败时怎么定位。
+With Git, you should know how to branch, commit, merge, resolve conflicts, revert changes, and inspect commit history. With Docker, learn to pull images, write a simple Dockerfile, start containers, mount configuration, and read logs. For CI/CD, at minimum understand how a pipeline is triggered, runs tests, generates reports, and helps you locate failures.
 
-推荐配套阅读：
+Recommended reading:
 
-- [MySQL 常见面试题](../database/mysql/mysql-questions-01.md)
-- [Git 入门教程](../tools/git/git-intro.md)
-- [Docker 入门教程](../tools/docker/docker-intro.md)
+- [Common MySQL Interview Questions](../database/mysql/mysql-questions-01.md)
+- [Git Tutorial for Beginners](../tools/git/git-intro.md)
+- [Docker Tutorial for Beginners](../tools/docker/docker-intro.md)
 
-这一阶段的练习可以很具体：自己写一个小服务，用 Docker 启动 MySQL 和后端服务，再用 GitHub Actions 或 Jenkins 跑一组接口自动化测试。哪怕功能很小，只要链路完整，就比只学工具强很多。
+A practical exercise for this stage: write a small service, start MySQL and the backend service with Docker, then use GitHub Actions or Jenkins to run a set of API automation tests. Even a small project with a complete workflow is more valuable than learning tools in isolation.
 
-## 阶段四：测试理论和用例设计
+## Stage 4: Testing Theory and Test Design
 
-测试理论不该停在背名词。它解决的是一个具体问题：面对一个功能，你怎么判断自己测得够不够？
+Testing theory shouldn't stop at memorizing terms. It answers a practical question: given a feature, how do you know whether your testing is thorough enough?
 
-基础内容包括：
+The fundamentals include:
 
-- 测试流程：需求分析、测试计划、用例设计、执行、缺陷跟踪、回归、上线验证、复盘。
-- 测试分类：单元测试、集成测试、系统测试、验收测试、回归测试、冒烟测试。
-- 测试类型：功能、接口、性能、安全、兼容性、易用性、稳定性。
-- 用例设计方法：等价类、边界值、判定表、因果图、状态迁移、正交实验、错误推测。
-- 缺陷管理：缺陷标题、复现步骤、实际结果、期望结果、环境信息、日志和截图。
+- **Testing workflow:** requirements analysis, test planning, test design, execution, defect tracking, regression, release verification, and retrospectives.
+- **Testing levels:** unit, integration, system, acceptance, regression, and smoke testing.
+- **Testing types:** functional, API, performance, security, compatibility, usability, and reliability testing.
+- **Test design techniques:** equivalence partitioning, boundary value analysis, decision tables, cause-and-effect graphs, state transitions, orthogonal arrays, and error guessing.
+- **Defect management:** title, reproduction steps, actual result, expected result, environment, logs, and screenshots.
 
-面试里很常见的场景题，比如测试电梯、水杯、登录页、购物车、微信朋友圈、红包、文件上传。回答时别只按功能点罗列，可以按维度展开：
+Interview questions often ask how you would test things such as an elevator, a water bottle, a login page, a shopping cart, WeChat Moments, red packet payments, or file uploads. Don't just list features. Organize your answer by dimensions:
 
-- 功能流程：正常路径和异常路径。
-- 数据边界：空值、超长、特殊字符、重复、非法格式。
-- 权限和安全：未登录、越权、敏感信息、频率限制。
-- 兼容性：浏览器、系统版本、网络状态、屏幕尺寸。
-- 性能和稳定性：高并发、弱网、重复提交、长时间运行。
-- 可观测性：日志、埋点、告警、错误码是否可定位。
+- **Functional flows:** normal and error paths.
+- **Data boundaries:** empty values, excessive length, special characters, duplicates, and invalid formats.
+- **Permissions and security:** unauthenticated access, privilege escalation, sensitive data, and rate limits.
+- **Compatibility:** browsers, OS versions, network conditions, and screen sizes.
+- **Performance and reliability:** high concurrency, poor networks, duplicate submissions, and long-running sessions.
+- **Observability:** whether logs, instrumentation, alerts, and error codes help locate problems.
 
-AI 可以帮你生成初稿，但你要会审。比如让 AI 生成登录页测试点，它可能会覆盖账号密码、验证码、记住登录这些常规点，但经常漏掉风控、频率限制、账号锁定、第三方登录、Token 续期、并发登录和审计日志。
+AI can draft test points, but you need to review them. For example, if you ask AI to generate login page tests, it may cover usernames, passwords, verification codes, and “remember me,” but often misses risk controls, rate limits, account lockouts, third-party login, token renewal, concurrent logins, and audit logs.
 
-测开要能补上这些漏掉的地方。
+Test developers need to catch those gaps.
 
-## 阶段五：接口测试和接口自动化
+## Stage 5: API Testing and Automation
 
-接口自动化是测开最应该优先拿下的一块。
+API automation is one of the most important areas for test developers to master first.
 
-原因很简单：接口比 UI 更稳定，执行速度更快，也更容易接入 CI。很多团队的自动化测试主力都是接口回归。
+The reason is simple: APIs are more stable than UIs, run faster, and are easier to integrate with CI. In many teams, API regression tests make up most of the automation suite.
 
-先从工具开始。Postman、Apifox、Reqable、Insomnia 这类工具至少会一个，能完成接口调试、环境变量、前置脚本、后置断言和测试集合执行。
+Start with a tool. Learn at least one of Postman, Apifox, Reqable, or Insomnia, and use it to debug APIs, set environment variables, run setup and teardown scripts, write assertions, and execute collections.
 
-然后写代码。Python 可以用 `requests + pytest`，Java 可以用 `JUnit / TestNG + Rest Assured`。一个像样的接口自动化框架，至少要包含：
+Then write code. With Python, use `requests + pytest`; with Java, use `JUnit / TestNG + Rest Assured`. A solid API automation framework should include at least:
 
-- 环境配置：测试环境、预发环境、接口域名、账号和 Token。
-- 请求封装：统一处理 Header、Cookie、鉴权、超时、重试。
-- 数据管理：测试数据准备、清理、参数化、数据库校验。
-- 断言体系：状态码、响应字段、业务码、数据库状态、消息队列副作用。
-- 报告输出：Allure、HTML 报告、失败日志、请求和响应详情。
-- CI 集成：每次提交或每天定时执行，失败后能定位到具体用例。
+- **Environment configuration:** test and staging environments, API base URLs, accounts, and tokens.
+- **Request wrappers:** consistent handling of headers, cookies, authentication, timeouts, and retries.
+- **Data management:** test data setup, cleanup, parameterization, and database checks.
+- **Assertions:** status codes, response fields, business codes, database state, and side effects in message queues.
+- **Reports:** Allure or HTML reports, failure logs, and request and response details.
+- **CI integration:** run on each commit or on a daily schedule, with failures traceable to a specific test case.
 
-不要只断言 `status_code == 200`。接口测试真正有价值的断言，应该能证明业务状态正确。例如创建订单接口执行后，要验证订单表、库存变化、支付状态、消息事件或审计日志。
+Don't assert only `status_code == 200`. Useful API tests prove that the business state is correct. For example, after creating an order, verify the order record, inventory changes, payment status, message event, or audit log.
 
-AI 在这一阶段很适合做三件事：
+AI is useful for three things at this stage:
 
-- 根据 OpenAPI / Swagger 文档生成初版测试用例。
-- 根据接口返回生成数据模型和断言模板。
-- 帮你审查用例是否只测了成功路径。
+- Generate a first draft of test cases from OpenAPI / Swagger docs.
+- Generate data models and assertion templates from API responses.
+- Review test cases to see whether they cover more than the success path.
 
-但测试数据、业务断言和环境清理要自己把关。AI 不知道你们系统里哪些字段会影响后续流程。
+But you need to check test data, business assertions, and environment cleanup yourself. AI doesn't know which fields in your system affect later workflows.
 
-## 阶段六：UI 自动化和 App 自动化
+## Stage 6: UI and Mobile App Automation
 
-UI 自动化能做，但不要一上来就把所有回归都押在 UI 上。
+UI automation has its place, but don't start by putting all your regression testing in the UI layer.
 
-UI 自动化的成本比接口自动化高。页面结构会变，元素定位会失效，网络和渲染会带来不稳定，维护不好很容易变成“每天都有人修脚本”。所以 UI 自动化更适合覆盖高价值、稳定、跨页面的主流程，比如登录、下单、支付、审批、发布。
+UI automation costs more than API automation. Page structures change, element selectors break, and network and rendering behavior can make tests flaky. Without good maintenance, it can turn into “someone fixes the scripts every day.” UI automation is better suited to high-value, stable workflows that span pages, such as login, placing orders, payment, approval, and publishing.
 
-Web UI 自动化可以重点看：
+For Web UI automation, look at:
 
-- Playwright：现代 Web 自动化工具，等待机制、调试体验、并行执行和多浏览器支持都比较好。
-- Selenium：历史更久，企业存量项目多，面试也常问原理。
-- Cypress：前端团队用得多，适合 Web 应用端到端测试。
+- **Playwright:** A modern Web automation tool with good waiting behavior, debugging, parallel execution, and multi-browser support.
+- **Selenium:** An older tool with many existing enterprise projects, and its principles often come up in interviews.
+- **Cypress:** Widely used by frontend teams and suitable for end-to-end testing of Web applications.
 
-如果从 2026 年开始新学，我更建议优先学 Playwright，再了解 Selenium。Selenium 的生态和面试价值仍然在，但新项目的稳定性和开发体验，Playwright 往往更舒服。
+If you're starting in 2026, I recommend learning Playwright first, then getting familiar with Selenium. Selenium's ecosystem and interview relevance remain, but Playwright often offers a better experience and more reliable tests for new projects.
 
-App 自动化主要看 Appium。你要理解设备连接、元素定位、等待、滑动、权限弹窗、日志抓取、弱网和多机型兼容。
+For mobile app automation, focus on Appium. Understand device connections, element selection, waits, swipes, permission dialogs, log capture, poor network conditions, and device compatibility.
 
-UI / App 自动化要重点掌握：
+Key practices for UI / mobile automation:
 
-- Page Object Model，别把元素定位和业务步骤全部写在一个文件里。
-- 稳定等待，少用固定 `sleep`。
-- 截图、视频、Trace 和失败日志留存。
-- 测试数据隔离，避免用例互相污染。
-- 并行执行和失败重试，但重试不能掩盖真实问题。
+- Use the Page Object Model; don't put all element selectors and business steps in one file.
+- Use reliable waits instead of fixed `sleep` calls.
+- Keep screenshots, videos, traces, and failure logs.
+- Isolate test data to avoid tests affecting each other.
+- Use parallel execution and retries, but don't let retries hide real problems.
 
-AI 可以帮你从页面结构生成初版脚本，也可以根据失败截图猜测定位问题。但 UI 自动化的稳定性来自工程设计，脚本生成速度只是开始。
+AI can generate a first draft of scripts from a page structure and suggest causes based on failure screenshots. But stable UI automation comes from good engineering design; faster script generation is only the beginning.
 
-## 阶段七：性能测试和稳定性测试
+## Stage 7: Performance and Reliability Testing
 
-性能测试不能只停在打开 JMeter 压一下，然后贴一张 QPS 图。
+Performance testing isn't just running JMeter once and pasting in a QPS chart.
 
-你要先明确测试目标：验证单接口容量、核心链路容量、峰值流量、稳定性、限流降级，还是找瓶颈。目标不同，压测模型也不同。
+First, set a clear goal: Are you testing one API's capacity, a critical workflow's capacity, peak traffic, reliability, rate limiting and graceful degradation, or looking for a bottleneck? Different goals need different load models.
 
-常见工具：
+Common tools:
 
-- JMeter：企业里很常见，适合接口和 Web 服务压测。
-- k6：脚本化体验更现代，适合开发者协作。
-- Locust：Python 编写场景，适合复杂用户行为建模。
-- Gatling：性能不错，Scala 技术栈里更常见。
+- **JMeter:** Widely used in enterprises and suitable for load testing APIs and Web services.
+- **k6:** A more modern scripting experience, suitable for developer collaboration.
+- **Locust:** Define scenarios in Python; useful for modeling complex user behavior.
+- **Gatling:** Strong performance and common in Scala environments.
 
-需要关注的指标：
+Metrics to watch:
 
-- 吞吐量：QPS、TPS。
-- 响应时间：平均值、P95、P99。
-- 错误率：HTTP 错误、业务错误、超时。
-- 资源指标：CPU、内存、磁盘 I/O、网络 I/O、线程数、连接数。
-- 依赖指标：数据库慢 SQL、连接池、Redis 命中率、消息队列堆积。
+- **Throughput:** QPS and TPS.
+- **Response times:** average, P95, and P99.
+- **Error rate:** HTTP errors, business errors, and timeouts.
+- **Resource metrics:** CPU, memory, disk I/O, network I/O, thread count, and connection count.
+- **Dependency metrics:** database slow queries and connection pools, Redis hit rate, and message queue backlog.
 
-性能测试报告要能回答几个问题：
+A performance report should answer:
 
-- 这次压测的业务场景是什么？
-- 并发用户、请求比例、数据规模和持续时间是多少？
-- 瓶颈出在哪里，证据是什么？
-- 优化前后指标变化如何？
-- 当前结论的边界是什么？
+- What business scenario did you load test?
+- What were the concurrent users, request mix, data size, and duration?
+- Where was the bottleneck, and what evidence supports that conclusion?
+- How did the metrics change before and after optimization?
+- What are the limits of the conclusion?
 
-没有监控的压测价值很低。至少要能看到服务日志、系统资源、数据库指标和错误堆栈。遇到响应慢，先判断是应用线程耗尽、数据库慢、外部接口慢、GC、网络，还是压测脚本本身有问题。
+Load tests without monitoring have little value. At minimum, you should be able to see service logs, system resources, database metrics, and error traces. When responses are slow, first work out whether the cause is exhausted application threads, a slow database, an external API, garbage collection, the network, or the load test script itself.
 
-## 阶段八：CI/CD、质量平台和精准测试
+## Stage 8: CI/CD, Quality Platforms, and Targeted Testing
 
-测开进阶的分水岭，通常在脚本之外：能不能把质量能力沉淀进团队流程。
+The next step in test development often comes down to more than scripts: can you build quality capabilities into the team's workflow?
 
-第一步是 CI/CD。把接口自动化、单元测试、静态检查、UI 冒烟、测试报告接进流水线。每次合并代码后自动跑一批关键用例，失败时能看到日志、截图、请求响应和负责模块。
+The first step is CI/CD. Add API automation, unit tests, static checks, UI smoke tests, and test reports to the pipeline. After each code merge, run a set of key tests automatically. When one fails, the team should be able to see logs, screenshots, request and response details, and the responsible module.
 
-第二步是测试平台。一个简单的平台也可以很有价值，比如：
+The second step is a test platform. Even a simple platform can be valuable. For example:
 
-- 用例管理：维护接口、场景、优先级、标签、执行状态。
-- 自动化调度：按项目、分支、环境、标签触发测试。
-- 报告聚合：展示通过率、失败原因、历史趋势。
-- 测试数据管理：准备账号、订单、库存、审批流等数据。
-- 缺陷联动：失败用例自动关联缺陷或通知负责人。
+- **Test management:** Maintain APIs, scenarios, priorities, tags, and execution status.
+- **Automation scheduling:** Trigger tests by project, branch, environment, or tag.
+- **Report aggregation:** Show pass rates, failure reasons, and trends over time.
+- **Test data management:** Prepare accounts, orders, inventory, approval workflows, and other data.
+- **Defect integration:** Automatically link failed tests to defects or notify the owner.
 
-第三步是覆盖率和精准测试。Java 可以看 JaCoCo，Python 可以看 Coverage.py。它们能告诉你自动化用例覆盖了哪些代码行、分支和方法。更进一步，可以结合代码变更范围、调用链和历史失败记录，优先执行更可能发现问题的用例。
+The third step is coverage and targeted testing. For Java, look at JaCoCo; for Python, Coverage.py. They show which lines, branches, and methods your automated tests cover. You can go further by combining code changes, call chains, and past failures to prioritize the tests most likely to catch a problem.
 
-精准测试对校招生不一定是硬要求，但它很适合作为进阶项目。相比“我写了一个接口自动化框架”，能说清“我根据代码覆盖率和变更文件筛选回归用例”，技术含量会高不少。
+Targeted testing may not be essential for new graduates, but it makes a good advanced project. Instead of saying, “I wrote an API automation framework,” you can explain, “I selected regression tests based on code coverage and changed files.” That shows deeper technical understanding.
 
-## 阶段九：AI 辅助测试怎么用
+## Stage 9: Using AI to Help with Testing
 
-AI 辅助测试不要停留在“帮我写测试用例”。
+Don't limit AI-assisted testing to “Write test cases for me.”
 
-更实用的用法是把任务拆细，让 AI 做候选生成和辅助审查：
+A more useful approach is to break the task into smaller pieces and ask AI to generate candidates and help review them:
 
 ```text
-请根据下面的需求说明，输出测试点。
-要求：
-1. 按功能、接口、权限、安全、兼容性、性能、异常场景分类；
-2. 每个测试点写出前置条件、操作步骤、预期结果；
-3. 单独列出你不确定、需要产品确认的点；
-4. 不要编造需求里没有出现的业务规则。
+Generate test points based on the requirements below.
+Requirements:
+1. Group them by functionality, APIs, permissions, security, compatibility, performance, and error scenarios.
+2. For each test point, include preconditions, steps, and expected results.
+3. List separately any uncertain points that need confirmation from the product team.
+4. Do not invent business rules that are not in the requirements.
 ```
 
-接口自动化可以这样用：
+For API automation, you could ask:
 
 ```text
-请根据这份 OpenAPI 文档生成 pytest 接口测试用例初稿。
-要求：
-1. 区分正常路径和异常路径；
-2. 每个用例都要有明确断言；
-3. 不要只断言 HTTP 200；
-4. 标出需要人工补充测试数据的地方。
+Generate a first draft of pytest API tests from this OpenAPI document.
+Requirements:
+1. Separate success and error paths.
+2. Include clear assertions in every test case.
+3. Do not assert only HTTP 200.
+4. Mark where test data needs to be added manually.
 ```
 
-失败日志分析可以这样用：
+To analyze failure logs:
 
 ```text
-请分析下面这次 CI 失败日志。
-要求：
-1. 先判断失败发生在环境、测试数据、断言、接口还是业务代码；
-2. 给出最可能的 3 个原因；
-3. 给出下一步排查命令或需要查看的日志；
-4. 不要直接下结论，缺证据的地方标注“不确定”。
+Analyze this CI failure log.
+Requirements:
+1. First determine whether the failure is related to the environment, test data, an assertion, the API, or business code.
+2. Give the three most likely causes.
+3. Suggest the next troubleshooting command or logs to inspect.
+4. Do not jump to a conclusion; mark anything without enough evidence as "uncertain."
 ```
 
-这类 Prompt 的价值在于让 AI 把候选空间列出来。真正的判断仍然来自日志、数据、代码和业务规则。
+The value of these prompts is that they help AI list possible explanations. The real judgment still comes from logs, data, code, and business rules.
 
-更进一步，可以用 AI 做质量审查。比如让它检查自动化框架里有没有硬编码环境、用例是否互相依赖、断言是否太弱、失败重试是否掩盖问题。这个方向和 [AI 编程实践指南](../ai-coding/) 里的 Spec Coding、代码审查和本地验证思路是相通的。
+You can also use AI for quality reviews. For example, ask it to look for hard-coded environments, test cases that depend on each other, weak assertions, and retries that may hide failures. This is related to the Spec Coding, code review, and local validation practices in the [AI Coding Practices Guide](../ai-coding/).
 
-## 阶段十：AI 应用测试和大模型评测
+## Stage 10: AI Application Testing and LLM Evaluation
 
-如果你想让测开路线更符合 AI 时代要求，这一块一定要补。
+If you want your test development skills to stay relevant in the AI era, don't skip this area.
 
-AI 应用测试可以先分成四类：
+AI application testing can be divided into four areas:
 
-| 方向         | 重点测试内容                                       | 示例                         |
-| ------------ | -------------------------------------------------- | ---------------------------- |
-| LLM API 应用 | 结构化输出、超时重试、限流、降级、成本、审计       | 简历解析、客服问答、文本分类 |
-| RAG 应用     | 文档解析、分块、召回、Rerank、答案忠实度、引用溯源 | 企业知识库、制度问答         |
-| Agent 应用   | 工具选择、参数生成、执行轨迹、权限边界、失败恢复   | 自动查订单、自动生成报告     |
-| 多模态应用   | 图片/音频输入、识别准确性、异常文件、安全边界      | 图片审核、票据识别           |
+| Area                    | What to test                                                                                        | Examples                                                  |
+| ----------------------- | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| LLM API applications    | Structured output, timeout retries, rate limiting, graceful degradation, cost, and auditing         | Resume parsing, customer support Q&A, text classification |
+| RAG applications        | Document parsing, chunking, retrieval, reranking, answer faithfulness, and citation tracing         | Enterprise knowledge bases, policy Q&A                    |
+| Agent applications      | Tool selection, parameter generation, execution traces, permission boundaries, and failure recovery | Automatically looking up orders or generating reports     |
+| Multimodal applications | Image / audio input, recognition accuracy, invalid files, and security boundaries                   | Image moderation, receipt recognition                     |
 
-这里不能只用传统“输入等于输出”的思路。AI 应用的输出经常有多个可接受答案，评测要更像一套质量回归体系。
+You can't rely only on the traditional “input equals output” approach. AI applications often have multiple acceptable answers, so evaluation should work more like a quality regression system.
 
-你可以先从这些概念入手：
+Start with these concepts:
 
-- Golden Set：准备一批高质量测试集，覆盖正常问题、边界问题、对抗问题和高风险业务问题。
-- 检索评测：看正确文档有没有被召回，TopK 里位置是否靠前。
-- 生成评测：看回答是否正确、是否忠实于材料、是否引用证据。
-- 工具调用评测：看 Agent 有没有选对工具、参数是否准确、失败后有没有恢复。
-- 安全评测：提示词注入、越狱、敏感信息泄露、越权访问。
+- **Golden set:** Prepare high-quality test cases covering normal, edge, adversarial, and high-risk business questions.
+- **Retrieval evaluation:** Check whether the right documents were retrieved and whether they ranked near the top K.
+- **Generation evaluation:** Check whether answers are correct, faithful to source material, and supported with citations.
+- **Tool call evaluation:** Check whether the agent picked the right tool, used accurate parameters, and recovered from failures.
+- **Safety evaluation:** Test prompt injection, jailbreaks, sensitive data leaks, and unauthorized access.
 
-工具上可以了解 DeepEval、RAGAS、promptfoo 这类评测框架，也可以先自己写一个轻量脚本：读取测试集，批量调用应用接口，保存问题、答案、引用、耗时、Token 成本和人工打分。
+You can explore evaluation frameworks such as DeepEval, RAGAS, and promptfoo, or start with a lightweight script of your own: read a test set, call the application in batches, and save the questions, answers, citations, latency, token costs, and human ratings.
 
-JavaGuide 里和这块相关的内容可以看：
+Related JavaGuide pages:
 
-- [大模型 API 调用工程实践](../ai/llm-basis/llm-api-engineering.md)
-- [大模型结构化输出详解](../ai/llm-basis/structured-output-function-calling.md)
-- [AI 应用评测体系](../ai/llm-basis/llm-evaluation.md)
-- [RAG 基础概念](../ai/rag/rag-basis.md)
-- [大模型提示词工程实践指南](../ai/agent/prompt-engineering.md)
+- [Engineering Practices for Calling LLM APIs](../ai/llm-basis/llm-api-engineering.md)
+- [Structured Output from LLMs](../ai/llm-basis/structured-output-function-calling.md)
+- [AI Application Evaluation](../ai/llm-basis/llm-evaluation.md)
+- [RAG Fundamentals](../ai/rag/rag-basis.md)
+- [Prompt Engineering in Practice](../ai/agent/prompt-engineering.md)
 
-这一阶段的目标不在模型算法。测开更应该关注工程质量：模型输出怎么验，质量下降怎么发现，线上问题怎么回放，发布前怎么证明这次改动没有让效果变差。
+The goal at this stage isn't to learn model algorithms. Test developers should focus on engineering quality: how to validate model output, detect quality regressions, replay production issues, and show that a change hasn't made results worse before release.
 
-## 项目应该怎么做
+## What Projects Should You Build?
 
-测开简历最怕项目太虚。只写“熟悉自动化测试”“会使用 JMeter”“了解 AI 测试”，面试官很难判断你的真实能力。
+The biggest problem with test development resumes is vague project experience. “Familiar with test automation,” “know how to use JMeter,” or “understand AI testing” doesn't tell an interviewer what you can actually do.
 
-更好的方式是做 2 到 3 个能跑起来、能讲清楚的项目。
+A stronger approach is to build two or three working projects that you can explain clearly.
 
-### 项目一：接口自动化测试框架
+### Project 1: API Automation Framework
 
-选一个真实或半真实系统，比如电商、博客、在线教育、后台管理。至少覆盖登录、用户、商品、订单、支付回调这类接口。
+Choose a real or realistic system such as e-commerce, a blog, online education, or an admin system. Cover APIs for login, users, products, orders, and payment callbacks at a minimum.
 
-项目要包含：
+The project should include:
 
-- 接口文档解析和测试用例设计。
-- 请求封装、鉴权、参数化、数据准备和清理。
-- 数据库校验，不能只看接口返回。
-- Allure / HTML 测试报告。
-- GitHub Actions / Jenkins 自动执行。
-- 失败日志、请求响应和环境信息留存。
+- Parsing API docs and designing test cases.
+- Request wrappers, authentication, parameterization, and data setup and cleanup.
+- Database checks; don't rely on API responses alone.
+- Allure or HTML test reports.
+- Automated runs through GitHub Actions or Jenkins.
+- Retention of failure logs, request and response details, and environment information.
 
-面试时可以讲：你如何设计目录结构，如何处理 Token，如何管理测试数据，如何避免用例互相依赖，如何接入流水线。
+In an interview, explain how you designed the directory structure, handled tokens, managed test data, prevented tests from depending on each other, and integrated them into the pipeline.
 
-### 项目二：Web UI 自动化或 App 自动化
+### Project 2: Web UI or Mobile App Automation
 
-Web 方向建议用 Playwright 或 Selenium，App 方向可以用 Appium。
+For Web, use Playwright or Selenium; for mobile, use Appium.
 
-不要做太多页面，先把主流程做扎实。例如后台管理系统的登录、用户管理、角色权限、文章发布、订单处理。
+Don't cover too many pages. Make the main workflow reliable first, such as login, user management, role permissions, publishing articles, or processing orders in an admin system.
 
-项目要包含：
+The project should include:
 
-- Page Object Model。
-- 多环境配置。
-- 截图、Trace、失败视频或日志。
-- 用例标签，例如冒烟、回归、核心流程。
-- 并行执行和失败重试策略。
-- CI 定时执行和报告归档。
+- Page Object Model.
+- Multi-environment configuration.
+- Screenshots, traces, failure videos, or logs.
+- Test tags such as smoke, regression, and critical workflow.
+- Parallel execution and a retry strategy.
+- Scheduled CI runs and archived reports.
 
-面试时重点讲稳定性：元素定位怎么选，等待怎么处理，页面变化后怎么维护，失败怎么判断是脚本问题还是业务问题。
+In an interview, focus on reliability: how you chose element selectors, handled waits, maintained tests after page changes, and decided whether a failure came from the script or the business feature.
 
-### 项目三：性能测试和问题定位
+### Project 3: Performance Testing and Troubleshooting
 
-选一个接口链路，例如商品查询、下单、登录、搜索。
+Choose an API workflow such as product search, checkout, login, or search.
 
-项目要包含：
+The project should include:
 
-- 压测场景设计：单接口、混合场景、峰值场景、稳定性场景。
-- JMeter、k6 或 Locust 脚本。
-- 监控指标采集：CPU、内存、数据库、Redis、应用日志。
-- 性能报告：QPS、P95、P99、错误率和瓶颈分析。
-- 至少一次优化前后对比，例如增加索引、调整连接池、减少慢 SQL。
+- Load test scenarios: a single API, mixed workloads, peak traffic, and reliability.
+- Scripts in JMeter, k6, or Locust.
+- Monitoring for CPU, memory, databases, Redis, and application logs.
+- A performance report with QPS, P95, P99, error rates, and bottleneck analysis.
+- At least one before-and-after optimization, such as adding an index, adjusting a connection pool, or reducing slow queries.
 
-这个项目很适合证明你会定位问题，工具执行只是其中一环。
+This project is a good way to show that you can diagnose problems; running the tool is only one part of it.
 
-### 项目四：AI 应用质量评测平台
+### Project 4: AI Application Evaluation Platform
 
-如果想突出 AI 时代的测开能力，可以做一个轻量评测平台。
+To highlight your test development skills in the AI era, build a lightweight evaluation platform.
 
-比如做一个 RAG 问答系统评测工具：
+For example, create an evaluation tool for a RAG question-answering system:
 
-- 支持导入 Golden Set：问题、标准答案、期望引用文档。
-- 批量调用 RAG 接口，记录答案、引用片段、耗时和 Token 成本。
-- 计算召回命中、答案是否包含关键事实、是否引用正确材料。
-- 支持人工打分和失败样本标记。
-- 输出对比报告：模型 A 和模型 B、Prompt v1 和 Prompt v2、不同 TopK 配置的效果差异。
+- Import a Golden Set containing questions, reference answers, and expected source documents.
+- Call the RAG API in batches and record answers, cited passages, latency, and token costs.
+- Measure retrieval hits, whether answers include key facts, and whether they cite the right sources.
+- Support human ratings and flagging failed examples.
+- Compare results across model A and model B, Prompt v1 and Prompt v2, and different TopK settings.
 
-这个项目不用做得很大。关键是能体现你理解 AI 应用的质量评估方式，而不只是会让模型回答问题。
+The project doesn't need to be big. The important thing is to show that you understand how to evaluate AI application quality, not just how to get a model to answer questions.
 
-## 面试时怎么讲测开能力
+## How to Talk About Test Development Skills in Interviews
 
-测开面试不要把自己讲成“会很多工具的人”。工具只是入口，面试官真正想知道的是你能不能保障质量。
+Don't present yourself as someone who “knows lots of tools.” Tools are just an entry point; interviewers want to know whether you can ensure quality.
 
-简历和面试表达可以按这条线组织：
+Organize your resume and interview answers around this story:
 
-- 我负责过什么系统或模块的质量保障。
-- 我如何分析需求并设计测试点。
-- 我做了哪些自动化能力，覆盖了哪些接口或流程。
-- 自动化怎么接入 CI/CD，失败后如何通知和定位。
-- 我发现过什么问题，怎么定位，最后怎么修复或推动修复。
-- 我做过哪些效率提升，例如报告聚合、测试数据构造、覆盖率统计、用例筛选。
-- 我如何使用 AI 辅助测试，但如何保证 AI 输出被人工和自动化校验。
+- What system or module did you help ensure quality for?
+- How did you analyze requirements and design test points?
+- What automation did you build, and which APIs or workflows did it cover?
+- How was automation integrated with CI/CD, and how were failures reported and diagnosed?
+- What problems did you find, how did you investigate them, and how were they fixed or driven to resolution?
+- What efficiency improvements did you make, such as report aggregation, test data generation, coverage tracking, or test selection?
+- How did you use AI to help with testing, and how did you validate its output manually and automatically?
 
-如果你是后端转测开，可以强调这些优势：
+If you're moving from backend development to test development, highlight these strengths:
 
-- 更懂接口设计和后端实现，能从代码和日志定位问题。
-- 更懂数据库、缓存、消息队列和分布式链路，能测到功能表面以外的风险。
-- 能开发测试工具或平台，工作不止于执行用例。
+- You understand API design and backend implementation, so you can find problems in code and logs.
+- You understand databases, caches, message queues, and distributed workflows, so you can test risks beyond the visible feature.
+- You can build test tools or platforms; your work isn't limited to executing test cases.
 
-如果你是功能测试转测开，可以强调这些优势：
+If you're moving from functional testing to test development, highlight these strengths:
 
-- 更懂业务流程和测试思维。
-- 更知道哪些场景容易漏测。
-- 自动化要承接已有人工经验，把高频、稳定、可重复的部分沉淀成脚本和平台。
+- You understand business processes and testing methods.
+- You know which scenarios are easy to miss.
+- Automation can build on your manual testing experience by turning frequent, stable, and repeatable work into scripts and platforms.
 
-常见面试题可以按这些方向准备：
+Prepare for common interview questions in these areas:
 
-- 如何设计登录、购物车、电梯、水杯、文件上传的测试用例？
-- 接口自动化框架怎么设计？
-- pytest 和 unittest 有什么区别？JUnit 和 Mockito 怎么配合？
-- Selenium、Playwright、Cypress 的区别是什么？
-- UI 自动化不稳定怎么办？
-- JMeter 压测报告怎么看？P95 和 P99 分别代表什么？
-- 接口偶发超时怎么排查？
-- 线上 bug 漏测了，如何复盘？
-- AI 生成的测试用例怎么验证质量？
-- 如何测试一个 RAG 问答系统或 Agent 工具调用系统？
+- How would you design test cases for login, a shopping cart, an elevator, a water bottle, or a file upload?
+- How would you design an API automation framework?
+- What's the difference between pytest and unittest? How do JUnit and Mockito work together?
+- How are Selenium, Playwright, and Cypress different?
+- What do you do when UI automation is flaky?
+- How do you read a JMeter load test report? What do P95 and P99 mean?
+- How would you investigate an occasional API timeout?
+- How do you review a production bug that escaped testing?
+- How do you validate the quality of test cases generated by AI?
+- How would you test a RAG question-answering system or an agent tool-calling system?
 
-## 一份 3 到 6 个月的学习节奏
+## A 3–6 Month Study Schedule
 
-如果你每天能稳定学习 2 到 4 小时，可以按这个节奏推进。
+If you can study consistently for 2–4 hours a day, try this schedule.
 
-第 1 个月，补基础。完成一门语言入门，能写脚本和单测；同时补 HTTP、Linux、MySQL、Git。这个月的目标是写得出代码，看得懂日志，能调接口。
+**Month 1: Build the fundamentals.** Learn one language well enough to write scripts and unit tests; also study HTTP, Linux, MySQL, and Git. The goal is to write code, understand logs, and test APIs.
 
-第 2 个月，拿下测试理论和接口自动化。系统练用例设计，完成一个接口自动化框架，接入测试报告和 CI。这个月结束时，简历里应该有一个能讲清楚的接口自动化项目。
+**Month 2: Learn testing theory and API automation.** Practice test design systematically, build an API automation framework, and integrate reports and CI. By the end of the month, you should have an API automation project you can explain clearly on your resume.
 
-第 3 个月，做 UI 自动化和性能测试。Web 方向优先 Playwright，性能方向选 JMeter 或 Locust。不要贪多，把登录、下单、查询这类主流程做稳定，再做一次完整压测报告。
+**Month 3: Build UI automation and performance testing skills.** For Web, prioritize Playwright; for performance testing, choose JMeter or Locust. Don't try to learn everything. Make a main workflow such as login, checkout, or search reliable, then produce a complete load test report.
 
-第 4 个月，补质量工程。学习 Jenkins / GitHub Actions、Docker、覆盖率、测试平台思路。把前面两个项目接进流水线，自动生成报告，失败时能定位。
+**Month 4: Learn quality engineering.** Study Jenkins / GitHub Actions, Docker, coverage, and test platform design. Connect your first two projects to a pipeline, generate reports automatically, and make failures traceable.
 
-第 5 个月，补 AI 辅助测试和 AI 应用测试。用 AI 生成用例、审查测试代码、分析日志；再做一个小型 RAG 或 Agent 评测项目，理解 Golden Set、召回、答案忠实度和工具调用评测。
+**Month 5: Learn AI-assisted testing and AI application testing.** Use AI to generate cases, review test code, and analyze logs. Then build a small RAG or agent evaluation project and learn about Golden Sets, retrieval, answer faithfulness, and tool call evaluation.
 
-第 6 个月，集中准备简历和面试。把项目改成面试能讲的版本：背景、方案、技术选型、难点、结果、风险、复盘。刷高频测试场景题、算法基础题和项目追问。
+**Month 6: Focus on your resume and interviews.** Prepare an interview-ready version of each project: background, approach, technology choices, challenges, results, risks, and lessons learned. Practice common testing scenarios, basic algorithms, and project follow-up questions.
 
-时间不够的话，优先级是：编程语言、接口自动化、测试理论、Linux / MySQL / Git、一个完整项目。UI 自动化、性能测试、AI 评测和测试平台可以按目标岗位要求补。
+If you have less time, prioritize programming, API automation, testing theory, Linux / MySQL / Git, and one complete project. Add UI automation, performance testing, AI evaluation, and test platforms based on the roles you're targeting.
 
-## 最后给几个判断
+## A Few Final Thoughts
 
-测开不适合只想轻松上岸的人。它比传统功能测试更技术化，比纯业务开发更强调质量视角。你既要会写代码，也要愿意反复琢磨边界、异常、失败和风险。
+Test development isn't a good fit if you're only looking for an easy way to get a job. It's more technical than traditional functional testing and puts more emphasis on quality than pure feature development. You need to write code and be willing to think carefully about boundaries, errors, failures, and risks.
 
-AI 会让低质量重复劳动变少，但不会让质量保障消失。需求理解、用例设计、断言选择、风险判断、问题定位、评测体系，这些仍然需要人来负责。
+AI will reduce low-quality repetitive work, but quality assurance won't disappear. People still need to understand requirements, design test cases, choose assertions, assess risks, diagnose problems, and build evaluation systems.
 
-如果你准备走测开路线，建议尽早把学习成果落成项目。别只收藏路线图，也别只刷工具教程。一个接口自动化框架、一个 UI 自动化主流程、一次压测报告、一个 AI 应用评测小项目，比“熟悉一堆工具”更有说服力。
+If you're following this path, turn what you learn into projects early. Don't just save the roadmap or watch tool tutorials. An API automation framework, a UI automation workflow, a load test report, and a small AI application evaluation project are more convincing than “familiar with many tools.”
 
-先把一条链路跑通：从需求到用例，从接口到断言，从脚本到 CI，从失败到定位。测开的竞争力，就是在这一条链路里一点点长出来的。
+Start by completing one workflow: from requirements to test cases, APIs to assertions, scripts to CI, and failures to diagnosis. Test development skills grow through that workflow, one step at a time.
 
-## 参考资料
+## References
 
-- [测试开发工程师的学习路线与学习资源个人总结](https://www.nowcoder.com/discuss/585159)
-- [黑马程序员 AI 测试学习路线图（2026 官方完整版）](https://yun.itheima.com/subject/testmap/index.html)
-- [测试、测开完整学习路线（纯干货）](https://www.nowcoder.com/discuss/787069493817229312)
+- [A Personal Summary of Learning Paths and Resources for Test Development Engineers](https://www.nowcoder.com/discuss/585159)
+- [Heima Programmer AI Testing Roadmap (2026 Official Edition)](https://yun.itheima.com/subject/testmap/index.html)
+- [A Complete Learning Roadmap for Software Testing and Test Development](https://www.nowcoder.com/discuss/787069493817229312)
