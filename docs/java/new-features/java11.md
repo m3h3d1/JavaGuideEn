@@ -1,37 +1,37 @@
 ---
-title: Java 11 新特性概览（重要）
-description: 总结 JDK 11 的更新，关注新 HTTP 客户端与字符串增强等实用特性。
+title: Java 11 New Features (Important)
+description: An overview of JDK 11, including the HTTP Client API and useful String enhancements.
 category: Java
 tag:
-  - Java新特性
+  - Java New Features
 head:
   - - meta
     - name: keywords
-      content: Java 11,JDK11,LTS,HTTP 客户端,字符串 API,移除特性
+      content: Java 11,JDK 11,LTS,HTTP Client,String API,removed features
 ---
 
-Java 11 于 2018 年 9 月 25 日正式发布，这是很重要的一个版本！Java 11 是继 Java 8 之后的第一个长期支持（Long-Term-Support）版本。按照 Oracle 当前的支持路线图，Java 11 的 Extended Support 将持续至 2032 年 1 月。
+Java 11 was released on September 25, 2018. It was an important release and the first Long-Term Support (LTS) version after Java 8. According to Oracle's current support roadmap, extended support for Java 11 continues through January 2032.
 
-下面这张图是 Oracle 官方给出的 Oracle JDK 支持的时间线。
+The chart below shows Oracle's support timeline for Oracle JDK.
 
-![Oracle 官方给出的 Oracle JDK 支持的时间线](https://oss.javaguide.cn/github/javaguide/java/new-features/4c1611fad59449edbbd6e233690e9fa7.png)
+![Oracle JDK support timeline](https://oss.javaguide.cn/github/javaguide/java/new-features/4c1611fad59449edbbd6e233690e9fa7.png)
 
-下图是从 JDK 8 到 JDK 25 每个版本的更新带来的新特性数量和更新时间：
+The chart below shows the number of features and release dates for each update from JDK 8 through JDK 25:
 
-![ JDK 8 到 JDK 25 每个版本的更新带来的新特性数量和更新时间](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
+![Feature counts and release dates for JDK 8 through JDK 25](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
 
-这篇文章会挑选其中较为重要的一些新特性进行详细介绍：
+This article covers some of the more notable features:
 
 - [JEP 321: HTTP Client (Standard)](https://openjdk.org/jeps/321)
 - [JEP 323: Local-Variable Syntax for Lambda Parameters](https://openjdk.org/jeps/323)
 - [JEP 330: Launch Single-File Source-Code Programs](https://openjdk.org/jeps/330)
 - [JEP 333: ZGC: A Scalable Low-Latency Garbage Collector (Experimental)](https://openjdk.org/jeps/333)
 
-## JEP 321: HTTP Client（HTTP 客户端，标准版）
+## JEP 321: HTTP Client (Standard)
 
-Java 11 对 Java 9 中引入并在 Java 10 中进行了更新的 HTTP Client API 进行了标准化，在前两个版本中进行孵化的同时，HTTP Client 几乎被完全重写，并且现在完全支持异步非阻塞。
+Java 11 standardized the HTTP Client API, which was introduced in Java 9 and updated in Java 10. During incubation, the API was almost completely rewritten and gained full support for asynchronous, non-blocking operations.
 
-并且，Java 11 中，HTTP Client 的包名由 `jdk.incubator.http` 改为 `java.net.http`，该 API 通过 `CompletableFuture` 提供非阻塞请求和响应语义。使用起来也很简单，如下：
+In Java 11, the package name changed from `jdk.incubator.http` to `java.net.http`. The API uses `CompletableFuture` for non-blocking requests and responses. Here is a simple example:
 
 ```java
 var request = HttpRequest.newBuilder()
@@ -40,105 +40,105 @@ var request = HttpRequest.newBuilder()
     .build();
 var client = HttpClient.newHttpClient();
 
-// 同步
+// Synchronous request
 HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 System.out.println(response.body());
 
-// 异步
+// Asynchronous request
 client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
     .thenApply(HttpResponse::body)
     .thenAccept(System.out::println);
 ```
 
-## JEP 333: ZGC（可扩展的低延迟垃圾收集器，实验性）
+## JEP 333: ZGC, a Scalable Low-Latency Garbage Collector (Experimental)
 
-**ZGC 即 Z Garbage Collector**，是一个可伸缩的、低延迟的垃圾收集器。
+**ZGC stands for Z Garbage Collector.** It is a scalable, low-latency garbage collector.
 
-ZGC 主要为了满足如下目标进行设计：
+ZGC was designed with these goals:
 
-- GC 停顿时间不超过 10ms
-- 既能处理几百 MB 的小堆，也能处理几个 TB 的大堆
-- 应用吞吐能力不会下降超过 15%（与 G1 回收算法相比）
-- 方便在此基础上引入新的 GC 特性和利用 colored 针以及 Load barriers 优化奠定基础
-- 当前只支持 Linux/x64 位平台
+- GC pauses under 10 ms
+- Support for heaps ranging from a few hundred MB to several TB
+- No more than a 15% reduction in application throughput compared with G1
+- A foundation for new GC features and optimizations using colored pointers and load barriers
+- Support for Linux/x64 only at the time
 
-ZGC 目前 **处在实验阶段**，只支持 Linux/x64 平台。注意：ZGC 在 Java 15 成为正式特性，在 Java 21 引入分代 ZGC。
+At the time, ZGC was **experimental** and supported only Linux/x64. ZGC became a standard feature in Java 15, and generational ZGC was introduced in Java 21.
 
-与 CMS 中的 ParNew 和 G1 类似，ZGC 也采用标记-复制算法，不过 ZGC 对该算法做了重大改进。
+Like ParNew and G1, ZGC uses a copying algorithm, but with significant changes to the algorithm.
 
-在 ZGC 中出现 Stop The World 的情况会更少！
+ZGC has fewer stop-the-world pauses.
 
-详情可以看：[《新一代垃圾回收器 ZGC 的探索与实践》](https://tech.meituan.com/2020/08/06/new-zgc-practice-in-meituan.html)
+For more details, see [Exploring and Applying the Next-Generation ZGC](https://tech.meituan.com/2020/08/06/new-zgc-practice-in-meituan.html).
 
-## JEP 323: Local-Variable Syntax for Lambda Parameters（Lambda 参数的局部变量语法）
+## JEP 323: Local-Variable Syntax for Lambda Parameters
 
-从 Java 10 开始，便引入了局部变量类型推断这一关键特性。类型推断允许使用关键字 var 作为局部变量的类型而不是实际类型，编译器根据分配给变量的值推断出类型。
+Java 10 introduced local variable type inference. It lets you use `var` instead of an explicit local variable type, which the compiler infers from the assigned value.
 
-Java 10 中对 var 关键字存在几个限制
+In Java 10, `var` had several restrictions:
 
-- 只能用于局部变量上
-- 声明时必须初始化
-- 不能用作方法参数
-- 不能在 Lambda 表达式中使用
+- It could be used only for local variables.
+- The variable had to be initialized where it was declared.
+- It could not be used for method parameters.
+- It could not be used in lambda expressions.
 
-Java11 开始允许开发者在 Lambda 表达式中使用 var 进行参数声明。
+Java 11 allowed developers to use `var` in lambda parameter declarations.
 
 ```java
-// 下面两者是等价的
+// These declarations are equivalent.
 Consumer<String> consumer = (var i) -> System.out.println(i);
 Consumer<String> consumer = (String i) -> System.out.println(i);
 ```
 
-## JEP 330: Launch Single-File Source-Code Programs（启动单文件源代码程序）
+## JEP 330: Launch Single-File Source-Code Programs
 
-这意味着我们可以运行单一文件的 Java 源代码。此功能允许使用 Java 解释器直接执行 Java 源代码。源代码在内存中编译，然后由解释器执行，不需要在磁盘上生成 `.class` 文件了。唯一的约束在于所有相关的类必须定义在同一个 Java 文件中。
+This feature lets you run a single Java source file directly with the Java launcher. The source is compiled in memory and then executed, so no `.class` file is written to disk. All related classes must be defined in the same Java file.
 
-对于 Java 初学者并希望尝试简单程序的人特别有用，并且能和 jshell 一起使用，一定程度上增强了使用 Java 来写脚本程序的能力。
+This is useful for beginners and anyone who wants to try a small program. Along with JShell, it also makes Java more practical for scripting.
 
-## API 增强
+## API Enhancements
 
-并不是所有的 API 改动都会通过 JEP（Java Enhancement Proposal）来发布。
+Not every API change is delivered through a JEP (Java Enhancement Proposal).
 
-在 JDK 的开发流程中：**JEP** 通常用于重大的改变，例如引入新的语言特性（如 `var`）、新的 JVM 机制（如 ZGC）或者大规模的库重构。像 `String.isBlank()` 这种在现有类中增加几个方法的操作，通常被视为常规的库维护。它们由 JDK 开发者直接通过 **JBS (JDK Bug System)** 的工单（Ticket）进行提交和评审，然后随版本直接发布。
+In JDK development, **JEPs** are generally used for major changes, such as new language features (`var`), JVM mechanisms (ZGC), or large library refactors. Adding a few methods to an existing class, such as `String.isBlank()`, is usually routine library maintenance. JDK developers submit and review these changes through **JBS (JDK Bug System)** tickets, and they ship with a release.
 
-### String 增强
+### String Enhancements
 
-Java 11 增加了一系列的字符串处理方法：
+Java 11 added several String methods:
 
 ```java
-//判断字符串是否为空
+// Check whether the string is blank.
 " ".isBlank();//true
-//去除字符串首尾空格
+// Remove leading and trailing whitespace.
 " Java ".strip();// "Java"
-//去除字符串首部空格
+// Remove leading whitespace.
 " Java ".stripLeading();   // "Java "
-//去除字符串尾部空格
+// Remove trailing whitespace.
 " Java ".stripTrailing();  // "Java"
-//重复字符串多少次
+// Repeat the string three times.
 "Java".repeat(3);             // "JavaJavaJava"
-//返回由行终止符分隔的字符串集合。
+// Return a stream of lines separated by line terminators.
 "A\nB\nC".lines().count();    // 3
 "A\nB\nC".lines().collect(Collectors.toList());
 ```
 
-### Optional 增强
+### Optional Enhancements
 
-新增了 `isEmpty()` 方法来判断指定的 `Optional` 对象是否为空。
+`Optional` gained an `isEmpty()` method to check whether it contains a value.
 
 ```java
 var op = Optional.empty();
-System.out.println(op.isEmpty());//判断指定的 Optional 对象是否为空
+System.out.println(op.isEmpty());// Check whether the Optional is empty.
 ```
 
-## 其他新特性
+## Other Features
 
-- **新的垃圾回收器 Epsilon**：一个完全消极的 GC 实现，分配有限的内存资源，最大限度的降低内存占用和内存吞吐延迟时间
-- **低开销的 Heap Profiling**：Java 11 中提供一种低开销的 Java 堆分配采样方法，能够得到堆分配的 Java 对象信息，并且能够通过 JVMTI 访问堆信息
-- **TLS1.3 协议**：Java 11 中包含了传输层安全性（TLS）1.3 规范（RFC 8446）的实现，替换了之前版本中包含的 TLS，包括 TLS 1.2，同时还改进了其他 TLS 功能，例如 OCSP 装订扩展（RFC 6066，RFC 6961），以及会话散列和扩展主密钥扩展（RFC 7627），在安全性和性能方面也做了很多提升
-- **飞行记录器(Java Flight Recorder)**：飞行记录器之前是商业版 JDK 的一项分析工具，但在 Java 11 中，其代码被包含到公开代码库中，这样所有人都能使用该功能了。
-- ......
+- **Epsilon GC:** A no-op garbage collector that allocates from a fixed amount of memory, minimizing memory footprint and GC overhead.
+- **Low-overhead heap profiling:** Java 11 added low-overhead sampling of Java heap allocations. It can report allocated objects and expose heap information through JVMTI.
+- **TLS 1.3:** Java 11 added an implementation of the TLS 1.3 specification (RFC 8446) alongside earlier TLS versions, including TLS 1.2. It also improved other TLS features, such as the OCSP stapling extensions (RFC 6066 and RFC 6961) and the Extended Master Secret extension (RFC 7627), improving security and performance.
+- **Java Flight Recorder (JFR):** Previously a profiling tool in commercial JDKs, JFR's source code was added to the public repository in Java 11, making it available to everyone.
+- ...
 
-## 参考
+## References
 
 - JDK 11 Release Notes：<https://www.oracle.com/java/technologies/javase/11-relnote-issues.html>
 - Java 11 – Features and Comparison：<https://www.geeksforgeeks.org/java-11-features-and-comparison/>

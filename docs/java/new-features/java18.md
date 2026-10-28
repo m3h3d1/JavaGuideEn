@@ -1,45 +1,45 @@
 ---
-title: Java 18 新特性概览
-description: 概览 JDK 18 的更新与预览特性，理解新 API 带来的改进。
+title: Java 18 New Features
+description: An overview of JDK 18 updates and preview features, including improvements to new APIs.
 category: Java
 tag:
-  - Java新特性
+  - Java New Features
 head:
   - - meta
     - name: keywords
-      content: Java 18,JDK18,预览特性,API 更新,JEP
+      content: Java 18,JDK 18,preview features,API updates,JEP
 ---
 
-Java 18 在 2022 年 3 月 22 日正式发布，非长期支持版本。
+Java 18 was released on March 22, 2022. It was a non-LTS release.
 
-JDK 18 共有 8 个新特性，这篇文章会挑选其中较为重要的一些新特性进行详细介绍：
+JDK 18 included eight new features. This article covers some of the more notable ones:
 
-- [JEP 400: UTF-8 by Default（UTF-8 作为默认字符集）](https://openjdk.java.net/jeps/400)
-- [JEP 408: Simple Web Server（简单 Web 服务器）](https://openjdk.java.net/jeps/408)
-- [JEP 413: Code Snippets in Java API Documentation（API 文档代码片段）](https://openjdk.java.net/jeps/413)
-- [JEP 416: Reimplement Core Reflection with Method Handles（方法句柄重构核心反射）](https://openjdk.java.net/jeps/416)
-- [JEP 417: Vector API (Third Incubator)（向量 API，第三次孵化）](https://openjdk.java.net/jeps/417)
-- [JEP 418: Internet-Address Resolution SPI（互联网地址解析 SPI）](https://openjdk.java.net/jeps/418)
-- [JEP 419: Foreign Function & Memory API (Second Incubator)（外部函数和内存 API，第二次孵化）](https://openjdk.java.net/jeps/419)
+- [JEP 400: UTF-8 by Default](https://openjdk.java.net/jeps/400)
+- [JEP 408: Simple Web Server](https://openjdk.java.net/jeps/408)
+- [JEP 413: Code Snippets in Java API Documentation](https://openjdk.java.net/jeps/413)
+- [JEP 416: Reimplement Core Reflection with Method Handles](https://openjdk.java.net/jeps/416)
+- [JEP 417: Vector API (Third Incubator)](https://openjdk.java.net/jeps/417)
+- [JEP 418: Internet-Address Resolution SPI](https://openjdk.java.net/jeps/418)
+- [JEP 419: Foreign Function & Memory API (Second Incubator)](https://openjdk.java.net/jeps/419)
 
-下图是从 JDK 8 到 JDK 25 每个版本的更新带来的新特性数量和更新时间：
+The chart below shows the number of features and release dates for each update from JDK 8 through JDK 25:
 
-![ JDK 8 到 JDK 25 每个版本的更新带来的新特性数量和更新时间](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
+![Feature counts and release dates for JDK 8 through JDK 25](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
 
-相关阅读：
+Related reading:
 
-- [OpenJDK Java 18 文档](https://openjdk.java.net/projects/jdk/18/)
-- [IntelliJ IDEA | Java 18 功能支持](https://mp.weixin.qq.com/s/PocFKR9z9u7-YCZHsrA5kQ)
+- [OpenJDK Java 18 Documentation](https://openjdk.java.net/projects/jdk/18/)
+- [IntelliJ IDEA: Java 18 Feature Support](https://mp.weixin.qq.com/s/PocFKR9z9u7-YCZHsrA5kQ)
 
-## JEP 400: UTF-8 by Default（UTF-8 作为默认字符集，转正）
+## JEP 400: UTF-8 by Default
 
-JDK 终于将 UTF-8 设置为默认字符集。
+JDK 18 made UTF-8 the default charset.
 
-在 Java 17 及更早版本中，默认字符集是在 Java 虚拟机运行时才确定的，取决于不同的操作系统、区域设置等因素，因此存在潜在的风险。就比如说你在 Mac 上运行正常的一段打印文字到控制台的 Java 程序到了 Windows 上就会出现乱码，如果你不手动更改字符集的话。
+In Java 17 and earlier, the default charset was determined at JVM startup and depended on factors such as the operating system and locale. This could cause problems: for example, a Java program that printed text correctly on a Mac might display garbled text on Windows unless you changed the charset manually.
 
-## JEP 408: Simple Web Server（简单 Web 服务器，转正）
+## JEP 408: Simple Web Server
 
-Java 18 之后，你可以使用 `jwebserver` 命令启动一个简易的静态 Web 服务器。
+Starting with Java 18, you can run `jwebserver` to start a simple static web server.
 
 ```bash
 $ jwebserver
@@ -48,11 +48,11 @@ Serving /cwd and subdirectories on 127.0.0.1 port 8000
 URL: http://127.0.0.1:8000/
 ```
 
-这个服务器不支持 CGI 和 Servlet，只限于静态文件。
+The server supports only static files; it does not support CGI or servlets.
 
-## JEP 413: Code Snippets in Java API Documentation（API 文档代码片段，转正）
+## JEP 413: Code Snippets in Java API Documentation
 
-在 Java 18 之前，如果我们想要在 Javadoc 中引入代码片段可以使用 `<pre>{@code ...}</pre>`。
+Before Java 18, you could include a code snippet in Javadoc with `<pre>{@code ...}</pre>`.
 
 ```java
 <pre>{@code
@@ -60,9 +60,9 @@ URL: http://127.0.0.1:8000/
 }</pre>
 ```
 
-`<pre>{@code ...}</pre>` 这种方式生成的效果比较一般。
+The result produced by `<pre>{@code ...}</pre>` was fairly limited.
 
-在 Java 18 之后，可以通过 `@snippet` 标签来做这件事情。
+Starting with Java 18, you can use the `@snippet` tag instead.
 
 ```java
 /**
@@ -75,25 +75,25 @@ URL: http://127.0.0.1:8000/
  */
 ```
 
-`@snippet` 这种方式生成的效果更好且使用起来更方便一些。
+The `@snippet` tag produces better results and is easier to use.
 
-## JEP 416: Reimplement Core Reflection with Method Handles（方法句柄重构核心反射，转正）
+## JEP 416: Reimplement Core Reflection with Method Handles
 
-Java 18 改进了 `java.lang.reflect.Method`、`Constructor` 的实现逻辑，使之性能更好，速度更快。这项改动不会改动相关 API，这意味着开发中不需要改动反射相关代码，就可以体验到性能更好的反射。
+Java 18 reimplemented `java.lang.reflect.Method` and `Constructor` using method handles to improve performance. The APIs did not change, so applications can benefit without changes to their reflection code.
 
-OpenJDK 官方给出了新老实现的反射性能基准测试结果。
+OpenJDK published benchmark results comparing the old and new reflection implementations.
 
-![新老实现的反射性能基准测试结果](https://oss.javaguide.cn/github/javaguide/java/new-features/JEP416Benchmark.png)
+![Reflection benchmark results for the old and new implementations](https://oss.javaguide.cn/github/javaguide/java/new-features/JEP416Benchmark.png)
 
-## JEP 417: Vector API（向量 API，第三次孵化）
+## JEP 417: Vector API (Third Incubator)
 
-向量（Vector） API 最初由 [JEP 338](https://openjdk.java.net/jeps/338) 提出，并作为[孵化 API](http://openjdk.java.net/jeps/11)集成到 Java 16 中。第二轮孵化由 [JEP 414](https://openjdk.java.net/jeps/414) 提出并集成到 Java 17 中，第三轮孵化由 [JEP 417](https://openjdk.java.net/jeps/417) 提出并集成到 Java 18 中，第四轮由 [JEP 426](https://openjdk.java.net/jeps/426) 提出并集成到了 Java 19 中。
+The Vector API was proposed in [JEP 338](https://openjdk.java.net/jeps/338) and added to Java 16 as an [incubator API](http://openjdk.java.net/jeps/11). It was incubated again in Java 17 through [JEP 414](https://openjdk.java.net/jeps/414), Java 18 through [JEP 417](https://openjdk.java.net/jeps/417), and Java 19 through [JEP 426](https://openjdk.java.net/jeps/426).
 
-向量计算由对向量的一系列操作组成。向量 API 用来表达向量计算，该计算可以在运行时可靠地编译为支持的 CPU 架构上的最佳向量指令，从而实现优于等效标量计算的性能。
+Vector computations consist of a series of operations on vectors. The Vector API expresses these computations so they can be reliably compiled at runtime to optimal vector instructions for supported CPU architectures, outperforming equivalent scalar computations.
 
-向量 API 的目标是为用户提供简洁易用且与平台无关的表达范围广泛的向量计算。
+The API aims to provide a concise, easy-to-use, platform-independent way to express a wide range of vector computations.
 
-这是对数组元素的简单标量计算：
+Here is a simple scalar computation over array elements:
 
 ```java
 void scalarComputation(float[] a, float[] b, float[] c) {
@@ -103,7 +103,7 @@ void scalarComputation(float[] a, float[] b, float[] c) {
 }
 ```
 
-这是使用 Vector API 进行的等效向量计算：
+Here is the equivalent vector computation using the Vector API:
 
 ```java
 static final VectorSpecies<Float> SPECIES = FloatVector.SPECIES_PREFERRED;
@@ -127,18 +127,18 @@ void vectorComputation(float[] a, float[] b, float[] c) {
 
 ```
 
-在 JDK 18 中，向量 API 的性能得到了进一步的优化。
+JDK 18 further improved the Vector API's performance.
 
-## JEP 418: Internet-Address Resolution SPI（互联网地址解析 SPI，转正）
+## JEP 418: Internet-Address Resolution SPI
 
-Java 18 定义了一个全新的 SPI（service-provider interface），用于主要名称和地址的解析，以便 `java.net.InetAddress` 可以使用平台之外的第三方解析器。
+Java 18 defined a new service-provider interface (SPI) for host name and address resolution, allowing `java.net.InetAddress` to use third-party resolvers outside the platform.
 
-## JEP 419: Foreign Function & Memory API（外部函数和内存 API，第二次孵化）
+## JEP 419: Foreign Function & Memory API (Second Incubator)
 
-Java 程序可以通过该 API 与 Java 运行时之外的代码和数据进行互操作。通过高效地调用外部函数（即 JVM 之外的代码）和安全地访问外部内存（即不受 JVM 管理的内存），该 API 使 Java 程序能够调用本机库并处理本机数据，而不会像 JNI 那样危险和脆弱。
+This API lets Java programs interoperate with code and data outside the Java runtime. It can call foreign functions (code outside the JVM) efficiently and access foreign memory (memory not managed by the JVM) safely, allowing Java programs to use native libraries and data without JNI's risks and fragility.
 
-外部函数和内存 API 在 Java 17 中进行了第一轮孵化，由 [JEP 412](https://openjdk.java.net/jeps/412) 提出。第二轮孵化由[JEP 419](https://openjdk.org/jeps/419) 提出并集成到了 Java 18 中，预览由 [JEP 424](https://openjdk.org/jeps/424) 提出并集成到了 Java 19 中。
+The Foreign Function and Memory API was incubated in Java 17 through [JEP 412](https://openjdk.java.net/jeps/412), incubated again in Java 18 through [JEP 419](https://openjdk.org/jeps/419), and previewed in Java 19 through [JEP 424](https://openjdk.org/jeps/424).
 
-在 [Java 19 新特性概览](./java19.md) 中，我有详细介绍到外部函数和内存 API，这里就不再做额外的介绍了。
+For more about the Foreign Function and Memory API, see [Java 19 New Features](./java19.md).
 
 <!-- @include: @article-footer.snippet.md -->

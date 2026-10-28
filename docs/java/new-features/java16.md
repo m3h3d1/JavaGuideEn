@@ -1,67 +1,67 @@
 ---
-title: Java 16 新特性概览
-description: 介绍 JDK 16 的语言与平台更新，包含记录类与其他 JEP 改动。
+title: Java 16 New Features
+description: An overview of JDK 16 language and platform updates, including records and other JEPs.
 category: Java
 tag:
-  - Java新特性
+  - Java New Features
 head:
   - - meta
     - name: keywords
-      content: Java 16,JDK16,记录类改进,新 API,JEP,性能
+      content: Java 16,JDK 16,records,new APIs,JEP,performance
 ---
 
-Java 16 在 2021 年 3 月 16 日正式发布，非长期支持（LTS）版本。
+Java 16 was released on March 16, 2021. It was a non-LTS release.
 
-JDK 16 共有 17 个新特性，这篇文章会挑选其中较为重要的一些新特性进行详细介绍：
+JDK 16 included 17 new features. This article covers some of the more notable ones:
 
-- [JEP 338: Vector API (Incubator)（向量 API，第一次孵化）](https://openjdk.java.net/jeps/338)
-- [JEP 376: ZGC: Concurrent Thread-Stack Processing（ZGC 并发线程栈处理）](https://openjdk.java.net/jeps/376)
-- [JEP 387: Elastic Metaspace（弹性元空间）](https://openjdk.java.net/jeps/387)
-- [JEP 390: Warnings for Value-Based Classes（基于值的类的警告）](https://openjdk.java.net/jeps/390)
-- [JEP 394: Pattern Matching for instanceof（instanceof 模式匹配，转正）](https://openjdk.java.net/jeps/394)
-- [JEP 395: Records（record 类，转正）](https://openjdk.java.net/jeps/395)
-- [JEP 396: Strongly Encapsulate JDK Internals by Default（默认强封装 JDK 内部元素）](https://openjdk.java.net/jeps/396)
-- [JEP 397: Sealed Classes (Second Preview)（密封类，第二次预览）](https://openjdk.java.net/jeps/397)
+- [JEP 338: Vector API (Incubator)](https://openjdk.java.net/jeps/338)
+- [JEP 376: ZGC: Concurrent Thread-Stack Processing](https://openjdk.java.net/jeps/376)
+- [JEP 387: Elastic Metaspace](https://openjdk.java.net/jeps/387)
+- [JEP 390: Warnings for Value-Based Classes](https://openjdk.java.net/jeps/390)
+- [JEP 394: Pattern Matching for `instanceof`](https://openjdk.java.net/jeps/394)
+- [JEP 395: Records](https://openjdk.java.net/jeps/395)
+- [JEP 396: Strongly Encapsulate JDK Internals by Default](https://openjdk.java.net/jeps/396)
+- [JEP 397: Sealed Classes (Second Preview)](https://openjdk.java.net/jeps/397)
 
-下图是从 JDK 8 到 JDK 25 每个版本的更新带来的新特性数量和更新时间：
+The chart below shows the number of features and release dates for each update from JDK 8 through JDK 25:
 
-![ JDK 8 到 JDK 25 每个版本的更新带来的新特性数量和更新时间](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
+![Feature counts and release dates for JDK 8 through JDK 25](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
 
-相关阅读：[OpenJDK Java 16 文档](https://openjdk.java.net/projects/jdk/16/)。
+Related reading: [OpenJDK Java 16 documentation](https://openjdk.java.net/projects/jdk/16/).
 
-## JEP 338: Vector API（向量 API，第一次孵化）
+## JEP 338: Vector API (First Incubator)
 
-向量（Vector） API 最初由 [JEP 338](https://openjdk.java.net/jeps/338) 提出，并作为[孵化 API](http://openjdk.java.net/jeps/11)集成到 Java 16 中。第二轮孵化由 [JEP 414](https://openjdk.java.net/jeps/414) 提出并集成到 Java 17 中，第三轮孵化由 [JEP 417](https://openjdk.java.net/jeps/417) 提出并集成到 Java 18 中，第四轮由 [JEP 426](https://openjdk.java.net/jeps/426) 提出并集成到了 Java 19 中。
+The Vector API was proposed in [JEP 338](https://openjdk.java.net/jeps/338) and added to Java 16 as an [incubator API](http://openjdk.java.net/jeps/11). It was incubated again in Java 17 through [JEP 414](https://openjdk.java.net/jeps/414), Java 18 through [JEP 417](https://openjdk.java.net/jeps/417), and Java 19 through [JEP 426](https://openjdk.java.net/jeps/426).
 
-该孵化器 API 提供了一个 API 的初始迭代以表达一些向量计算，这些计算在运行时可靠地编译为支持的 CPU 架构上的最佳向量硬件指令，从而获得优于同等标量计算的性能，充分利用单指令多数据（SIMD）技术（大多数现代 CPU 上都可以使用的一种指令）。尽管 HotSpot 支持自动向量化，但是可转换的标量操作集有限且易受代码更改的影响。该 API 将使开发人员能够轻松地用 Java 编写可移植的高性能向量算法。
+This incubator API provides an initial way to express vector computations. At runtime, these computations can be compiled to optimal vector instructions for supported CPU architectures, outperforming equivalent scalar computations and taking advantage of Single Instruction, Multiple Data (SIMD) instructions available on most modern CPUs. HotSpot supports auto-vectorization, but the set of scalar operations it can convert is limited and sensitive to code changes. The API makes it easier to write portable, high-performance vector algorithms in Java.
 
-在 [Java 18 新特性概览](./java18.md) 中，我有详细介绍到向量 API，这里就不再做额外的介绍了。
+For more about the Vector API, see [Java 18 New Features](./java18.md).
 
-## JEP 347: Enable C++ 14 Language Features（启用 C++ 14 语言特性）
+## JEP 347: Enable C++ 14 Language Features
 
-Java 16 允许在 JDK 的 C++ 源代码中使用 C++ 14 语言特性，并提供在 HotSpot 代码中可以使用哪些特性的具体指导。
+Java 16 allowed C++14 language features in the JDK's C++ source code and provided guidance on which features could be used in HotSpot.
 
-在 Java 15 中，JDK 中 C++ 代码使用的语言特性仅限于 C++98/03 语言标准。它要求更新各种平台编译器的最低可接受版本。
+In Java 15, JDK C++ code was limited to the C++98/03 language standard. This change required raising the minimum supported versions of platform compilers.
 
-## JEP 376: ZGC: Concurrent Thread-Stack Processing（ZGC 并发线程栈处理）
+## JEP 376: ZGC: Concurrent Thread-Stack Processing
 
-Java16 将 ZGC 线程栈处理从安全点转移到一个并发阶段，甚至在大堆上也允许在毫秒内暂停 GC 安全点。消除 ZGC 垃圾收集器中最后一个延迟源可以极大地提高应用程序的性能和效率。
+Java 16 moved ZGC thread-stack processing from safepoints to a concurrent phase, allowing GC safepoint pauses to remain in the millisecond range even with large heaps. Removing this last source of latency can improve application performance and efficiency.
 
-## JEP 387: Elastic Metaspace（弹性元空间）
+## JEP 387: Elastic Metaspace
 
-自从引入了 Metaspace 以来，根据反馈，Metaspace 经常占用过多的堆外内存，从而导致内存浪费。弹性元空间这个特性可将未使用的 HotSpot 类元数据（即元空间，metaspace）内存更快速地返回到操作系统，从而减少元空间的占用空间。
+Since its introduction, Metaspace was often reported to use too much off-heap memory. Elastic Metaspace returns unused HotSpot class metadata memory to the operating system more quickly, reducing Metaspace's footprint.
 
-并且，这个提案还简化了元空间的代码以降低维护成本。
+The proposal also simplified Metaspace's implementation to reduce maintenance costs.
 
-## JEP 390: Warnings for Value-Based Classes（基于值的类的警告）
+## JEP 390: Warnings for Value-Based Classes
 
-> 以下介绍摘自：[实操 | 剖析 Java16 新语法特性](https://xie.infoq.cn/article/8304c894c4e38318d38ceb116)，原文写的很不错，推荐阅读。
+> The following explanation is from [A Practical Look at Java 16 Language Features](https://xie.infoq.cn/article/8304c894c4e38318d38ceb116), which is worth reading.
 
-早在 Java9 版本时，Java 的设计者们就对 `@Deprecated` 注解进行了一次升级，增加了 `since` 和 `forRemoval` 等 2 个新元素。其中，since 元素用于指定标记了 `@Deprecated` 注解的 API 被弃用时的版本，而 `forRemoval` 则进一步明确了 API 标记 @Deprecated 注解时的语义，如果 `forRemoval=true` 时，则表示该 API 在未来版本中肯定会被删除，开发人员应该使用新的 API 进行替代，不再容易产生歧义（Java9 之前，标记 @Deprecated 注解的 API，语义上存在多种可能性，比如：存在使用风险、可能在未来存在兼容性错误、可能在未来版本中被删除，以及应该使用更好的替代方案等）。
+In Java 9, the `@Deprecated` annotation gained the `since` and `forRemoval` elements. `since` specifies the release in which an API was deprecated. `forRemoval` clarifies the intent: when set to `true`, the API is intended to be removed in a future release, and developers should use a replacement. Before Java 9, deprecation could mean several things, such as a risk in continued use, possible future incompatibility, planned removal, or the availability of a better alternative.
 
-仔细观察原始类型的包装类（比如：`java.lang.Integer`、`java.lang.Double`），不难发现，其构造函数上都已经标记有 `@Deprecated(since="9", forRemoval = true)` 注解，这意味着这些构造函数计划在未来移除，不应该在程序中继续使用诸如 `new Integer(10)` 这样的编码方式（建议使用 `Integer a = 10` 或者 `Integer.valueOf()` 方法），如果继续使用，编译期将会产生 `'Integer(int)' is deprecated and marked for removal` 警告。并且，这些包装类型已经同 `java.util.Optional` 和 `java.time.LocalDateTime` 一样，被指定为基于值的类（value-based class），不要与 Project Valhalla 中的值类型混淆。
+The constructors of primitive wrapper classes such as `java.lang.Integer` and `java.lang.Double` are marked `@Deprecated(since="9", forRemoval = true)`. They are intended for removal, so avoid code such as `new Integer(10)`. Use `Integer a = 10` or `Integer.valueOf()` instead. Otherwise, the compiler reports that `Integer(int)` is deprecated and marked for removal. These wrapper classes, along with `java.util.Optional` and `java.time.LocalDateTime`, are also designated as value-based classes. Do not confuse them with the value types proposed by Project Valhalla.
 
-其次，在 `synchronized` 同步块中使用基于值的类实例，JDK 16 的编译器会产生警告。HotSpot 还可以通过诊断参数在运行期记录或阻止这类同步。即使没有启用运行期诊断，也不应该将基于值的类实例用作锁，例如：
+Using an instance of a value-based class in a `synchronized` block also produces a compiler warning in JDK 16. HotSpot can additionally log or prevent this kind of synchronization at runtime through diagnostic options. Even without runtime diagnostics enabled, do not use value-based class instances as locks. For example:
 
 ```java
 private Integer count = 0;
@@ -73,63 +73,63 @@ public void inc() {
 }
 ```
 
-`Integer` 是不可变对象，`count++` 会经过拆箱、加一和重新装箱，并将字段引用改为另一个 `Integer` 实例。因此，不同线程可能锁住不同的对象，无法为该复合操作提供稳定的互斥。如果需要并发自增，应使用固定的锁对象或 `AtomicInteger`。
+`Integer` is immutable. `count++` unboxes the value, increments it, boxes it again, and assigns a different `Integer` instance to the field. Different threads may therefore lock different objects, so the lock does not reliably protect this compound operation. Use a stable lock object or `AtomicInteger` for concurrent increments.
 
-## JEP 392: Packaging Tool（打包工具，转正）
+## JEP 392: Packaging Tool (Standard)
 
-在 Java 14 中，JEP 343 引入了打包工具，命令是 `jpackage`。在 Java 15 中，继续孵化，现在在 Java 16 中，终于成为了正式功能。
+JEP 343 introduced the `jpackage` tool in Java 14. It continued as an incubator feature in Java 15 and became a standard feature in Java 16.
 
-这个打包工具允许打包自包含的 Java 应用程序。它支持原生打包格式，为最终用户提供自然的安装体验，这些格式包括 Windows 上的 msi 和 exe、macOS 上的 pkg 和 dmg，还有 Linux 上的 deb 和 rpm。它还允许在打包时指定启动时参数，并且可以从命令行直接调用，也可以通过 ToolProvider API 以编程方式调用。注意 jpackage 模块名称从 jdk.incubator.jpackage 更改为 jdk.jpackage。这将改善最终用户在安装应用程序时的体验，并简化了“应用商店”模型的部署。
+The tool packages self-contained Java applications in native formats for a more familiar installation experience. Supported formats include MSI and EXE on Windows, PKG and DMG on macOS, and DEB and RPM on Linux. You can specify launch-time options during packaging and invoke the tool from the command line or programmatically through the ToolProvider API. The module name changed from `jdk.incubator.jpackage` to `jdk.jpackage`. This improves the installation experience and simplifies deployment through app stores.
 
-关于这个打包工具的实际使用，可以看这个视频 [Playing with Java 16 jpackage](https://www.youtube.com/watch?v=KahYIVzRIkQ)（需要梯子）。
+For a practical demonstration, see [Playing with Java 16 jpackage](https://www.youtube.com/watch?v=KahYIVzRIkQ).
 
-## JEP 393: Foreign Memory Access API（外部内存访问 API，第三次孵化）
+## JEP 393: Foreign Memory Access API (Third Incubator)
 
-引入外部内存访问 API 以允许 Java 程序安全有效地访问 Java 堆之外的外部内存。
+The Foreign Memory Access API lets Java programs access memory outside the Java heap safely and efficiently.
 
-Java 14（[JEP 370](https://openjdk.org/jeps/370)）第一次孵化外部内存访问 API，Java 15 中进行了第二次孵化（[JEP 383](https://openjdk.org/jeps/383)），在 Java 16 中进行了第三次孵化。
+The API was incubated for the first time in Java 14 ([JEP 370](https://openjdk.org/jeps/370)), for the second time in Java 15 ([JEP 383](https://openjdk.org/jeps/383)), and for the third time in Java 16.
 
-引入外部内存访问 API 的目的如下：
+The API was designed to be:
 
-- 通用：单个 API 应该能够对各种外部内存（如本机内存、持久内存、堆内存等）进行操作。
-- 安全：无论操作何种内存，API 都不应该破坏 JVM 的安全性。
-- 控制：可以自由的选择如何释放内存（显式、隐式等）。
-- 可用：对于需要访问外部内存的程序，该 API 应提供一套足以替代 `sun.misc.Unsafe` 的易用方案。
+- **General:** A single API should work with different kinds of memory, such as native, persistent, and heap memory.
+- **Safe:** It should preserve JVM safety regardless of the memory being accessed.
+- **Flexible:** It should let developers choose how memory is released, explicitly or implicitly.
+- **Usable:** It should provide an accessible alternative to `sun.misc.Unsafe` for programs that need external memory.
 
-## JEP 394: Pattern Matching for instanceof（instanceof 模式匹配，转正）
+## JEP 394: Pattern Matching for `instanceof` (Standard)
 
-| JDK 版本   | 更新类型          | JEP                                     | 更新内容                                 |
-| ---------- | ----------------- | --------------------------------------- | ---------------------------------------- |
-| Java SE 14 | preview           | [JEP 305](https://openjdk.org/jeps/305) | 首次引入 instanceof 模式匹配。           |
-| Java SE 15 | Second Preview    | [JEP 375](https://openjdk.org/jeps/375) | 相比较上个版本无变化，继续收集更多反馈。 |
-| Java SE 16 | Permanent Release | [JEP 394](https://openjdk.org/jeps/394) | 模式变量不再隐式为 final。               |
+| JDK version | Update type    | JEP                                     | Changes                                             |
+| ----------- | -------------- | --------------------------------------- | --------------------------------------------------- |
+| Java SE 14  | Preview        | [JEP 305](https://openjdk.org/jeps/305) | Pattern matching for `instanceof` introduced.       |
+| Java SE 15  | Second preview | [JEP 375](https://openjdk.org/jeps/375) | No major changes; more feedback was gathered.       |
+| Java SE 16  | Standard       | [JEP 394](https://openjdk.org/jeps/394) | Pattern variables are no longer implicitly `final`. |
 
-从 Java 16 开始，你可以对 `instanceof` 中的变量值进行修改。
+Starting in Java 16, pattern variables from `instanceof` checks can be reassigned.
 
 ```java
-// Old code
+// Traditional form
 if (o instanceof String) {
     String s = (String)o;
     ... use s ...
 }
 
-// New code
+// Pattern matching form
 if (o instanceof String s) {
     ... use s ...
 }
 ```
 
-## JEP 395: Records（record 类，转正）
+## JEP 395: Records (Standard)
 
-记录类型变更历史：
+Record feature history:
 
-| JDK 版本   | 更新类型          | JEP                                          | 更新内容                                                                  |
-| ---------- | ----------------- | -------------------------------------------- | ------------------------------------------------------------------------- |
-| Java SE 14 | Preview           | [JEP 359](https://openjdk.java.net/jeps/359) | 引入 `record` 关键字，`record` 提供一种紧凑的语法来定义类中的不可变数据。 |
-| Java SE 15 | Second Preview    | [JEP 384](https://openjdk.org/jeps/384)      | 支持在局部方法和接口中使用 `record`。                                     |
-| Java SE 16 | Permanent Release | [JEP 395](https://openjdk.org/jeps/395)      | 非静态内部类可以定义非常量的静态成员。                                    |
+| JDK version | Update type    | JEP                                          | Changes                                                           |
+| ----------- | -------------- | -------------------------------------------- | ----------------------------------------------------------------- |
+| Java SE 14  | Preview        | [JEP 359](https://openjdk.java.net/jeps/359) | Added `record` for concise declarations of immutable data.        |
+| Java SE 15  | Second preview | [JEP 384](https://openjdk.org/jeps/384)      | Allowed records in local methods and interfaces.                  |
+| Java SE 16  | Standard       | [JEP 395](https://openjdk.org/jeps/395)      | Non-static inner classes can declare non-constant static members. |
 
-从 Java SE 16 开始，非静态内部类可以定义非常量的静态成员。
+Starting in Java SE 16, non-static inner classes can declare non-constant static members.
 
 ```java
 public class Outer {
@@ -139,32 +139,32 @@ public class Outer {
 }
 ```
 
-> 在 JDK 16 之前，如果写上面这种代码，IDE 会提示你静态字段 age 不能在非静态的内部类中定义，除非它用一个常量表达式初始化。（The field age cannot be declared static in a non-static inner type, unless initialized with a constant expression）
+> Before JDK 16, an IDE would report an error for this code: a static field cannot be declared in a non-static inner class unless it is initialized with a constant expression.
 
-## JEP 396: Strongly Encapsulate JDK Internals by Default（默认强封装 JDK 内部元素）
+## JEP 396: Strongly Encapsulate JDK Internals by Default
 
-此特性会默认强封装 JDK 的所有内部元素，但关键内部 API（例如 `sun.misc.Unsafe`）除外。默认情况下，使用早期版本成功编译的访问 JDK 内部 API 的代码可能不再起作用。鼓励开发人员从使用内部元素迁移到使用标准 API 的方法上，以便他们及其用户都可以无缝升级到将来的 Java 版本。强封装由 JDK 9 的启动器选项–illegal-access 控制，到 JDK 15 默认改为 warning，从 JDK 16 开始默认为 deny。（目前）仍然可以使用单个命令行选项放宽对所有软件包的封装，将来只有使用–add-opens 打开特定的软件包才行。
+This feature strongly encapsulates JDK internals by default, with exceptions for critical internal APIs such as `sun.misc.Unsafe`. Code that accessed JDK internals and worked on earlier releases may no longer work. Developers are encouraged to migrate to standard APIs so they and their users can upgrade to future Java versions more easily. Strong encapsulation is controlled by the JDK 9 launcher option `--illegal-access`, which changed to `warning` by default in JDK 15 and `deny` in JDK 16. At the time, one command-line option could still relax encapsulation for all packages; future releases would require `--add-opens` for specific packages.
 
-## JEP 397: Sealed Classes（密封类，第二次预览）
+## JEP 397: Sealed Classes (Second Preview)
 
-密封类由 [JEP 360](https://openjdk.java.net/jeps/360) 提出预览，集成到了 Java 15 中。在 JDK 16 中， 密封类得到了改进（更加严格的引用检查和密封类的继承关系），由 [JEP 397](https://openjdk.java.net/jeps/397) 提出了再次预览。
+Sealed classes were proposed in [JEP 360](https://openjdk.java.net/jeps/360) and previewed in Java 15. JDK 16 made them stricter about permitted subclasses and inheritance, then previewed them again through [JEP 397](https://openjdk.java.net/jeps/397).
 
-在 [Java 14 & 15 新特性概览](./java14-15.md) 中，我有详细介绍到密封类，这里就不再做额外的介绍了。
+For more about sealed classes, see [Java 14 and 15 New Features](./java14-15.md).
 
-## 其他优化与改进
+## Other Optimizations and Improvements
 
-- **JEP 380:Unix-Domain 套接字通道**：Unix-domain 套接字一直是大多数 Unix 平台的一个特性，现在在 Windows 10 和 Windows Server 2019 也提供了支持。此特性为 java.nio.channels 包的套接字通道和服务器套接字通道 API 添加了 Unix-domain（AF_UNIX）套接字支持。它扩展了继承的通道机制以支持 Unix-domain 套接字通道和服务器套接字通道。Unix-domain 套接字用于同一主机上的进程间通信（IPC）。它们在很大程度上类似于 TCP/IP，区别在于套接字是通过文件系统路径名而不是 Internet 协议（IP）地址和端口号寻址的。对于本地进程间通信，Unix-domain 套接字比 TCP/IP 环回连接更安全、更有效
-- **JEP 389:外部链接器 API（孵化）：** 该孵化器 API 提供了静态类型、纯 Java 访问原生代码的特性，该 API 将大大简化绑定原生库的原本复杂且容易出错的过程。Java 1.1 就已通过 Java 原生接口（JNI）支持了原生方法调用，但并不好用。Java 开发人员应该能够为特定任务绑定特定的原生库。它还提供了外来函数支持，而无需任何中间的 JNI 粘合代码。
-- **JEP 357:从 Mercurial 迁移到 Git**：在此之前，OpenJDK 源代码是使用版本管理工具 Mercurial 进行管理，现在迁移到了 Git。
-- **JEP 369:迁移到 GitHub**：和 JEP 357 从 Mercurial 迁移到 Git 的改变一致，在把版本管理迁移到 Git 之后，选择了在 GitHub 上托管 OpenJDK 社区的 Git 仓库。不过只对 JDK 11 以及更高版本 JDK 进行了迁移。
-- **JEP 386:移植 Alpine Linux**：Alpine Linux 是一个独立的、非商业的 Linux 发行版，它十分的小，一个容器需要不超过 8MB 的空间，最小安装到磁盘只需要大约 130MB 存储空间，并且十分的简单，同时兼顾了安全性。此提案将 JDK 移植到了 Apline Linux，由于 Apline Linux 是基于 musl lib 的轻量级 Linux 发行版，因此其他 x64 和 AArch64 架构上使用 musl lib 的 Linux 发行版也适用。
-- **JEP 388:Windows/AArch64 移植**：这些 JEP 的重点不是移植工作本身，而是将它们集成到 JDK 主线存储库中；JEP 386 将 JDK 移植到 Alpine Linux 和其他使用 musl 作为 x64 上主要 C 库的发行版上。此外，JEP 388 将 JDK 移植到 Windows AArch64（ARM64）。
+- **JEP 380: Unix-Domain Socket Channels:** Unix-domain sockets, long supported on most Unix platforms, also became available on Windows 10 and Windows Server 2019. The `java.nio.channels` socket and server-socket channel APIs gained support for Unix-domain (AF_UNIX) sockets. These sockets provide interprocess communication (IPC) on the same host. They are similar to TCP/IP sockets, but use filesystem paths instead of IP addresses and port numbers. For local IPC, they can be more secure and efficient than TCP/IP loopback connections.
+- **JEP 389: Foreign Linker API (Incubator):** This incubator API provides a statically typed, pure Java way to access native code. It simplifies the complex and error-prone process of binding native libraries. Java has supported native method calls through JNI since Java 1.1, but binding libraries should be easier and should not require JNI glue code.
+- **JEP 357: Migrate from Mercurial to Git:** OpenJDK source code was previously managed with Mercurial and moved to Git.
+- **JEP 369: Migrate to GitHub:** After moving version control from Mercurial to Git, the OpenJDK community chose GitHub to host its Git repositories. The migration covered JDK 11 and later.
+- **JEP 386: Alpine Linux Port:** Alpine Linux is a small, independent, non-commercial Linux distribution. A container can require as little as 8 MB, and a minimal disk installation about 130 MB, while maintaining a focus on security. This JEP ported the JDK to Alpine Linux, which is based on musl libc. It also applies to other x64 and AArch64 Linux distributions that use musl libc.
+- **JEP 388: Windows/AArch64 Port:** These JEPs focused on integrating ports into the JDK mainline repository. JEP 386 ported the JDK to Alpine Linux and other distributions that use musl as their primary C library on x64. JEP 388 ported the JDK to Windows on AArch64 (ARM64).
 
-## 参考文献
+## References
 
 - [Java Language Changes](https://docs.oracle.com/en/java/javase/16/language/java-language-changes.html)
 - [Consolidated JDK 16 Release Notes](https://www.oracle.com/java/technologies/javase/16all-relnotes.html)
-- [Java 16 正式发布，新特性一一解析](https://www.infoq.cn/article/IAkwhx7i9V7G8zLVEd4L)
-- [实操 | 剖析 Java16 新语法特性](https://xie.infoq.cn/article/8304c894c4e38318d38ceb116)（写的很赞）
+- [Java 16 Released: A Look at Its New Features](https://www.infoq.cn/article/IAkwhx7i9V7G8zLVEd4L)
+- [A Practical Look at Java 16 Language Features](https://xie.infoq.cn/article/8304c894c4e38318d38ceb116)
 
 <!-- @include: @article-footer.snippet.md -->

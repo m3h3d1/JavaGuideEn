@@ -1,64 +1,64 @@
 ---
-title: JVM垃圾回收详解（重点）
-description: JVM垃圾回收详解：全面讲解GC算法（标记清除、复制、标记整理）、分代回收机制、常用垃圾回收器（Serial、Parallel、CMS、G1、ZGC、Shenandoah）、GC调优实践。
+title: JVM Garbage Collection Explained (Key Topic)
+description: A detailed guide to GC algorithms, generational collection, common collectors such as Serial, Parallel, CMS, G1, ZGC, and Shenandoah, and GC tuning.
 category: Java
 tag:
   - JVM
 head:
   - - meta
     - name: keywords
-      content: JVM垃圾回收,GC算法,垃圾回收器,分代回收,标记清除,复制算法,G1 GC,ZGC,Shenandoah,GC调优
+      content: JVM garbage collection,GC algorithms,garbage collectors,generational collection,mark-sweep,copying algorithm,G1 GC,ZGC,Shenandoah,GC tuning
 ---
 
-> 如果没有特殊说明，都是针对的是 HotSpot 虚拟机。
+> Unless stated otherwise, this article refers to the HotSpot VM.
 >
-> 本文基于《深入理解 Java 虚拟机：JVM 高级特性与最佳实践》进行总结补充。
+> This article summarizes and expands on _Understanding the Java Virtual Machine: Advanced Features and Best Practices_.
 >
-> 常见面试题：
+> Common interview questions:
 >
-> - 如何判断对象是否死亡（两种方法）。
-> - 简单的介绍一下强引用、软引用、弱引用、虚引用（虚引用与软引用和弱引用的区别、使用软引用能带来的好处）。
-> - 如何判断一个常量是废弃常量
-> - 如何判断一个类是无用的类
-> - 垃圾收集有哪些算法，各自的特点？
-> - HotSpot 为什么要分为新生代和老年代？
-> - 常见的垃圾回收器有哪些？
-> - 介绍一下 CMS,G1 收集器。
-> - Minor Gc 和 Full GC 有什么不同呢？
+> - How can you determine whether an object is dead? What are the two methods?
+> - Briefly explain strong, soft, weak, and phantom references. How do phantom references differ from soft and weak references? What are the benefits of soft references?
+> - How can you tell whether a constant is obsolete?
+> - How can you tell whether a class is unused?
+> - What garbage collection algorithms are there, and what are their characteristics?
+> - Why does HotSpot divide the heap into young and old generations?
+> - What are the common garbage collectors?
+> - Explain the CMS and G1 collectors.
+> - How do Minor GC and Full GC differ?
 
-## 前言
+## Introduction
 
-当需要排查各种内存溢出问题、当垃圾收集成为系统达到更高并发的瓶颈时，我们就需要对这些“自动化”的技术实施必要的监控和调节。
+When diagnosing memory overflows or when garbage collection limits a system's ability to handle more concurrency, these "automatic" mechanisms need to be monitored and tuned.
 
-## 堆空间的基本结构
+## Basic Heap Structure
 
-Java 的自动内存管理主要是针对对象内存的回收和对象内存的分配。同时，Java 自动内存管理最核心的功能是 **堆** 内存中对象的分配与回收。
+Java's automatic memory management mainly handles object allocation and reclamation. Its core function is allocating and reclaiming objects in the **heap**.
 
-Java 堆是垃圾收集器管理的主要区域，因此也被称作 **GC 堆（Garbage Collected Heap）**。
+The Java heap is the main area managed by garbage collectors, so it is also called the **GC heap (Garbage Collected Heap)**.
 
-从垃圾回收的角度来说，由于现在收集器基本都采用分代垃圾收集算法，所以 Java 堆被划分为了几个不同的区域，这样我们就可以根据各个区域的特点选择合适的垃圾收集算法。
+Most current collectors use generational collection, so the Java heap is divided into different areas. This lets the collector use algorithms suited to the characteristics of each area.
 
-在 JDK 7 及更早版本的 HotSpot 中，GC 通常按下面三部分介绍，其中永久代是方法区的实现，并不属于 Java 堆：
+In HotSpot JDK 7 and earlier, GC-managed memory is commonly described in three parts. PermGen is an implementation of the method area and is not part of the Java heap:
 
-1. 新生代内存(Young Generation)
-2. 老生代(Old Generation)
-3. 永久代(Permanent Generation)
+1. Young generation
+2. Old generation
+3. Permanent generation (PermGen)
 
-下图所示的 Eden 区、两个 Survivor 区 S0 和 S1 都属于新生代，中间一层属于老年代，最下面一层属于永久代。
+In the diagram below, Eden and the two Survivor spaces, S0 and S1, belong to the young generation. The middle layer is the old generation, and the bottom layer is PermGen.
 
-![堆内存结构](https://oss.javaguide.cn/github/javaguide/java/jvm/hotspot-heap-structure.png)
+![Heap memory layout](https://oss.javaguide.cn/github/javaguide/java/jvm/hotspot-heap-structure.png)
 
-**JDK 8 移除了 PermGen（永久代），类元数据改为存放在使用本地内存的 Metaspace（元空间）中**。
+**JDK 8 removed PermGen and moved class metadata to Metaspace, which uses native memory.**
 
-关于堆空间结构更详细的介绍，可以回过头看看 [Java 内存区域详解](./memory-area.md) 这篇文章。
+For more detail on the heap structure, see [Java Memory Areas Explained](./memory-area.md).
 
-## 内存分配和回收原则
+## Memory Allocation and Reclamation
 
-### 对象优先在 Eden 区分配
+### Allocate Objects in Eden First
 
-大多数情况下，对象在新生代中 Eden 区分配。当 Eden 区没有足够空间进行分配时，虚拟机将发起一次 Minor GC。下面我们来进行实际测试一下。
+Most objects are allocated in Eden in the young generation. If Eden does not have enough space, the VM starts a Minor GC. Let's test this behavior.
 
-测试代码：
+Test code:
 
 ```java
 public class GCTest {
@@ -69,19 +69,19 @@ public class GCTest {
 }
 ```
 
-通过以下方式运行：
+Run it as follows:
 ![](https://oss.javaguide.cn/github/javaguide/java/jvm/25178350.png)
 
-添加的参数：`-XX:+PrintGCDetails`
+Add the option `-XX:+PrintGCDetails`.
 ![](https://oss.javaguide.cn/github/javaguide/java/jvm/run-with-PrintGCDetails.png)
 
-运行结果（红色字体描述有误，应该是对应于 JDK1.7 的永久代）：
+Output (the red label is incorrect; it refers to PermGen in JDK 7):
 
 ![](https://oss.javaguide.cn/github/javaguide/java/jvm/28954286.jpg)
 
-从上图我们可以看出 Eden 区内存几乎已经被分配完全（即使程序什么也不做，新生代也会使用 2000 多 k 内存）。
+The diagram shows that Eden is almost full. Even when the program does nothing, the young generation uses more than 2,000 KB.
 
-假如我们再为 `allocation2` 分配内存会出现什么情况呢？
+What happens if we allocate memory for `allocation2` as well?
 
 ```java
 allocation2 = new byte[900*1024];
@@ -89,9 +89,9 @@ allocation2 = new byte[900*1024];
 
 ![](https://oss.javaguide.cn/github/javaguide/java/jvm/28128785.jpg)
 
-给 `allocation2` 分配内存的时候 Eden 区内存几乎已经被分配完了
+When allocating `allocation2`, Eden is almost full.
 
-当 Eden 区没有足够空间进行分配时，虚拟机将发起一次 Minor GC。GC 期间虚拟机又发现 `allocation1` 无法存入 Survivor 空间，所以只好通过 **分配担保机制** 把新生代的对象提前转移到老年代中去，老年代上的空间足够存放 `allocation1`，所以不会出现 Full GC。执行 Minor GC 后，后面分配的对象如果能够存在 Eden 区的话，还是会在 Eden 区分配内存。可以执行如下代码验证：
+When Eden has insufficient space, the VM starts a Minor GC. During collection, it finds that `allocation1` cannot fit in a Survivor space, so the **promotion guarantee mechanism** moves it early to the old generation. There is enough room there, so no Full GC occurs. After the Minor GC, later objects are still allocated in Eden if there is enough room. Verify this with the following code:
 
 ```java
 public class GCTest {
@@ -108,39 +108,39 @@ public class GCTest {
 
 ```
 
-### 大对象直接进入老年代
+### Large Objects May Go Directly to the Old Generation
 
-大对象就是需要大量连续内存空间的对象（比如：字符串、数组）。
+Large objects require a large, contiguous block of memory, such as some strings and arrays.
 
-大对象直接进入老年代的行为是由虚拟机动态决定的，它与具体使用的垃圾回收器和相关参数有关。大对象直接进入老年代是一种优化策略，旨在避免将大对象放入新生代，从而减少新生代的垃圾回收频率和成本。
+Whether large objects go directly to the old generation is determined by the VM, collector, and relevant options. This optimization avoids placing large objects in the young generation, which can reduce young-generation collection frequency and cost.
 
-- G1 垃圾回收器把大小达到或超过 Region 一半的对象视为 Humongous Object，并直接分配到属于老年代的连续 Humongous Region 中。Region 大小可通过 `-XX:G1HeapRegionSize` 设置。
-- 其他收集器是否以及在什么条件下把大对象直接分配到老年代，取决于具体收集器和 JDK 版本，不能用一个通用阈值概括。
+- G1 treats objects at least half the size of a Region as Humongous Objects and allocates them directly in contiguous Humongous Regions that belong to the old generation. Set the Region size with `-XX:G1HeapRegionSize`.
+- Whether other collectors allocate large objects directly in the old generation, and under what conditions, depends on the collector and JDK version. There is no universal threshold.
 
-### 长期存活的对象将进入老年代
+### Long-Lived Objects Move to the Old Generation
 
-既然虚拟机采用了分代收集的思想来管理内存，那么内存回收时就必须能识别哪些对象应放在新生代，哪些对象应放在老年代中。为了做到这一点，虚拟机给每个对象一个对象年龄（Age）计数器。
+Because generational collection separates memory by object lifetime, the VM needs to identify which objects belong in the young and old generations. It tracks each object's age with an age counter.
 
-大部分情况，对象都会首先在 Eden 区域分配。如果对象在 Eden 出生并经过第一次 Minor GC 后仍然能够存活，并且能被 Survivor 容纳的话，将被移动到 Survivor 空间（s0 或者 s1）中，并将对象年龄设为 1（Eden 区->Survivor 区后对象的初始年龄变为 1）。
+Most objects are first allocated in Eden. If an object survives its first Minor GC and fits in a Survivor space, it is moved to S0 or S1 and its age is set to 1.
 
-对象在 Survivor 中每熬过一次 Minor GC，年龄就增加 1 岁，当它的年龄达到晋升阈值时，就会被晋升到老年代中。`-XX:MaxTenuringThreshold` 用于设置对象晋升年龄的最大阈值，默认值与垃圾收集器有关。例如，JDK 8 中 Parallel GC 的默认值为 15，CMS 的默认值为 6；实际晋升阈值还可能由 JVM 动态调整。
+Each time an object survives a Minor GC in a Survivor space, its age increases by one. When it reaches the promotion threshold, it moves to the old generation. `-XX:MaxTenuringThreshold` sets the maximum age threshold. Its default depends on the collector: in JDK 8, it is 15 for Parallel GC and 6 for CMS. The JVM may adjust the actual threshold dynamically.
 
-> 修正（[issue552](https://github.com/Snailclimb/JavaGuide/issues/552)）：“Hotspot 遍历所有对象时，按照年龄从小到大对其所占用的大小进行累积，当累积的某个年龄大小超过了 survivor 区的 50% 时（默认值是 50%，可以通过 `-XX:TargetSurvivorRatio=percent` 来设置，参见 [issue1199](https://github.com/Snailclimb/JavaGuide/issues/1199)），取这个年龄和 MaxTenuringThreshold 中更小的一个值，作为新的晋升年龄阈值”。
+> Correction ([issue 552](https://github.com/Snailclimb/JavaGuide/issues/552)): "HotSpot traverses objects in ascending age order and adds up their sizes. When the total size for an age exceeds 50% of the Survivor space (the default, configurable with `-XX:TargetSurvivorRatio=percent`; see [issue 1199](https://github.com/Snailclimb/JavaGuide/issues/1199)), the smaller of that age and `MaxTenuringThreshold` becomes the new promotion threshold."
 >
-> jdk8 官方文档引用：<https://docs.oracle.com/javase/8/docs/technotes/tools/unix/java.html>。
+> JDK 8 documentation: <https://docs.oracle.com/javase/8/docs/technotes/tools/unix/java.html>.
 >
 > ![](https://oss.javaguide.cn/java-guide-blog/image-20210523201742303.png)
 >
-> **动态年龄计算的代码如下：**
+> **The dynamic age calculation is implemented as follows:**
 >
 > ```c++
 > uint ageTable::compute_tenuring_threshold(size_t survivor_capacity) {
-> //survivor_capacity是survivor空间的大小
+> // survivor_capacity is the size of the Survivor space.
 > size_t desired_survivor_size = (size_t)((((double)survivor_capacity)*TargetSurvivorRatio)/100);
 > size_t total = 0;
 > uint age = 1;
 > while (age < table_size) {
-> //sizes数组是每个年龄段对象大小
+> // sizes contains the size of objects at each age.
 > total += sizes[age];
 > if (total > desired_survivor_size) {
 > break;
@@ -153,60 +153,60 @@ public class GCTest {
 >
 > ```
 >
-> 额外补充说明([issue672](https://github.com/Snailclimb/JavaGuide/issues/672))：**关于默认的晋升年龄是 15，这个说法的来源大部分都是《深入理解 Java 虚拟机》这本书。**
-> 如果你去 Oracle 的官网阅读[相关的虚拟机参数](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/java.html)，你会发现 `-XX:MaxTenuringThreshold=threshold` 这里有个说明
+> Additional note ([issue 672](https://github.com/Snailclimb/JavaGuide/issues/672)): **The claim that the default promotion age is 15 mostly comes from _Understanding the Java Virtual Machine_.**
+> Oracle's documentation for [VM options](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/java.html) includes this note for `-XX:MaxTenuringThreshold=threshold`:
 >
-> **Sets the maximum tenuring threshold for use in adaptive GC sizing. The largest value is 15. The default value is 15 for the parallel (throughput) collector, and 6 for the CMS collector.默认晋升年龄并不都是 15，这个是要区分垃圾收集器的，CMS 就是 6.**
+> **Sets the maximum tenuring threshold for use in adaptive GC sizing. The largest value is 15. The default value is 15 for the parallel (throughput) collector, and 6 for the CMS collector. The default promotion age is not always 15; it depends on the collector. For example, it is 6 for CMS.**
 
-### 主要进行 gc 的区域
+### GC Types and Collection Areas
 
-周志明先生在《深入理解 Java 虚拟机》第二版中 P92 如是写道：
+In the second edition of _Understanding the Java Virtual Machine_, Zhou Zhiming wrote on page 92:
 
-> ~~_“老年代 GC（Major GC/Full GC），指发生在老年代的 GC……”_~~
+> ~~_“Old-generation GC (Major GC/Full GC) refers to GC that occurs in the old generation...”_~~
 
-上面的说法已经在《深入理解 Java 虚拟机》第三版中被改正过来了。感谢 R 大的回答：
+This statement was corrected in the third edition of _Understanding the Java Virtual Machine_. Thanks to R's answer:
 
-![R 大的回答](https://oss.javaguide.cn/github/javaguide/java/jvm/rf-hotspot-vm-gc.png)
+![R's answer](https://oss.javaguide.cn/github/javaguide/java/jvm/rf-hotspot-vm-gc.png)
 
-**总结：**
+**Summary:**
 
-针对 HotSpot VM 的实现，它里面的 GC 其实准确分类只有两大种：
+In HotSpot VM, GC types can be divided into two broad categories:
 
-部分收集 (Partial GC)：
+Partial GC:
 
-- 新生代收集（Minor GC / Young GC）：只对新生代进行垃圾收集；
-- 老年代收集（Major GC / Old GC）：只对老年代进行垃圾收集。需要注意的是 Major GC 在有的语境中也用于指代整堆收集；
-- 混合收集（Mixed GC）：对整个新生代和部分老年代进行垃圾收集。
+- Young-generation collection (Minor GC / Young GC): Collects only the young generation.
+- Old-generation collection (Major GC / Old GC): Collects only the old generation. Note that some sources use Major GC to mean a full-heap collection.
+- Mixed GC: Collects the entire young generation and part of the old generation.
 
-整堆收集 (Full GC)：对整个 Java 堆进行收集；是否同时回收方法区中的类元数据取决于收集器、JDK 版本和类卸载条件。
+Full GC: Collects the entire Java heap. Whether it also reclaims class metadata in the method area depends on the collector, JDK version, and class unloading conditions.
 
-### 空间分配担保
+### Allocation Guarantee
 
-空间分配担保是为了确保在 Minor GC 之前老年代本身还有容纳新生代所有对象的剩余空间。
+The allocation guarantee checks whether the old generation has enough free space to hold all objects from the young generation before a Minor GC.
 
-《深入理解 Java 虚拟机》第三章对于空间分配担保的描述如下：
+Chapter 3 of _Understanding the Java Virtual Machine_ describes the allocation guarantee as follows:
 
-> JDK 6 Update 24 之前，在发生 Minor GC 之前，虚拟机必须先检查老年代最大可用的连续空间是否大于新生代所有对象总空间，如果这个条件成立，那这一次 Minor GC 可以确保是安全的。如果不成立，则虚拟机会先查看 `-XX:HandlePromotionFailure` 参数的设置值是否允许担保失败(Handle Promotion Failure);如果允许，那会继续检查老年代最大可用的连续空间是否大于历次晋升到老年代对象的平均大小，如果大于，将尝试进行一次 Minor GC，尽管这次 Minor GC 是有风险的；如果小于，或者 `-XX: HandlePromotionFailure` 设置不允许冒险，那这时就要改为进行一次 Full GC。
+> Before JDK 6 Update 24, before a Minor GC the VM checked whether the largest available contiguous block in the old generation was larger than the total space occupied by all objects in the young generation. If so, the Minor GC was considered safe. Otherwise, the VM checked whether `-XX:HandlePromotionFailure` allowed a promotion failure. If so, it compared the largest contiguous block in the old generation with the average size of objects promoted in previous collections. If the block was larger, it attempted a potentially risky Minor GC; otherwise, or if promotion failure was not allowed, it ran a Full GC.
 >
-> JDK 6 Update 24 之后的规则变为只要老年代的连续空间大于新生代对象总大小或者历次晋升的平均大小，就会进行 Minor GC，否则将进行 Full GC。
+> Starting with JDK 6 Update 24, the VM runs a Minor GC if the old generation's contiguous free space is larger than either the total size of young-generation objects or the average size of objects promoted in previous collections. Otherwise, it runs a Full GC.
 
-## 死亡对象判断方法
+## Determining Whether an Object Is Dead
 
-堆中几乎放着所有的对象实例，对堆垃圾回收前的第一步就是要判断哪些对象已经死亡（即不能再被任何途径使用的对象）。
+The heap contains nearly all object instances. Before reclaiming heap memory, the GC must determine which objects are dead (that is, can no longer be used).
 
-### 引用计数法
+### Reference Counting
 
-给对象中添加一个引用计数器：
+Add a reference counter to each object:
 
-- 每当有一个地方引用它，计数器就加 1；
-- 当引用失效，计数器就减 1；
-- 任何时候计数器为 0 的对象就是不可能再被使用的。
+- Increment the counter whenever a reference to the object is created.
+- Decrement it when a reference is no longer valid.
+- An object with a counter of 0 cannot be used.
 
-**这个方法实现简单，但是目前主流的 Java 虚拟机并没有选择这个算法来管理对象生命周期，其重要原因之一是它无法单独解决对象之间循环引用的问题。**
+**This method is simple to implement, but mainstream Java VMs do not use it to manage object lifecycles. One important reason is that it cannot handle circular references between objects on its own.**
 
-![对象之间循环引用](https://oss.javaguide.cn/github/javaguide/java/jvm/object-circular-reference.png)
+![Circular references between objects](https://oss.javaguide.cn/github/javaguide/java/jvm/object-circular-reference.png)
 
-所谓对象之间的相互引用问题，如下面代码所示：除了对象 `objA` 和 `objB` 相互引用着对方之外，这两个对象之间再无任何引用。但是他们因为互相引用对方，导致它们的引用计数器都不为 0，于是引用计数算法无法通知 GC 回收器回收他们。
+The following code illustrates the circular reference problem. Apart from referring to each other, `objA` and `objB` have no other references. But because they refer to one another, their counters are not 0, so reference counting cannot tell the GC to reclaim them.
 
 ```java
 public class ReferenceCountingGc {
@@ -222,252 +222,252 @@ public class ReferenceCountingGc {
 }
 ```
 
-### 可达性分析算法
+### Reachability Analysis
 
-这个算法的基本思想就是通过一系列的称为 **“GC Roots”** 的对象作为起点，从这些节点开始向下搜索，节点所走过的路径称为引用链，当一个对象到 GC Roots 没有任何引用链相连的话，则证明此对象是不可用的，需要被回收。
+This algorithm starts from a set of objects called **GC Roots** and searches downward from them. The paths traversed are called reference chains. If no reference chain connects an object to a GC Root, the object is unreachable and can be reclaimed.
 
-下图中的 `Object 6 ~ Object 10` 之间虽有引用关系，但它们到 GC Roots 不可达，因此为需要被回收的对象。
+In the diagram below, `Object 6` through `Object 10` refer to one another, but none is reachable from a GC Root, so they can be reclaimed.
 
-![可达性分析算法](https://oss.javaguide.cn/github/javaguide/java/jvm/jvm-gc-roots.png)
+![Reachability analysis](https://oss.javaguide.cn/github/javaguide/java/jvm/jvm-gc-roots.png)
 
-**哪些对象可以作为 GC Roots 呢？**
+**Which objects can act as GC Roots?**
 
-- 虚拟机栈（栈帧中的局部变量表）中引用的对象
-- 本地方法栈（Native 方法）中引用的对象
-- 方法区中类静态属性引用的对象
-- 方法区中常量引用的对象
-- 所有被同步锁持有的对象
-- JNI（Java Native Interface）引用的对象
+- Objects referenced from local variable tables in JVM stack frames.
+- Objects referenced from native method stacks.
+- Objects referenced by static fields of classes in the method area.
+- Objects referenced by constants in the method area.
+- Objects held by synchronization locks.
+- Objects referenced through JNI (Java Native Interface).
 
-**对象可以被回收，就代表一定会被回收吗？**
+**Does an object that can be reclaimed always get reclaimed?**
 
-对于重写了 `finalize()` 方法且该方法尚未执行过的对象，HotSpot 在确认对象不可达后，可能会将对应的终结引用加入待处理队列，由 Finalizer 线程异步处理。如果对象在 `finalize()` 方法中重新与引用链上的对象建立关联，它可以暂时逃过回收；否则，后续垃圾收集会再次确认其可回收状态。这个过程通常被概括为“两次标记”，但不代表垃圾收集器会同步等待 `finalize()` 方法执行，也不保证该方法一定会被调用。
+For an object that overrides `finalize()` and has not yet run it, HotSpot may enqueue its finalization reference after determining that the object is unreachable. The Finalizer thread processes it asynchronously. If the object becomes reachable again from the reference graph in `finalize()`, it can temporarily avoid collection; otherwise, a later GC will confirm that it is reclaimable. This process is often summarized as "two marking passes," but the collector does not wait for `finalize()` to finish, and the method is not guaranteed to run.
 
-> `Object` 类中的 `finalize` 方法一直被认为是一个糟糕的设计，成为了 Java 语言的负担，影响了 Java 语言的安全和 GC 的性能。`Object.finalize()` 从 JDK 9 起被弃用，JEP 421 又在 JDK 18 中将终结机制标记为待移除。新代码不应依赖它。
+> `Object.finalize()` has long been considered a poor design that burdens Java and affects its security and GC performance. It was deprecated in JDK 9, and JEP 421 marked finalization for removal in JDK 18. New code should not depend on it.
 >
-> 参考：
+> References:
 >
 > - [JEP 421: Deprecate Finalization for Removal](https://openjdk.java.net/jeps/421)
-> - [是时候忘掉 finalize 方法了](https://mp.weixin.qq.com/s/LW-paZAMD08DP_3-XCUxmg)
+> - [It's time to forget the `finalize` method](https://mp.weixin.qq.com/s/LW-paZAMD08DP_3-XCUxmg)
 
-### 引用类型总结
+### Summary of Reference Types
 
-无论是通过引用计数法判断对象引用数量，还是通过可达性分析法判断对象的引用链是否可达，判定对象的存活都与“引用”有关。
+Both reference counting and reachability analysis determine whether an object is alive by examining references: the number of references or whether a reference chain reaches the object.
 
-JDK1.2 之前，Java 中引用的定义很传统：如果 reference 类型的数据存储的数值代表的是另一块内存的起始地址，就称这块内存代表一个引用。
+Before JDK 1.2, a reference in Java had a traditional definition: if a value stored in a reference-type variable represented the starting address of another memory area, that value was considered a reference.
 
-JDK 1.2 以后，Java 对引用的概念进行了扩充，将引用分为强引用、软引用、弱引用、虚引用四种（引用强度逐渐减弱）。强引用就是程序代码中普遍存在的普通引用赋值，软引用、弱引用、虚引用在 JDK 中定义的类分别是 `SoftReference`、`WeakReference`、`PhantomReference`。
+Since JDK 1.2, Java has expanded the concept of references into four kinds, in decreasing order of strength: strong, soft, weak, and phantom. Strong references are ordinary references used throughout Java code. The JDK classes for the other three kinds are `SoftReference`, `WeakReference`, and `PhantomReference`.
 
-![Java 引用类型总结](https://oss.javaguide.cn/github/javaguide/java/jvm/java-reference-type.png)
+![Java reference types](https://oss.javaguide.cn/github/javaguide/java/jvm/java-reference-type.png)
 
-**1．强引用（StrongReference）**
+**1. Strong References**
 
-强引用实际上就是程序代码中普遍存在的引用赋值，这是使用最普遍的引用，其代码如下
+Strong references are ordinary references commonly assigned in Java code:
 
 ```java
 String strongReference = new String("abc");
 ```
 
-如果一个对象仍然可以通过强引用访问，那就类似于**必不可少的生活用品**，垃圾回收器不会回收它。当内存空间不足，Java 虚拟机宁愿抛出 `OutOfMemoryError` 错误，使程序异常终止，也不会靠随意回收强可达对象来解决内存不足问题。
+If an object is still reachable through a strong reference, it is like an **essential item** and the garbage collector will not reclaim it. If memory runs out, the JVM throws `OutOfMemoryError` and the program terminates abnormally rather than reclaiming an object that is strongly reachable.
 
-**2．软引用（SoftReference）**
+**2. Soft References (`SoftReference`)**
 
-如果一个对象只具有软引用，那就类似于**可有可无的生活用品**。软引用代码如下
+An object reachable only through soft references is like a **nonessential item**. Example:
 
 ```java
-// --- 示例1 ---
+// --- Example 1 ---
 String str = new String("abc");
 SoftReference<String> softReference1 = new SoftReference<>(str);
-str = null; // 去掉强引用
+str = null; // Remove the strong reference.
 
-// --- 示例2 ---
-SoftReference<String> softReference2 = new SoftReference<>(new String("def")); // 匿名对象
+// --- Example 2 ---
+SoftReference<String> softReference2 = new SoftReference<>(new String("def")); // Anonymous object.
 ```
 
-软引用对象在内存压力较大时可能会被回收，但 JVM 不保证只在内存不足时才清理。唯一强保证是：在抛出 OutOfMemoryError 之前，所有仅被软引用可达的对象一定会被清理。只要垃圾回收器没有回收它，该对象就可以被程序使用。软引用可用来实现内存敏感的高速缓存。
+Objects reachable only through soft references may be reclaimed under memory pressure, but the JVM does not guarantee that they are cleared only when memory is low. The guarantee is that all objects reachable only through soft references will be cleared before `OutOfMemoryError` is thrown. An object can still be used as long as the collector has not reclaimed it. Soft references can be used for memory-sensitive caches.
 
-软引用可以和一个引用队列（ReferenceQueue）联合使用。垃圾回收器清除软引用后，会在同一时间或稍后把已经注册引用队列的软引用加入对应队列。引用入队表示垃圾回收器已经检测到相应的可达性变化，并不用于证明对象占用的内存已经完成物理释放。
+Soft references can be used with a reference queue (`ReferenceQueue`). When the garbage collector clears a soft reference, it enqueues that reference in its registered queue at the same time or later. Enqueueing means the collector detected the corresponding reachability change; it does not prove that the object's memory has been physically released.
 
-**3．弱引用（WeakReference）**
+**3. Weak References (`WeakReference`)**
 
-如果一个对象只具有弱引用，那就类似于**可有可无的生活用品**。弱引用代码如下：
+An object reachable only through weak references is also like a **nonessential item**. Example:
 
 ```java
-// --- 示例1 ---
+// --- Example 1 ---
 String str = new String("abc");
 WeakReference<String> weakReference1 = new WeakReference<>(str);
-str = null; //去除强引用
+str = null; // Remove the strong reference.
 
-// --- 示例2 ---
-WeakReference<String> weakReference2 = new WeakReference<>(new String("abc")); // 匿名对象
+// --- Example 2 ---
+WeakReference<String> weakReference2 = new WeakReference<>(new String("abc")); // Anonymous object.
 ```
 
-弱引用与软引用的区别在于：只具有弱引用的对象拥有更短暂的生命周期。垃圾回收器确定某个对象仅弱可达时，会原子地清除指向该对象的弱引用。不过，清除动作要等到垃圾回收发生时才会执行，因此不保证对象变成弱可达后会立刻被回收。
+The difference between weak and soft references is that objects reachable only through weak references have a shorter lifetime. When the garbage collector determines that an object is weakly reachable, it atomically clears the weak references to it. This happens during garbage collection, so the object is not necessarily reclaimed immediately after becoming weakly reachable.
 
-弱引用可以和一个引用队列（ReferenceQueue）联合使用。垃圾回收器清除弱引用后，会在同一时间或稍后把已经注册引用队列的弱引用加入对应队列。
+Weak references can be used with a reference queue (`ReferenceQueue`). When the garbage collector clears a weak reference, it enqueues the reference in its registered queue at the same time or later.
 
-**4．虚引用（PhantomReference）**
+**4. Phantom References (`PhantomReference`)**
 
-“虚引用”顾名思义，就是形同虚设，与其他几种引用都不同，虚引用不会阻止垃圾回收器回收其指向的对象。虚引用代码如下：
+As the name suggests, phantom references are fundamentally different from the other kinds: they do not prevent the garbage collector from reclaiming their referents. Example:
 
 ```java
-// --- 示例1 ---
+// --- Example 1 ---
 String str = new String("abc");
 ReferenceQueue queue = new ReferenceQueue();
-// 创建虚引用，要求必须与一个引用队列关联
+// Create a phantom reference; it must be associated with a reference queue.
 PhantomReference phantomReference1 = new PhantomReference(str, queue);
-str = null; // 去除强引用
+str = null; // Remove the strong reference.
 
-// --- 示例2 ---
-PhantomReference phantomReference2 = new PhantomReference(new String("abc"), queue); // 匿名对象
+// --- Example 2 ---
+PhantomReference phantomReference2 = new PhantomReference(new String("abc"), queue); // Anonymous object.
 ```
 
-**虚引用主要用于接收对象可达性发生变化的通知，并配合引用队列安排清理工作**。
+**Phantom references are mainly used to receive notifications about changes in an object's reachability and to coordinate cleanup through a reference queue.**
 
-**虚引用与软引用和弱引用的一个区别在于：** 虚引用通常与引用队列（ReferenceQueue）联合使用。垃圾回收器确定对象进入虚可达状态后，会清除相关虚引用，并在同一时间或稍后将已注册引用队列的虚引用入队。`PhantomReference.get()` 始终返回 `null`，程序不能通过虚引用重新取得对象；它主要用于在对象已无法再被访问后安排清理工作。
+**One difference between phantom references and soft or weak references is that** phantom references are usually used with a reference queue (`ReferenceQueue`). When the garbage collector determines that an object is phantom reachable, it clears the associated phantom references and enqueues registered references at the same time or later. `PhantomReference.get()` always returns `null`, so the program cannot retrieve the object through the phantom reference. Phantom references are mainly used to schedule cleanup after an object can no longer be accessed.
 
-特别注意，软引用主要用于实现内存敏感的缓存，但它不能保证应用不会发生 `OutOfMemoryError`；内存溢出还可能由堆以外的资源耗尽等原因引起。
+Note that soft references are mainly used for memory-sensitive caches, but they do not guarantee that an application will avoid `OutOfMemoryError`. An OOM can also be caused by exhausted resources outside the heap.
 
-### 如何判断一个常量是废弃常量？
+### How Can You Tell Whether a Constant Is Obsolete?
 
-字符串常量池主要回收的是废弃的常量。那么，我们如何判断一个常量是废弃常量呢？
+The string pool mainly reclaims obsolete constants. How can you tell whether a constant is obsolete?
 
-~~**JDK1.7 及之后版本的 JVM 已经将运行时常量池从方法区中移了出来，在 Java 堆（Heap）中开辟了一块区域存放运行时常量池。**~~
+~~**Starting with JDK 7, the JVM moved the runtime constant pool out of the method area and into a region of the Java heap.**~~
 
-> **🐛 修正（参见：[issue747](https://github.com/Snailclimb/JavaGuide/issues/747)，[reference](https://blog.csdn.net/q5706503/article/details/84640762)）**：
+> **🐛 Correction (see [issue 747](https://github.com/Snailclimb/JavaGuide/issues/747) and [reference](https://blog.csdn.net/q5706503/article/details/84640762)):**
 >
-> 1. **JDK1.7 之前运行时常量池逻辑包含字符串常量池存放在方法区, 此时 hotspot 虚拟机对方法区的实现为永久代**
-> 2. **JDK1.7 字符串常量池被从方法区拿到了堆中, 这里没有提到运行时常量池，也就是说字符串常量池被单独拿到堆，运行时常量池剩下的东西还在方法区, 也就是 hotspot 中的永久代**。
-> 3. **JDK1.8 hotspot 移除了永久代用元空间(Metaspace)取而代之, 这时候字符串常量池还在堆, 运行时常量池还在方法区, 只不过方法区的实现从永久代变成了元空间(Metaspace)**
+> 1. **Before JDK 7, the runtime constant pool logically included the string pool in the method area, which HotSpot implemented as PermGen.**
+> 2. **In JDK 7, the string pool moved from the method area to the heap. The runtime constant pool was not moved; its remaining contents stayed in the method area, which HotSpot implemented as PermGen.**
+> 3. **In JDK 8, HotSpot removed PermGen and replaced it with Metaspace. The string pool remained on the heap, while the runtime constant pool remained in the method area, now implemented as Metaspace.**
 
-假如在字符串常量池中存在字符串 "abc"，如果当前没有任何 String 对象引用该字符串常量的话，就说明常量 "abc" 就是废弃常量，如果这时发生内存回收的话而且有必要的话，"abc" 就会被系统清理出常量池了。
+Suppose the string pool contains the string literal `"abc"`, but no `String` object currently refers to it. The constant `"abc"` is then obsolete and may be removed from the pool during garbage collection if needed.
 
-### 如何判断一个类是无用的类？
+### How Can You Tell Whether a Class Is Unused?
 
-方法区主要回收的是无用的类，那么如何判断一个类是无用的类的呢？
+The method area mainly reclaims unused classes. How can you determine whether a class is unused?
 
-判定一个常量是否是“废弃常量”比较简单，而要判定一个类是否是“无用的类”的条件则相对苛刻许多。类需要同时满足下面 3 个条件才能算是 **“无用的类”**：
+Determining whether a constant is obsolete is relatively simple. The conditions for a class to be considered **unused** are stricter; all three of the following must be true:
 
-- 该类所有的实例都已经被回收，也就是 Java 堆中不存在该类的任何实例。
-- 加载该类的 `ClassLoader` 已经被回收。
-- 该类对应的 `java.lang.Class` 对象没有在任何地方被引用，无法在任何地方通过反射访问该类的方法。
+- All instances of the class have been reclaimed; no instance remains on the Java heap.
+- The `ClassLoader` that loaded the class has been reclaimed.
+- The `java.lang.Class` object for the class is not referenced anywhere, so the class's methods cannot be accessed through reflection.
 
-> JNI 场景下要特别小心第 3 个条件：通过 `NewGlobalRef` 创建的 `jclass` 全局引用同样会阻止类被卸载。一个常见的坑是 JNI 层缓存了反射结果：`jmethodID`/`jfieldID` 只有在类保持已加载状态时才保证有效，因此长期运行的程序通常会为 `jclass` 创建全局引用来保活。这也意味着只要这个全局引用没有释放，对应的类就永远无法卸载（参见 [issue#2908](https://github.com/Snailclimb/JavaGuide/issues/2908)）。
+> Pay special attention to the third condition when using JNI: a global `jclass` reference created with `NewGlobalRef` also prevents class unloading. A common pitfall is caching reflection results in JNI. A `jmethodID` or `jfieldID` is guaranteed to remain valid only while the class stays loaded, so long-running programs often create a global reference to the `jclass` to keep it alive. As a result, the class cannot be unloaded until that global reference is released (see [issue 2908](https://github.com/Snailclimb/JavaGuide/issues/2908)).
 
-虚拟机可以对满足上述 3 个条件的无用类进行回收，这里说的仅仅是“可以”，而并不是和对象一样不使用了就会必然被回收。
+The VM may reclaim a class that meets all three conditions. "May" is important: unlike objects, unused classes are not necessarily reclaimed.
 
-## 垃圾收集算法
+## Garbage Collection Algorithms
 
-### 标记-清除算法
+### Mark-Sweep Algorithm
 
-标记-清除（Mark-and-Sweep）算法分为“标记（Mark）”和“清除（Sweep）”阶段：首先标记出所有不需要回收的对象，在标记完成后统一回收掉所有没有被标记的对象。
+The mark-sweep algorithm has two phases: **mark** and **sweep**. It first marks all objects that should remain, then reclaims all unmarked objects.
 
-它是最基础的收集算法，后续的算法都是对其不足进行改进得到。这种垃圾收集算法会带来两个明显的问题：
+This is the most basic collection algorithm. Later algorithms were developed to address its limitations. Mark-sweep has two notable drawbacks:
 
-1. **效率问题**：标记和清除两个过程效率都不高。
-2. **空间问题**：标记清除后会产生大量不连续的内存碎片。
+1. **Efficiency:** Neither the marking nor the sweeping phase is very efficient.
+2. **Space:** It leaves many noncontiguous memory fragments.
 
-![标记-清除算法](https://oss.javaguide.cn/github/javaguide/java/jvm/mark-and-sweep-garbage-collection-algorithm.png)
+![Mark-sweep algorithm](https://oss.javaguide.cn/github/javaguide/java/jvm/mark-and-sweep-garbage-collection-algorithm.png)
 
-关于具体是标记可回收对象（不可达对象）还是不可回收对象（可达对象），众说纷纭，两种说法其实都没问题，我个人更倾向于是后者。
+There are different descriptions of what gets marked: reclaimable (unreachable) objects or objects to keep (reachable). Both descriptions can work; I prefer the latter.
 
-如果按照前者的理解，整个标记-清除过程大致是这样的：
+Using the latter approach, mark-sweep works roughly as follows:
 
-1. 当一个对象被创建时，给一个标记位，假设为 0 (false)；
-2. 在标记阶段，我们将所有可达对象（或用户可以引用的对象）的标记位设置为 1 (true)；
-3. 扫描阶段清除的就是标记位为 0 (false)的对象。
+1. When an object is created, initialize its mark bit to 0 (`false`).
+2. During marking, set the mark bit to 1 (`true`) for all reachable objects (objects the program can reference).
+3. During sweeping, reclaim objects whose mark bit is 0 (`false`).
 
-### 复制算法
+### Copying Algorithm
 
-为了解决标记-清除算法的效率和内存碎片问题，复制（Copying）收集算法出现了。它可以将内存分为大小相同的两块，每次使用其中的一块。当这一块的内存使用完后，就将还存活的对象复制到另一块去，然后再把使用的空间一次清理掉。这样就使每次的内存回收都是对内存区间的一半进行回收。
+The copying algorithm was developed to address the efficiency and fragmentation problems of mark-sweep. It divides memory into two equal spaces and uses one at a time. When the active space fills up, it copies live objects to the other space and clears the entire space it just used. Each collection therefore reclaims half of the memory area.
 
-![复制算法](https://oss.javaguide.cn/github/javaguide/java/jvm/copying-garbage-collection-algorithm.png)
+![Copying algorithm](https://oss.javaguide.cn/github/javaguide/java/jvm/copying-garbage-collection-algorithm.png)
 
-虽然改进了标记-清除算法，但依然存在下面这些问题：
+Although it improves on mark-sweep, it still has these limitations:
 
-- **可用内存变小**：可用内存缩小为原来的一半。
-- **不适合老年代**：如果存活对象数量比较大，复制性能会变得很差。
+- **Less usable memory:** Only half of the memory is available at a time.
+- **Poor fit for the old generation:** Copying is inefficient when many objects survive.
 
-### 标记-整理算法
+### Mark-Compact Algorithm
 
-标记-整理（Mark-and-Compact）算法是根据老年代的特点提出的一种标记算法，标记过程仍然与“标记-清除”算法一样，但后续步骤不是直接对可回收对象回收，而是让所有存活的对象向一端移动，然后直接清理掉端边界以外的内存。
+Mark-compact was designed for the characteristics of the old generation. It marks objects like mark-sweep, but instead of immediately reclaiming dead objects, it moves all live objects toward one end of the memory area and clears everything beyond that boundary.
 
-![标记-整理算法](https://oss.javaguide.cn/github/javaguide/java/jvm/mark-and-compact-garbage-collection-algorithm.png)
+![Mark-compact algorithm](https://oss.javaguide.cn/github/javaguide/java/jvm/mark-and-compact-garbage-collection-algorithm.png)
 
-由于多了整理这一步，因此效率也不高，适合老年代这种垃圾回收频率不是很高的场景。
+The additional compaction step makes it less efficient, so it suits areas such as the old generation, which are collected less frequently.
 
-### 分代收集算法
+### Generational Collection
 
-经典的分代垃圾收集器会根据对象存活周期的不同将内存分为几块。一般将 Java 堆分为新生代和老年代，这样可以根据各个年代的特点选择合适的垃圾收集算法。需要注意的是，垃圾收集器并非始终采用分代设计，例如早期的 ZGC 就是非分代收集器。
+Classic generational collectors divide memory according to object lifetimes. The Java heap is usually split into young and old generations, allowing each generation to use an appropriate collection algorithm. Collectors are not always generational; for example, early versions of ZGC were non-generational.
 
-比如在新生代中，每次收集都会有大量对象死去，所以可以选择“复制”算法，只需要付出少量对象的复制成本就可以完成每次垃圾收集。而老年代的对象存活几率是比较高的，而且没有额外的空间对它进行分配担保，所以我们必须选择“标记-清除”或“标记-整理”算法进行垃圾收集。
+For example, many objects in the young generation die during each collection, so copying can collect them at the cost of copying only a small number of survivors. Objects in the old generation are more likely to survive, and there is no extra space available to guarantee a copy, so mark-sweep or mark-compact is used instead.
 
-**延伸面试问题：** HotSpot 为什么要分为新生代和老年代？
+**Follow-up interview question:** Why does HotSpot divide the heap into young and old generations?
 
-根据上面的对分代收集算法的介绍回答。
+Answer using the explanation of generational collection above.
 
-## 垃圾收集器
+## Garbage Collectors
 
-**如果说收集算法是内存回收的方法论，那么垃圾收集器就是内存回收的具体实现。**
+**Collection algorithms are the theory of memory reclamation; garbage collectors are their concrete implementations.**
 
-虽然我们对各个收集器进行比较，但并非要挑选出一个最好的收集器。因为直到现在为止还没有最好的垃圾收集器出现，更加没有万能的垃圾收集器，**我们能做的就是根据具体应用场景选择适合自己的垃圾收集器**。试想一下：如果有一种四海之内、任何场景下都适用的完美收集器存在，那么我们的 HotSpot 虚拟机就不会实现那么多不同的垃圾收集器了。
+This comparison is not about finding a single best collector. There is no universally best collector, so **choose one that suits the specific application and workload**. If a perfect collector worked for every scenario, HotSpot would not need so many different collectors.
 
-Oracle/OpenJDK HotSpot 在典型 Server VM 环境中的默认垃圾收集器（实际选择还会受平台和运行环境影响，可使用 `java -XX:+PrintCommandLineFlags -version` 命令查看）：
+The default collector for Oracle/OpenJDK HotSpot in a typical Server VM environment (the actual choice can depend on the platform and runtime environment; check it with `java -XX:+PrintCommandLineFlags -version`):
 
-- JDK 8: Parallel Scavenge（新生代）+ Parallel Old（老年代）
-- JDK 9 及之后：G1
+- JDK 8: Parallel Scavenge (young generation) + Parallel Old (old generation)
+- JDK 9 and later: G1
 
-### Serial 收集器
+### Serial Collector
 
-Serial（串行）收集器是最基本、历史最悠久的垃圾收集器了。大家看名字就知道这个收集器是一个单线程收集器了。它的 **“单线程”** 的意义不仅仅意味着它只会使用一条垃圾收集线程去完成垃圾收集工作，更重要的是它在进行垃圾收集工作的时候必须暂停其他所有的工作线程（**"Stop The World"**），直到它收集结束。
+The Serial collector is the most basic and oldest garbage collector. As its name suggests, it is single-threaded. **Single-threaded** means not only that it uses one GC thread, but also that it must pause all other application threads (**stop-the-world**, or STW) until collection is complete.
 
-**新生代采用标记-复制算法，老年代采用标记-整理算法。**
+**It uses copying in the young generation and mark-compact in the old generation.**
 
-![Serial 收集器](https://oss.javaguide.cn/github/javaguide/java/jvm/serial-garbage-collector.png)
+![Serial collector](https://oss.javaguide.cn/github/javaguide/java/jvm/serial-garbage-collector.png)
 
-虚拟机的设计者们当然知道 Stop The World 带来的不良用户体验，所以在后续的垃圾收集器设计中停顿时间在不断缩短（仍然还有停顿，寻找最优秀的垃圾收集器的过程仍然在继续）。
+VM designers are aware of the poor user experience caused by stop-the-world pauses, so later collectors have focused on reducing pause times. Pauses still occur, and collector designs continue to evolve.
 
-但是 Serial 收集器有没有优于其他垃圾收集器的地方呢？当然有，它**简单而高效（与其他收集器的单线程相比）**。Serial 收集器由于没有线程交互的开销，自然可以获得很高的单线程收集效率。Serial 收集器对于运行在 Client 模式下的虚拟机来说是个不错的选择。
+Does the Serial collector have advantages over other collectors? Yes. It is **simple and efficient compared with other single-threaded collectors**. Without thread coordination overhead, it can achieve high single-threaded collection efficiency. It can be a good choice for VMs running in Client mode.
 
-### ParNew 收集器
+### ParNew Collector
 
-ParNew 收集器其实就是 Serial 收集器的多线程版本，除了使用多线程进行垃圾收集外，其余行为（控制参数、收集算法、回收策略等等）和 Serial 收集器完全一样。
+The ParNew collector is the multithreaded version of Serial. Apart from using multiple threads for collection, its behavior is the same, including its options, algorithms, and collection policy.
 
-ParNew 只负责新生代，采用标记-复制算法；它通常与负责老年代的 CMS 收集器配合使用。
+ParNew handles only the young generation and uses a copying algorithm. It was commonly paired with CMS, which handled the old generation.
 
-![ParNew 收集器 ](https://oss.javaguide.cn/github/javaguide/java/jvm/parnew-garbage-collector.png)
+![ParNew collector](https://oss.javaguide.cn/github/javaguide/java/jvm/parnew-garbage-collector.png)
 
-在 CMS 仍受支持的 JDK 版本中，ParNew 是 CMS 的新生代搭档；CMS 已在 JDK 14 中移除，因此这组搭配只适用于旧版本 HotSpot。
+In JDK versions that still support CMS, ParNew is its young-generation partner. CMS was removed in JDK 14, so this pairing applies only to older HotSpot versions.
 
-**并行和并发概念补充：**
+**Parallel and concurrent are different concepts:**
 
-- **并行（Parallel）**：指多条垃圾收集线程并行工作，但此时用户线程仍然处于等待状态。
+- **Parallel:** Multiple GC threads work at the same time, while application threads are paused.
 
-- **并发（Concurrent）**：指用户线程与垃圾收集线程同时执行（但不一定是并行，可能会交替执行），用户程序在继续运行，而垃圾收集器运行在另一个 CPU 上。
+- **Concurrent:** Application threads and GC threads run at the same time. This does not necessarily mean they run in parallel; they may take turns. The application continues while the collector works, potentially on another CPU.
 
-### Parallel Scavenge 收集器
+### Parallel Scavenge Collector
 
-Parallel Scavenge 收集器也是使用标记-复制算法的多线程收集器，它看上去几乎和 ParNew 都一样。 **那么它有什么特别之处呢？**
+Parallel Scavenge is also a multithreaded collector that uses a copying algorithm, so it looks much like ParNew. **What sets it apart?**
 
 ```bash
 -XX:+UseParallelGC
 
-    使用 Parallel 收集器（JDK 8 中默认搭配 Parallel Old）
+    Use the Parallel collector (paired with Parallel Old by default in JDK 8).
 
 -XX:+UseParallelOldGC
 
-    使用 Parallel 收集器+ 老年代并行
+    Use Parallel Old for parallel collection in the old generation.
 ```
 
-Parallel Scavenge 收集器关注点是吞吐量（高效率的利用 CPU）。CMS 等垃圾收集器的关注点更多的是用户线程的停顿时间（提高用户体验）。所谓吞吐量就是 CPU 中用于运行用户代码的时间与 CPU 总消耗时间的比值。 Parallel Scavenge 收集器提供了很多参数供用户找到最合适的停顿时间或最大吞吐量，如果对于收集器运作不太了解，手工优化存在困难的时候，使用 Parallel Scavenge 收集器配合自适应调节策略，把内存管理优化交给虚拟机去完成也是一个不错的选择。
+Parallel Scavenge focuses on throughput, or using CPU time efficiently. Collectors such as CMS focus more on application pause times and user experience. Throughput is the proportion of total CPU time spent running application code. Parallel Scavenge provides options for tuning pause times and throughput. If you are unfamiliar with collector tuning, its adaptive sizing policy can let the VM handle much of the memory-management optimization.
 
-**新生代采用标记-复制算法，老年代采用标记-整理算法。**
+**It uses copying in the young generation and mark-compact in the old generation.**
 
-![Parallel Old收集器运行示意图](https://oss.javaguide.cn/github/javaguide/java/jvm/parallel-scavenge-garbage-collector.png)
+![Parallel Scavenge collector](https://oss.javaguide.cn/github/javaguide/java/jvm/parallel-scavenge-garbage-collector.png)
 
-**这是 JDK1.8 默认收集器**
+**This is the default collector in JDK 8.**
 
-使用 `java -XX:+PrintCommandLineFlags -version` 命令查看
+Run `java -XX:+PrintCommandLineFlags -version` to check the collector:
 
 ```bash
 -XX:InitialHeapSize=262921408 -XX:MaxHeapSize=4206742528 -XX:+PrintCommandLineFlags -XX:+UseCompressedClassPointers -XX:+UseCompressedOops -XX:+UseParallelGC
@@ -476,130 +476,130 @@ Java(TM) SE Runtime Environment (build 1.8.0_211-b12)
 Java HotSpot(TM) 64-Bit Server VM (build 25.211-b12, mixed mode)
 ```
 
-JDK1.8 默认使用的是 Parallel Scavenge + Parallel Old，如果指定了-XX:+UseParallelGC 参数，则默认指定了-XX:+UseParallelOldGC，可以使用-XX:-UseParallelOldGC 来禁用该功能
+JDK 8 uses Parallel Scavenge and Parallel Old by default. Specifying `-XX:+UseParallelGC` also enables `-XX:+UseParallelOldGC`; use `-XX:-UseParallelOldGC` to disable it.
 
-### Serial Old 收集器
+### Serial Old Collector
 
-**Serial 收集器的老年代版本**，它同样是一个单线程收集器。它主要有两大用途：一种用途是在 JDK1.5 以及以前的版本中与 Parallel Scavenge 收集器搭配使用，另一种用途是作为 CMS 收集器的后备方案。
+**Serial Old is the old-generation version of the Serial collector.** It is also single-threaded. It was paired with Parallel Scavenge in JDK 5 and earlier, and it can serve as a fallback for CMS.
 
-![Serial 收集器](https://oss.javaguide.cn/github/javaguide/java/jvm/serial-garbage-collector.png)
+![Serial Old collector](https://oss.javaguide.cn/github/javaguide/java/jvm/serial-garbage-collector.png)
 
-### Parallel Old 收集器
+### Parallel Old Collector
 
-**Parallel Scavenge 收集器的老年代版本**。使用多线程和“标记-整理”算法。在注重吞吐量以及 CPU 资源的场合，都可以优先考虑 Parallel Scavenge 收集器和 Parallel Old 收集器。
+**Parallel Old is the old-generation version of Parallel Scavenge.** It uses multiple threads and mark-compact. Consider pairing it with Parallel Scavenge when throughput and CPU utilization are priorities.
 
-![Parallel Old收集器运行示意图](https://oss.javaguide.cn/github/javaguide/java/jvm/parallel-scavenge-garbage-collector.png)
+![Parallel Old collector](https://oss.javaguide.cn/github/javaguide/java/jvm/parallel-scavenge-garbage-collector.png)
 
-### CMS 收集器
+### CMS Collector
 
-**CMS（Concurrent Mark Sweep）收集器是一种以获取最短回收停顿时间为目标的收集器。它非常符合在注重用户体验的应用上使用。**
+**CMS (Concurrent Mark Sweep) is designed to minimize GC pause times, making it suitable for applications where user experience matters.**
 
-**CMS（Concurrent Mark Sweep）收集器是 HotSpot 虚拟机第一款真正意义上的并发收集器，它第一次实现了让垃圾收集线程与用户线程（基本上）同时工作。**
+**CMS was HotSpot's first truly concurrent collector: it allowed GC threads and application threads to run at roughly the same time.**
 
-从名字中的**Mark Sweep**这两个词可以看出，CMS 收集器是一种 **“标记-清除”算法**实现的，它的运作过程相比于前面几种垃圾收集器来说更加复杂一些。整个过程分为四个步骤：
+As its name suggests, CMS uses the **mark-sweep algorithm**. Its process is more complex than those of the collectors covered above and has four phases:
 
-- **初始标记：** 短暂停顿，标记直接与 root 相连的对象（根对象）；
-- **并发标记：** 同时开启 GC 和用户线程，用一个闭包结构去记录可达对象。但在这个阶段结束，这个闭包结构并不能保证包含当前所有的可达对象。因为用户线程可能会不断的更新引用域，所以 GC 线程无法保证可达性分析的实时性。所以这个算法里会跟踪记录这些发生引用更新的地方。
-- **重新标记：** 重新标记阶段就是为了修正并发标记期间因为用户程序继续运行而导致标记产生变动的那一部分对象的标记记录，这个阶段的停顿时间一般会比初始标记阶段的时间稍长，远远比并发标记阶段时间短
-- **并发清除：** 开启用户线程，同时 GC 线程开始对未标记的区域做清扫。
+- **Initial mark:** Briefly pauses application threads to mark objects directly reachable from GC Roots.
+- **Concurrent mark:** Runs GC and application threads together to trace reachable objects. Because application threads can update references during this phase, the collector tracks those changes and may need to revisit some objects.
+- **Remark:** Briefly pauses application threads to correct marks affected by reference updates during concurrent marking. This pause is usually longer than the initial mark, but much shorter than concurrent marking.
+- **Concurrent sweep:** Resumes application threads while GC threads reclaim unmarked objects.
 
-![CMS 收集器](https://oss.javaguide.cn/github/javaguide/java/jvm/cms-garbage-collector.png)
+![CMS collector](https://oss.javaguide.cn/github/javaguide/java/jvm/cms-garbage-collector.png)
 
-从它的名字就可以看出它是一款优秀的垃圾收集器，主要优点：**并发收集、低停顿**。但是它有下面三个明显的缺点：
+CMS offers **concurrent collection and short pauses**, but it has three notable drawbacks:
 
-- **对 CPU 资源敏感；**
-- **无法处理浮动垃圾；**
-- **它使用的回收算法-“标记-清除”算法会导致收集结束时会有大量空间碎片产生。**
+- **It is sensitive to CPU availability.**
+- **It cannot collect floating garbage.**
+- **Its mark-sweep algorithm can leave significant memory fragmentation.**
 
-**CMS 垃圾回收器在 Java 9 中已经被标记为过时(deprecated)，并在 Java 14 中被移除。**
+**CMS was deprecated in Java 9 and removed in Java 14.**
 
-### G1 收集器
+### G1 Collector
 
-**G1 (Garbage-First) 是一款面向服务器的垃圾收集器，主要针对配备多颗处理器及大容量内存的机器. 以极高概率满足 GC 停顿时间要求的同时，还具备高吞吐量性能特征。**
+**G1 (Garbage-First) is a server-oriented collector designed for machines with multiple processors and large amounts of memory. It aims to meet pause-time targets with high probability while maintaining good throughput.**
 
-被视为 JDK1.7 中 HotSpot 虚拟机的一个重要进化特征。它具备以下特点：
+G1 was a major addition to HotSpot in JDK 7. It has the following characteristics:
 
-- **并行与并发**：G1 能充分利用 CPU、多核环境下的硬件优势，使用多个 CPU（CPU 或者 CPU 核心）来缩短 Stop-The-World 停顿时间。部分其他收集器原本需要停顿 Java 线程执行的 GC 动作，G1 收集器仍然可以通过并发的方式让 java 程序继续执行。
-- **分代收集**：虽然 G1 可以不需要其他收集器配合就能独立管理整个 GC 堆，但是还是保留了分代的概念。
-- **空间整合**：与 CMS 的“标记-清除”算法不同，G1 从整体来看是基于“标记-整理”算法实现的收集器；从局部上来看是基于“标记-复制”算法实现的。
-- **可预测的停顿**：这是 G1 相对于 CMS 的另一个大优势，降低停顿时间是 G1 和 CMS 共同的关注点。G1 会根据用户设置的停顿时间目标建立预测模型并选择回收集合，但该目标是软目标，并不保证每次停顿都不超过指定值。
+- **Parallel and concurrent:** G1 uses multiple CPUs or cores to shorten stop-the-world pauses. Some GC work that requires pauses in other collectors can run concurrently with the application.
+- **Generational:** G1 can manage the entire heap on its own while retaining the concept of generations.
+- **Compaction:** G1 uses mark-compact across the heap and copying within individual regions, unlike CMS's mark-sweep approach.
+- **Predictable pauses:** G1 builds a prediction model from the pause-time target and selects regions to collect. This target is a soft goal; a pause may exceed it.
 
-G1 收集器的运作大致分为以下几个步骤：
+G1 collection roughly consists of these phases:
 
-- **初始标记**： 短暂停顿（Stop-The-World，STW），标记从 GC Roots 可直接引用的对象，即标记所有直接可达的活跃对象
-- **并发标记**：与应用并发运行，标记所有可达对象。 这一阶段可能持续较长时间，取决于堆的大小和对象的数量。
-- **最终标记**： 短暂停顿（STW），处理并发标记阶段结束后残留的少量未处理的引用变更。
-- **筛选回收**：根据标记结果，选择回收价值高的区域，复制存活对象到新区域，回收旧区域内存。这一阶段包含一个或多个停顿（STW），具体取决于回收的复杂度。
+- **Initial mark:** Briefly pauses application threads to mark objects directly reachable from GC Roots.
+- **Concurrent mark:** Runs alongside the application and marks reachable objects. This phase can take a while, depending on the heap size and number of objects.
+- **Remark:** Briefly pauses application threads to process the remaining reference updates from concurrent marking.
+- **Evacuation:** Selects valuable regions, copies their live objects to new regions, and reclaims the old ones. This phase includes one or more pauses, depending on the work required.
 
-![G1 收集器](https://oss.javaguide.cn/github/javaguide/java/jvm/g1-garbage-collector.png)
+![G1 collector](https://oss.javaguide.cn/github/javaguide/java/jvm/g1-garbage-collector.png)
 
-**G1 收集器在后台维护了一个优先列表，每次根据允许的收集时间，优先选择回收价值最大的 Region（这也就是它的名字 Garbage-First 的由来）**。这种使用 Region 划分内存空间以及有优先级的区域回收方式，保证了 G1 收集器在有限时间内可以尽可能高的收集效率（把内存化整为零）。
+**G1 maintains a priority list and, within the available collection time, prioritizes regions with the most reclaimable space.** This is where the name Garbage-First comes from. Dividing the heap into regions lets G1 focus collection work where it can reclaim the most memory.
 
-**从 JDK9 开始，G1 垃圾收集器成为了默认的垃圾收集器。**
+**G1 became the default garbage collector in JDK 9.**
 
-### ZGC 收集器
+### ZGC Collector
 
-ZGC 是以低延迟为目标的垃圾收集器。它将标记、对象转移等主要工作与应用线程并发执行，通过染色指针和屏障机制保证对象移动后仍能被正确访问。它仍然有 STW 阶段，但设计目标是让暂停保持很短，且不随堆大小、存活对象数量或线程数量明显增长。
+ZGC is a low-latency garbage collector. It performs most work, including marking and relocating objects, concurrently with application threads. Colored pointers and barriers ensure that objects remain accessible after relocation. ZGC still has stop-the-world (STW) phases, but aims to keep pauses short regardless of heap size, live-object count, or thread count.
 
-这里需要区分不同 JDK 版本。早期 ZGC 的线程栈处理仍会影响暂停时间；JDK 16 的 [JEP 376](https://openjdk.org/jeps/376) 将线程栈处理等工作移到了并发阶段，因此介绍 JDK 17 ZGC 时，不应继续套用早期版本的暂停模型。
+ZGC behavior depends on the JDK version. In early versions, processing thread stacks affected pause times. [JEP 376](https://openjdk.org/jeps/376) moved this work to a concurrent phase in JDK 16, so descriptions of JDK 17 ZGC should not use the pause model of earlier versions.
 
-#### ZGC 的版本与启用方式
+#### ZGC Versions and How to Enable Them
 
-| JDK 版本   | ZGC 的变化                                                                | 启用参数                                       |
-| ---------- | ------------------------------------------------------------------------- | ---------------------------------------------- |
-| JDK 11～14 | 以实验特性引入（[JEP 333](https://openjdk.org/jeps/333)）                 | `-XX:+UnlockExperimentalVMOptions -XX:+UseZGC` |
-| JDK 15～20 | 已成为正式特性，采用非分代模式（[JEP 377](https://openjdk.org/jeps/377)） | `-XX:+UseZGC`                                  |
-| JDK 21、22 | 增加分代模式，默认仍为非分代模式                                          | 分代模式使用 `-XX:+UseZGC -XX:+ZGenerational`  |
-| JDK 23     | 选择 ZGC 后，默认使用分代模式                                             | `-XX:+UseZGC`                                  |
-| JDK 24 起  | 移除非分代模式                                                            | `-XX:+UseZGC`                                  |
+| JDK version | ZGC changes                                                                     | Enable option                                          |
+| ----------- | ------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| JDK 11–14   | Introduced as an experimental feature ([JEP 333](https://openjdk.org/jeps/333)) | `-XX:+UnlockExperimentalVMOptions -XX:+UseZGC`         |
+| JDK 15–20   | Became a standard feature; non-generational mode                                | `-XX:+UseZGC`                                          |
+| JDK 21–22   | Generational mode added; non-generational mode remained the default             | `-XX:+UseZGC -XX:+ZGenerational` for generational mode |
+| JDK 23      | Generational mode became the default when ZGC is enabled                        | `-XX:+UseZGC`                                          |
+| JDK 24+     | Non-generational mode removed                                                   | `-XX:+UseZGC`                                          |
 
-**ZGC 默认采用分代模式，不代表 JVM 默认使用 ZGC。** 在典型 Server-class 环境下，HotSpot 默认仍选择 G1，使用 ZGC 需要显式配置。例如，在 JDK 17 上运行：
+**ZGC using generational mode by default does not mean that the JVM uses ZGC by default.** In typical server-class environments, HotSpot still selects G1 by default. You must enable ZGC explicitly. For example, on JDK 17:
 
 ```bash
 java -XX:+UseZGC -jar app.jar
 ```
 
-JDK 17 不支持 `-XX:+ZGenerational`，也不能把分代 ZGC 的调优经验直接套过来。分代模式的演进可参考 [JEP 439](https://openjdk.org/jeps/439)、[JEP 474](https://openjdk.org/jeps/474) 和 [JEP 490](https://openjdk.org/jeps/490)。
+JDK 17 does not support `-XX:+ZGenerational`, so tuning advice for generational ZGC does not apply. For the evolution of generational mode, see [JEP 439](https://openjdk.org/jeps/439), [JEP 474](https://openjdk.org/jeps/474), and [JEP 490](https://openjdk.org/jeps/490).
 
-#### 暂停时间很短，接口响应就一定更快吗？
+#### Do Shorter Pauses Always Mean Faster Responses?
 
-不一定。GC 暂停只是请求耗时的一部分。如果慢请求主要来自数据库、锁竞争、下游服务或 CPU 饱和，换成 ZGC 后，接口的 P99 延迟可能变化不大。并发 GC 还会消耗 CPU；在 CPU 配额紧张的服务中，这部分竞争可能影响吞吐量和请求延迟。
+Not necessarily. GC pauses are only one part of request latency. If slow requests are mainly caused by database access, lock contention, downstream services, or CPU saturation, switching to ZGC may have little effect on P99 latency. Concurrent GC also uses CPU, which can affect throughput and response times when a service has a tight CPU quota.
 
-此外，**低 STW 暂停不等于应用线程永远不会因内存不足而等待**。如果对象分配过快、堆空间不足，或者并发回收跟不上分配速度，ZGC 可能出现 Allocation Stall（分配停顿）。堆容量除了容纳存活对象，还要为并发回收期间的新分配预留空间。
+Also, **short STW pauses do not mean application threads will never wait for memory**. ZGC may encounter an allocation stall if objects are allocated too quickly, the heap is too small, or concurrent collection cannot keep up. The heap must hold live objects and leave room for new allocations during concurrent collection.
 
-评估收集器的实际收益时，建议先在相同 JDK 上比较 G1 与 ZGC，再单独评估 JDK 升级的收益，避免把版本升级、代码变化和收集器切换的效果混在一起。灰度期间同时观察：
+To evaluate the collector's impact, first compare G1 and ZGC on the same JDK, then assess any JDK upgrade separately. This helps distinguish the effects of a version upgrade, code changes, and a collector change. During a rollout, monitor:
 
-- **业务指标**：相同负载下的吞吐量、P99/P999 延迟、超时率和错误率。
-- **GC 指标**：暂停分布、回收周期、分配速率、回收后的存活量，以及是否出现分配停顿。
-- **资源指标**：CPU 使用率与容器限流、进程内存、堆外内存和峰值负载下的余量。
+- **Application metrics:** Throughput, P99/P999 latency, timeout rate, and error rate under the same load.
+- **GC metrics:** Pause distribution, collection cycles, allocation rate, post-GC live-set size, and allocation stalls.
+- **Resource metrics:** CPU usage and container throttling, process and off-heap memory, and headroom at peak load.
 
-参数配置与常见误区见 [JVM 参数详解中的 JDK 17 ZGC 参数](./jvm-parameters-intro.md#jdk-17-zgc-参数)。生产切换前，还应保留经过验证的原收集器配置和应用版本，明确触发回退的业务指标。
+For options and common pitfalls, see [JDK 17 ZGC options in JVM Parameters](./jvm-parameters-intro.md#jdk-17-zgc-options). Before switching in production, keep the validated collector configuration and application version available, and define which application metrics should trigger a rollback.
 
-关于 ZGC 收集器的详细介绍推荐看看这几篇文章：
+For more detail on ZGC, see these articles:
 
-- [从历代 GC 算法角度剖析 ZGC - 京东技术](https://mp.weixin.qq.com/s/ExkB40cq1_Z0ooDzXn7CVw)
-- [新一代垃圾回收器 ZGC 的探索与实践 - 美团技术团队](https://tech.meituan.com/2020/08/06/ZGC-in-Meituan.html)
-- [极致八股文之 JVM 垃圾回收器 G1&ZGC 详解 - 阿里云开发者](https://mp.weixin.qq.com/s/Ywj3XMws0IIK-kiUllN87Q)
+- [An Analysis of ZGC Through the Evolution of GC Algorithms - JD Technology](https://mp.weixin.qq.com/s/ExkB40cq1_Z0ooDzXn7CVw)
+- [Exploring and Applying the Next-Generation ZGC - Meituan Technical Team](https://tech.meituan.com/2020/08/06/ZGC-in-Meituan.html)
+- [A Detailed Guide to G1 and ZGC - Alibaba Cloud](https://mp.weixin.qq.com/s/Ywj3XMws0IIK-kiUllN87Q)
 
-### Shenandoah 收集器
+### Shenandoah Collector
 
-与 ZGC 类似，Shenandoah 也是面向低延迟的收集器，由 Red Hat 主导开发，在 Java 12 中通过 [JEP 189](https://openjdk.org/jeps/189) 以实验特性引入，Java 15 起成为正式特性（[JEP 379](https://openjdk.org/jeps/379)）。
+Like ZGC, Shenandoah is a low-latency collector led by Red Hat. It was introduced as an experimental feature in Java 12 through [JEP 189](https://openjdk.org/jeps/189) and became a standard feature in Java 15 ([JEP 379](https://openjdk.org/jeps/379)).
 
-Shenandoah 的核心思路是**并发整理**：大部分堆整理工作与应用线程同时进行，暂停时间可以控制在亚毫秒级，且不受堆大小影响。它主要通过**转发指针（Brooks Pointer）**和**读屏障**实现并发整理时对象移动对应用线程的透明。
+Shenandoah's key idea is **concurrent compaction**: most heap compaction runs alongside application threads, keeping pauses in the sub-millisecond range regardless of heap size. It uses **forwarding pointers (Brooks pointers)** and **read barriers** to make object movement transparent to application threads.
 
-需要注意的是，早期 Shenandoah 和早期 ZGC 一样是非分代收集器，吞吐量上有一定代价。分代 Shenandoah 仍在演进中（如 [JEP 535](https://openjdk.org/jeps/535)、[JEP 521](https://openjdk.org/jeps/521)），值得持续关注。
+Early Shenandoah, like early ZGC, was non-generational and had some throughput overhead. Generational Shenandoah is still evolving; see [JEP 535](https://openjdk.org/jeps/535) and [JEP 521](https://openjdk.org/jeps/521).
 
-你可以通过下面的参数启用 Shenandoah：
+Enable Shenandoah with this option:
 
 ```bash
 java -XX:+UseShenandoahGC className
 ```
 
-> 注意：Shenandoah 不在 Oracle JDK 的默认支持列表中，主要随 OpenJDK（如 Red Hat、Amazon Corretto 等发行版）提供，使用前需要确认所用 JDK 发行版是否包含并默认启用了 Shenandoah（`-XX:+PrintFlagsFinal -version | grep UseShenandoahGC`）。
+> Note: Shenandoah is not included in Oracle JDK's default support list. It is mainly available in OpenJDK distributions such as Red Hat builds and Amazon Corretto. Check whether your JDK distribution includes Shenandoah and whether it is enabled by default with `-XX:+PrintFlagsFinal -version | grep UseShenandoahGC`.
 
-## 参考
+## References
 
-- 《深入理解 Java 虚拟机：JVM 高级特性与最佳实践（第二版》
+- _Understanding the Java Virtual Machine: Advanced Features and Best Practices_, 2nd edition.
 - The Java® Virtual Machine Specification - Java SE 8 Edition：<https://docs.oracle.com/javase/specs/jvms/se8/html/index.html>
 
 <!-- @include: @article-footer.snippet.md -->

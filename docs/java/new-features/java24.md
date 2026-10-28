@@ -1,120 +1,120 @@
 ---
-title: Java 24 新特性概览
-description: 总结 JDK 24 的新特性与改动，便于跟踪 Java 演进。
+title: Java 24 New Features
+description: An overview of key features and changes in JDK 24.
 category: Java
 tag:
-  - Java新特性
+  - Java New Features
 head:
   - - meta
     - name: keywords
-      content: Java 24,JDK24,JEP 更新,语言特性,GC 改进,平台增强
+      content: Java 24,JDK 24,JEPs,language features,GC improvements,platform enhancements
 ---
 
-JDK 24 于 2025 年 3 月发布，这是一个非 LTS（长期支持版）版本。它的下一个版本是 2025 年 9 月发布的 LTS 版本 **JDK 25**。
+JDK 24 was released in March 2025 as a non-LTS release. Its successor, **JDK 25**, was released in September 2025 as an LTS release.
 
-JDK 24 共有 24 个新特性，这篇文章会挑选其中较为重要的一些新特性进行详细介绍：
+JDK 24 includes 24 new features. This article covers some of the key ones:
 
-- [JEP 478: Key Derivation Function API (密钥派生函数 API, 预览)](https://openjdk.org/jeps/478)
-- [JEP 483: Early Class-File Loading & Linking (提前类加载和链接)](https://openjdk.org/jeps/483)
-- [JEP 484: Class File API (类文件 API)](https://openjdk.org/jeps/484)
-- [JEP 485: Stream Gatherers (流收集器)](https://openjdk.org/jeps/485)
-- [JEP 486: Disable the Security Manager (永久禁用安全管理器)](https://openjdk.org/jeps/486)
-- [JEP 487: Scoped Values (作用域值, 第四次预览)](https://openjdk.org/jeps/487)
-- [JEP 495: Simplified Source Files and Instance Main Methods (简化的源文件和实例主方法, 第四次预览)](https://openjdk.org/jeps/495)
-- [JEP 497: Quantum-Resistant Digital Signature Algorithm (ML-DSA) (量子抗性数字签名算法)](https://openjdk.org/jeps/497)
-- [JEP 499: Structured Concurrency (结构化并发, 第四次预览)](https://openjdk.org/jeps/499)
+- [JEP 478: Key Derivation Function API (Preview)](https://openjdk.org/jeps/478)
+- [JEP 483: Early Class-File Loading and Linking](https://openjdk.org/jeps/483)
+- [JEP 484: Class-File API](https://openjdk.org/jeps/484)
+- [JEP 485: Stream Gatherers](https://openjdk.org/jeps/485)
+- [JEP 486: Permanently Disable the Security Manager](https://openjdk.org/jeps/486)
+- [JEP 487: Scoped Values (Fourth Preview)](https://openjdk.org/jeps/487)
+- [JEP 495: Simple Source Files and Instance Main Methods (Fourth Preview)](https://openjdk.org/jeps/495)
+- [JEP 497: Quantum-Resistant Module-Lattice-Based Digital Signature Algorithm (ML-DSA)](https://openjdk.org/jeps/497)
+- [JEP 499: Structured Concurrency (Fourth Preview)](https://openjdk.org/jeps/499)
 
-下图是从 JDK 8 到 JDK 25 每个版本的更新带来的新特性数量和更新时间：
+The chart below shows the number of features and release dates for each update from JDK 8 through JDK 25:
 
 ![](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
 
-## JEP 478: Key Derivation Function API（密钥派生函数 API，预览）
+## JEP 478: Key Derivation Function API (Preview)
 
-密钥派生函数 API 提供了一套用于从初始密钥和其他数据派生额外密钥的标准接口。它可以为不同的加密目的（如加密、认证等）生成多个不同的密钥，避免直接重复使用同一密钥。该 API 在 JDK 24 中处于预览阶段。
+The Key Derivation Function API provides a standard interface for deriving additional keys from an initial key and other data. It can generate separate keys for different cryptographic purposes, such as encryption and authentication, instead of reusing the same key. The API is in preview in JDK 24.
 
-通过该 API，开发者可以使用 HKDF 等由安全提供者实现的密钥派生算法：
+The API lets developers use key derivation algorithms such as HKDF, implemented by security providers:
 
 ```java
-// 创建一个 KDF 对象，使用 HKDF-SHA256 算法
+// Create a KDF object using the HKDF-SHA256 algorithm.
 KDF hkdf = KDF.getInstance("HKDF-SHA256");
 
-// 创建 Extract 和 Expand 参数规范
+// Create the Extract and Expand parameters.
 AlgorithmParameterSpec params =
     HKDFParameterSpec.ofExtract()
-                     .addIKM(initialKeyMaterial) // 设置初始密钥材料
-                     .addSalt(salt)             // 设置盐值
-                     .thenExpand(info, 32);     // 设置扩展信息和目标长度
+                     .addIKM(initialKeyMaterial) // Set the initial key material.
+                     .addSalt(salt)              // Set the salt.
+                     .thenExpand(info, 32);      // Set the info and output length.
 
-// 派生一个 32 字节的 AES 密钥
+// Derive a 32-byte AES key.
 SecretKey key = hkdf.deriveKey("AES", params);
 
-// 可以使用相同的 KDF 对象进行其他密钥派生操作
+// Reuse the KDF object to derive other keys.
 ```
 
-## JEP 483: Early Class-File Loading & Linking（提前类加载和链接）
+## JEP 483: Early Class-File Loading and Linking
 
-在传统 JVM 中，应用在每次启动时需要动态加载和链接类。该特性通过缓存已加载和链接的类，减少后续启动中的重复工作。JEP 483 给出的 Spring PetClinic 基准中，使用 AOT 缓存后启动时间最多缩短了约 42%；实际收益取决于应用和运行环境。
+Traditionally, the JVM loads and links classes dynamically each time an application starts. This feature caches loaded and linked classes to reduce repeated work on later starts. In the Spring PetClinic benchmark cited by JEP 483, an AOT cache reduced startup time by up to about 42%; actual gains depend on the application and environment.
 
-这个优化不要求修改应用程序、库或框架代码，但需要先记录训练运行并创建 AOT 缓存，随后在正式启动时加载该缓存。相关参数包括 `-XX:AOTMode=record`、`-XX:AOTConfiguration`、`-XX:AOTMode=create` 和 `-XX:AOTCache`。
+This optimization requires no changes to application, library, or framework code. You first record a training run and create an AOT cache, then load that cache at startup. Relevant options include `-XX:AOTMode=record`, `-XX:AOTConfiguration`, `-XX:AOTMode=create`, and `-XX:AOTCache`.
 
-## JEP 484: Class File API（类文件 API）
+## JEP 484: Class-File API
 
-类文件 API 在 JDK 22 进行了第一次预览（[JEP 457](https://openjdk.org/jeps/457)），在 JDK 23 进行了第二次预览并进一步完善（[JEP 466](https://openjdk.org/jeps/466)）。最终，该特性在 JDK 24 中顺利转正。
+The Class-File API was first previewed in JDK 22 ([JEP 457](https://openjdk.org/jeps/457)) and improved in a second preview in JDK 23 ([JEP 466](https://openjdk.org/jeps/466)). It became a permanent feature in JDK 24.
 
-类文件 API 的目标是提供一套标准化的 API，用于解析、生成和转换 Java 类文件，取代过去对第三方库（如 ASM）在类文件处理上的依赖。
+The Class-File API provides a standard way to parse, generate, and transform Java class files, reducing reliance on third-party libraries such as ASM.
 
 ```java
-// 创建一个 ClassFile 对象，这是操作类文件的入口。
+// Create a ClassFile object, the entry point for working with class files.
 ClassFile cf = ClassFile.of();
-// 解析字节数组为 ClassModel
+// Parse the byte array into a ClassModel.
 ClassModel classModel = cf.parse(bytes);
 
-// 构建新的类文件，移除以 "debug" 开头的所有方法
+// Build a new class file without methods whose names start with "debug".
 byte[] newBytes = cf.build(classModel.thisClass().asSymbol(),
         classBuilder -> {
-            // 遍历所有类元素
+            // Iterate over all class elements.
             for (ClassElement ce : classModel) {
-                // 判断是否为方法 且 方法名以 "debug" 开头
+                // Check whether this is a method whose name starts with "debug".
                 if (!(ce instanceof MethodModel mm
                         && mm.methodName().stringValue().startsWith("debug"))) {
-                    // 添加到新的类文件中
+                    // Add the element to the new class file.
                     classBuilder.with(ce);
                 }
             }
         });
 ```
 
-## JEP 485: Stream Gatherers（流收集器）
+## JEP 485: Stream Gatherers
 
-流收集器 `Stream::gather(Gatherer)` 是一个强大的新特性，它允许开发者定义自定义的中间操作，从而实现更复杂、更灵活的数据转换。`Gatherer` 接口是该特性的核心，它定义了如何从流中收集元素，维护中间状态，并在处理过程中生成结果。
+`Stream::gather(Gatherer)` lets developers define custom intermediate operations for more flexible data transformations. The `Gatherer` interface defines how to consume stream elements, maintain intermediate state, and produce results.
 
-与现有的 `filter`、`map` 或 `distinct` 等内置操作不同，`Stream::gather` 使得开发者能够实现那些难以用标准 Stream 操作完成的任务。例如，可以使用 `Stream::gather` 实现滑动窗口、自定义规则的去重、或者更复杂的状态转换和聚合。 这种灵活性极大地扩展了 Stream API 的应用范围，使开发者能够应对更复杂的数据处理场景。
+Unlike built-in operations such as `filter`, `map`, and `distinct`, `Stream::gather` can handle tasks that are difficult to express with standard Stream operations. Examples include sliding windows, custom deduplication, and stateful transformations or aggregation.
 
-基于 `Stream::gather(Gatherer)` 实现字符串长度的去重逻辑：
+This example uses `Stream::gather(Gatherer)` to keep strings with unique lengths:
 
 ```java
 var result = Stream.of("foo", "bar", "baz", "quux")
                    .gather(Gatherer.ofSequential(
-                       HashSet::new, // 初始化状态为 HashSet,用于保存已经遇到过的字符串长度
+                       HashSet::new, // Track string lengths seen so far.
                        (set, str, downstream) -> {
                            if (set.add(str.length())) {
                                return downstream.push(str);
                            }
-                           return true; // 继续处理流
+                           return true; // Continue processing the stream.
                        }
                    ))
-                   .toList();// 转换为列表
+                   .toList(); // Convert the result to a list.
 
-// 输出结果 ==> [foo, quux]
+// Output: [foo, quux]
 ```
 
-## JEP 486: Disable the Security Manager（永久禁用安全管理器）
+## JEP 486: Permanently Disable the Security Manager
 
-JDK 24 不再允许启用 `Security Manager`，即使通过 `java -Djava.security.manager` 命令也无法启用，这是逐步移除该功能的关键一步。虽然 `Security Manager` 曾经是 Java 中限制代码权限（如访问文件系统或网络、读取或写入敏感文件、执行系统命令）的重要工具，但由于复杂性高、使用率低且维护成本大，Java 社区决定最终移除它。
+JDK 24 no longer allows the `Security Manager` to be enabled, including with `java -Djava.security.manager`. This is a key step toward removing the feature. The `Security Manager` once limited code permissions, such as access to files, networks, and system commands. The Java community decided to remove it because it was complex, rarely used, and costly to maintain.
 
-## JEP 487: Scoped Values（作用域值, 第四次预览）
+## JEP 487: Scoped Values (Fourth Preview)
 
-作用域值（Scoped Values）可以在线程内和线程间共享不可变的数据，优于线程局部变量，尤其是在使用大量虚拟线程时。
+Scoped values let threads share immutable data, and can be a better fit than thread-local variables, especially when using many virtual threads.
 
 ```java
 final static ScopedValue<...> V = ScopedValue.newInstance();
@@ -127,28 +127,28 @@ ScopedValue.where(V, <value>)
 ... V.get() ...
 ```
 
-作用域值允许在大型程序中的组件之间安全有效地共享数据，而无需求助于方法参数。
+Scoped values let components in a large program share data safely and efficiently without passing it through method parameters.
 
-## JEP 491: Virtual Threads Synchronization Without Pinning（虚拟线程的同步而不固定平台线程）
+## JEP 491: Synchronize Virtual Threads Without Pinning
 
-优化了虚拟线程与 `synchronized` 的工作机制。 虚拟线程在 `synchronized` 方法和代码块中阻塞时，通常能够释放其占用的操作系统线程（平台线程），避免了对平台线程的长时间占用，从而提升应用程序的并发能力。 这种机制避免了“固定 (Pinning)”——即虚拟线程长时间占用平台线程，阻止其服务于其他虚拟线程的情况。
+This update improves how virtual threads work with `synchronized`. When a virtual thread blocks in a `synchronized` method or block, it can usually release its underlying operating system thread (platform thread). This avoids pinning, where a virtual thread holds a platform thread and prevents it from serving other virtual threads.
 
-现有的使用 `synchronized` 的 Java 代码无需修改即可受益于虚拟线程的扩展能力。 例如，一个 I/O 密集型的应用程序，如果使用传统的平台线程，可能会因为线程阻塞而导致并发能力下降。 而使用虚拟线程，即使在 `synchronized` 块中发生阻塞，也不会固定平台线程，从而允许平台线程继续服务于其他虚拟线程，提高整体的并发性能。
+Existing Java code that uses `synchronized` can benefit without changes. In an I/O-heavy application, blocking platform threads can limit concurrency. With virtual threads, blocking inside a `synchronized` block usually does not pin the platform thread, so it can serve other virtual threads.
 
-## JEP 493: Linking Run-Time Images Without JMOD Files（在没有 JMOD 文件的情况下链接运行时镜像）
+## JEP 493: Link Run-Time Images Without JMOD Files
 
-默认情况下，JDK 同时包含运行时镜像（运行时所需的模块）和 JMOD 文件。这个特性使得 jlink 工具无需使用 JDK 的 JMOD 文件就可以创建自定义运行时镜像，减少了 JDK 的安装体积（约 25%）。
+By default, the JDK includes both a run-time image (the modules needed at run time) and JMOD files. This feature lets `jlink` create custom run-time images without JMOD files, reducing the JDK installation size by about 25%.
 
-说明：
+Notes:
 
-- Jlink 是随 Java 9 一起发布的新命令行工具。它允许开发人员为基于模块的 Java 应用程序创建自己的轻量级、定制的 JRE。
-- JMOD 文件是模块化归档文件，可以包含类文件、原生库、配置文件、头文件、法律声明等内容。
+- `jlink` is a command-line tool introduced in Java 9. It creates lightweight, custom run-time images for modular Java applications.
+- JMOD files are modular archives that can contain class files, native libraries, configuration files, header files, and legal notices.
 
-## JEP 495: Simplified Source Files and Instance Main Methods（简化的源文件和实例主方法, 第四次预览）
+## JEP 495: Simple Source Files and Instance Main Methods (Fourth Preview)
 
-这个特性主要简化了 `main` 方法的声明。对于 Java 初学者来说，这个 `main` 方法的声明引入了太多的 Java 语法概念，不利于初学者快速上手。
+This feature simplifies the `main` method declaration. The traditional form introduces several Java syntax concepts that can make it harder for beginners to get started.
 
-没有使用该特性之前定义一个 `main` 方法：
+Without this feature, a `main` method looks like this:
 
 ```java
 public class HelloWorld {
@@ -158,7 +158,7 @@ public class HelloWorld {
 }
 ```
 
-使用该新特性之后定义一个 `main` 方法：
+With this feature, it can be written as:
 
 ```java
 class HelloWorld {
@@ -168,7 +168,7 @@ class HelloWorld {
 }
 ```
 
-进一步简化（未命名的类允许我们省略类名）
+It can be simplified further by omitting the class name:
 
 ```java
 void main() {
@@ -176,63 +176,63 @@ void main() {
 }
 ```
 
-## JEP 497: Quantum-Resistant Digital Signature Algorithm (ML-DSA)（量子抗性数字签名算法）
+## JEP 497: Quantum-Resistant Module-Lattice-Based Digital Signature Algorithm (ML-DSA)
 
-JDK 24 引入了支持实施抗量子的基于模块晶格的数字签名算法（Module-Lattice-Based Digital Signature Algorithm, **ML-DSA**），为抵御未来量子计算机可能带来的威胁做准备。
+JDK 24 adds support for the Module-Lattice-Based Digital Signature Algorithm (**ML-DSA**), a quantum-resistant digital signature algorithm designed to address threats from future quantum computers.
 
-ML-DSA 是美国国家标准与技术研究院（NIST）在 FIPS 204 中标准化的量子抗性算法，用于数字签名和身份验证。
+ML-DSA is a quantum-resistant algorithm standardized by the U.S. National Institute of Standards and Technology (NIST) in FIPS 204 for digital signatures and authentication.
 
-## JEP 498: Warnings When Using `sun.misc.Unsafe` Memory Access Methods (使用 `sun.misc.Unsafe` 内存访问方法时发出警告)
+## JEP 498: Warnings When Using `sun.misc.Unsafe` Memory-Access Methods
 
-JDK 23([JEP 471](https://openjdk.org/jeps/471)) 提议弃用 `sun.misc.Unsafe` 中的内存访问方法，这些方法将来的版本中会被移除。在 JDK 24 中，当首次调用 `sun.misc.Unsafe` 的任何内存访问方法时，运行时会发出警告。
+JDK 23 ([JEP 471](https://openjdk.org/jeps/471)) deprecated the memory-access methods in `sun.misc.Unsafe` for removal. In JDK 24, the runtime warns the first time any of these methods is called.
 
-这些不安全的方法已有安全高效的替代方案：
+Safe and efficient alternatives are available:
 
-- `java.lang.invoke.VarHandle`：JDK 9 (JEP 193) 中引入，提供了一种安全有效地操作堆内存的方法，包括对象的字段、类的静态字段以及数组元素。
-- `java.lang.foreign.MemorySegment`：JDK 22 (JEP 454) 中引入，提供了一种安全有效地访问堆外内存的方法，有时会与 `VarHandle` 协同工作。
+- `java.lang.invoke.VarHandle`, introduced in JDK 9 (JEP 193), provides safe and efficient access to heap memory, including object fields, static fields, and array elements.
+- `java.lang.foreign.MemorySegment`, introduced in JDK 22 (JEP 454), provides safe and efficient access to off-heap memory and can work with `VarHandle`.
 
-`MemorySegment` 是 Foreign Function & Memory API（外部函数和内存 API）的核心类型之一，用于安全访问堆内或堆外内存；`VarHandle` 是独立的标准 API，可用于访问字段、数组元素或按内存布局访问数据。Foreign Function & Memory API 在 JDK 22 中转为正式特性。
+`MemorySegment` is a core type in the Foreign Function & Memory API for safely accessing heap and off-heap memory. `VarHandle` is a separate standard API for accessing fields, array elements, or data through a memory layout. The Foreign Function & Memory API became a permanent feature in JDK 22.
 
 ```java
 import java.lang.foreign.*;
 import java.lang.invoke.VarHandle;
 
-// 管理堆外整数数组的类
+// Manages an off-heap integer array.
 class OffHeapIntBuffer {
 
-    // 用于访问整数元素的VarHandle
+    // VarHandle for accessing integer elements.
     private static final VarHandle ELEM_VH = ValueLayout.JAVA_INT.arrayElementVarHandle();
 
-    // 内存管理器
+    // Memory arena.
     private final Arena arena;
 
-    // 堆外内存段
+    // Off-heap memory segment.
     private final MemorySegment buffer;
 
-    // 构造函数，分配指定数量的整数空间
+    // Allocates space for the specified number of integers.
     public OffHeapIntBuffer(long size) {
         this.arena  = Arena.ofShared();
         this.buffer = arena.allocate(ValueLayout.JAVA_INT, size);
     }
 
-    // 释放内存
+    // Releases the memory.
     public void deallocate() {
         arena.close();
     }
 
-    // 以volatile方式设置指定索引的值
+    // Sets the value at the specified index with volatile semantics.
     public void setVolatile(long index, int value) {
         ELEM_VH.setVolatile(buffer, 0L, index, value);
     }
 
-    // 初始化指定范围的元素为0
+    // Initializes the specified range to zero.
     public void initialize(long start, long n) {
         buffer.asSlice(ValueLayout.JAVA_INT.byteSize() * start,
                        ValueLayout.JAVA_INT.byteSize() * n)
               .fill((byte) 0);
     }
 
-    // 将指定范围的元素复制到新数组
+    // Copies the specified range into a new array.
     public int[] copyToNewArray(long start, int n) {
         return buffer.asSlice(ValueLayout.JAVA_INT.byteSize() * start,
                               ValueLayout.JAVA_INT.byteSize() * n)
@@ -241,26 +241,26 @@ class OffHeapIntBuffer {
 }
 ```
 
-## JEP 499: Structured Concurrency（结构化并发, 第四次预览）
+## JEP 499: Structured Concurrency (Fourth Preview)
 
-JDK 19 以孵化器 API 的形式引入了结构化并发。JDK 24 中该 API 处于第四次预览阶段，目的是简化多线程编程，并不是为了取代 `java.util.concurrent`。
+Structured concurrency was introduced as an incubating API in JDK 19. In JDK 24, it is in its fourth preview. It aims to simplify multithreaded programming, not replace `java.util.concurrent`.
 
-结构化并发将不同线程中运行的多个任务视为单个工作单元，从而简化错误处理、提高可靠性并增强可观察性。也就是说，结构化并发保留了单线程代码的可读性、可维护性和可观察性。
+Structured concurrency treats multiple tasks running in different threads as a single unit of work. This simplifies error handling, improves reliability and observability, and preserves the readability and maintainability of single-threaded code.
 
-结构化并发的基本 API 是 `StructuredTaskScope`，它支持将任务拆分为多个并发子任务，在它们自己的线程中执行，并且子任务必须在主任务继续之前完成。
+The core API, `StructuredTaskScope`, splits a task into concurrent subtasks that run in their own threads. The subtasks must finish before the parent task continues.
 
-`StructuredTaskScope` 的基本用法如下：
+Here is a basic example of `StructuredTaskScope`:
 
 ```java
     try (var scope = new StructuredTaskScope<Object>()) {
-        // 使用fork方法派生线程来执行子任务
+        // Fork threads to run subtasks.
         Subtask<Integer> subtask1 = scope.fork(task1);
         Subtask<String> subtask2 = scope.fork(task2);
-        // 等待线程完成
+        // Wait for the threads to finish.
         scope.join();
-        // 结果的处理可能包括处理或重新抛出异常
+        // Process results or rethrow exceptions.
         ... process results/exceptions ...
     } // close
 ```
 
-结构化并发非常适合虚拟线程，虚拟线程是 JDK 实现的轻量级线程。许多虚拟线程共享同一个操作系统线程，从而允许非常多的虚拟线程。
+Structured concurrency works well with virtual threads, which are lightweight threads implemented by the JDK. Many virtual threads can share an operating system thread, allowing applications to create large numbers of them.
