@@ -1,115 +1,115 @@
 ---
-title: Atomic 原子类总结
-description: Java原子类详解：全面总结JUC包Atomic原子类体系、AtomicInteger/AtomicLong/AtomicReference等常用类、基于CAS的线程安全实现、使用场景与性能优势。
+title: Java Atomic Classes
+description: An overview of the Java atomic classes in JUC, including AtomicInteger, AtomicLong, and AtomicReference, their CAS-based thread safety, use cases, and performance characteristics.
 category: Java
 tag:
-  - Java并发
+  - Java Concurrency
 head:
   - - meta
     - name: keywords
-      content: Atomic原子类,AtomicInteger,AtomicLong,AtomicReference,CAS原子操作,JUC并发包,原子类使用
+      content: Java atomic classes, AtomicInteger, AtomicLong, AtomicReference, CAS, JUC, atomic operations, usage
 ---
 
-## Atomic 原子类介绍
+## Introduction to Atomic Classes
 
-`Atomic` 翻译成中文是“原子”的意思。在化学上，原子是构成物质的最小单位，在化学反应中不可分割。在编程中，`Atomic` 指的是一个操作具有原子性，即该操作不可分割、不可中断。即使在多个线程同时执行时，该操作要么全部执行完成，要么不执行，不会被其他线程看到部分完成的状态。
+In programming, **atomic** means that an operation is indivisible: it either completes entirely or does not happen, and other threads cannot observe a partially completed operation.
 
-原子类简单来说就是具有原子性操作特征的类。
+Atomic classes provide operations with these atomicity guarantees.
 
-`java.util.concurrent.atomic` 包中的 `Atomic` 原子类提供了一种线程安全的方式来操作单个变量。
+The atomic classes in `java.util.concurrent.atomic` provide thread-safe operations on individual variables.
 
-`Atomic` 类依赖于 CAS（Compare-And-Swap，比较并交换）乐观锁来保证其方法的原子性，而不需要使用传统的锁机制（如 `synchronized` 块或 `ReentrantLock`）。
+Atomic classes use compare-and-swap (CAS) to make their methods atomic, without traditional locks such as `synchronized` blocks or `ReentrantLock`.
 
-这篇文章我们只介绍 Atomic 原子类的概念，具体实现原理可以阅读笔者写的这篇文章：[CAS 详解](./cas.md)。
+This article introduces the atomic classes. For details about their implementation, see [CAS Explained](./cas.md).
 
-![JUC原子类概览](https://oss.javaguide.cn/github/javaguide/java/JUC%E5%8E%9F%E5%AD%90%E7%B1%BB%E6%A6%82%E8%A7%88.png)
+![Overview of JUC atomic classes](https://oss.javaguide.cn/github/javaguide/java/JUC%E5%8E%9F%E5%AD%90%E7%B1%BB%E6%A6%82%E8%A7%88.png)
 
-根据操作的数据类型，可以将 JUC 包中的原子类分为 4 类：
+The atomic classes in JUC can be divided into four groups based on the data they operate on:
 
-**1、基本类型**
+**1. Primitive types**
 
-使用原子的方式更新基本类型
+Atomically update primitive values:
 
-- `AtomicInteger`：整型原子类
-- `AtomicLong`：长整型原子类
-- `AtomicBoolean`：布尔型原子类
+- `AtomicInteger`: Atomic operations on integers.
+- `AtomicLong`: Atomic operations on long values.
+- `AtomicBoolean`: Atomic operations on boolean values.
 
-**2、数组类型**
+**2. Arrays**
 
-使用原子的方式更新数组里的某个元素
+Atomically update individual array elements:
 
-- `AtomicIntegerArray`：整型数组原子类
-- `AtomicLongArray`：长整型数组原子类
-- `AtomicReferenceArray`：引用类型数组原子类
+- `AtomicIntegerArray`: Atomic operations on integer arrays.
+- `AtomicLongArray`: Atomic operations on long arrays.
+- `AtomicReferenceArray`: Atomic operations on reference arrays.
 
-**3、引用类型**
+**3. References**
 
-- `AtomicReference`：引用类型原子类
-- `AtomicMarkableReference`：原子更新带有标记的引用类型。该类将 boolean 标记与引用关联起来，可以检测由业务约定的两种状态之间的变化，但一个比特的标记无法记录任意次数的版本变化。
-- `AtomicStampedReference`：原子更新带有版本号的引用类型。该类将整数值与引用关联起来，可用于解决原子的更新数据和数据的版本号，可以解决使用 CAS 进行原子更新时可能出现的 ABA 问题。
+- `AtomicReference`: Atomic operations on a reference.
+- `AtomicMarkableReference`: Atomically updates a reference and a boolean mark. The mark can distinguish two application-defined states, but one bit cannot track an arbitrary number of version changes.
+- `AtomicStampedReference`: Atomically updates a reference and an integer stamp. The stamp can help detect the ABA problem during CAS updates.
 
-与之相比，`AtomicStampedReference` 使用整数版本号，更适合检测引用在两次读取之间是否经历过多次变化。
+`AtomicStampedReference` uses an integer stamp, making it more suitable for detecting whether a reference changed multiple times between reads.
 
-**4、对象的属性修改类型**
+**4. Field updaters**
 
-- `AtomicIntegerFieldUpdater`:原子更新整型字段的更新器
-- `AtomicLongFieldUpdater`：原子更新长整型字段的更新器
-- `AtomicReferenceFieldUpdater`：原子更新引用类型里的字段
+- `AtomicIntegerFieldUpdater`: Atomically updates an integer field.
+- `AtomicLongFieldUpdater`: Atomically updates a long field.
+- `AtomicReferenceFieldUpdater`: Atomically updates a reference field.
 
-## 基本类型原子类
+## Atomic Classes for Primitive Types
 
-使用原子的方式更新基本类型
+These classes atomically update primitive values:
 
-- `AtomicInteger`：整型原子类
-- `AtomicLong`：长整型原子类
-- `AtomicBoolean`：布尔型原子类
+- `AtomicInteger`: Atomic operations on integers.
+- `AtomicLong`: Atomic operations on long values.
+- `AtomicBoolean`: Atomic operations on boolean values.
 
-上面三个类提供的方法几乎相同，所以我们这里以 `AtomicInteger` 为例子来介绍。
+These classes provide similar methods, so the examples use `AtomicInteger`.
 
-**`AtomicInteger` 类常用方法**：
+**Common `AtomicInteger` methods:**
 
 ```java
-public final int get() //获取当前的值
-public final int getAndSet(int newValue)//获取当前的值，并设置新的值
-public final int getAndIncrement()//获取当前的值，并自增
-public final int getAndDecrement() //获取当前的值，并自减
-public final int getAndAdd(int delta) //获取当前的值，并加上预期的值
-boolean compareAndSet(int expect, int update) //如果输入的数值等于预期值，则以原子方式将该值设置为输入值（update）
-public final void lazySet(int newValue)//最终设置为newValue, lazySet 提供了一种比 set 方法更弱的语义，可能导致其他线程在之后的一小段时间内还是可以读到旧的值，但可能更高效。
+public final int get() // Get the current value
+public final int getAndSet(int newValue) // Get the current value and set a new one
+public final int getAndIncrement() // Get the current value and increment it
+public final int getAndDecrement() // Get the current value and decrement it
+public final int getAndAdd(int delta) // Get the current value and add delta
+boolean compareAndSet(int expect, int update) // Atomically set update if the current value equals expect
+public final void lazySet(int newValue) // Set newValue with weaker ordering semantics than set; other threads may briefly observe the old value
 ```
 
-**`AtomicInteger` 类使用示例** :
+**Example using `AtomicInteger`:**
 
 ```java
-// 初始化 AtomicInteger 对象，初始值为 0
+// Initialize an AtomicInteger with a value of 0
 AtomicInteger atomicInt = new AtomicInteger(0);
 
-// 使用 getAndSet 方法获取当前值，并设置新值为 3
+// Get the current value and set it to 3
 int tempValue = atomicInt.getAndSet(3);
 System.out.println("tempValue: " + tempValue + "; atomicInt: " + atomicInt);
 
-// 使用 getAndIncrement 方法获取当前值，并自增 1
+// Get the current value and increment it
 tempValue = atomicInt.getAndIncrement();
 System.out.println("tempValue: " + tempValue + "; atomicInt: " + atomicInt);
 
-// 使用 getAndAdd 方法获取当前值，并增加指定值 5
+// Get the current value and add 5
 tempValue = atomicInt.getAndAdd(5);
 System.out.println("tempValue: " + tempValue + "; atomicInt: " + atomicInt);
 
-// 使用 compareAndSet 方法进行原子性条件更新，期望值为 9，更新值为 10
+// Set the value to 10 only if its current value is 9
 boolean updateSuccess = atomicInt.compareAndSet(9, 10);
 System.out.println("Update Success: " + updateSuccess + "; atomicInt: " + atomicInt);
 
-// 获取当前值
+// Get the current value
 int currentValue = atomicInt.get();
 System.out.println("Current value: " + currentValue);
 
-// 使用 lazySet 方法设置新值为 15
+// Set the value to 15 with lazySet
 atomicInt.lazySet(15);
 System.out.println("After lazySet, atomicInt: " + atomicInt);
 ```
 
-输出：
+Output:
 
 ```java
 tempValue: 0; atomicInt: 3
@@ -120,42 +120,42 @@ Current value: 10
 After lazySet, atomicInt: 15
 ```
 
-## 数组类型原子类
+## Atomic Classes for Arrays
 
-使用原子的方式更新数组里的某个元素
+These classes atomically update individual array elements:
 
-- `AtomicIntegerArray`：整形数组原子类
-- `AtomicLongArray`：长整形数组原子类
-- `AtomicReferenceArray`：引用类型数组原子类
+- `AtomicIntegerArray`: Atomic operations on integer arrays.
+- `AtomicLongArray`: Atomic operations on long arrays.
+- `AtomicReferenceArray`: Atomic operations on reference arrays.
 
-上面三个类提供的方法几乎相同，所以我们这里以 `AtomicIntegerArray` 为例子来介绍。
+These classes provide similar methods, so the examples use `AtomicIntegerArray`.
 
-**`AtomicIntegerArray` 类常用方法**：
+**Common `AtomicIntegerArray` methods:**
 
 ```java
-public final int get(int i) //获取 index=i 位置元素的值
-public final int getAndSet(int i, int newValue)//返回 index=i 位置的当前的值，并将其设置为新值：newValue
-public final int getAndIncrement(int i)//获取 index=i 位置元素的值，并让该位置的元素自增
-public final int getAndDecrement(int i) //获取 index=i 位置元素的值，并让该位置的元素自减
-public final int getAndAdd(int i, int delta) //获取 index=i 位置元素的值，并加上预期的值
-boolean compareAndSet(int i, int expect, int update) //如果输入的数值等于预期值，则以原子方式将 index=i 位置的元素值设置为输入值（update）
-public final void lazySet(int i, int newValue)//最终 将index=i 位置的元素设置为newValue,使用 lazySet 设置之后可能导致其他线程在之后的一小段时间内还是可以读到旧的值。
+public final int get(int i) // Get the value at index i
+public final int getAndSet(int i, int newValue) // Return the current value at index i and set it to newValue
+public final int getAndIncrement(int i) // Return the value at index i and increment it
+public final int getAndDecrement(int i) // Return the value at index i and decrement it
+public final int getAndAdd(int i, int delta) // Return the value at index i and add delta
+boolean compareAndSet(int i, int expect, int update) // Atomically set the value at index i if it equals expect
+public final void lazySet(int i, int newValue) // Set index i to newValue with weaker ordering; other threads may briefly observe the old value
 ```
 
-**`AtomicIntegerArray` 类使用示例** :
+**Example using `AtomicIntegerArray`:**
 
 ```java
 int[] nums = {1, 2, 3, 4, 5, 6};
-// 创建 AtomicIntegerArray
+// Create an AtomicIntegerArray
 AtomicIntegerArray atomicArray = new AtomicIntegerArray(nums);
 
-// 打印 AtomicIntegerArray 中的初始值
+// Print the initial values in the AtomicIntegerArray
 System.out.println("Initial values in AtomicIntegerArray:");
 for (int j = 0; j < nums.length; j++) {
     System.out.print("Index " + j + ": " + atomicArray.get(j) + " ");
 }
 
-// 使用 getAndSet 方法将索引 0 处的值设置为 2，并返回旧值
+// Set index 0 to 2 and return its old value
 int tempValue = atomicArray.getAndSet(0, 2);
 System.out.println("\nAfter getAndSet(0, 2):");
 System.out.println("Returned value: " + tempValue);
@@ -163,7 +163,7 @@ for (int j = 0; j < atomicArray.length(); j++) {
     System.out.print("Index " + j + ": " + atomicArray.get(j) + " ");
 }
 
-// 使用 getAndIncrement 方法将索引 0 处的值加 1，并返回旧值
+// Increment the value at index 0 and return its old value
 tempValue = atomicArray.getAndIncrement(0);
 System.out.println("\nAfter getAndIncrement(0):");
 System.out.println("Returned value: " + tempValue);
@@ -171,7 +171,7 @@ for (int j = 0; j < atomicArray.length(); j++) {
     System.out.print("Index " + j + ": " + atomicArray.get(j) + " ");
 }
 
-// 使用 getAndAdd 方法将索引 0 处的值增加 5，并返回旧值
+// Add 5 to the value at index 0 and return its old value
 tempValue = atomicArray.getAndAdd(0, 5);
 System.out.println("\nAfter getAndAdd(0, 5):");
 System.out.println("Returned value: " + tempValue);
@@ -180,7 +180,7 @@ for (int j = 0; j < atomicArray.length(); j++) {
 }
 ```
 
-输出：
+Output:
 
 ```plain
 Initial values in AtomicIntegerArray:
@@ -196,50 +196,50 @@ Returned value: 3
 Index 0: 8 Index 1: 2 Index 2: 3 Index 3: 4 Index 4: 5 Index 5: 6
 ```
 
-## 引用类型原子类
+## Atomic Classes for References
 
-基本类型原子类只能更新一个变量，如果需要原子更新多个变量，需要使用 引用类型原子类。
+Atomic classes for primitive values update one variable. To atomically update multiple values together, use an atomic class for references.
 
-- `AtomicReference`：引用类型原子类
-- `AtomicStampedReference`：原子更新带有版本号的引用类型。该类将整数值与引用关联起来，可用于解决原子的更新数据和数据的版本号，可以解决使用 CAS 进行原子更新时可能出现的 ABA 问题。
-- `AtomicMarkableReference`：原子更新带有标记的引用类型。该类将 boolean 标记与引用关联起来，~~也可以解决使用 CAS 进行原子更新时可能出现的 ABA 问题。~~
+- `AtomicReference`: Atomic operations on a reference.
+- `AtomicStampedReference`: Atomically updates a reference and an integer stamp. The stamp can help detect the ABA problem during CAS updates.
+- `AtomicMarkableReference`: Atomically updates a reference and a boolean mark. ~~It can also solve the ABA problem during CAS updates.~~
 
-上面三个类提供的方法几乎相同，所以我们这里以 `AtomicReference` 为例子来介绍。
+These classes provide similar methods, so the example uses `AtomicReference`.
 
-**`AtomicReference` 类使用示例** :
+**Example using `AtomicReference`:**
 
 ```java
-// Person 类
+// Person class
 class Person {
     private String name;
     private int age;
-    //省略getter/setter和toString
+    // Getters, setters, and toString omitted
 }
 
 
-// 创建 AtomicReference 对象并设置初始值
+// Create an AtomicReference with an initial value
 AtomicReference<Person> ar = new AtomicReference<>(new Person("SnailClimb", 22));
 
-// 打印初始值
+// Print the initial value
 System.out.println("Initial Person: " + ar.get().toString());
 
-// 更新值
+// Update the value
 Person updatePerson = new Person("Daisy", 20);
 ar.compareAndSet(ar.get(), updatePerson);
 
-// 打印更新后的值
+// Print the updated value
 System.out.println("Updated Person: " + ar.get().toString());
 
-// 尝试再次更新
+// Try another update
 Person anotherUpdatePerson = new Person("John", 30);
 boolean isUpdated = ar.compareAndSet(updatePerson, anotherUpdatePerson);
 
-// 打印是否更新成功及最终值
+// Print whether the update succeeded and the final value
 System.out.println("Second Update Success: " + isUpdated);
 System.out.println("Final Person: " + ar.get().toString());
 ```
 
-输出：
+Output:
 
 ```plain
 Initial Person: Person{name='SnailClimb', age=22}
@@ -248,18 +248,18 @@ Second Update Success: true
 Final Person: Person{name='John', age=30}
 ```
 
-**`AtomicStampedReference` 类使用示例** :
+**Example using `AtomicStampedReference`:**
 
 ```java
-// 创建一个 AtomicStampedReference 对象，初始值为 "SnailClimb"，初始版本号为 1
+// Create an AtomicStampedReference with an initial value and stamp
 AtomicStampedReference<String> asr = new AtomicStampedReference<>("SnailClimb", 1);
 
-// 打印初始值和版本号
+// Print the initial reference and stamp
 int[] initialStamp = new int[1];
 String initialRef = asr.get(initialStamp);
 System.out.println("Initial Reference: " + initialRef + ", Initial Stamp: " + initialStamp[0]);
 
-// 更新值和版本号
+// Update the reference and stamp
 int oldStamp = initialStamp[0];
 String oldRef = initialRef;
 String newRef = "Daisy";
@@ -268,22 +268,22 @@ int newStamp = oldStamp + 1;
 boolean isUpdated = asr.compareAndSet(oldRef, newRef, oldStamp, newStamp);
 System.out.println("Update Success: " + isUpdated);
 
-// 打印更新后的值和版本号
+// Print the updated reference and stamp
 int[] updatedStamp = new int[1];
 String updatedRef = asr.get(updatedStamp);
 System.out.println("Updated Reference: " + updatedRef + ", Updated Stamp: " + updatedStamp[0]);
 
-// 尝试用错误的版本号更新
+// Try to update with an incorrect stamp
 boolean isUpdatedWithWrongStamp = asr.compareAndSet(newRef, "John", oldStamp, newStamp + 1);
 System.out.println("Update with Wrong Stamp Success: " + isUpdatedWithWrongStamp);
 
-// 打印最终的值和版本号
+// Print the final reference and stamp
 int[] finalStamp = new int[1];
 String finalRef = asr.get(finalStamp);
 System.out.println("Final Reference: " + finalRef + ", Final Stamp: " + finalStamp[0]);
 ```
 
-输出结果如下：
+Output:
 
 ```plain
 Initial Reference: SnailClimb, Initial Stamp: 1
@@ -293,18 +293,18 @@ Update with Wrong Stamp Success: false
 Final Reference: Daisy, Final Stamp: 2
 ```
 
-**`AtomicMarkableReference` 类使用示例** :
+**Example using `AtomicMarkableReference`:**
 
 ```java
-// 创建一个 AtomicMarkableReference 对象，初始值为 "SnailClimb"，初始标记为 false
+// Create an AtomicMarkableReference with an initial value and mark
 AtomicMarkableReference<String> amr = new AtomicMarkableReference<>("SnailClimb", false);
 
-// 打印初始值和标记
+// Print the initial reference and mark
 boolean[] initialMark = new boolean[1];
 String initialRef = amr.get(initialMark);
 System.out.println("Initial Reference: " + initialRef + ", Initial Mark: " + initialMark[0]);
 
-// 更新值和标记
+// Update the reference and mark
 String oldRef = initialRef;
 String newRef = "Daisy";
 boolean oldMark = initialMark[0];
@@ -313,22 +313,22 @@ boolean newMark = true;
 boolean isUpdated = amr.compareAndSet(oldRef, newRef, oldMark, newMark);
 System.out.println("Update Success: " + isUpdated);
 
-// 打印更新后的值和标记
+// Print the updated reference and mark
 boolean[] updatedMark = new boolean[1];
 String updatedRef = amr.get(updatedMark);
 System.out.println("Updated Reference: " + updatedRef + ", Updated Mark: " + updatedMark[0]);
 
-// 尝试用错误的标记更新
+// Try to update with an incorrect mark
 boolean isUpdatedWithWrongMark = amr.compareAndSet(newRef, "John", oldMark, !newMark);
 System.out.println("Update with Wrong Mark Success: " + isUpdatedWithWrongMark);
 
-// 打印最终的值和标记
+// Print the final reference and mark
 boolean[] finalMark = new boolean[1];
 String finalRef = amr.get(finalMark);
 System.out.println("Final Reference: " + finalRef + ", Final Mark: " + finalMark[0]);
 ```
 
-输出结果如下：
+Output:
 
 ```plain
 Initial Reference: SnailClimb, Initial Mark: false
@@ -338,55 +338,55 @@ Update with Wrong Mark Success: false
 Final Reference: Daisy, Final Mark: true
 ```
 
-## 对象的属性修改类型原子类
+## Atomic Field Updaters
 
-如果需要原子更新某个类里的某个字段时，需要用到对象的属性修改类型原子类。
+Use a field updater to atomically update a field in an object.
 
-- `AtomicIntegerFieldUpdater`:原子更新整形字段的更新器
-- `AtomicLongFieldUpdater`：原子更新长整形字段的更新器
-- `AtomicReferenceFieldUpdater`：原子更新引用类型里的字段的更新器
+- `AtomicIntegerFieldUpdater`: Atomically updates an integer field.
+- `AtomicLongFieldUpdater`: Atomically updates a long field.
+- `AtomicReferenceFieldUpdater`: Atomically updates a reference field.
 
-要想原子地更新对象的属性需要两步。第一步，因为对象的属性修改类型原子类都是抽象类，所以每次使用都必须使用静态方法 `newUpdater()` 创建一个更新器，并且需要设置想要更新的类和属性。第二步，目标字段必须使用 `volatile` 修饰，并与更新器的类型匹配：分别为 `int`、`long` 或引用类型；同时不能是 `static` 或 `final` 字段。
+To update a field atomically: first, call the static `newUpdater()` method to create an updater for the target class and field. Second, make sure the field is `volatile` and matches the updater type (`int`, `long`, or a reference). The field cannot be `static` or `final`.
 
-上面三个类提供的方法几乎相同，所以我们这里以 `AtomicIntegerFieldUpdater` 为例子来介绍。
+These updaters provide similar methods, so the example uses `AtomicIntegerFieldUpdater`.
 
-**`AtomicIntegerFieldUpdater` 类使用示例** :
+**Example using `AtomicIntegerFieldUpdater`:**
 
 ```java
-// Person 类
+// Person class
 class Person {
     private String name;
-    // 要使用 AtomicIntegerFieldUpdater，字段必须是 volatile int
+    // The field must be a volatile int for AtomicIntegerFieldUpdater
     volatile int age;
-    //省略getter/setter和toString
+    // Getters, setters, and toString omitted
 }
 
-// 创建 AtomicIntegerFieldUpdater 对象
+// Create an AtomicIntegerFieldUpdater
 AtomicIntegerFieldUpdater<Person> ageUpdater = AtomicIntegerFieldUpdater.newUpdater(Person.class, "age");
 
-// 创建 Person 对象
+// Create a Person object
 Person person = new Person("SnailClimb", 22);
 
-// 打印初始值
+// Print the initial value
 System.out.println("Initial Person: " + person);
 
-// 更新 age 字段
-ageUpdater.incrementAndGet(person); // 自增
+// Update the age field
+ageUpdater.incrementAndGet(person); // Increment by one
 System.out.println("After Increment: " + person);
 
-ageUpdater.addAndGet(person, 5); // 增加 5
+ageUpdater.addAndGet(person, 5); // Add 5
 System.out.println("After Adding 5: " + person);
 
-ageUpdater.compareAndSet(person, 28, 30); // 如果当前值是 28，则设置为 30
+ageUpdater.compareAndSet(person, 28, 30); // Set to 30 if the current value is 28
 System.out.println("After Compare and Set (28 to 30): " + person);
 
-// 尝试使用错误的比较值进行更新
-boolean isUpdated = ageUpdater.compareAndSet(person, 28, 35); // 这次应该失败
+// Try to update with an incorrect expected value
+boolean isUpdated = ageUpdater.compareAndSet(person, 28, 35); // This should fail
 System.out.println("Compare and Set (28 to 35) Success: " + isUpdated);
 System.out.println("Final Person: " + person);
 ```
 
-输出结果：
+Output:
 
 ```plain
 Initial Person: Name: SnailClimb, Age: 22
@@ -397,8 +397,8 @@ Compare and Set (28 to 35) Success: false
 Final Person: Name: SnailClimb, Age: 30
 ```
 
-## 参考
+## Reference
 
-- 《Java 并发编程的艺术》
+- _The Art of Java Concurrency Programming_
 
 <!-- @include: @article-footer.snippet.md -->

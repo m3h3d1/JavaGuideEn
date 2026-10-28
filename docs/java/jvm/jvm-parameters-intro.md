@@ -1,124 +1,124 @@
 ---
-title: 最重要的JVM参数总结
-description: 总结常用 JVM 参数与配置方法，结合内存与 GC 调优的实践建议。
+title: A Guide to Common JVM Parameters
+description: An overview of common JVM parameters and configuration, with practical advice on memory and GC tuning.
 category: Java
 tag:
   - JVM
 head:
   - - meta
     - name: keywords
-      content: JVM 参数,堆大小,栈大小,GC 设置,性能调优,XX 参数
+      content: JVM parameters, heap size, stack size, GC settings, performance tuning, XX options
 ---
 
-> 本文由 JavaGuide 翻译自 [https://www.baeldung.com/jvm-parameters](https://www.baeldung.com/jvm-parameters)，并对文章进行了大量的完善补充。
-> 文档参数 [https://docs.oracle.com/javase/8/docs/technotes/tools/unix/java.html](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/java.html)
+> JavaGuide translated this article from [https://www.baeldung.com/jvm-parameters](https://www.baeldung.com/jvm-parameters) and expanded it with additional material.
+> Parameter reference: [https://docs.oracle.com/javase/8/docs/technotes/tools/unix/java.html](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/java.html)
 >
-> JDK 版本：1.8 为主，也会补充新版本常用参数
+> JDK versions: Primarily JDK 8, with commonly used options from newer releases where relevant.
 
-在本篇文章中，我们将一起掌握 Java 虚拟机（JVM）中最常用的一些参数配置，帮助你更好地理解和调优 Java 应用的运行环境。
+This guide covers some of the most commonly used Java Virtual Machine (JVM) options and explains how to use them to understand and tune a Java application's runtime environment.
 
-## 堆内存相关
+## Heap memory
 
-> Java 堆（Java Heap）是 JVM 所管理的内存中最大的一块区域，**所有线程共享**，在虚拟机启动时创建。**此内存区域的唯一目的就是存放对象实例，几乎所有的对象实例以及数组都要在堆上分配内存。**
+> The Java heap is the largest memory area managed by the JVM. It is **shared by all threads** and created when the virtual machine starts. **Its only purpose is to store object instances; nearly all object instances and arrays are allocated on the heap.**
 
-![内存区域常见配置参数](./pictures/内存区域常见配置参数.png)
+![Common memory configuration options](./pictures/内存区域常见配置参数.png)
 
-### 设置堆内存大小（-Xms 和 -Xmx）
+### Set the heap size (`-Xms` and `-Xmx`)
 
-根据应用程序的实际需求设置初始和最大堆内存大小，是性能调优中最常见的实践之一。将两者设为相同值，可以减少运行时调整堆容量的开销；如果希望低负载时归还未使用的堆内存，则需要保留伸缩空间。例如，ZGC 在 `-Xms` 等于 `-Xmx` 时无法通过 Uncommit 归还堆内存，应根据延迟目标和内存成本选择。
+Setting the initial and maximum heap sizes to match an application's needs is one of the most common performance tuning practices. Setting them to the same value can avoid the cost of resizing the heap at runtime. If you want unused heap memory returned during periods of low load, leave room for the heap to shrink. For example, ZGC cannot return heap memory through uncommit when `-Xms` equals `-Xmx`; choose values based on latency goals and memory costs.
 
-使用以下参数进行设置：
+Use these options to set the heap size:
 
 ```bash
--Xms<heap size>[unit]  # 设置 JVM 初始堆大小
--Xmx<heap size>[unit]  # 设置 JVM 最大堆大小
+-Xms<heap size>[unit]  # Set the JVM's initial heap size
+-Xmx<heap size>[unit]  # Set the JVM's maximum heap size
 ```
 
-- `<heap size>`: 指定内存的具体数值。
-- `[unit]`: 指定内存的单位，如 g (GB)、m (MB)、k (KB)。
+- `<heap size>`: The memory amount.
+- `[unit]`: The unit, such as `g` (GB), `m` (MB), or `k` (KB).
 
-**示例：** 将 JVM 的初始堆和最大堆都设置为 4GB：
+**Example:** Set both the initial and maximum heap sizes to 4 GB:
 
 ```bash
 -Xms4G -Xmx4G
 ```
 
-### 设置新生代内存大小 (Young Generation)
+### Set the young generation size
 
-根据[Oracle 官方文档](https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/sizing.html)，在堆总可用内存配置完成之后，第二大影响因素是 `Young Generation` 在堆内存所占的比例。新生代的默认大小会受 JVM 实现、平台、垃圾收集器、堆大小和自适应策略影响，并不存在适用于所有环境的固定“最小 1310 MB”；`NewSize` 和 `MaxNewSize` 分别用于约束新生代大小的下限和上限。
+According to the [Oracle documentation](https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/sizing.html), after setting the total available heap, the next major factor is the proportion of the heap occupied by the young generation. Its default size depends on the JVM implementation, platform, collector, heap size, and adaptive policies. There is no fixed “minimum 1310 MB” that applies to every environment. `NewSize` and `MaxNewSize` set lower and upper bounds for the young generation, respectively.
 
-对于支持固定新生代大小参数的分代收集器，可以通过以下两种方式设置新生代内存大小：
+For generational collectors that support fixed young-generation sizing, use either of these methods:
 
-**1.通过 `-XX:NewSize` 和 `-XX:MaxNewSize` 指定**
+**1. Use `-XX:NewSize` and `-XX:MaxNewSize`**
 
 ```bash
--XX:NewSize=<young size>[unit]    # 设置新生代初始大小
--XX:MaxNewSize=<young size>[unit] # 设置新生代最大大小
+-XX:NewSize=<young size>[unit]    # Set the initial young generation size
+-XX:MaxNewSize=<young size>[unit] # Set the maximum young generation size
 ```
 
-**示例：** 设置新生代最小 512MB，最大 1024MB：
+**Example:** Set the young generation size to a minimum of 512 MB and a maximum of 1024 MB:
 
 ```bash
 -XX:NewSize=512m -XX:MaxNewSize=1024m
 ```
 
-**2.通过 `-Xmn<young size>[unit]` 指定**
+**2. Use `-Xmn<young size>[unit]`**
 
-**示例：** 将新生代大小固定为 512MB：
+**Example:** Fix the young generation size at 512 MB:
 
 ```bash
 -Xmn512m
 ```
 
-显式设置新生代大小会限制垃圾收集器的自适应调整能力。[Oracle 官方文档](https://docs.oracle.com/en/java/javase/25/docs/specs/man/java.html#extra-options-for-java)明确建议不要为 G1 设置 `-Xmn`；是否需要调整以及如何调整，应结合具体收集器和 GC 日志判断。
+Explicitly setting the young generation size limits the collector's ability to adapt. The [Oracle documentation](https://docs.oracle.com/en/java/javase/25/docs/specs/man/java.html#extra-options-for-java) specifically advises against setting `-Xmn` with G1. Use the collector's behavior and GC logs to decide whether any tuning is needed.
 
-GC 调优策略中很重要的一条经验总结是这样说的：
+One useful GC tuning guideline is:
 
-> 尽量让新创建的对象在新生代分配内存并被回收，因为 Minor GC 的成本通常远低于 Full GC。通过分析 GC 日志，判断新生代空间分配是否合理。如果大量新对象过早进入老年代（Promotion），可以适当通过 `-Xmn` 或 -`XX:NewSize/-XX:MaxNewSize` 调整新生代大小，目标是最大限度地减少对象直接进入老年代的情况。
+> Let newly created objects be allocated and collected in the young generation where possible, because a Minor GC usually costs much less than a Full GC. Use GC logs to check whether the young generation is sized appropriately. If many new objects are promoted to the old generation too early, consider adjusting its size with `-Xmn` or `-XX:NewSize`/`-XX:MaxNewSize` to reduce direct promotion.
 
-另外，你还可以通过 **`-XX:NewRatio=<int>`** 参数来设置**老年代与整个新生代（包括 Eden 和两个 Survivor 区）的内存大小比例**。
+You can also use **`-XX:NewRatio=<int>`** to set the **ratio of the old generation to the entire young generation, including Eden and both Survivor spaces**.
 
-例如，`-XX:NewRatio=2` 表示老年代 : 新生代 = 2 : 1，即新生代占整个堆大小的 1/3。默认值会受 JVM、收集器和平台影响。
+For example, `-XX:NewRatio=2` means old generation : young generation = 2 : 1, so the young generation occupies one-third of the heap. The default depends on the JVM, collector, and platform.
 
 ```bash
 -XX:NewRatio=2
 ```
 
-### 设置永久代/元空间大小 (PermGen/Metaspace)
+### Set the PermGen or Metaspace size
 
-**从 Java 8 开始，类元数据改用本地内存。如果没有通过 `-XX:MaxMetaspaceSize` 设置上限，持续增长的类元数据可能消耗大量本地内存；永久代则受 `-XX:MaxPermSize` 上限约束。**
+**Starting with Java 8, class metadata uses native memory. Without a limit set by `-XX:MaxMetaspaceSize`, growing class metadata can consume substantial native memory. PermGen, by contrast, was bounded by `-XX:MaxPermSize`.**
 
-JDK 1.8 之前永久代还没被彻底移除的时候通常通过下面这些参数来调节方法区大小
-
-```bash
--XX:PermSize=N #方法区 (永久代) 初始大小
--XX:MaxPermSize=N #方法区 (永久代) 最大大小,超过这个值将会抛出 OutOfMemoryError 异常:java.lang.OutOfMemoryError: PermGen
-```
-
-相对而言，垃圾收集行为在这个区域是比较少出现的，但并非数据进入方法区后就“永久存在”了。
-
-**JDK 1.8 的时候，方法区（HotSpot 的永久代）被彻底移除了（JDK1.7 就已经开始了），取而代之是元空间，元空间使用的是本地内存。**
-
-下面是一些常用参数：
+Before PermGen was removed in JDK 8, these options were commonly used to adjust its size:
 
 ```bash
--XX:MetaspaceSize=N #设置 Metaspace 的初始大小（是一个常见的误区，后面会解释）
--XX:MaxMetaspaceSize=N #设置 Metaspace 的最大大小
+-XX:PermSize=N # Initial method area (PermGen) size
+-XX:MaxPermSize=N # Maximum method area (PermGen) size; exceeding it throws java.lang.OutOfMemoryError: PermGen
 ```
 
-**🐛 修正（参见：[issue#1947](https://github.com/Snailclimb/JavaGuide/issues/1947)）**：
+Garbage collection in this area was relatively infrequent, but data was not necessarily retained there permanently.
 
-**1、`-XX:MetaspaceSize` 并非初始容量：** Metaspace 的初始容量并不是 `-XX:MetaspaceSize` 设置，无论 `-XX:MetaspaceSize` 配置什么值，对于 64 位 JVM，元空间的初始容量通常是一个固定的较小值（Oracle 文档提到约 12MB 到 20MB 之间，实际观察约 20.8MB）。
+**In JDK 8, the method area implementation in HotSpot (PermGen) was removed and replaced with Metaspace, which uses native memory. The transition had begun in JDK 7.**
 
-可以参考 Oracle 官方文档 [Other Considerations](https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/considerations.html) 中提到的：
+Common options include:
+
+```bash
+-XX:MetaspaceSize=N # Set the Metaspace threshold for triggering metadata GC (explained below)
+-XX:MaxMetaspaceSize=N # Set the maximum Metaspace size
+```
+
+**🐛 Correction (see [issue #1947](https://github.com/Snailclimb/JavaGuide/issues/1947)):**
+
+**1. `-XX:MetaspaceSize` does not set the initial capacity:** The initial Metaspace capacity is not set by `-XX:MetaspaceSize`. Regardless of its value, a 64-bit JVM typically starts with a small fixed capacity. Oracle's documentation gives a range of about 12–20 MB; measurements have shown about 20.8 MB.
+
+See the Oracle documentation under [Other Considerations](https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/considerations.html):
 
 > Specify a higher value for the option MetaspaceSize to avoid early garbage collections induced for class metadata. The amount of class metadata allocated for an application is application-dependent and general guidelines do not exist for the selection of MetaspaceSize. The default size of MetaspaceSize is platform-dependent and ranges from 12 MB to about 20 MB.
 >
-> MetaspaceSize 的默认大小取决于平台，范围从 12 MB 到大约 20 MB。
+> The default MetaspaceSize is platform-dependent and ranges from 12 MB to about 20 MB.
 
-另外，还可以看一下这个试验：[JVM 参数 MetaspaceSize 的误解](https://mp.weixin.qq.com/s/jqfppqqd98DfAJHZhFbmxA)。
+For a practical demonstration, see [A common misconception about the JVM MetaspaceSize option](https://mp.weixin.qq.com/s/jqfppqqd98DfAJHZhFbmxA).
 
-**2、扩容与元数据 GC：** 当 Metaspace 的已提交空间达到 `-XX:MetaspaceSize` 对应的高水位阈值时，JVM 会触发一次垃圾回收以尝试卸载类、释放类元数据。在此之后，JVM 会根据释放效果动态调高或调低下一次触发 GC 的阈值；具体采用哪类回收周期取决于垃圾收集器和 JDK 版本，不能一概称为 Full GC。垃圾搜集器内部是根据变量 `_capacity_until_GC` 来判断 Metaspace 区域是否达到阈值的，初始化代码如下所示：
+**2. Growth and metadata GC:** When committed Metaspace reaches the high-water mark associated with `-XX:MetaspaceSize`, the JVM triggers garbage collection to try to unload classes and reclaim their metadata. The JVM then adjusts the threshold for the next GC based on how much memory was reclaimed. The type of collection depends on the collector and JDK version, so it should not always be described as a Full GC. Internally, the collector checks whether Metaspace has reached the threshold using `_capacity_until_GC`. Its initialization looks like this:
 
 ```c
 void MetaspaceGC::initialize() {
@@ -128,40 +128,40 @@ void MetaspaceGC::initialize() {
 }
 ```
 
-**3、`-XX:MaxMetaspaceSize` 的作用：**如果不显式设置 `-XX:MaxMetaspaceSize`，元空间默认没有固定上限，持续增长的类元数据可能消耗大量本地内存。是否设置该参数以及设置多大，应结合类元数据使用情况和进程的本地内存预算决定。上限过小会增加元数据 GC 的频率，也可能提前触发 `OutOfMemoryError: Metaspace`，因此不存在适用于所有应用的推荐值。
+**3. What `-XX:MaxMetaspaceSize` does:** If you do not set `-XX:MaxMetaspaceSize`, Metaspace has no fixed upper limit by default, so growing class metadata can consume substantial native memory. Decide whether to set this option, and choose a value, based on metadata usage and the process's native memory budget. A value that is too low can increase metadata GC frequency and trigger `OutOfMemoryError: Metaspace` earlier. There is no recommended value for every application.
 
-相关阅读：[issue 更正：MaxMetaspaceSize 如果不指定大小的话，不会耗尽内存 #1204](https://github.com/Snailclimb/JavaGuide/issues/1204)。
+Related discussion: [Correction: Not setting MaxMetaspaceSize does not mean memory will be exhausted (issue #1204)](https://github.com/Snailclimb/JavaGuide/issues/1204).
 
-## 垃圾收集相关
+## Garbage collection
 
-### 选择垃圾回收器
+### Choose a garbage collector
 
-选择合适的垃圾收集器（Garbage Collector, GC）对于应用的吞吐量和响应延迟至关重要。关于垃圾收集算法和收集器的详细介绍，可以看笔者写的这篇：[JVM 垃圾回收详解（重点）](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)。
+Choosing the right garbage collector (GC) is important for an application's throughput and latency. For an overview of GC algorithms and collectors, see [JVM Garbage Collection](https://javaguide.cn/java/jvm/jvm-garbage-collection.html).
 
-JVM 提供了多种 GC 实现，适用于不同的场景：
+The JVM provides several GC implementations for different workloads:
 
-- **Serial GC（串行垃圾收集器）:** 单线程执行 GC，适用于客户端模式或单核 CPU 环境。参数：`-XX:+UseSerialGC`。
-- **Parallel GC（并行垃圾收集器）:** 多线程执行新生代和老年代垃圾收集，关注吞吐量，是 JDK 8 Server VM 的默认 GC；在 JDK 8 中启用 `-XX:+UseParallelGC` 时默认搭配 Parallel Old。参数：`-XX:+UseParallelGC`。
-- **CMS GC（Concurrent Mark Sweep 并发标记清除收集器）:** 以获取最短回收停顿时间为目标，大部分 GC 阶段可与用户线程并发执行。适用于对响应时间要求高的应用。在 JDK 9 中被标记为弃用，JDK 14 中被移除。参数：`-XX:+UseConcMarkSweepGC`。
-- **G1 GC (Garbage-First Garbage Collector):** JDK 9 及之后 HotSpot 在典型 Server-class 机器上的默认 GC；其他环境的默认选择可能不同。它将堆划分为多个 Region，兼顾吞吐量和停顿时间，尝试满足用户设置的停顿时间目标。参数：`-XX:+UseG1GC`。
-- **ZGC:** 低延迟 GC，需要较新版本的 JDK 支持。参数：`-XX:+UseZGC`。
-- **Shenandoah GC:** 另一款低停顿收集器，是否可用取决于具体 JDK 发行版。参数：`-XX:+UseShenandoahGC`。
+- **Serial GC:** Runs GC on a single thread and is suited to client mode or single-core environments. Option: `-XX:+UseSerialGC`.
+- **Parallel GC:** Uses multiple threads for young and old generation collection and prioritizes throughput. It is the default GC for the JDK 8 Server VM; in JDK 8, enabling `-XX:+UseParallelGC` also selects Parallel Old by default. Option: `-XX:+UseParallelGC`.
+- **CMS GC (Concurrent Mark Sweep):** Aimed at short pauses, with most GC phases running concurrently with application threads. It was deprecated in JDK 9 and removed in JDK 14. Option: `-XX:+UseConcMarkSweepGC`.
+- **G1 GC (Garbage-First):** The default GC in HotSpot on typical server-class machines from JDK 9 onward; the default can differ in other environments. It divides the heap into regions and balances throughput with pause-time goals. Option: `-XX:+UseG1GC`.
+- **ZGC:** A low-latency collector available in newer JDK releases. Option: `-XX:+UseZGC`.
+- **Shenandoah GC:** Another low-pause collector; availability depends on the JDK distribution. Option: `-XX:+UseShenandoahGC`.
 
-### JDK 17 ZGC 参数
+### JDK 17 ZGC options
 
-JDK 17 的 ZGC 是非分代收集器，使用 `-XX:+UseZGC` 启用。调优时先根据实际负载确定堆和 CPU 预算，再根据 GC 日志调整参数，不要直接复制其他服务的整套配置。
+JDK 17 ZGC is non-generational and is enabled with `-XX:+UseZGC`. When tuning, first determine heap and CPU budgets from the workload, then adjust options based on GC logs. Avoid copying another service's entire configuration.
 
-| 参数                                   | 含义与使用时需要注意的地方                                                                                                                  |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-Xmx`、`-Xms`                         | 最大堆与初始/最小堆容量。堆需要容纳存活对象，并为并发回收期间的分配预留空间；`-Xmx` 也不是整个 Java 进程的内存上限。                        |
-| `-XX:ConcGCThreads`                    | 并发 GC 线程数。过少可能回收不及时，过多会与业务线程争抢 CPU。先使用 JVM 的自适应选择，再结合分配停顿、CPU 配额和负载验证是否需要手动设置。 |
-| `-XX:ZAllocationSpikeTolerance`        | 对分配速率突增的容忍系数，JDK 17 默认值为 `2.0`，用于影响回收时机的预测。它不是堆扩容比例，也不能代替足够的内存余量。                       |
-| `-XX:ZCollectionInterval`              | GC 周期的最大间隔，单位为秒。默认值 `0` 表示不通过这个时间间隔触发 GC，**不是禁用 GC**。不要把它理解为两次 GC 之间必须等待的最短时间。      |
-| `-XX:+ZUncommit`、`-XX:ZUncommitDelay` | 允许归还未使用的堆内存，JDK 17 默认开启，默认延迟为 `300` 秒。归还不会使堆低于 `-Xms`；设置 `-Xms` 等于 `-Xmx` 时，这项机制实际上不起作用。 |
+| Option                                 | Meaning and notes                                                                                                                                                                                                                             |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-Xmx`, `-Xms`                         | Maximum and initial/minimum heap size. The heap must hold live objects and leave room for allocations during concurrent collection. `-Xmx` is not the memory limit for the entire Java process.                                               |
+| `-XX:ConcGCThreads`                    | Number of concurrent GC threads. Too few may delay collection; too many compete with application threads for CPU. Start with the JVM's adaptive choice and use allocation stalls, CPU limits, and workload data to decide whether to tune it. |
+| `-XX:ZAllocationSpikeTolerance`        | Tolerance for sudden increases in allocation rate. The JDK 17 default is `2.0`; it affects predictions about when to collect. It is not a heap growth ratio and does not replace adequate memory headroom.                                    |
+| `-XX:ZCollectionInterval`              | Maximum interval between GC cycles, in seconds. The default `0` means this interval does not trigger GC; **it does not disable GC**. It is not a minimum wait time between collections.                                                       |
+| `-XX:+ZUncommit`, `-XX:ZUncommitDelay` | Allow unused heap memory to be returned. This is enabled by default in JDK 17, with a default delay of `300` seconds. The heap will not shrink below `-Xms`; this mechanism has no effect when `-Xms` equals `-Xmx`.                          |
 
-以上语义可对照 [JDK 17 `java` 命令文档](https://docs.oracle.com/en/java/javase/17/docs/specs/man/java.html) 和 [OpenJDK 17 ZGC 参数定义](https://github.com/openjdk/jdk17u/blob/master/src/hotspot/share/gc/z/z_globals.hpp)。不同 JDK 版本的参数可能变化，尤其不要给 JDK 17 添加分代 ZGC 参数 `-XX:+ZGenerational`。
+For these option semantics, see the [JDK 17 `java` command documentation](https://docs.oracle.com/en/java/javase/17/docs/specs/man/java.html) and the [OpenJDK 17 ZGC option definitions](https://github.com/openjdk/jdk17u/blob/master/src/hotspot/share/gc/z/z_globals.hpp). Options can change between JDK releases; in particular, do not add the generational ZGC option `-XX:+ZGenerational` to JDK 17.
 
-例如，下面的命令同时记录 GC 与安全点日志；堆大小需要另外按应用的资源预算设置：
+For example, this command records both GC and safepoint logs. Set the heap size separately based on the application's resource budget:
 
 ```bash
 java -XX:+UseZGC \
@@ -169,109 +169,109 @@ java -XX:+UseZGC \
   -jar app.jar
 ```
 
-如果日志中出现 Allocation Stall，应结合分配速率、存活量、可用堆空间和并发 GC 的 CPU 资源定位原因。单纯缩短定时回收间隔不一定有效，还可能增加 CPU 开销。容器的内存预算也要覆盖元空间、线程栈、直接内存和 JVM 本地开销，不能只按 `-Xmx` 设置容器上限。
+If the logs show an Allocation Stall, investigate allocation rate, live data, available heap, and CPU resources for concurrent GC. Simply shortening the collection interval may not help and can increase CPU usage. A container's memory budget must also account for Metaspace, thread stacks, direct memory, and JVM native overhead; do not set its limit based only on `-Xmx`.
 
-### GC 日志记录
+### GC logging
 
-在生产环境或进行 GC 问题排查时，**务必开启 GC 日志记录**。详细的 GC 日志是分析和解决 GC 问题的关键依据。
+In production and when troubleshooting GC issues, **enable GC logging**. Detailed logs are essential for analyzing and resolving GC problems.
 
-以下是一些 JDK 8 的 GC 日志参数：
+The following are GC logging options for JDK 8:
 
 ```bash
-# --- 推荐的基础配置 ---
-# 打印详细 GC 信息
+# --- Recommended basic configuration ---
+# Print detailed GC information
 -XX:+PrintGCDetails
-# 打印 GC 发生的时间戳 (相对于 JVM 启动时间)
+# Print timestamps relative to JVM startup
 # -XX:+PrintGCTimeStamps
-# 打印 GC 发生的日期和时间 (更常用)
+# Print the date and time of each GC (more commonly used)
 -XX:+PrintGCDateStamps
-# 指定 GC 日志文件的输出路径，%t 可以输出日期时间戳
+# Set the GC log file path; %t expands to a timestamp
 -Xloggc:/path/to/gc-%t.log
 
-# --- 推荐的进阶配置 ---
-# 打印对象年龄分布 (有助于判断对象晋升老年代的情况)
+# --- Recommended advanced configuration ---
+# Print object age distribution (useful for checking promotion to the old generation)
 -XX:+PrintTenuringDistribution
-# 在 GC 前后打印堆信息
+# Print heap information before and after GC
 -XX:+PrintHeapAtGC
-# 打印各种类型引用 (强/软/弱/虚) 的处理信息
+# Print processing information for strong, soft, weak, and phantom references
 -XX:+PrintReferenceGC
-# 打印应用暂停时间 (Stop-The-World, STW)
+# Print application pause times (Stop-The-World, STW)
 -XX:+PrintGCApplicationStoppedTime
 
-# --- GC 日志文件滚动配置 ---
-# 启用 GC 日志文件滚动
+# --- GC log rotation ---
+# Enable GC log rotation
 -XX:+UseGCLogFileRotation
-# 设置滚动日志文件的数量 (例如，保留最近 14 个)
+# Set the number of rotated log files to keep (for example, the latest 14)
 -XX:NumberOfGCLogFiles=14
-# 设置每个日志文件的最大大小 (例如，50MB)
+# Set the maximum size of each log file (for example, 50 MB)
 -XX:GCLogFileSize=50M
 
-# --- 可选的辅助诊断配置 ---
-# 打印安全点 (Safepoint) 统计信息 (有助于分析 STW 原因)
+# --- Optional diagnostic settings ---
+# Print safepoint statistics (useful for analyzing STW causes)
 # -XX:+PrintSafepointStatistics
 # -XX:PrintSafepointStatisticsCount=1
 ```
 
-JDK 9 及之后应使用统一 JVM 日志框架 `-Xlog`。例如，下面的配置记录详细 GC 信息并启用按大小滚动：
+Use the unified JVM logging framework, `-Xlog`, in JDK 9 and later. For example, this configuration records detailed GC information and rotates logs by size:
 
 ```bash
 -Xlog:gc*:file=/path/to/gc-%t.log:time,uptime,level,tags:filecount=14,filesize=50M
 ```
 
-旧参数并非都能继续使用：部分参数会被映射、弃用或直接不再识别。例如 `PrintGCDetails` 对应 `-Xlog:gc*`，`PrintTenuringDistribution` 对应 `-Xlog:gc+age*=debug`，`PrintGCApplicationStoppedTime` 对应 `-Xlog:safepoint`。应以目标 JDK 的 `java` 命令文档和 `java -Xlog:help` 输出为准。
+Not all legacy options remain available: some are mapped, deprecated, or no longer recognized. For example, `PrintGCDetails` maps to `-Xlog:gc*`, `PrintTenuringDistribution` to `-Xlog:gc+age*=debug`, and `PrintGCApplicationStoppedTime` to `-Xlog:safepoint`. Check the target JDK's `java` command documentation and the output of `java -Xlog:help`.
 
-## 处理 OOM
+## Handle out-of-memory errors
 
-对于大型应用程序来说，面对内存不足错误是非常常见的，这反过来会导致应用程序崩溃。这是一个非常关键的场景，很难通过复制来解决这个问题。
+Large applications can encounter out-of-memory errors that cause them to crash. Diagnosing these issues can be difficult, and copying another application's settings is unlikely to solve them.
 
-这就是为什么 JVM 提供了一些参数，这些参数将堆内存转储到一个物理文件中，以后可以用来查找泄漏:
+The JVM provides options to write a heap dump to a file, which you can analyze later to look for memory leaks:
 
 ```bash
-# Java 堆耗尽并抛出 OOME 时生成堆转储文件
+# Write a heap dump when the Java heap is exhausted and an OOME is thrown
 -XX:+HeapDumpOnOutOfMemoryError
 
-# 指定堆转储文件或目录。若指定目录，JVM 会使用默认名称 java_pid<pid>.hprof
+# Set the heap dump file or directory. For a directory, the JVM uses java_pid<pid>.hprof by default.
 -XX:HeapDumpPath=/data/dumps/
 
-# (可选) 在发生 OOM 时执行指定的命令或脚本
-# 例如，发送告警通知或尝试重启服务（需谨慎使用）
+# (Optional) Run a command or script when an OOM occurs
+# For example, send an alert or attempt to restart the service (use with care)
 # -XX:OnOutOfMemoryError="<command> <args>"
-# 示例：-XX:OnOutOfMemoryError="sh /path/to/notify.sh"
+# Example: -XX:OnOutOfMemoryError="sh /path/to/notify.sh"
 
-# (可选) 启用 GC 开销限制检查
-# 如果 GC 时间占总时间比例过高（默认 98%）且回收效果甚微（默认小于 2% 堆内存），
-# 会提前抛出 OOM，防止应用长时间卡死在 GC 中。
+# (Optional) Enable the GC overhead limit check
+# If GC takes too much of the total runtime (98% by default) and reclaims very little
+# (less than 2% of the heap by default), an OOM is thrown to prevent prolonged GC thrashing.
 -XX:+UseGCOverheadLimit
 ```
 
-## 其他常用参数
+## Other useful options
 
-- `-server`: 明确启用 Server 模式的 HotSpot VM。（在 64 位 JVM 上通常是默认值）。
-- `-XX:+UseStringDeduplication`: (JDK 8u20+) 尝试识别内容相同的 String 对象并共享其底层字符数据数组，以减少内存占用。JDK 8 中底层数组是 `char[]`，启用 Compact Strings 的现代 JDK 通常是 `byte[]`；该选项还要求使用支持字符串去重的收集器，例如 G1。
-- `-XX:SurvivorRatio=<ratio>`: 设置 Eden 区与单个 Survivor 区的大小比例。例如 `-XX:SurvivorRatio=8` 表示 Eden:Survivor = 8:1。
-- `-XX:MaxTenuringThreshold=<threshold>`: 设置对象从新生代晋升到老年代的最大年龄阈值（对象每经历一次 Minor GC 且存活，年龄加 1）。默认值与收集器和 JDK 版本有关，例如 JDK 8 文档中 Parallel GC 的默认值为 15，CMS 的默认值为 6。
-- `-XX:+DisableExplicitGC`: 让 JVM 忽略 `System.gc()` 等显式 GC 请求，但 JVM 在需要时仍会自行执行 GC。显式请求并不保证触发 Full GC；是否启用该参数应结合直接内存清理、框架行为和所用收集器评估，不能一概而论。
-- `-XX:+UseLargePages`:（需要操作系统支持） 尝试使用大内存页（如 2MB 而非 4KB），可能提升内存密集型应用的性能，但需谨慎测试。
-- `-XX:MinHeapFreeRatio=<percent>` / `-XX:MaxHeapFreeRatio=<percent>`: 对支持这组参数的收集器，控制 GC 后期望的堆空闲比例，参与堆容量调整。具体行为取决于收集器，不能用这组参数代替 ZGC 的容量与归还策略。
+- `-server`: Explicitly enable the HotSpot Server VM. This is usually the default on 64-bit JVMs.
+- `-XX:+UseStringDeduplication`: (JDK 8u20+) Try to identify equal `String` objects and share their backing character data to reduce memory use. The backing array is `char[]` in JDK 8 and is usually `byte[]` in modern JDKs with Compact Strings enabled. This option also requires a collector that supports string deduplication, such as G1.
+- `-XX:SurvivorRatio=<ratio>`: Set the size ratio between Eden and one Survivor space. For example, `-XX:SurvivorRatio=8` means Eden:Survivor = 8:1.
+- `-XX:MaxTenuringThreshold=<threshold>`: Set the maximum age at which an object is promoted from the young to the old generation. An object's age increases by one each time it survives a Minor GC. The default depends on the collector and JDK version; for example, the JDK 8 documentation lists 15 for Parallel GC and 6 for CMS.
+- `-XX:+DisableExplicitGC`: Make the JVM ignore explicit GC requests such as `System.gc()`. The JVM can still perform GC when needed. An explicit request does not guarantee a Full GC; evaluate this option in light of direct memory cleanup, framework behavior, and the collector in use.
+- `-XX:+UseLargePages`: (Requires OS support) Try to use large memory pages, such as 2 MB instead of 4 KB. This may improve performance for memory-intensive applications, but should be tested carefully.
+- `-XX:MinHeapFreeRatio=<percent>` / `-XX:MaxHeapFreeRatio=<percent>`: For collectors that support these options, set the desired heap free-space ratios after GC and influence heap resizing. Behavior depends on the collector; these options do not replace ZGC's sizing and uncommit policies.
 
-**注意：** 以下参数在现代 JVM 版本中可能已**弃用、移除或默认开启且无需手动设置**：
+**Note:** The following options may be **deprecated, removed, or enabled by default and no longer need to be set manually** in modern JVM releases:
 
-- `-XX:+UseLWPSynchronization`: 较旧的同步策略选项，现代 JVM 通常有更优化的实现。
-- `-XX:LargePageSizeInBytes`: 通常由 `-XX:+UseLargePages` 自动确定或通过 OS 配置。
-- `-XX:+UseStringCache`: 已被移除。
-- `-XX:+UseCompressedStrings`: 旧的实验性选项，已经被移除；JDK 9 引入的 Compact Strings 是另一套实现。
-- `-XX:+OptimizeStringConcat`: 旧版 HotSpot C2 的字符串拼接优化选项；JDK 9 起字符串拼接主要通过 `invokedynamic` 和 `StringConcatFactory` 实现，不能把二者视为同一个开关。
+- `-XX:+UseLWPSynchronization`: An older synchronization option; modern JVMs generally use more optimized implementations.
+- `-XX:LargePageSizeInBytes`: Usually determined automatically by `-XX:+UseLargePages` or configured through the OS.
+- `-XX:+UseStringCache`: Removed.
+- `-XX:+UseCompressedStrings`: An old experimental option that has been removed. Compact Strings, introduced in JDK 9, use a different implementation.
+- `-XX:+OptimizeStringConcat`: An option for string concatenation optimization in older HotSpot C2 versions. Since JDK 9, concatenation primarily uses `invokedynamic` and `StringConcatFactory`; these are not the same switch.
 
-## 总结
+## Summary
 
-本文为 Java 开发者提供了一份实用的 JVM 常用参数配置指南，旨在帮助读者理解和优化 Java 应用的性能与稳定性。文章重点强调了以下几个方面：
+This guide introduces commonly used JVM options to help Java developers understand and improve application performance and stability. The main points are:
 
-1. **堆内存配置：** 根据部署环境设置初始与最大堆内存（`-Xms`、`-Xmx`），权衡固定堆容量的性能收益和弹性归还内存的需求。新生代大小是否需要显式设置，应结合垃圾收集器和 GC 日志判断；G1 通常不建议设置 `-Xmn`，JDK 17 的非分代 ZGC 则没有新生代。
-2. **元空间管理（Java 8+）：** `-XX:MetaspaceSize` 用于设置触发元数据 GC 的初始高水位阈值，而不是元空间的初始容量。`-XX:MaxMetaspaceSize` 可以限制类元数据使用的本地内存，但具体上限需要根据应用实际情况确定。
-3. **垃圾收集器选择与日志：**介绍了不同 GC 算法的适用场景，并强调在生产和测试环境中开启详细 GC 日志对于问题排查的必要性；JDK 8 使用传统 GC 日志参数，JDK 9 及之后使用 `-Xlog`。
-4. **OOM 故障排查：** 说明了如何通过 `-XX:+HeapDumpOnOutOfMemoryError` 等参数在发生 OOM 时自动生成堆转储文件，以便进行后续的内存泄漏分析。
-5. **其他参数：** 简要介绍了如字符串去重等其他有用参数，并指出了部分旧参数的现状。
+1. **Heap sizing:** Set the initial and maximum heap sizes (`-Xms`, `-Xmx`) based on the deployment environment, balancing the performance benefits of a fixed heap against the need to return unused memory. Decide whether to set the young generation size based on the collector and GC logs. `-Xmn` is generally not recommended with G1, and JDK 17's non-generational ZGC has no young generation.
+2. **Metaspace management (Java 8+):** `-XX:MetaspaceSize` sets the initial high-water mark that can trigger metadata GC; it does not set Metaspace's initial capacity. `-XX:MaxMetaspaceSize` can limit native memory used by class metadata, but the limit should reflect the application.
+3. **Collector choice and logging:** The guide describes when to use different GC algorithms and why detailed GC logs help with troubleshooting in production and test environments. Use legacy GC logging options in JDK 8 and `-Xlog` in JDK 9 and later.
+4. **OOM troubleshooting:** Options such as `-XX:+HeapDumpOnOutOfMemoryError` can automatically write a heap dump when an OOM occurs, allowing later analysis for memory leaks.
+5. **Other options:** The guide briefly covers useful options such as string deduplication and explains the status of some legacy options.
 
-具体的问题排查和调优案例，可以参考笔者整理的这篇文章：[JVM 线上问题排查和性能调优案例](https://javaguide.cn/java/jvm/jvm-in-action.html)。
+For troubleshooting and tuning examples, see [JVM Production Troubleshooting and Performance Tuning](https://javaguide.cn/java/jvm/jvm-in-action.html).
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,22 +1,22 @@
 ---
-title: DelayQueue 源码分析
-description: DelayQueue源码深度解析：详解延迟队列实现原理、Delayed接口使用、延时任务调度、订单超时取消等应用场景、基于PriorityQueue的线程安全设计。
+title: DelayQueue Source Code Analysis
+description: An in-depth look at DelayQueue, the Delayed interface, scheduled tasks, timeout handling, and its thread-safe PriorityQueue-based design.
 category: Java
 tag:
-  - Java集合
+  - Java Collections
 head:
   - - meta
     - name: keywords
-      content: DelayQueue源码,延迟队列,Delayed接口,延时任务,定时任务,订单超时,PriorityQueue实现
+      content: DelayQueue source code, delayed queue, Delayed interface, delayed tasks, scheduled tasks, order timeout, PriorityQueue implementation
 ---
 
-## DelayQueue 简介
+## Introduction to DelayQueue
 
-`DelayQueue` 是 JUC 包(`java.util.concurrent)` 为我们提供的延迟队列，用于实现延时任务比如订单下单 15 分钟未支付直接取消。它是 `BlockingQueue` 的一种，底层是一个基于 `PriorityQueue` 实现的一个无界队列，是线程安全的。关于 `PriorityQueue` 可以参考笔者编写的这篇文章：[PriorityQueue 源码分析](./priorityqueue-source-code.md)。
+`DelayQueue`, part of `java.util.concurrent` (JUC), is a thread-safe, unbounded `BlockingQueue` backed by a `PriorityQueue`. It is useful for delayed tasks, such as canceling an order that remains unpaid for 15 minutes. See [PriorityQueue Source Code Analysis](./priorityqueue-source-code.md) for details about `PriorityQueue`.
 
-![BlockingQueue 的实现类](https://oss.javaguide.cn/github/javaguide/java/collection/blocking-queue-hierarchy.png)
+![BlockingQueue implementations](https://oss.javaguide.cn/github/javaguide/java/collection/blocking-queue-hierarchy.png)
 
-`DelayQueue` 中存放的元素必须实现 `Delayed` 接口，并且需要重写 `getDelay()` 方法（计算是否到期）。
+Elements stored in a `DelayQueue` must implement the `Delayed` interface and its `getDelay()` method, which reports the remaining delay.
 
 ```java
 public interface Delayed extends Comparable<Delayed> {
@@ -24,29 +24,29 @@ public interface Delayed extends Comparable<Delayed> {
 }
 ```
 
-默认情况下, `DelayQueue` 会按照到期时间升序编排任务。只有当元素过期时（`getDelay()` 方法返回值小于等于 0），才能从队列中取出。
+By default, `DelayQueue` orders tasks by their expiration time. An element can be retrieved only after it expires, when `getDelay()` returns zero or less.
 
-`DelayQueue` 最早在 Java 5 中引入，是一个线程安全的无界阻塞队列。
+`DelayQueue` was introduced in Java 5. It is a thread-safe, unbounded blocking queue.
 
-## DelayQueue 常见使用场景示例
+## A Common DelayQueue Use Case
 
-我们这里希望任务按照预期的延迟变为可获取状态，例如提交 3 个任务，分别设置 1s、2s、3s 的延迟，即使乱序添加，延迟最先到期的任务也会最先变为可获取状态。
+Suppose we submit three tasks with delays of 1, 2, and 3 seconds. Even if they are added out of order, the task with the earliest expiration becomes available first.
 
-![延迟任务](https://oss.javaguide.cn/github/javaguide/java/collection/delayed-task.png)
+![Delayed tasks](https://oss.javaguide.cn/github/javaguide/java/collection/delayed-task.png)
 
-对此我们可以使用 `DelayQueue` 来实现，所以我们首先需要继承 `Delayed` 实现 `DelayedTask`，实现 `getDelay` 方法以及优先级比较 `compareTo`。
+We can implement this with `DelayQueue`. First, define a `DelayedTask` that implements `Delayed` and provides `getDelay` and `compareTo`:
 
 ```java
 /**
- * 延迟任务
+ * A delayed task
  */
 public class DelayedTask implements Delayed {
     /**
-     * 任务到期时间
+     * Task expiration time
      */
     private long executeTime;
     /**
-     * 任务
+     * Task to run
      */
     private Runnable task;
 
@@ -56,7 +56,7 @@ public class DelayedTask implements Delayed {
     }
 
     /**
-     * 查看当前任务还有多久到期
+     * Get the time remaining until this task expires
      * @param unit
      * @return
      */
@@ -66,7 +66,7 @@ public class DelayedTask implements Delayed {
     }
 
     /**
-     * 延迟队列需要到期时间升序入队，所以我们需要实现compareTo进行到期时间比较
+     * Order tasks by expiration time in the delay queue
      * @param o
      * @return
      */
@@ -81,20 +81,20 @@ public class DelayedTask implements Delayed {
 }
 ```
 
-完成任务的封装之后，使用就很简单了，设置好多久到期然后将任务提交到延迟队列中即可。
+Once the task is wrapped, set its delay and add it to the queue:
 
 ```java
-// 创建延迟队列，并添加任务
+// Create a delay queue and add tasks
 DelayQueue < DelayedTask > delayQueue = new DelayQueue < > ();
 
-//分别添加1s、2s、3s到期的任务
+// Add tasks with delays of 1, 2, and 3 seconds
 delayQueue.add(new DelayedTask(2000, () -> System.out.println("Task 2")));
 delayQueue.add(new DelayedTask(1000, () -> System.out.println("Task 1")));
 delayQueue.add(new DelayedTask(3000, () -> System.out.println("Task 3")));
 
-// 取出任务并执行
+// Retrieve and run tasks
 while (!delayQueue.isEmpty()) {
-  //阻塞获取最先到期的任务
+  // Block until the earliest task expires
   DelayedTask task = delayQueue.take();
   if (task != null) {
     task.execute();
@@ -102,7 +102,7 @@ while (!delayQueue.isEmpty()) {
 }
 ```
 
-从输出结果可以看出，即使笔者先提到 2s 到期的任务，1s 到期的任务 Task1 还是优先执行的。
+Although the 2-second task was added first, the 1-second task runs first.
 
 ```java
 Task 1
@@ -110,11 +110,11 @@ Task 2
 Task 3
 ```
 
-## DelayQueue 源码解析
+## DelayQueue Source Code
 
-这里以 JDK1.8 为例，分析一下 `DelayQueue` 的底层核心源码。
+This walkthrough examines the core `DelayQueue` implementation in JDK 8.
 
-`DelayQueue` 的类定义如下：
+The class is declared as follows:
 
 ```java
 public class DelayQueue<E extends Delayed> extends AbstractQueue<E> implements BlockingQueue<E>
@@ -123,34 +123,34 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E> implements B
 }
 ```
 
-`DelayQueue` 继承了 `AbstractQueue` 类，实现了 `BlockingQueue` 接口。
+`DelayQueue` extends `AbstractQueue` and implements `BlockingQueue`.
 
-![DelayQueue类图](https://oss.javaguide.cn/github/javaguide/java/collection/delayqueue-class-diagram.png)
+![DelayQueue class diagram](https://oss.javaguide.cn/github/javaguide/java/collection/delayqueue-class-diagram.png)
 
-### 核心成员变量
+### Core Fields
 
-`DelayQueue` 的 4 个核心成员变量如下：
+The four core fields in `DelayQueue` are:
 
 ```java
-//可重入锁，实现线程安全的关键
+// Reentrant lock; key to thread safety
 private final transient ReentrantLock lock = new ReentrantLock();
-//延迟队列底层存储数据的集合,确保元素按照到期时间升序排列
+// Backing priority queue, which orders elements by expiration time
 private final PriorityQueue<E> q = new PriorityQueue<E>();
 
-//指向准备执行优先级最高的线程
+// Thread waiting for the highest-priority task
 private Thread leader = null;
-//实现多线程之间等待唤醒的交互
+// Coordinates waiting and signaling between threads
 private final Condition available = lock.newCondition();
 ```
 
-- `lock` : 我们都知道 `DelayQueue` 存取是线程安全的，所以为了保证存取元素时线程安全，我们就需要在存取时上锁，而 `DelayQueue` 就是基于 `ReentrantLock` 独占锁确保存取操作的线程安全。
-- `q` : 延迟队列要求元素按照到期时间进行升序排列，所以元素添加时势必需要进行优先级排序，所以 `DelayQueue` 底层元素的存取都是通过这个优先队列 `PriorityQueue` 的成员变量 `q` 来管理的。
-- `leader` : 延迟队列的任务只有到期之后才会执行，对于没有到期的任务只有等待，为了确保优先级最高的任务到期后可以即刻被执行，设计者就用 `leader` 来管理延迟任务，只有 `leader` 所指向的线程才具备定时等待任务到期执行的权限，而其他那些优先级低的任务只能无限期等待，直到 `leader` 线程执行完手头的延迟任务后唤醒它。
-- `available` : 上文讲述 `leader` 线程时提到的等待唤醒操作的交互就是通过 `available` 实现的，假如线程 1 尝试在空的 `DelayQueue` 获取任务时，`available` 就会将其放入等待队列中。直到有一个线程添加一个延迟任务后通过 `available` 的 `signal` 方法将其唤醒。
+- `lock`: A `ReentrantLock` protects queue operations so that only one thread accesses the queue at a time.
+- `q`: The `PriorityQueue` stores and orders elements by expiration time.
+- `leader`: Only the leader thread waits for the next task's delay to expire. Other waiting threads wait indefinitely until the leader retrieves a task and signals them.
+- `available`: This `Condition` coordinates waiting threads. For example, a thread calling `take` on an empty queue waits here until another thread adds a task and signals it.
 
-### 构造方法
+### Constructors
 
-相较于其他的并发容器，延迟队列的构造方法比较简单，它只有两个构造方法，因为所有成员变量在类加载时都已经初始完成了，所以默认构造方法什么也没做。还有一个传入 `Collection` 对象的构造方法，它会将调用 `addAll()` 方法将集合元素存到优先队列 `q` 中。
+`DelayQueue` has two simple constructors. Its fields are initialized when the object is created, so the no-argument constructor does nothing. The other constructor accepts a `Collection` and adds its elements to the priority queue through `addAll()`.
 
 ```java
 public DelayQueue() {}
@@ -160,103 +160,103 @@ public DelayQueue(Collection<? extends E> c) {
 }
 ```
 
-### 添加元素
+### Adding Elements
 
-`DelayQueue` 添加元素的方法无论是 `add`、`put` 还是 `offer`,本质上就是调用一下 `offer` ,所以了解延迟队列的添加逻辑我们只需阅读 offer 方法即可。
+The `add`, `put`, and `offer` methods all rely on `offer`, so we can understand insertion by looking at that method.
 
-`offer` 方法的整体逻辑为:
+The `offer` method works as follows:
 
-1. 尝试获取 `lock`。
-2. 如果上锁成功，则调 `q` 的 `offer` 方法将元素存放到优先队列中。
-3. 调用 `peek` 方法看看当前队首元素是否就是本次入队的元素，如果是则说明当前这个元素是即将到期的任务（即优先级最高的元素），于是将 `leader` 设置为空，通知因为队列为空时调用 `take` 等方法导致阻塞的线程来争抢元素。
-4. 上述步骤执行完成，释放 `lock`。
-5. 返回 true。
+1. Acquire `lock`.
+2. Add the element to the priority queue with `q.offer`.
+3. Check whether the new element is now at the head with `peek`. If so, clear `leader` and signal a thread blocked while retrieving an element, since the new head may expire sooner.
+4. Release `lock`.
+5. Return `true`.
 
-源码如下，笔者已详细注释，读者可自行参阅:
+Here is the implementation:
 
 ```java
 public boolean offer(E e) {
-    //尝试获取lock
+    // Acquire the lock
     final ReentrantLock lock = this.lock;
     lock.lock();
     try {
-        //如果上锁成功,则调q的offer方法将元素存放到优先队列中
+        // Add the element to the priority queue
         q.offer(e);
-        //调用peek方法看看当前队首元素是否就是本次入队的元素,如果是则说明当前这个元素是即将到期的任务(即优先级最高的元素)
+        // Check whether the new element is now at the head of the queue
         if (q.peek() == e) {
-            //将leader设置为空,通知调用取元素方法而阻塞的线程来争抢这个任务
+            // Clear leader and wake a thread waiting to retrieve a task
             leader = null;
             available.signal();
         }
         return true;
     } finally {
-        //上述步骤执行完成，释放lock
+        // Release the lock
         lock.unlock();
     }
 }
 ```
 
-### 获取元素
+### Retrieving Elements
 
-`DelayQueue` 中获取元素的方式分为阻塞式和非阻塞式，先来看看逻辑比较复杂的阻塞式获取元素方法 `take`,为了让读者可以更直观的了解阻塞式获取元素的全流程，笔者将以 3 个线程并发获取元素为例讲述 `take` 的工作流程。
+`DelayQueue` provides blocking and non-blocking retrieval methods. First, consider the more complex blocking method, `take`. The following walkthrough uses three threads that call `take` concurrently.
 
-> 想要理解下面的内容，需要用到 AQS 相关的知识，推荐阅读下面这两篇文章：
+> Understanding the following flow requires some knowledge of AQS. These articles provide background:
 >
-> - [图文讲解 AQS ，一起看看 AQS 的源码……(图文较长)](https://xie.infoq.cn/article/5a3cc0b709012d40cb9f41986)
-> - [AQS 都看完了，Condition 原理可不能少！](https://xie.infoq.cn/article/0223d5e5f19726b36b084b10d)
+> - [A Visual Guide to AQS](https://xie.infoq.cn/article/5a3cc0b709012d40cb9f41986)
+> - [How Condition Works](https://xie.infoq.cn/article/0223d5e5f19726b36b084b10d)
 
-1、首先， 3 个线程会尝试获取可重入锁 `lock`,假设我们现在有 3 个线程分别是 t1、t2、t3,随后 t1 得到了锁，而 t2、t3 没有抢到锁，故将这两个线程存入等待队列中。
+1. First, three threads try to acquire the reentrant `lock`. Suppose `t1` gets it while `t2` and `t3` enter the lock's wait queue.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/collection/delayqueue-take-0.png)
 
-2、紧接着 t1 开始进行元素获取的逻辑。
+2. `t1` begins retrieving an element.
 
-3、线程 t1 首先会查看 `DelayQueue` 队列首元素是否为空。
+3. `t1` checks whether the head of the `DelayQueue` is empty.
 
-4、如果元素为空，则说明当前队列没有任何元素，故 t1 就会被阻塞存到 `conditionWaiter` 这个队列中。
+4. If the queue is empty, `t1` blocks in the `conditionWaiter` queue.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/collection/delayqueue-take-1.png)
 
-注意，调用 `await` 之后 t1 就会释放 `lcok` 锁，假如 `DelayQueue` 持续为空，那么 t2、t3 也会像 t1 一样执行相同的逻辑并进入 `conditionWaiter` 队列中。
+After calling `await`, `t1` releases the `lock`. If the `DelayQueue` remains empty, `t2` and `t3` follow the same steps and also enter `conditionWaiter`.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/collection/delayqueue-take-2.png)
 
-如果元素不为空，则判断当前任务是否到期，如果元素到期，则直接返回出去。如果元素未到期，则判断当前 `leader` 线程(`DelayQueue` 中唯一一个可以等待并获取元素的线程引用)是否为空，若不为空，则说明当前 `leader` 正在等待执行一个优先级比当前元素还高的元素到期，故当前线程 t1 只能调用 `await` 进入无限期等待，等到 `leader` 取得元素后唤醒。反之，若 `leader` 线程为空，则将当前线程设置为 leader 并进入有限期等待，到期后取出元素并返回。
+If the queue is not empty, the thread checks whether the head task has expired. If it has, the task is returned immediately. Otherwise, the thread checks whether `leader` is already set. If so, another thread is waiting for a task that expires sooner, so `t1` waits indefinitely until the leader retrieves that task and signals it. If there is no leader, `t1` becomes the leader and waits for the head task's remaining delay. It then retrieves the task when it expires.
 
-自此我们阻塞式获取元素的逻辑都已完成后，源码如下，读者可自行参阅:
+The `take` implementation is shown below:
 
 ```java
 public E take() throws InterruptedException {
-    // 尝试获取可重入锁,将底层AQS的state设置为1,并设置为独占锁
+    // Acquire the reentrant lock interruptibly
     final ReentrantLock lock = this.lock;
     lock.lockInterruptibly();
     try {
         for (;;) {
-            //查看队列第一个元素
+            // Check the head of the queue
             E first = q.peek();
-            //若为空,则将当前线程放入ConditionObject的等待队列中，并将底层AQS的state设置为0，表示释放锁并进入无限期等待
+            // If empty, wait on the condition and release the lock
             if (first == null)
                 available.await();
             else {
-                //若元素不为空，则查看当前元素多久到期
+                // Check how long until the head element expires
                 long delay = first.getDelay(NANOSECONDS);
-                //如果小于0则说明已到期直接返回出去
+                // If expired, return it
                 if (delay <= 0)
                     return q.poll();
-                //如果大于0则说明任务还没到期，首先需要释放对这个元素的引用
+                // The task has not expired; do not retain its reference while waiting
                 first = null; // don't retain ref while waiting
-                //判断leader是否为空，如果不为空，则说明正有线程作为leader并等待一个任务到期，则当前线程进入无限期等待
+                // If another thread is leader, wait until it signals this thread
                 if (leader != null)
                     available.await();
                 else {
-                    //反之将我们的线程成为leader
+                    // Otherwise, become the leader
                     Thread thisThread = Thread.currentThread();
                     leader = thisThread;
                     try {
-                        //并进入有限期等待
+                        // Wait for the task's remaining delay
                         available.awaitNanos(delay);
                     } finally {
-                        //等待任务到期时，释放leader引用，进入下一次循环将任务return出去
+                        // Clear the leader reference before checking the queue again
                         if (leader == thisThread)
                             leader = null;
                     }
@@ -264,55 +264,55 @@ public E take() throws InterruptedException {
             }
         }
     } finally {
-        // 收尾逻辑:当leader为null，并且队列中有任务时，唤醒等待的获取元素的线程。
+        // Wake a waiting retrieval thread if there is no leader and the queue is not empty
         if (leader == null && q.peek() != null)
             available.signal();
-        //释放锁
+        // Release the lock
         lock.unlock();
     }
 }
 ```
 
-我们再来看看非阻塞的获取元素方法 `poll`，逻辑比较简单，整体步骤如下:
+The non-blocking `poll` method is simpler:
 
-1. 尝试获取可重入锁。
-2. 查看队列第一个元素，判断元素是否为空。
-3. 若元素为空，或者元素未到期，则直接返回空。
-4. 若元素不为空且到期了，直接调用 `poll` 返回出去。
-5. 释放可重入锁 `lock`。
+1. Acquire the reentrant lock.
+2. Check the head of the queue.
+3. Return `null` if the queue is empty or the head has not expired.
+4. Otherwise, remove and return the expired head with `poll`.
+5. Release the lock.
 
-源码如下，读者可自行参阅源码及注释:
+Here is the implementation:
 
 ```java
 public E poll() {
-    //尝试获取可重入锁
+    // Acquire the reentrant lock
     final ReentrantLock lock = this.lock;
     lock.lock();
     try {
-        //查看队列第一个元素,判断元素是否为空
+        // Check the head of the queue
         E first = q.peek();
 
-        //若元素为空，或者元素未到期，则直接返回空
+        // Return null if the queue is empty or the task has not expired
         if (first == null || first.getDelay(NANOSECONDS) > 0)
             return null;
         else
-            //若元素不为空且到期了，直接调用poll返回出去
+            // Remove and return the expired task
             return q.poll();
     } finally {
-        //释放可重入锁lock
+        // Release the lock
         lock.unlock();
     }
 }
 ```
 
-### 查看元素
+### Inspecting the Head Element
 
-上文获取元素时都会调用到 `peek` 方法，peek 顾名思义仅仅窥探一下队列中的元素，它的步骤就 4 步:
+Retrieval methods use `peek` to inspect the queue without removing its head. It takes four steps:
 
-1. 上锁。
-2. 调用优先队列 q 的 peek 方法查看索引 0 位置的元素。
-3. 释放锁。
-4. 将元素返回出去。
+1. Acquire the lock.
+2. Call `peek` on the priority queue to inspect the element at index 0.
+3. Release the lock.
+4. Return the element.
 
 ```java
 public E peek() {
@@ -326,31 +326,31 @@ public E peek() {
 }
 ```
 
-## DelayQueue 常见面试题
+## Common DelayQueue Interview Questions
 
-### DelayQueue 的实现原理是什么？
+### How Is DelayQueue Implemented?
 
-`DelayQueue` 底层是使用优先队列 `PriorityQueue` 来存储元素，而 `PriorityQueue` 采用二叉小顶堆的思想确保值小的元素排在最前面，这就使得 `DelayQueue` 对于延迟任务优先级的管理就变得十分方便了。同时 `DelayQueue` 为了保证线程安全还用到了可重入锁 `ReentrantLock`,确保单位时间内只有一个线程可以操作延迟队列。最后，为了实现多线程之间等待和唤醒的交互效率，`DelayQueue` 还用到了 `Condition`，通过 `Condition` 的 `await` 和 `signal` 方法完成多线程之间的等待唤醒。
+`DelayQueue` stores elements in a `PriorityQueue`, a binary min-heap that places the smallest element at the head. This makes it easy to select the next delayed task. A `ReentrantLock` protects queue operations, and a `Condition` coordinates waiting and signaling between threads through `await` and `signal`.
 
-### DelayQueue 的实现是否线程安全？
+### Is DelayQueue Thread-Safe?
 
-`DelayQueue` 的实现是线程安全的，它通过 `ReentrantLock` 实现了互斥访问和 `Condition` 实现了线程间的等待和唤醒操作，可以保证多线程环境下的安全性和可靠性。
+Yes. `DelayQueue` uses a `ReentrantLock` to serialize access and a `Condition` to coordinate waiting and signaling between threads.
 
-### DelayQueue 的使用场景有哪些？
+### What Is DelayQueue Used For?
 
-`DelayQueue` 通常用于实现定时任务调度和缓存过期删除等场景。在定时任务调度中，需要将需要执行的任务封装成延迟任务对象，并将其添加到 `DelayQueue` 中，延迟到期的队首元素可以被取出；任务何时实际执行还取决于消费线程的调度。对于缓存过期这个场景而言，在数据被缓存到内存之后，我们可以将缓存的 key 封装成一个延迟的删除任务，并将其添加到 `DelayQueue` 中，当数据过期时，拿到这个任务的 key，将这个 key 从内存中移除。
+Common uses include scheduling tasks and removing expired cache entries. For scheduling, wrap each task in a delayed element and add it to the queue. An expired head can then be retrieved, though the consumer thread determines when the task actually runs. For cache expiration, add a delayed removal task containing the cache key, then remove that key from memory when the task expires.
 
-### DelayQueue 中 Delayed 接口的作用是什么？
+### What Does the Delayed Interface Do?
 
-`Delayed` 接口定义了元素的剩余延迟时间(`getDelay`)和元素之间的比较规则(该接口继承了 `Comparable` 接口)。若希望元素能够存放到 `DelayQueue` 中，就必须实现 `Delayed` 接口的 `getDelay()` 方法和 `compareTo()` 方法，否则 `DelayQueue` 无法得知当前任务剩余时长和任务优先级的比较。
+`Delayed` defines how to get an element's remaining delay with `getDelay`. It also extends `Comparable`, so elements can be ordered with `compareTo`. A class must implement both methods to be stored in a `DelayQueue`.
 
-### DelayQueue 和 Timer/TimerTask 的区别是什么？
+### How Does DelayQueue Differ from Timer/TimerTask?
 
-`DelayQueue` 和 `Timer/TimerTask` 都可以用于实现定时任务调度，但是它们的实现方式不同。`DelayQueue` 是基于优先级队列实现的，只负责保存延迟元素并在到期后允许取出；而 `Timer/TimerTask` 由单个后台线程按顺序执行任务，如果某个任务执行时间过长，会影响其他任务的执行。两者都支持在运行期间添加任务，但 `DelayQueue` 还可以直接移除其中的延迟元素。
+Both can be used for scheduling, but they work differently. `DelayQueue` stores delayed elements in a priority queue and makes them available for retrieval after they expire. `Timer/TimerTask` runs tasks sequentially on a single background thread, so a long-running task can delay the others. Both support adding tasks while running, and `DelayQueue` also allows delayed elements to be removed directly.
 
-## 参考文献
+## References
 
-- 《深入理解高并发编程：JDK 核心技术》:
-- 一口气说出 Java 6 种延时队列的实现方法（面试官也得服）:<https://www.jb51.net/article/186192.htm>
-- 图解 DelayQueue 源码（java 8）——延时队列的小九九: <https://blog.csdn.net/every__day/article/details/113810985>
+- _In-Depth Understanding of High-Concurrency Programming: JDK Core Technologies_.
+- Six Ways to Implement Delayed Queues in Java: <https://www.jb51.net/article/186192.htm>
+- A Visual Guide to the DelayQueue Source Code (Java 8): <https://blog.csdn.net/every__day/article/details/113810985>
 <!-- @include: @article-footer.snippet.md -->

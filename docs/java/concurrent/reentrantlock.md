@@ -1,60 +1,60 @@
 ---
-title: 从ReentrantLock的实现看AQS的原理及应用
-description: ReentrantLock与AQS原理深度解析：详解ReentrantLock可重入锁实现、公平锁与非公平锁区别、基于AQS的加锁解锁流程、与synchronized性能对比。
+title: AQS Principles and Applications Through ReentrantLock
+description: An in-depth look at ReentrantLock and AQS, including reentrant locking, fair and non-fair locks, AQS-based acquisition and release, and comparison with synchronized.
 category: Java
 tag:
-  - Java并发
+  - Java Concurrency
 head:
   - - meta
     - name: keywords
-      content: ReentrantLock,AQS,公平锁,非公平锁,可重入锁,lock unlock,ReentrantLock原理,synchronized对比
+      content: ReentrantLock, AQS, fair lock, non-fair lock, reentrant lock, lock and unlock, ReentrantLock principles, synchronized comparison
 ---
 
-> 本文转载自：<https://tech.meituan.com/2019/12/05/aqs-theory-and-apply.html>
+> Reproduced from: <https://tech.meituan.com/2019/12/05/aqs-theory-and-apply.html>
 >
-> 作者：美团技术团队
+> Author: Meituan Technical Team
 
-Java 中的大部分同步类（Semaphore、ReentrantLock 等）都是基于 AbstractQueuedSynchronizer（简称为 AQS）实现的。AQS 是一种提供了原子式管理同步状态、阻塞和唤醒线程功能以及队列模型的简单框架。
+Most Java synchronizers, including `Semaphore` and `ReentrantLock`, are built on AbstractQueuedSynchronizer (AQS). AQS is a framework that provides atomic management of synchronization state, thread blocking and signaling, and a queue model.
 
-本文会从应用层逐渐深入到原理层，并通过 ReentrantLock 的基本特性和 ReentrantLock 与 AQS 的关联，来深入解读 AQS 相关独占锁的知识点，同时采取问答的模式来帮助大家理解 AQS。由于篇幅原因，本篇文章主要阐述 AQS 中独占锁的逻辑和 Sync Queue，不讲述包含共享锁和 Condition Queue 的部分（本篇文章核心为 AQS 原理剖析，只是简单介绍了 ReentrantLock，感兴趣同学可以阅读一下 ReentrantLock 的源码）。
+This article moves from practical usage to implementation details. It uses ReentrantLock's features and its relationship with AQS to explain exclusive-mode synchronizers, with questions and answers to aid understanding. Due to space constraints, it focuses on AQS's exclusive mode and synchronization queue; shared mode and condition queues are not covered in detail. The focus is AQS, with only a brief introduction to ReentrantLock.
 
-> 本文的源码分析基于 JDK 8。AQS 的内部实现后来持续演进：JDK 11 中仍能看到本文涉及的主要字段和方法，JDK 17 及当前版本的节点字段和入队、等待实现则已有较大变化。同步状态、等待队列以及获取/释放资源的核心思路仍可作为理解基础。
+> The source analysis is based on JDK 8. AQS's implementation has continued to evolve: most fields and methods discussed here are still present in JDK 11, while node fields and queueing and waiting implementations changed substantially in JDK 17 and later. The core ideas of synchronization state, wait queues, and acquiring and releasing resources remain useful for understanding AQS.
 
 ## 1 ReentrantLock
 
-### 1.1 ReentrantLock 特性概览
+### 1.1 ReentrantLock at a Glance
 
-ReentrantLock 意思为可重入锁，指的是一个线程能够对一个临界资源重复加锁。为了帮助大家更好地理解 ReentrantLock 的特性，我们先将 ReentrantLock 跟常用的 Synchronized 进行比较，其特性如下（蓝色部分为本篇文章主要剖析的点）：
+`ReentrantLock` is a reentrant lock: one thread can acquire the same lock repeatedly. To understand its features, let's compare it with the commonly used `synchronized`. The comparison is shown below; the blue sections are the focus of this article.
 
 ![](https://p0.meituan.net/travelcube/412d294ff5535bbcddc0d979b2a339e6102264.png)
 
-下面通过伪代码，进行更加直观的比较：
+The following pseudocode makes the comparison more concrete:
 
 ```java
-// **************************Synchronized的使用方式**************************
-// 1.用于代码块
+// **************************How to use synchronized**************************
+// 1. For a code block
 synchronized (this) {}
-// 2.用于对象
+// 2. For an object
 synchronized (object) {}
-// 3.用于方法
+// 3. For a method
 public synchronized void test () {}
-// 4.可重入
+// 4. Reentrant
 for (int i = 0; i < 100; i++) {
   synchronized (this) {}
 }
-// **************************ReentrantLock的使用方式**************************
+// **************************How to use ReentrantLock**************************
 public void test () throws Exception {
-  // 1.初始化选择公平锁、非公平锁
+  // 1. Choose a fair or non-fair lock at initialization
   ReentrantLock lock = new ReentrantLock(true);
-  // 2.可用于代码块
+  // 2. Can be used around a code block
   lock.lock();
   try {
-    // 3.支持多种加锁方式，比较灵活; 具有可重入特性
+    // 3. Supports flexible acquisition methods and is reentrant
     if (lock.tryLock(100, TimeUnit.MILLISECONDS)) {
       try {
-        // 获取第二次锁之后执行的逻辑
+        // Logic executed after acquiring the lock a second time
       } finally {
-        // 每次成功加锁都要对应释放一次
+        // Release the lock once for each successful acquisition
         lock.unlock();
       }
     }
@@ -64,16 +64,16 @@ public void test () throws Exception {
 }
 ```
 
-### 1.2 ReentrantLock 与 AQS 的关联
+### 1.2 How ReentrantLock Relates to AQS
 
-通过上文我们已经了解，ReentrantLock 支持公平锁和非公平锁（关于公平锁和非公平锁的原理分析，可参考《[不可不说的 Java“锁”事](https://mp.weixin.qq.com/s?__biz=MjM5NjQ5MTI5OA==&mid=2651749434&idx=3&sn=5ffa63ad47fe166f2f1a9f604ed10091&chksm=bd12a5778a652c61509d9e718ab086ff27ad8768586ea9b38c3dcf9e017a8e49bcae3df9bcc8&scene=38#wechat_redirect)》），并且 ReentrantLock 的底层就是由 AQS 来实现的。那么 ReentrantLock 是如何通过公平锁和非公平锁与 AQS 关联起来呢？ 我们着重从这两者的加锁过程来理解一下它们与 AQS 之间的关系（加锁过程中与 AQS 的关联比较明显，解锁流程后续会介绍）。
+As discussed above, ReentrantLock supports both fair and non-fair locks, and is built on AQS. For an explanation of fair and non-fair lock behavior, see [Java Locks](https://mp.weixin.qq.com/s?__biz=MjM5NjQ5MTI5OA==&mid=2651749434&idx=3&sn=5ffa63ad47fe166f2f1a9f604ed10091&chksm=bd12a5778a652c61509d9e718ab086ff27ad8768586ea9b38c3dcf9e017a8e49bcae3df9bcc8&scene=38#wechat_redirect). Let's trace how the fair and non-fair acquisition paths connect to AQS. Their relationship is especially clear during acquisition; release is covered later.
 
-非公平锁源码中的加锁流程如下：
+The non-fair lock's acquisition flow is:
 
 ```java
 // java.util.concurrent.locks.ReentrantLock#NonfairSync
 
-// 非公平锁
+// Non-fair lock
 static final class NonfairSync extends Sync {
   ...
   final void lock() {
@@ -86,24 +86,24 @@ static final class NonfairSync extends Sync {
 }
 ```
 
-这块代码的含义为：
+This code means:
 
-- 若通过 CAS 设置变量 State（同步状态）成功，也就是获取锁成功，则将当前线程设置为独占线程。
-- 若通过 CAS 设置变量 State（同步状态）失败，也就是获取锁失败，则进入 Acquire 方法进行后续处理。
+- If CAS successfully updates `state` (the synchronization state), the thread has acquired the lock and becomes the exclusive owner.
+- If CAS fails to update `state`, the thread did not acquire the lock and proceeds to `acquire` for further handling.
 
-第一步很好理解，但第二步获取锁失败后，后续的处理策略是怎么样的呢？这块可能会有以下思考：
+The first step is straightforward, but what happens after acquisition fails? Consider these questions:
 
-- 某个线程获取锁失败的后续流程是什么呢？有以下两种可能：
+- What happens after a thread fails to acquire the lock? There are two possibilities:
 
-(1) 将当前线程获锁结果设置为失败，获取锁流程结束。这种设计会极大降低系统的并发度，并不满足我们实际的需求。所以就需要下面这种流程，也就是 AQS 框架的处理流程。
+(1) Mark the acquisition as failed and end the process. This would greatly reduce concurrency and does not meet practical needs, so AQS uses the second approach.
 
-(2) 存在某种排队等候机制，线程继续等待，仍然保留获取锁的可能，获取锁流程仍在继续。
+(2) Use a queueing mechanism. The thread continues waiting and retains the possibility of acquiring the lock.
 
-- 对于问题 1 的第二种情况，既然说到了排队等候机制，那么就一定会有某种队列形成，这样的队列是什么数据结构呢？
-- 处于排队等候机制中的线程，什么时候可以有机会获取锁呢？
-- 如果处于排队等候机制中的线程一直无法获取锁，还是需要一直等待吗，还是有别的策略来解决这一问题？
+- If threads wait in a queue, what data structure is used?
+- When can a queued thread get a chance to acquire the lock?
+- If a queued thread cannot acquire the lock, must it wait indefinitely, or is there another strategy?
 
-带着非公平锁的这些问题，再看下公平锁源码中获锁的方式：
+With these questions in mind, let's look at how the fair lock acquires the lock:
 
 ```java
 // java.util.concurrent.locks.ReentrantLock#FairSync
@@ -117,75 +117,75 @@ static final class FairSync extends Sync {
 }
 ```
 
-看到这块代码，我们可能会存在这种疑问：Lock 函数通过 Acquire 方法进行加锁，但是具体是如何加锁的呢？
+This code raises a question: `lock` calls `acquire`, but how does `acquire` actually obtain the lock?
 
-结合公平锁和非公平锁的加锁流程，虽然流程上有一定的不同，但是都调用了 Acquire 方法，而 Acquire 方法是 FairSync 和 UnfairSync 的父类 AQS 中的核心方法。
+Although the fair and non-fair acquisition paths differ, both call `acquire`, a core method in AQS, the parent class of `FairSync` and `NonfairSync`.
 
-对于上边提到的问题，其实在 ReentrantLock 类源码中都无法解答，而这些问题的答案，都是位于 Acquire 方法所在的类 AbstractQueuedSynchronizer 中，也就是本文的核心——AQS。下面我们会对 AQS 以及 ReentrantLock 和 AQS 的关联做详细介绍（相关问题答案会在 2.3.5 小节中解答）。
+The answers to the questions above are not in ReentrantLock's source; they are in AbstractQueuedSynchronizer, which defines `acquire`. AQS is the focus of this article. The following sections explain AQS and its relationship with ReentrantLock in more detail; the questions are answered in Section 2.3.5.
 
 ## 2 AQS
 
-首先，我们通过下面的架构图来整体了解一下 AQS 框架：
+First, the diagram below gives an overview of the AQS framework:
 
 ![](https://p1.meituan.net/travelcube/82077ccf14127a87b77cefd1ccf562d3253591.png)
 
-- 上图中有颜色的为 Method，无颜色的为 Attribution。
-- 总的来说，AQS 框架共分为五层，自上而下由浅入深，从 AQS 对外暴露的 API 到底层基础数据。
-- 当有自定义同步器接入时，只需重写第一层所需要的部分方法即可，不需要关注底层具体的实现流程。当自定义同步器进行加锁或者解锁操作时，先经过第一层的 API 进入 AQS 内部方法，然后经过第二层进行锁的获取，接着对于获取锁失败的流程，进入第三层和第四层的等待队列处理，而这些处理方式均依赖于第五层的基础数据提供层。
+- Colored items in the diagram are methods; uncolored items are attributes.
+- The AQS framework has five layers, from the public API at the top to the underlying data at the bottom.
+- A custom synchronizer only needs to override the required methods in the first layer; it does not need to manage the lower-level implementation. When it acquires or releases a lock, it enters AQS through the first-layer API, proceeds to lock acquisition in the second layer, and, if acquisition fails, uses the wait-queue handling in the third and fourth layers. Those operations rely on the underlying data in the fifth layer.
 
-下面我们会从整体到细节，从流程到方法逐一剖析 AQS 框架，主要分析过程如下：
+The following walkthrough examines AQS from the overall flow down to individual methods:
 
 ![](https://p1.meituan.net/travelcube/d2f7f7fffdc30d85d17b44266c3ab05323338.png)
 
-### 2.1 原理概览
+### 2.1 Principles at a Glance
 
-AQS 核心思想是，如果被请求的共享资源空闲，那么就将当前请求资源的线程设置为有效的工作线程，将共享资源设置为锁定状态；如果共享资源被占用，就需要一定的阻塞等待唤醒机制来保证锁分配。这个机制主要用的是 CLH 队列的变体实现的，将暂时获取不到锁的线程加入到队列中。
+The core idea of AQS is to make the requesting thread the active worker and mark the shared resource as locked when it is available. If the resource is already occupied, a blocking and signaling mechanism manages lock allocation. AQS implements this primarily with a variant of a CLH queue, adding threads that cannot acquire the lock to a wait queue.
 
-CLH：Craig、Landin and Hagersten 队列，是单向链表，AQS 中的队列是 CLH 变体的虚拟双向队列（FIFO），AQS 是通过将每条请求共享资源的线程封装成一个节点来实现锁的分配。
+CLH (Craig, Landin, and Hagersten) is a singly linked queue. AQS uses a variant implemented as a virtual FIFO doubly linked queue. It represents each thread requesting a shared resource as a node to manage lock allocation.
 
-主要原理图如下：
+The main idea is illustrated below:
 
 ![](https://p0.meituan.net/travelcube/7132e4cef44c26f62835b197b239147b18062.png)
 
-AQS 使用一个 Volatile 的 int 类型的成员变量来表示同步状态，通过内置的 FIFO 队列来完成资源获取的排队工作，通过 CAS 完成对 State 值的修改。
+AQS uses a `volatile int` field to represent synchronization state, an internal FIFO queue to manage threads waiting to acquire resources, and CAS to update `state`.
 
-#### 2.1.1 AQS 数据结构
+#### 2.1.1 AQS Data Structure
 
-先来看下 AQS 中最基本的数据结构——Node，Node 即为上面 CLH 变体队列中的节点。
+The most basic AQS data structure is `Node`, a node in the CLH queue variant shown above.
 
 ![](https://p1.meituan.net/travelcube/960271cf2b5c8a185eed23e98b72c75538637.png)
 
-解释一下几个方法和属性值的含义：
+The following table explains the methods and fields:
 
-| 方法和属性值 | 含义                                                                                             |
-| :----------- | :----------------------------------------------------------------------------------------------- |
-| waitStatus   | 当前节点在队列中的状态                                                                           |
-| thread       | 表示处于该节点的线程                                                                             |
-| prev         | 前驱指针                                                                                         |
-| predecessor  | 返回前驱节点，没有的话抛出 npe                                                                   |
-| nextWaiter   | 指向下一个处于 CONDITION 状态的节点（由于本篇文章不讲述 Condition Queue 队列，这个指针不多介绍） |
-| next         | 后继指针                                                                                         |
+| Method or field | Meaning                                                                                          |
+| :-------------- | :----------------------------------------------------------------------------------------------- |
+| `waitStatus`    | The node's state in the queue.                                                                   |
+| `thread`        | The thread associated with the node.                                                             |
+| `prev`          | Pointer to the predecessor.                                                                      |
+| `predecessor`   | Returns the predecessor, or throws `NullPointerException` if there is none.                      |
+| `nextWaiter`    | Points to the next node in `CONDITION` state. Condition queues are outside this article's scope. |
+| `next`          | Pointer to the successor.                                                                        |
 
-线程两种锁的模式：
+The two lock modes for threads are:
 
-| 模式      | 含义                           |
-| :-------- | :----------------------------- |
-| SHARED    | 表示线程以共享的模式等待锁     |
-| EXCLUSIVE | 表示线程正在以独占的方式等待锁 |
+| Mode        | Meaning                                          |
+| :---------- | :----------------------------------------------- |
+| `SHARED`    | The thread waits for the lock in shared mode.    |
+| `EXCLUSIVE` | The thread waits for the lock in exclusive mode. |
 
-waitStatus 有下面几个枚举值：
+`waitStatus` has these values:
 
-| 枚举      | 含义                                             |
-| :-------- | :----------------------------------------------- |
-| 0         | 当一个 Node 被初始化的时候的默认值               |
-| CANCELLED | 为 1，表示线程获取锁的请求已经取消了             |
-| CONDITION | 为-2，表示节点在等待队列中，节点线程等待唤醒     |
-| PROPAGATE | 为-3，当前线程处在 SHARED 情况下，该字段才会使用 |
-| SIGNAL    | 为-1，表示线程已经准备好了，就等资源释放了       |
+| Value       | Meaning                                                                          |
+| :---------- | :------------------------------------------------------------------------------- |
+| `0`         | Default value when a node is initialized.                                        |
+| `CANCELLED` | `1`: The thread's acquisition request was cancelled.                             |
+| `CONDITION` | `-2`: The node is in a condition queue and its thread is waiting to be signaled. |
+| `PROPAGATE` | `-3`: Used when the current thread is in shared mode.                            |
+| `SIGNAL`    | `-1`: The thread is ready and waiting for the resource to be released.           |
 
-#### 2.1.2 同步状态 State
+#### 2.1.2 Synchronization State
 
-在了解数据结构后，接下来了解一下 AQS 的同步状态——State。AQS 中维护了一个名为 state 的字段，意为同步状态，是由 Volatile 修饰的，用于展示当前临界资源的获锁情况。
+Next is AQS's synchronization state. AQS maintains a `volatile` field named `state` to represent whether the critical resource is held.
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -193,52 +193,52 @@ waitStatus 有下面几个枚举值：
 private volatile int state;
 ```
 
-下面提供了几个访问这个字段的方法：
+The following methods access this field:
 
-| 方法名                                                             | 描述                    |
-| :----------------------------------------------------------------- | :---------------------- |
-| protected final int getState()                                     | 获取 State 的值         |
-| protected final void setState(int newState)                        | 设置 State 的值         |
-| protected final boolean compareAndSetState(int expect, int update) | 使用 CAS 方式更新 State |
+| Method                                                               | Description                |
+| :------------------------------------------------------------------- | :------------------------- |
+| `protected final int getState()`                                     | Gets the value of `state`. |
+| `protected final void setState(int newState)`                        | Sets the value of `state`. |
+| `protected final boolean compareAndSetState(int expect, int update)` | Updates `state` with CAS.  |
 
-这几个方法都是 Final 修饰的，说明子类中无法重写它们。我们可以通过修改 State 字段表示的同步状态来实现多线程的独占模式和共享模式（加锁过程）。
+These methods are `final`, so subclasses cannot override them. Custom synchronizers implement exclusive or shared locking by changing the synchronization state represented by `state`.
 
 ![](https://p0.meituan.net/travelcube/27605d483e8935da683a93be015713f331378.png)
 
 ![](https://p0.meituan.net/travelcube/3f1e1a44f5b7d77000ba4f9476189b2e32806.png)
 
-对于我们自定义的同步工具，需要自定义获取同步状态和释放状态的方式，也就是 AQS 架构图中的第一层：API 层。
+Custom synchronizers define how to acquire and release synchronization state in the first layer of the AQS architecture: the API layer.
 
-### 2.2 AQS 重要方法与 ReentrantLock 的关联
+### 2.2 Key AQS Methods and Their Relationship to ReentrantLock
 
-从架构图中可以得知，AQS 提供了大量用于自定义同步器实现的 Protected 方法。自定义同步器实现的相关方法也只是为了通过修改 State 字段来实现多线程的独占模式或者共享模式。自定义同步器需要实现以下方法（ReentrantLock 需要实现的方法如下，并不是全部）：
+As shown in the architecture diagram, AQS provides protected methods for custom synchronizers. A synchronizer implements the relevant methods to provide exclusive or shared access by changing `state`. The following methods are available; ReentrantLock implements only those it needs:
 
-| 方法名                                      | 描述                                                                                                                   |
-| :------------------------------------------ | :--------------------------------------------------------------------------------------------------------------------- |
-| protected boolean isHeldExclusively()       | 该线程是否正在独占资源。只有用到 Condition 才需要去实现它。                                                            |
-| protected boolean tryAcquire(int arg)       | 独占方式。arg 为获取锁的次数，尝试获取资源，成功则返回 True，失败则返回 False。                                        |
-| protected boolean tryRelease(int arg)       | 独占方式。arg 为释放锁的次数，尝试释放资源，成功则返回 True，失败则返回 False。                                        |
-| protected int tryAcquireShared(int arg)     | 共享方式。arg 为获取锁的次数，尝试获取资源。负数表示失败；0 表示成功，但没有剩余可用资源；正数表示成功，且有剩余资源。 |
-| protected boolean tryReleaseShared(int arg) | 共享方式。arg 为释放锁的次数，尝试释放资源，如果释放后允许唤醒后续等待结点返回 True，否则返回 False。                  |
+| Method                                        | Description                                                                                                                                                       |
+| :-------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `protected boolean isHeldExclusively()`       | Whether the current thread exclusively holds the resource. Implement this only when using `Condition`.                                                            |
+| `protected boolean tryAcquire(int arg)`       | Exclusive mode. Attempts to acquire the resource; returns `true` on success and `false` on failure.                                                               |
+| `protected boolean tryRelease(int arg)`       | Exclusive mode. Attempts to release the resource; returns `true` on success and `false` on failure.                                                               |
+| `protected int tryAcquireShared(int arg)`     | Shared mode. A negative value indicates failure; zero indicates success with no remaining resources; a positive value indicates success with resources remaining. |
+| `protected boolean tryReleaseShared(int arg)` | Shared mode. Attempts to release the resource; returns `true` if the release may allow waiting nodes to wake, otherwise `false`.                                  |
 
-一般来说，自定义同步器要么是独占方式，要么是共享方式，它们也只需实现 tryAcquire-tryRelease、tryAcquireShared-tryReleaseShared 中的一种即可。AQS 也支持自定义同步器同时实现独占和共享两种方式，如 ReentrantReadWriteLock。ReentrantLock 是独占锁，所以实现了 tryAcquire-tryRelease。
+Typically, a custom synchronizer uses either exclusive or shared mode and implements only one pair: `tryAcquire`/`tryRelease` or `tryAcquireShared`/`tryReleaseShared`. AQS also supports synchronizers that implement both modes, such as `ReentrantReadWriteLock`. ReentrantLock is exclusive, so it implements `tryAcquire` and `tryRelease`.
 
-以非公平锁为例，这里主要阐述一下非公平锁与 AQS 之间方法的关联之处，具体每一处核心方法的作用会在文章后面详细进行阐述。
+Using the non-fair lock as an example, the following section outlines how its methods connect to AQS. Each core method is explained in detail later.
 
 ![](https://p1.meituan.net/travelcube/b8b53a70984668bc68653efe9531573e78636.png)
 
-> 🐛 修正（参见：[issue#1761](https://github.com/Snailclimb/JavaGuide/issues/1761)）: 图中的一处小错误，(AQS)CAS 修改共享资源 State 成功之后应该是获取锁成功（非公平锁）。
+> 🐛 Correction (see [issue #1761](https://github.com/Snailclimb/JavaGuide/issues/1761)): The diagram contains a small error. After CAS successfully updates the shared `state`, the non-fair lock has been acquired.
 >
-> 对应的源码如下：
+> The corresponding source code is:
 >
 > ```java
 > final boolean nonfairTryAcquire(int acquires) {
->          final Thread current = Thread.currentThread();//获取当前线程
+>          final Thread current = Thread.currentThread();// Get the current thread
 >          int c = getState();
 >          if (c == 0) {
->              if (compareAndSetState(0, acquires)) {//CAS抢锁
->                  setExclusiveOwnerThread(current);//设置当前线程为独占线程
->                  return true;//抢锁成功
+>              if (compareAndSetState(0, acquires)) {// Try to acquire the lock with CAS
+>                  setExclusiveOwnerThread(current);// Set the current thread as the exclusive owner
+>                  return true;// Lock acquired
 >              }
 >          }
 >          else if (current == getExclusiveOwnerThread()) {
@@ -252,33 +252,33 @@ private volatile int state;
 >      }
 > ```
 
-为了帮助大家理解 ReentrantLock 和 AQS 之间方法的交互过程，以非公平锁为例，我们将加锁和解锁的交互流程单独拎出来强调一下，以便于对后续内容的理解。
+To clarify how ReentrantLock and AQS methods interact, the following walkthrough separates the acquisition and release flows for a non-fair lock.
 
 ![](https://p1.meituan.net/travelcube/7aadb272069d871bdee8bf3a218eed8136919.png)
 
-加锁：
+Acquisition:
 
-- 通过 ReentrantLock 的加锁方法 Lock 进行加锁操作。
-- 会调用到内部类 Sync 的 Lock 方法，由于 Sync#lock 是抽象方法，根据 ReentrantLock 初始化选择的公平锁和非公平锁，执行相关内部类的 Lock 方法，本质上都会执行 AQS 的 Acquire 方法。
-- AQS 的 Acquire 方法会执行 tryAcquire 方法，但是由于 tryAcquire 需要自定义同步器实现，因此执行了 ReentrantLock 中的 tryAcquire 方法，由于 ReentrantLock 是通过公平锁和非公平锁内部类实现的 tryAcquire 方法，因此会根据锁类型不同，执行不同的 tryAcquire。
-- tryAcquire 是获取锁逻辑，获取失败后，会执行框架 AQS 的后续逻辑，跟 ReentrantLock 自定义同步器无关。
+- Call ReentrantLock's `lock` method to acquire the lock.
+- This calls `lock` on the inner `Sync` class. Since `Sync.lock` is abstract, the fair or non-fair implementation selected at construction is used. Both paths ultimately call AQS's `acquire` method.
+- AQS's `acquire` calls `tryAcquire`. Because a custom synchronizer must implement `tryAcquire`, ReentrantLock provides this method in its fair and non-fair inner classes. The implementation depends on the lock type.
+- `tryAcquire` handles lock acquisition. If it fails, AQS handles the remaining queueing and waiting logic.
 
-解锁：
+Release:
 
-- 通过 ReentrantLock 的解锁方法 Unlock 进行解锁。
-- Unlock 会调用内部类 Sync 的 Release 方法，该方法继承于 AQS。
-- Release 中会调用 tryRelease 方法，tryRelease 需要自定义同步器实现，tryRelease 只在 ReentrantLock 中的 Sync 实现，因此可以看出，释放锁的过程，并不区分是否为公平锁。
-- 释放成功后，所有处理由 AQS 框架完成，与自定义同步器无关。
+- Call ReentrantLock's `unlock` method to release the lock.
+- `unlock` calls `release` on the inner `Sync` class, inherited from AQS.
+- `release` calls `tryRelease`, which a custom synchronizer must implement. ReentrantLock implements it in `Sync`, so release does not differ between fair and non-fair locks.
+- After a successful release, AQS handles the remaining processing.
 
-通过上面的描述，大概可以总结出 ReentrantLock 加锁解锁时 API 层核心方法的映射关系。
+The description above summarizes the API-level method mapping for ReentrantLock acquisition and release.
 
 ![](https://p0.meituan.net/travelcube/f30c631c8ebbf820d3e8fcb6eee3c0ef18748.png)
 
-## 3 通过 ReentrantLock 理解 AQS
+## 3 Understanding AQS Through ReentrantLock
 
-ReentrantLock 中公平锁和非公平锁在底层是相同的，这里以非公平锁为例进行分析。
+Fair and non-fair ReentrantLock implementations share most of their underlying logic. This section uses the non-fair lock as an example.
 
-在非公平锁中，有一段这样的代码：
+The non-fair lock contains this code:
 
 ```java
 // java.util.concurrent.locks.ReentrantLock
@@ -295,7 +295,7 @@ static final class NonfairSync extends Sync {
 }
 ```
 
-看一下这个 Acquire 是怎么写的：
+Here is the implementation of `acquire`:
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -306,7 +306,7 @@ public final void acquire(int arg) {
 }
 ```
 
-再看一下 tryAcquire 方法：
+Now look at `tryAcquire`:
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -316,17 +316,17 @@ protected boolean tryAcquire(int arg) {
 }
 ```
 
-可以看出，这里只是 AQS 的简单实现，具体获取锁的实现方法是由各自的公平锁和非公平锁单独实现的（以 ReentrantLock 为例）。如果该方法返回了 True，则说明当前线程获取锁成功，就不用往后执行了；如果获取失败，就需要加入到等待队列中。下面会详细解释线程是何时以及怎样被加入进等待队列中的。
+This is a basic AQS implementation. The fair and non-fair synchronizers provide the actual acquisition logic. If `tryAcquire` returns `true`, the thread acquired the lock and no further work is needed. If it fails, the thread must join the wait queue. The following sections explain when and how that happens.
 
-### 3.1 线程加入等待队列
+### 3.1 Adding Threads to the Wait Queue
 
-#### 3.1.1 加入队列的时机
+#### 3.1.1 When a Thread Joins the Queue
 
-当执行 Acquire(1)时，会通过 tryAcquire 获取锁。在这种情况下，如果获取锁失败，就会调用 addWaiter 加入到等待队列中去。
+When `acquire(1)` runs, it attempts to obtain the lock through `tryAcquire`. If that fails, it calls `addWaiter` to add the thread to the wait queue.
 
-#### 3.1.2 如何加入队列
+#### 3.1.2 How a Thread Joins the Queue
 
-获取锁失败后，会执行 addWaiter(Node.EXCLUSIVE)加入等待队列，具体实现方法如下：
+After acquisition fails, `addWaiter(Node.EXCLUSIVE)` adds the thread to the wait queue:
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -350,12 +350,12 @@ private final boolean compareAndSetTail(Node expect, Node update) {
 }
 ```
 
-主要的流程如下：
+The main steps are:
 
-- 通过当前的线程和锁模式新建一个节点。
-- Pred 指针指向尾节点 Tail。
-- 将 New 中 Node 的 Prev 指针指向 Pred。
-- 通过 compareAndSetTail 方法，完成尾节点的设置。这个方法主要是对 tailOffset 和 Expect 进行比较，如果 tailOffset 的 Node 和 Expect 的 Node 地址是相同的，那么设置 Tail 的值为 Update 的值。
+- Create a node for the current thread and lock mode.
+- Set `pred` to the tail node.
+- Set the new node's `prev` pointer to `pred`.
+- Set the new tail with `compareAndSetTail`. The method compares the node at `tailOffset` with `expect`; if they are the same object, it sets the tail to `update`.
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -373,9 +373,9 @@ static {
 }
 ```
 
-从 AQS 的静态代码块可以看出，都是获取一个对象的属性相对于该对象在内存当中的偏移量，这样我们就可以根据这个偏移量在对象内存当中找到这个属性。tailOffset 指的是 tail 对应的偏移量，所以这个时候会将 new 出来的 Node 置为当前队列的尾节点。同时，由于是双向链表，也需要将前一个节点指向尾节点。
+The AQS static initializer obtains each field's memory offset within its object. The offset lets the code locate the field in memory. `tailOffset` is the offset of `tail`, so the new node can become the queue's tail. Because this is a doubly linked list, the previous node's `next` pointer must also be updated.
 
-- 如果 Pred 指针是 Null（说明等待队列中没有元素），或者当前 Pred 指针和 Tail 指向的位置不同（说明被别的线程已经修改），就需要看一下 Enq 的方法。
+- If `pred` is null (the wait queue is empty), or `pred` no longer matches `tail` (another thread changed the tail), the code falls back to `enq`.
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -397,19 +397,19 @@ private Node enq(final Node node) {
 }
 ```
 
-如果没有被初始化，需要进行初始化一个头结点出来。但请注意，初始化的头结点并不是当前线程节点，而是调用了无参构造函数的节点。如果经历了初始化或者并发导致队列中有元素，则与之前的方法相同。其实，addWaiter 就是一个在双端链表添加尾节点的操作，需要注意的是，双端链表的头结点是一个无参构造函数的头结点。
+If the queue is not initialized, AQS creates a head node. This head is not the current thread's node; it is created with the no-argument constructor. After initialization, or if another thread has already added a node, the same process as above applies. In effect, `addWaiter` appends a node to the tail of a doubly linked list whose head is a sentinel node created with the no-argument constructor.
 
-总结一下，线程获取锁的时候，过程大体如下：
+To summarize, lock acquisition roughly proceeds as follows:
 
-1、当没有线程获取到锁时，线程 1 获取锁成功。
+1. When no thread holds the lock, Thread 1 acquires it.
 
-2、线程 2 申请锁，但是锁被线程 1 占有。
+2. Thread 2 requests the lock, but Thread 1 holds it.
 
 ![img](https://p0.meituan.net/travelcube/e9e385c3c68f62c67c8d62ab0adb613921117.png)
 
-3、如果再有线程要获取锁，依次在队列中往后排队即可。
+3. Any additional threads requesting the lock queue up in order.
 
-回到上边的代码，hasQueuedPredecessors 是公平锁加锁时判断等待队列中是否存在有效节点的方法。如果返回 False，说明当前线程可以争取共享资源；如果返回 True，说明队列中存在有效节点，当前线程必须加入到等待队列中。
+Returning to the code above, `hasQueuedPredecessors` checks whether the wait queue has a valid node ahead of the current thread when a fair lock is acquired. If it returns `false`, the current thread may compete for the resource. If it returns `true`, a valid node is already queued ahead, so the current thread must join the queue.
 
 ```java
 // java.util.concurrent.locks.ReentrantLock
@@ -425,9 +425,9 @@ public final boolean hasQueuedPredecessors() {
 }
 ```
 
-看到这里，我们理解一下 h != t && ((s = h.next) == null || s.thread != Thread.currentThread());为什么要判断的头结点的下一个节点？第一个节点储存的数据是什么？
+Why does the condition `h != t && ((s = h.next) == null || s.thread != Thread.currentThread())` examine the head's next node? What data does the first node store?
 
-> 双向链表中，第一个节点为虚节点，其实并不存储任何信息，只是占位。真正的第一个有数据的节点，是在第二个节点开始的。当 h != t 时：如果(s = h.next) == null，等待队列正在有线程进行初始化，但只是进行到了 Tail 指向 Head，没有将 Head 指向 Tail，此时队列中有元素，需要返回 True（这块具体见下边代码分析）。 如果(s = h.next) != null，说明此时队列中至少有一个有效节点。如果此时 s.thread == Thread.currentThread()，说明等待队列的第一个有效节点中的线程与当前线程相同，那么当前线程是可以获取资源的；如果 s.thread != Thread.currentThread()，说明等待队列的第一个有效节点线程与当前线程不同，当前线程必须加入进等待队列。
+> The first node in the doubly linked list is a sentinel; it stores no thread information. The first node containing data is the second node. When `h != t`, if `(s = h.next) == null`, a thread may be initializing the queue: `tail` points to the new node, but `head` does not yet point to `tail`. The queue already contains a node, so the method must return `true` (see the source walkthrough below). If `s != null`, the queue has at least one valid node. If `s.thread == Thread.currentThread()`, the first valid node belongs to the current thread, so it may acquire the resource. Otherwise, the current thread must join the wait queue.
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer#enq
@@ -444,11 +444,11 @@ if (t == null) { // Must initialize
 }
 ```
 
-节点入队不是原子操作，所以会出现短暂的 head != tail，此时 Tail 指向最后一个节点，而且 Tail 指向 Head。如果 Head 没有指向 Tail（可见 5、6、7 行），这种情况下也需要将相关线程加入队列中。所以这块代码是为了解决极端情况下的并发问题。
+Enqueueing a node is not atomic, so `head != tail` can occur briefly while `tail` points to the last node but `head` has not yet been linked to it. In this case, the thread still needs to join the queue (see lines 5–7 in the example). This code handles a rare race condition.
 
-#### 3.1.3 等待队列中线程出队列时机
+#### 3.1.3 When a Thread Leaves the Wait Queue
 
-回到最初的源码：
+Return to the original source:
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -459,34 +459,34 @@ public final void acquire(int arg) {
 }
 ```
 
-上文解释了 addWaiter 方法，这个方法其实就是把对应的线程以 Node 的数据结构形式加入到双端队列里，返回的是一个包含该线程的 Node。而这个 Node 会作为参数，进入到 acquireQueued 方法中。acquireQueued 方法可以对排队中的线程进行“获锁”操作。
+The `addWaiter` method adds the current thread to the doubly linked queue as a `Node`, then returns that node. The node is passed to `acquireQueued`, which lets queued threads try to acquire the lock.
 
-总的来说，一个线程获取锁失败后会被放入等待队列，`acquireQueued` 会让它持续等待并尝试获取锁，直到获取成功。`acquire(int)` 是不可中断的获取方式：等待期间发生中断时会先记录中断状态，在成功获取锁后再通过 `selfInterrupt()` 恢复，而不会因此取消此次获取。
+In short, a thread that fails to acquire the lock is added to the wait queue. `acquireQueued` keeps it waiting and retrying until it succeeds. `acquire(int)` is uninterruptible: if an interruption occurs while waiting, it records the interrupt status and restores it with `selfInterrupt()` after acquiring the lock, rather than cancelling the acquisition.
 
-下面我们从“何时出队列？”和“如何出队列？”两个方向来分析一下 acquireQueued 源码：
+Let's examine `acquireQueued` from two angles: when a thread leaves the queue and how it does so.
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
 
 final boolean acquireQueued(final Node node, int arg) {
-  // 标记是否成功拿到资源
+  // Tracks whether the resource was acquired successfully
   boolean failed = true;
   try {
-    // 标记等待过程中是否中断过
+    // Tracks whether interruption occurred while waiting
     boolean interrupted = false;
-    // 开始自旋，要么获取锁，要么中断
+    // Spin until the lock is acquired or interruption is recorded
     for (;;) {
-      // 获取当前节点的前驱节点
+      // Get the predecessor of the current node
       final Node p = node.predecessor();
-      // 如果p是头结点，说明当前节点在真实数据队列的首部，就尝试获取锁（别忘了头结点是虚节点）
+      // If p is the head, this node is first in the data queue; try to acquire the lock
       if (p == head && tryAcquire(arg)) {
-        // 获取锁成功，头指针移动到当前node
+        // Lock acquired; move the head pointer to the current node
         setHead(node);
         p.next = null; // help GC
         failed = false;
         return interrupted;
       }
-      // 说明p为头节点且当前没有获取到锁（可能是非公平锁被抢占了）或者是p不为头结点，这个时候就要判断当前node是否要被阻塞（被阻塞条件：前驱节点的waitStatus为-1），防止无限循环浪费资源。具体两个方法下面细细分析
+      // If p is the head but acquisition failed (perhaps a non-fair thread barged in), or p is not the head, check whether this node should block. It blocks when its predecessor's waitStatus is -1. This avoids wasting resources in a busy loop; the two methods are explained below.
       if (shouldParkAfterFailedAcquire(p, node) && parkAndCheckInterrupt())
         interrupted = true;
     }
@@ -497,7 +497,7 @@ final boolean acquireQueued(final Node node, int arg) {
 }
 ```
 
-注：setHead 方法是把当前节点置为虚节点，但并没有修改 waitStatus，因为它是一直需要用的数据。
+Note: `setHead` turns the current node into the sentinel head but does not change `waitStatus`, which is still needed.
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -510,29 +510,29 @@ private void setHead(Node node) {
 
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
 
-// 靠前驱节点判断当前线程是否应该被阻塞
+// Use the predecessor to determine whether the current thread should block
 private static boolean shouldParkAfterFailedAcquire(Node pred, Node node) {
-  // 获取前驱结点的节点状态
+  // Get the predecessor's state
   int ws = pred.waitStatus;
-  // 说明前驱结点处于唤醒状态
+  // The predecessor is in the signaling state
   if (ws == Node.SIGNAL)
     return true;
-  // 通过枚举值我们知道waitStatus>0是取消状态
+  // A positive waitStatus indicates a cancelled node
   if (ws > 0) {
     do {
-      // 循环向前查找取消节点，把取消节点从队列中剔除
+      // Skip cancelled nodes while moving backward through the queue
       node.prev = pred = pred.prev;
     } while (pred.waitStatus > 0);
     pred.next = node;
   } else {
-    // 设置前任节点等待状态为SIGNAL
+    // Set the predecessor's waitStatus to SIGNAL
     compareAndSetWaitStatus(pred, ws, Node.SIGNAL);
   }
   return false;
 }
 ```
 
-parkAndCheckInterrupt 主要用于挂起当前线程，阻塞调用栈，返回当前线程的中断状态。
+`parkAndCheckInterrupt` parks the current thread and blocks its call stack, then returns the thread's interrupt status.
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -543,22 +543,22 @@ private final boolean parkAndCheckInterrupt() {
 }
 ```
 
-上述方法的流程图如下：
+The flow is illustrated below:
 
 ![](https://p0.meituan.net/travelcube/c124b76dcbefb9bdc778458064703d1135485.png)
 
-从上图可以看出，跳出当前循环的条件是当“前置节点是头结点，且当前线程获取锁成功”。为了防止因死循环导致 CPU 资源被浪费，我们会判断前置节点的状态来决定是否要将当前线程挂起，具体挂起流程用流程图表示如下（shouldParkAfterFailedAcquire 流程）：
+As shown, the loop exits when the predecessor is the head and the current thread acquires the lock. To avoid wasting CPU in a busy loop, AQS checks the predecessor's state to decide whether to park the current thread. The `shouldParkAfterFailedAcquire` flow is shown below:
 
 ![](https://p0.meituan.net/travelcube/9af16e2481ad85f38ca322a225ae737535740.png)
 
-从队列中释放节点的疑虑打消了，那么又有新问题了：
+This explains when a node leaves the queue, but raises two more questions:
 
-- shouldParkAfterFailedAcquire 中取消节点是怎么生成的呢？什么时候会把一个节点的 waitStatus 设置为-1？
-- 是在什么时间释放节点通知到被挂起的线程呢？
+- How are cancelled nodes created in `shouldParkAfterFailedAcquire`? When is a node's `waitStatus` set to -1?
+- When does releasing a node signal a parked thread?
 
-### 3.2 CANCELLED 状态节点生成
+### 3.2 Creating Nodes in the CANCELLED State
 
-acquireQueued 方法中的 Finally 代码：
+The `finally` block in `acquireQueued`:
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -582,40 +582,41 @@ final boolean acquireQueued(final Node node, int arg) {
 }
 ```
 
-通过 cancelAcquire 方法，将 Node 的状态标记为 CANCELLED。接下来，我们逐行来分析这个方法的原理：
+The `cancelAcquire` method marks the node as `CANCELLED`. Let's examine how it works:
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
 
 private void cancelAcquire(Node node) {
-  // 将无效节点过滤
+  // Ignore an invalid node
   if (node == null)
     return;
-  // 设置该节点不关联任何线程，也就是虚节点
+  // Detach the node from its thread
   node.thread = null;
   Node pred = node.prev;
-  // 通过前驱节点，跳过取消状态的node
+  // Skip cancelled nodes by following predecessor links
   while (pred.waitStatus > 0)
     node.prev = pred = pred.prev;
-  // 获取过滤后的前驱节点的后继节点
+  // Get the successor of the filtered predecessor
   Node predNext = pred.next;
-  // 把当前node的状态设置为CANCELLED
+  // Mark the current node as CANCELLED
   node.waitStatus = Node.CANCELLED;
-  // 如果当前节点是尾节点，将从后往前的第一个非取消状态的节点设置为尾节点
-  // 更新失败的话，则进入else，如果更新成功，将tail的后继节点设置为null
+  // If this is the tail, move tail to the first non-cancelled predecessor
+  // If the update succeeds, clear the new tail's next pointer
   if (node == tail && compareAndSetTail(node, pred)) {
     compareAndSetNext(pred, predNext, null);
   } else {
     int ws;
-    // 如果当前节点不是head的后继节点，1:判断当前节点前驱节点的是否为SIGNAL，2:如果不是，则把前驱节点设置为SIGNAL看是否成功
-    // 如果1和2中有一个为true，再判断当前节点的线程是否为null
-    // 如果上述条件都满足，把当前节点的前驱节点的后继指针指向当前节点的后继节点
+    // If this is not the head's successor, check whether the predecessor is SIGNAL;
+    // if not, try to set it to SIGNAL
+    // If either check succeeds, verify that the predecessor still has a thread
+    // If all checks pass, link the predecessor to this node's successor
     if (pred != head && ((ws = pred.waitStatus) == Node.SIGNAL || (ws <= 0 && compareAndSetWaitStatus(pred, ws, Node.SIGNAL))) && pred.thread != null) {
       Node next = node.next;
       if (next != null && next.waitStatus <= 0)
         compareAndSetNext(pred, predNext, next);
     } else {
-      // 如果当前节点是head的后继节点，或者上述条件不满足，那就唤醒当前节点的后继节点
+      // If this is the head's successor or the checks above fail, wake its successor
       unparkSuccessor(node);
     }
     node.next = node; // help GC
@@ -623,34 +624,34 @@ private void cancelAcquire(Node node) {
 }
 ```
 
-当前的流程：
+The flow is:
 
-- 获取当前节点的前驱节点，如果前驱节点的状态是 CANCELLED，那就一直往前遍历，找到第一个 waitStatus <= 0 的节点，将找到的 Pred 节点和当前 Node 关联，将当前 Node 设置为 CANCELLED。
-- 根据当前节点的位置，考虑以下三种情况：
+- Get the current node's predecessor. If it is `CANCELLED`, continue traversing backward until finding the first node with `waitStatus <= 0`. Link that predecessor to the current node, then mark the current node `CANCELLED`.
+- Depending on the current node's position, handle one of three cases:
 
-(1) 当前节点是尾节点。
+(1) The current node is the tail.
 
-(2) 当前节点是 Head 的后继节点。
+(2) The current node is the head's successor.
 
-(3) 当前节点不是 Head 的后继节点，也不是尾节点。
+(3) The current node is neither the head's successor nor the tail.
 
-根据上述第二条，我们来分析每一种情况的流程。
+The diagrams below show the flow for each case.
 
-当前节点是尾节点。
+The current node is the tail.
 
 ![](https://p1.meituan.net/travelcube/b845211ced57561c24f79d56194949e822049.png)
 
-当前节点是 Head 的后继节点。
+The current node is the head's successor.
 
 ![](https://p1.meituan.net/travelcube/ab89bfec875846e5028a4f8fead32b7117975.png)
 
-当前节点不是 Head 的后继节点，也不是尾节点。
+The current node is neither the head's successor nor the tail.
 
 ![](https://p0.meituan.net/travelcube/45d0d9e4a6897eddadc4397cf53d6cd522452.png)
 
-通过上面的流程，我们对于 CANCELLED 节点状态的产生和变化已经有了大致的了解，但是为什么所有的变化都是对 Next 指针进行了操作，而没有对 Prev 指针进行操作呢？什么情况下会对 Prev 指针进行操作？
+The flow above shows how nodes enter and leave the `CANCELLED` state. Why does it update `next` pointers but not `prev` pointers? When are `prev` pointers updated?
 
-> 执行 cancelAcquire 的时候，当前节点的前置节点可能已经从队列中出去了（已经执行过 Try 代码块中的 shouldParkAfterFailedAcquire 方法了），如果此时修改 Prev 指针，有可能会导致 Prev 指向另一个已经移除队列的 Node，因此这块变化 Prev 指针不安全。 shouldParkAfterFailedAcquire 方法中，会执行下面的代码，其实就是在处理 Prev 指针。shouldParkAfterFailedAcquire 是获取锁失败的情况下才会执行，进入该方法后，说明共享资源已被获取，当前节点之前的节点都不会出现变化，因此这个时候变更 Prev 指针比较安全。
+> When `cancelAcquire` runs, the current node's predecessor may already have left the queue after executing `shouldParkAfterFailedAcquire` in the `try` block. Updating `prev` at this point could make it point to a node that has already been removed, so it would be unsafe. `shouldParkAfterFailedAcquire` updates `prev` with the code below. It runs after lock acquisition fails; at that point, earlier nodes are stable, so changing `prev` is safe.
 >
 > ```java
 > do {
@@ -658,9 +659,9 @@ private void cancelAcquire(Node node) {
 > } while (pred.waitStatus > 0);
 > ```
 
-### 3.3 如何解锁
+### 3.3 Releasing the Lock
 
-我们已经剖析了加锁过程中的基本流程，接下来再对解锁的基本流程进行分析。由于 ReentrantLock 在解锁的时候，并不区分公平锁和非公平锁，所以我们直接看解锁的源码：
+Having examined acquisition, let's look at release. ReentrantLock's release process is the same for fair and non-fair locks, so we can go straight to the source:
 
 ```java
 // java.util.concurrent.locks.ReentrantLock
@@ -670,7 +671,7 @@ public void unlock() {
 }
 ```
 
-可以看到，本质释放锁的地方，是通过框架来完成的。
+The framework handles the core release operation.
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -686,20 +687,20 @@ public final boolean release(int arg) {
 }
 ```
 
-在 ReentrantLock 里面的公平锁和非公平锁的父类 Sync 定义了可重入锁的释放锁机制。
+In ReentrantLock, the `Sync` superclass of the fair and non-fair locks defines how the reentrant lock is released.
 
 ```java
 // java.util.concurrent.locks.ReentrantLock.Sync
 
-// 方法返回当前锁是不是没有被线程持有
+// Returns whether the current thread has fully released the lock
 protected final boolean tryRelease(int releases) {
-  // 减少可重入次数
+  // Decrement the reentrancy count
   int c = getState() - releases;
-  // 当前线程不是持有锁的线程，抛出异常
+  // Throw if the current thread does not hold the lock
   if (Thread.currentThread() != getExclusiveOwnerThread())
     throw new IllegalMonitorStateException();
   boolean free = false;
-  // 如果持有线程全部释放，将当前独占锁所有线程设置为null，并更新state
+  // If all holds are released, clear the owner and update state
   if (c == 0) {
     free = true;
     setExclusiveOwnerThread(null);
@@ -709,17 +710,17 @@ protected final boolean tryRelease(int releases) {
 }
 ```
 
-我们来解释下述源码：
+The following source explains the release flow:
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
 
 public final boolean release(int arg) {
-  // 上边自定义的tryRelease如果返回true，说明该锁没有被任何线程持有
+  // If the custom tryRelease above returns true, no thread holds the lock
   if (tryRelease(arg)) {
-    // 获取头结点
+    // Get the head node
     Node h = head;
-    // 头结点不为空并且头结点的waitStatus不是初始化节点情况，解除线程挂起状态
+    // If the head exists and is not in its initial state, unpark a waiting thread
     if (h != null && h.waitStatus != 0)
       unparkSuccessor(h);
     return true;
@@ -728,43 +729,43 @@ public final boolean release(int arg) {
 }
 ```
 
-这里的判断条件为什么是 h != null && h.waitStatus != 0？
+Why does the condition check `h != null && h.waitStatus != 0`?
 
-> h == null Head 还没初始化。初始情况下，head == null，第一个节点入队，Head 会被初始化一个虚拟节点。所以说，这里如果还没来得及入队，就会出现 head == null 的情况。
+> `h == null` means the head has not been initialized. Initially, `head == null`. When the first node is enqueued, AQS initializes the head with a sentinel node. If no thread has enqueued yet, `head` remains null.
 >
-> h != null && waitStatus == 0 表明后继节点对应的线程仍在运行中，不需要唤醒。
+> `h != null && waitStatus == 0` means the thread associated with the successor is still running and does not need to be awakened.
 >
-> h != null && waitStatus < 0 表明后继节点可能被阻塞了，需要唤醒。
+> `h != null && waitStatus < 0` means the successor may be blocked and needs to be awakened.
 
-再看一下 unparkSuccessor 方法：
+Next, look at `unparkSuccessor`:
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
 
 private void unparkSuccessor(Node node) {
-  // 获取头结点waitStatus
+  // Get the head node's waitStatus
   int ws = node.waitStatus;
   if (ws < 0)
     compareAndSetWaitStatus(node, ws, 0);
-  // 获取当前节点的下一个节点
+  // Get the current node's successor
   Node s = node.next;
-  // 如果下个节点是null或者下个节点被cancelled，就找到队列最开始的非cancelled的节点
+  // If the successor is null or cancelled, find the first non-cancelled node
   if (s == null || s.waitStatus > 0) {
     s = null;
-    // 就从尾部节点开始找，到队首，找到队列第一个waitStatus<0的节点。
+    // Search backward from the tail for the first node with waitStatus < 0
     for (Node t = tail; t != null && t != node; t = t.prev)
       if (t.waitStatus <= 0)
         s = t;
   }
-  // 如果当前节点的下个节点不为空，而且状态<=0，就把当前节点unpark
+  // Unpark the successor if it exists and its status is <= 0
   if (s != null)
     LockSupport.unpark(s.thread);
 }
 ```
 
-为什么要从后往前找第一个非 Cancelled 的节点呢？原因如下。
+Why search backward for the first non-cancelled node? Consider the following:
 
-之前的 addWaiter 方法：
+Recall the earlier `addWaiter` method:
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -785,13 +786,13 @@ private Node addWaiter(Node mode) {
 }
 ```
 
-我们从这里可以看到，节点入队并不是原子操作，也就是说，node.prev = pred; compareAndSetTail(pred, node) 这两个地方可以看作 Tail 入队的原子操作，但是此时 pred.next = node;还没执行，如果这个时候执行了 unparkSuccessor 方法，就没办法从前往后找了，所以需要从后往前找。还有一点原因，在产生 CANCELLED 状态节点的时候，先断开的是 Next 指针，Prev 指针并未断开，因此也是必须要从后往前遍历才能够遍历完全部的 Node。
+Enqueueing a node is not atomic. `node.prev = pred` and `compareAndSetTail(pred, node)` make the node the tail, but `pred.next = node` may not have run yet. If `unparkSuccessor` runs at that point, it cannot find the new node by traversing forward, so it must search backward. Also, cancellation first disconnects `next` pointers while leaving `prev` pointers intact, making backward traversal necessary to reach every node.
 
-综上所述，如果是从前往后找，由于极端情况下入队的非原子操作和 CANCELLED 节点产生过程中断开 Next 指针的操作，可能会导致无法遍历所有的节点。所以，唤醒对应的线程后，对应的线程就会继续往下执行。继续执行 acquireQueued 方法以后，中断如何处理？
+In short, a forward traversal may miss nodes because enqueueing is not atomic and cancellation disconnects `next` pointers. After the relevant thread is awakened, it continues execution in `acquireQueued`. How is interruption handled there?
 
-### 3.4 中断恢复后的执行流程
+### 3.4 How Interrupts Are Restored
 
-唤醒后，会执行 return Thread.interrupted();，这个函数返回的是当前执行线程的中断状态，并清除。
+After the thread is unparked, `return Thread.interrupted();` runs. It returns the current thread's interrupt status and clears it.
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -802,7 +803,7 @@ private final boolean parkAndCheckInterrupt() {
 }
 ```
 
-再回到 acquireQueued 代码，当 parkAndCheckInterrupt 返回 True 或者 False 的时候，interrupted 的值不同，但都会执行下次循环。如果这个时候获取锁成功，就会把当前 interrupted 返回。
+Returning to `acquireQueued`, `interrupted` has a different value depending on whether `parkAndCheckInterrupt` returns `true` or `false`, but the loop continues either way. If the thread acquires the lock, the method returns the current value of `interrupted`.
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -829,7 +830,7 @@ final boolean acquireQueued(final Node node, int arg) {
 }
 ```
 
-如果 acquireQueued 为 True，就会执行 selfInterrupt 方法。
+If `acquireQueued` returns `true`, `selfInterrupt` runs.
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -839,44 +840,44 @@ static void selfInterrupt() {
 }
 ```
 
-该方法其实是为了中断线程。但为什么获取了锁以后还要中断线程呢？这部分属于 Java 提供的协作式中断知识内容，感兴趣同学可以查阅一下。这里简单介绍一下：
+This method restores the thread's interrupt status. Why restore it after acquiring the lock? Java uses cooperative interruption. Here is a brief explanation:
 
-1. 当中断线程被唤醒时，并不知道被唤醒的原因，可能是当前线程在等待中被中断，也可能是释放了锁以后被唤醒。因此我们通过 Thread.interrupted()方法检查中断标记（该方法返回了当前线程的中断状态，并将当前线程的中断标识设置为 False），并记录下来，如果发现该线程被中断过，就再中断一次。
-2. 线程在等待资源的过程中被唤醒，唤醒后还是会不断地去尝试获取锁，直到抢到锁为止。也就是说，在整个流程中，并不响应中断，只是记录中断记录。最后抢到锁返回了，那么如果被中断过的话，就需要补充一次中断。
+1. When an interrupted thread is unparked, it cannot tell why. It may have been interrupted while waiting, or unparked after another thread released the lock. `Thread.interrupted()` checks and clears the interrupt status, so the thread can record whether it was interrupted and restore the status later.
+2. After waking while waiting for the lock, the thread keeps trying to acquire it. Interruption does not cancel this process; the thread only records the interrupt. Once it acquires the lock, it restores the interrupt status if needed.
 
-这里的处理方式主要是运用线程池中基本运作单元 Worder 中的 runWorker，通过 Thread.interrupted()进行额外的判断处理，感兴趣的同学可以看下 ThreadPoolExecutor 源码。
+`ThreadPoolExecutor` uses a similar approach in `Worker.runWorker`, with an additional check through `Thread.interrupted()`.
 
-### 3.5 小结
+### 3.5 Summary
 
-我们在 1.3 小节中提出了一些问题，现在来回答一下。
+Here are answers to the questions raised in Section 1.3.
 
-> Q：某个线程获取锁失败的后续流程是什么呢？
+> Q: What happens after a thread fails to acquire the lock?
 >
-> A：存在某种排队等候机制，线程继续等待，仍然保留获取锁的可能，获取锁流程仍在继续。
+> A: The thread waits in a queue and can still acquire the lock later; the acquisition process continues.
 >
-> Q：既然说到了排队等候机制，那么就一定会有某种队列形成，这样的队列是什么数据结构呢？
+> Q: What data structure does the wait queue use?
 >
-> A：是 CLH 变体的 FIFO 双端队列。
+> A: It is a FIFO, doubly linked queue based on a CLH variant.
 >
-> Q：处于排队等候机制中的线程，什么时候可以有机会获取锁呢？
+> Q: When can a thread in the queue try to acquire the lock?
 >
-> A：可以详细看下 2.3.1.3 小节。
+> A: See Section 2.3.1.3 for details.
 >
-> Q：如果处于排队等候机制中的线程一直无法获取锁，需要一直等待么？还是有别的策略来解决这一问题？
+> Q: If a queued thread cannot acquire the lock, must it wait indefinitely?
 >
-> A：线程所在节点的状态会变成取消状态，取消状态的节点会从队列中释放，具体可见 2.3.2 小节。
+> A: Its node can enter the cancelled state and be removed from the queue. See Section 2.3.2.
 >
-> Q：Lock 函数通过 Acquire 方法进行加锁，但是具体是如何加锁的呢？
+> Q: `Lock` acquires the lock through `acquire`, but how does that work?
 >
-> A：AQS 的 Acquire 会调用 tryAcquire 方法，tryAcquire 由各个自定义同步器实现，通过 tryAcquire 完成加锁过程。
+> A: AQS's `acquire` calls `tryAcquire`, which each synchronizer implements to define how the lock is acquired.
 
-## 4 AQS 应用
+## 4 AQS Applications
 
-### 4.1 ReentrantLock 的可重入应用
+### 4.1 Reentrancy in ReentrantLock
 
-ReentrantLock 的可重入性是 AQS 很好的应用之一，在了解完上述知识点以后，我们很容易得知 ReentrantLock 实现可重入的方法。在 ReentrantLock 里面，不管是公平锁还是非公平锁，都有一段逻辑。
+ReentrantLock's reentrancy is one example of how AQS is used. Both its fair and non-fair implementations use the following logic:
 
-公平锁：
+Fair lock:
 
 ```java
 // java.util.concurrent.locks.ReentrantLock.FairSync#tryAcquire
@@ -896,7 +897,7 @@ else if (current == getExclusiveOwnerThread()) {
 }
 ```
 
-非公平锁：
+Non-fair lock:
 
 ```java
 // java.util.concurrent.locks.ReentrantLock.Sync#nonfairTryAcquire
@@ -916,7 +917,7 @@ else if (current == getExclusiveOwnerThread()) {
 }
 ```
 
-从上面这两段都可以看到，有一个同步状态 State 来控制整体可重入的情况。State 是 Volatile 修饰的，用于保证一定的可见性和有序性。
+Both snippets use the synchronization state, `state`, to track reentrant holds. It is `volatile`, which provides visibility and ordering guarantees.
 
 ```java
 // java.util.concurrent.locks.AbstractQueuedSynchronizer
@@ -924,27 +925,27 @@ else if (current == getExclusiveOwnerThread()) {
 private volatile int state;
 ```
 
-接下来看 State 这个字段主要的过程：
+The state changes as follows:
 
-1. State 初始化的时候为 0，表示没有任何线程持有锁。
-2. 当有线程持有该锁时，值就会在原来的基础上+1，同一个线程多次获得锁是，就会多次+1，这里就是可重入的概念。
-3. 解锁也是对这个字段-1，一直到 0，此线程对锁释放。
+1. `state` starts at `0`, meaning no thread holds the lock.
+2. When a thread acquires the lock, the value increases by `1`. The same thread can acquire it multiple times, increasing the value each time. This is reentrancy.
+3. Each unlock decreases the value by `1`. When it reaches `0`, the thread has fully released the lock.
 
-### 4.2 JUC 中的应用场景
+### 4.2 How JUC Uses AQS
 
-除了上边 ReentrantLock 的可重入性的应用，AQS 作为并发编程的框架，为很多其他同步工具提供了良好的解决方案。下面列出了 JUC 中的几种同步工具，大体介绍一下 AQS 的应用场景：
+Besides ReentrantLock's reentrancy, AQS provides a framework for many synchronization tools. The table below summarizes how several JUC classes use it:
 
-| 同步工具               | 同步工具与 AQS 的关联                                                                                                                                       |
-| :--------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| ReentrantLock          | 使用 AQS 保存锁重复持有的次数。当一个线程获取锁时，ReentrantLock 记录当前获得锁的线程标识，用于检测是否重复获取，以及错误线程试图解锁操作时异常情况的处理。 |
-| Semaphore              | 使用 AQS 同步状态来保存信号量的当前计数。tryRelease 会增加计数，acquireShared 会减少计数。                                                                  |
-| CountDownLatch         | 使用 AQS 同步状态来表示计数。计数为 0 时，所有的 Acquire 操作（CountDownLatch 的 await 方法）才可以通过。                                                   |
-| ReentrantReadWriteLock | 使用 AQS 同步状态中的 16 位保存写锁持有的次数，剩下的 16 位用于保存读锁的持有次数。                                                                         |
-| ThreadPoolExecutor     | Worker 利用 AQS 同步状态实现对独占线程变量的设置（tryAcquire 和 tryRelease）。                                                                              |
+| Synchronizer           | How it uses AQS                                                                                                                                                  |
+| :--------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ReentrantLock          | Uses AQS state to track the reentrant hold count. It also records the owning thread to detect reentrant acquisition and reject unlock attempts by other threads. |
+| Semaphore              | Uses AQS state to store the current permit count. `tryRelease` increases it, and `acquireShared` decreases it.                                                   |
+| CountDownLatch         | Uses AQS state as the count. `await()` can proceed only when the count reaches `0`.                                                                              |
+| ReentrantReadWriteLock | Uses 16 bits of AQS state for the write lock hold count and the remaining 16 bits for the read lock count.                                                       |
+| ThreadPoolExecutor     | `Worker` uses AQS state to control exclusive access to the worker thread, through `tryAcquire` and `tryRelease`.                                                 |
 
-### 4.3 自定义同步工具
+### 4.3 A Custom Synchronizer
 
-了解 AQS 基本原理以后，按照上面所说的 AQS 知识点，自己实现一个同步工具。
+With the basic AQS concepts in place, we can implement a simple synchronizer:
 
 ```java
 public class LeeLock  {
@@ -987,7 +988,7 @@ public class LeeLock  {
 }
 ```
 
-通过我们自己定义的 Lock 完成一定的同步功能。
+The custom `Lock` provides the synchronization:
 
 ```java
 public class LeeMain {
@@ -1024,16 +1025,16 @@ public class LeeMain {
 }
 ```
 
-上述代码每次运行结果都会是 20000。通过简单的几行代码就能实现同步功能，这就是 AQS 的强大之处。
+This code prints `20000` each time. AQS makes it possible to implement synchronization with only a few lines of code.
 
-## 5 总结
+## 5 Summary
 
-我们日常开发中使用并发的场景太多，但是对并发内部的基本框架原理了解的人却不多。由于篇幅原因，本文仅介绍了可重入锁 ReentrantLock 的原理和 AQS 原理，希望能够成为大家了解 AQS 和 ReentrantLock 等同步器的“敲门砖”。
+Concurrency is common in day-to-day development, but its underlying framework is less familiar to many developers. This article covered the basics of ReentrantLock and AQS as a starting point for understanding these synchronizers.
 
-## 参考资料
+## References
 
 - Lea D. The java. util. concurrent synchronizer framework\[J]. Science of Computer Programming, 2005, 58(3): 293-309.
-- 《Java 并发编程实战》
-- [不可不说的 Java“锁”事](https://tech.meituan.com/2018/11/15/java-lock.html)
+- _Java Concurrency in Practice_
+- [An Introduction to Java Locks](https://tech.meituan.com/2018/11/15/java-lock.html)
 
 <!-- @include: @article-footer.snippet.md -->

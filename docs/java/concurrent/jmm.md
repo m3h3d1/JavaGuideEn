@@ -1,165 +1,165 @@
 ---
-title: JMM（Java 内存模型）详解
-description: 深入解析Java内存模型JMM：详解CPU缓存模型、指令重排序机制、happens-before原则、内存可见性保证，理解多线程并发编程的底层规范。
+title: The Java Memory Model (JMM)
+description: An in-depth guide to the Java Memory Model, covering CPU caches, instruction reordering, happens-before, memory visibility, and the rules behind Java concurrency.
 category: Java
 tag:
-  - Java并发
+  - Java Concurrency
 head:
   - - meta
     - name: keywords
-      content: JMM,Java内存模型,CPU缓存,指令重排序,happens-before,内存可见性,并发编程模型
+      content: JMM,Java Memory Model,CPU cache,instruction reordering,happens-before,memory visibility,concurrency model
 ---
 
-对于 Java 来说，你可以把 **JMM（Java 内存模型）** 看作是 Java 定义的并发编程相关的一组规范。除了抽象了线程和主内存之间的关系之外，其还规定了从 Java 源代码到 CPU 可执行指令的转化过程要遵守哪些并发相关的原则和规范。其主要目的是为了**简化多线程编程**，**增强程序的可移植性**。
+The **Java Memory Model (JMM)** is a set of rules Java defines for concurrent programming. It describes the relationship between threads and main memory, and the concurrency rules that apply as Java source code is translated into instructions the CPU can execute. Its main goals are to **make multithreaded programming simpler** and **improve portability**.
 
-JMM 主要定义了对于一个共享变量，当一个线程执行写操作后，该变量对其他线程的**可见性**。
+The JMM primarily defines when a write to a shared variable by one thread becomes **visible** to other threads.
 
-要想透彻理解 JMM，我们需要从 **CPU 缓存模型**和**指令重排序**说起。
+To understand the JMM, start with the **CPU cache model** and **instruction reordering**.
 
-## 从 CPU 缓存模型说起
+## The CPU Cache Model
 
-**为什么要弄一个 CPU 高速缓存呢？** 类比我们开发网站后台系统使用的缓存（比如 Redis）是为了解决程序处理速度和访问常规关系型数据库速度不对等的问题。 **CPU 缓存则是为了解决 CPU 处理速度和内存处理速度不对等的问题。**
+**Why have CPU caches?** Like the caches used in web systems (such as Redis), they help bridge a speed gap. **CPU caches bridge the gap between CPU processing speed and memory access speed.**
 
-我们甚至可以把 **内存看作外存的高速缓存**，程序运行的时候我们把外存的数据复制到内存，由于内存的处理速度远远高于外存，这样提高了处理速度。
+You can also think of **memory as a cache for storage**. A program copies data from storage into memory while it runs, improving access speed because memory is much faster.
 
-总结：**CPU Cache 缓存的是内存数据用于解决 CPU 处理速度和内存不匹配的问题，内存缓存的是硬盘数据用于解决硬盘访问速度过慢的问题。**
+In short: **CPU caches hold memory data to bridge the CPU-to-memory speed gap; memory holds data from storage to reduce the cost of slow storage access.**
 
-为了更好地理解，我画了一个简单的 CPU Cache 示意图如下所示。
+The diagram below illustrates a simple CPU cache model.
 
-> **🐛 修正（参见：[issue#1848](https://github.com/Snailclimb/JavaGuide/issues/1848)）**：对 CPU 缓存模型绘图不严谨的地方进行完善。
+> **🐛 Correction (see [issue #1848](https://github.com/Snailclimb/JavaGuide/issues/1848)):** The CPU cache diagram has been revised for accuracy.
 
-![CPU 缓存模型示意图](https://oss.javaguide.cn/github/javaguide/java/concurrent/cpu-cache.png)
+![CPU cache model](https://oss.javaguide.cn/github/javaguide/java/concurrent/cpu-cache.png)
 
-现代的 CPU Cache 通常分为三层，分别叫 L1,L2,L3 Cache。有些 CPU 可能还有 L4 Cache，这里不做讨论，并不常见
+Modern CPUs usually have three cache levels: L1, L2, and L3. Some CPUs also have an L4 cache, which is uncommon and not covered here.
 
-**CPU Cache 的工作方式：** 先复制一份数据到 CPU Cache 中，当 CPU 需要用到的时候就可以直接从 CPU Cache 中读取数据，当运算完成后，再将运算得到的数据写回 Main Memory 中。但是，这样存在 **内存缓存不一致性的问题**！比如我执行一个 i++ 操作的话，如果两个线程同时执行的话，假设两个线程从 CPU Cache 中读取的 i=1，两个线程做了 i++ 运算完之后再写回 Main Memory 之后 i=2，而正确结果应该是 i=3。
+**How CPU caches work:** Data is copied into a CPU cache so the CPU can read it quickly. After an operation, the result is written back to main memory. This can lead to **inconsistent cached values**. For example, if two threads both read `i = 1`, increment it, and write it back, the result may be `i = 2` instead of the expected `i = 3`.
 
-**CPU 为了解决内存缓存不一致性问题可以通过制定缓存一致协议（比如 [MESI 协议](https://zh.wikipedia.org/wiki/MESI%E5%8D%8F%E8%AE%AE)）或者其他手段来解决。** 这个缓存一致性协议指的是在 CPU 高速缓存与主内存交互的时候需要遵守的原则和规范。不同的 CPU 中，使用的缓存一致性协议通常也会有所不同。
+**CPUs can address cache inconsistency with cache-coherence protocols, such as [MESI](https://en.wikipedia.org/wiki/MESI_protocol), or other mechanisms.** A cache-coherence protocol defines rules for interactions between CPU caches and main memory. Different CPUs may use different protocols.
 
-![缓存一致性协议](https://oss.javaguide.cn/github/javaguide/java/concurrent/cpu-cache-protocol.png)
+![Cache-coherence protocol](https://oss.javaguide.cn/github/javaguide/java/concurrent/cpu-cache-protocol.png)
 
-CPU 缓存一致性由处理器及其内存子系统协同实现。不同处理器架构还会规定各类内存访问在其他处理器看来可以按什么顺序出现，这通常称为硬件内存模型。JMM 位于更高的语言层，JVM 需要把它的要求映射到具体处理器提供的指令和屏障上。
+CPU cache coherence is implemented jointly by the processor and its memory subsystem. Processor architectures also define the order in which memory operations can appear to other processors; this is called the hardware memory model. The JMM sits at a higher, language level, and the JVM maps its requirements to instructions and barriers provided by the target processor.
 
-## 指令重排序
+## Instruction Reordering
 
-说完了 CPU 缓存模型，我们再来看看另外一个比较重要的概念 **指令重排序**。
+Now that we have covered CPU caches, let's look at another important concept: **instruction reordering**.
 
-为了提升执行速度/性能，计算机在执行程序代码的时候，会对指令进行重排序。
+To improve performance, a computer may reorder instructions while executing a program.
 
-**什么是指令重排序？** 简单来说就是系统在执行代码的时候并不一定是按照你写的代码的顺序依次执行。
+**What is instruction reordering?** The system may not execute instructions in the same order as they appear in the source code.
 
-常见的指令重排序有下面 2 种情况：
+There are two common forms of instruction reordering:
 
-- **编译器优化重排**：编译器（包括 JVM、JIT 编译器等）在不改变单线程程序语义的前提下，重新安排语句的执行顺序。
-- **指令并行重排**：现代处理器采用了指令级并行技术(Instruction-Level Parallelism，ILP)来将多条指令重叠执行。如果不存在数据依赖性，处理器可以改变语句对应机器指令的执行顺序。
+- **Compiler reordering:** Compilers, including the JVM's JIT compiler, may rearrange statements as long as single-threaded program behavior is unchanged.
+- **Instruction-level parallelism (ILP):** Modern processors overlap the execution of multiple instructions. If there are no data dependencies, they may execute machine instructions in a different order.
 
-另外，内存系统也会有“重排序”，但又不是真正意义上的重排序。在 JMM 里表现为主存和本地内存的内容可能不一致，进而导致程序在多线程下执行可能出现问题。
+The memory system can also appear to reorder operations, though it is not reordering in the same sense. In the JMM, main memory and a thread's local view may differ, which can cause problems in multithreaded programs.
 
-Java 源代码经过字节码编译、解释执行或 JIT 编译，最终由 JVM 在目标平台上执行相应的机器指令。编译器优化、处理器乱序执行以及内存子系统的行为都可能使多线程观察到的顺序与源代码直观顺序不同，它们并不是一条固定且严格线性的“重排流水线”。
+Java source is compiled to bytecode, interpreted or compiled by the JIT, and ultimately executed as machine instructions by the JVM on the target platform. Compiler optimizations, out-of-order processor execution, and memory-system behavior can make the order observed by multiple threads differ from the apparent source order. These are not stages in a fixed, strictly linear “reordering pipeline.”
 
-**指令重排序可以保证串行语义一致，但是没有义务保证多线程间的语义也一致**，所以在多线程下，指令重排序可能会导致一些问题。
+**Instruction reordering preserves single-threaded behavior, but is not required to preserve behavior across threads**, so it can cause problems in multithreaded programs.
 
-对于编译器优化重排和处理器的指令重排序（指令并行重排和内存系统重排都属于是处理器级别的指令重排序），处理该问题的方式不一样。
+Compiler reordering and processor-level reordering (including instruction-level parallelism and memory-system effects) are controlled in different ways:
 
-- 对于编译器，通过禁止特定类型的编译器重排序的方式来禁止重排序。
+- For compilers, prevent reordering by disallowing specific compiler transformations.
 
-- 对于处理器，通过插入内存屏障（Memory Barrier，或有时叫做内存栅栏，Memory Fence）的方式来禁止特定类型的处理器重排序。
+- For processors, use memory barriers (also called memory fences) to prevent specific types of processor reordering.
 
-> 内存屏障（Memory Barrier，也叫内存栅栏，Memory Fence）用于约束特定内存访问之间的顺序和可见性。不同处理器架构的具体实现并不相同，不能一概理解为“把缓存刷新到物理内存”或“让缓存全部失效”；JVM 会根据目标平台选择满足 JMM 语义的指令。
+> A memory barrier (also called a memory fence) constrains the ordering and visibility of specific memory accesses. Its implementation varies by processor architecture; it should not be treated as a universal “flush caches to physical memory” or “invalidate all caches” operation. The JVM chooses instructions for the target platform that satisfy the JMM semantics.
 
-## JMM(Java Memory Model)
+## The Java Memory Model (JMM)
 
-### 什么是 JMM？为什么需要 JMM？
+### What Is the JMM, and Why Do We Need It?
 
-Java 是最早尝试提供内存模型的编程语言。由于早期内存模型存在一些缺陷（比如非常容易削弱编译器的优化能力），从 Java5 开始，Java 开始使用新的内存模型 [《JSR-133：Java Memory Model and Thread Specification》](http://www.cs.umd.edu/~pugh/java/memoryModel/CommunityReview.pdf)。
+Java was one of the first programming languages to define a memory model. The early model had shortcomings, such as making compiler optimization difficult. Starting with Java 5, Java adopted a revised model in [JSR-133: Java Memory Model and Thread Specification](http://www.cs.umd.edu/~pugh/java/memoryModel/CommunityReview.pdf).
 
-一般来说，编程语言也可以直接复用操作系统层面的内存模型。不过，不同的操作系统内存模型不同。如果直接复用操作系统层面的内存模型，就可能会导致同样一套代码换了一个操作系统就无法执行了。Java 语言是跨平台的，它需要自己提供一套内存模型以屏蔽系统差异。
+Programming languages can reuse an operating system's memory model, but operating systems differ. Code that relies directly on one operating system's model may behave differently on another. Java is cross-platform, so it defines its own memory model to abstract away these differences.
 
-这只是 JMM 存在的其中一个原因。实际上，对于 Java 来说，你可以把 JMM 看作是 Java 定义的并发编程相关的一组规范，除了抽象了线程和主内存之间的关系之外，其还规定了从 Java 源代码到 CPU 可执行指令的这个转化过程要遵守哪些和并发相关的原则和规范，其主要目的是为了简化多线程编程，增强程序可移植性的。
+That is one reason the JMM exists. It is a set of rules Java defines for concurrent programming. Besides describing the relationship between threads and main memory, it specifies concurrency requirements for the process that translates Java source into instructions the CPU can execute. Its goals are to simplify multithreaded programming and improve portability.
 
-**为什么要遵守这些并发相关的原则和规范呢？** 这是因为并发编程下，像 CPU 多级缓存和指令重排这类设计可能会导致程序运行出现一些问题。就比如说我们上面提到的指令重排序就可能会让多线程程序的执行出现问题，为此，JMM 抽象了 happens-before 原则（后文会详细介绍到）来解决这个指令重排序问题。
+**Why do these rules matter?** CPU caches and instruction reordering can cause problems in concurrent programs. For example, reordering can change what one thread observes from another. The JMM uses the happens-before principle, described below, to define the ordering and visibility guarantees needed to address these issues.
 
-JMM 说白了就是定义了一些规范来解决这些问题，开发者可以利用这些规范更方便地开发多线程程序。对于 Java 开发者说，你不需要了解底层原理，直接使用并发相关的一些关键字和类（比如 `volatile`、`synchronized`、各种 `Lock`）即可开发出并发安全的程序。
+In short, the JMM defines rules that help developers write multithreaded programs. Java developers can use concurrency features such as `volatile`, `synchronized`, and `Lock` implementations without having to manage the underlying hardware details themselves.
 
-### JMM 是如何抽象线程和主内存之间的关系？
+### How Does the JMM Model Threads and Main Memory?
 
-**Java 内存模型（JMM）** 抽象了线程和主内存之间的关系，就比如说线程之间的共享变量必须存储在主内存中。
+The **Java Memory Model (JMM)** abstracts the relationship between threads and main memory. For example, shared variables are modeled as residing in main memory.
 
-Java 从早期规范开始就有内存模型；Java 5 通过 JSR-133 对它进行了重要修订，明确并增强了 `volatile`、`final` 和 happens-before 等语义。JMM 允许 JVM 使用寄存器、缓存以及编译器优化来实现共享变量访问；如果程序没有建立必要的同步关系，一个线程就可能看不到另一个线程的最新写入。
+Java has had a memory model since its early specifications. Java 5 made major revisions through JSR-133, clarifying and strengthening the semantics of `volatile`, `final`, and happens-before. The JMM allows the JVM to use registers, caches, and compiler optimizations when accessing shared variables. Without the required synchronization, one thread may not see another thread's latest write.
 
-这和我们上面讲到的 CPU 缓存模型非常相似。
+This is similar to the CPU cache model described above.
 
-**什么是主内存？什么是本地内存？**
+**What are main memory and local memory?**
 
-- **主内存**：JMM 用它抽象线程之间可以共享的变量，包括实例字段、静态字段和数组元素。方法局部变量、形参和异常处理参数不会在线程之间共享，因此不属于这里所说的共享变量。主内存是规范层面的抽象，不等同于某一块物理内存。
-- **本地内存**：每个线程都有一个私有的本地内存，本地内存存储了该线程已读 / 写共享变量的副本。每个线程只能操作自己本地内存中的变量，无法直接访问其他线程的本地内存。如果线程间需要通信，必须通过主内存来进行。本地内存是 JMM 抽象出来的一个概念，并不真实存在，它涵盖了缓存、写缓冲区、寄存器以及其他的硬件和编译器优化。
+- **Main memory:** The JMM uses this concept for variables that can be shared between threads, including instance fields, static fields, and array elements. Method-local variables, parameters, and exception-handler parameters are not shared this way. Main memory is an abstract concept in the specification, not a particular physical memory region.
+- **Local memory:** Each thread has a private local view containing copies of shared variables it has read or written. A thread can operate only on its own local view, not another thread's. Threads communicate through main memory. Local memory is an abstraction, not a physical component; it can represent caches, write buffers, registers, and other hardware or compiler optimizations.
 
-Java 内存模型的抽象示意图如下：
+The diagram below illustrates the JMM:
 
-![JMM(Java 内存模型)](https://oss.javaguide.cn/github/javaguide/java/concurrent/jmm.png)
+![Java Memory Model](https://oss.javaguide.cn/github/javaguide/java/concurrent/jmm.png)
 
-从上图来看，线程 1 与线程 2 之间如果要进行通信的话，必须要经历下面 2 个步骤：
+For thread 1 and thread 2 to communicate in this model, two steps are involved:
 
-1. 线程 1 把本地内存中修改过的共享变量副本的值同步到主内存中去。
-2. 线程 2 到主存中读取对应的共享变量的值。
+1. Thread 1 writes its updated copy of the shared variable to main memory.
+2. Thread 2 reads the shared variable from main memory.
 
-也就是说，线程间的共享数据需要遵守 JMM 的规则进行通信；只有通过 `volatile`、锁、线程启动与终止等方式建立相应的 happens-before 关系时，JMM 才为相关写入提供可见性保证。
+In other words, communication through shared data must follow the JMM rules. The JMM guarantees visibility for writes when the required happens-before relationship is established, for example through `volatile`, locks, or thread start and termination.
 
-不过，多线程下，对主内存中的一个共享变量进行操作有可能诱发线程安全问题。举个例子：
+However, accessing a shared variable from multiple threads can still cause thread-safety issues. For example:
 
-1. 线程 1 和线程 2 分别对同一个共享变量进行操作，一个执行修改，一个执行读取。
-2. 线程 2 读取到的是线程 1 修改之前的值还是修改后的值并不确定，都有可能，因为线程 1 和线程 2 都是先将共享变量从主内存拷贝到对应线程的工作内存中。
+1. Thread 1 writes a shared variable while thread 2 reads it.
+2. Thread 2 may see either the old or new value if the threads have not established the required synchronization. Each thread may be working with its own copy of the variable.
 
-关于主内存与工作内存直接的具体交互协议，即一个变量如何从主内存拷贝到工作内存，如何从工作内存同步到主内存之间的实现细节，Java 内存模型定义来以下八种同步操作（了解即可，无需死记硬背）：
+The JMM defines eight synchronization actions for interactions between main memory and a thread's working memory. They describe how a variable is copied into working memory and written back (understanding the ideas is enough; there is no need to memorize them):
 
-- **锁定（lock）**: 作用于主内存中的变量，将他标记为一个线程独享变量。
-- **解锁（unlock）**: 作用于主内存中的变量，解除变量的锁定状态，被解除锁定状态的变量才能被其他线程锁定。
-- **read（读取）**：作用于主内存的变量，它把一个变量的值从主内存传输到线程的工作内存中，以便随后的 load 动作使用。
-- **load（载入）**：把 read 操作从主内存中得到的变量值放入工作内存的变量的副本中。
-- **use（使用）**：把工作内存中的一个变量的值传给执行引擎，每当虚拟机遇到一个使用到变量的指令时都会使用该指令。
-- **assign（赋值）**：作用于工作内存的变量，它把一个从执行引擎接收到的值赋给工作内存的变量，每当虚拟机遇到一个给变量赋值的字节码指令时执行这个操作。
-- **store（存储）**：作用于工作内存的变量，它把工作内存中一个变量的值传送到主内存中，以便随后的 write 操作使用。
-- **write（写入）**：作用于主内存的变量，它把 store 操作从工作内存中得到的变量的值放入主内存的变量中。
+- **lock:** Applies to a main-memory variable and marks it as held by a thread.
+- **unlock:** Applies to a main-memory variable and releases it so another thread can lock it.
+- **read:** Transfers a variable's value from main memory to working memory for a later `load` action.
+- **load:** Places the value obtained by `read` into the working-memory copy of the variable.
+- **use:** Passes a working-memory value to the execution engine when an instruction uses that variable.
+- **assign:** Assigns a value from the execution engine to a working-memory variable when bytecode assigns to it.
+- **store:** Transfers a working-memory value to main memory for a later `write` action.
+- **write:** Places the value received by `store` into the main-memory variable.
 
-除了这 8 种同步操作之外，还规定了下面这些同步规则来保证这些同步操作的正确执行（了解即可，无需死记硬背）：
+The JMM also defines these rules for synchronization actions (understanding them is enough; there is no need to memorize them):
 
-- 不允许一个线程无原因地（没有发生过任何 assign 操作）把数据从线程的工作内存同步回主内存中。
-- 一个新的变量只能在主内存中 “诞生”，不允许在工作内存中直接使用一个未被初始化（load 或 assign）的变量，换句话说就是对一个变量实施 use 和 store 操作之前，必须先执行过了 assign 和 load 操作。
-- 一个变量在同一个时刻只允许一条线程对其进行 lock 操作，但 lock 操作可以被同一条线程重复执行多次，多次执行 lock 后，只有执行相同次数的 unlock 操作，变量才会被解锁。
-- 如果对一个变量执行 lock 操作，将会清空工作内存中此变量的值，在执行引擎使用这个变量前，需要重新执行 load 或 assign 操作初始化变量的值。
-- 如果一个变量事先没有被 lock 操作锁定，则不允许对它执行 unlock 操作，也不允许去 unlock 一个被其他线程锁定住的变量。
-- ……
+- A thread cannot write a value from working memory back to main memory without a preceding `assign` action.
+- A new variable is created in main memory. A thread cannot use a variable in working memory before initializing it with `load` or `assign`; `use` and `store` must be preceded by the required `load` and `assign` actions.
+- Only one thread may hold a variable's lock at a time. The same thread may lock it repeatedly, but it must unlock it the same number of times before the variable is unlocked.
+- Locking a variable clears its working-memory value. Before the execution engine uses it again, the value must be initialized with `load` or `assign`.
+- A thread cannot unlock a variable it has not locked, or unlock a variable held by another thread.
+- ...
 
-### Java 内存区域和 JMM 有何区别？
+### How Do Java Memory Areas Differ from the JMM?
 
-这是一个比较常见的问题，很多初学者非常容易搞混。 **Java 内存区域和内存模型是完全不一样的两个东西**：
+This is a common question, and the two concepts are easy to confuse. **Java memory areas and the Java Memory Model are different things:**
 
-- JVM 内存结构和 Java 虚拟机的运行时区域相关，定义了 JVM 在运行时如何分区存储程序数据，就比如说堆主要用于存放对象实例。
-- Java 内存模型和 Java 的并发编程相关，抽象了线程和主内存之间的关系就比如说线程之间的共享变量必须存储在主内存中，规定了从 Java 源代码到 CPU 可执行指令的这个转化过程要遵守哪些和并发相关的原则和规范，其主要目的是为了简化多线程编程，增强程序可移植性的。
+- JVM memory areas describe how the runtime organizes program data, such as storing object instances on the heap.
+- The JMM concerns Java concurrency. It models the relationship between threads and main memory and defines concurrency rules for translating Java source into CPU instructions. Its goals are to simplify multithreaded programming and improve portability.
 
-### happens-before 原则是什么？
+### What Is the Happens-Before Principle?
 
-happens-before 这个概念最早诞生于 Leslie Lamport 于 1978 年发表的论文[《Time，Clocks and the Ordering of Events in a Distributed System》](https://lamport.azurewebsites.net/pubs/time-clocks.pdf)。在这篇论文中，Leslie Lamport 提出了[逻辑时钟](https://writings.sh/post/logical-clocks)的概念，这也成了第一个逻辑时钟算法。在分布式环境中，通过一系列规则来定义逻辑时钟的变化，从而能通过逻辑时钟来对分布式系统中的事件的先后顺序进行判断。**逻辑时钟并不度量时间本身，仅区分事件发生的前后顺序，其本质就是定义了一种 happens-before 关系。**
+The happens-before concept originated in Leslie Lamport's 1978 paper [Time, Clocks, and the Ordering of Events in a Distributed System](https://lamport.azurewebsites.net/pubs/time-clocks.pdf). The paper introduced [logical clocks](https://writings.sh/post/logical-clocks), which provide rules for ordering events in distributed systems. **Logical clocks do not measure time; they distinguish the order in which events occur. At their core, they define a happens-before relationship.**
 
-上面提到的 happens-before 这个概念诞生的背景并不是重点，简单了解即可。
+The history of happens-before is useful context, but it is not essential here.
 
-JSR 133 引入了 happens-before 这个概念来描述两个操作之间的内存可见性。
+JSR 133 uses happens-before to describe memory visibility between two operations.
 
-**为什么需要 happens-before 原则？** happens-before 原则的诞生是为了程序员和编译器、处理器之间的平衡。程序员追求的是易于理解和编程的强内存模型，遵守既定规则编码即可。编译器和处理器追求的是较少约束的弱内存模型，让它们尽己所能地去优化性能，让性能最大化。happens-before 原则的设计思想其实非常简单：
+**Why do we need happens-before?** It balances the needs of programmers, compilers, and processors. Programmers want a strong, easy-to-understand memory model: follow its rules and the code behaves predictably. Compilers and processors benefit from a weaker model with fewer constraints, which lets them optimize performance. The idea behind happens-before is simple:
 
-- 为了对编译器和处理器的约束尽可能少，只要不改变程序的执行结果（单线程程序和正确执行的多线程程序），编译器和处理器怎么进行重排序优化都行。
-- 对于会改变程序执行结果的重排序，JMM 要求编译器和处理器必须禁止这种重排序。
+- To minimize constraints, compilers and processors may reorder operations as long as the result of a single-threaded program or a correctly synchronized multithreaded program does not change.
+- The JMM requires compilers and processors to prevent reorderings that would change the program's result.
 
-下面这张是我根据《Java 并发编程的艺术》这本书中的一张 JMM 设计思想示意图重新绘制的。
+The following diagram is adapted from a JMM illustration in _The Art of Java Concurrency Programming_.
 
-![ JMM 设计思想](https://oss.javaguide.cn/github/javaguide/java/concurrent/jmm-design-idea.png)
+![JMM design](https://oss.javaguide.cn/github/javaguide/java/concurrent/jmm-design-idea.png)
 
-了解了 happens-before 原则的设计思想，我们再来看看 JSR-133 对 happens-before 原则的定义：
+With that design in mind, here is the JSR-133 definition of happens-before:
 
-- 如果一个操作 happens-before 另一个操作，那么第一个操作的执行结果将对第二个操作可见，并且第一个操作的执行顺序排在第二个操作之前。
-- 两个操作之间存在 happens-before 关系，并不意味着 Java 平台的具体实现必须要按照 happens-before 关系指定的顺序来执行。如果重排序之后的执行结果，与按 happens-before 关系来执行的结果一致，那么 JMM 也允许这样的重排序。
+- If one operation happens-before another, the first operation's result is visible to the second, and the first is ordered before the second.
+- A happens-before relationship does not require the Java implementation to execute the operations in that exact order. Reordering is allowed if it produces the same result as an execution that follows the happens-before order.
 
-我们看下面这段代码：
+Consider this code:
 
 ```java
 int userNum = getUserNum();   // 1
@@ -171,78 +171,78 @@ int totalNum = userNum + teacherNum;  // 3
 - 2 happens-before 3
 - 1 happens-before 3
 
-虽然 1 happens-before 2，但对 1 和 2 进行重排序不会影响代码的执行结果，所以 JMM 是允许编译器和处理器执行这种重排序的。但 1 和 2 必须是在 3 执行之前，也就是说 1,2 happens-before 3。
+Although 1 happens-before 2, reordering them does not change the result, so the JMM allows it. Both operations must still happen before 3; that is, 1 and 2 happen-before 3.
 
-**happens-before 原则表达的意义其实并不是一个操作发生在另外一个操作的前面，虽然这从程序员的角度上来说也并无大碍。更准确地来说，它更想表达的意义是前一个操作的结果对于后一个操作是可见的，无论这两个操作是否在同一个线程里。**
+**Happens-before does not necessarily mean that one operation literally executes before another, though that is a reasonable shorthand for programmers. More precisely, it means the result of the first operation is visible to the second, whether or not they run in the same thread.**
 
-举个例子：操作 1 happens-before 操作 2，即使操作 1 和操作 2 不在同一个线程内，JMM 也会保证操作 1 的结果对操作 2 是可见的。
+For example, if operation 1 happens-before operation 2, the JMM guarantees that operation 1's result is visible to operation 2 even if they run in different threads.
 
-### happens-before 常见规则有哪些？谈谈你的理解？
+### What Are the Common Happens-Before Rules?
 
-happens-before 有多条规则，下面列出其中最常用的 5 条：
+Happens-before has several rules. Here are five commonly used ones:
 
-1. **程序顺序规则**：一个线程内，按照代码顺序，书写在前面的操作 happens-before 于书写在后面的操作；
-2. **监视器锁规则**：对一个监视器的解锁 happens-before 于随后对同一个监视器的加锁；
-3. **volatile 变量规则**：对一个 `volatile` 变量的写操作 happens-before 于随后对同一个变量的读操作；
-4. **传递规则**：如果 A happens-before B，且 B happens-before C，那么 A happens-before C；
-5. **线程启动规则**：Thread 对象的 `start()` 方法 happens-before 于此线程的每一个动作。
+1. **Program order:** Within one thread, an earlier operation in program order happens-before a later operation.
+2. **Monitor lock:** An unlock on a monitor happens-before a later lock on the same monitor.
+3. **Volatile variable:** A write to a `volatile` variable happens-before a later read of the same variable.
+4. **Transitivity:** If A happens-before B and B happens-before C, then A happens-before C.
+5. **Thread start:** Calling `start()` on a `Thread` happens-before every action in that thread.
 
-这份列表并不完整，还包括线程终止、线程中断等规则。两个冲突访问之间如果无法通过完整规则推导出 happens-before 关系，就可能构成数据竞争，其可见性和顺序不能按单线程直觉来保证；这不等价于 JVM 可以无条件交换任意两条指令，执行结果仍受 JMM 的一致性和因果性规则约束。
+This list is not exhaustive; there are also rules for thread termination and interruption. If the full set of rules does not establish a happens-before relationship between conflicting accesses, they may form a data race, and single-threaded assumptions cannot guarantee their visibility or order. This does not mean the JVM can freely swap any two instructions; execution remains subject to the JMM's consistency and causality requirements.
 
-### happens-before 和 JMM 什么关系？
+### How Are Happens-Before and the JMM Related?
 
-happens-before 与 JMM 的关系如下图所示：
+The diagram shows how happens-before relates to the JMM:
 
 ![jmm-vs-happens-before](https://oss.javaguide.cn/github/javaguide/java/concurrent/jmm-vs-happens-before.png)
 
-- JMM 向程序员提供了 **“ happens-before 规则 ”**（如程序顺序规则、`volatile` 变量规则等）。这是一种 **“ 强内存模型 ”** 的假象：程序员不需要关心底层复杂的重排序细节，只需要按照这些规则编写代码，就能保证多线程下的内存可见性。
-- JVM 在执行时，会将 happens-before 规则映射到具体的实现上。为了在保证正确性的前提下不丧失性能，JMM 只会 **“ 禁止影响执行结果的重排序 ”**。对于不影响单线程执行结果的重排序，JMM 是允许的。
-- 最底层是编译器和处理器真实的 **“ 重排序规则 ”**。
+- The JMM gives programmers **happens-before rules**, such as program order and volatile-variable rules. These provide the appearance of a **strong memory model**: follow the rules without needing to manage low-level reordering details, and the required visibility is guaranteed.
+- At runtime, the JVM maps happens-before rules to platform-specific behavior. To preserve performance while maintaining correctness, the JMM **prevents reorderings that could change the result** while allowing reorderings that do not change single-threaded behavior.
+- At the lowest level are the actual **reordering rules** of compilers and processors.
 
-总结来说，JMM 就像是一个中间层：它向上通过 happens-before 为程序员提供简单的编程模型；向下通过禁止特定重排序，利用底层硬件性能。这种设计既保证了多线程的安全性，又最大限度释放了硬件的性能。
+In short, the JMM is an intermediate layer. It gives programmers a simple model through happens-before and lets the JVM use hardware performance by prohibiting only specific reorderings. This design supports multithreaded correctness while making good use of the hardware.
 
-## 再看并发编程三个重要特性
+## Three Important Properties of Concurrency
 
-### 原子性
+### Atomicity
 
-一次操作或者多次操作，要么所有的操作全部都得到执行并且不会受到任何因素的干扰而中断，要么都不执行。
+An operation or group of operations is atomic if it either completes in full without interference or does not happen at all.
 
-在 Java 中，可以借助 `synchronized`、各种 `Lock` 以及各种原子类实现原子性。
+In Java, atomicity can be provided by `synchronized`, `Lock` implementations, and atomic classes.
 
-`synchronized` 和各种 `Lock` 可以保证任一时刻只有一个线程访问该代码块，因此可以保障原子性。各种原子类是利用 CAS (compare and swap) 操作（可能也会用到 `volatile` 或者 `final` 关键字）来保证原子操作。
+`synchronized` and `Lock` implementations ensure that only one thread at a time enters the protected code, which provides atomicity. Atomic classes use compare-and-swap (CAS), and may also use `volatile` or `final`, to provide atomic operations.
 
-### 可见性
+### Visibility
 
-当一个线程对共享变量进行了修改，那么另外的线程都是立即可以看到修改后的最新值。
+Visibility means that when one thread updates a shared variable, other threads can observe the updated value.
 
-在 Java 中，可以借助 `synchronized`、`volatile` 以及各种 `Lock` 实现可见性。
+In Java, visibility can be provided by `synchronized`, `volatile`, and `Lock` implementations.
 
-如果将变量声明为 `volatile`，对该变量的写与后续读之间会建立 happens-before 关系。JVM 必须保证相应的可见性和顺序语义，但具体实现不要求每次都访问物理主存。
+If a variable is declared `volatile`, a write to it happens-before a subsequent read of the same variable. The JVM must preserve the corresponding visibility and ordering semantics, but the implementation does not have to access physical main memory on every read or write.
 
-### 有序性
+### Ordering
 
-由于指令重排序问题，代码的执行顺序未必就是编写代码时候的顺序。
+Because of instruction reordering, code may not execute in the order in which it was written.
 
-我们上面讲重排序的时候也提到过：
+As mentioned above:
 
-> **指令重排序可以保证串行语义一致，但是没有义务保证多线程间的语义也一致**，所以在多线程下，指令重排序可能会导致一些问题。
+> **Instruction reordering preserves single-threaded behavior, but is not required to preserve behavior across threads**, so it can cause problems in multithreaded programs.
 
-在 Java 中，`volatile` 会约束与该变量读写相关、可能破坏其内存语义的重排序，但并不是禁止所有指令重排序优化。
+In Java, `volatile` constrains reorderings around reads and writes of that variable when they could violate its memory semantics. It does not disable all instruction-reordering optimizations.
 
-## 总结
+## Summary
 
-- Java 是最早尝试提供内存模型的语言，其主要目的是为了简化多线程编程，增强程序可移植性的。
-- CPU 可以通过制定缓存一致协议（比如 [MESI 协议](https://zh.wikipedia.org/wiki/MESI%E5%8D%8F%E8%AE%AE)）来解决内存缓存不一致性问题。
-- 为了提升执行速度/性能，计算机在执行程序代码的时候，会对指令进行重排序。 简单来说就是系统在执行代码的时候并不一定是按照你写的代码的顺序依次执行。**指令重排序可以保证串行语义一致，但是没有义务保证多线程间的语义也一致**，所以在多线程下，指令重排序可能会导致一些问题。
-- 你可以把 JMM 看作是 Java 定义的并发编程相关的一组规范，除了抽象了线程和主内存之间的关系之外，其还规定了从 Java 源代码到 CPU 可执行指令的这个转化过程要遵守哪些和并发相关的原则和规范，其主要目的是为了简化多线程编程，增强程序可移植性的。
-- JSR 133 引入了 happens-before 这个概念来描述两个操作之间的内存可见性。
+- Java was one of the first languages to define a memory model, with the goals of simplifying multithreaded programming and improving portability.
+- CPUs use cache-coherence protocols such as [MESI](https://en.wikipedia.org/wiki/MESI_protocol) to address inconsistent cached values.
+- Computers may reorder instructions to improve performance, so code may not execute in source order. **Reordering preserves single-threaded behavior but is not required to preserve unsynchronized behavior across threads**, so it can cause problems in multithreaded programs.
+- The JMM defines Java's concurrency rules, models the relationship between threads and main memory, and specifies requirements for translating Java source into CPU instructions.
+- JSR 133 uses happens-before to describe memory visibility between operations.
 
-## 参考
+## References
 
-- 《Java 并发编程的艺术》第三章 Java 内存模型
-- 《深入浅出 Java 多线程》：<http://concurrent.redspider.group/RedSpider.html>
-- Java 内存访问重排序的研究：<https://tech.meituan.com/2014/09/23/java-memory-reordering.html>
-- 嘿，同学，你要的 Java 内存模型 (JMM) 来了：<https://xie.infoq.cn/article/739920a92d0d27e2053174ef2>
-- JSR 133 (Java Memory Model) FAQ：<https://www.cs.umd.edu/~pugh/java/memoryModel/jsr-133-faq.html>
+- _The Art of Java Concurrency Programming_, Chapter 3: The Java Memory Model
+- _Java Multithreading Explained_: <http://concurrent.redspider.group/RedSpider.html>
+- [A Study of Java Memory Access Reordering](https://tech.meituan.com/2014/09/23/java-memory-reordering.html)
+- [An Introduction to the Java Memory Model (JMM)](https://xie.infoq.cn/article/739920a92d0d27e2053174ef2)
+- [JSR 133 (Java Memory Model) FAQ](https://www.cs.umd.edu/~pugh/java/memoryModel/jsr-133-faq.html)
 
 <!-- @include: @article-footer.snippet.md -->

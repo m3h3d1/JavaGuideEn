@@ -1,86 +1,86 @@
 ---
-title: JVM 专题：内存区域、类加载、垃圾回收、参数调优与线上排查
-description: JVM 面试与性能调优学习路线，涵盖 Java 内存区域、类文件结构、类加载、垃圾回收、JVM 参数、JDK 监控工具和线上问题排查。
+title: "JVM: Memory, Class Loading, Garbage Collection, Tuning, and Troubleshooting"
+description: A JVM learning path for interviews and performance tuning, covering Java memory areas, class files, class loading, garbage collection, JVM options, JDK monitoring tools, and production troubleshooting.
 category: Java
 tag:
   - Java
   - JVM
-  - Java面试
+  - Java Interview
 sitemap:
   changefreq: weekly
   priority: 0.9
 head:
   - - meta
     - name: keywords
-      content: JVM,JVM面试题,Java内存区域,类加载,类加载器,垃圾回收,GC,JVM参数,JDK监控工具,OOM,性能调优
+      content: JVM,JVM interview questions,Java memory areas,class loading,class loaders,garbage collection,GC,JVM options,JDK monitoring tools,OOM,performance tuning
 ---
 
-JVM 是 Java 后端绕不开的核心基础。学习 JVM 的目标不是背概念，而是能解释对象如何创建和回收、类如何加载、GC 如何影响应用、参数如何配置，以及线上 OOM、频繁 GC、CPU 飙高等问题应该如何排查。
+The JVM is a core part of Java backend development. The goal is not to memorize definitions, but to understand how objects are created and reclaimed, how classes are loaded, how GC affects an application, how to configure JVM options, and how to investigate production issues such as OOMs, frequent GC, and high CPU usage.
 
-## 适合谁看
+## Who Should Read This?
 
-- 想系统学习 JVM 的 Java 后端开发者。
-- 准备 JVM 内存、类加载、GC、参数调优和线上排查相关面试题的同学。
-- 已经参与过线上服务维护，但对 GC 日志、堆转储、线程栈和 JDK 工具不熟的读者。
-- 想继续深入 Spring、Netty、中间件或性能优化的工程师。
+- Java backend developers who want to study the JVM systematically.
+- Developers preparing for interviews about JVM memory, class loading, GC, tuning, and production troubleshooting.
+- Engineers who maintain production services but are not yet familiar with GC logs, heap dumps, thread dumps, and JDK tools.
+- Developers who want to explore Spring, Netty, middleware, or performance optimization in more depth.
 
-## 学习重点
+## Key Topics
 
-- JVM 运行时内存区域、对象创建、对象访问和 OOM 场景。
-- 类文件结构、类加载过程、类加载器和双亲委派模型。
-- 垃圾回收基础、对象存活判断、垃圾收集算法和主流垃圾收集器。
-- JVM 参数、GC 日志、堆转储、线程栈和常见 JDK 监控诊断工具。
-- 线上问题排查的基本路径：现象观察、指标采集、工具分析、原因定位和优化验证。
+- JVM runtime memory areas, object creation and access, and common OOM scenarios.
+- Class-file structure, class loading, class loaders, and parent delegation.
+- GC fundamentals, object reachability, collection algorithms, and common collectors.
+- JVM options, GC logs, heap and thread dumps, and JDK monitoring and diagnostic tools.
+- A basic production troubleshooting workflow: observe symptoms, collect metrics, analyze with tools, identify the cause, and verify a fix.
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. 准备面试时先看 [JVM 常见面试题总结](./jvm-interview-questions.md)，找出自己答不完整的模块；系统学习可以从下一步开始。
-2. [大白话带你认识 JVM](./jvm-intro.md)：先建立 JVM 的整体认知。
-3. [Java内存区域详解（重点）](./memory-area.md)：理解运行时数据区和常见 OOM 场景。
-4. [类文件结构详解](./class-file-structure.md)、[类加载过程详解](./class-loading-process.md)、[类加载器详解（重点）](./classloader.md)：掌握类从 `.class` 到可运行对象的过程。
-5. [JVM垃圾回收详解（重点）](./jvm-garbage-collection.md)：系统学习 GC 基础、算法和垃圾收集器。
-6. [最重要的 JVM 参数总结](./jvm-parameters-intro.md)、[JDK 监控和故障处理工具总结](./jdk-monitoring-and-troubleshooting-tools.md)、[Java 后端线上问题排查](./jvm-in-action.md)：进入参数配置和线上实践。
+1. If you are preparing for an interview, start with [Common JVM Interview Questions](./jvm-interview-questions.md) to identify topics that need more study. For a structured introduction, start with the next guide.
+2. [The JVM Explained Simply](./jvm-intro.md): Build an overall understanding of the JVM.
+3. [Java Memory Areas Explained](./memory-area.md): Learn about runtime data areas and common OOM scenarios.
+4. [Class-File Structure](./class-file-structure.md), [The Class-Loading Process](./class-loading-process.md), and [Class Loaders](./classloader.md): Follow a class from `.class` file to executable code.
+5. [JVM Garbage Collection](./jvm-garbage-collection.md): Study GC fundamentals, algorithms, and collectors.
+6. [Important JVM Options](./jvm-parameters-intro.md), [JDK Monitoring and Troubleshooting Tools](./jdk-monitoring-and-troubleshooting-tools.md), and [Troubleshooting Java Backend Production Issues](./jvm-in-action.md): Learn about configuration and production practice.
 
-## 核心文章
+## Core Guides
 
-### JVM 基础与内存
+### JVM Fundamentals and Memory
 
-- [JVM 常见面试题总结](./jvm-interview-questions.md)：按内存、类加载、GC、参数工具和线上排查整理高频问题。
-- [大白话带你认识 JVM](./jvm-intro.md)：用整体视角理解 JVM 的定位和组成。
-- [Java内存区域详解（重点）](./memory-area.md)：讲解程序计数器、虚拟机栈、本地方法栈、堆、方法区和直接内存。
-- [类文件结构详解](./class-file-structure.md)：理解魔数、版本号、常量池、访问标志、字段表、方法表和属性表。
+- [Common JVM Interview Questions](./jvm-interview-questions.md): Common questions about memory, class loading, GC, JVM options and tools, and production troubleshooting.
+- [The JVM Explained Simply](./jvm-intro.md): An overview of the JVM's role and components.
+- [Java Memory Areas Explained](./memory-area.md): The program counter, JVM stacks, native method stack, heap, method area, and direct memory.
+- [Class-File Structure](./class-file-structure.md): The magic number, version, constant pool, access flags, field and method tables, and attributes.
 
-### 类加载
+### Class Loading
 
-- [类加载过程详解](./class-loading-process.md)：梳理加载、验证、准备、解析、初始化、使用和卸载。
-- [类加载器详解（重点）](./classloader.md)：理解启动类加载器、扩展类加载器（JDK 8）/平台类加载器（JDK 9+）、应用类加载器和双亲委派模型。
+- [The Class-Loading Process](./class-loading-process.md): Loading, verification, preparation, resolution, initialization, use, and unloading.
+- [Class Loaders](./classloader.md): The bootstrap, extension (JDK 8) / platform (JDK 9+), and application class loaders, and parent delegation.
 
-### 垃圾回收与调优
+### Garbage Collection and Tuning
 
-- [JVM垃圾回收详解（重点）](./jvm-garbage-collection.md)：理解对象存活判断、引用类型、垃圾收集算法、分代收集和主流垃圾收集器。
-- [最重要的JVM参数总结](./jvm-parameters-intro.md)：整理堆大小、GC 日志、OOM 转储、垃圾收集器和诊断相关参数。
-- [JDK监控和故障处理工具总结](./jdk-monitoring-and-troubleshooting-tools.md)：介绍 jps、jstat、jmap、jstack、jcmd、JConsole、VisualVM、JMC 等工具。
-- [Java 后端线上问题排查](./jvm-in-action.md)：从告警确认、止血留证开始，串起 CPU、内存、GC、线程池、连接池、慢 SQL、Redis 和消息积压的排查过程。
+- [JVM Garbage Collection](./jvm-garbage-collection.md): Object reachability, reference types, GC algorithms, generational collection, and common collectors.
+- [Important JVM Options](./jvm-parameters-intro.md): Heap sizing, GC logs, OOM dumps, collectors, and diagnostic options.
+- [JDK Monitoring and Troubleshooting Tools](./jdk-monitoring-and-troubleshooting-tools.md): Tools such as `jps`, `jstat`, `jmap`, `jstack`, `jcmd`, JConsole, VisualVM, and JMC.
+- [Troubleshooting Java Backend Production Issues](./jvm-in-action.md): Investigating alerts, CPU, memory, GC, thread pools, connection pools, slow SQL, Redis, and message backlogs.
 
-## 高频问题
+## Common Questions
 
-- JVM 运行时内存区域如何划分？哪些区域线程私有？
-- 堆和方法区分别存放什么？直接内存会不会 OOM？
-- 对象是如何创建的？对象访问定位有哪几种方式？
-- 类加载过程有哪些阶段？初始化阶段什么时候触发？
-- 什么是双亲委派模型？为什么需要它？
-- 如何判断对象是否可以被回收？强软弱虚引用有什么区别？
-- Minor GC、Major GC、Full GC 有什么区别？
-- G1、ZGC、Shenandoah 分别适合什么场景？
-- 常用 JVM 参数有哪些？线上如何保留 GC 日志和 OOM dump？
-- CPU 飙高、频繁 Full GC、内存泄漏应该如何排查？
+- How is JVM runtime memory divided, and which areas are thread-private?
+- What do the heap and method area store? Can direct memory cause an OOM?
+- How are objects created, and how can they be accessed?
+- What are the class-loading phases, and when does initialization occur?
+- What is parent delegation, and why is it used?
+- How can you determine whether an object can be reclaimed? How do strong, soft, weak, and phantom references differ?
+- What are the differences among Minor GC, Major GC, and Full GC?
+- When are G1, ZGC, and Shenandoah appropriate?
+- Which JVM options are commonly used, and how do you preserve GC logs and OOM dumps in production?
+- How do you investigate high CPU, frequent Full GC, or a memory leak?
 
-## 相关专题
+## Related Topics
 
-- [Java 知识体系](../)
-- [Java 基础专题](../basis/)
-- [Java 并发编程专题](../concurrent/)
-- [Java IO 专题](../io/)
-- [操作系统](../../cs-basics/operating-system/)
+- [Java Guide](../)
+- [Java Fundamentals](../basis/)
+- [Java Concurrency](../concurrent/)
+- [Java I/O](../io/)
+- [Operating Systems](../../cs-basics/operating-system/)
 
 <!-- @include: @article-footer.snippet.md -->

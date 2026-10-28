@@ -1,44 +1,44 @@
 ---
-title: LinkedList 源码分析
-description: LinkedList源码深度解析：剖析双向链表结构、Deque接口实现、头尾插入删除O(1)时间复杂度、与ArrayList性能对比及适用场景。
+title: LinkedList Source Code
+description: A detailed look at LinkedList's doubly linked structure, Deque implementation, O(1) insertions and removals at either end, and how it compares with ArrayList.
 category: Java
 tag:
-  - Java集合
+  - Java Collections
 head:
   - - meta
     - name: keywords
-      content: LinkedList源码,双向链表,Deque接口,LinkedList与ArrayList区别,插入删除性能,链表实现
+      content: LinkedList source code,doubly linked list,Deque interface,LinkedList vs ArrayList,insertion and removal performance,linked-list implementation
 ---
 
 <!-- @include: @article-header.snippet.md -->
 
-## LinkedList 简介
+## Introduction
 
-`LinkedList` 是一个基于双向链表实现的集合类，经常被拿来和 `ArrayList` 做比较。关于 `LinkedList` 和 `ArrayList` 的详细对比，我们 [Java 集合常见面试题总结(上)](./java-collection-questions-01.md)有详细介绍到。
+`LinkedList` is a collection backed by a doubly linked list and is often compared with `ArrayList`. For a detailed comparison, see [Common Java Collection Interview Questions (Part 1)](./java-collection-questions-01.md).
 
-![双向链表](https://oss.javaguide.cn/github/javaguide/cs-basics/data-structure/bidirectional-linkedlist.png)
+![Doubly linked list](https://oss.javaguide.cn/github/javaguide/cs-basics/data-structure/bidirectional-linkedlist.png)
 
-不过，我们在项目中一般是不会使用到 `LinkedList` 的，需要用到 `LinkedList` 的场景几乎都可以使用 `ArrayList` 来代替，并且，性能通常会更好！就连 `LinkedList` 的作者约书亚 · 布洛克（Josh Bloch）自己都说从来不会使用 `LinkedList`。
+In most projects, `ArrayList` can replace `LinkedList` in many of its use cases and often performs better. Josh Bloch, who wrote `LinkedList`, has even said that he never uses it.
 
 ![](https://oss.javaguide.cn/github/javaguide/redisimage-20220412110853807.png)
 
-另外，不要下意识地认为 `LinkedList` 作为链表就最适合元素增删的场景。我在上面也说了，`LinkedList` 仅仅在头尾插入或者删除元素的时候时间复杂度近似 O(1)，其他情况增删元素的平均时间复杂度都是 O(n)。
+Do not assume that `LinkedList` is always the best choice for frequent insertions and removals. Only operations at the head or tail are close to `O(1)`; most other insertions and removals take `O(n)` because the target node must first be found.
 
-### LinkedList 插入和删除元素的时间复杂度？
+### What are the time complexities of inserting into and removing from a `LinkedList`?
 
-- 头部插入/删除：只需要修改头结点的指针即可完成插入/删除操作，因此时间复杂度为 O(1)。
-- 尾部插入/删除：只需要修改尾结点的指针即可完成插入/删除操作，因此时间复杂度为 O(1)。
-- 指定位置插入/删除：需要先移动到指定位置，再修改指定节点的指针完成插入/删除，不过由于有头尾指针，可以从较近的指针出发，因此需要遍历平均 n/4 个元素，时间复杂度为 O(n)。
+- Inserting or removing at the head takes `O(1)` because it only requires updating the head pointer.
+- Inserting or removing at the tail takes `O(1)` because it only requires updating the tail pointer.
+- Inserting or removing at a specified index requires finding that position and then updating pointers. Since traversal can start from the closer end, it visits about `n/4` elements on average, but the time complexity is still `O(n)`.
 
-### LinkedList 为什么不能实现 RandomAccess 接口？
+### Why doesn't `LinkedList` implement `RandomAccess`?
 
-`RandomAccess` 是一个标记接口，用来表明实现该接口的类支持随机访问（即可以通过索引快速访问元素）。由于 `LinkedList` 底层数据结构是链表，内存地址不连续，只能通过指针来定位，不支持随机快速访问，所以不能实现 `RandomAccess` 接口。
+`RandomAccess` is a marker interface indicating that a class supports fast indexed access. A `LinkedList` is backed by nodes that are not stored in contiguous memory, so it must follow pointers to locate an element. It does not support fast random access and therefore does not implement `RandomAccess`.
 
-## LinkedList 源码分析
+## `LinkedList` Source Code
 
-这里以 JDK1.8 为例，分析一下 `LinkedList` 的底层核心源码。
+The following analysis uses the JDK 8 implementation of `LinkedList`.
 
-`LinkedList` 的类定义如下：
+Here is the class definition:
 
 ```java
 public class LinkedList<E>
@@ -49,28 +49,28 @@ public class LinkedList<E>
 }
 ```
 
-`LinkedList` 继承了 `AbstractSequentialList`，而 `AbstractSequentialList` 又继承于 `AbstractList`。
+`LinkedList` extends `AbstractSequentialList`, which in turn extends `AbstractList`.
 
-阅读过 `ArrayList` 的源码我们就知道，`ArrayList` 同样继承了 `AbstractList`， 所以 `LinkedList` 会有大部分方法和 `ArrayList` 相似。
+Like `ArrayList`, `LinkedList` inherits from `AbstractList`, so many of their methods are similar.
 
-`LinkedList` 实现了以下接口：
+`LinkedList` implements these interfaces:
 
-- `List` : 表明它是一个列表，支持添加、删除、查找等操作，并且可以通过下标进行访问。
-- `Deque`：继承自 `Queue` 接口，具有双端队列的特性，支持从两端插入和删除元素，方便实现栈和队列等数据结构。需要注意，`Deque` 的发音为 "deck" [dɛk]，这个大部分人都会读错。
-- `Cloneable`：表明它具有拷贝能力，可以进行深拷贝或浅拷贝操作。
-- `Serializable` : 表明它可以进行序列化操作，也就是可以将对象转换为字节流进行持久化存储或网络传输，非常方便。
+- `List`: identifies it as a list that supports operations such as adding, removing, and searching for elements, as well as indexed access.
+- `Deque`: extends `Queue` with operations at both ends, which is useful for implementing queues and stacks. `Deque` is pronounced "deck" ([dɛk]).
+- `Cloneable`: indicates that the class supports copying with `clone()`.
+- `Serializable`: indicates that instances can be serialized to a byte stream for storage or network transfer.
 
-![LinkedList 类图](https://oss.javaguide.cn/github/javaguide/java/collection/linkedlist--class-diagram.png)
+![LinkedList class diagram](https://oss.javaguide.cn/github/javaguide/java/collection/linkedlist--class-diagram.png)
 
-`LinkedList` 中的元素是通过 `Node` 定义的：
+`LinkedList` stores its elements in `Node` objects:
 
 ```java
 private static class Node<E> {
-    E item;// 节点值
-    Node<E> next; // 指向的下一个节点（后继节点）
-    Node<E> prev; // 指向的前一个节点（前驱结点）
+    E item;// Node value
+    Node<E> next; // Reference to the next node
+    Node<E> prev; // Reference to the previous node
 
-    // 初始化参数顺序分别是：前驱结点、本身节点值、后继节点
+    // Constructor parameters: previous node, node value, and next node
     Node(Node<E> prev, E element, Node<E> next) {
         this.item = element;
         this.next = next;
@@ -79,105 +79,105 @@ private static class Node<E> {
 }
 ```
 
-### 初始化
+### Initialization
 
-`LinkedList` 中有一个无参构造函数和一个有参构造函数。
+`LinkedList` has a no-argument constructor and a constructor that accepts a collection.
 
 ```java
-// 创建一个空的链表对象
+// Create an empty linked list.
 public LinkedList() {
 }
 
-// 接收一个集合类型作为参数，会创建一个与传入集合相同元素的链表对象
+// Create a linked list containing the elements of the specified collection.
 public LinkedList(Collection<? extends E> c) {
     this();
     addAll(c);
 }
 ```
 
-### 插入元素
+### Inserting Elements
 
-`LinkedList` 除了实现了 `List` 接口相关方法，还实现了 `Deque` 接口的很多方法，所以我们有很多种方式插入元素。
+In addition to the methods required by `List`, `LinkedList` implements many `Deque` methods, so there are several ways to insert elements.
 
-我们这里以 `List` 接口中相关的插入方法为例进行源码讲解，对应的是 `add()` 方法。
+This section examines the `add()` methods from the `List` interface.
 
-`add()` 方法有两个版本：
+There are two versions of `add()`:
 
-- `add(E e)`：用于在 `LinkedList` 的尾部插入元素，即将新元素作为链表的最后一个元素，时间复杂度为 O(1)。
-- `add(int index, E element)`:用于在指定位置插入元素。这种插入方式需要先移动到指定位置，再修改指定节点的指针完成插入/删除，因此需要移动平均 n/4 个元素，时间复杂度为 O(n)。
+- `add(E e)`: appends an element to the end of the list in `O(1)` time.
+- `add(int index, E element)`: inserts an element at the specified position. The list must first traverse to that position and then update the node pointers. It visits about `n/4` elements on average, but the time complexity is `O(n)`.
 
 ```java
-// 在链表尾部插入元素
+// Append an element to the end of the list.
 public boolean add(E e) {
     linkLast(e);
     return true;
 }
 
-// 在链表指定位置插入元素
+// Insert an element at the specified position.
 public void add(int index, E element) {
-    // 下标越界检查
+    // Check that the index is in range.
     checkPositionIndex(index);
 
-    // 判断 index 是不是链表尾部位置
+    // Check whether index is the end of the list.
     if (index == size)
-        // 如果是就直接调用 linkLast 方法将元素节点插入链表尾部即可
+        // If so, call linkLast() to append the node.
         linkLast(element);
     else
-        // 如果不是则调用 linkBefore 方法将其插入指定元素之前
+        // Otherwise, call linkBefore() to insert it before the current element.
         linkBefore(element, node(index));
 }
 
-// 将元素节点插入到链表尾部
+// Inserts a node at the end of the list.
 void linkLast(E e) {
-    // 将最后一个元素赋值（引用传递）给节点 l
+    // Store the current last node in l.
     final Node<E> l = last;
-    // 创建节点，并指定节点前驱为链表尾节点 last，后继引用为空
+    // Create a node whose previous node is last and whose next node is null.
     final Node<E> newNode = new Node<>(l, e, null);
-    // 将 last 引用指向新节点
+    // Update last to point to the new node.
     last = newNode;
-    // 判断尾节点是否为空
-    // 如果 l 是null 意味着这是第一次添加元素
+    // Check whether the list was empty.
+    // If l is null, this is the first insertion.
     if (l == null)
-        // 如果是第一次添加，将first赋值为新节点，此时链表只有一个元素
+        // Set first to the new node; it is the only element in the list.
         first = newNode;
     else
-        // 如果不是第一次添加，将新节点赋值给l（添加前的最后一个元素）的next
+        // Otherwise, link the previous last node to the new node.
         l.next = newNode;
     size++;
     modCount++;
 }
 
-// 在指定元素之前插入元素
+// Inserts a node before the specified successor.
 void linkBefore(E e, Node<E> succ) {
-    // assert succ != null;断言 succ不为 null
-    // 定义一个节点元素保存 succ 的 prev 引用，也就是它的前一节点信息
+    // Assert that succ is not null.
+    // Save succ's previous node.
     final Node<E> pred = succ.prev;
-    // 初始化节点，并指明前驱和后继节点
+    // Create the new node with its previous and next nodes.
     final Node<E> newNode = new Node<>(pred, e, succ);
-    // 将 succ 节点前驱引用 prev 指向新节点
+    // Update succ's previous-node reference.
     succ.prev = newNode;
-    // 判断前驱节点是否为空，为空表示 succ 是第一个节点
+    // If the previous node is null, succ was the first node.
     if (pred == null)
-        // 新节点成为第一个节点
+        // The new node becomes the first node.
         first = newNode;
     else
-        // succ 节点前驱的后继引用指向新节点
+        // Otherwise, link the previous node to the new node.
         pred.next = newNode;
     size++;
     modCount++;
 }
 ```
 
-### 获取元素
+### Accessing Elements
 
-`LinkedList` 获取元素相关的方法一共有 3 个：
+`LinkedList` provides three methods for accessing elements:
 
-1. `getFirst()`：获取链表的第一个元素。
-2. `getLast()`：获取链表的最后一个元素。
-3. `get(int index)`：获取链表指定位置的元素。
+1. `getFirst()`: returns the first element.
+2. `getLast()`: returns the last element.
+3. `get(int index)`: returns the element at the specified position.
 
 ```java
-// 获取链表的第一个元素
+// Get the first element.
 public E getFirst() {
     final Node<E> f = first;
     if (f == null)
@@ -185,7 +185,7 @@ public E getFirst() {
     return f.item;
 }
 
-// 获取链表的最后一个元素
+// Get the last element.
 public E getLast() {
     final Node<E> l = last;
     if (l == null)
@@ -193,26 +193,26 @@ public E getLast() {
     return l.item;
 }
 
-// 获取链表指定位置的元素
+// Get the element at the specified position.
 public E get(int index) {
-  // 下标越界检查，如果越界就抛异常
+  // Check the index and throw an exception if it is out of range.
   checkElementIndex(index);
-  // 返回链表中对应下标的元素
+  // Return the element at the specified index.
   return node(index).item;
 }
 ```
 
-这里的核心在于 `node(int index)` 这个方法：
+The key is the `node(int index)` method:
 
 ```java
-// 返回指定下标的非空节点
+// Returns the non-null node at the specified index.
 Node<E> node(int index) {
-    // 断言下标未越界
+    // Assert that the index is in range.
     // assert isElementIndex(index);
-    // 如果index小于size的二分之一  从前开始查找（向后查找）  反之向前查找
+    // Start from the head if index is in the first half; otherwise, start from the tail.
     if (index < (size >> 1)) {
         Node<E> x = first;
-        // 遍历，循环向后查找，直至 i == index
+        // Traverse forward until i == index.
         for (int i = 0; i < index; i++)
             x = x.next;
         return x;
@@ -225,22 +225,22 @@ Node<E> node(int index) {
 }
 ```
 
-`get(int index)` 或 `remove(int index)` 等方法内部都调用了该方法来获取对应的节点。
+Methods such as `get(int index)` and `remove(int index)` call this method to find the corresponding node.
 
-从这个方法的源码可以看出，该方法通过比较索引值与链表 size 的一半大小来确定从链表头还是尾开始遍历。如果索引值小于 size 的一半，就从链表头开始遍历，反之从链表尾开始遍历。这样可以在较短的时间内找到目标节点，充分利用了双向链表的特性来提高效率。
+The source compares the index with half the list size to decide whether to traverse from the head or the tail. It starts from the closer end, reducing the number of nodes it needs to visit.
 
-### 删除元素
+### Removing Elements
 
-`LinkedList` 删除元素相关的方法一共有 5 个：
+`LinkedList` provides five methods for removing elements:
 
-1. `removeFirst()`：删除并返回链表的第一个元素。
-2. `removeLast()`：删除并返回链表的最后一个元素。
-3. `remove(E e)`：删除链表中首次出现的指定元素，如果不存在该元素则返回 false。
-4. `remove(int index)`：删除指定索引处的元素，并返回该元素的值。
-5. `void clear()`：移除此链表中的所有元素。
+1. `removeFirst()`: removes and returns the first element.
+2. `removeLast()`: removes and returns the last element.
+3. `remove(E e)`: removes the first occurrence of the specified element and returns `false` if it is not found.
+4. `remove(int index)`: removes and returns the element at the specified index.
+5. `clear()`: removes all elements from the list.
 
 ```java
-// 删除并返回链表的第一个元素
+// Remove and return the first element.
 public E removeFirst() {
     final Node<E> f = first;
     if (f == null)
@@ -248,7 +248,7 @@ public E removeFirst() {
     return unlinkFirst(f);
 }
 
-// 删除并返回链表的最后一个元素
+// Remove and return the last element.
 public E removeLast() {
     final Node<E> l = last;
     if (l == null)
@@ -256,9 +256,9 @@ public E removeLast() {
     return unlinkLast(l);
 }
 
-// 删除链表中首次出现的指定元素，如果不存在该元素则返回 false
+// Remove the first occurrence of the specified element; return false if it is absent.
 public boolean remove(Object o) {
-    // 如果指定元素为 null，遍历链表找到第一个为 null 的元素进行删除
+    // If the specified element is null, find and remove the first null element.
     if (o == null) {
         for (Node<E> x = first; x != null; x = x.next) {
             if (x.item == null) {
@@ -267,7 +267,7 @@ public boolean remove(Object o) {
             }
         }
     } else {
-        // 如果不为 null ,遍历链表找到要删除的节点
+        // Otherwise, find the node to remove.
         for (Node<E> x = first; x != null; x = x.next) {
             if (o.equals(x.item)) {
                 unlink(x);
@@ -278,50 +278,50 @@ public boolean remove(Object o) {
     return false;
 }
 
-// 删除链表指定位置的元素
+// Remove the element at the specified position.
 public E remove(int index) {
-    // 下标越界检查，如果越界就抛异常
+    // Check the index and throw an exception if it is out of range.
     checkElementIndex(index);
     return unlink(node(index));
 }
 ```
 
-这里的核心在于 `unlink(Node<E> x)` 这个方法：
+The key is the `unlink(Node<E> x)` method:
 
 ```java
 E unlink(Node<E> x) {
-    // 断言 x 不为 null
+    // Assert that x is not null.
     // assert x != null;
-    // 获取当前节点（也就是待删除节点）的元素
+    // Get the element stored in x.
     final E element = x.item;
-    // 获取当前节点的下一个节点
+    // Get the next node.
     final Node<E> next = x.next;
-    // 获取当前节点的前一个节点
+    // Get the previous node.
     final Node<E> prev = x.prev;
 
-    // 如果前一个节点为空，则说明当前节点是头节点
+    // If there is no previous node, x is the head.
     if (prev == null) {
-        // 直接让链表头指向当前节点的下一个节点
+        // Make the next node the new head.
         first = next;
-    } else { // 如果前一个节点不为空
-        // 将前一个节点的 next 指针指向当前节点的下一个节点
+    } else { // If there is a previous node
+        // Link the previous node to the next node.
         prev.next = next;
-        // 将当前节点的 prev 指针置为 null，，方便 GC 回收
+        // Clear x's prev reference so it can be reclaimed by the garbage collector.
         x.prev = null;
     }
 
-    // 如果下一个节点为空，则说明当前节点是尾节点
+    // If there is no next node, x is the tail.
     if (next == null) {
-        // 直接让链表尾指向当前节点的前一个节点
+        // Make the previous node the new tail.
         last = prev;
-    } else { // 如果下一个节点不为空
-        // 将下一个节点的 prev 指针指向当前节点的前一个节点
+    } else { // If there is a next node
+        // Link the next node to the previous node.
         next.prev = prev;
-        // 将当前节点的 next 指针置为 null，方便 GC 回收
+        // Clear x's next reference so it can be reclaimed by the garbage collector.
         x.next = null;
     }
 
-    // 将当前节点元素置为 null，方便 GC 回收
+    // Clear x's element so it can be reclaimed by the garbage collector.
     x.item = null;
     size--;
     modCount++;
@@ -329,24 +329,24 @@ E unlink(Node<E> x) {
 }
 ```
 
-`unlink()` 方法的逻辑如下：
+The `unlink()` method works as follows:
 
-1. 首先获取待删除节点 x 的前驱和后继节点；
-2. 判断待删除节点是否为头节点或尾节点：
-   - 如果 x 是头节点，则将 first 指向 x 的后继节点 next
-   - 如果 x 是尾节点，则将 last 指向 x 的前驱节点 prev
-   - 如果 x 不是头节点也不是尾节点，执行下一步操作
-3. 将待删除节点 x 的前驱的后继指向待删除节点的后继 next，断开 x 和 x.prev 之间的链接；
-4. 将待删除节点 x 的后继的前驱指向待删除节点的前驱 prev，断开 x 和 x.next 之间的链接；
-5. 将待删除节点 x 的元素置空，修改链表长度。
+1. Get the previous and next nodes of the node `x` to remove.
+2. Check whether `x` is the head or tail:
+   - If `x` is the head, set `first` to `x`'s next node.
+   - If `x` is the tail, set `last` to `x`'s previous node.
+   - If `x` is neither, continue to the next steps.
+3. Point `x`'s previous node to `x`'s next node, unlinking `x` from its predecessor.
+4. Point `x`'s next node back to `x`'s previous node, unlinking `x` from its successor.
+5. Clear `x`'s element and update the list size.
 
-可以参考下图理解（图源：[LinkedList 源码分析(JDK 1.8)](https://www.tianxiaobo.com/2018/01/31/LinkedList-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90-JDK-1-8/)）：
+The diagram below illustrates the process. Source: [LinkedList Source Code (JDK 1.8)](https://www.tianxiaobo.com/2018/01/31/LinkedList-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90-JDK-1-8/).
 
-![unlink 方法逻辑](https://oss.javaguide.cn/github/javaguide/java/collection/linkedlist-unlink.jpg)
+![How the unlink method works](https://oss.javaguide.cn/github/javaguide/java/collection/linkedlist-unlink.jpg)
 
-### 遍历链表
+### Iterating Over the List
 
-推荐使用 `for-each` 循环来遍历 `LinkedList` 中的元素， `for-each` 循环最终会转换成迭代器形式。
+Use a `for-each` loop to iterate over a `LinkedList`; it is compiled to use an iterator.
 
 ```java
 LinkedList<String> list = new LinkedList<>();
@@ -359,72 +359,72 @@ for (String fruit : list) {
 }
 ```
 
-`LinkedList` 的遍历的核心就是它的迭代器的实现。
+The iterator implementation is central to `LinkedList` traversal.
 
 ```java
-// 双向迭代器
+// Doubly linked list iterator
 private class ListItr implements ListIterator<E> {
-    // 表示上一次调用 next() 或 previous() 方法时经过的节点；
+    // Node returned by the last call to next() or previous()
     private Node<E> lastReturned;
-    // 表示下一个要遍历的节点；
+    // Next node to return
     private Node<E> next;
-    // 表示下一个要遍历的节点的下标，也就是当前节点的后继节点的下标；
+    // Index of the next node to return
     private int nextIndex;
-    // 表示当前遍历期望的修改计数值，用于和 LinkedList 的 modCount 比较，判断链表是否被其他线程修改过。
+    // Expected modification count, compared with LinkedList.modCount to detect external changes
     private int expectedModCount = modCount;
     …………
 }
 ```
 
-下面我们对迭代器 `ListItr` 中的核心方法进行详细介绍。
+The following sections explain the key methods in the `ListItr` iterator.
 
-我们先来看下从头到尾方向的迭代：
+First, iteration from head to tail:
 
 ```java
-// 判断还有没有下一个节点
+// Check whether there is a next node.
 public boolean hasNext() {
-    // 判断下一个节点的下标是否小于链表的大小，如果是则表示还有下一个元素可以遍历
+    // There is another element if the next index is less than the list size.
     return nextIndex < size;
 }
-// 获取下一个节点
+// Get the next node.
 public E next() {
-    // 检查在迭代过程中链表是否被修改过
+    // Check whether the list was modified during iteration.
     checkForComodification();
-    // 判断是否还有下一个节点可以遍历，如果没有则抛出 NoSuchElementException 异常
+    // Throw NoSuchElementException if there is no next element.
     if (!hasNext())
         throw new NoSuchElementException();
-    // 将 lastReturned 指向当前节点
+    // Point lastReturned to the current node.
     lastReturned = next;
-    // 将 next 指向下一个节点
+    // Advance next to the following node.
     next = next.next;
     nextIndex++;
     return lastReturned.item;
 }
 ```
 
-再来看一下从尾到头方向的迭代：
+Now, iteration from tail to head:
 
 ```java
-// 判断是否还有前一个节点
+// Check whether there is a previous node.
 public boolean hasPrevious() {
     return nextIndex > 0;
 }
 
-// 获取前一个节点
+// Get the previous node.
 public E previous() {
-    // 检查是否在迭代过程中链表被修改
+    // Check whether the list was modified during iteration.
     checkForComodification();
-    // 如果没有前一个节点，则抛出异常
+    // Throw an exception if there is no previous node.
     if (!hasPrevious())
         throw new NoSuchElementException();
-    // 将 lastReturned 和 next 指针指向上一个节点
+    // Point lastReturned and next to the previous node.
     lastReturned = next = (next == null) ? last : next.prev;
     nextIndex--;
     return lastReturned.item;
 }
 ```
 
-如果需要删除或插入元素，也可以使用迭代器进行操作。
+You can also use the iterator to remove or insert elements.
 
 ```java
 LinkedList<String> list = new LinkedList<>();
@@ -432,7 +432,7 @@ list.add("apple");
 list.add(null);
 list.add("banana");
 
-//  Collection 接口的 removeIf 方法底层依然是基于迭代器
+// Collection.removeIf() also uses an iterator internally.
 list.removeIf(Objects::isNull);
 
 for (String fruit : list) {
@@ -440,84 +440,84 @@ for (String fruit : list) {
 }
 ```
 
-迭代器对应的移除元素的方法如下：
+The iterator's removal method is shown below:
 
 ```java
-// 从列表中删除上次被返回的元素
+// Remove the element returned by the last call to next() or previous().
 public void remove() {
-    // 检查是否在迭代过程中链表被修改
+    // Check whether the list was modified during iteration.
     checkForComodification();
-    // 如果上次返回的节点为空，则抛出异常
+    // Throw an exception if there is no last-returned node.
     if (lastReturned == null)
         throw new IllegalStateException();
 
-    // 获取当前节点的下一个节点
+    // Get the current node's successor.
     Node<E> lastNext = lastReturned.next;
-    // 从链表中删除上次返回的节点
+    // Remove the last-returned node from the list.
     unlink(lastReturned);
-    // 修改指针
+    // Update the iterator pointers.
     if (next == lastReturned)
         next = lastNext;
     else
         nextIndex--;
-    // 将上次返回的节点引用置为 null，方便 GC 回收
+    // Clear the reference to the last-returned node so it can be garbage-collected.
     lastReturned = null;
     expectedModCount++;
 }
 ```
 
-## LinkedList 常用方法测试
+## Testing Common `LinkedList` Methods
 
-代码：
+Code:
 
 ```java
-// 创建 LinkedList 对象
+// Create a LinkedList.
 LinkedList<String> list = new LinkedList<>();
 
-// 添加元素到链表末尾
+// Append elements to the list.
 list.add("apple");
 list.add("banana");
 list.add("pear");
-System.out.println("链表内容：" + list);
+System.out.println("List contents: " + list);
 
-// 在指定位置插入元素
+// Insert an element at the specified position.
 list.add(1, "orange");
-System.out.println("链表内容：" + list);
+System.out.println("List contents: " + list);
 
-// 获取指定位置的元素
+// Get the element at the specified position.
 String fruit = list.get(2);
-System.out.println("索引为 2 的元素：" + fruit);
+System.out.println("Element at index 2: " + fruit);
 
-// 修改指定位置的元素
+// Replace the element at the specified position.
 list.set(3, "grape");
-System.out.println("链表内容：" + list);
+System.out.println("List contents: " + list);
 
-// 删除指定位置的元素
+// Remove the element at the specified position.
 list.remove(0);
-System.out.println("链表内容：" + list);
+System.out.println("List contents: " + list);
 
-// 删除第一个出现的指定元素
+// Remove the first occurrence of the specified element.
 list.remove("banana");
-System.out.println("链表内容：" + list);
+System.out.println("List contents: " + list);
 
-// 获取链表的长度
+// Get the list size.
 int size = list.size();
-System.out.println("链表长度：" + size);
+System.out.println("List size: " + size);
 
-// 清空链表
+// Clear the list.
 list.clear();
-System.out.println("清空后的链表：" + list);
+System.out.println("List after clearing: " + list);
 ```
 
-输出：
+Output:
 
 ```plain
-索引为 2 的元素：banana
-链表内容：[apple, orange, banana, grape]
-链表内容：[orange, banana, grape]
-链表内容：[orange, grape]
-链表长度：2
-清空后的链表：[]
+Element at index 2: banana
+List contents: [apple, orange, banana, grape]
+List contents: [orange, banana, grape]
+List contents: [orange, grape]
+List size: 2
+List after clearing: []
 ```
 
 <!-- @include: @article-footer.snippet.md -->

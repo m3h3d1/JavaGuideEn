@@ -1,167 +1,167 @@
 ---
-title: 2026 最新 JVM 面试题总结：内存区域、类加载、垃圾回收与线上排查
+title: "JVM Interview Questions: Memory, Class Loading, Garbage Collection, and Production Troubleshooting"
 category: Java
-description: 2026 最新 JVM 面试题总结，覆盖运行时内存区域、对象创建、类文件与类加载、垃圾回收算法与收集器、JVM 参数、JDK 诊断工具、OOM、频繁 Full GC 和 CPU 飙高等高频考点。
+description: A JVM interview review covering runtime memory areas, object creation, class files and loading, garbage collection, JVM options, JDK diagnostic tools, OOM, frequent Full GC, and high CPU usage.
 tag:
   - Java
   - JVM
-  - 面试题
+  - Interview Questions
 head:
   - - meta
     - name: keywords
-      content: JVM面试题,Java内存区域,对象创建,类加载,双亲委派,垃圾回收,GC面试题,G1,ZGC,JVM参数,OOM,Full GC,CPU飙高,JVM调优
+      content: JVM interview questions,Java memory areas,object creation,class loading,parent delegation,garbage collection,G1,ZGC,JVM options,OOM,Full GC,high CPU,JVM tuning
 ---
 
-JVM 面试很少停在“堆和栈有什么区别”。回答完内存区域，面试官通常会继续问对象怎样分配、哪些对象可以回收、一次 GC 为什么会停顿，以及线上出现 OOM、频繁 Full GC 或 CPU 飙高时怎样排查。
+JVM interviews rarely stop at "What's the difference between the heap and the stack?" After asking about memory areas, interviewers often ask how objects are allocated, which objects can be reclaimed, why a GC pause occurs, and how to investigate OOM, frequent Full GC, or high CPU usage in production.
 
-这篇文章是 JavaGuide JVM 专题的面试复习入口，问题按内存与对象、类文件与类加载、垃圾回收、参数与诊断工具、线上问题排查五部分整理。每个问题的完整答案放在对应专题文章中。
+This article is a review guide for the JavaGuide JVM section. It groups questions into five areas: memory and objects, class files and loading, garbage collection, JVM options and diagnostic tools, and production troubleshooting. The corresponding guides contain detailed answers.
 
-时间比较紧的话，可以先看 [JVM 常见面试题总结](https://interview.javaguide.cn/java/java-jvm.html)，把答不完整的问题标出来，再回到本文和专题文章补细节。
+If you're short on time, start with the [JVM interview question summary](https://interview.javaguide.cn/java/java-jvm.html). Mark questions you cannot answer fully, then use this article and the related guides to review the details.
 
-## 复习 JVM 时先抓住哪些问题？
+## What Should You Focus on When Reviewing the JVM?
 
-| 模块           | 需要讲清楚的内容                                  | 常见追问方向                                           |
-| -------------- | ------------------------------------------------- | ------------------------------------------------------ |
-| 内存与对象     | 运行时数据区怎样划分，对象怎样创建、存放和访问    | 堆、栈、方法区、直接内存、对象头、TLAB、OOM            |
-| 类文件与类加载 | `.class` 文件如何进入 JVM，类在什么时机完成初始化 | 常量池、加载过程、类加载器、双亲委派、类隔离           |
-| 垃圾回收       | 怎样判断对象存活，内存如何回收，停顿从哪里产生    | GC Roots、引用类型、收集算法、CMS、G1、ZGC、Full GC    |
-| 参数与工具     | 参数如何跟着 JDK、收集器和运行现象选择            | `-Xms`、`-Xmx`、GC 日志、Heap Dump、jstat、jstack、JFR |
-| 线上排查       | 收到告警后怎样保留证据、缩小范围并验证修复        | CPU、Load、OOM、内存泄漏、频繁 GC、线程阻塞            |
+| Topic                      | What to explain                                                                  | Common follow-up questions                                                        |
+| -------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Memory and objects         | How runtime areas are divided, and how objects are created, stored, and accessed | Heap, stack, method area, direct memory, object headers, TLAB, OOM                |
+| Class files and loading    | How `.class` files enter the JVM and when classes are initialized                | Constant pool, loading process, class loaders, parent delegation, class isolation |
+| Garbage collection         | How object liveness is determined, memory is reclaimed, and pauses occur         | GC Roots, reference types, collection algorithms, CMS, G1, ZGC, Full GC           |
+| Options and tools          | How to choose options for a JDK version, collector, and observed behavior        | `-Xms`, `-Xmx`, GC logs, Heap Dump, jstat, jstack, JFR                            |
+| Production troubleshooting | How to preserve evidence, narrow down a problem, and verify a fix                | CPU, Load, OOM, memory leaks, frequent GC, blocked threads                        |
 
-大多数对象实例分配在堆中，活跃线程、静态字段等位置可能持有到对象的引用；GC 从 GC Roots 出发判断对象是否可达，再由具体收集器完成回收。应用出现内存上涨或停顿时，还要结合 GC 日志、线程栈、堆转储和系统指标判断原因，不能看到 Full GC 就直接改堆大小。
+Most object instances are allocated on the heap. Active threads, static fields, and other locations may hold references to them. The GC checks reachability from GC Roots, then the collector reclaims objects. When memory use rises or pauses occur, use GC logs, thread stacks, heap dumps, and system metrics to find the cause instead of increasing the heap as soon as you see Full GC.
 
-## JVM 内存区域与对象
+## JVM Memory Areas and Objects
 
-运行时数据区回答到名称还不够。每个区域由哪些线程共享、存放什么、生命周期怎样、可能抛出什么异常，都可能成为下一轮追问。方法区是 JVM 规范定义的逻辑区域，永久代和元空间则是 HotSpot 在不同版本中的实现，回答时不要混成同一个概念。
+Naming the runtime areas is not enough. Follow-up questions may cover which threads share each area, what it stores, its lifetime, and which errors it can throw. The method area is a logical area defined by the JVM specification; PermGen and Metaspace are HotSpot implementations from different versions. Keep these concepts distinct.
 
-相关内容：[Java 内存区域详解](./memory-area.md)
+Related guide: [Java Memory Areas Explained](./memory-area.md)
 
-常见面试题：
+Common questions:
 
-- JVM 运行时数据区包括哪些部分？哪些区域是线程私有的？
-- 程序计数器、虚拟机栈和本地方法栈分别有什么作用？
-- 一个 Java 方法从调用到返回，栈帧发生了什么变化？
-- `StackOverflowError` 和 `OutOfMemoryError` 分别可能怎样产生？
-- Java 堆主要存放什么？所有对象都一定分配在堆上吗？
-- 方法区、永久代和元空间是什么关系？为什么要移除永久代？
-- 运行时常量池和字符串常量池有什么区别？它们的位置发生过哪些变化？
-- 直接内存属于 JVM 运行时数据区吗？它为什么也可能 OOM？
-- HotSpot 创建一个对象要经过哪些步骤？
-- 指针碰撞和空闲列表怎样选择？并发分配对象时，CAS 和 TLAB 分别解决什么问题？
-- 对象头、实例数据和对齐填充分别存放什么？
-- 句柄访问和直接指针访问对象有什么区别？HotSpot 主要使用哪一种？
+- What areas make up the JVM runtime data area? Which ones are thread-private?
+- What are the roles of the program counter, JVM stack, and native method stack?
+- What happens to a stack frame between a Java method call and its return?
+- What can cause `StackOverflowError` and `OutOfMemoryError`?
+- What does the Java heap mainly store? Are all objects allocated there?
+- How are the method area, PermGen, and Metaspace related? Why was PermGen removed?
+- How do the runtime constant pool and string pool differ? How have their locations changed?
+- Is direct memory part of the JVM runtime data area? Why can it also cause OOM?
+- What steps does HotSpot take to create an object?
+- When are bump-pointer allocation and free lists used? What do CAS and TLAB address during concurrent allocation?
+- What do the object header, instance data, and padding store?
+- How do handle-based and direct-pointer object access differ? Which does HotSpot mainly use?
 
-遇到 OOM 题时，先确认耗尽的是 Java 堆、元空间、直接内存，还是创建线程所需的本地内存。只回答“把 `-Xmx` 调大”会漏掉无界集合、类加载器泄漏、直接内存未释放和线程数量失控等原因。
+For an OOM question, first identify whether the exhausted resource is the Java heap, Metaspace, direct memory, or the native memory needed to create threads. Saying only "increase `-Xmx`" overlooks causes such as unbounded collections, class loader leaks, unreleased direct memory, and too many threads.
 
-## 类文件与类加载
+## Class Files and Class Loading
 
-类加载题通常从“一个类怎样被加载”开始，随后追问初始化时机、双亲委派以及不同类加载器之间的隔离。这里既有 JVM 规范里的生命周期，也有 HotSpot 和 JDK 类加载器的具体实现，描述版本差异时要说清使用的 JDK。
+Class loading questions often start with "How is a class loaded?" Follow-ups cover initialization timing, parent delegation, and isolation between class loaders. These topics include both the lifecycle defined by the JVM specification and implementation details of HotSpot and JDK class loaders, so state which JDK version you're discussing.
 
-相关内容：
+Related guides:
 
-- [类文件结构详解](./class-file-structure.md)
-- [类加载过程详解](./class-loading-process.md)
-- [类加载器详解](./classloader.md)
+- [Class File Structure Explained](./class-file-structure.md)
+- [Class Loading Process Explained](./class-loading-process.md)
+- [Java Class Loaders Explained](./classloader.md)
 
-常见面试题：
+Common questions:
 
-- Class 文件由哪些部分组成？魔数、版本号和常量池分别有什么作用？
-- 方法的字节码指令保存在 Class 文件的哪个位置？
-- 一个类从加载到卸载要经历哪些阶段？
-- 加载、验证、准备、解析和初始化分别做了什么？
-- 准备阶段和初始化阶段给静态变量赋值有什么区别？
-- 哪些情况会触发类的初始化？访问编译期常量会触发吗？
-- `<clinit>` 和构造方法 `<init>` 有什么区别？
-- 启动类加载器、平台类加载器和应用类加载器分别加载哪些类？JDK 8 的扩展类加载器有什么不同？
-- 什么是双亲委派模型？它怎样避免核心类被重复加载或替换？
-- 双亲委派是怎样执行的？父加载器无法完成加载时会发生什么？
-- 哪些场景会打破双亲委派？线程上下文类加载器解决了什么问题？
-- 两个类的全限定名相同，就一定是同一个类吗？
-- 自定义类加载器通常要重写 `findClass()` 还是 `loadClass()`？
+- What are the parts of a class file? What are the roles of the magic number, version, and constant pool?
+- Where are a method's bytecode instructions stored in a class file?
+- What stages does a class go through from loading to unloading?
+- What happens during loading, verification, preparation, resolution, and initialization?
+- How does assigning a static field during preparation differ from assigning it during initialization?
+- What triggers class initialization? Does accessing a compile-time constant trigger it?
+- How does `<clinit>` differ from the constructor `<init>`?
+- Which classes are loaded by the bootstrap, platform, and application class loaders? How did the JDK 8 extension class loader differ?
+- What is the parent delegation model? How does it reduce the risk of core classes being reloaded or replaced?
+- How does parent delegation work? What happens if a parent loader cannot load a class?
+- Which scenarios break parent delegation? What problem does the thread context class loader solve?
+- Do two classes with the same fully qualified name have to be the same class?
+- Should a custom class loader usually override `findClass()` or `loadClass()`?
 
-双亲委派回答成一条固定的向上查找链还不完整。类的身份由类的全限定名和加载它的类加载器共同确定；SPI、应用服务器的类隔离、热部署等场景会使用不同的加载方式，目的也不完全相同。
+Describing parent delegation as a fixed upward search chain is incomplete. A class's identity depends on both its fully qualified name and its defining class loader. SPI, application server isolation, and hot deployment use different loading strategies for different reasons.
 
-## 垃圾回收
+## Garbage Collection
 
-垃圾回收题要从对象分配和存活判断讲到具体收集器。吞吐量、停顿时间和内存占用之间存在取舍，选择收集器时还要考虑 JDK 版本、堆大小和业务对延迟的要求，不能只比较算法名称。
+Garbage collection questions cover object allocation and liveness, as well as specific collectors. Throughput, pause time, and memory use involve trade-offs. When choosing a collector, consider the JDK version, heap size, and application latency requirements instead of comparing algorithm names alone.
 
-相关内容：[JVM 垃圾回收详解](./jvm-garbage-collection.md)
+Related guide: [JVM Garbage Collection Explained](./jvm-garbage-collection.md)
 
-常见面试题：
+Common questions:
 
-- 新生代和老年代通常怎样划分？对象一般怎样分配和晋升？
-- 大对象和长期存活对象会怎样进入老年代？
-- 什么是空间分配担保？
-- 引用计数法为什么难以解决对象之间的循环引用？
-- 可达性分析怎样判断对象是否存活？哪些对象可以作为 GC Roots？
-- 强引用、软引用、弱引用和虚引用有什么区别？
-- 标记-清除、复制和标记-整理算法各有什么优缺点？
-- 分代收集为什么要为新生代和老年代选择不同算法？
-- Minor GC、Major GC 和 Full GC 有什么区别？为什么要结合收集器和日志理解这些名称？
-- Serial、Parallel、CMS、G1 和 ZGC 的目标和适用场景有什么不同？
-- CMS 为什么会产生内存碎片和浮动垃圾？
-- G1 怎样通过 Region、回收价值预测和 Mixed GC 控制停顿？
-- ZGC 怎样降低长时间停顿？低停顿收集器会付出哪些代价？
-- 哪些情况可能触发 Full GC？频繁 Full GC 应该从哪些数据开始查？
+- How are the young and old generations usually divided? How are objects allocated and promoted?
+- How can large or long-lived objects enter the old generation?
+- What is allocation pretenure?
+- Why does reference counting have trouble with cycles between objects?
+- How does reachability analysis determine whether an object is live? Which objects can be GC Roots?
+- How do strong, soft, weak, and phantom references differ?
+- What are the trade-offs of mark-sweep, copying, and mark-compact algorithms?
+- Why does generational collection use different algorithms for the young and old generations?
+- How do Minor GC, Major GC, and Full GC differ? Why should these terms be understood in the context of a collector and its logs?
+- How do Serial, Parallel, CMS, G1, and ZGC differ in goals and use cases?
+- Why can CMS produce memory fragmentation and floating garbage?
+- How does G1 use regions, collection-set predictions, and mixed collections to manage pauses?
+- How does ZGC reduce long pauses? What trade-offs do low-pause collectors make?
+- What can trigger Full GC? What data should you check first when Full GC is frequent?
 
-GC 日志中的事件名称、内存分区和参数会随 JDK 与收集器变化。面试中可以先说明自己的运行环境，再解释一次回收的触发原因、回收范围、停顿阶段和结果；脱离版本背固定结论，很容易在追问时互相矛盾。
+Event names, memory regions, and options in GC logs vary by JDK and collector. In an interview, state the runtime environment first, then explain what triggered a collection, which areas it covered, its pause phases, and its result. Memorizing version-independent claims can lead to contradictions during follow-up questions.
 
-## JVM 参数与诊断工具
+## JVM Options and Diagnostic Tools
 
-参数题考察的是配置依据。堆大小、年轻代比例、收集器和日志参数要跟部署内存、对象分配速率、延迟目标及 JDK 版本一起讨论。尤其是 G1，通常不建议照搬以固定年轻代大小为中心的旧配置。
+Option questions test the reasoning behind a configuration. Discuss heap size, young-generation sizing, collectors, and logging options in the context of deployment memory, allocation rate, latency goals, and JDK version. In particular, avoid blindly copying older configurations centered on a fixed young-generation size when using G1.
 
-相关内容：
+Related guides:
 
-- [JVM 常用参数总结](./jvm-parameters-intro.md)
-- [JDK 监控和故障处理工具总结](./jdk-monitoring-and-troubleshooting-tools.md)
+- [Common JVM Options](./jvm-parameters-intro.md)
+- [JDK Monitoring and Troubleshooting Tools](./jdk-monitoring-and-troubleshooting-tools.md)
 
-常见面试题：
+Common questions:
 
-- `-Xms`、`-Xmx`、`-Xmn` 和 `-Xss` 分别控制什么？
-- 为什么服务端应用常把 `-Xms` 和 `-Xmx` 设为相同值？
-- `-XX:MetaspaceSize` 和 `-XX:MaxMetaspaceSize` 有什么区别？
-- 怎样为应用选择垃圾收集器？切换收集器前要收集哪些数据？
-- JDK 8 和 JDK 9 及之后怎样配置 GC 日志？
-- 发生 OOM 时怎样自动生成 Heap Dump？为什么要提前确认存储空间？
-- `jps`、`jstat`、`jinfo`、`jmap`、`jstack` 和 `jcmd` 分别适合查什么？
-- 怎样用 `jstat` 观察 GC 频率、各区域容量和对象晋升情况？
-- 线程长时间阻塞、死锁或 CPU 飙高时，线程转储能提供什么信息？
-- Heap Dump 和线程转储有什么区别？`kill -3` 生成的是哪一种？
-- MAT 分析 Heap Dump 时，Dominator Tree 和到 GC Roots 的引用链分别有什么用？
-- JFR、JMC、VisualVM 适合观察哪些运行时信息？在线采集时要考虑什么开销？
+- What do `-Xms`, `-Xmx`, `-Xmn`, and `-Xss` control?
+- Why do server applications often set `-Xms` and `-Xmx` to the same value?
+- How do `-XX:MetaspaceSize` and `-XX:MaxMetaspaceSize` differ?
+- How do you choose a garbage collector for an application? What data should you collect before switching?
+- How do you configure GC logging in JDK 8 and JDK 9 or later?
+- How can you generate a Heap Dump automatically after OOM? Why should you check available disk space first?
+- What are `jps`, `jstat`, `jinfo`, `jmap`, `jstack`, and `jcmd` useful for?
+- How can `jstat` help you observe GC frequency, region capacity, and object promotion?
+- What information can a thread dump provide when threads are blocked, deadlocked, or using high CPU?
+- How do Heap Dumps and thread dumps differ? Which one does `kill -3` generate?
+- When analyzing a Heap Dump in MAT, what do the Dominator Tree and paths to GC Roots show?
+- What runtime information can JFR, JMC, and VisualVM show? What overhead should you consider when collecting data online?
 
-生成 Heap Dump、类直方图或高频采样都有可能增加线上负载，Dump 文件也可能包含业务数据。执行诊断命令前要确认影响范围、磁盘空间和文件保存位置；紧急重启前，至少保留告警时间、关键指标、线程栈和必要的 GC 信息。
+Generating a Heap Dump or class histogram, or sampling frequently, can increase production load. Dump files may also contain business data. Before running diagnostic commands, check their impact, available disk space, and where files will be stored. Before an emergency restart, preserve at least the alert time, key metrics, thread stacks, and relevant GC information.
 
-## JVM 线上问题排查
+## JVM Production Troubleshooting
 
-线上排查通常没有“一个命令直接定位”的答案。收到告警后先核对时间、影响范围、最近变更和系统资源，再决定采集线程栈、GC 日志还是堆转储。若服务已经影响用户，止血和留证需要同时安排，不能为了抓全量证据让故障继续扩大。
+Production incidents rarely have a single command that identifies the cause. After an alert, check the timeline, impact, recent changes, and system resources before deciding whether to collect thread stacks, GC logs, or a heap dump. If users are affected, contain the impact and preserve evidence in parallel; do not let the incident worsen while collecting every possible artifact.
 
-相关内容：[Java 后端线上问题排查](./jvm-in-action.md)
+Related guide: [Troubleshooting Java Production Issues](./jvm-in-action.md)
 
-常见面试题：
+Common questions:
 
-- CPU 飙高时，怎样从进程定位到线程和具体代码栈？
-- CPU 不高但 Load 很高，应该检查哪些线程状态和系统指标？
-- 接口响应很慢但 CPU 使用率正常，怎样区分锁等待、I/O、连接池和下游延迟？
-- 内存持续上涨时，怎样判断是业务缓存增长、对象分配过快还是内存泄漏？
-- Java 进程 OOM 后，怎样判断问题发生在堆、元空间、直接内存还是本地内存？
-- Young GC 很频繁，但每次回收很快，应该重点检查什么？
-- Full GC 频繁时，怎样观察老年代增长、对象晋升和回收效果？
-- Heap Dump 应该在什么时候生成？生产环境直接执行 `jmap -dump` 有什么风险？
-- 线程池队列堆积与 CPU 使用率、线程状态之间有什么关系？
-- 修复 JVM 问题后，应该对比哪些指标来确认改动有效？
-- 面试中怎样讲一次没有亲历过的 JVM 故障排查题？
+- When CPU usage is high, how do you go from the process to the thread and its stack trace?
+- If CPU usage is low but system load is high, which thread states and system metrics should you check?
+- If an endpoint is slow but CPU usage is normal, how do you distinguish lock waits, I/O, connection pools, and downstream latency?
+- When memory use keeps rising, how do you distinguish cache growth, a high allocation rate, and a memory leak?
+- After a Java process runs out of memory, how do you tell whether the problem is in the heap, Metaspace, direct memory, or native memory?
+- If Young GC is frequent but each collection is quick, what should you investigate?
+- When Full GC is frequent, how do you inspect old-generation growth, object promotion, and collection results?
+- When should you generate a Heap Dump? What are the risks of running `jmap -dump` directly in production?
+- How are a growing thread pool queue, CPU usage, and thread states related?
+- Which metrics should you compare after a JVM fix to confirm it worked?
+- How should you answer an interview question about an incident you did not personally handle?
 
-排查结果要能形成证据链。例如 CPU 飙高时，先找到高 CPU 的 Java 进程和线程，把线程 ID 转成线程转储使用的格式，再核对多次线程栈是否持续落在同一段代码。内存问题则要结合 GC 日志、对象直方图、Heap Dump 和本机内存，单看 JVM 堆使用率无法覆盖所有 OOM。
+Troubleshooting should build a chain of evidence. For high CPU, identify the Java process and thread using the most CPU, convert the thread ID to the format used in the thread dump, and compare several stack traces to see whether execution remains in the same code. For memory issues, combine GC logs, object histograms, Heap Dumps, and native memory data; JVM heap usage alone cannot explain every OOM.
 
-## 按准备时间安排复习
+## Plan Your Review by Available Time
 
-| 剩余时间 | 建议安排                                                                                                                                     | 复习目标                                          |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| 1～2 天  | 先过一遍 [JVM 常见面试题总结](https://interview.javaguide.cn/java/java-jvm.html)，优先补内存区域、对象创建、类加载、对象存活判断和主流收集器 | 能回答基础高频题，知道不同结论对应的 JDK 与收集器 |
-| 3～7 天  | 补 JVM 参数、GC 日志和 JDK 诊断工具，分别口述一次 CPU 飙高、OOM 与频繁 Full GC 的排查过程                                                    | 能从告警现象选择指标和工具，并说明操作风险        |
-| 1 周以上 | 阅读全部 JVM 专题文章，在本地或测试环境分析一次 GC 日志、线程转储或 Heap Dump；结合项目记录实际 JDK、收集器、堆配置和运行指标                | 能把原理、配置、运行现象和验证方法连起来          |
+| Time available   | Suggested plan                                                                                                                                                                                    | Goal                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| 1–2 days         | Review the [JVM interview question summary](https://interview.javaguide.cn/java/java-jvm.html), focusing on memory areas, object creation, class loading, object liveness, and common collectors. | Answer common fundamentals and identify which JDK and collector each claim applies to. |
+| 3–7 days         | Review JVM options, GC logs, and JDK diagnostic tools. Practice explaining how you would investigate high CPU, OOM, and frequent Full GC.                                                         | Choose metrics and tools based on an alert, and explain the risks of using them.       |
+| More than a week | Read the JVM guides and analyze a GC log, thread dump, or Heap Dump in a local or test environment. Record the project's JDK, collector, heap settings, and runtime metrics.                      | Connect JVM concepts and configuration to observed behavior and verification.          |
 
-社招和中高级岗位往往会继续追问参数依据与排查证据。没有实际处理过线上 JVM 故障，可以按测试环境观察和专题资料回答，说明自己会先采集什么、怎样缩小范围；不要把学习案例说成亲历的生产事故。
+Experienced-hire and senior interviews often ask for the reasoning behind JVM options and the evidence used in troubleshooting. If you have not handled a production JVM incident, answer based on what you observed in a test environment and the relevant guides. Explain what you would collect first and how you would narrow down the cause; do not present a study example as a production incident you handled.
 
 <!-- @include: @article-footer.snippet.md -->

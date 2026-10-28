@@ -1,53 +1,53 @@
 ---
-title: 虚拟线程常见问题总结
-description: Java 21 虚拟线程详解：梳理 Virtual Threads 的定位、调度原理、与平台线程的区别、适用场景、创建方式、性能边界、Spring Boot 接入方式和实践注意事项。
+title: "Java Virtual Threads: Common Questions"
+description: A guide to Java 21 virtual threads, including their purpose, scheduling, differences from platform threads, use cases, creation APIs, performance limits, Spring Boot integration, and practical considerations.
 category: Java
 tag:
-  - Java并发
+  - Java Concurrency
 head:
   - - meta
     - name: keywords
-      content: Java虚拟线程,Virtual Threads,Project Loom,Java 21新特性,轻量级线程,协程,虚拟线程原理
+      content: Java virtual threads,Virtual Threads,Project Loom,Java 21 features,lightweight threads,coroutines,virtual thread internals
 ---
 
 <!-- @include: @article-header.snippet.md -->
 
-一个 Web 请求进来，代码要查数据库、调远程接口、读写文件。按传统的同步写法，这个请求会占住一个平台线程，哪怕大部分时间都在等 I/O。
+When a web request arrives, the application may query a database, call a remote service, and read or write files. With traditional synchronous code, the request occupies a platform thread even while it is waiting for I/O.
 
-线程池能缓解线程创建成本，但不能改变一个事实：平台线程数量仍然受操作系统线程数量、内存和调度成本限制。当并发请求继续增加时，线程池里的线程会被排队任务占满，吞吐量很快卡住。
+Thread pools reduce the cost of creating threads, but platform thread counts are still limited by operating system threads, memory, and scheduling overhead. As concurrent requests increase, queued work can fill the pool and limit throughput.
 
-虚拟线程就是为这个问题来的。它让我们继续用简单的同步阻塞代码，同时让等待 I/O 的任务不再长期占着昂贵的平台线程。
+Virtual threads address this problem. They let us keep simple, synchronous blocking code without making tasks occupy expensive platform threads while waiting for I/O.
 
-## 什么是虚拟线程？
+## What Is a Virtual Thread?
 
-虚拟线程（Virtual Thread）是 Java 21 正式引入的一种轻量级线程，也是 `java.lang.Thread` 的一种实现。它由 JDK 管理和调度，而不是直接和某个操作系统线程一一绑定。
+A virtual thread is a lightweight thread finalized in Java 21 and an implementation of `java.lang.Thread`. The JDK manages and schedules it; it is not permanently bound to a single operating system thread.
 
-平台线程（Platform Thread）通常是对操作系统线程的薄封装。一个平台线程运行时，会在整个生命周期内占用一个操作系统线程。虚拟线程不一样：它运行 Java 代码时需要挂载到某个平台线程上；当它执行可挂起的阻塞操作时，JDK 可以把它从平台线程上卸载下来，让这个平台线程去执行别的虚拟线程。
+A platform thread is usually a thin wrapper around an operating system thread. It occupies that OS thread for its lifetime. A virtual thread works differently: it runs Java code while mounted on a platform thread. When it reaches a supported blocking operation, the JDK can unmount it and let the platform thread run another virtual thread.
 
-因此，虚拟线程的数量可以远大于平台线程数量。官方文档里用虚拟内存做类比：操作系统把大量虚拟地址映射到有限物理内存，Java 运行时则把大量虚拟线程映射到较少的平台线程。
+This allows the number of virtual threads to greatly exceed the number of platform threads. The official documentation compares this to virtual memory: an operating system maps many virtual addresses to limited physical memory, while the Java runtime maps many virtual threads to fewer platform threads.
 
-虚拟线程的几个关键点：
+Key points about virtual threads:
 
-- 虚拟线程仍然是 `Thread`，支持 `ThreadLocal`、中断、异常栈、调试和 JFR 观测。
-- 虚拟线程适合大量阻塞等待的任务，比如 HTTP 调用、数据库查询、消息队列访问、文件或网络 I/O。
-- 虚拟线程不是更快的 CPU 执行单元，不会让一段纯计算代码跑得更快。
-- 虚拟线程很便宜，通常应该“每个任务一个虚拟线程”，而不是像平台线程一样池化复用。
+- A virtual thread is still a `Thread`. It supports `ThreadLocal`, interruption, stack traces, debugging, and JFR monitoring.
+- Virtual threads suit workloads with many blocking tasks, such as HTTP calls, database queries, message queue access, and file or network I/O.
+- A virtual thread is not a faster CPU execution unit; it does not make compute-bound code run faster.
+- Virtual threads are cheap, so the usual pattern is one virtual thread per task, rather than pooling and reusing them like platform threads.
 
-## 虚拟线程和平台线程有什么关系？
+## How Do Virtual Threads and Platform Threads Relate?
 
-在 Java 里，虚拟线程、平台线程和操作系统线程大致是这样的关系：
+In Java, virtual threads, platform threads, and operating system threads relate roughly as follows:
 
-![虚拟线程、平台线程和系统内核线程的关系](https://oss.javaguide.cn/github/javaguide/java/new-features/virtual-threads-platform-threads-kernel-threads-relationship.png)
+![How virtual threads, platform threads, and OS threads relate](https://oss.javaguide.cn/github/javaguide/java/new-features/virtual-threads-platform-threads-kernel-threads-relationship.png)
 
-在 Windows、Linux 等主流操作系统中，HotSpot JVM 的平台线程通常采用一对一线程模型，也就是一个平台线程对应一个操作系统线程。虚拟线程引入后，JDK 在平台线程之上又加了一层调度：
+On mainstream operating systems such as Windows and Linux, HotSpot JVM platform threads usually use a one-to-one model: each platform thread maps to an OS thread. Virtual threads add another scheduling layer on top:
 
-- 虚拟线程是任务的承载者，业务代码看到的 `Thread.currentThread()` 返回的是虚拟线程本身。
-- 平台线程是虚拟线程的载体（Carrier Thread），负责真正执行虚拟线程里的 Java 代码。
-- 操作系统仍然只调度平台线程，不知道虚拟线程的存在。
+- A virtual thread represents the task. In application code, `Thread.currentThread()` returns the virtual thread itself.
+- A platform thread is a virtual thread's carrier and executes its Java code.
+- The operating system schedules platform threads and does not know about virtual threads.
 
-一个虚拟线程开始执行时，会被 JDK 调度器挂载（mount）到某个平台线程上。执行到阻塞 I/O、`BlockingQueue.take()`、`Future.get()` 等支持挂起的阻塞点时，虚拟线程可以卸载（unmount），平台线程被释放出来继续执行其他虚拟线程。等阻塞操作就绪后，虚拟线程再被提交回调度器，挂载到某个平台线程上继续执行。
+When a virtual thread starts running, the JDK scheduler mounts it on a platform thread. At a supported blocking point, such as blocking I/O, `BlockingQueue.take()`, or `Future.get()`, it can unmount and free the platform thread to run another virtual thread. When the blocking operation is ready, the virtual thread is resubmitted to the scheduler and mounted on a platform thread to continue.
 
-这个挂载和卸载过程对业务代码是透明的。你写的仍然是普通同步代码：
+This mounting and unmounting is transparent to application code. You still write ordinary synchronous code:
 
 ```java
 String body = httpClient.send(request, BodyHandlers.ofString()).body();
@@ -55,53 +55,53 @@ Result result = repository.query(body);
 return service.handle(result);
 ```
 
-如果这些调用内部发生阻塞，虚拟线程可以挂起自己；如果换成平台线程，这个线程会一直占住对应的操作系统线程。
+If these calls block internally, a virtual thread can suspend itself. A platform thread would continue to occupy its operating system thread while blocked.
 
-## Project Loom 和虚拟线程是什么关系？
+## How Are Project Loom and Virtual Threads Related?
 
-Project Loom 是 OpenJDK 中改进 Java 并发模型的项目，虚拟线程是 Loom 最重要的成果之一。虚拟线程先后在 JDK 19、JDK 20 中预览，最终通过 [JEP 444](https://openjdk.org/jeps/444) 在 JDK 21 转正。
+Project Loom is an OpenJDK project to improve Java's concurrency model. Virtual threads are one of its main results. They were previewed in JDK 19 and JDK 20, then finalized in JDK 21 through [JEP 444](https://openjdk.org/jeps/444).
 
-Loom 不只是加了一个轻量级线程 API。它还推动了 JDK 阻塞 I/O、调试、JFR、线程转储等配套能力的调整，让传统的 thread-per-request 编程风格在高并发 I/O 场景下重新变得可扩展。
+Loom did more than add a lightweight thread API. It also led to changes in blocking I/O, debugging, JFR, and thread dumps, making the traditional thread-per-request style scalable again for highly concurrent I/O workloads.
 
-这也是虚拟线程和普通“协程库”的一个重要区别：虚拟线程被纳入了 Java 平台的线程模型。调试器、Profiler、JFR、线程 dump 都能以线程为单位理解它，而不是把业务调用链拆成一堆回调阶段。
+This is one important difference between virtual threads and typical coroutine libraries: virtual threads are part of Java's thread model. Debuggers, profilers, JFR, and thread dumps can work with them as threads instead of seeing application call chains split into callback stages.
 
-## 虚拟线程解决了什么问题？
+## What Problem Do Virtual Threads Solve?
 
-很多服务端程序天然适合“一个请求一个线程”的模型。它的好处很明显：代码顺序执行，异常可以沿着调用栈抛出，调试器能一步步跟进去，线程 dump 也能看到请求卡在哪里。
+Many server applications fit the thread-per-request model. Its benefits are straightforward: code runs sequentially, exceptions propagate through the call stack, debuggers can step through the code, and thread dumps show where a request is stuck.
 
-问题在于平台线程太贵。
+The problem is that platform threads are expensive.
 
-假设一个接口平均耗时 50ms，系统要达到 2000 QPS，按 Little's Law 粗略估算，需要同时处理约 100 个请求。如果接口平均耗时变成 500ms，同样 2000 QPS 就需要约 1000 个并发请求。每个请求都占一个平台线程时，线程数量很容易先于 CPU、网络带宽、数据库连接等资源成为瓶颈。
+Suppose an endpoint takes 50 ms on average and the system needs to serve 2,000 QPS. A rough estimate using Little's Law is that about 100 requests must be in flight at once. If the average request takes 500 ms, the same throughput requires about 1,000 concurrent requests. When each request occupies a platform thread, the thread count can become a bottleneck before CPU, network bandwidth, or database connections do.
 
-异步编程、Reactive 编程可以把线程从等待 I/O 中释放出来，但代价也很明显：调用链被拆成回调、`CompletableFuture` 链或响应式流水线，异常处理、调试、火焰图和线程上下文都会变复杂。
+Asynchronous and reactive programming can free threads while they wait for I/O, but they also split call chains into callbacks, `CompletableFuture` chains, or reactive pipelines. This can complicate exception handling, debugging, flame graphs, and thread context.
 
-虚拟线程试图保留同步代码的可读性，同时降低阻塞等待时占用平台线程的成本。它提升的主要是吞吐能力和并发承载能力，不是单个请求的执行速度。
+Virtual threads aim to preserve the readability of synchronous code while reducing the platform thread cost of blocking waits. They mainly improve throughput and concurrency capacity, not the speed of an individual request.
 
-## 虚拟线程适合哪些场景？
+## When Are Virtual Threads a Good Fit?
 
-虚拟线程最适合下面这类任务：
+Virtual threads are a good fit for tasks that:
 
-- 并发任务数量很多，通常是成千上万级别。
-- 任务大部分时间在等待 I/O，比如数据库、Redis、HTTP/RPC、消息队列、文件和网络读写。
-- 现有代码主要是同步阻塞模型，不想为了扩展性改成复杂的异步链。
-- 希望保留传统调用栈，方便调试、压测分析和线上排查。
+- Run at high concurrency, often in the thousands or more.
+- Spend most of their time waiting for I/O, such as database, Redis, HTTP/RPC, message queue, file, or network operations.
+- Use a synchronous blocking model that you want to keep instead of converting to complex asynchronous chains.
+- Benefit from a traditional call stack for debugging, load testing, and production troubleshooting.
 
-典型场景包括：
+Typical use cases include:
 
-- Spring MVC / Servlet 接口中调用数据库和外部 HTTP 服务。
-- 后台任务批量调用第三方接口。
-- 网关或聚合服务并发调用多个下游服务。
-- 消息消费逻辑中包含阻塞式数据库写入或远程调用。
+- Spring MVC or Servlet endpoints that call databases and external HTTP services.
+- Background jobs that call third-party services in batches.
+- Gateways or aggregation services that call several downstream services concurrently.
+- Message consumers that perform blocking database writes or remote calls.
 
-虚拟线程不适合把 CPU 密集型任务“变快”。如果任务主要是在算哈希、压缩图片、排序大数组、跑复杂规则引擎，线程数量超过 CPU 核心数之后，吞吐通常不会继续提高。CPU 密集型工作仍然应该关注算法、数据结构、批处理、并行流、专门的计算线程池或本地化优化。
+Virtual threads do not make CPU-bound tasks faster. If a task mainly computes hashes, compresses images, sorts large arrays, or runs a complex rules engine, throughput usually stops improving once the thread count exceeds the number of CPU cores. For CPU-bound work, focus on algorithms, data structures, batching, parallel streams, dedicated compute pools, or native optimizations.
 
-## 如何创建虚拟线程？
+## How to Create Virtual Threads
 
-JDK 21 中常见的创建方式有四种。
+JDK 21 provides four common ways to create virtual threads.
 
-### 使用 `Thread.startVirtualThread()`
+### Using `Thread.startVirtualThread()`
 
-适合启动一个很简单的虚拟线程：
+Use this to start a simple virtual thread:
 
 ```java
 public class VirtualThreadDemo {
@@ -115,11 +115,11 @@ public class VirtualThreadDemo {
 }
 ```
 
-需要注意的是，虚拟线程是守护线程。如果 `main` 方法不等待它结束，JVM 可能直接退出，导致任务还没来得及执行完。
+Virtual threads are daemon threads. If `main` does not wait for one to finish, the JVM may exit before the task completes.
 
-### 使用 `Thread.ofVirtual()`
+### Using `Thread.ofVirtual()`
 
-`Thread.ofVirtual()` 返回一个 `Thread.Builder.OfVirtual`，可以设置线程名，也可以选择创建后立即启动或先不启动：
+`Thread.ofVirtual()` returns a `Thread.Builder.OfVirtual`. You can set a thread name and choose whether to start the thread immediately or create it without starting it:
 
 ```java
 public class VirtualThreadDemo {
@@ -140,9 +140,9 @@ public class VirtualThreadDemo {
 }
 ```
 
-### 使用 `ThreadFactory`
+### Using `ThreadFactory`
 
-如果你希望统一线程命名，或者把线程工厂交给框架使用，可以通过 `ThreadFactory` 创建虚拟线程：
+Use a `ThreadFactory` to standardize thread names or provide a thread factory to a framework:
 
 ```java
 import java.util.concurrent.ThreadFactory;
@@ -163,9 +163,9 @@ public class VirtualThreadDemo {
 }
 ```
 
-### 使用 `Executors.newVirtualThreadPerTaskExecutor()`
+### Using `Executors.newVirtualThreadPerTaskExecutor()`
 
-业务开发中最常见的是这种方式。它会为每个提交的任务创建一个新的虚拟线程：
+This is the most common option in application code. It creates a new virtual thread for each submitted task:
 
 ```java
 import java.util.concurrent.ExecutorService;
@@ -185,15 +185,15 @@ public class VirtualThreadDemo {
 }
 ```
 
-这里的 `ExecutorService` 不是传统意义上的线程池。它不会维护一组固定虚拟线程来复用，而是每个任务一个新的虚拟线程。`try-with-resources` 结束时会调用 `close()`，等待已提交任务完成。
+This `ExecutorService` is not a traditional thread pool. It does not keep a fixed set of virtual threads for reuse; it creates a new virtual thread for each task. When the `try-with-resources` block ends, `close()` waits for submitted tasks to finish.
 
-## 虚拟线程要不要池化？
+## Should You Pool Virtual Threads?
 
-不要池化虚拟线程。
+Do not pool virtual threads.
 
-线程池的主要目标是复用昂贵的平台线程，并顺便限制并发。虚拟线程本身不是稀缺资源，池化它们通常没有意义，还会把“每个任务一个线程”的模型重新绕回旧思路。
+Thread pools mainly reuse expensive platform threads and limit concurrency. Virtual threads are not scarce, so pooling them is usually pointless and works against the one-thread-per-task model.
 
-如果你的真实目标是限制访问某个资源的并发量，应该限制资源，而不是限制虚拟线程数量。比如某个老系统最多只能承受 20 个并发请求，可以用 `Semaphore` 控制并发：
+If your goal is to limit concurrent access to a resource, limit access to that resource rather than limiting the number of virtual threads. For example, if a legacy service can handle at most 20 concurrent requests, use a `Semaphore`:
 
 ```java
 import java.util.concurrent.Semaphore;
@@ -216,13 +216,13 @@ public class OldServiceClient {
 }
 ```
 
-如果瓶颈是数据库连接，那就调整连接池大小；如果瓶颈是下游接口限流，那就做限流、熔断和重试退避。虚拟线程能让等待变便宜，但不能让数据库连接、下游容量、CPU 和内存变无限。
+If database connections are the bottleneck, adjust the connection pool. If a downstream service is rate-limited, use rate limiting, circuit breaking, and retry backoff. Virtual threads make waiting cheaper, but they do not make database connections, downstream capacity, CPU, or memory unlimited.
 
-## 虚拟线程和平台线程性能对比
+## Virtual Threads and Platform Thread Performance
 
-先给结论：虚拟线程不是“跑得更快的线程”，而是“可以创建很多、阻塞成本更低的线程”。它通常能提升 I/O 密集型服务的吞吐，但不会降低一次数据库查询或一次 HTTP 调用本身的耗时。
+In short, virtual threads are not faster threads. They are inexpensive to create and have a lower cost when blocked. They can improve throughput in I/O-bound services, but do not make an individual database query or HTTP call faster.
 
-下面这个例子模拟 10,000 个阻塞 1 秒的任务：
+The following example simulates 10,000 tasks that block for one second:
 
 ```java
 import java.time.Duration;
@@ -248,113 +248,113 @@ public class VirtualThreadCompareDemo {
 }
 ```
 
-如果把它换成 `Executors.newFixedThreadPool(200)`，同一时间最多只有 200 个任务在执行，10,000 个任务会被分批处理。按每批 1 秒粗略估计，总耗时接近 50 秒。虚拟线程版本可以让这 10,000 个任务几乎同时进入等待状态，平台线程在等待期间被释放出来，总耗时更接近单个任务的等待时间。
+If you replace it with `Executors.newFixedThreadPool(200)`, at most 200 tasks run at a time, so the 10,000 tasks are processed in batches. At roughly one second per batch, the total takes close to 50 seconds. With virtual threads, all 10,000 tasks can enter a waiting state at nearly the same time, freeing platform threads while they wait. The total time is closer to the wait time of one task.
 
-这个例子只能说明虚拟线程对“阻塞等待”友好，不是严谨基准测试。真实服务要看数据库连接池、HTTP 客户端连接池、下游限流、GC、对象分配、锁竞争、容器 CPU 配额等因素。
+This example only illustrates that virtual threads handle blocking waits well; it is not a rigorous benchmark. Real services are also affected by database and HTTP client connection pools, downstream rate limits, GC, object allocation, lock contention, and container CPU limits.
 
-## 虚拟线程的底层原理是什么？
+## How Do Virtual Threads Work Internally?
 
-可以把虚拟线程的执行过程拆成三件事：调度、挂载/卸载、栈管理。
+The execution model has three main parts: scheduling, mounting and unmounting, and stack management.
 
-### 调度
+### Scheduling
 
-平台线程依赖操作系统调度。虚拟线程由 JDK 自己的调度器调度，再由平台线程承载执行。JEP 444 中说明，虚拟线程调度器是一个采用 FIFO 模式的 work-stealing `ForkJoinPool`，它和并行流使用的 common pool 不是同一个池。
+The operating system schedules platform threads. The JDK scheduler schedules virtual threads, which then run on platform threads. JEP 444 describes the virtual thread scheduler as a FIFO-mode work-stealing `ForkJoinPool`. It is separate from the common pool used by parallel streams.
 
-默认情况下，调度器的并行度和可用处理器数量相关，可以通过下面的系统属性调整：
+By default, scheduler parallelism is related to the number of available processors. You can adjust it with these system properties:
 
-- `jdk.virtualThreadScheduler.parallelism`：调度器目标并行度。
-- `jdk.virtualThreadScheduler.maxPoolSize`：调度器可扩展的平台线程上限。
+- `jdk.virtualThreadScheduler.parallelism`: The scheduler's target parallelism.
+- `jdk.virtualThreadScheduler.maxPoolSize`: The maximum number of platform threads the scheduler can use.
 
-大多数业务系统不需要改这两个参数。优先排查连接池、限流、锁和阻塞点，通常比调整调度器参数更有效。
+Most applications do not need to change these properties. Checking connection pools, rate limits, locks, and blocking points is usually more useful.
 
-### 挂载和卸载
+### Mounting and Unmounting
 
-虚拟线程执行 Java 代码时，会挂载到某个平台线程上。遇到支持挂起的阻塞操作时，虚拟线程可以保存当前执行状态并卸载，平台线程继续服务其他虚拟线程。
+While running Java code, a virtual thread is mounted on a platform thread. At a supported blocking operation, it can save its execution state and unmount, allowing the platform thread to run another virtual thread.
 
-常见的 JDK 阻塞操作已经为虚拟线程做了适配。例如网络 I/O、`BlockingQueue`、`Future.get()` 等，在虚拟线程中阻塞时通常不会长期占住底层平台线程。
+Common JDK blocking operations have been adapted for virtual threads. Network I/O, `BlockingQueue`, and `Future.get()`, for example, usually do not hold the underlying platform thread while a virtual thread is blocked.
 
-不是所有阻塞都能卸载。JDK 21 到 JDK 23 中，虚拟线程在 `synchronized` 代码块或方法中阻塞，会出现 Pinning，也就是被固定在载体线程上。JDK 24 的 [JEP 491](https://openjdk.org/jeps/491) 改进了这一点，使虚拟线程在 `synchronized` 中阻塞时也能释放底层平台线程，消除了绝大多数由 `synchronized` 带来的 Pinning 场景。调用 native 方法或 Foreign Function & Memory API 相关代码时，仍然要关注剩余的 Pinning 风险。
+Not every blocking operation can unmount. In JDK 21 through JDK 23, a virtual thread that blocks inside a `synchronized` block or method can be pinned to its carrier thread. [JEP 491](https://openjdk.org/jeps/491) in JDK 24 improved this behavior, allowing virtual threads blocked inside `synchronized` to release the underlying platform thread and eliminating most `synchronized`-related pinning. Pinning can still occur when calling native methods or code related to the Foreign Function & Memory API.
 
-### 栈管理
+### Stack Management
 
-平台线程通常使用固定大小的操作系统线程栈。虚拟线程的栈以栈块对象的形式存放在 Java 堆中，可以随着执行过程增长和收缩。这也是虚拟线程能够大量创建的重要原因之一。
+Platform threads usually use fixed-size operating system stacks. Virtual thread stacks are stored as stack chunk objects on the Java heap and can grow or shrink during execution. This is one reason why many virtual threads can be created.
 
-不过，这并不代表虚拟线程没有内存成本。每个虚拟线程仍然是对象，也有栈块、局部变量、`ThreadLocal` 等内存开销。百万级虚拟线程不是免费的，只是比百万级平台线程现实得多。
+Virtual threads still use memory. Each one is an object with stack chunks, local variables, `ThreadLocal` values, and other overhead. A million virtual threads are not free, but are much more practical than a million platform threads.
 
-## 什么是 Pinning？
+## What Is Pinning?
 
-Pinning 可以理解为“虚拟线程暂时没法从载体线程上卸载”。虚拟线程被固定在某个平台线程上后，它在阻塞期间会连带占住底层操作系统线程，扩展性也会跟着变差。
+Pinning means that a virtual thread cannot unmount from its carrier thread. While pinned and blocked, it also occupies the underlying OS thread, which can reduce scalability.
 
-在 JDK 21 到 JDK 23 中，最典型的 Pinning 场景是：虚拟线程在 `synchronized` 代码块或方法里执行阻塞 I/O。
+In JDK 21 through JDK 23, the most common pinning case is blocking I/O inside a `synchronized` block or method:
 
 ```java
 public synchronized String load() throws IOException {
-  return remoteClient.get("/config"); // JDK 21-23 中，这里阻塞时可能固定载体线程
+  return remoteClient.get("/config"); // In JDK 21-23, blocking here may pin the carrier thread
 }
 ```
 
-短小、纯内存操作的 `synchronized` 问题不大。真正需要关注的是高频路径上持锁执行慢 I/O，例如持有对象锁时查数据库、调远程接口、读大文件。
+Short `synchronized` sections that only access memory are usually fine. Pay attention to slow I/O while holding a lock on a hot path, such as querying a database, calling a remote service, or reading a large file while holding an object lock.
 
-如果你使用 JDK 21 到 JDK 23，可以考虑：
+If you use JDK 21 through JDK 23, consider:
 
-- 避免在 `synchronized` 内部执行慢 I/O。
-- 对高频阻塞锁场景使用 `ReentrantLock`，并用 `try/finally` 释放锁。
-- 用 JFR 观察 `jdk.VirtualThreadPinned` 事件。
-- 临时使用 `-Djdk.tracePinnedThreads=full` 定位被固定的调用栈。
+- Avoid slow I/O inside `synchronized` blocks.
+- Consider `ReentrantLock` for frequently contended blocking locks, and release it in a `try/finally` block.
+- Use JFR to monitor `jdk.VirtualThreadPinned` events.
+- Temporarily use `-Djdk.tracePinnedThreads=full` to locate pinned call stacks.
 
-如果你使用 JDK 24 或更高版本，`synchronized` 导致的主要 Pinning 问题已经被 JEP 491 解决。选择 `synchronized` 还是 `java.util.concurrent.locks`，可以重新回到代码语义、可维护性和锁能力本身来判断。
+With JDK 24 or later, JEP 491 has addressed the main pinning issue caused by `synchronized`. Choose between `synchronized` and `java.util.concurrent.locks` based on code semantics, maintainability, and the locking features you need.
 
-## 使用虚拟线程有哪些注意事项？
+## What Should You Keep in Mind When Using Virtual Threads?
 
-### 不要把虚拟线程当作提速 CPU 的工具
+### Do Not Use Virtual Threads to Speed Up CPU-Bound Work
 
-虚拟线程提升的是等待型任务的并发承载能力。CPU 密集型任务最终还是要抢 CPU 时间片，虚拟线程数量再多也不能突破 CPU 核心数的物理限制。
+Virtual threads improve concurrency for tasks that spend time waiting. CPU-bound tasks still compete for CPU time, and adding virtual threads cannot overcome the physical limit imposed by the number of CPU cores.
 
-### 不要用线程池思维限制虚拟线程
+### Do Not Apply Thread Pool Limits to Virtual Threads
 
-不要创建固定数量的虚拟线程池。需要限制并发时，用 `Semaphore`、连接池、限流器或队列容量限制具体资源。
+Do not create a fixed-size pool of virtual threads. To limit concurrency, use a `Semaphore`, connection pool, rate limiter, or bounded queue to limit access to the resource itself.
 
-### 小心 `ThreadLocal` 缓存大对象
+### Be Careful About Caching Large Objects in `ThreadLocal`
 
-Java 21 正式版保证虚拟线程支持 `ThreadLocal`，这有利于兼容老代码和框架。但不要用 `ThreadLocal` 给每个虚拟线程缓存大对象。
+The Java 21 release supports `ThreadLocal` in virtual threads, which helps with compatibility with existing code and frameworks. However, avoid using `ThreadLocal` to cache large objects in every virtual thread.
 
-以前在线程池里，一个 `ThreadLocal<SimpleDateFormat>` 可能只对应几十或几百个平台线程。迁移到虚拟线程后，如果每个任务一个虚拟线程，同样的写法可能变成每个任务创建一份缓存对象，内存和分配压力会被放大。
+With a platform thread pool, a `ThreadLocal<SimpleDateFormat>` might be associated with only dozens or hundreds of platform threads. With one virtual thread per task, the same pattern may create a cached object for every task, increasing memory use and allocation pressure.
 
-如果只是传递请求上下文、用户 ID、Trace ID，通常问题不大。如果是缓存数据库连接、大数组、复杂 formatter、客户端对象，就要重新评估。JDK 25 通过 JEP 506 将 Scoped Values 转正，它更适合在大量虚拟线程之间传递不可变上下文。
+Using `ThreadLocal` for request context, user IDs, or trace IDs is usually fine. Reassess its use for caching database connections, large arrays, complex formatters, or client objects. JEP 506 finalized Scoped Values in JDK 25; they are better suited to passing immutable context across many virtual threads.
 
-### 虚拟线程不会消除线程安全问题
+### Virtual Threads Do Not Eliminate Thread Safety Issues
 
-虚拟线程让创建线程更便宜，也意味着你更容易同时跑起大量并发任务。原来因为线程池较小而没暴露的数据竞争，切到虚拟线程后可能更容易出现。
+Virtual threads are cheap to create, so it is easier to run many concurrent tasks. Data races that were hidden by a small thread pool may become more likely after migrating.
 
-需要继续遵守并发编程的基本规则：共享可变状态要加锁或隔离，数据库连接、会话对象、非线程安全客户端不要被多个虚拟线程同时乱用。
+Continue to follow basic concurrency rules: protect or isolate shared mutable state, and do not let multiple virtual threads misuse database connections, session objects, or non-thread-safe clients concurrently.
 
-### 注意连接池和下游容量
+### Watch Connection Pools and Downstream Capacity
 
-很多服务迁移到虚拟线程后，第一个瓶颈不再是业务线程池，而是数据库连接池、HTTP 连接池、Redis 连接数或下游限流。
+After migrating to virtual threads, many services find that their first bottleneck is no longer the application thread pool. It is the database or HTTP connection pool, Redis connection limit, or a downstream rate limit.
 
-这不是虚拟线程的问题。虚拟线程只是让更多任务有机会同时推进，真正的共享资源仍然要按容量管理。压测时建议同时观察：
+This is not a virtual thread problem. Virtual threads simply let more tasks make progress concurrently; shared resources still need capacity limits. During load testing, monitor:
 
-- 应用 QPS、响应时间和错误率。
-- 数据库连接池活跃连接、等待队列和超时数。
-- HTTP 客户端连接池和下游 429/5xx。
-- CPU、堆内存、GC、对象分配速率。
-- JFR 中的虚拟线程事件和锁竞争。
+- Application QPS, response time, and error rate.
+- Active database connections, connection wait queue, and timeouts.
+- HTTP client pool usage and downstream 429/5xx responses.
+- CPU, heap, GC, and object allocation rate.
+- Virtual thread events and lock contention in JFR.
 
-### 不要混用太多异步模型
+### Avoid Mixing Too Many Asynchronous Models
 
-虚拟线程最适合同步阻塞代码。已经用 Reactive/WebFlux/Netty 写成全链路异步的系统，不一定能因为打开虚拟线程就获得明显收益。
+Virtual threads work best with synchronous blocking code. A system already built around an end-to-end asynchronous stack such as Reactive, WebFlux, or Netty may not gain much by enabling virtual threads.
 
-更麻烦的是混用模型：外层虚拟线程，内层又大量使用异步回调和线程池，排查时可能同时面对虚拟线程、事件循环、业务线程池、连接池几套上下文。迁移时最好先挑同步阻塞链路试点，而不是全系统一键替换。
+Mixing models can make troubleshooting harder. A virtual thread at the outer layer may call into asynchronous callbacks and thread pools, leaving you to reason about virtual threads, event loops, application pools, and connection pools at once. Start by migrating a synchronous blocking path instead of switching the whole system at once.
 
-## 如何从传统线程池迁移到虚拟线程？
+## How to Migrate from a Traditional Thread Pool to Virtual Threads
 
-对于已有的同步阻塞代码，`submit()`、`Future.get()` 这些用法通常可以保留。迁移时要检查原来的线程池还承担了哪些职责，比如限制下游并发、控制排队任务数量、拒绝过载请求。
+For existing synchronous blocking code, you can usually keep calls such as `submit()` and `Future.get()`. During migration, check what other jobs the old thread pool was doing, such as limiting downstream concurrency, bounding queued tasks, or rejecting excess load.
 
-Oracle 的[虚拟线程迁移指南](https://docs.oracle.com/en/java/javase/21/core/virtual-threads.html)给出了对应的做法：每个任务创建一个虚拟线程，访问受限资源时用 `Semaphore` 等工具控制并发。
+Oracle's [virtual thread migration guide](https://docs.oracle.com/en/java/javase/21/core/virtual-threads.html) recommends creating one virtual thread per task and using tools such as `Semaphore` to limit concurrency when accessing a constrained resource.
 
-### 迁移前：用平台线程池执行 HTTP 调用
+### Before Migration: Use a Platform Thread Pool for HTTP Calls
 
-假设应用共用一个专门调用某个下游服务的线程池，最多使用 20 个平台线程，队列最多放 100 个任务。下面只展示任务提交和结果获取，省略导入、HTTP 客户端初始化、异常处理以及应用关闭时的资源释放：
+Suppose the application shares a thread pool dedicated to calling a downstream service. It uses at most 20 platform threads and queues up to 100 tasks. The example shows only task submission and result retrieval; imports, HTTP client setup, exception handling, and resource cleanup at application shutdown are omitted:
 
 ```java
 ExecutorService executor = new ThreadPoolExecutor(
@@ -370,13 +370,13 @@ Future<String> future = executor.submit(() ->
 String body = future.get(3, TimeUnit.SECONDS);
 ```
 
-这里的 20 个线程也限制了同时执行的调用数量。线程全部忙碌时，新任务进入队列；队列也满了，就由 `AbortPolicy` 抛出 `RejectedExecutionException`。
+The 20 threads also limit the number of calls running at once. When all threads are busy, new tasks enter the queue. If the queue is full, `AbortPolicy` throws `RejectedExecutionException`.
 
-直接把这个线程池替换成 `Executors.newVirtualThreadPerTaskExecutor()`，原来的并发和排队限制就没有了。[`Executors` 的 API 文档](<https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/Executors.html#newVirtualThreadPerTaskExecutor()>)说明，这个执行器不限制创建的虚拟线程数量，应用仍然受 CPU、内存等资源约束。
+If you replace this pool with `Executors.newVirtualThreadPerTaskExecutor()`, the original concurrency and queue limits are gone. The [`Executors` API documentation](<https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/Executors.html#newVirtualThreadPerTaskExecutor()>) states that this executor does not limit the number of virtual threads it creates. The application is still constrained by resources such as CPU and memory.
 
-### 迁移后：每个任务一个虚拟线程，单独限制下游并发
+### After Migration: Use One Virtual Thread per Task and Limit Downstream Concurrency Separately
 
-下面的示例使用 Java 21 正式 API，保留同步 HTTP 调用和 `Future`，用 `Semaphore` 限制本地同时执行的下游调用。20 个许可、200ms 等待时间和后面的超时时间都只是示例值，实际要按下游容量和接口耗时配置。示例直接返回响应体，实际业务还需要根据 HTTP 状态码处理调用结果。
+The example uses the Java 21 API, keeps the synchronous HTTP call and `Future`, and uses a `Semaphore` to limit concurrent downstream calls from this application instance. The 20 permits, 200 ms wait, and other timeouts are examples; configure them based on downstream capacity and request duration. The example returns the response body directly; production code should also handle the HTTP status code.
 
 ```java
 import java.net.URI;
@@ -404,7 +404,7 @@ public class RemoteServiceClient implements AutoCloseable {
       throws InterruptedException, ExecutionException, TimeoutException {
     Future<String> future = executor.submit(() -> {
       if (!limit.tryAcquire(200, TimeUnit.MILLISECONDS)) {
-        throw new RejectedExecutionException("等待下游调用许可超时");
+        throw new RejectedExecutionException("Timed out waiting for a downstream call permit");
       }
 
       try {
@@ -434,41 +434,41 @@ public class RemoteServiceClient implements AutoCloseable {
 }
 ```
 
-同一个下游的调用要共享这个 `RemoteServiceClient` 实例，例如交给 Spring 作为单例 Bean 管理，并在应用关闭时调用 `close()`。每次请求都创建一个实例，会各自拿到 20 个许可，起不到统一限制并发的作用。应用部署了多个实例时，各实例的许可也是独立的。
+Calls to the same downstream service should share this `RemoteServiceClient` instance, for example as a Spring singleton bean, and call `close()` when the application shuts down. Creating an instance for every request gives each one 20 permits and does not provide a shared concurrency limit. Permits are also independent across application instances.
 
-获取许可失败时，任务里的 `RejectedExecutionException` 会被包装进 `ExecutionException`，调用方可以用 `getCause()` 判断原因。它和迁移前在提交任务时直接抛出的拒绝异常，处理位置不一样。
+If the task cannot acquire a permit, its `RejectedExecutionException` is wrapped in an `ExecutionException`. The caller can inspect the cause with `getCause()`. This exception is handled at a different point from the rejection exception thrown during task submission before migration.
 
-这个示例限制了调用并发，也给等待许可设了超时，但没有保留原来最多排队 100 个任务的限制。短时间涌入大量请求时，仍然可能创建大量等待许可的虚拟线程。原来依赖有界队列保护内存的系统，还需要在入口限制在途请求数量，或使用有容量上限的队列、快速拒绝等方式处理过载。
+This example limits concurrent calls and times out while waiting for a permit, but it does not preserve the old limit of 100 queued tasks. A sudden burst can still create many virtual threads waiting for permits. If the system relied on a bounded queue to protect memory, also limit in-flight requests at the entry point or handle overload with a bounded queue or fast rejection.
 
-### 超时和任务取消还要注意什么？
+### What Else Should You Know About Timeouts and Cancellation?
 
-[`Future.get(3, TimeUnit.SECONDS)`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/Future.html)从调用 `get()` 时开始限制等待时间，超时后任务可能还在运行。示例在等待超时或调用方被中断时，调用 `future.cancel(true)` 尝试取消任务，再把异常抛给上层。平台线程池同样需要处理这两种情况。
+[`Future.get(3, TimeUnit.SECONDS)`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/Future.html) limits how long the caller waits, starting when `get()` is called. The task may still be running after a timeout. In the example, a timeout or caller interruption triggers `future.cancel(true)` to attempt cancellation before rethrowing the exception. These cases also need handling with a platform thread pool.
 
-这里继续抛出 `InterruptedException` 即可；如果捕获后不能继续抛出，通常需要用 `Thread.currentThread().interrupt()` 恢复中断标记，避免上层丢失中断信号。
+Here, propagate `InterruptedException`. If you catch it and cannot rethrow it, restore the interrupt flag with `Thread.currentThread().interrupt()` so callers do not lose the interrupt signal.
 
-示例中的几个超时有不同的起点：200ms 用于等待许可，连接超时和 HTTP 请求超时由 HTTP 客户端处理，3 秒则用于等待整个任务的结果，期间可能包含等待许可和 HTTP 调用。它们的时间可能重叠，不能直接相加。涉及多次下游调用时，还要按请求的剩余时间分配超时预算。
+The timeouts in the example start at different points. The 200 ms timeout covers waiting for a permit; the HTTP client handles the connection and request timeouts; and the three-second timeout limits how long the caller waits for the whole task, which may include both permit waiting and the HTTP call. These periods can overlap, so do not simply add them together. For requests involving several downstream calls, allocate timeouts based on the remaining request deadline.
 
-异常也要分清：`get()` 等待超时会直接抛出 `TimeoutException`；[`HttpRequest.Builder.timeout()`](<https://docs.oracle.com/en/java/javase/21/docs/api/java.net.http/java/net/http/HttpRequest.Builder.html#timeout(java.time.Duration)>)触发的 `HttpTimeoutException` 发生在任务内部，调用方拿到的是包装了它的 `ExecutionException`。只捕获 `TimeoutException`，处理不到 HTTP 客户端的请求超时。
+Distinguish the exceptions as well. A timeout while waiting in `get()` throws `TimeoutException` directly. An `HttpTimeoutException` caused by [`HttpRequest.Builder.timeout()`](<https://docs.oracle.com/en/java/javase/21/docs/api/java.net.http/java/net/http/HttpRequest.Builder.html#timeout(java.time.Duration)>) occurs inside the task and reaches the caller wrapped in `ExecutionException`. Catching only `TimeoutException` will not handle an HTTP request timeout.
 
-`cancel(true)` 依赖任务响应中断，不能保证任务立刻停止。JDK 默认的 [`HttpClient.send()` 实现](<https://docs.oracle.com/en/java/javase/21/docs/api/java.net.http/java/net/http/HttpClient.html#send(java.net.http.HttpRequest,java.net.http.HttpResponse.BodyHandler)>)在被中断时会尝试取消 HTTP 交换，但请求可能已经发到服务端，远端业务也可能继续执行。换成 JDBC 驱动或第三方 SDK 时，需要核对它们的超时和中断行为；涉及写操作，还要考虑幂等性。
+`cancel(true)` relies on the task responding to interruption and cannot guarantee that it stops immediately. The JDK's default [`HttpClient.send()` implementation](<https://docs.oracle.com/en/java/javase/21/docs/api/java.net.http/java/net/http/HttpClient.html#send(java.net.http.HttpRequest,java.net.http.HttpResponse.BodyHandler)>) attempts to cancel the HTTP exchange when interrupted, but the request may already have reached the server and the remote operation may continue. Check timeout and interruption behavior when using JDBC drivers or third-party SDKs. For write operations, also consider idempotency.
 
-另外，[`ExecutorService.close()`](<https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/ExecutorService.html#close()>)会等待已提交任务结束。如果在一次请求里使用 `try-with-resources` 创建执行器，即使 `get()` 已经超时，退出代码块时也可能继续等。上面的示例把执行器作为客户端成员复用，在应用关闭时统一释放。`close()` 本身没有等待时限，对停机时间有要求的服务，还需要设计有超时的关闭流程。
+Also, [`ExecutorService.close()`](<https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/concurrent/ExecutorService.html#close()>) waits for submitted tasks to finish. If you create an executor in a request-scoped `try-with-resources` block, leaving the block may continue waiting even after `get()` times out. The example reuses the executor as a client member and closes it when the application shuts down. `close()` has no timeout, so services with a shutdown deadline need a separate timed shutdown process.
 
-## Spring Boot 如何开启虚拟线程？
+## How to Enable Virtual Threads in Spring Boot
 
-Spring Boot 3.2 开始提供了比较直接的开关。使用 Java 21 或更高版本时，可以在配置中开启：
+Spring Boot 3.2 introduced a straightforward setting for virtual threads. With Java 21 or later, enable it in the configuration:
 
 ```properties
 spring.threads.virtual.enabled=true
 ```
 
-Spring Boot 官方文档还提到几个实践点：
+The Spring Boot documentation also notes a few things:
 
-- 开启虚拟线程后，配置传统线程池大小的部分属性不再按原来的方式生效，因为虚拟线程调度依赖 JVM 范围内的平台线程池。
-- 虚拟线程是守护线程。如果应用依赖 `@Scheduled` 等后台任务保持 JVM 存活，建议设置 `spring.main.keep-alive=true`。
-- Spring Boot 官方目前建议 Java 24 或更高版本获得更好的虚拟线程体验，主要和 Pinning 改进有关。
+- After virtual threads are enabled, some properties for configuring traditional thread pool sizes no longer work the same way because virtual thread scheduling uses a JVM-wide platform thread pool.
+- Virtual threads are daemon threads. If the application relies on background tasks such as `@Scheduled` to keep the JVM alive, set `spring.main.keep-alive=true`.
+- Spring Boot currently recommends Java 24 or later for a better virtual thread experience, mainly because of pinning improvements.
 
-一个简单配置如下：
+A minimal configuration looks like this:
 
 ```yaml
 spring:
@@ -479,80 +479,80 @@ spring:
     keep-alive: true
 ```
 
-开启之后，不代表所有接口都会变快。它更可能改善的是同步阻塞、I/O 等待明显、并发较高的接口。如果接口主要耗在 CPU、锁竞争、慢 SQL 本身或下游限流上，虚拟线程只能让问题更早暴露。
+Enabling virtual threads does not make every endpoint faster. They are more likely to help endpoints with synchronous blocking, substantial I/O waits, and high concurrency. If an endpoint is limited by CPU, lock contention, slow SQL, or downstream rate limits, virtual threads may only expose the bottleneck sooner.
 
-## 如何排查虚拟线程问题？
+## How to Troubleshoot Virtual Thread Issues
 
-JDK 已经为虚拟线程补了不少观测能力。
+The JDK provides several tools for observing virtual threads.
 
-### 使用 `jcmd` 导出线程转储
+### Export a Thread Dump with `jcmd`
 
-传统 `jstack` 面对成千上万个虚拟线程时不太合适。JDK 提供了新的线程转储能力：
+Traditional `jstack` is not ideal when there are thousands of virtual threads. The JDK provides a thread dump command for this case:
 
 ```bash
 jcmd <pid> Thread.dump_to_file -format=json thread-dump.json
 ```
 
-也可以导出文本格式：
+You can also export a text format:
 
 ```bash
 jcmd <pid> Thread.dump_to_file -format=text thread-dump.txt
 ```
 
-JSON 格式更适合工具分析，尤其是虚拟线程数量很多时。
+JSON is more suitable for analysis by tools, especially when there are many virtual threads.
 
-### 使用 JFR 观察虚拟线程事件
+### Monitor Virtual Thread Events with JFR
 
-JFR 中和虚拟线程相关的事件包括：
+JFR includes these virtual thread events:
 
 - `jdk.VirtualThreadStart`
 - `jdk.VirtualThreadEnd`
 - `jdk.VirtualThreadPinned`
 - `jdk.VirtualThreadSubmitFailed`
 
-其中 `jdk.VirtualThreadPinned` 对排查 Pinning 很有用。JDK 24 以后，`synchronized` 相关 Pinning 大多被解决，但 native/FFM 等剩余场景仍然可以通过 JFR 观察。
+The `jdk.VirtualThreadPinned` event is useful for troubleshooting pinning. JDK 24 addressed most `synchronized`-related pinning, but JFR can still help identify remaining cases, such as native or FFM calls.
 
-### 临时打开 Pinning 栈追踪
+### Temporarily Enable Pinning Stack Traces
 
-在 JDK 21 到 JDK 23 中，可以临时使用：
+With JDK 21 through JDK 23, you can temporarily use:
 
 ```bash
 -Djdk.tracePinnedThreads=full
 ```
 
-它会在虚拟线程阻塞且被固定时打印调用栈，适合本地或测试环境定位问题。JDK 24 的 JEP 491 之后，`synchronized` 相关的主要 Pinning 场景已经改进；native/FFM 等剩余边界仍然建议结合 JFR 和线程转储判断。
+This prints the call stack when a virtual thread blocks while pinned, which can help diagnose issues locally or in a test environment. JEP 491 in JDK 24 improved the main `synchronized`-related pinning cases; use JFR and thread dumps to investigate remaining cases involving native or FFM calls.
 
-## 虚拟线程常见面试题
+## Common Virtual Thread Interview Questions
 
-### 虚拟线程和平台线程的区别是什么？
+### How Do Virtual Threads Differ from Platform Threads?
 
-平台线程通常和操作系统线程一一对应，创建和上下文切换成本较高，数量有限。虚拟线程由 JDK 调度，可以把大量虚拟线程映射到少量平台线程上。虚拟线程阻塞等待 I/O 时，通常可以从载体线程卸载，让平台线程继续执行其他虚拟线程。
+Platform threads usually map one-to-one to operating system threads, so they have higher creation and context-switching costs and are limited in number. The JDK schedules virtual threads and maps many of them to a smaller number of platform threads. While a virtual thread waits for I/O, it can usually unmount from its carrier so the platform thread can run another virtual thread.
 
-### 虚拟线程为什么适合 I/O 密集型任务？
+### Why Are Virtual Threads Suitable for I/O-Bound Tasks?
 
-I/O 密集型任务大部分时间在等待外部资源。平台线程等待时会占住操作系统线程；虚拟线程等待时可以挂起自己并释放载体线程。这样同样数量的平台线程可以承载更多并发任务。
+I/O-bound tasks spend much of their time waiting for external resources. A waiting platform thread still occupies an operating system thread, while a waiting virtual thread can suspend and release its carrier. This lets the same number of platform threads support more concurrent tasks.
 
-### 虚拟线程适合 CPU 密集型任务吗？
+### Are Virtual Threads Suitable for CPU-Bound Tasks?
 
-不适合把它当作 CPU 提速工具。CPU 密集型任务需要真实 CPU 时间，线程数超过核心数后只会增加调度竞争。虚拟线程能改善高并发等待，不会让单个计算任务更快。
+Do not use them as a CPU speedup tool. CPU-bound tasks need CPU time, and adding threads beyond the number of cores only increases scheduling contention. Virtual threads help with highly concurrent waiting; they do not make an individual computation faster.
 
-### 虚拟线程需要池化吗？
+### Should Virtual Threads Be Pooled?
 
-不需要，也不建议。虚拟线程便宜，应该按任务创建。需要限制并发时，限制具体资源，比如数据库连接池、HTTP 连接池、`Semaphore`、限流器，而不是池化虚拟线程。
+No. Virtual threads are inexpensive and should be created per task. To limit concurrency, constrain the resource itself, such as with a database or HTTP connection pool, a `Semaphore`, or a rate limiter.
 
-### 虚拟线程和协程一样吗？
+### Are Virtual Threads the Same as Coroutines?
 
-它们都属于轻量级并发的思路，但 Java 虚拟线程是 `java.lang.Thread` 的实现，纳入了 Java 原有线程模型。业务代码不需要写 `async/await`，也不需要手动 yield。和 Go goroutine 相比，虚拟线程更强调兼容 Java 既有线程 API、调试工具和阻塞式代码风格。对开发者来说，它更像“便宜很多的线程”。
+They are both approaches to lightweight concurrency, but Java virtual threads implement `java.lang.Thread` and fit into Java's existing thread model. Application code does not need `async/await` or manual yielding. Compared with Go goroutines, virtual threads emphasize compatibility with Java's existing thread APIs, debugging tools, and blocking code style. To developers, they are more like much cheaper threads.
 
-### 使用虚拟线程后还需要 Reactive 编程吗？
+### Is Reactive Programming Still Useful with Virtual Threads?
 
-看场景。很多同步阻塞的服务端接口可以用虚拟线程获得更好的可读性和足够的吞吐，不必为了释放线程写复杂回调链。但 Reactive 仍然适合流式处理、背压、事件驱动、长连接和已经全链路异步化的系统。虚拟线程不是替代所有异步模型的银弹。
+It depends on the use case. Many synchronous blocking server endpoints can use virtual threads to keep code readable while achieving sufficient throughput, without complex callback chains just to free threads. Reactive programming remains useful for stream processing, back pressure, event-driven systems, long-lived connections, and systems that are already asynchronous end to end. Virtual threads are not a silver bullet that replaces every asynchronous model.
 
-### JDK 21 里的 `synchronized` 还能不能用？
+### Can You Still Use `synchronized` in JDK 21?
 
-可以用，但要注意边界。JDK 21 到 JDK 23 中，虚拟线程在 `synchronized` 内部执行阻塞操作可能出现 Pinning。短小的内存同步问题不大，高频路径上不要持有 `synchronized` 锁执行慢 I/O。JDK 24 通过 JEP 491 改进后，`synchronized` 相关 Pinning 已经基本解决。
+Yes, but be aware of the limitations. In JDK 21 through JDK 23, a virtual thread may be pinned if it blocks inside `synchronized`. Short critical sections that only access memory are usually fine, but avoid slow I/O while holding a `synchronized` lock on a hot path. JEP 491 in JDK 24 largely addressed `synchronized`-related pinning.
 
-## 参考资料
+## References
 
 - [JEP 444: Virtual Threads](https://openjdk.org/jeps/444)
 - [Oracle Java 21 Documentation: Virtual Threads](https://docs.oracle.com/en/java/javase/21/core/virtual-threads.html)

@@ -1,31 +1,31 @@
 ---
-title: Java IO 设计模式总结
-description: Java IO设计模式深度解析：详解装饰器模式在BufferedInputStream中应用、适配器模式InputStreamReader实现、模板方法模式InputStream设计，理解Java IO类库架构。
+title: Design Patterns in Java I/O
+description: An in-depth look at design patterns in Java I/O, including Decorator in BufferedInputStream, Adapter in InputStreamReader, and Template Method in InputStream.
 category: Java
 tag:
   - Java IO
-  - Java基础
+  - Java Fundamentals
 head:
   - - meta
     - name: keywords
-      content: Java IO设计模式,装饰器模式,适配器模式,模板方法模式,FilterInputStream,IO流设计
+      content: Java I/O design patterns,Decorator pattern,Adapter pattern,Template Method pattern,FilterInputStream,I/O stream design
 ---
 
-这篇文章我们简单来看看我们从 IO 中能够学习到哪些设计模式的应用。
+This article looks at several design patterns used in Java I/O.
 
-## 装饰器模式
+## Decorator Pattern
 
-**装饰器（Decorator）模式** 可以在不改变原有对象的情况下拓展其功能。
+The **Decorator pattern** extends an object's behavior without changing the original object.
 
-装饰器模式通过组合替代继承来扩展原始类的功能，在一些继承关系比较复杂的场景（IO 这一场景各种类的继承关系就比较复杂）更加实用。
+The Decorator pattern uses composition instead of inheritance to extend a class. This is especially useful when the inheritance hierarchy is complex, as it is in Java I/O.
 
-对于字节流来说， `FilterInputStream`（对应输入流）和 `FilterOutputStream`（对应输出流）是装饰器模式的核心，分别用于增强 `InputStream` 和 `OutputStream` 子类对象的功能。
+For byte streams, `FilterInputStream` and `FilterOutputStream` are the core decorators. They add behavior to `InputStream` and `OutputStream` subclasses, respectively.
 
-我们常见的 `BufferedInputStream`（字节缓冲输入流）、`DataInputStream` 等等都是 `FilterInputStream` 的子类，`BufferedOutputStream`（字节缓冲输出流）、`DataOutputStream` 等等都是 `FilterOutputStream` 的子类。
+Common classes such as `BufferedInputStream` and `DataInputStream` extend `FilterInputStream`; `BufferedOutputStream` and `DataOutputStream` extend `FilterOutputStream`.
 
-举个例子，我们可以通过 `BufferedInputStream`（字节缓冲输入流）来增强 `FileInputStream` 的功能。
+For example, you can use `BufferedInputStream` to add buffering to a `FileInputStream`.
 
-`BufferedInputStream` 构造函数如下：
+The `BufferedInputStream` constructors look like this:
 
 ```java
 public BufferedInputStream(InputStream in) {
@@ -41,9 +41,9 @@ public BufferedInputStream(InputStream in, int size) {
 }
 ```
 
-可以看出，`BufferedInputStream` 的构造函数其中的一个参数就是 `InputStream`。
+One of the `BufferedInputStream` constructor arguments is an `InputStream`.
 
-`BufferedInputStream` 代码示例：
+Example using `BufferedInputStream`:
 
 ```java
 try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream("input.txt"))) {
@@ -57,15 +57,15 @@ try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream("inpu
 }
 ```
 
-这个时候，你可能会想了：**为啥我们不直接弄一个 `BufferedFileInputStream`（字符缓冲文件输入流）呢？**
+You might wonder: **Why not create a separate `BufferedFileInputStream` class?**
 
 ```java
 BufferedFileInputStream bfis = new BufferedFileInputStream("input.txt");
 ```
 
-如果 `InputStream` 的子类比较少的话，这样做是没问题的。不过， `InputStream` 的子类实在太多，继承关系也太复杂了。如果我们为每一个子类都定制一个对应的缓冲输入流，那岂不是太麻烦了。
+That would be reasonable if there were only a few `InputStream` subclasses. But there are many, and their inheritance hierarchy is already complex. Creating a separate buffered stream for every subclass would be cumbersome.
 
-如果你对 IO 流比较熟悉的话，你会发现 `ZipInputStream` 和 `ZipOutputStream` 还可以分别增强 `BufferedInputStream` 和 `BufferedOutputStream` 的能力。
+You can also layer `ZipInputStream` and `ZipOutputStream` on top of `BufferedInputStream` and `BufferedOutputStream`:
 
 ```java
 BufferedInputStream bis = new BufferedInputStream(new FileInputStream(fileName));
@@ -75,7 +75,7 @@ BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(fileNam
 ZipOutputStream zipOut = new ZipOutputStream(bos);
 ```
 
-`ZipInputStream` 和 `ZipOutputStream` 分别继承自 `InflaterInputStream` 和 `DeflaterOutputStream`。
+`ZipInputStream` and `ZipOutputStream` extend `InflaterInputStream` and `DeflaterOutputStream`, respectively.
 
 ```java
 public
@@ -88,116 +88,116 @@ class DeflaterOutputStream extends FilterOutputStream {
 
 ```
 
-这也是装饰器模式很重要的一个特征，那就是可以对原始类嵌套使用多个装饰器。
+An important feature of the Decorator pattern is that you can nest multiple decorators around an object.
 
-为了实现这一效果，装饰器类需要跟原始类继承相同的抽象类或者实现相同的接口。上面介绍到的这些 IO 相关的装饰类和原始类共同的父类是 `InputStream` 和 `OutputStream`。
+To do this, decorator classes and the objects they decorate must share an abstract superclass or interface. The I/O decorators above share `InputStream` or `OutputStream` with the objects they wrap.
 
-对于字符流来说，`BufferedReader` 可以用来增加 `Reader`（字符输入流）子类的功能，`BufferedWriter` 可以用来增加 `Writer`（字符输出流）子类的功能。
+For character streams, `BufferedReader` adds buffering to `Reader` subclasses, and `BufferedWriter` does the same for `Writer` subclasses.
 
 ```java
 BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(fileName), "UTF-8"));
 ```
 
-IO 流中的装饰器模式应用的例子实在是太多了，不需要特意记忆，完全没必要哈！搞清了装饰器模式的核心之后，你在使用的时候自然就会知道哪些地方运用到了装饰器模式。
+Java I/O uses the Decorator pattern in many places. You do not need to memorize every example; once you understand the pattern, you will recognize it in the APIs.
 
-## 适配器模式
+## Adapter Pattern
 
-**适配器（Adapter Pattern）模式** 主要用于接口互不兼容的类的协调工作，你可以将其联想到我们日常经常使用的电源适配器。
+The **Adapter pattern** lets classes with incompatible interfaces work together, much like a power adapter.
 
-适配器模式中存在被适配的对象或者类称为 **适配者(Adaptee)**，作用于适配者的对象或者类称为**适配器(Adapter)**。适配器分为对象适配器和类适配器。类适配器使用继承关系来实现，对象适配器使用组合关系来实现。
+In this pattern, the object or class being adapted is the **adaptee**, and the object or class that adapts it is the **adapter**. There are two forms: a class adapter, implemented with inheritance, and an object adapter, implemented with composition.
 
-IO 流中的字符流和字节流的接口不同，它们之间可以协调工作就是基于适配器模式来做的，更准确点来说是对象适配器。通过适配器，我们可以将字节流对象适配成一个字符流对象，这样我们可以直接通过字节流对象来读取或者写入字符数据。
+Character streams and byte streams have different interfaces. Java I/O uses the object form of the Adapter pattern to connect them. An adapter lets a byte stream be used as a character stream, so characters can be read from or written to the underlying byte stream.
 
-`InputStreamReader` 和 `OutputStreamWriter` 就是两个适配器(Adapter)， 同时，它们两个也是字节流和字符流之间的桥梁。`InputStreamReader` 使用 `StreamDecoder`（流解码器）对字节进行解码，**实现字节流到字符流的转换，** `OutputStreamWriter` 使用 `StreamEncoder`（流编码器）对字符进行编码，实现字符流到字节流的转换。
+`InputStreamReader` and `OutputStreamWriter` are adapters that bridge byte and character streams. `InputStreamReader` uses `StreamDecoder` to decode bytes into characters, while `OutputStreamWriter` uses `StreamEncoder` to encode characters into bytes.
 
-`InputStream` 和 `OutputStream` 的子类是被适配者， `InputStreamReader` 和 `OutputStreamWriter` 是适配器。
+`InputStream` and `OutputStream` subclasses are the adaptees; `InputStreamReader` and `OutputStreamWriter` are the adapters.
 
 ```java
-// InputStreamReader 是适配器，FileInputStream 是被适配的类
+// InputStreamReader is the adapter; FileInputStream is the adaptee.
 InputStreamReader isr = new InputStreamReader(new FileInputStream(fileName), "UTF-8");
-// BufferedReader 增强 InputStreamReader 的功能（装饰器模式）
+// BufferedReader adds behavior to InputStreamReader (Decorator pattern).
 BufferedReader bufferedReader = new BufferedReader(isr);
 ```
 
-`java.io.InputStreamReader` 部分源码：
+Part of the `java.io.InputStreamReader` source:
 
 ```java
 public class InputStreamReader extends Reader {
-    //用于解码的对象
+    // Decoder used to convert bytes to characters.
     private final StreamDecoder sd;
     public InputStreamReader(InputStream in) {
         super(in);
         try {
-            // 获取 StreamDecoder 对象
+            // Get the StreamDecoder instance.
             sd = StreamDecoder.forInputStreamReader(in, this, (String)null);
         } catch (UnsupportedEncodingException e) {
             throw new Error(e);
         }
     }
-    // 使用 StreamDecoder 对象做具体的读取工作
+    // Delegate the read operation to StreamDecoder.
     public int read() throws IOException {
         return sd.read();
     }
 }
 ```
 
-`java.io.OutputStreamWriter` 部分源码：
+Part of the `java.io.OutputStreamWriter` source:
 
 ```java
 public class OutputStreamWriter extends Writer {
-    // 用于编码的对象
+    // Encoder used to convert characters to bytes.
     private final StreamEncoder se;
     public OutputStreamWriter(OutputStream out) {
         super(out);
         try {
-           // 获取 StreamEncoder 对象
+           // Get the StreamEncoder instance.
             se = StreamEncoder.forOutputStreamWriter(out, this, (String)null);
         } catch (UnsupportedEncodingException e) {
             throw new Error(e);
         }
     }
-    // 使用 StreamEncoder 对象做具体的写入工作
+    // Delegate the write operation to StreamEncoder.
     public void write(int c) throws IOException {
         se.write(c);
     }
 }
 ```
 
-**适配器模式和装饰器模式有什么区别呢？**
+**How does the Adapter pattern differ from the Decorator pattern?**
 
-**装饰器模式** 更侧重于动态地增强原始类的功能，装饰器类需要跟原始类继承相同的抽象类或者实现相同的接口。并且，装饰器模式支持对原始类嵌套使用多个装饰器。
+The **Decorator pattern** focuses on dynamically adding behavior to an object. A decorator shares an abstract class or interface with the object it wraps, and multiple decorators can be nested.
 
-**适配器模式** 更侧重于让接口不兼容而不能交互的类可以一起工作，当我们调用适配器对应的方法时，适配器内部会调用适配者类或者和适配类相关的类的方法，这个过程是透明的。例如，`InputStreamReader` 和 `OutputStreamWriter` 分别将字节输入流、字节输出流适配成字符输入流、字符输出流，并在内部完成字节与字符之间的编解码。
+The **Adapter pattern** focuses on making classes with incompatible interfaces work together. When you call an adapter method, it delegates to the adaptee or a related class; this is transparent to the caller. For example, `InputStreamReader` and `OutputStreamWriter` adapt byte streams to character streams and perform the necessary decoding or encoding.
 
 ```java
 Reader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
 Writer writer = new OutputStreamWriter(outputStream, StandardCharsets.UTF_8);
 ```
 
-适配器和适配者两者不需要继承相同的抽象类或者实现相同的接口。
+An adapter and its adaptee do not need to share an abstract class or interface.
 
-另外，`FutureTask` 类使用了适配器模式，`Executors` 的内部类 `RunnableAdapter` 实现属于适配器，用于将 `Runnable` 适配成 `Callable`。
+`FutureTask` also uses the Adapter pattern. The `RunnableAdapter` nested in `Executors` adapts a `Runnable` to a `Callable`.
 
-`FutureTask` 参数包含 `Runnable` 的一个构造方法：
+One `FutureTask` constructor accepts a `Runnable`:
 
 ```java
 public FutureTask(Runnable runnable, V result) {
-    // 调用 Executors 类的 callable 方法
+    // Call Executors.callable().
     this.callable = Executors.callable(runnable, result);
     this.state = NEW;
 }
 ```
 
-`Executors` 中对应的方法和适配器：
+The corresponding method and adapter in `Executors`:
 
 ```java
-// 实际调用的是 Executors 的内部类 RunnableAdapter 的构造方法
+// This calls the RunnableAdapter constructor.
 public static <T> Callable<T> callable(Runnable task, T result) {
     if (task == null)
         throw new NullPointerException();
     return new RunnableAdapter<T>(task, result);
 }
-// 适配器
+// Adapter.
 static final class RunnableAdapter<T> implements Callable<T> {
     final Runnable task;
     final T result;
@@ -212,21 +212,21 @@ static final class RunnableAdapter<T> implements Callable<T> {
 }
 ```
 
-## 工厂模式
+## Factory Pattern
 
-工厂模式用于创建对象，NIO 中大量用到了工厂模式，比如 `Files` 类的 `newInputStream` 方法用于创建 `InputStream` 对象（静态工厂）、 `Paths` 类的 `get` 方法创建 `Path` 对象（静态工厂）、`ZipFileSystem` 类（`sun.nio` 包下的类，属于 `java.nio` 相关的一些内部实现）的 `getPath` 的方法创建 `Path` 对象（简单工厂）。
+The Factory pattern creates objects. NIO uses it in several places: `Files.newInputStream()` creates an `InputStream` (static factory), `Paths.get()` creates a `Path` (static factory), and `ZipFileSystem.getPath()` creates a `Path` (simple factory). `ZipFileSystem` is an internal implementation in the `sun.nio` package.
 
 ```java
 InputStream is = Files.newInputStream(Paths.get(generatorLogoPath))
 ```
 
-## 观察者模式
+## Observer Pattern
 
-NIO 中的文件目录监听服务使用到了观察者模式。
+NIO's file and directory watching service uses the Observer pattern.
 
-NIO 中的文件目录监听服务基于 `WatchService` 接口和 `Watchable` 接口。`WatchService` 属于观察者，`Watchable` 属于被观察者。
+The NIO file-watching service is based on the `WatchService` and `Watchable` interfaces. `WatchService` is the observer, and `Watchable` is the subject.
 
-`Watchable` 接口定义了一个用于将对象注册到 `WatchService`（监控服务） 并绑定监听事件的方法 `register`。
+The `Watchable` interface defines `register()`, which registers an object with a `WatchService` and specifies the events to monitor.
 
 ```java
 public interface Path
@@ -241,20 +241,20 @@ public interface Watchable {
 }
 ```
 
-`WatchService` 用于监听文件目录的变化，同一个 `WatchService` 对象能够监听多个文件目录。
+`WatchService` monitors changes to directories. A single `WatchService` can monitor multiple directories.
 
 ```java
-// 创建 WatchService 对象
+// Create a WatchService.
 WatchService watchService = FileSystems.getDefault().newWatchService();
 
-// 初始化一个被监控文件夹的 Path 类:
+// Get the path of the directory to watch.
 Path path = Paths.get("workingDirectory");
-// 将这个 path 对象注册到 WatchService（监控服务） 中去
+// Register the path with the WatchService.
 WatchKey watchKey = path.register(
 watchService, StandardWatchEventKinds...);
 ```
 
-`Path` 类 `register` 方法的第二个参数 `events`（需要监听的事件）为可变长参数，也就是说我们可以同时监听多种事件。
+The `events` argument of `Path.register()` is a varargs parameter, so you can monitor multiple event types at once.
 
 ```java
 WatchKey register(WatchService watcher,
@@ -262,31 +262,31 @@ WatchKey register(WatchService watcher,
     throws IOException;
 ```
 
-常用的监听事件有 3 种：
+Three commonly used event types are:
 
-- `StandardWatchEventKinds.ENTRY_CREATE`：文件创建。
-- `StandardWatchEventKinds.ENTRY_DELETE` : 文件删除。
-- `StandardWatchEventKinds.ENTRY_MODIFY` : 文件修改。
+- `StandardWatchEventKinds.ENTRY_CREATE`: A file was created.
+- `StandardWatchEventKinds.ENTRY_DELETE`: A file was deleted.
+- `StandardWatchEventKinds.ENTRY_MODIFY`: A file was modified.
 
-`register` 方法返回 `WatchKey` 对象，通过 `WatchKey` 对象可以获取事件的具体信息比如文件目录下是创建、删除还是修改了文件、创建、删除或者修改的文件的具体名称是什么。
+The `register()` method returns a `WatchKey`. Use it to retrieve event details, such as whether a file was created, deleted, or modified, and the file's name.
 
 ```java
 WatchKey key;
 while ((key = watchService.take()) != null) {
     for (WatchEvent<?> event : key.pollEvents()) {
-      // 可以调用 WatchEvent 对象的方法做一些事情比如输出事件的具体上下文信息
+      // Use WatchEvent methods to inspect or report the event context.
     }
     key.reset();
 }
 ```
 
-`WatchService` 的具体实现取决于文件系统和底层 Provider：实现可以直接使用原生文件事件机制，也可以退化为定期轮询。下面是轮询实现的简化源码。
+The `WatchService` implementation depends on the file system and its provider. It may use native file-event mechanisms or fall back to periodic polling. The following is a simplified polling implementation.
 
 ```java
 class PollingWatchService
     extends AbstractWatchService
 {
-    // 定义一个 daemon thread（守护线程）轮询检测文件变化
+    // A daemon thread polls for file changes.
     private final ScheduledExecutorService scheduledExecutor;
 
     PollingWatchService() {
@@ -302,10 +302,10 @@ class PollingWatchService
 
   void enable(Set<? extends WatchEvent.Kind<?>> events, long period) {
     synchronized (this) {
-      // 更新监听事件
+      // Update the events to monitor.
       this.events = events;
 
-        // 开启定期轮询
+        // Start periodic polling.
       Runnable thunk = new Runnable() { public void run() { poll(); }};
       this.poller = scheduledExecutor
         .scheduleAtFixedRate(thunk, period, period, TimeUnit.SECONDS);
@@ -314,10 +314,10 @@ class PollingWatchService
 }
 ```
 
-## 参考
+## References
 
 - Patterns in Java APIs：<http://cecs.wright.edu/~tkprasad/courses/ceg860/paper/node26.html>
-- 装饰器模式：通过剖析 Java IO 类库源码学习装饰器模式：<https://time.geekbang.org/column/article/204845>
-- sun.nio 包是什么，是 java 代码么？ - RednaxelaFX <https://www.zhihu.com/question/29237781/answer/43653953>
+- Decorator Pattern: Learning from the Java I/O Library Source Code: <https://time.geekbang.org/column/article/204845>
+- What Is the sun.nio Package, and Is It Java Code? — RednaxelaFX: <https://www.zhihu.com/question/29237781/answer/43653953>
 
 <!-- @include: @article-footer.snippet.md -->

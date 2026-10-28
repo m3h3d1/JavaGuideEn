@@ -1,49 +1,49 @@
 ---
-title: Java IO 基础知识总结
-description: Java IO基础知识全面总结：详解字节流与字符流区别、InputStream/OutputStream字节流、Reader/Writer字符流、缓冲流优化、文件读写操作。
+title: Java I/O Basics
+description: An overview of Java I/O, including byte and character streams, InputStream and OutputStream, Reader and Writer, buffering, and file operations.
 category: Java
 tag:
   - Java IO
-  - Java基础
+  - Java Fundamentals
 head:
   - - meta
     - name: keywords
-      content: Java IO,字节流,字符流,InputStream,OutputStream,Reader,Writer,文件操作,缓冲流
+      content: Java I/O,byte streams,character streams,InputStream,OutputStream,Reader,Writer,file operations,buffered streams
 ---
 
-## IO 流简介
+## Introduction to I/O Streams
 
-IO 即 `Input/Output`，输入和输出。数据输入到计算机内存的过程即输入，反之输出到外部存储（比如数据库，文件，远程主机）的过程即输出。数据传输过程类似于水流，因此称为 IO 流。IO 流在 Java 中分为输入流和输出流，而根据数据的处理方式又分为字节流和字符流。
+I/O stands for `Input/Output`. Input is the process of bringing data into computer memory; output sends data to an external destination such as a database, file, or remote host. Because data flows from one place to another, these APIs are called I/O streams. Java streams are either input or output streams, and are further classified as byte or character streams based on how they process data.
 
-Java IO 流的 40 多个类都是从如下 4 个抽象类基类中派生出来的。
+Java's more than 40 I/O stream classes derive from these four abstract base classes:
 
-- `InputStream`/`Reader`: 所有的输入流的基类，前者是字节输入流，后者是字符输入流。
-- `OutputStream`/`Writer`: 所有输出流的基类，前者是字节输出流，后者是字符输出流。
+- `InputStream` / `Reader`: Base classes for input streams. The former handles bytes; the latter handles characters.
+- `OutputStream` / `Writer`: Base classes for output streams. The former handles bytes; the latter handles characters.
 
-## 字节流
+## Byte Streams
 
-### InputStream（字节输入流）
+### InputStream (Byte Input Stream)
 
-`InputStream` 用于从源头（通常是文件）读取数据（字节信息）到内存中，`java.io.InputStream` 抽象类是所有字节输入流的父类。
+`InputStream` reads data (bytes) from a source, usually a file, into memory. The abstract class `java.io.InputStream` is the base class for all byte input streams.
 
-`InputStream` 常用方法：
+Common `InputStream` methods:
 
-- `read()`：返回输入流中下一个字节的数据。返回的值介于 0 到 255 之间。如果未读取任何字节，则代码返回 `-1`，表示文件结束。
-- `read(byte b[ ])` : 从输入流中读取一些字节存储到数组 `b` 中。如果数组 `b` 的长度为零，则不读取。如果没有可用字节读取，返回 `-1`。如果有可用字节读取，则最多读取的字节数最多等于 `b.length`， 返回读取的字节数。这个方法等价于 `read(b, 0, b.length)`。
-- `read(byte b[], int off, int len)`：在 `read(byte b[ ])` 方法的基础上增加了 `off` 参数（偏移量）和 `len` 参数（要读取的最大字节数）。
-- `skip(long n)`：忽略输入流中的 n 个字节 ,返回实际忽略的字节数。
-- `available()`：返回不阻塞即可读取（或跳过）的字节数估计值，不能用它判断输入流的总长度。
-- `close()`：关闭输入流释放相关的系统资源。
+- `read()`: Returns the next byte as a value from 0 to 255, or `-1` if the end of the stream is reached.
+- `read(byte[] b)`: Reads bytes into `b` and returns the number read, up to `b.length`. Returns `-1` if no bytes are available because the stream has ended. Equivalent to `read(b, 0, b.length)`.
+- `read(byte[] b, int off, int len)`: Like `read(byte[] b)`, but specifies the array offset and maximum number of bytes to read.
+- `skip(long n)`: Skips up to `n` bytes and returns the actual number skipped.
+- `available()`: Estimates how many bytes can be read or skipped without blocking. Do not use it to determine the stream's total length.
+- `close()`: Closes the input stream and releases associated system resources.
 
-从 Java 9 开始，`InputStream` 新增加了多个实用的方法：
+Java 9 added several useful methods to `InputStream`:
 
-- `readAllBytes()`：读取输入流中的所有字节，返回字节数组。
-- `readNBytes(byte[] b, int off, int len)`：尝试读取最多 `len` 个字节，读取到指定长度或遇到流末尾时返回；读取过程中可能阻塞，也可能抛出异常。
-- `transferTo(OutputStream out)`：将所有字节从一个输入流传递到一个输出流。
+- `readAllBytes()`: Reads all bytes from the input stream and returns them as a byte array.
+- `readNBytes(byte[] b, int off, int len)`: Tries to read up to `len` bytes and returns when that many bytes have been read or the stream ends. The operation may block or throw an exception.
+- `transferTo(OutputStream out)`: Transfers all bytes from this input stream to an output stream.
 
-`FileInputStream` 是一个比较常用的字节输入流对象，可直接指定文件路径，可以直接读取单字节数据，也可以读取至字节数组中。
+`FileInputStream` is a commonly used byte input stream. You can specify a file path and read either one byte at a time or into a byte array.
 
-`FileInputStream` 代码示例：
+Example using `FileInputStream`:
 
 ```java
 try (InputStream fis = new FileInputStream("input.txt")) {
@@ -61,11 +61,11 @@ try (InputStream fis = new FileInputStream("input.txt")) {
 }
 ```
 
-`input.txt` 文件内容：
+Contents of `input.txt`:
 
 ![](https://oss.javaguide.cn/github/javaguide/java/image-20220419155214614.png)
 
-输出：
+Output:
 
 ```plain
 Number of remaining bytes:11
@@ -73,31 +73,31 @@ The actual number of bytes skipped:2
 The content read from file:JavaGuide
 ```
 
-不过，一般我们是不会直接单独使用 `FileInputStream`，通常会配合 `BufferedInputStream`（字节缓冲输入流，后文会讲到）来使用。
+In practice, `FileInputStream` is usually wrapped in a `BufferedInputStream` (a buffered byte input stream, described below).
 
-像下面这段代码在我们的项目中就比较常见，我们通过 `readAllBytes()` 读取输入流所有字节并将其直接赋值给一个 `String` 对象。
+This pattern is common in applications: `readAllBytes()` reads all bytes from the input stream, which are then passed directly to a `String` constructor.
 
 ```java
-// 新建一个 BufferedInputStream 对象
+// Create a BufferedInputStream.
 BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream("input.txt"));
-// 读取文件的内容并复制到 String 对象中
+// Read the file contents into a String.
 String result = new String(bufferedInputStream.readAllBytes());
 System.out.println(result);
 ```
 
-`DataInputStream` 用于读取指定类型数据，不能单独使用，必须结合其它流，比如 `FileInputStream`。
+`DataInputStream` reads values of specific types. It must be combined with another stream, such as `FileInputStream`.
 
 ```java
 FileInputStream fileInputStream = new FileInputStream("input.txt");
-//必须将fileInputStream作为构造参数才能使用
+// Pass fileInputStream to the constructor.
 DataInputStream dataInputStream = new DataInputStream(fileInputStream);
-//可以读取任意具体的类型数据
+// Read values of different types.
 dataInputStream.readBoolean();
 dataInputStream.readInt();
 dataInputStream.readUTF();
 ```
 
-`ObjectInputStream` 用于从输入流中读取 Java 对象（反序列化），`ObjectOutputStream` 用于将对象写入到输出流（序列化）。
+`ObjectInputStream` reads Java objects from an input stream (deserialization), while `ObjectOutputStream` writes objects to an output stream (serialization).
 
 ```java
 ObjectInputStream input = new ObjectInputStream(new FileInputStream("object.data"));
@@ -105,23 +105,23 @@ MyClass object = (MyClass) input.readObject();
 input.close();
 ```
 
-另外，用于序列化和反序列化的类必须实现 `Serializable` 接口，对象中如果有属性不想被序列化，使用 `transient` 修饰。
+Classes used for serialization and deserialization must implement `Serializable`. Mark fields that should not be serialized with `transient`.
 
-### OutputStream（字节输出流）
+### OutputStream (Byte Output Stream)
 
-`OutputStream` 用于将数据（字节信息）写入到目的地（通常是文件），`java.io.OutputStream` 抽象类是所有字节输出流的父类。
+`OutputStream` writes data (bytes) to a destination, usually a file. The abstract class `java.io.OutputStream` is the base class for all byte output streams.
 
-`OutputStream` 常用方法：
+Common `OutputStream` methods:
 
-- `write(int b)`：将特定字节写入输出流。
-- `write(byte b[ ])` : 将数组 `b` 写入到输出流，等价于 `write(b, 0, b.length)`。
-- `write(byte[] b, int off, int len)` : 在 `write(byte b[ ])` 方法的基础上增加了 `off` 参数（偏移量）和 `len` 参数（要读取的最大字节数）。
-- `flush()`：刷新此输出流并强制写出所有缓冲的输出字节。
-- `close()`：关闭输出流释放相关的系统资源。
+- `write(int b)`: Writes one byte to the output stream.
+- `write(byte[] b)`: Writes the byte array `b` to the output stream. Equivalent to `write(b, 0, b.length)`.
+- `write(byte[] b, int off, int len)`: Like `write(byte[] b)`, but specifies the array offset and number of bytes to write.
+- `flush()`: Flushes the stream and forces buffered bytes to be written.
+- `close()`: Closes the output stream and releases associated system resources.
 
-`FileOutputStream` 是最常用的字节输出流对象，可直接指定文件路径，可以直接输出单字节数据，也可以输出指定的字节数组。
+`FileOutputStream` is a commonly used byte output stream. You can specify a file path and write either one byte at a time or a byte array.
 
-`FileOutputStream` 代码示例：
+Example using `FileOutputStream`:
 
 ```java
 try (FileOutputStream output = new FileOutputStream("output.txt")) {
@@ -132,50 +132,50 @@ try (FileOutputStream output = new FileOutputStream("output.txt")) {
 }
 ```
 
-运行结果：
+Result:
 
 ![](https://oss.javaguide.cn/github/javaguide/java/image-20220419155514392.png)
 
-类似于 `FileInputStream`，`FileOutputStream` 通常也会配合 `BufferedOutputStream`（字节缓冲输出流，后文会讲到）来使用。
+Like `FileInputStream`, `FileOutputStream` is usually wrapped in a `BufferedOutputStream` (a buffered byte output stream, described below).
 
 ```java
 FileOutputStream fileOutputStream = new FileOutputStream("output.txt");
 BufferedOutputStream bos = new BufferedOutputStream(fileOutputStream);
 ```
 
-**`DataOutputStream`** 用于写入指定类型数据，不能单独使用，必须结合其它流，比如 `FileOutputStream`。
+**`DataOutputStream`** writes values of specific types. It must be combined with another stream, such as `FileOutputStream`.
 
 ```java
-// 输出流
+// Output stream.
 FileOutputStream fileOutputStream = new FileOutputStream("out.txt");
 DataOutputStream dataOutputStream = new DataOutputStream(fileOutputStream);
-// 输出任意数据类型
+// Write values of different types.
 dataOutputStream.writeBoolean(true);
 dataOutputStream.writeByte(1);
 ```
 
-`ObjectInputStream` 用于从输入流中读取 Java 对象（反序列化），`ObjectOutputStream` 将对象写入到输出流（序列化）。
+`ObjectInputStream` reads Java objects from an input stream (deserialization), while `ObjectOutputStream` writes objects to an output stream (serialization).
 
 ```java
 ObjectOutputStream output = new ObjectOutputStream(new FileOutputStream("file.txt"));
-Person person = new Person("Guide哥", "JavaGuide作者");
+Person person = new Person("Guide", "JavaGuide author");
 output.writeObject(person);
 ```
 
-## 字符流
+## Character Streams
 
-不管是文件读写还是网络发送接收，信息的最小存储单元都是字节。 **那为什么 I/O 流操作要分为字节流操作和字符流操作呢？**
+Whether reading files or sending and receiving data over a network, the smallest unit of stored information is a byte. **Why, then, does Java I/O provide both byte and character streams?**
 
-个人认为主要有两点原因：
+There are two main reasons:
 
-- 字符流是由 Java 虚拟机将字节转换得到的，这个过程还算是比较耗时。
-- 如果我们不知道编码类型就很容易出现乱码问题。
+- Character streams convert bytes into characters, which adds processing overhead.
+- If the character encoding is unknown, the data can be decoded incorrectly.
 
-乱码问题这个很容易就可以复现，我们只需要将上面提到的 `FileInputStream` 代码示例中的 `input.txt` 文件内容改为中文即可，原代码不需要改动。
+You can reproduce an encoding problem by putting non-ASCII text in `input.txt` from the `FileInputStream` example above. The code itself does not need to change.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/image-20220419154632551.png)
 
-输出：
+Output:
 
 ```java
 Number of remaining bytes:9
@@ -183,40 +183,40 @@ The actual number of bytes skipped:2
 The content read from file:§å®¶å¥½
 ```
 
-可以很明显地看到读取出来的内容已经变成了乱码。
+The text is clearly garbled.
 
-因此，I/O 流就干脆提供了一个直接操作字符的接口，方便我们平时对字符进行流操作。如果音频文件、图片等媒体文件用字节流比较好，如果涉及到字符的话使用字符流比较好。
+For convenience, Java I/O provides APIs that operate directly on characters. Byte streams are better for media files such as audio and images; use character streams for text.
 
-`Reader` 和 `Writer` 用于操作字符；在字节流和字符流之间转换时，需要通过 `Charset` 指定编码。未显式指定编码的转换类会使用 JVM 的默认字符集。
+`Reader` and `Writer` operate on characters. When converting between byte and character streams, specify the encoding with `Charset`. Conversion classes that do not specify an encoding use the JVM's default charset.
 
-Unicode 本身只是一种字符集，它为每个字符分配一个唯一的数字编号，并没有规定具体的存储方式。UTF-8、UTF-16、UTF-32 都是 Unicode 的编码方式，它们使用不同的字节数来表示 Unicode 字符。例如，UTF-8 :英文占 1 字节，中文占 3 字节。
+Unicode is a character set that assigns a unique number to each character; it does not define how characters are stored. UTF-8, UTF-16, and UTF-32 are Unicode encodings that use different numbers of bytes. For example, UTF-8 uses one byte for basic English characters and typically three bytes for Chinese characters.
 
-### Reader（字符输入流）
+### Reader (Character Input Stream)
 
-`Reader` 用于从源头（通常是文件）读取数据（字符信息）到内存中，`java.io.Reader` 抽象类是所有字符输入流的父类。
+`Reader` reads character data from a source, usually a file, into memory. The abstract class `java.io.Reader` is the base class for all character input streams.
 
-`Reader` 用于读取文本， `InputStream` 用于读取原始字节。
+Use `Reader` to read text and `InputStream` to read raw bytes.
 
-`Reader` 常用方法：
+Common `Reader` methods:
 
-- `read()` : 从输入流读取一个字符。
-- `read(char[] cbuf)` : 从输入流中读取一些字符，并将它们存储到字符数组 `cbuf` 中，等价于 `read(cbuf, 0, cbuf.length)`。
-- `read(char[] cbuf, int off, int len)`：在 `read(char[] cbuf)` 方法的基础上增加了 `off` 参数（偏移量）和 `len` 参数（要读取的最大字符数）。
-- `skip(long n)`：忽略输入流中的 n 个字符 ,返回实际忽略的字符数。
-- `close()` : 关闭输入流并释放相关的系统资源。
+- `read()`: Reads one character from the input stream.
+- `read(char[] cbuf)`: Reads characters into `cbuf`. Equivalent to `read(cbuf, 0, cbuf.length)`.
+- `read(char[] cbuf, int off, int len)`: Like `read(char[] cbuf)`, but specifies the array offset and maximum number of characters to read.
+- `skip(long n)`: Skips up to `n` characters and returns the number actually skipped.
+- `close()`: Closes the input stream and releases associated system resources.
 
-`InputStreamReader` 是字节流转换为字符流的桥梁，其子类 `FileReader` 是基于该基础上的封装，可以直接操作字符文件。
+`InputStreamReader` bridges byte streams and character streams. Its subclass `FileReader` is a wrapper that can read character files directly.
 
 ```java
-// 字节流转换为字符流的桥梁
+// Bridge from byte streams to character streams.
 public class InputStreamReader extends Reader {
 }
-// 用于读取字符文件
+// Reads character files.
 public class FileReader extends InputStreamReader {
 }
 ```
 
-`FileReader` 代码示例：
+Example using `FileReader`:
 
 ```java
 try (FileReader fileReader = new FileReader("input.txt");) {
@@ -232,45 +232,45 @@ try (FileReader fileReader = new FileReader("input.txt");) {
 }
 ```
 
-`input.txt` 文件内容：
+Contents of `input.txt`:
 
 ![](https://oss.javaguide.cn/github/javaguide/java/image-20220419154632551.png)
 
-输出：
+Output:
 
 ```plain
 The actual number of characters skipped:3
 The content read from file:我是Guide。
 ```
 
-### Writer（字符输出流）
+### Writer (Character Output Stream)
 
-`Writer` 用于将数据（字符信息）写入到目的地（通常是文件），`java.io.Writer` 抽象类是所有字符输出流的父类。
+`Writer` writes character data to a destination, usually a file. The abstract class `java.io.Writer` is the base class for all character output streams.
 
-`Writer` 常用方法：
+Common `Writer` methods:
 
-- `write(int c)` : 写入单个字符。
-- `write(char[] cbuf)`：写入字符数组 `cbuf`，等价于 `write(cbuf, 0, cbuf.length)`。
-- `write(char[] cbuf, int off, int len)`：在 `write(char[] cbuf)` 方法的基础上增加了 `off` 参数（偏移量）和 `len` 参数（要读取的最大字符数）。
-- `write(String str)`：写入字符串，等价于 `write(str, 0, str.length())`。
-- `write(String str, int off, int len)`：在 `write(String str)` 方法的基础上增加了 `off` 参数（偏移量）和 `len` 参数（要读取的最大字符数）。
-- `append(CharSequence csq)`：将指定的字符序列附加到指定的 `Writer` 对象并返回该 `Writer` 对象。
-- `append(char c)`：将指定的字符附加到指定的 `Writer` 对象并返回该 `Writer` 对象。
-- `flush()`：刷新此输出流并强制写出所有缓冲的输出字符。
-- `close()`:关闭输出流释放相关的系统资源。
+- `write(int c)`: Writes one character.
+- `write(char[] cbuf)`: Writes the character array `cbuf`. Equivalent to `write(cbuf, 0, cbuf.length)`.
+- `write(char[] cbuf, int off, int len)`: Like `write(char[] cbuf)`, but specifies the array offset and number of characters to write.
+- `write(String str)`: Writes a string. Equivalent to `write(str, 0, str.length())`.
+- `write(String str, int off, int len)`: Writes part of a string, starting at offset `off` and writing up to `len` characters.
+- `append(CharSequence csq)`: Appends a character sequence and returns this `Writer`.
+- `append(char c)`: Appends a character and returns this `Writer`.
+- `flush()`: Flushes the stream and forces buffered characters to be written.
+- `close()`: Closes the output stream and releases associated system resources.
 
-`OutputStreamWriter` 是字符流转换为字节流的桥梁，其子类 `FileWriter` 是基于该基础上的封装，可以直接将字符写入到文件。
+`OutputStreamWriter` bridges character streams and byte streams. Its subclass `FileWriter` wraps it so characters can be written directly to a file.
 
 ```java
-// 字符流转换为字节流的桥梁
+// Bridge from character streams to byte streams.
 public class OutputStreamWriter extends Writer {
 }
-// 用于写入字符到文件
+// Writes characters to a file.
 public class FileWriter extends OutputStreamWriter {
 }
 ```
 
-`FileWriter` 代码示例：
+Example using `FileWriter`:
 
 ```java
 try (Writer output = new FileWriter("output.txt")) {
@@ -280,43 +280,43 @@ try (Writer output = new FileWriter("output.txt")) {
 }
 ```
 
-输出结果：
+Result:
 
 ![](https://oss.javaguide.cn/github/javaguide/java/image-20220419155802288.png)
 
-## 字节缓冲流
+## Buffered Byte Streams
 
-IO 操作是很消耗性能的，缓冲流将数据加载至缓冲区，一次性读取/写入多个字节，从而避免频繁的 IO 操作，提高流的传输效率。
+I/O operations can be expensive. Buffered streams load data into a buffer and read or write multiple bytes at once, reducing the number of I/O operations and improving throughput.
 
-字节缓冲流这里采用了装饰器模式来增强 `InputStream` 和 `OutputStream` 子类对象的功能。
+Buffered byte streams use the Decorator pattern to add behavior to `InputStream` and `OutputStream` subclasses.
 
-举个例子，我们可以通过 `BufferedInputStream`（字节缓冲输入流）来增强 `FileInputStream` 的功能。
+For example, `BufferedInputStream` adds buffering to `FileInputStream`:
 
 ```java
-// 新建一个 BufferedInputStream 对象
+// Create a BufferedInputStream.
 BufferedInputStream bufferedInputStream = new BufferedInputStream(new FileInputStream("input.txt"));
 ```
 
-字节流和字节缓冲流的性能差别主要体现在我们使用两者的时候都是调用 `write(int b)` 和 `read()` 这两个一次只读取一个字节的方法的时候。由于字节缓冲流内部有缓冲区（字节数组），因此，字节缓冲流会先将读取到的字节存放在缓存区，大幅减少 IO 次数，提高读取效率。
+The performance difference between byte streams and buffered byte streams is most apparent when calling `write(int b)` and `read()`, which process one byte at a time. A buffered stream first stores bytes in an internal byte array, greatly reducing the number of I/O operations.
 
-我使用 `write(int b)` 和 `read()` 方法，分别通过字节流和字节缓冲流复制一个 `524.9 mb` 的 PDF 文件耗时对比如下：
+The following timings compare copying a 524.9 MB PDF with byte streams and buffered byte streams using `write(int b)` and `read()`:
 
 ```plain
-使用缓冲流复制PDF文件总耗时:15428 毫秒
-使用普通字节流复制PDF文件总耗时:2555062 毫秒
+Buffered stream copy time: 15428 ms
+Unbuffered byte stream copy time: 2555062 ms
 ```
 
-两者耗时差别非常大，缓冲流耗费的时间是字节流的 1/165。
+The difference is substantial: the buffered stream took about 1/165 as long.
 
-测试代码如下:
+Test code:
 
 ```java
 @Test
 void copy_pdf_to_another_pdf_buffer_stream() {
-    // 记录开始时间
+    // Record the start time.
     long start = System.currentTimeMillis();
-    try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream("深入理解计算机操作系统.pdf"));
-         BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream("深入理解计算机操作系统-副本.pdf"))) {
+    try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream("operating-systems.pdf"));
+         BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream("operating-systems-copy.pdf"))) {
         int content;
         while ((content = bis.read()) != -1) {
             bos.write(content);
@@ -324,17 +324,17 @@ void copy_pdf_to_another_pdf_buffer_stream() {
     } catch (IOException e) {
         e.printStackTrace();
     }
-    // 记录结束时间
+    // Record the end time.
     long end = System.currentTimeMillis();
-    System.out.println("使用缓冲流复制PDF文件总耗时:" + (end - start) + " 毫秒");
+    System.out.println("Buffered stream copy time: " + (end - start) + " ms");
 }
 
 @Test
 void copy_pdf_to_another_pdf_stream() {
-    // 记录开始时间
+    // Record the start time.
     long start = System.currentTimeMillis();
-    try (FileInputStream fis = new FileInputStream("深入理解计算机操作系统.pdf");
-         FileOutputStream fos = new FileOutputStream("深入理解计算机操作系统-副本.pdf")) {
+    try (FileInputStream fis = new FileInputStream("operating-systems.pdf");
+         FileOutputStream fos = new FileOutputStream("operating-systems-copy.pdf")) {
         int content;
         while ((content = fis.read()) != -1) {
             fos.write(content);
@@ -342,32 +342,32 @@ void copy_pdf_to_another_pdf_stream() {
     } catch (IOException e) {
         e.printStackTrace();
     }
-    // 记录结束时间
+    // Record the end time.
     long end = System.currentTimeMillis();
-    System.out.println("使用普通流复制PDF文件总耗时:" + (end - start) + " 毫秒");
+    System.out.println("Unbuffered stream copy time: " + (end - start) + " ms");
 }
 ```
 
-如果是调用 `read(byte b[])` 和 `write(byte b[], int off, int len)` 这两个写入一个字节数组的方法的话，只要字节数组的大小合适，两者的性能差距其实不大，基本可以忽略。
+When calling `read(byte[] b)` and `write(byte[] b, int off, int len)` to process byte arrays, the performance difference is small if the array is an appropriate size.
 
-这次我们使用 `read(byte b[])` 和 `write(byte b[], int off, int len)` 方法，分别通过字节流和字节缓冲流复制一个 524.9 mb 的 PDF 文件耗时对比如下：
+The following timings compare copying the same 524.9 MB PDF with byte arrays:
 
 ```plain
-使用缓冲流复制PDF文件总耗时:695 毫秒
-使用普通字节流复制PDF文件总耗时:989 毫秒
+Buffered stream copy time: 695 ms
+Unbuffered byte stream copy time: 989 ms
 ```
 
-两者耗时差别不是很大，缓冲流的性能要略微好一点点。
+The difference is small, though the buffered stream is slightly faster.
 
-测试代码如下：
+Test code:
 
 ```java
 @Test
 void copy_pdf_to_another_pdf_with_byte_array_buffer_stream() {
-    // 记录开始时间
+    // Record the start time.
     long start = System.currentTimeMillis();
-    try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream("深入理解计算机操作系统.pdf"));
-         BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream("深入理解计算机操作系统-副本.pdf"))) {
+    try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream("operating-systems.pdf"));
+         BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream("operating-systems-copy.pdf"))) {
         int len;
         byte[] bytes = new byte[4 * 1024];
         while ((len = bis.read(bytes)) != -1) {
@@ -376,17 +376,17 @@ void copy_pdf_to_another_pdf_with_byte_array_buffer_stream() {
     } catch (IOException e) {
         e.printStackTrace();
     }
-    // 记录结束时间
+    // Record the end time.
     long end = System.currentTimeMillis();
-    System.out.println("使用缓冲流复制PDF文件总耗时:" + (end - start) + " 毫秒");
+    System.out.println("Buffered stream copy time: " + (end - start) + " ms");
 }
 
 @Test
 void copy_pdf_to_another_pdf_with_byte_array_stream() {
-    // 记录开始时间
+    // Record the start time.
     long start = System.currentTimeMillis();
-    try (FileInputStream fis = new FileInputStream("深入理解计算机操作系统.pdf");
-         FileOutputStream fos = new FileOutputStream("深入理解计算机操作系统-副本.pdf")) {
+    try (FileInputStream fis = new FileInputStream("operating-systems.pdf");
+         FileOutputStream fos = new FileOutputStream("operating-systems-copy.pdf")) {
         int len;
         byte[] bytes = new byte[4 * 1024];
         while ((len = fis.read(bytes)) != -1) {
@@ -395,30 +395,30 @@ void copy_pdf_to_another_pdf_with_byte_array_stream() {
     } catch (IOException e) {
         e.printStackTrace();
     }
-    // 记录结束时间
+    // Record the end time.
     long end = System.currentTimeMillis();
-    System.out.println("使用普通流复制PDF文件总耗时:" + (end - start) + " 毫秒");
+    System.out.println("Unbuffered stream copy time: " + (end - start) + " ms");
 }
 ```
 
-### BufferedInputStream（字节缓冲输入流）
+### BufferedInputStream (Buffered Byte Input Stream)
 
-`BufferedInputStream` 从源头（通常是文件）读取数据（字节信息）到内存的过程中不会一个字节一个字节的读取，而是会先将读取到的字节存放在缓存区，并从内部缓冲区中单独读取字节。这样大幅减少了 IO 次数，提高了读取效率。
+When `BufferedInputStream` reads bytes from a source, usually a file, it first stores them in an internal buffer. Reads are then served from that buffer, greatly reducing I/O operations and improving performance.
 
-`BufferedInputStream` 内部维护了一个缓冲区，这个缓冲区实际就是一个字节数组，通过阅读 `BufferedInputStream` 源码即可得到这个结论。
+`BufferedInputStream` maintains an internal buffer implemented as a byte array, as shown in its source code:
 
 ```java
 public
 class BufferedInputStream extends FilterInputStream {
-    // 内部缓冲区数组
+    // Internal buffer array.
     protected volatile byte buf[];
-    // 缓冲区的默认大小
+    // Default buffer size.
     private static int DEFAULT_BUFFER_SIZE = 8192;
-    // 使用默认的缓冲区大小
+    // Use the default buffer size.
     public BufferedInputStream(InputStream in) {
         this(in, DEFAULT_BUFFER_SIZE);
     }
-    // 自定义缓冲区大小
+    // Use a custom buffer size.
     public BufferedInputStream(InputStream in, int size) {
         super(in);
         if (size <= 0) {
@@ -429,11 +429,11 @@ class BufferedInputStream extends FilterInputStream {
 }
 ```
 
-缓冲区的大小默认为 **8192** 字节，当然了，你也可以通过 `BufferedInputStream(InputStream in, int size)` 这个构造方法来指定缓冲区的大小。
+The default buffer size is **8192** bytes. You can specify a different size with `BufferedInputStream(InputStream in, int size)`.
 
-### BufferedOutputStream（字节缓冲输出流）
+### BufferedOutputStream (Buffered Byte Output Stream)
 
-`BufferedOutputStream` 将数据（字节信息）写入到目的地（通常是文件）的过程中不会一个字节一个字节的写入，而是会先将要写入的字节存放在缓存区，并从内部缓冲区中单独写入字节。这样大幅减少了 IO 次数，提高了效率
+When writing bytes to a destination, usually a file, `BufferedOutputStream` first stores them in an internal buffer and writes them out in batches. This greatly reduces I/O operations and improves performance.
 
 ```java
 try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream("output.txt"))) {
@@ -444,24 +444,24 @@ try (BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream("o
 }
 ```
 
-类似于 `BufferedInputStream`，`BufferedOutputStream` 内部也维护了一个缓冲区，并且，这个缓存区的大小也是 **8192** 字节。
+Like `BufferedInputStream`, `BufferedOutputStream` maintains an internal buffer with a default size of **8192** bytes.
 
-## 字符缓冲流
+## Buffered Character Streams
 
-`BufferedReader`（字符缓冲输入流）和 `BufferedWriter`（字符缓冲输出流）类似于 `BufferedInputStream`（字节缓冲输入流）和 `BufferedOutputStream`（字节缓冲输出流），不过前者内部维护的是字符缓冲区，用来操作字符信息。
+`BufferedReader` and `BufferedWriter` are the character-stream counterparts of `BufferedInputStream` and `BufferedOutputStream`. They maintain character buffers for processing text.
 
-## 打印流
+## Print Streams
 
-下面这段代码大家经常使用吧？
+You have probably used this code:
 
 ```java
 System.out.print("Hello！");
 System.out.println("Hello！");
 ```
 
-`System.out` 实际是用于获取一个 `PrintStream` 对象，`print` 方法实际调用的是 `PrintStream` 对象的 `write` 方法。
+`System.out` is a `PrintStream` object, and its `print` method ultimately calls `PrintStream.write()`.
 
-`PrintStream` 属于字节打印流，与之对应的是 `PrintWriter`（字符打印流）。`PrintStream` 是 `OutputStream` 的子类，`PrintWriter` 是 `Writer` 的子类。
+`PrintStream` is a byte-oriented print stream; its character-oriented counterpart is `PrintWriter`. `PrintStream` extends `OutputStream`, and `PrintWriter` extends `Writer`.
 
 ```java
 public class PrintStream extends FilterOutputStream
@@ -471,83 +471,83 @@ public class PrintWriter extends Writer {
 }
 ```
 
-## 随机访问流
+## Random-Access Files
 
-这里要介绍的随机访问流指的是支持随意跳转到文件的任意位置进行读写的 `RandomAccessFile`。
+`RandomAccessFile` supports reading from and writing to arbitrary positions in a file.
 
-`RandomAccessFile` 的构造方法如下，我们可以指定 `mode`（读写模式）。
+The `RandomAccessFile` constructor accepts a `mode` that specifies how the file is opened:
 
 ```java
-// openAndDelete 参数默认为 false 表示打开文件并且这个文件不会被删除
+// openAndDelete defaults to false, so opening the file does not delete it.
 public RandomAccessFile(File file, String mode)
     throws FileNotFoundException {
     this(file, mode, false);
 }
-// 私有方法
+// Private constructor.
 private RandomAccessFile(File file, String mode, boolean openAndDelete)  throws FileNotFoundException{
-  // 省略大部分代码
+  // Most of the code is omitted.
 }
 ```
 
-读写模式主要有下面四种：
+The four main modes are:
 
-- `r` : 只读模式。
-- `rw`: 读写模式
-- `rws`: 相对于 `rw`，`rws` 同步更新对“文件的内容”或“元数据”的修改到外部存储设备。
-- `rwd` : 相对于 `rw`，`rwd` 同步更新对“文件的内容”的修改到外部存储设备。
+- `r`: Read-only.
+- `rw`: Read and write.
+- `rws`: Like `rw`, but synchronously updates changes to file contents or metadata on the underlying storage device.
+- `rwd`: Like `rw`, but synchronously updates changes to file contents on the underlying storage device.
 
-文件内容指的是文件中实际保存的数据，元数据则是用来描述文件属性比如文件的大小信息、创建和修改时间。
+File contents are the data stored in the file. Metadata describes properties such as file size and creation or modification time.
 
-`RandomAccessFile` 中有一个文件指针用来表示下一个将要被写入或者读取的字节所处的位置。我们可以通过 `RandomAccessFile` 的 `seek(long pos)` 方法来设置文件指针的偏移量（距文件开头 `pos` 个字节处）。如果想要获取文件指针当前的位置的话，可以使用 `getFilePointer()` 方法。
+`RandomAccessFile` maintains a file pointer indicating the position of the next byte to read or write. Use `seek(long pos)` to move it to `pos` bytes from the start of the file, and `getFilePointer()` to retrieve its current position.
 
-`RandomAccessFile` 代码示例：
+Example using `RandomAccessFile`:
 
 ```java
 RandomAccessFile randomAccessFile = new RandomAccessFile(new File("input.txt"), "rw");
-System.out.println("读取之前的偏移量：" + randomAccessFile.getFilePointer() + ",当前读取到的字符" + (char) randomAccessFile.read() + "，读取之后的偏移量：" + randomAccessFile.getFilePointer());
-// 指针当前偏移量为 6
+System.out.println("Offset before read: " + randomAccessFile.getFilePointer() + ", character read: " + (char) randomAccessFile.read() + ", offset after read: " + randomAccessFile.getFilePointer());
+// Move the file pointer to offset 6.
 randomAccessFile.seek(6);
-System.out.println("读取之前的偏移量：" + randomAccessFile.getFilePointer() + ",当前读取到的字符" + (char) randomAccessFile.read() + "，读取之后的偏移量：" + randomAccessFile.getFilePointer());
-// 从偏移量 7 的位置开始往后写入字节数据
+System.out.println("Offset before read: " + randomAccessFile.getFilePointer() + ", character read: " + (char) randomAccessFile.read() + ", offset after read: " + randomAccessFile.getFilePointer());
+// Write bytes starting at offset 7.
 randomAccessFile.write(new byte[]{'H', 'I', 'J', 'K'});
-// 指针当前偏移量为 0，回到起始位置
+// Move the file pointer back to offset 0.
 randomAccessFile.seek(0);
-System.out.println("读取之前的偏移量：" + randomAccessFile.getFilePointer() + ",当前读取到的字符" + (char) randomAccessFile.read() + "，读取之后的偏移量：" + randomAccessFile.getFilePointer());
+System.out.println("Offset before read: " + randomAccessFile.getFilePointer() + ", character read: " + (char) randomAccessFile.read() + ", offset after read: " + randomAccessFile.getFilePointer());
 ```
 
-`input.txt` 文件内容：
+Contents of `input.txt`:
 
 ![](https://oss.javaguide.cn/github/javaguide/java/image-20220421162050158.png)
 
-输出：
+Output:
 
 ```plain
-读取之前的偏移量：0,当前读取到的字符A，读取之后的偏移量：1
-读取之前的偏移量：6,当前读取到的字符G，读取之后的偏移量：7
-读取之前的偏移量：0,当前读取到的字符A，读取之后的偏移量：1
+Offset before read: 0, character read: A, offset after read: 1
+Offset before read: 6, character read: G, offset after read: 7
+Offset before read: 0, character read: A, offset after read: 1
 ```
 
-`input.txt` 文件内容变为 `ABCDEFGHIJK`。
+The contents of `input.txt` are now `ABCDEFGHIJK`.
 
-`RandomAccessFile` 的 `write` 方法在写入对象的时候如果对应的位置已经有数据的话，会将其覆盖掉。
+If the target position already contains data, `RandomAccessFile.write()` overwrites it.
 
 ```java
 RandomAccessFile randomAccessFile = new RandomAccessFile(new File("input.txt"), "rw");
 randomAccessFile.write(new byte[]{'H', 'I', 'J', 'K'});
 ```
 
-假设运行上面这段程序之前 `input.txt` 文件内容变为 `ABCD`，运行之后则变为 `HIJK`。
+For example, if `input.txt` contains `ABCD` before running the following code, it contains `HIJK` afterward.
 
-`RandomAccessFile` 比较常见的一个应用就是实现大文件的 **断点续传**。何谓断点续传？简单来说就是上传文件中途暂停或失败（比如遇到网络问题）之后，不需要重新上传，只需要上传那些未成功上传的文件分片即可。分片（先将文件切分成多个文件分片）上传是断点续传的基础。
+One common use of `RandomAccessFile` is **resumable uploads** of large files. If an upload is paused or fails, for example because of a network issue, it can resume by sending only the chunks that were not uploaded successfully. Splitting the file into chunks is the basis of resumable uploads.
 
-`RandomAccessFile` 可以帮助我们合并文件分片，示例代码如下：
+`RandomAccessFile` can also be used to combine file chunks, as shown below:
 
 ![](https://oss.javaguide.cn/github/javaguide/java/io/20210609164749122.png)
 
-我在[《Java 面试指北》](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html)中详细介绍了大文件的上传问题。
+For more detail about large-file uploads, see [Java Interview Guide](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html).
 
 ![](https://oss.javaguide.cn/github/javaguide/java/image-20220428104115362.png)
 
-`RandomAccessFile` 的实现依赖于 `FileDescriptor`（文件描述符） 和 `FileChannel`（内存映射文件）。
+`RandomAccessFile` relies on `FileDescriptor` and `FileChannel` (for memory-mapped files).
 
 <!-- @include: @article-footer.snippet.md -->

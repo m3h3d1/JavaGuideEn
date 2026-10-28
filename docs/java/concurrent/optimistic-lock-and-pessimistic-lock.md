@@ -1,119 +1,119 @@
 ---
-title: 乐观锁和悲观锁详解
-description: 乐观锁与悲观锁深度对比：详解synchronized/ReentrantLock悲观锁实现、CAS/版本号乐观锁机制、适用场景分析、性能对比与选型建议。
+title: Optimistic and Pessimistic Locking
+description: A detailed comparison of optimistic and pessimistic locking, including synchronized and ReentrantLock, CAS and versioning, use cases, performance, and selection guidance.
 category: Java
 tag:
-  - Java并发
+  - Java Concurrency
 head:
   - - meta
     - name: keywords
-      content: 乐观锁,悲观锁,synchronized,ReentrantLock,CAS,版本号机制,并发控制,锁优化
+      content: optimistic locking, pessimistic locking, synchronized, ReentrantLock, CAS, versioning, concurrency control, lock optimization
 ---
 
-如果将悲观锁（Pessimistic Lock）和乐观锁（Optimistic Lock）对应到现实生活中来。悲观锁有点像是一位比较悲观（也可以说是未雨绸缪）的人，总是会假设最坏的情况，避免出现问题。乐观锁有点像是一位比较乐观的人，总是会假设最好的情况，在要出现问题之前快速解决问题。
+Think of pessimistic and optimistic locking in terms of everyday behavior. A pessimistic approach assumes the worst and tries to prevent problems in advance. An optimistic approach assumes things will work and checks for problems when they arise.
 
-## 什么是悲观锁？
+## What Is Pessimistic Locking?
 
-悲观锁总是假设最坏的情况，认为共享资源每次被访问的时候就会出现问题（比如共享数据被修改），所以每次在获取资源操作的时候都会上锁，这样其他线程想拿到这个资源就会阻塞直到锁被上一个持有者释放。也就是说，**共享资源每次只给一个线程使用，其它线程阻塞，用完后再把资源转让给其它线程**。
+Pessimistic locking assumes that a conflict may occur whenever a shared resource is accessed. It acquires a lock before operating on the resource, so other threads block until the lock is released. In other words, **only one thread can use the shared resource at a time; other threads wait until it is available**.
 
-像 Java 中 `synchronized` 和 `ReentrantLock` 等独占锁就是悲观锁思想的实现。
+Exclusive locks such as Java's `synchronized` and `ReentrantLock` follow the pessimistic locking approach.
 
 ```java
 public void performSynchronisedTask() {
     synchronized (this) {
-        // 需要同步的操作
+        // Operation that needs synchronization
     }
 }
 
 private Lock lock = new ReentrantLock();
 lock.lock();
 try {
-   // 需要同步的操作
+   // Operation that needs synchronization
 } finally {
     lock.unlock();
 }
 ```
 
-高并发的场景下，激烈的锁竞争会造成线程阻塞，大量阻塞线程会导致系统的上下文切换，增加系统的性能开销。并且，悲观锁还可能会存在死锁问题（线程获得锁的顺序不当时），影响代码的正常运行。
+Under high concurrency, intense lock contention blocks threads. A large number of blocked threads can cause context switches and add overhead. Pessimistic locking can also lead to deadlocks if threads acquire locks in an inconsistent order.
 
-## 什么是乐观锁？
+## What Is Optimistic Locking?
 
-乐观锁总是假设最好的情况，认为共享资源每次被访问的时候不会出现问题，线程可以不停地执行，无需加锁也无需等待，只是在提交修改的时候去验证对应的资源（也就是数据）是否被其它线程修改了（具体方法可以使用版本号机制或 CAS 算法）。
+Optimistic locking assumes that conflicts are uncommon. Threads proceed without acquiring a lock or waiting, then check at commit time whether another thread changed the data. Common approaches include versioning and CAS.
 
-在 Java 中 `java.util.concurrent.atomic` 包下面的原子变量类（比如 `AtomicInteger`、`LongAdder`）就是使用了乐观锁的一种实现方式 **CAS** 实现的。
-![JUC原子类概览](https://oss.javaguide.cn/github/javaguide/java/JUC%E5%8E%9F%E5%AD%90%E7%B1%BB%E6%A6%82%E8%A7%88-20230814005211968.png)
+In Java, atomic variable classes such as `AtomicInteger` use **CAS**, one form of optimistic locking. `LongAdder` also uses atomic updates, while spreading updates across internal cells under contention.
+![Overview of JUC atomic classes](https://oss.javaguide.cn/github/javaguide/java/JUC%E5%8E%9F%E5%AD%90%E7%B1%BB%E6%A6%82%E8%A7%88-20230814005211968.png)
 
 ```java
-// LongAdder 在高并发场景下会比 AtomicInteger 和 AtomicLong 的性能更好
-// 代价就是会消耗更多的内存空间（空间换时间）
+// LongAdder can perform better than AtomicInteger and AtomicLong under high contention
+// It uses more memory to achieve this improvement
 LongAdder sum = new LongAdder();
 sum.increment();
 ```
 
-高并发的场景下，乐观锁相比悲观锁来说，不存在锁竞争造成线程阻塞，也不会有死锁问题，在性能上往往会更胜一筹。但是，如果冲突频繁发生（写占比非常多的情况），会频繁失败并重试，这样同样会非常影响性能，导致 CPU 飙升。
+Under high concurrency, optimistic locking avoids blocking caused by lock contention and does not cause lock-based deadlocks, so it can perform better. However, frequent conflicts, such as in write-heavy workloads, cause repeated failures and retries, which can also hurt performance and drive up CPU usage.
 
-`LongAdder` 会在竞争激烈时把更新分散到多个内部单元，从而降低所有线程争用同一个值的概率，但内部更新仍可能使用 CAS 和重试，并没有彻底消除竞争。另外，`sum()` 返回的也不是与并发更新保持原子一致的快照。
+Under contention, `LongAdder` spreads updates across multiple internal cells, reducing the chance that all threads contend on the same value. Its updates may still use CAS and retry, so contention is not eliminated. Also, `sum()` does not return an atomic snapshot consistent with concurrent updates.
 
-理论上来说：
+As a general guideline:
 
-- 悲观锁通常多用于写比较多的情况（多写场景，竞争激烈），这样可以避免频繁失败和重试影响性能。不过，像 `LongAdder` 这样通过分散竞争来降低重试概率的方案，在只需要累加等特定语义时也可以考虑，仍需根据实际场景衡量。
-- 乐观锁通常多用于写比较少的情况（多读场景，竞争较少），这样可以避免频繁加锁影响性能。不过，乐观锁主要针对的对象是单个共享变量（参考 `java.util.concurrent.atomic` 包下面的原子变量类）。
+- Pessimistic locking is often used in write-heavy workloads with high contention, where frequent failures and retries would be costly. However, approaches such as `LongAdder`, which spread contention, may work well for specific operations such as accumulation. Choose based on the actual requirements.
+- Optimistic locking is often used in read-heavy workloads with fewer conflicts, where it can avoid frequent lock acquisition. Many optimistic approaches, including Java's atomic variable classes, focus on a single shared variable.
 
-## 如何实现乐观锁？
+## How Is Optimistic Locking Implemented?
 
-乐观锁一般会使用版本号机制或 CAS 算法实现，CAS 算法相对来说更多一些，这里需要格外注意。
+Optimistic locking is commonly implemented with versioning or CAS. CAS is more widely used in Java concurrency, so it deserves particular attention.
 
-### 版本号机制
+### Versioning
 
-一般是在数据表中加上一个数据版本号 `version` 字段，表示数据被修改的次数。当数据被修改时，`version` 值会加一。当线程 A 要更新数据值时，在读取数据的同时也会读取 `version` 值，在提交更新时，若刚才读取到的 version 值为当前数据库中的 `version` 值相等时才更新，否则重试更新操作，直到更新成功。
+Typically, a table includes a `version` field that tracks changes to a row. Each update increments the version. When thread A reads a value, it also reads the version. At commit time, the update succeeds only if the version it read still matches the current database version; otherwise, the operation must retry or report a conflict.
 
-**举一个简单的例子**：假设数据库中帐户信息表中有一个 version 字段，当前值为 1；而当前帐户余额字段（`balance`）为 \$100。
+**For example**, suppose an account table has a `version` field with the value 1, and the account balance (`balance`) is $100.
 
-1. 操作员 A 此时将其读出（`version`=1），并从其帐户余额中扣除 $50（$100-\$50）。
-2. 在操作员 A 操作的过程中，操作员 B 也读入此用户信息（`version`=1），并从其帐户余额中扣除 $20（$100-\$20）。
-3. 操作员 A 完成了修改工作，将数据版本号（`version`=1），连同帐户扣除后余额（`balance`=\$50），提交至数据库更新，此时由于提交数据版本等于数据库记录当前版本，数据被更新，数据库记录 `version` 更新为 2。
-4. 操作员 B 完成了操作，也将版本号（`version`=1）试图向数据库提交数据（`balance`=\$80），但此时比对数据库记录版本时发现，操作员 B 提交的数据版本号为 1，而数据库记录当前版本为 2，不满足 “ 提交版本必须等于当前版本才能执行更新 ” 的乐观锁策略，因此，操作员 B 的提交被驳回。
+1. Operator A reads the account (`version` = 1) and subtracts $50 from the balance ($100 - $50).
+2. While A is working, operator B also reads the account (`version` = 1) and subtracts $20 ($100 - $20).
+3. A submits the new balance ($50) with the version it read (1). Because the database row still has version 1, the update succeeds and the stored version becomes 2.
+4. B submits a balance of $80 with version 1. The database row is now at version 2, so B's update is rejected because the submitted version no longer matches.
 
-这样就避免了操作员 B 用基于 `version`=1 的旧数据修改的结果覆盖操作员 A 的操作结果的可能。
+This prevents B's update, based on stale version 1 data, from overwriting A's result.
 
-### CAS 算法
+### CAS
 
-CAS 的全称是 **Compare And Swap（比较与交换）**，用于实现乐观锁，被广泛应用于各大框架中。CAS 的思想很简单，就是用一个预期值和要更新的变量值进行比较，两值相等才会进行更新。
+CAS stands for **compare-and-swap** and is widely used to implement optimistic updates. It compares the current value with an expected value and performs the update only if they match.
 
-CAS 是一个原子操作，底层依赖于一条 CPU 的原子指令。
+CAS is an atomic operation, typically implemented with processor support.
 
-> **原子操作** 即最小不可拆分的操作，也就是说操作一旦开始，就不能被打断，直到操作完成。
+> An **atomic operation** is indivisible: once it starts, it cannot be interrupted before completion.
 
-CAS 涉及到三个操作数：
+CAS uses three operands:
 
-- **V**：要更新的变量值(Var)
-- **E**：预期值(Expected)
-- **N**：拟写入的新值(New)
+- **V**: The variable to update.
+- **E**: The expected value.
+- **N**: The new value to write.
 
-当且仅当 V 的值等于 E 时，CAS 通过原子方式用新值 N 来更新 V 的值。如果不等，说明已经有其它线程更新了 V，则当前线程放弃更新。
+CAS atomically updates V to N only if V equals E. If they differ, another thread has updated V, so the current thread does not perform the update.
 
-**举一个简单的例子**：线程 A 要修改变量 i 的值为 6，i 原值为 1（V = 1，E=1，N=6，假设不存在 ABA 问题）。
+**For example**, thread A wants to change `i` from 1 to 6 (V = 1, E = 1, N = 6; assume there is no ABA problem).
 
-1. i 与 1 进行比较，如果相等， 则说明没被其他线程修改，可以被设置为 6。
-2. i 与 1 进行比较，如果不相等，则说明被其他线程修改，当前线程放弃更新，CAS 操作失败。
+1. Compare `i` with 1. If they match, no other thread has changed it, so CAS sets it to 6.
+2. If they do not match, another thread changed it, so this CAS operation fails.
 
-当多个线程同时使用 CAS 操作一个变量时，只有一个会胜出，并成功更新，其余均会失败，但失败的线程并不会被挂起，仅是被告知失败，并且允许再次尝试，当然也允许失败的线程放弃操作。
+When multiple threads use CAS on the same variable, one can succeed while the others fail. Failed threads are not suspended; they can retry or abandon the operation.
 
-关于 CAS 的进一步介绍，可以阅读读者写的这篇文章：[CAS 详解](./cas.md)，其中详细提到了 Java 中 CAS 的实现以及 CAS 存在的一些问题。
+For more about Java's CAS implementation and its limitations, see [CAS Explained](./cas.md).
 
-## 总结
+## Summary
 
-本文详细介绍了乐观锁和悲观锁的概念以及乐观锁常见实现方式：
+This article introduced optimistic and pessimistic locking and common ways to implement optimistic locking:
 
-- 悲观锁基于悲观的假设，认为共享资源在每次访问时都会发生冲突，因此在每次操作时都会加锁。这种锁机制会导致其他线程阻塞，直到锁被释放。Java 中的 `synchronized` 和 `ReentrantLock` 是悲观锁的典型实现方式。虽然悲观锁能有效避免数据竞争，但在高并发场景下会导致线程阻塞、上下文切换频繁，从而影响系统性能，并且还可能引发死锁问题。
-- 乐观锁基于乐观的假设，认为共享资源在每次访问时不会发生冲突，因此无须加锁，只需在提交修改时验证数据是否被其他线程修改。Java 中的 `AtomicInteger` 和 `LongAdder` 等类通过 CAS（Compare-And-Swap）算法实现了乐观锁。乐观锁避免了线程阻塞和死锁问题，在读多写少的场景中性能优越。但在写操作频繁的情况下，可能会导致大量重试和失败，从而影响性能。
-- 乐观锁主要通过版本号机制或 CAS 算法实现。版本号机制通过比较版本号确保数据一致性，而 CAS 通过硬件指令实现原子操作，直接比较和交换变量值。
+- Pessimistic locking assumes conflicts may occur and acquires a lock before each operation, blocking other threads until it is released. Java's `synchronized` and `ReentrantLock` are common examples. This approach prevents data races, but under high concurrency it can increase blocking and context switching, affect performance, and lead to deadlocks.
+- Optimistic locking assumes conflicts are uncommon. It does not acquire a lock in advance; it checks for changes when committing an update. Classes such as `AtomicInteger` use CAS. Optimistic locking avoids blocking and lock-based deadlocks, and can perform well when reads are frequent and writes are rare. Frequent writes may cause many retries and failures.
+- Common implementations include versioning and CAS. Versioning checks a data version, while CAS atomically compares and swaps a value.
 
-悲观锁和乐观锁各有优缺点，适用于不同的应用场景。在实际开发中，选择合适的锁机制能够有效提升系统的并发性能和稳定性。
+Pessimistic and optimistic locking each have trade-offs and suit different situations. Choosing the right approach can improve concurrency and system stability.
 
-## 参考
+## References
 
-- 《Java 并发编程核心 78 讲》
-- 通俗易懂 悲观锁、乐观锁、可重入锁、自旋锁、偏向锁、轻量/重量级锁、读写锁、各种锁及其 Java 实现！：<https://zhuanlan.zhihu.com/p/71156910>
+- _78 Core Lessons in Java Concurrency_
+- Pessimistic, Optimistic, Reentrant, Spin, Biased, Lightweight, and Read-Write Locks in Java: <https://zhuanlan.zhihu.com/p/71156910>
 
 <!-- @include: @article-footer.snippet.md -->

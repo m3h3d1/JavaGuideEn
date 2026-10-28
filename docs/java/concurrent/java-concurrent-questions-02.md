@@ -1,40 +1,40 @@
 ---
-title: Java并发常见面试题总结（中）
-description: Java并发进阶面试题：深入解析synchronized与ReentrantLock区别、volatile可见性保证、JMM内存模型、happens-before原则等并发编程核心机制。
+title: Java Concurrency Interview Questions (Part 2)
+description: Advanced Java concurrency interview questions covering synchronized and ReentrantLock, volatile visibility, the Java Memory Model, happens-before, and other core concurrency mechanisms.
 category: Java
 tag:
-  - Java并发
+  - Java Concurrency
 head:
   - - meta
     - name: keywords
-      content: synchronized,ReentrantLock,volatile,JMM,happens-before,可见性,原子性,有序性,并发面试题
+      content: synchronized,ReentrantLock,volatile,JMM,happens-before,visibility,atomicity,ordering,concurrency interview questions
 ---
 
 <!-- @include: @article-header.snippet.md -->
 
-## ⭐️ JMM（Java 内存模型）
+## ⭐️ Java Memory Model (JMM)
 
-JMM（Java 内存模型）相关的问题比较多，也比较重要，于是我单独抽了一篇文章来总结 JMM 相关的知识点和问题：[JMM（Java 内存模型）详解](https://javaguide.cn/java/concurrent/jmm.html)。
+The Java Memory Model (JMM) comes up often in interviews, so it has a dedicated guide: [The Java Memory Model Explained](https://javaguide.cn/java/concurrent/jmm.html).
 
-## ⭐️ volatile 关键字
+## ⭐️ The `volatile` Keyword
 
-### 如何保证变量的可见性？
+### How Does `volatile` Ensure Visibility?
 
-在 Java 中，`volatile` 关键字可以保证变量的可见性。对某个 `volatile` 变量的写入 happens-before 于后续对同一变量的读取，因此读线程能够看到该写入以及写入前按 happens-before 传递过来的结果。这是 JMM 规定的语义，不等同于要求每次访问都绕过 CPU 缓存、直接读写物理主存。
+In Java, `volatile` guarantees visibility. A write to a `volatile` variable happens-before a subsequent read of that same variable. The reading thread therefore sees the write and any prior writes that happen-before it. This is the JMM's guarantee; it does not mean every access bypasses the CPU cache and directly reads or writes physical memory.
 
-![JMM(Java 内存模型)](https://oss.javaguide.cn/github/javaguide/java/concurrent/jmm.png)
+![Java Memory Model](https://oss.javaguide.cn/github/javaguide/java/concurrent/jmm.png)
 
-![JMM(Java 内存模型)强制在主存中进行读取](https://oss.javaguide.cn/github/javaguide/java/concurrent/jmm2.png)
+![Java Memory Model visibility](https://oss.javaguide.cn/github/javaguide/java/concurrent/jmm2.png)
 
-`volatile` 关键字并非 Java 语言特有，但不同语言中的语义并不相同。Java 的 `volatile` 由 JMM 定义可见性和有序性保证，不能解释为“禁用 CPU 缓存”。
+The `volatile` keyword is not unique to Java, but its meaning differs across languages. Java's `volatile` provides visibility and ordering guarantees defined by the JMM; it does not “disable the CPU cache.”
 
-`volatile` 关键字能保证数据的可见性，但不能保证数据的原子性。`synchronized` 关键字两者都能保证。
+`volatile` guarantees visibility but not atomicity. `synchronized` guarantees both.
 
-### 如何禁止指令重排序？
+### How Does `volatile` Prevent Instruction Reordering?
 
-**在 Java 中，`volatile` 关键字除了可以保证变量的可见性，还有一个重要的作用就是防止 JVM 的指令重排序。** 如果我们将变量声明为 **`volatile`**，在对这个变量进行读写操作的时候，会通过插入特定的 **内存屏障** 的方式来禁止指令重排序。
+**In Java, `volatile` provides visibility and also prevents certain instruction reorderings.** When a variable is declared `volatile`, the JVM uses specific **memory barriers** around reads and writes to enforce the required ordering.
 
-在 Java 中，`Unsafe` 类提供了三个开箱即用的内存屏障相关的方法，屏蔽了操作系统底层的差异：
+Java's `Unsafe` class provides three ready-to-use methods related to memory barriers, abstracting away lower-level platform differences:
 
 ```java
 public native void loadFence();
@@ -42,56 +42,56 @@ public native void storeFence();
 public native void fullFence();
 ```
 
-理论上来说，你通过这个三个方法也可以实现和 `volatile` 禁止重排序一样的效果，只是会麻烦一些。
+In theory, you could use these methods to implement ordering similar to `volatile`, but it would be more cumbersome.
 
-#### 4 种内存屏障类型
+#### Four Types of Memory Barriers
 
-在讲解 JVM 实现时，常用下面 4 类内存屏障来描述需要约束的重排序关系。它们是便于理解的实现层模型，并不是 JLS 对 JVM 必须逐条插入哪些具体屏障指令的规定：
+The following four types of memory barriers are commonly used to describe ordering constraints in JVM implementations. They are a useful implementation model, not a JLS requirement for the exact barrier instructions a JVM must insert:
 
-| 屏障类型       | 指令示例                     | 说明                                                                                                                                                                                     |
-| -------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **LoadLoad**   | `Load1; LoadLoad; Load2`     | 保证 `Load1` 的读取操作在 `Load2` 及其后续读取操作之前完成                                                                                                                               |
-| **StoreStore** | `Store1; StoreStore; Store2` | 约束两个写操作的顺序，使 `Store1` 的效果不会晚于 `Store2` 对其他处理器可见                                                                                                               |
-| **LoadStore**  | `Load1; LoadStore; Store2`   | 保证 `Load1` 的读取操作在 `Store2` 及其后续写入操作刷新到内存之前完成                                                                                                                    |
-| **StoreLoad**  | `Store1; StoreLoad; Load2`   | 保证 `Store1` 的写入操作对其他处理器可见，先于 `Load2` 及其后续读取操作。`StoreLoad` 屏障的开销是四种屏障中最大的，它同时具有其他三种屏障的效果，因此也称为 **全能屏障（Full Barrier）** |
+| Barrier type   | Instruction example          | Description                                                                                                                                                                                            |
+| -------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **LoadLoad**   | `Load1; LoadLoad; Load2`     | Ensures the `Load1` read completes before `Load2` and subsequent reads.                                                                                                                                |
+| **StoreStore** | `Store1; StoreStore; Store2` | Orders two writes so that `Store1` is not made visible to other processors after `Store2`.                                                                                                             |
+| **LoadStore**  | `Load1; LoadStore; Store2`   | Ensures the `Load1` read completes before `Store2` and subsequent writes are flushed to memory.                                                                                                        |
+| **StoreLoad**  | `Store1; StoreLoad; Load2`   | Ensures `Store1` is visible to other processors before `Load2` and subsequent reads. It is the most expensive barrier and has the effects of the other three, so it is also called a **full barrier**. |
 
-#### volatile 读写操作的内存屏障插入策略
+#### Memory Barriers Around `volatile` Reads and Writes
 
-下面是一种便于理解 `volatile` 语义的保守屏障插入策略。实际 JVM 会根据目标处理器的内存模型选择、合并或省略具体屏障，只要最终行为满足 JMM 即可：
+The following conservative barrier placement helps explain `volatile` semantics. A JVM may select, combine, or omit specific barriers based on the target processor's memory model, as long as the resulting behavior meets the JMM requirements:
 
-**volatile 写操作的内存屏障插入策略：**
+**For a `volatile` write:**
 
-在每个 volatile 写操作的 **前面** 插入一个 `StoreStore` 屏障，在 **后面** 插入一个 `StoreLoad` 屏障。
-
-```
-StoreStore 屏障
-volatile 写操作
-StoreLoad 屏障
-```
-
-- 前面的 `StoreStore` 屏障：保证 `volatile` 写之前的普通写不会被重排序到该 `volatile` 写之后。
-- 后面的 `StoreLoad` 屏障：保证 volatile 写之后，其写入的值对后续的 volatile 读/写操作可见。这是开销最大的屏障，但也是最关键的——它避免了 volatile 写与后面可能有的 volatile 读/写操作发生重排序。
-
-**volatile 读操作的内存屏障插入策略：**
-
-在每个 volatile 读操作的 **后面** 插入一个 `LoadLoad` 屏障和一个 `LoadStore` 屏障。
+Insert a `StoreStore` barrier **before** each `volatile` write and a `StoreLoad` barrier **after** it.
 
 ```
-volatile 读操作
-LoadLoad 屏障
-LoadStore 屏障
+StoreStore barrier
+volatile write
+StoreLoad barrier
 ```
 
-- `LoadLoad` 屏障：保证 volatile 读之后的普通读操作不会被重排序到 volatile 读之前。
-- `LoadStore` 屏障：保证 volatile 读之后的普通写操作不会被重排序到 volatile 读之前。
+- The preceding `StoreStore` barrier prevents ordinary writes before the `volatile` write from being reordered after it.
+- The following `StoreLoad` barrier orders the `volatile` write with later `volatile` reads and writes. It is the most expensive barrier, but it prevents the write from being reordered with a later `volatile` access.
 
-这样一来，volatile 写-读的组合就建立了一个类似于 **锁的释放-获取** 的语义：**volatile 写操作之前的所有操作结果，对于后续对该 volatile 变量的读操作之后的所有操作都是可见的。**
+**For a `volatile` read:**
 
-下面我以一个常见的面试题为例讲解一下 `volatile` 关键字禁止指令重排序的效果。
+Insert a `LoadLoad` barrier and a `LoadStore` barrier **after** each `volatile` read.
 
-面试中面试官经常会说：“单例模式了解吗？来给我手写一下！给我解释一下双重检验锁方式实现单例模式的原理呗！”
+```
+volatile read
+LoadLoad barrier
+LoadStore barrier
+```
 
-**双重校验锁实现对象单例（线程安全）**：
+- `LoadLoad` barrier: Prevents ordinary reads after a `volatile` read from being reordered before it.
+- `LoadStore` barrier: Prevents ordinary writes after a `volatile` read from being reordered before it.
+
+Together, a `volatile` write-read pair has semantics similar to **lock release-acquire**: **all actions before the `volatile` write are visible to actions after a subsequent read of that variable.**
+
+The following common interview question illustrates how `volatile` prevents reordering.
+
+An interviewer may ask: “Can you implement a singleton and explain how double-checked locking works?”
+
+**Thread-safe singleton with double-checked locking:**
 
 ```java
 public class Singleton {
@@ -102,9 +102,9 @@ public class Singleton {
     }
 
     public static Singleton getUniqueInstance() {
-       //先判断对象是否已经实例过，没有实例化过才进入加锁代码
+       // Check whether the instance already exists before acquiring the lock.
         if (uniqueInstance == null) {
-            //类对象加锁
+            // Lock the Class object.
             synchronized (Singleton.class) {
                 if (uniqueInstance == null) {
                     uniqueInstance = new Singleton();
@@ -116,38 +116,38 @@ public class Singleton {
 }
 ```
 
-`uniqueInstance` 采用 `volatile` 关键字修饰也是很有必要的， `uniqueInstance = new Singleton();` 这段代码其实是分为三步执行：
+Declaring `uniqueInstance` as `volatile` is also necessary. The statement `uniqueInstance = new Singleton();` consists of three steps:
 
-1. 为 `uniqueInstance` 分配内存空间
-2. 初始化 `uniqueInstance`
-3. 将 `uniqueInstance` 指向分配的内存地址
+1. Allocate memory for the `Singleton` object.
+2. Initialize the object.
+3. Assign the reference to `uniqueInstance`.
 
-但是由于 JVM 具有指令重排的特性，执行顺序有可能变成 1->3->2。指令重排在单线程环境下不会出现问题，但是在多线程环境下会导致一个线程获得还没有初始化的实例。例如，线程 T1 执行了 1 和 3，此时 T2 调用 `getUniqueInstance`() 后发现 `uniqueInstance` 不为空，因此返回 `uniqueInstance`，但此时 `uniqueInstance` 还未被初始化。
+The JVM may reorder these steps as 1 → 3 → 2. This is harmless in a single-threaded context, but in a multithreaded program another thread could see a reference to an uninitialized object. For example, T1 completes steps 1 and 3, then T2 calls `getUniqueInstance()` and sees a non-null `uniqueInstance` before initialization has finished.
 
-#### 从内存屏障角度理解 DCL 必须使用 volatile
+#### Why Double-Checked Locking Needs `volatile`: A Memory Barrier View
 
-上面从指令重排序的角度解释了 DCL 单例中 `uniqueInstance` 为什么需要 `volatile` 修饰。下面从内存屏障的角度进一步分析 `volatile` 是如何解决这个问题的。
+The previous section explained why the DCL singleton's `uniqueInstance` needs `volatile` in terms of instruction reordering. This section looks at how memory barriers address the issue.
 
-`uniqueInstance = new Singleton();` 这行代码的三个步骤（分配内存、初始化对象、赋值引用）中，如果不加 `volatile`，步骤 2 和步骤 3 可能会被重排序为 1→3→2。加了 `volatile` 之后，由于 `uniqueInstance` 是 volatile 变量，对它的写操作（步骤 3：将引用赋值给 `uniqueInstance`）会按照前面介绍的 volatile 写的内存屏障插入策略来处理：
+Without `volatile`, steps 2 and 3 in `uniqueInstance = new Singleton();` (object initialization and reference assignment) may be reordered as 1 → 3 → 2. With `volatile`, the write in step 3 is subject to the barrier rules described above:
 
-1. 在 volatile 写 **之前** 插入 `StoreStore` 屏障：保证步骤 1（分配内存）和步骤 2（初始化对象）的写操作在步骤 3（赋值引用）之前完成，**禁止了步骤 2 和步骤 3 的重排序**。
-2. 在 volatile 写 **之后** 插入 `StoreLoad` 屏障：约束该写与后续读写的重排序，并配合 `volatile` 读建立 JMM 要求的可见性。
+1. A `StoreStore` barrier **before** the `volatile` write ensures that memory allocation and object initialization happen before the reference assignment, **preventing steps 2 and 3 from being reordered**.
+2. A `StoreLoad` barrier **after** the `volatile` write orders it with subsequent reads and writes, working with the `volatile` read to provide the visibility required by the JMM.
 
-这样，当线程 T2 读取 `uniqueInstance` 时（volatile 读），如果发现 `uniqueInstance != null`，那么可以保证该对象一定已经被完全初始化了。
+Therefore, when T2 reads `uniqueInstance` and sees a non-null value, the object has been fully initialized.
 
-### volatile 与 happens-before 的关系
+### `volatile` and Happens-Before
 
-JMM 中的 happens-before 原则是判断数据是否存在竞争、线程是否安全的重要依据。`volatile` 变量的读写操作与 happens-before 原则有着密切的关系。
+The JMM's happens-before relationship is an important way to reason about data races and thread safety. Reads and writes of `volatile` variables are closely related to it.
 
-> 关于 happens-before 原则的详细介绍，可以参考 [JMM（Java 内存模型）详解](https://javaguide.cn/java/concurrent/jmm.html) 这篇文章。
+> For more about happens-before, see [The Java Memory Model Explained](https://javaguide.cn/java/concurrent/jmm.html).
 
-happens-before 原则中与 `volatile` 直接相关的是 **volatile 变量规则**：
+The happens-before rule directly related to `volatile` is the **volatile variable rule**:
 
-> **对一个 volatile 变量的写操作 happens-before 于后续对该 volatile 变量的读操作。**
+> **A write to a `volatile` variable happens-before every subsequent read of that same variable.**
 
-也就是说，如果线程 A 写入了一个 volatile 变量，线程 B 随后读取了同一个 volatile 变量，那么线程 A 在写入 volatile 变量之前所做的所有修改（包括对非 volatile 变量的修改），对线程 B 都是可见的。
+If Thread A writes a `volatile` variable and Thread B later reads it, Thread B can also see all changes Thread A made before that write, including changes to non-`volatile` variables.
 
-这个规则配合 happens-before 的 **传递性规则**（如果 A happens-before B，B happens-before C，那么 A happens-before C），可以实现一种轻量级的线程间通信。下面通过一个示例来说明：
+Together with the **transitivity rule** (if A happens-before B and B happens-before C, then A happens-before C), this enables lightweight communication between threads:
 
 ```java
 public class VolatileHappensBeforeDemo {
@@ -155,47 +155,47 @@ public class VolatileHappensBeforeDemo {
     private int b = 0;
     private volatile boolean flag = false;
 
-    // 线程 A 执行
+    // Thread A
     public void writer() {
-        a = 1;           // 操作1：普通写
-        b = 2;           // 操作2：普通写
-        flag = true;     // 操作3：volatile 写
+        a = 1;           // Action 1: ordinary write
+        b = 2;           // Action 2: ordinary write
+        flag = true;     // Action 3: volatile write
     }
 
-    // 线程 B 执行
+    // Thread B
     public void reader() {
-        if (flag) {      // 操作4：volatile 读
-            int x = a;   // 操作5：普通读，x 一定等于 1
-            int y = b;   // 操作6：普通读，y 一定等于 2
+        if (flag) {      // Action 4: volatile read
+            int x = a;   // Action 5: ordinary read; x is 1
+            int y = b;   // Action 6: ordinary read; y is 2
             System.out.println("x=" + x + ", y=" + y);
         }
     }
 }
 ```
 
-上面代码中，happens-before 关系链如下：
+The happens-before chain in this example is:
 
-1. 操作 1、操作 2 happens-before 操作 3（**程序顺序规则**：同一线程中，前面的操作 happens-before 后面的操作）
-2. 操作 3 happens-before 操作 4（**volatile 变量规则**：volatile 写 happens-before volatile 读）
-3. 操作 4 happens-before 操作 5、操作 6（**程序顺序规则**）
+1. Actions 1 and 2 happen-before action 3 (**program order rule**: within one thread, earlier actions happen-before later actions).
+2. Action 3 happens-before action 4 (**volatile variable rule**: a `volatile` write happens-before a `volatile` read).
+3. Action 4 happens-before actions 5 and 6 (**program order rule**).
 
-根据 **传递性**：操作 1、操作 2 happens-before 操作 5、操作 6。
+By **transitivity**, actions 1 and 2 happen-before actions 5 and 6.
 
-因此，当线程 B 在操作 4 读取到 `flag == true` 时，线程 A 在操作 3 之前对 `a` 和 `b` 的修改对线程 B 一定是可见的。这里的关键在于：**volatile 变量的写-读操作，不仅保证了 volatile 变量本身的可见性，还通过 happens-before 的传递性“顺带”保证了其前后普通变量的可见性。**
+Therefore, when Thread B reads `flag == true` in action 4, it also sees Thread A's updates to `a` and `b` before action 3. The key point is that **a `volatile` write-read pair ensures visibility of the `volatile` variable itself and, through happens-before transitivity, of related ordinary variables as well.**
 
-这也解释了为什么在实际开发中，`volatile` 经常被用作 **状态标志位**（如上面例子中的 `flag`），它可以在不使用锁的情况下，安全地在线程间传递状态信息，同时保证相关数据的可见性。
+This is why `volatile` is often used for a **state flag**, such as `flag` above. It can safely communicate state between threads without a lock while also making related data visible.
 
-### volatile 可以保证原子性么？
+### Does `volatile` Guarantee Atomicity?
 
-**`volatile` 关键字能保证变量的可见性，但不能保证对变量的操作是原子性的。**
+**`volatile` guarantees visibility, but it does not make compound operations atomic.**
 
-我们通过下面的代码即可证明：
+The following code demonstrates this:
 
 ```java
 /**
- * 微信搜 JavaGuide 回复"面试突击"即可免费领取个人原创的 Java 面试手册
+ * Search WeChat for "JavaGuide" and reply "Interview Prep" to get the Java interview guide.
  *
- * @author Guide哥
+ * @author Guide
  * @date 2022/08/03 13:40
  **/
 public class VolatileAtomicityDemo {
@@ -215,7 +215,7 @@ public class VolatileAtomicityDemo {
                 }
             });
         }
-        // 等待1.5秒，保证上面程序执行完成
+        // Wait 1.5 seconds for the tasks above to finish.
         Thread.sleep(1500);
         System.out.println(inc);
         threadPool.shutdown();
@@ -223,28 +223,28 @@ public class VolatileAtomicityDemo {
 }
 ```
 
-正常情况下，运行上面的代码理应输出 `2500`。但你真正运行了上面的代码之后，你会发现每次输出结果都小于 `2500`。
+The code might appear to print `2500`, but when you run it, the result is usually lower.
 
-为什么会出现这种情况呢？不是说好了，`volatile` 可以保证变量的可见性嘛！
+Why does this happen if `volatile` guarantees visibility?
 
-也就是说，如果 `volatile` 能保证 `inc++` 操作的原子性的话。每个线程中对 `inc` 变量自增完之后，其他线程可以立即看到修改后的值。5 个线程分别进行了 500 次操作，那么最终 inc 的值应该是 5\*500=2500。
+If `volatile` made `inc++` atomic, every thread would see each increment immediately. With five threads performing 500 increments each, the final value would be `5 * 500 = 2500`.
 
-很多人会误认为自增操作 `inc++` 是原子性的，实际上，`inc++` 其实是一个复合操作，包括三步：
+It is easy to assume that `inc++` is atomic, but it is a compound operation with three steps:
 
-1. 读取 inc 的值。
-2. 对 inc 加 1。
-3. 将 inc 的值写回内存。
+1. Read the value of `inc`.
+2. Add 1 to `inc`.
+3. Write the new value back.
 
-`volatile` 是无法保证这三个操作是具有原子性的，有可能导致下面这种情况出现：
+`volatile` does not make these three steps atomic. For example:
 
-1. 线程 1 对 `inc` 进行读取操作之后，还未对其进行修改。线程 2 又读取了 `inc` 的值并对其进行修改（+1），再将 `inc` 的值写回内存。
-2. 线程 2 操作完毕后，线程 1 对 `inc` 的值进行修改（+1），再将 `inc` 的值写回内存。
+1. Thread 1 reads `inc` but has not updated it yet. Thread 2 also reads `inc`, increments it, and writes the value back.
+2. Thread 1 then increments its stale value and writes it back.
 
-这也就导致两个线程分别对 `inc` 进行了一次自增操作后，`inc` 实际上只增加了 1。
+Both threads incremented `inc`, but the value increased by only 1.
 
-其实，如果想要保证上面的代码运行正确也非常简单，利用 `synchronized`、`Lock` 或者 `AtomicInteger` 都可以。
+To make the code correct, use `synchronized`, a `Lock`, or `AtomicInteger`.
 
-使用 `synchronized` 改进：
+Using `synchronized`:
 
 ```java
 public synchronized void increase() {
@@ -252,7 +252,7 @@ public synchronized void increase() {
 }
 ```
 
-使用 `AtomicInteger` 改进：
+Using `AtomicInteger`:
 
 ```java
 public AtomicInteger inc = new AtomicInteger();
@@ -262,7 +262,7 @@ public void increase() {
 }
 ```
 
-使用 `ReentrantLock` 改进：
+Using `ReentrantLock`:
 
 ```java
 Lock lock = new ReentrantLock();
@@ -276,106 +276,106 @@ public void increase() {
 }
 ```
 
-## ⭐️ 乐观锁和悲观锁
+## ⭐️ Optimistic and Pessimistic Locking
 
-### 什么是悲观锁？
+### What Is Pessimistic Locking?
 
-悲观锁总是假设最坏的情况，认为共享资源每次被访问的时候就会出现问题（比如共享数据被修改），所以每次在获取资源操作的时候都会上锁，这样其他线程想拿到这个资源就会阻塞直到锁被上一个持有者释放。也就是说，**共享资源每次只给一个线程使用，其它线程阻塞，用完后再把资源转让给其它线程**。
+Pessimistic locking assumes the worst: every access to a shared resource may conflict with another access. It acquires a lock before accessing the resource, blocking other threads until the lock is released. In other words, **only one thread can use the shared resource at a time; other threads wait until it is released**.
 
-像 Java 中 `synchronized` 和 `ReentrantLock` 等独占锁就是悲观锁思想的实现。
+Exclusive locks such as Java's `synchronized` and `ReentrantLock` follow the pessimistic locking approach.
 
 ```java
 public void performSynchronisedTask() {
     synchronized (this) {
-        // 需要同步的操作
+        // Operations that need synchronization
     }
 }
 
 private Lock lock = new ReentrantLock();
 lock.lock();
 try {
-   // 需要同步的操作
+   // Operations that need synchronization
 } finally {
     lock.unlock();
 }
 ```
 
-高并发的场景下，激烈的锁竞争会造成线程阻塞，大量阻塞线程会导致系统的上下文切换，增加系统的性能开销。并且，悲观锁还可能会存在死锁问题，影响代码的正常运行。
+Under high contention, locks can block threads and lead to many context switches, adding overhead. Pessimistic locking can also cause deadlocks that prevent the program from progressing.
 
-### 什么是乐观锁？
+### What Is Optimistic Locking?
 
-乐观锁总是假设最好的情况，认为共享资源每次被访问的时候不会出现问题，线程可以不停地执行，无需加锁也无需等待，只是在提交修改的时候去验证对应的资源（也就是数据）是否被其它线程修改了（具体方法可以使用版本号机制或 CAS 算法）。
+Optimistic locking assumes conflicts are rare. Threads proceed without locking or waiting, then check when committing an update whether another thread changed the data. Common implementations use version numbers or CAS.
 
-在 Java 中 `java.util.concurrent.atomic` 包下面的原子变量类（比如 `AtomicInteger`、`LongAdder`）就是使用了乐观锁的一种实现方式 **CAS** 实现的。
-![JUC原子类概览](https://oss.javaguide.cn/github/javaguide/java/JUC%E5%8E%9F%E5%AD%90%E7%B1%BB%E6%A6%82%E8%A7%88-20230814005211968.png)
+Java's atomic variable classes, such as `AtomicInteger` and `LongAdder` in `java.util.concurrent.atomic`, use **CAS**, one implementation of optimistic locking.
+![Overview of JUC atomic classes](https://oss.javaguide.cn/github/javaguide/java/JUC%E5%8E%9F%E5%AD%90%E7%B1%BB%E6%A6%82%E8%A7%88-20230814005211968.png)
 
 ```java
-// LongAdder 在高并发场景下会比 AtomicInteger 和 AtomicLong 的性能更好
-// 代价就是会消耗更多的内存空间（空间换时间）
+// LongAdder can outperform AtomicInteger and AtomicLong under high contention.
+// The trade-off is higher memory usage.
 LongAdder sum = new LongAdder();
 sum.increment();
 ```
 
-高并发的场景下，乐观锁相比悲观锁来说，不存在锁竞争造成线程阻塞，也不会有死锁的问题，在性能上往往会更胜一筹。但是，如果冲突频繁发生（写占比非常多的情况），会频繁失败和重试，这样同样会非常影响性能，导致 CPU 飙升。
+Under high concurrency, optimistic locking avoids lock contention and deadlocks, and can perform better than pessimistic locking. However, frequent conflicts, especially in write-heavy workloads, cause repeated failures and retries that can hurt performance and drive up CPU usage.
 
-不过，大量失败重试的问题也是可以解决的，像我们前面提到的 `LongAdder` 以空间换时间的方式就解决了这个问题。
+Some designs can reduce retry costs. For example, `LongAdder` trades additional space for better performance under contention.
 
-理论上来说：
+As a rule of thumb:
 
-- 悲观锁通常多用于写比较多的情况（多写场景，竞争激烈），这样可以避免频繁失败和重试影响性能，悲观锁的开销是固定的。不过，如果乐观锁解决了频繁失败和重试这个问题的话（比如 `LongAdder`），也是可以考虑使用乐观锁的，要视实际情况而定。
-- 乐观锁通常多用于写比较少的情况（多读场景，竞争较少），这样可以避免频繁加锁影响性能。不过，乐观锁主要针对的对象是单个共享变量（参考 `java.util.concurrent.atomic` 包下面的原子变量类）。
+- Pessimistic locking is often used in write-heavy, highly contended workloads to avoid repeated failures and retries. Its overhead is more predictable. Optimistic approaches may still work if they address retries effectively, as `LongAdder` does; choose based on the workload.
+- Optimistic locking is often used in read-heavy workloads with fewer conflicts, avoiding the cost of frequent locking. It is commonly applied to individual shared variables, as in the atomic variable classes in `java.util.concurrent.atomic`.
 
-### 如何实现乐观锁？
+### How Is Optimistic Locking Implemented?
 
-乐观锁一般会使用版本号机制或 CAS 算法实现，CAS 算法相对来说更多一些，这里需要格外注意。
+Optimistic locking is commonly implemented with version numbers or CAS. CAS is especially common.
 
-#### 版本号机制
+#### Versioning
 
-一般是在数据表中加上一个数据版本号 `version` 字段，表示数据被修改的次数。当数据被修改时，`version` 值会加一。当线程 A 要更新数据值时，在读取数据的同时也会读取 `version` 值，在提交更新时，若刚才读取到的 version 值为当前数据库中的 `version` 值相等时才更新，否则重试更新操作，直到更新成功。
+A versioning scheme adds a `version` field to a database record to track the number of updates. Increment it whenever the data changes. When Thread A reads a record, it also reads its version. On update, it writes only if the version still matches; otherwise, it retries with the latest data.
 
-**举一个简单的例子**：假设数据库中帐户信息表中有一个 version 字段，当前值为 1；而当前帐户余额字段（`balance`）为 \$100。
+**Example:** Suppose an account record has a `version` field with value 1 and a `balance` of $100.
 
-1. 操作员 A 此时将其读出（`version`=1），并从其帐户余额中扣除 $50（$100-\$50）。
-2. 在操作员 A 操作的过程中，操作员 B 也读入此用户信息（`version`=1），并从其帐户余额中扣除 $20（$100-\$20）。
-3. 操作员 A 完成了修改工作，将数据版本号（`version`=1），连同帐户扣除后余额（`balance`=\$50），提交至数据库更新，此时由于提交数据版本等于数据库记录当前版本，数据被更新，数据库记录 `version` 更新为 2。
-4. 操作员 B 完成了操作，也将版本号（`version`=1）试图向数据库提交数据（`balance`=\$80），但此时比对数据库记录版本时发现，操作员 B 提交的数据版本号为 1，数据库记录当前版本也为 2，不满足 “ 提交版本必须等于当前版本才能执行更新 ” 的乐观锁策略，因此，操作员 B 的提交被驳回。
+1. Operator A reads the record at version 1 and deducts $50, leaving a balance of $50.
+2. While A is working, Operator B also reads version 1 and deducts $20, calculating a balance of $80.
+3. A submits the new balance with version 1. Since the database record is still at version 1, the update succeeds and the stored version becomes 2.
+4. B submits its update with version 1 and a balance of $80. The database is now at version 2, so the version check fails and B's update is rejected.
 
-这样就避免了操作员 B 用基于 `version`=1 的旧数据修改的结果覆盖操作员 A 的操作结果的可能。
+This prevents B's update based on stale version 1 data from overwriting A's change.
 
-#### CAS 算法
+#### CAS
 
-CAS 的全称是 **Compare And Swap（比较与交换）**，用于实现乐观锁，被广泛应用于各大框架中。CAS 的思想很简单，就是用一个预期值和要更新的变量值进行比较，两值相等才会进行更新。
+CAS stands for **Compare-And-Swap**. It is widely used to implement optimistic locking. CAS compares a variable with an expected value and updates it only if the values match.
 
-CAS 是一个原子操作，底层依赖于一条 CPU 的原子指令。
+CAS is an atomic operation and typically relies on an atomic CPU instruction.
 
-> **原子操作** 即最小不可拆分的操作，也就是说操作一旦开始，就不能被打断，直到操作完成。
+> **Atomic operation** means an indivisible operation: once it starts, it cannot be interrupted before it completes.
 
-CAS 涉及到三个操作数：
+CAS uses three operands:
 
-- **V**：要更新的变量值(Var)
-- **E**：预期值(Expected)
-- **N**：拟写入的新值(New)
+- **V**: The variable to update.
+- **E**: The expected value.
+- **N**: The new value to write.
 
-当且仅当 V 的值等于 E 时，CAS 通过原子方式用新值 N 来更新 V 的值。如果不等，说明已经有其它线程更新了 V，则当前线程放弃更新。
+CAS atomically updates V to N only if V equals E. Otherwise, another thread has changed V, and the current thread does not update it.
 
-**举一个简单的例子**：线程 A 要修改变量 i 的值为 6，i 原值为 1（V = 1，E=1，N=6，假设不存在 ABA 问题）。
+**Example:** Thread A wants to change `i` from 1 to 6 (`V = 1`, `E = 1`, `N = 6`; assume there is no ABA problem).
 
-1. i 与 1 进行比较，如果相等， 则说明没被其他线程修改，可以被设置为 6。
-2. i 与 1 进行比较，如果不相等，则说明被其他线程修改，当前线程放弃更新，CAS 操作失败。
+1. Compare `i` with 1. If they match, no other thread has changed it, so `i` can be set to 6.
+2. If they do not match, another thread changed `i`; the current thread gives up and the CAS operation fails.
 
-当多个线程同时使用 CAS 操作一个变量时，只有一个会胜出，并成功更新，其余均会失败，但失败的线程并不会被挂起，仅是被告知失败，并且允许再次尝试，当然也允许失败的线程放弃操作。
+When multiple threads use CAS on the same variable, one succeeds and the others fail. Failed threads are not suspended; they can retry or give up.
 
-Java 代码可以通过原子类、`VarHandle` 等 API 表达 CAS 语义。HotSpot 通常会把相关调用识别为 JVM 内部函数，再映射为目标处理器支持的原子指令或等价实现；这并不是 Java 规范固定要求的“JNI 调用 C++ 内联汇编”。
+Java code can express CAS semantics through atomic classes, `VarHandle`, and other APIs. HotSpot often recognizes these calls as intrinsics and maps them to atomic instructions supported by the target processor, or an equivalent implementation. The Java specification does not require a fixed implementation such as “JNI calling C++ inline assembly.”
 
-`sun.misc` 包下的 `Unsafe` 类提供了 `compareAndSwapObject`、`compareAndSwapInt`、`compareAndSwapLong` 方法来实现的对 `Object`、`int`、`long` 类型的 CAS 操作
+The `Unsafe` class in `sun.misc` provides `compareAndSwapObject`, `compareAndSwapInt`, and `compareAndSwapLong` methods for CAS operations on `Object`, `int`, and `long` values.
 
 ```java
 /**
   *  CAS
-  * @param o         包含要修改field的对象
-  * @param offset    对象中某field的偏移量
-  * @param expected  期望值
-  * @param update    更新值
+  * @param o         the object containing the field to modify
+  * @param offset    the field offset within the object
+  * @param expected  the expected value
+  * @param update    the new value
   * @return          true | false
   */
 public final native boolean compareAndSwapObject(Object o, long offset,  Object expected, Object update);
@@ -385,119 +385,119 @@ public final native boolean compareAndSwapInt(Object o, long offset, int expecte
 public final native boolean compareAndSwapLong(Object o, long offset, long expected, long update);
 ```
 
-关于 `Unsafe` 类的详细介绍可以看这篇文章：[Java 魔法类 Unsafe 详解 - JavaGuide - 2022](https://javaguide.cn/java/basis/unsafe.html)。
+For more about `Unsafe`, see [The Java `Unsafe` Class Explained](https://javaguide.cn/java/basis/unsafe.html).
 
-### Java 中 CAS 是如何实现的？
+### How Is CAS Implemented in Java?
 
-在 Java 中，实现 CAS（Compare-And-Swap, 比较并交换）操作的一个关键类是 `Unsafe`。
+One key class used to implement CAS (Compare-And-Swap) in Java is `Unsafe`.
 
-`Unsafe` 类位于 `sun.misc` 包下，是一个提供低级别、不安全操作的类。由于其强大的功能和潜在的危险性，它通常用于 JVM 内部或一些需要极高性能和底层访问的库中，而不推荐普通开发者在应用程序中使用。关于 `Unsafe` 类的详细介绍，可以阅读这篇文章：📌[Java 魔法类 Unsafe 详解](https://javaguide.cn/java/basis/unsafe.html)。
+`Unsafe` is a low-level class in the `sun.misc` package. Because its powerful operations can be dangerous, it is mainly used internally by the JVM and by libraries that need low-level access or very high performance. It is not recommended for ordinary application code. For details, see [The Java `Unsafe` Class Explained](https://javaguide.cn/java/basis/unsafe.html).
 
-`sun.misc` 包下的 `Unsafe` 类提供了 `compareAndSwapObject`、`compareAndSwapInt`、`compareAndSwapLong` 方法来实现的对 `Object`、`int`、`long` 类型的 CAS 操作：
+The `Unsafe` class in `sun.misc` provides `compareAndSwapObject`, `compareAndSwapInt`, and `compareAndSwapLong` methods for CAS operations on `Object`, `int`, and `long` values:
 
 ```java
 /**
- * 以原子方式更新对象字段的值。
+ * Atomically updates the value of an object field.
  *
- * @param o        要操作的对象
- * @param offset   对象字段的内存偏移量
- * @param expected 期望的旧值
- * @param x        要设置的新值
- * @return 如果值被成功更新，则返回 true；否则返回 false
+ * @param o        the object to operate on
+ * @param offset   the memory offset of the field
+ * @param expected the expected old value
+ * @param x        the new value
+ * @return true if the value was updated; otherwise, false
  */
 boolean compareAndSwapObject(Object o, long offset, Object expected, Object x);
 
 /**
- * 以原子方式更新 int 类型的对象字段的值。
+ * Atomically updates an int field in an object.
  */
 boolean compareAndSwapInt(Object o, long offset, int expected, int x);
 
 /**
- * 以原子方式更新 long 类型的对象字段的值。
+ * Atomically updates a long field in an object.
  */
 boolean compareAndSwapLong(Object o, long offset, long expected, long x);
 ```
 
-JDK 8 中 `Unsafe` 的这些 CAS 方法是 `native` 方法。Java 代码通过它们表达原子比较并交换语义，HotSpot 通常会将相关调用作为 JVM 内部函数处理，并映射为目标处理器支持的原子指令或等价实现。具体实现依赖 JVM 和 CPU 架构，但不能简单概括为“通过 JNI 调用 C++ 内联汇编”。
+In JDK 8, these CAS methods in `Unsafe` are `native`. Java code uses them to express atomic compare-and-swap semantics. HotSpot usually treats these calls as intrinsics and maps them to atomic instructions supported by the target processor, or an equivalent implementation. The details depend on the JVM and CPU architecture; it is inaccurate to summarize them as “JNI calling C++ inline assembly.”
 
-`java.util.concurrent.atomic` 包提供了一些用于原子操作的类。这些类利用底层的原子指令，确保在多线程环境下的操作是线程安全的。
+The `java.util.concurrent.atomic` package provides classes for atomic operations. These classes use low-level atomic instructions to make operations thread-safe.
 
-![JUC原子类概览](https://oss.javaguide.cn/github/javaguide/java/JUC%E5%8E%9F%E5%AD%90%E7%B1%BB%E6%A6%82%E8%A7%88.png)
+![Overview of JUC atomic classes](https://oss.javaguide.cn/github/javaguide/java/JUC%E5%8E%9F%E5%AD%90%E7%B1%BB%E6%A6%82%E8%A7%88.png)
 
-关于这些 Atomic 原子类的介绍和使用，可以阅读这篇文章：[Atomic 原子类总结](https://javaguide.cn/java/concurrent/atomic-classes.html)。
+For an introduction to the atomic classes, see [Java Atomic Classes](https://javaguide.cn/java/concurrent/atomic-classes.html).
 
-`AtomicInteger` 是 Java 的原子类之一，主要用于对 `int` 类型的变量进行原子操作，它利用 `Unsafe` 类提供的低级别原子操作方法实现无锁的线程安全性。
+`AtomicInteger` is an atomic class for operations on `int` values. It uses low-level operations from `Unsafe` to provide thread safety without locks.
 
-下面，我们通过解读 `AtomicInteger` 的核心源码（JDK1.8），来说明 Java 如何使用 `Unsafe` 类的方法来实现原子操作。
+The following walkthrough of `AtomicInteger`'s core source code in JDK 8 shows how Java uses `Unsafe` methods to implement atomic operations.
 
-`AtomicInteger` 核心源码如下：
+Here is the relevant `AtomicInteger` source code:
 
 ```java
-// 获取 Unsafe 实例
+// Get the Unsafe instance.
 private static final Unsafe unsafe = Unsafe.getUnsafe();
 private static final long valueOffset;
 
 static {
     try {
-        // 获取“value”字段在AtomicInteger类中的内存偏移量
+        // Get the memory offset of AtomicInteger's "value" field.
         valueOffset = unsafe.objectFieldOffset
             (AtomicInteger.class.getDeclaredField("value"));
     } catch (Exception ex) { throw new Error(ex); }
 }
-// 确保“value”字段的可见性
+// Ensure visibility of the "value" field.
 private volatile int value;
 
-// 如果当前值等于预期值，则原子地将值设置为newValue
-// 使用 Unsafe#compareAndSwapInt 方法进行CAS操作
+// Atomically set the value to newValue if it matches the expected value.
+// Uses Unsafe.compareAndSwapInt for CAS.
 public final boolean compareAndSet(int expect, int update) {
     return unsafe.compareAndSwapInt(this, valueOffset, expect, update);
 }
 
-// 原子地将当前值加 delta 并返回旧值
+// Atomically add delta to the current value and return the old value.
 public final int getAndAdd(int delta) {
     return unsafe.getAndAddInt(this, valueOffset, delta);
 }
 
-// 原子地将当前值加 1 并返回加之前的值（旧值）
-// 使用 Unsafe#getAndAddInt 方法进行CAS操作。
+// Atomically increment the current value and return the old value.
+// Uses Unsafe.getAndAddInt for CAS.
 public final int getAndIncrement() {
     return unsafe.getAndAddInt(this, valueOffset, 1);
 }
 
-// 原子地将当前值减 1 并返回减之前的值（旧值）
+// Atomically decrement the current value and return the old value.
 public final int getAndDecrement() {
     return unsafe.getAndAddInt(this, valueOffset, -1);
 }
 ```
 
-`Unsafe#getAndAddInt` 源码：
+Here is the source code for `Unsafe.getAndAddInt`:
 
 ```java
-// 原子地获取并增加整数值
+// Atomically get and add to an integer value.
 public final int getAndAddInt(Object o, long offset, int delta) {
     int v;
     do {
-        // 以 volatile 方式获取对象 o 在内存偏移量 offset 处的整数值
+        // Read the int at the given object offset with volatile semantics.
         v = getIntVolatile(o, offset);
     } while (!compareAndSwapInt(o, offset, v, v + delta));
-    // 返回旧值
+    // Return the old value.
     return v;
 }
 ```
 
-可以看到，`getAndAddInt` 使用了 `do-while` 循环：在 `compareAndSwapInt` 操作失败时，会不断重试直到成功。也就是说，`getAndAddInt` 方法会通过 `compareAndSwapInt` 方法来尝试更新 `value` 的值，如果更新失败（当前值在此期间被其他线程修改），它会重新获取当前值并再次尝试更新，直到操作成功。
+`getAndAddInt` uses a `do-while` loop and retries until `compareAndSwapInt` succeeds. It tries to update `value` with CAS. If another thread changes the value first, it reads the latest value and tries again.
 
-由于 CAS 操作可能会因为并发冲突而失败，因此通常会与 `while` 循环搭配使用，在失败后不断重试，直到操作成功。这就是 **自旋锁机制**。
+Because CAS can fail due to contention, it is often used in a loop that retries until the operation succeeds. This is called **spinning**.
 
-### CAS 算法存在哪些问题？
+### What Problems Can CAS Have?
 
-ABA 问题是 CAS 算法最常见的问题。
+The ABA problem is the most common issue with CAS.
 
-#### ABA 问题
+#### The ABA Problem
 
-如果一个变量 V 初次读取的时候是 A 值，并且在准备赋值的时候检查到它仍然是 A 值，那我们就能说明它的值没有被其他线程修改过了吗？很明显是不能的，因为在这段时间它的值可能被改为其他值，然后又改回 A，那 CAS 操作就会误认为它从来没有被修改过。这个问题被称为 CAS 操作的 **"ABA"问题。**
+If a variable V initially contains A and still contains A when we try to update it, can we conclude that no other thread changed it? No. It could have changed to another value and then back to A. CAS would then treat it as unchanged. This is called the **ABA problem**.
 
-ABA 问题的解决思路是在变量前面追加上**版本号或者时间戳**。JDK 1.5 以后的 `AtomicStampedReference` 类就是用来解决 ABA 问题的，其中的 `compareAndSet()` 方法就是首先检查当前引用是否等于预期引用，并且当前标志是否等于预期标志，如果全部相等，则以原子方式将该引用和该标志的值设置为给定的更新值。
+One way to address ABA is to pair the variable with a **version number or timestamp**. `AtomicStampedReference`, available since JDK 1.5, checks both the reference and its stamp in `compareAndSet()`. If both match the expected values, it atomically updates the reference and stamp.
 
 ```java
 public boolean compareAndSet(V   expectedReference,
@@ -514,318 +514,318 @@ public boolean compareAndSet(V   expectedReference,
 }
 ```
 
-#### 循环时间长开销大
+#### Long Retries Can Be Expensive
 
-CAS 经常会用到自旋操作来进行重试，也就是不成功就一直循环执行直到成功。如果长时间不成功，会给 CPU 带来非常大的执行开销。
+CAS often retries by spinning until it succeeds. If it keeps failing for a long time, it can use a significant amount of CPU.
 
-如果 JVM 能够支持处理器提供的 `pause` 指令，那么自旋操作的效率将有所提升。`pause` 指令有两个重要作用：
+If the JVM supports the processor's `pause` instruction, spinning can be more efficient. The instruction has two main effects:
 
-1. **延迟流水线执行指令**：`pause` 指令可以延迟指令的执行，从而减少 CPU 的资源消耗。具体的延迟时间取决于处理器的实现版本，在某些处理器上，延迟时间可能为零。
-2. **避免内存顺序冲突**：在退出循环时，`pause` 指令可以避免由于内存顺序冲突而导致的 CPU 流水线被清空，从而提高 CPU 的执行效率。
+1. **Delay instruction execution in the pipeline**: This can reduce CPU resource use. The delay depends on the processor and may be zero on some processors.
+2. **Reduce memory-order conflicts**: When leaving a loop, `pause` can help avoid flushing the CPU pipeline due to a memory-order conflict, improving execution efficiency.
 
-#### 只能保证一个共享变量的原子操作
+#### CAS Applies to One Shared Variable at a Time
 
-CAS 操作仅能对单个共享变量有效。当需要操作多个共享变量时，CAS 就显得无能为力。不过，从 JDK 1.5 开始，Java 提供了 `AtomicReference` 类，这使得我们能够保证引用对象之间的原子性。通过将多个变量封装在一个对象中，我们可以使用 `AtomicReference` 来执行 CAS 操作。
+CAS operates on one shared variable at a time. To update multiple values atomically, you can wrap them in one object and use `AtomicReference` to CAS the reference.
 
-除了 `AtomicReference` 这种方式之外，还可以利用加锁来保证。
+Locking is another option.
 
-### 总结
+### Summary
 
-| **对比维度**    | **乐观锁 (Optimistic Locking)**             | **悲观锁 (Pessimistic Locking)**                                     |
-| --------------- | ------------------------------------------- | -------------------------------------------------------------------- |
-| **核心假设**    | 假设冲突很少发生，提交时才验证。            | 假设冲突必然发生，读取时就加锁。                                     |
-| **常见实现**    | **CAS (Compare And Swap)** 或版本号机制。   | Java 监视器、`Lock` 或数据库锁等；具体实现可能包含自旋、排队和挂起。 |
-| **竞争时行为**  | 更新失败后由业务逻辑决定重试、放弃或回退。  | 获取失败的线程可能自旋、排队或被挂起，取决于具体锁实现。             |
-| **并发开销**    | **CPU 消耗**（高并发写时频繁自旋重试）。    | **上下文切换开销**（线程挂起与唤醒）。                               |
-| **死锁风险**    | **无死锁**（因为不涉及持有锁的等待）。      | **有死锁风险**（多个锁相互等待）。                                   |
-| **数据库实现**  | `UPDATE ... SET version = version + 1`      | `SELECT ... FOR UPDATE`                                              |
-| **Java 代表类** | `AtomicInteger`、`LongAdder`、`StampedLock` | `synchronized`、`ReentrantLock`                                      |
-| **适用场景**    | **多读少写**、并发冲突概率低的业务。        | **多写少读**、数据一致性要求极高的核心业务。                         |
+| **Dimension**                 | **Optimistic locking**                                                    | **Pessimistic locking**                                                                  |
+| ----------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| **Core assumption**           | Conflicts are rare; validate when committing.                             | Conflicts are expected; lock when accessing data.                                        |
+| **Common implementations**    | **CAS** or versioning.                                                    | Java monitors, `Lock`, database locks; implementations may spin, queue, or park threads. |
+| **Behavior under contention** | Application logic retries, gives up, or falls back after a failed update. | A thread may spin, queue, or park, depending on the lock.                                |
+| **Concurrency cost**          | **CPU use** from repeated retries under write contention.                 | **Context switching** when threads are parked and resumed.                               |
+| **Deadlock risk**             | No lock-based deadlock from waiting while holding locks.                  | Deadlocks are possible when locks wait on each other.                                    |
+| **Database example**          | `UPDATE ... SET version = version + 1`                                    | `SELECT ... FOR UPDATE`                                                                  |
+| **Java examples**             | `AtomicInteger`, `LongAdder`, `StampedLock`                               | `synchronized`, `ReentrantLock`                                                          |
+| **Use cases**                 | **Read-heavy** workloads with few conflicts.                              | **Write-heavy** workloads with strict consistency requirements.                          |
 
-## synchronized 关键字
+## The `synchronized` Keyword
 
-### synchronized 是什么？有什么用？
+### What Is `synchronized` and What Is It Used For?
 
-`synchronized` 是 Java 中的一个关键字，翻译成中文是同步的意思，主要解决的是多个线程之间访问资源的同步性，可以保证被它修饰的方法或者代码块在任意时刻只能有一个线程执行。
+`synchronized` is a Java keyword for synchronizing access to resources across threads. It ensures that only one thread at a time can execute a method or block guarded by the same monitor.
 
-在 Java 早期版本中，`synchronized` 属于 **重量级锁**，效率低下。这是因为监视器锁（monitor）是依赖于底层的操作系统的 `Mutex Lock` 来实现的，Java 的线程是映射到操作系统的原生线程之上的。如果要挂起或者唤醒一个线程，都需要操作系统帮忙完成，而操作系统实现线程之间的切换时需要从用户态转换到内核态，这个状态之间的转换需要相对比较长的时间，时间成本相对较高。
+In early Java versions, `synchronized` was considered a **heavyweight lock**. Monitor locks relied on operating system mutexes, and Java threads mapped to native OS threads. Suspending or waking a thread required operating system support and a switch from user mode to kernel mode, which added latency.
 
-不过，在 Java 6 之后， `synchronized` 引入了大量的优化如自旋锁、适应性自旋锁、锁消除、锁粗化、偏向锁、轻量级锁等技术来减少锁操作的开销，这些优化让 `synchronized` 锁的效率提升了很多。因此， `synchronized` 还是可以在实际项目中使用的，像 JDK 源码、很多开源框架都大量使用了 `synchronized`。
+Since Java 6, `synchronized` has gained optimizations such as spinning, adaptive spinning, lock elimination, lock coarsening, biased locking, and lightweight locking. These reduce locking overhead, so `synchronized` remains practical and is widely used in the JDK and open-source frameworks.
 
-关于偏向锁多补充一点：由于偏向锁增加了 JVM 的复杂性，同时也并没有为所有应用都带来性能提升。因此，在 JDK15 中，偏向锁被默认关闭（仍然可以使用 `-XX:+UseBiasedLocking` 启用偏向锁），在 JDK18 中，偏向锁已经被彻底废弃（无法通过命令行打开）。
+One note about biased locking: it increased JVM complexity and did not improve performance for every application. It was disabled by default in JDK 15 and deprecated in JDK 18, where it could no longer be enabled from the command line.
 
-### 如何使用 synchronized？
+### How Do You Use `synchronized`?
 
-`synchronized` 关键字的使用方式主要有下面 3 种：
+There are three common ways to use `synchronized`:
 
-1. 修饰实例方法
-2. 修饰静态方法
-3. 修饰代码块
+1. On an instance method.
+2. On a static method.
+3. On a code block.
 
-**1、修饰实例方法**（锁当前对象实例）
+**1. On an instance method (locks the current object)**
 
-给当前对象实例加锁，进入同步代码前要获得 **当前对象实例的锁**。
+The current object is locked. A thread must acquire **the current object's monitor** before entering the synchronized method.
 
 ```java
 synchronized void method() {
-    //业务代码
+    // Business logic
 }
 ```
 
-**2、修饰静态方法**（锁当前类）
+**2. On a static method (locks the class)**
 
-给当前类加锁，会作用于类的所有对象实例，进入同步代码前要获得 **当前 class 的锁**。
+The class is locked for all its instances. A thread must acquire **the class's monitor** before entering the synchronized method.
 
-这是因为静态成员不属于任何一个实例对象，归整个类所有，不依赖于类的特定实例，被类的所有实例共享。
+Static members belong to the class rather than any particular object, so they are shared by all instances.
 
 ```java
 synchronized static void method() {
-    //业务代码
+    // Business logic
 }
 ```
 
-静态 `synchronized` 方法和非静态 `synchronized` 方法之间的调用互斥么？不互斥！如果一个线程 A 调用一个实例对象的非静态 `synchronized` 方法，而线程 B 需要调用这个实例对象所属类的静态 `synchronized` 方法，是允许的，不会发生互斥现象，因为访问静态 `synchronized` 方法占用的锁是当前类的锁，而访问非静态 `synchronized` 方法占用的锁是当前实例对象锁。
+Do static and instance `synchronized` methods block each other? No. Thread A can call an object's instance method while Thread B calls the class's static method. The static method locks the class, while the instance method locks the object.
 
-**3、修饰代码块**（锁指定对象/类）
+**3. On a code block (locks a specified object or class)**
 
-对括号里指定的对象/类加锁：
+The object or class in parentheses is locked:
 
-- `synchronized(object)` 表示进入同步代码块前要获得 **给定对象的锁**。
-- `synchronized(类.class)` 表示进入同步代码块前要获得 **给定 Class 的锁**
+- `synchronized(object)` requires **the specified object's monitor** before entering the block.
+- `synchronized(SomeClass.class)` requires **the specified class's monitor**.
 
 ```java
 synchronized(this) {
-    //业务代码
+    // Business logic
 }
 ```
 
-**总结：**
+**Summary:**
 
-- `synchronized` 关键字加到 `static` 静态方法和 `synchronized(class)` 代码块上都是是给 Class 类上锁；
-- `synchronized` 关键字加到实例方法上是给对象实例上锁；
-- 尽量不要使用 `synchronized(String a)` 因为 JVM 中，字符串常量池具有缓存功能。
+- `synchronized` on a static method or `synchronized(SomeClass.class)` locks the `Class` object.
+- `synchronized` on an instance method locks that object instance.
+- Avoid `synchronized(String a)`: strings may be shared through the JVM's string pool.
 
-### 构造方法可以用 synchronized 修饰么？
+### Can a Constructor Be `synchronized`?
 
-构造方法不能使用 synchronized 关键字修饰。不过，可以在构造方法内部使用 synchronized 代码块。
+A constructor cannot be declared `synchronized`, but it can contain a synchronized block.
 
-另外，构造方法本身是线程安全的，但如果在构造方法中涉及到共享资源的操作，就需要采取适当的同步措施来保证整个构造过程的线程安全。
+Construction itself is not inherently thread-safe when it accesses shared resources. Add appropriate synchronization if the constructor performs such operations.
 
-### ⭐️ synchronized 底层原理了解吗？
+### ⭐️ How Does `synchronized` Work Internally?
 
-synchronized 关键字底层原理属于 JVM 层面的东西。
+The implementation of `synchronized` is handled at the JVM level.
 
-#### synchronized 同步语句块的情况
+#### Synchronized Blocks
 
 ```java
 public class SynchronizedDemo {
     public void method() {
         synchronized (this) {
-            System.out.println("synchronized 代码块");
+            System.out.println("synchronized block");
         }
     }
 }
 ```
 
-通过 JDK 自带的 `javap` 命令查看 `SynchronizedDemo` 类的相关字节码信息：首先切换到类的对应目录执行 `javac SynchronizedDemo.java` 命令生成编译后的 .class 文件，然后执行 `javap -c -s -v -l SynchronizedDemo.class`。
+Use the JDK's `javap` command to inspect the bytecode for `SynchronizedDemo`. First, go to the class directory and run `javac SynchronizedDemo.java` to generate the `.class` file. Then run `javap -c -s -v -l SynchronizedDemo.class`.
 
-![synchronized关键字原理](https://oss.javaguide.cn/github/javaguide/java/concurrent/synchronized-principle.png)
+![How the synchronized keyword works](https://oss.javaguide.cn/github/javaguide/java/concurrent/synchronized-principle.png)
 
-从上面我们可以看出：**`synchronized` 同步语句块的实现使用的是 `monitorenter` 和 `monitorexit` 指令，其中 `monitorenter` 指令指向同步代码块的开始位置，`monitorexit` 指令则指明同步代码块的结束位置。**
+The bytecode shows that **a `synchronized` block uses `monitorenter` and `monitorexit`: `monitorenter` marks the start of the block, and `monitorexit` marks its end.**
 
-上面的字节码中包含一个 `monitorenter` 指令以及两个 `monitorexit` 指令，这是为了保证锁在同步代码块代码正常执行以及出现异常的这两种情况下都能被正确释放。
+The bytecode contains one `monitorenter` and two `monitorexit` instructions so the lock is released both when the block completes normally and when it throws an exception.
 
-当执行 `monitorenter` 指令时，线程试图获取锁也就是获取 **对象监视器 `monitor`** 的持有权。
+When `monitorenter` executes, the thread tries to acquire the lock, or ownership of the **object monitor**.
 
-> 在 Java 虚拟机(HotSpot)中，Monitor 是基于 C++实现的，由[ObjectMonitor](https://github.com/openjdk-mirror/jdk7u-hotspot/blob/50bdefc3afe944ca74c3093e7448d6b889cd20d1/src/share/vm/runtime/objectMonitor.cpp)实现的。每个对象中都内置了一个 `ObjectMonitor` 对象。
+> In HotSpot, monitors are implemented in C++ by [`ObjectMonitor`](https://github.com/openjdk-mirror/jdk7u-hotspot/blob/50bdefc3afe944ca74c3093e7448d6b889cd20d1/src/share/vm/runtime/objectMonitor.cpp). Each object has an associated `ObjectMonitor`.
 >
-> 另外，`wait/notify` 等方法也依赖于 `monitor` 对象，这就是为什么只有在同步的块或者方法中才能调用 `wait/notify` 等方法，否则会抛出 `java.lang.IllegalMonitorStateException` 的异常的原因。
+> Methods such as `wait()` and `notify()` also rely on the monitor. That is why they can only be called from a synchronized block or method; otherwise, they throw `java.lang.IllegalMonitorStateException`.
 
-在执行 `monitorenter` 时，会尝试获取对象的锁，如果锁的计数器为 0 则表示锁可以被获取，获取后将锁计数器设为 1 也就是加 1。
+When `monitorenter` runs, it tries to acquire the object's lock. A lock count of 0 means the lock is available; after acquisition, the count is incremented.
 
-![执行 monitorenter 获取锁](https://oss.javaguide.cn/github/javaguide/java/concurrent/synchronized-get-lock-code-block.png)
+![Acquiring a lock with monitorenter](https://oss.javaguide.cn/github/javaguide/java/concurrent/synchronized-get-lock-code-block.png)
 
-对象锁的拥有者线程才可以执行 `monitorexit` 指令来释放锁。在执行 `monitorexit` 指令后，将锁计数器设为 0，表明锁被释放，其他线程可以尝试获取锁。
+Only the thread that owns the object's lock can release it with `monitorexit`. This decrements the lock count; when the count reaches 0, the lock is released and other threads can try to acquire it.
 
-![执行 monitorexit 释放锁](https://oss.javaguide.cn/github/javaguide/java/concurrent/synchronized-release-lock-block.png)
+![Releasing a lock with monitorexit](https://oss.javaguide.cn/github/javaguide/java/concurrent/synchronized-release-lock-block.png)
 
-如果获取对象锁失败，那当前线程就要阻塞等待，直到锁被另外一个线程释放为止。
+If a thread cannot acquire the object lock, it blocks until another thread releases it.
 
-#### synchronized 修饰方法的情况
+#### Synchronized Methods
 
 ```java
 public class SynchronizedDemo2 {
     public synchronized void method() {
-        System.out.println("synchronized 方法");
+        System.out.println("synchronized method");
     }
 }
 
 ```
 
-![synchronized关键字原理](https://oss.javaguide.cn/github/javaguide/synchronized%E5%85%B3%E9%94%AE%E5%AD%97%E5%8E%9F%E7%90%862.png)
+![How the synchronized keyword works](https://oss.javaguide.cn/github/javaguide/synchronized%E5%85%B3%E9%94%AE%E5%AD%97%E5%8E%9F%E7%90%862.png)
 
-`synchronized` 修饰的方法并没有 `monitorenter` 指令和 `monitorexit` 指令，取而代之的是 `ACC_SYNCHRONIZED` 标识，该标识指明了该方法是一个同步方法。JVM 通过该 `ACC_SYNCHRONIZED` 访问标志来辨别一个方法是否声明为同步方法，从而执行相应的同步调用。
+Methods marked `synchronized` do not use `monitorenter` and `monitorexit`. Instead, they have the `ACC_SYNCHRONIZED` flag, which tells the JVM to invoke them as synchronized methods.
 
-如果是实例方法，JVM 会尝试获取实例对象的锁。如果是静态方法，JVM 会尝试获取当前 class 的锁。
+For an instance method, the JVM tries to acquire the instance's lock. For a static method, it tries to acquire the class's lock.
 
-#### 总结
+#### Summary
 
-`synchronized` 同步语句块的实现使用的是 `monitorenter` 和 `monitorexit` 指令，其中 `monitorenter` 指令指向同步代码块的开始位置，`monitorexit` 指令则指明同步代码块的结束位置。
+Synchronized blocks use `monitorenter` and `monitorexit` to mark the start and end of the block.
 
-`synchronized` 修饰的方法并没有 `monitorenter` 指令和 `monitorexit` 指令，取而代之的是 `ACC_SYNCHRONIZED` 标识，该标识指明了该方法是一个同步方法。
+Synchronized methods use the `ACC_SYNCHRONIZED` flag instead of `monitorenter` and `monitorexit`.
 
-**不过，两者的本质都是对对象监视器 monitor 的获取。**
+**Both approaches ultimately acquire an object monitor.**
 
-相关推荐：[Java 锁与线程的那些事 - 有赞技术团队](https://tech.youzan.com/javasuo-yu-xian-cheng-de-na-xie-shi/)。
+Related reading: [Java Locks and Threads](https://tech.youzan.com/javasuo-yu-xian-cheng-de-na-xie-shi/).
 
-🧗🏻 进阶一下：学有余力的小伙伴可以抽时间详细研究一下对象监视器 `monitor`。
+🧗🏻 **Further reading:** If you want to go deeper, study object monitors.
 
-### JDK1.6 之后的 synchronized 底层做了哪些优化？锁升级原理了解吗？
+### What Optimizations Were Made to `synchronized` After JDK 6? How Does Lock Inflation Work?
 
-在 Java 6 之后， `synchronized` 引入了大量的优化如自旋锁、适应性自旋锁、锁消除、锁粗化、偏向锁、轻量级锁等技术来减少锁操作的开销，这些优化让 `synchronized` 锁的效率提升了很多（JDK18 中，偏向锁已经被彻底废弃，前面已经提到过了）。
+Since Java 6, `synchronized` has gained optimizations such as spinning, adaptive spinning, lock elimination, lock coarsening, biased locking, and lightweight locking. These reduce locking overhead. Biased locking was removed in JDK 18, as noted above.
 
-锁主要存在四种状态，依次是：无锁状态、偏向锁状态、轻量级锁状态、重量级锁状态，他们会随着竞争的激烈而逐渐升级。注意锁可以升级不可降级，这种策略是为了提高获得锁和释放锁的效率。
+Locks are commonly described as having four states: unlocked, biased, lightweight, and heavyweight. They can move toward heavier states as contention increases. This is often called lock inflation and is intended to improve acquisition and release efficiency.
 
-`synchronized` 锁升级是一个比较复杂的过程，面试也很少问到，如果你想要详细了解的话，可以看看这篇文章：[浅析 synchronized 锁升级的原理与实现](https://www.cnblogs.com/star95/p/17542850.html)。
+Lock inflation is complex and rarely asked about in interviews. For details, see [An Overview of `synchronized` Lock Inflation](https://www.cnblogs.com/star95/p/17542850.html).
 
-### synchronized 的偏向锁为什么被废弃了？
+### Why Was Biased Locking Deprecated?
 
-Open JDK 官方声明：[JEP 374: Deprecate and Disable Biased Locking](https://openjdk.org/jeps/374)
+OpenJDK's announcement: [JEP 374: Deprecate and Disable Biased Locking](https://openjdk.org/jeps/374).
 
-在 JDK15 中，偏向锁被默认关闭（仍然可以使用 `-XX:+UseBiasedLocking` 启用偏向锁），在 JDK18 中，偏向锁已经被彻底废弃（无法通过命令行打开）。
+Biased locking was disabled by default in JDK 15 (it could still be enabled with `-XX:+UseBiasedLocking`) and removed in JDK 18.
 
-在官方声明中，主要原因有两个方面：
+The announcement gives two main reasons:
 
-- **性能收益不明显：**
+- **Limited performance benefits:**
 
-偏向锁是 HotSpot 虚拟机的一项优化技术，可以提升单线程对同步代码块的访问性能。
+Biased locking is a HotSpot optimization that can improve single-threaded access to synchronized blocks.
 
-受益于偏向锁的应用程序通常使用了早期的 Java 集合 API，例如 HashTable、Vector，在这些集合类中通过 synchronized 来控制同步，这样在单线程频繁访问时，通过偏向锁会减少同步开销。
+Applications that benefited often used older Java collection APIs such as `Hashtable` and `Vector`, which use `synchronized`. Biased locking reduced synchronization overhead when one thread accessed these collections repeatedly.
 
-随着 JDK 的发展，出现了 ConcurrentHashMap 高性能的集合类，在集合类内部进行了许多性能优化，此时偏向锁带来的性能收益就不明显了。
+As the JDK evolved, collections such as `ConcurrentHashMap` gained their own performance optimizations, making the benefits of biased locking less significant.
 
-偏向锁仅仅在单线程访问同步代码块的场景中可以获得性能收益。
+Biased locking only helped when a single thread accessed a synchronized block.
 
-如果存在多线程竞争，就需要 **撤销偏向锁**，这个操作的性能开销是比较昂贵的。偏向锁的撤销需要等待进入到全局安全点（safe point），该状态下所有线程都是暂停的，此时去检查线程状态并进行偏向锁的撤销。
+With contention, the JVM had to **revoke the bias**, which was expensive. Revocation required a global safepoint, where all threads pause while the JVM checks their state and revokes the bias.
 
-- **JVM 内部代码维护成本太高：**
+- **High JVM maintenance cost:**
 
-偏向锁将许多复杂代码引入到同步子系统，并且对其他的 HotSpot 组件也具有侵入性。这种复杂性为理解代码、系统重构带来了困难，因此， OpenJDK 官方希望禁用、废弃并删除偏向锁。
+Biased locking added complex code to the synchronization subsystem and affected other HotSpot components. This made the code harder to understand and refactor, so OpenJDK chose to disable and remove it.
 
-### ⭐️ synchronized 和 volatile 有什么区别？
+### ⭐️ How Do `synchronized` and `volatile` Differ?
 
-`synchronized` 关键字和 `volatile` 关键字是两个互补的存在，而不是对立的存在！
+`synchronized` and `volatile` are complementary, not competing, features.
 
-- `volatile` 关键字是线程同步的轻量级实现，所以 `volatile` 性能肯定比 `synchronized` 关键字要好。但是 `volatile` 关键字只能用于变量而 `synchronized` 关键字可以修饰方法以及代码块。
-- `volatile` 关键字能保证数据的可见性，但不能保证数据的原子性。`synchronized` 关键字两者都能保证。
-- `volatile` 关键字主要用于解决变量在多个线程之间的可见性，而 `synchronized` 关键字解决的是多个线程之间访问资源的同步性。
+- `volatile` is a lightweight synchronization mechanism and is often cheaper than `synchronized`, but it can only be applied to variables. `synchronized` can be applied to methods and blocks.
+- `volatile` guarantees visibility but not atomicity. `synchronized` guarantees both.
+- `volatile` is mainly used to make variable updates visible across threads. `synchronized` coordinates access to shared resources.
 
-#### volatile 与 synchronized 的性能对比
+#### Performance: `volatile` vs. `synchronized`
 
-上面提到 `volatile` 是线程同步的轻量级实现，性能比 `synchronized` 要好。下面从底层原理的角度分析为什么 `volatile` 性能更好，以及在什么情况下应该选择哪个。
+`volatile` is often described as a lightweight alternative to `synchronized`. The table below compares their underlying mechanisms and helps explain when to use each.
 
-周志明在《深入理解 Java 虚拟机》中指出：
+_Understanding the Java Virtual Machine_ by Zhou Zhihong notes:
 
-> volatile 变量的读操作的性能消耗与普通变量几乎没有什么差别，但是写操作则可能会慢上一些，因为它需要在本地代码中插入许多内存屏障指令来保证处理器不发生乱序执行。不过即便如此，大多数场景下 volatile 的总开销仍然要比锁来得更低。
+> Reading a volatile variable has nearly the same cost as reading an ordinary variable. A write may be slower because it needs memory barriers to prevent processor reordering. Even so, volatile usually has lower overhead than a lock.
 
-二者性能差异的根本原因在于底层实现机制不同：
+Their performance differs because they use different mechanisms:
 
-| 对比维度         | `volatile`                                                                 | `synchronized`                                                     |
-| ---------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| **实现层面**     | 通过插入内存屏障指令实现，不涉及线程阻塞和上下文切换                       | 依赖操作系统的互斥锁（Mutex Lock），涉及用户态与内核态的切换       |
-| **读操作开销**   | 与普通变量几乎相同                                                         | 需要获取 monitor 锁，即使无竞争也有一定开销（偏向锁/轻量级锁 CAS） |
-| **写操作开销**   | 需要插入 `StoreStore` + `StoreLoad` 内存屏障，有一定开销但不会导致线程阻塞 | 需要获取和释放 monitor 锁，有竞争时会导致线程阻塞和上下文切换      |
-| **竞争时的表现** | 不会导致线程阻塞，始终是非阻塞的                                           | 线程竞争激烈时，会频繁发生阻塞和唤醒，上下文切换开销大             |
-| **功能范围**     | 只能修饰变量，只保证可见性和有序性                                         | 可以修饰方法和代码块，同时保证可见性、有序性和原子性               |
+| Dimension            | `volatile`                                                              | `synchronized`                                                                 |
+| -------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| **Implementation**   | Uses memory barriers; does not block threads or cause context switches. | Uses monitors; contended locks may block threads and require context switches. |
+| **Read cost**        | Nearly the same as an ordinary variable.                                | Acquires a monitor; this has some cost even without contention.                |
+| **Write cost**       | Uses `StoreStore` and `StoreLoad` barriers, but does not block threads. | Acquires and releases a monitor; contention can block threads.                 |
+| **Under contention** | Does not block threads.                                                 | Can cause frequent blocking, waking, and context switches.                     |
+| **Scope**            | Applies to variables; provides visibility and ordering.                 | Applies to methods and blocks; provides visibility, ordering, and atomicity.   |
 
-**选择建议：**
+**Guidance:**
 
-- 如果只需要保证变量的可见性（如状态标志位、DCL 单例中的实例引用），优先使用 `volatile`，因为它的开销更小。
-- 如果需要保证复合操作的原子性（如 `i++`、先检查后执行等），则必须使用 `synchronized`、`Lock` 或原子类，`volatile` 无法胜任。
+- If you only need visibility, such as for a state flag or the instance reference in a DCL singleton, prefer `volatile` because its overhead is lower.
+- To make a compound operation atomic, such as `i++` or check-then-act, use `synchronized`, a `Lock`, or an atomic class. `volatile` is not enough.
 
 ## ReentrantLock
 
-### ReentrantLock 是什么？
+### What Is `ReentrantLock`?
 
-`ReentrantLock` 实现了 `Lock` 接口，是一个可重入且独占式的锁，和 `synchronized` 关键字类似。不过，`ReentrantLock` 更灵活、更强大，增加了轮询、超时、中断、公平锁和非公平锁等高级功能。
+`ReentrantLock` implements the `Lock` interface. Like `synchronized`, it is reentrant and exclusive, but it also provides features such as polling, timeouts, interruption, and fair or non-fair modes.
 
 ```java
 public class ReentrantLock implements Lock, java.io.Serializable {}
 ```
 
-`ReentrantLock` 里面有一个内部类 `Sync`，`Sync` 继承 AQS（`AbstractQueuedSynchronizer`），添加锁和释放锁的大部分操作实际上都是在 `Sync` 中实现的。`Sync` 有公平锁 `FairSync` 和非公平锁 `NonfairSync` 两个子类。
+`ReentrantLock` contains an inner class called `Sync`, which extends AQS (`AbstractQueuedSynchronizer`). Most lock and unlock operations are implemented in `Sync`. Its two subclasses, `FairSync` and `NonfairSync`, implement fair and non-fair locking.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/concurrent/reentrantlock-class-diagram.png)
 
-`ReentrantLock` 默认使用非公平锁，也可以通过构造器来显式的指定使用公平锁。
+`ReentrantLock` uses a non-fair lock by default. You can request a fair lock through its constructor.
 
 ```java
-// 传入一个 boolean 值，true 时为公平锁，false 时为非公平锁
+// Pass true for a fair lock or false for a non-fair lock.
 public ReentrantLock(boolean fair) {
     sync = fair ? new FairSync() : new NonfairSync();
 }
 ```
 
-从上面的内容可以看出， `ReentrantLock` 的底层就是由 AQS 来实现的。关于 AQS 的相关内容推荐阅读 [AQS 详解](https://javaguide.cn/java/concurrent/aqs.html) 这篇文章。
+As shown above, `ReentrantLock` is built on AQS. For more, see [AQS Explained](https://javaguide.cn/java/concurrent/aqs.html).
 
-### 公平锁和非公平锁有什么区别？
+### What Is the Difference Between Fair and Non-Fair Locks?
 
-- **公平锁** : 在存在竞争时，通常优先让等待时间最长的线程获得锁，但不保证操作系统的线程调度严格按时间顺序进行；`ReentrantLock` 的无参 `tryLock()` 也不会遵守公平设置。
-- **非公平锁**：锁被释放之后，后申请的线程可能会先获取到锁，是随机或者按照其他优先级排序的。性能更好，但可能会导致某些线程永远无法获取到锁。
+- **Fair lock**: When threads contend, the thread that has waited longest usually gets the lock first. This does not guarantee that OS scheduling follows a strict time order. `ReentrantLock.tryLock()` without arguments also ignores the fairness setting.
+- **Non-fair lock**: A thread that requests the lock later may acquire it first after release. This can improve performance, but may cause some threads to wait indefinitely.
 
-### ⭐️ synchronized 和 ReentrantLock 有什么区别？
+### ⭐️ How Do `synchronized` and `ReentrantLock` Differ?
 
-#### 两者都是可重入锁
+#### Both Are Reentrant Locks
 
-**可重入锁** 也叫递归锁，指的是线程可以再次获取自己的内部锁。比如一个线程获得了某个对象的锁，此时这个对象锁还没有释放，当其再次想要获取这个对象的锁的时候还是可以获取的，如果是不可重入锁的话，就会造成死锁。
+A **reentrant lock**, also called a recursive lock, allows a thread to acquire a lock it already holds. For example, a thread can acquire an object's lock again before releasing it. With a non-reentrant lock, this would deadlock.
 
-JDK 中常用的锁（如 synchronized、ReentrantLock、ReentrantReadWriteLock）是可重入的，但并不是所有 Lock 实现都支持可重入，例如 StampedLock 就是不可重入的。
+Common JDK locks such as `synchronized`, `ReentrantLock`, and `ReentrantReadWriteLock` are reentrant, but not every `Lock` implementation is. `StampedLock`, for example, is not reentrant.
 
-在下面的代码中，`method1()` 和 `method2()` 都被 `synchronized` 关键字修饰，`method1()` 调用了 `method2()`。
+In the following example, both `method1()` and `method2()` are synchronized, and `method1()` calls `method2()`.
 
 ```java
 public class SynchronizedDemo {
     public synchronized void method1() {
-        System.out.println("方法1");
+        System.out.println("method1");
         method2();
     }
 
     public synchronized void method2() {
-        System.out.println("方法2");
+        System.out.println("method2");
     }
 }
 ```
 
-由于 `synchronized` 锁是可重入的，同一个线程在调用 `method1()` 时可以直接获得当前对象的锁，执行 `method2()` 的时候可以再次获取这个对象的锁，不会产生死锁问题。假如 `synchronized` 是不可重入锁的话，由于该对象的锁已被当前线程所持有且无法释放，这就导致线程在执行 `method2()` 时获取锁失败，会出现死锁问题。
+Because `synchronized` is reentrant, the thread can acquire the object's lock in `method1()` and acquire it again when calling `method2()`, without deadlocking. If it were not reentrant, the thread would wait for a lock it already held and deadlock.
 
-#### synchronized 依赖于 JVM 而 ReentrantLock 依赖于 API
+#### `synchronized` Is Built into the JVM; `ReentrantLock` Is a Library API
 
-`synchronized` 是依赖于 JVM 实现的，前面我们也讲到了 虚拟机团队在 JDK1.6 为 `synchronized` 关键字进行了很多优化，但是这些优化都是在虚拟机层面实现的，并没有直接暴露给我们。
+`synchronized` is implemented by the JVM. As mentioned earlier, JDK 6 introduced many optimizations, but they are implemented inside the JVM and are not directly exposed through the API.
 
-`ReentrantLock` 是 JDK 层面实现的（也就是 API 层面，需要 `lock()` 和 `unlock()` 方法配合 `try/finally` 语句块来完成），所以我们可以通过查看它的源代码，来看它是如何实现的。
+`ReentrantLock` is implemented at the JDK API level. You pair `lock()` and `unlock()` with `try/finally`, and its implementation can be inspected in the source code.
 
-#### ReentrantLock 比 synchronized 增加了一些高级功能
+#### `ReentrantLock` Provides Additional Features
 
-相比 `synchronized`，`ReentrantLock` 增加了一些高级功能。主要来说主要有三点：
+Compared with `synchronized`, `ReentrantLock` provides several additional features:
 
-- **等待可中断** : `ReentrantLock` 提供了一种能够中断等待锁的线程的机制，通过 `lock.lockInterruptibly()` 来实现这个机制。也就是说当前线程在等待获取锁的过程中，如果其他线程中断当前线程「 `interrupt()` 」，当前线程就会抛出 `InterruptedException` 异常，可以捕捉该异常进行相应处理。
-- **可配置公平策略** : `ReentrantLock` 可以指定公平或非公平策略，默认是非公平的，可通过 `ReentrantLock(boolean fair)` 构造方法配置。`synchronized` 不提供公平性配置，也不承诺等待线程按先后顺序获得监视器。
-- **通知机制更强大**：`ReentrantLock` 通过绑定多个 `Condition` 对象，可以实现分组唤醒和选择性通知。这解决了 `synchronized` 只能随机唤醒或全部唤醒的效率问题，为复杂的线程协作场景提供了强大的支持。
-- **支持超时**：`ReentrantLock` 提供了 `tryLock(timeout)` 的方法，可以指定等待获取锁的最长等待时间，如果超过了等待时间，就会获取锁失败，不会一直等待。
+- **Interruptible lock acquisition**: `lock.lockInterruptibly()` lets a thread stop waiting for a lock when interrupted and throw `InterruptedException` for the caller to handle.
+- **Configurable fairness**: `ReentrantLock` supports fair and non-fair modes. It is non-fair by default; use `ReentrantLock(boolean fair)` to configure it. `synchronized` has no fairness setting and does not guarantee that waiting threads acquire the monitor in arrival order.
+- **Flexible condition signaling**: Multiple `Condition` objects let you group waiting threads and signal selected groups. This can avoid waking every thread, as with `notifyAll()`, in coordination patterns that need more control.
+- **Timeouts**: `tryLock(timeout)` lets you set a maximum wait. If the lock is not acquired in time, the call returns without waiting indefinitely.
 
-如果你想使用上述功能，那么选择 `ReentrantLock` 是一个不错的选择。
+Choose `ReentrantLock` when you need these features.
 
-关于 `Condition` 接口的补充：
+About the `Condition` interface:
 
-> `Condition` 是 JDK1.5 之后才有的，它具有很好的灵活性，比如可以实现多路通知功能也就是在一个 `Lock` 对象中可以创建多个 `Condition` 实例（即对象监视器），**线程对象可以注册在指定的 `Condition` 中，从而可以有选择性的进行线程通知，在调度线程上更加灵活。 在使用 `notify()/notifyAll()` 方法进行通知时，被通知的线程是由 JVM 选择的，用 `ReentrantLock` 类结合 `Condition` 实例可以实现“选择性通知”**，这个功能非常重要，而且是 `Condition` 接口默认提供的。而 `synchronized` 关键字就相当于整个 `Lock` 对象中只有一个 `Condition` 实例，所有的线程都注册在它一个身上。如果执行 `notifyAll()` 方法的话就会通知所有处于等待状态的线程，这样会造成很大的效率问题。而 `Condition` 实例的 `signalAll()` 方法，只会唤醒注册在该 `Condition` 实例中的所有等待线程。
+> Added in JDK 1.5, `Condition` provides flexible signaling. A `Lock` can have multiple `Condition` instances, and threads can wait on a specific condition. This allows selective signaling. With `notify()` or `notifyAll()`, the JVM chooses which waiting thread to notify, or notifies all of them. A `Condition` lets you signal only threads waiting on that instance, which can be more efficient for complex coordination.
 
-关于 **等待可中断** 的补充：
+About **interruptible lock acquisition**:
 
-> `lockInterruptibly()` 会让获取锁的线程在阻塞等待的过程中可以响应中断，即当前线程在获取锁的时候，发现锁被其他线程持有，就会阻塞等待。
+> `lockInterruptibly()` lets a thread respond to interruption while blocked waiting for a lock held by another thread.
 >
-> 在阻塞等待的过程中，如果其他线程中断当前线程 `interrupt()`，就会抛出 `InterruptedException` 异常，可以捕获该异常，做一些处理操作。
+> If another thread interrupts the waiting thread, `lockInterruptibly()` throws `InterruptedException`, which the caller can handle.
 >
-> 为了更好理解这个方法，借用 Stack Overflow 上的一个案例，可以更好地理解 `lockInterruptibly()` 可以响应中断：
+> The following example, adapted from Stack Overflow, shows how `lockInterruptibly()` responds to interruption:
 >
 > ```JAVA
 > public class MyReentrantLock {
@@ -833,22 +833,22 @@ public class SynchronizedDemo {
 >         @Override
 >         public void run() {
 >             ReentrantLock r = new ReentrantLock();
->             // 1.1、第一次尝试获取锁，可以获取成功
+>             // 1.1. Acquire the lock on the first attempt.
 >             r.lock();
 >
->             // 1.2、此时锁的重入次数为 1
+>             // 1.2. The hold count is now 1.
 >             System.out.println("lock() : lock count :" + r.getHoldCount());
 >
->             // 2、中断当前线程，通过 Thread.currentThread().isInterrupted() 可以看到当前线程的中断状态为 true
+>             // 2. Interrupt the current thread; isInterrupted() now returns true.
 >             interrupt();
 >             System.out.println("Current thread is interrupted");
 >
->             // 3.1、尝试获取锁，可以成功获取
+>             // 3.1. Try to acquire the lock again; this succeeds.
 >             r.tryLock();
->             // 3.2、此时锁的重入次数为 2
+>             // 3.2. The hold count is now 2.
 >             System.out.println("tryLock() on interrupted thread lock count :" + r.getHoldCount());
 >             try {
->                 // 4、打印线程的中断状态为 true，那么调用 lockInterruptibly() 方法就会抛出 InterruptedException 异常
+>                 // 4. The thread is interrupted, so lockInterruptibly() throws InterruptedException.
 >                 System.out.println("Current Thread isInterrupted:" + Thread.currentThread().isInterrupted());
 >                 r.lockInterruptibly();
 >                 System.out.println("lockInterruptibly() --NOt executable statement" + r.getHoldCount());
@@ -859,7 +859,7 @@ public class SynchronizedDemo {
 >                 r.unlock();
 >             }
 >
->             // 5、打印锁的重入次数，可以发现 lockInterruptibly() 方法并没有成功获取到锁
+>             // 5. Check the hold count to confirm lockInterruptibly() did not acquire the lock.
 >             System.out.println("lockInterruptibly() not able to Acqurie lock: lock count :" + r.getHoldCount());
 >
 >             r.unlock();
@@ -875,7 +875,7 @@ public class SynchronizedDemo {
 > }
 > ```
 >
-> 输出：
+> Output:
 >
 > ```BASH
 > lock() : lock count :1
@@ -888,34 +888,34 @@ public class SynchronizedDemo {
 > lock count :0
 > ```
 
-关于 **支持超时** 的补充：
+About **timeouts**:
 
-> **为什么需要 `tryLock(timeout)` 这个功能呢？**
+> **Why use `tryLock(timeout)`?**
 >
-> `tryLock(timeout)` 方法尝试在指定的超时时间内获取锁。如果成功获取锁，则返回 `true`；如果在锁可用之前超时，则返回 `false`。此功能在以下几种场景中非常有用：
+> `tryLock(timeout)` tries to acquire the lock within the specified time. It returns `true` if successful or `false` if it times out. It is useful in several situations:
 >
-> - **防止死锁：** 在复杂的锁场景中，`tryLock(timeout)` 可以通过允许线程在合理的时间内放弃并重试来帮助防止死锁。
-> - **提高响应速度：** 防止线程无限期阻塞。
-> - **处理时间敏感的操作：** 对于具有严格时间限制的操作，`tryLock(timeout)` 允许线程在无法及时获取锁时继续执行替代操作。
+> - **Avoiding deadlocks:** A thread can give up after a reasonable wait and retry.
+> - **Improving responsiveness:** Prevents a thread from blocking indefinitely.
+> - **Handling time-sensitive work:** Lets a thread take an alternative action if it cannot acquire the lock in time.
 
-### 可中断锁和不可中断锁有什么区别？
+### What Is the Difference Between Interruptible and Non-Interruptible Locks?
 
-它们的区别在于：**线程在获取锁的过程中被阻塞时，是否能够因为中断而提前放弃等待。**
+The difference is **whether a thread blocked while acquiring a lock can stop waiting when interrupted.**
 
-- **不可中断锁**：线程在等待锁期间即使收到中断信号，也不会退出阻塞状态，而是一直等待直到获得锁。中断状态会被保留，但不会影响锁的获取过程。
-  - `synchronized` 属于典型的不可中断锁。
-  - `ReentrantLock#lock()` 也是不可中断的。
-- **可中断锁**：线程在等待锁的过程中如果收到中断信号，会立即停止等待并抛出 `InterruptedException`，从而有机会进行取消或错误处理。
-  - `ReentrantLock#lockInterruptibly()` 实现了可中断锁。
-  - `ReentrantLock#tryLock(long time, TimeUnit unit)`（带超时的尝试获取）也是可中断的。
+- **Non-interruptible lock acquisition**: An interrupt does not stop the thread from waiting. It waits until the lock is acquired; the interrupt status is preserved.
+  - `synchronized` is non-interruptible.
+  - `ReentrantLock.lock()` is also non-interruptible.
+- **Interruptible lock acquisition**: If interrupted while waiting, the thread stops waiting and throws `InterruptedException`, allowing cancellation or error handling.
+  - `ReentrantLock.lockInterruptibly()` is interruptible.
+  - `ReentrantLock.tryLock(long time, TimeUnit unit)` is also interruptible.
 
-## ReentrantReadWriteLock
+## `ReentrantReadWriteLock`
 
-`ReentrantReadWriteLock` 在实际项目中使用的并不多，面试中也问的比较少，简单了解即可。JDK 1.8 引入了性能更好的读写锁 `StampedLock`。
+`ReentrantReadWriteLock` is not especially common in application code or interviews, so a basic understanding is enough. JDK 8 introduced `StampedLock`, another read-write lock with different performance trade-offs.
 
-### ReentrantReadWriteLock 是什么？
+### What Is `ReentrantReadWriteLock`?
 
-`ReentrantReadWriteLock` 实现了 `ReadWriteLock`，是一个可重入的读写锁，既可以保证多个线程同时读的效率，同时又可以保证有写入操作时的线程安全。
+`ReentrantReadWriteLock` implements `ReadWriteLock`. It is a reentrant read-write lock that allows concurrent reads while keeping writes thread-safe.
 
 ```java
 public class ReentrantReadWriteLock
@@ -927,19 +927,19 @@ public interface ReadWriteLock {
 }
 ```
 
-- 一般锁进行并发控制的规则：读读互斥、读写互斥、写写互斥。
-- 读写锁进行并发控制的规则：读读不互斥、读写互斥、写写互斥（只有读读不互斥）。
+- A typical exclusive lock: reads block reads, reads block writes, and writes block writes.
+- A read-write lock: reads do not block other reads, but reads and writes block each other, as do writes.
 
-`ReentrantReadWriteLock` 其实是两把锁，一把是 `WriteLock`（写锁），一把是 `ReadLock`（读锁）。读锁是共享锁，写锁是独占锁。读锁可以被同时读，可以同时被多个线程持有，而写锁最多只能同时被一个线程持有。
+`ReentrantReadWriteLock` contains two locks: a `WriteLock` and a `ReadLock`. The read lock is shared, so multiple threads can hold it at once. The write lock is exclusive and can be held by only one thread.
 
-和 `ReentrantLock` 一样，`ReentrantReadWriteLock` 底层也是基于 AQS 实现的。
+Like `ReentrantLock`, `ReentrantReadWriteLock` is built on AQS.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/concurrent/reentrantreadwritelock-class-diagram.png)
 
-`ReentrantReadWriteLock` 也支持公平锁和非公平锁，默认使用非公平锁，可以通过构造器来显式地指定。
+`ReentrantReadWriteLock` supports fair and non-fair modes. It uses a non-fair lock by default; you can choose the mode in its constructor.
 
 ```java
-// 传入一个 boolean 值，true 时为公平锁，false 时为非公平锁
+// Pass true for a fair lock or false for a non-fair lock.
 public ReentrantReadWriteLock(boolean fair) {
     sync = fair ? new FairSync() : new NonfairSync();
     readerLock = new ReadLock(this);
@@ -947,25 +947,25 @@ public ReentrantReadWriteLock(boolean fair) {
 }
 ```
 
-### ReentrantReadWriteLock 适合什么场景？
+### When Is `ReentrantReadWriteLock` a Good Fit?
 
-由于 `ReentrantReadWriteLock` 既可以保证多个线程同时读的效率，同时又可以保证有写入操作时的线程安全。因此，在读多写少的情况下，使用 `ReentrantReadWriteLock` 能够明显提升系统性能。
+Because `ReentrantReadWriteLock` allows concurrent reads while protecting writes, it can improve performance in read-heavy, write-light workloads.
 
-### 共享锁和独占锁有什么区别？
+### What Is the Difference Between Shared and Exclusive Locks?
 
-- **共享锁**：一把锁可以被多个线程同时获得。
-- **独占锁**：一把锁只能被一个线程获得。
+- **Shared lock**: Multiple threads can hold the lock at the same time.
+- **Exclusive lock**: Only one thread can hold the lock at a time.
 
-### 线程持有读锁还能获取写锁吗？
+### Can a Thread Acquire a Write Lock While Holding a Read Lock?
 
-- 在线程持有读锁的情况下，该线程不能取得写锁（因为获取写锁的时候，如果发现当前的读锁被占用，就马上获取失败，不管读锁是不是被当前线程持有）。
-- 在线程持有写锁的情况下，该线程可以继续获取读锁（获取读锁时如果发现写锁被占用，只有写锁没有被当前线程占用的情况才会获取失败）。
+- A thread holding a read lock cannot acquire the write lock. The write lock cannot be acquired while any read lock is held, including one held by the same thread.
+- A thread holding the write lock can acquire the read lock. A read-lock request fails only if the write lock is held by another thread.
 
-读写锁的源码分析，推荐阅读 [聊聊 Java 的几把 JVM 级锁 - 阿里巴巴中间件](https://mp.weixin.qq.com/s/h3VIUyH9L0v14MrQJiiDbw) 这篇文章，写的很不错。
+For a source code analysis, see [A Look at Several JVM-Level Locks in Java](https://mp.weixin.qq.com/s/h3VIUyH9L0v14MrQJiiDbw).
 
-### 读锁为什么不能升级为写锁？
+### Why Can't a Read Lock Be Upgraded to a Write Lock?
 
-写锁可以降级为读锁，但是 `ReentrantReadWriteLock` 不支持直接把读锁升级为写锁。关键原因是多个线程可能同时持有读锁：如果它们都在不释放读锁的情况下等待写锁，就会彼此等待而无法满足写锁的独占条件。需要升级时，应先释放读锁，再获取写锁，并在获得写锁后重新检查共享状态。
+A write lock can be downgraded to a read lock, but `ReentrantReadWriteLock` does not support upgrading a read lock directly to a write lock. Multiple threads can hold read locks at once; if they all wait for a write lock without releasing their read locks, none can acquire the exclusive write lock. To upgrade, release the read lock, acquire the write lock, and recheck the shared state.
 
 ## StampedLock
 
@@ -973,17 +973,17 @@ public ReentrantReadWriteLock(boolean fair) {
 flowchart TB
     subgraph StampedLock["StampedLock(JDK1.8+)"]
         style StampedLock fill:#F0F2F5,stroke:#E0E6ED,rx:10,ry:10
-        subgraph Modes["模式分类"]
+        subgraph Modes["Modes"]
             style Modes fill:#F5F7FA,stroke:#E0E6ED,rx:10,ry:10
-            Write(["写锁（独占）：单线程持有，阻塞其他读写"]):::write
-            Read(["读锁（悲观读）：无写锁时多线程共享"]):::read
-            Optimistic(["乐观读：无写锁时直接访问，提交时验证"]):::optimistic
+            Write(["Write lock (exclusive): held by one thread; blocks reads and writes"]):::write
+            Read(["Read lock (pessimistic): shared by threads while no writer holds the lock"]):::read
+            Optimistic(["Optimistic read: access without a write lock, then validate"]):::optimistic
         end
-        subgraph Features["核心特点"]
+        subgraph Features["Key features"]
             style Features fill:#F5F7FA,stroke:#E0E6ED,rx:10,ry:10
-            F1(["不可重入，不支持Condition"]):::feature
-            F2(["性能优秀（乐观读减少阻塞）"]):::feature
-            F3(["适用场景：读多写少，无重入需求"]):::feature
+            F1(["Not reentrant; no Condition support"]):::feature
+            F2(["Good performance; optimistic reads reduce blocking"]):::feature
+            F3(["Use for read-heavy workloads without reentrancy needs"]):::feature
         end
     end
 
@@ -995,26 +995,26 @@ flowchart TB
     linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-`StampedLock` 面试中问的比较少，不是很重要，简单了解即可。
+`StampedLock` is rarely asked about in interviews, so a basic understanding is usually enough.
 
-### StampedLock 是什么？
+### What Is `StampedLock`?
 
-`StampedLock` 是 JDK 1.8 引入的性能更好的读写锁，不可重入且不支持条件变量 `Condition`。
+Introduced in JDK 8, `StampedLock` is a read-write lock with optimistic reads. It is not reentrant and does not support `Condition` variables.
 
-不同于一般的 `Lock` 类，`StampedLock` 并不是直接实现 `Lock` 或 `ReadWriteLock` 接口，而是基于 **CLH 锁** 独立实现的（AQS 也是基于这玩意）。
+Unlike most lock classes, `StampedLock` does not implement `Lock` or `ReadWriteLock`. It has an independent implementation based on a **CLH lock**, as does AQS.
 
 ```java
 public class StampedLock implements java.io.Serializable {
 }
 ```
 
-`StampedLock` 提供了三种模式的读写控制模式：读锁、写锁和乐观读。
+`StampedLock` provides three access modes: read lock, write lock, and optimistic read.
 
-- **写锁**：独占锁，一把锁只能被一个线程获得。当一个线程获取写锁后，其他请求读锁和写锁的线程必须等待。类似于 `ReentrantReadWriteLock` 的写锁，不过这里的写锁是不可重入的。
-- **读锁**（悲观读）：共享锁，没有线程获取写锁的情况下，多个线程可以同时持有读锁。如果己经有线程持有写锁，则其他线程请求获取该读锁会被阻塞。类似于 `ReentrantReadWriteLock` 的读锁，不过这里的读锁是不可重入的。
-- **乐观读**：允许多个线程获取乐观读以及读锁。同时允许一个写线程获取写锁。
+- **Write lock**: Exclusive; only one thread can hold it. Other threads requesting a read or write lock must wait. Like the `ReentrantReadWriteLock` write lock, it is not reentrant.
+- **Read lock (pessimistic read)**: Shared; multiple threads can hold it as long as no thread holds the write lock. Other readers block while a writer holds the lock. Like the `ReentrantReadWriteLock` read lock, it is not reentrant.
+- **Optimistic read**: Multiple threads can obtain optimistic or read locks, while a writer can also acquire the write lock.
 
-另外，`StampedLock` 还支持这三种锁在一定条件下进行相互转换。
+`StampedLock` can also convert between these modes under certain conditions.
 
 ```java
 long tryConvertToWriteLock(long stamp){}
@@ -1022,72 +1022,72 @@ long tryConvertToReadLock(long stamp){}
 long tryConvertToOptimisticRead(long stamp){}
 ```
 
-`StampedLock` 在获取锁的时候会返回一个 long 型的数据戳，该数据戳用于稍后的锁释放参数，如果返回的数据戳为 0 则表示锁获取失败。当前线程持有了锁再次获取锁时返回情况要看当前持有什么锁、再次申请什么锁，以及使用的是阻塞方法还是 `try` 方法：
+Lock acquisition methods return a `long` stamp, which is later used to release the lock. A stamp of 0 means acquisition failed. If a thread tries to acquire another lock while holding one, the result depends on the current lock, the requested lock, and whether it uses a blocking or `try` method:
 
-- **当前线程持有写锁，再次获取写锁**：由于写锁是独占锁，第二次获取必须等待，但第一个写锁又要等待第二次调用返回后才能释放，于是当前线程把自己锁住了。结果就是一直阻塞，无法返回。
-- **使用 `tryWriteLock()` 时，会返回 0**：`tryWriteLock()` 不会一直等待，它会立即尝试。当获取成功，则返回非 0 的数据戳；获取失败，则返回 0。
-- **同一线程再次获取悲观读锁，会返回新的数据戳**：读锁是共享锁，读锁与读锁之间不冲突，所以正常返回数据戳。
+- **The thread holds a write lock and requests another write lock**: The write lock is exclusive, so the second request waits. The first lock cannot be released until the second call returns, so the thread deadlocks itself.
+- **The thread calls `tryWriteLock()`**: It does not wait; it tries immediately and returns a nonzero stamp on success or 0 on failure.
+- **The thread requests another pessimistic read lock**: Read locks are shared, so it can acquire another one and gets a new stamp.
 
-真正的“可重入锁”会识别线程身份，虽然 `StampedLock` 这里同一个线程可以获取 2 次读锁，返回 2 个数据戳，但 `StampedLock` 不记录锁的线程所有权。判断是否可重入，重点看独占写锁。`StampedLock` 的写锁无法由同一个线程再次获取，所以它是不可重入的。
+A reentrant lock tracks which thread owns it. Although one thread can acquire two read locks from `StampedLock` and receive two stamps, `StampedLock` does not track lock ownership by thread. Its write lock cannot be acquired recursively by the same thread, so `StampedLock` is not reentrant.
 
 ```java
-// 写锁
+// Write lock
 public long writeLock() {
     long s, next;  // bypass acquireWrite in fully unlocked case only
     return ((((s = state) & ABITS) == 0L &&
              U.compareAndSwapLong(this, STATE, s, next = s + WBIT)) ?
             next : acquireWrite(false, 0L));
 }
-// 读锁
+// Read lock
 public long readLock() {
     long s = state, next;  // bypass acquireRead on common uncontended case
     return ((whead == wtail && (s & ABITS) < RFULL &&
              U.compareAndSwapLong(this, STATE, s, next = s + RUNIT)) ?
             next : acquireRead(false, 0L));
 }
-// 乐观读
+// Optimistic read
 public long tryOptimisticRead() {
     long s;
     return (((s = state) & WBIT) == 0L) ? (s & SBITS) : 0L;
 }
 ```
 
-### StampedLock 的性能为什么更好？
+### Why Can `StampedLock` Perform Better?
 
-相比于传统读写锁多出来的乐观读是 `StampedLock` 比 `ReadWriteLock` 性能更好的关键原因。`StampedLock` 的乐观读允许一个写线程获取写锁，所以不会导致所有写线程阻塞，也就是当读多写少的时候，写线程有机会获取写锁，减少了线程饥饿的问题，吞吐量大大提高。
+Optimistic reads are the main reason `StampedLock` can outperform traditional read-write locks. They do not block a writer from acquiring the write lock, which can reduce writer starvation and improve throughput in read-heavy workloads.
 
-### StampedLock 适合什么场景？
+### When Is `StampedLock` a Good Fit?
 
-和 `ReentrantReadWriteLock` 一样，`StampedLock` 同样适合读多写少的业务场景，可以作为 `ReentrantReadWriteLock` 的替代品，性能更好。
+Like `ReentrantReadWriteLock`, `StampedLock` suits read-heavy, write-light workloads and may offer better performance.
 
-不过，需要注意的是 `StampedLock` 不可重入，不支持条件变量 `Condition`，对中断操作支持也不友好（使用不当容易导致 CPU 飙升）。如果你需要用到 `ReentrantLock` 的一些高级性能，就不太建议使用 `StampedLock` 了。
+Keep in mind that `StampedLock` is not reentrant, does not support `Condition`, and has limited support for interruption. Misuse can cause high CPU usage. If you need advanced `ReentrantLock` features, `StampedLock` may not be a good fit.
 
-另外，`StampedLock` 性能虽好，但使用起来相对比较麻烦，一旦使用不当，就会出现生产问题。强烈建议你在使用 `StampedLock` 之前，看看 [StampedLock 官方文档中的案例](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/StampedLock.html)。
+`StampedLock` can perform well, but it is more complex to use and mistakes can cause production issues. Before using it, review the examples in the [official `StampedLock` documentation](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/locks/StampedLock.html).
 
-### StampedLock 的底层原理了解吗？
+### How Does `StampedLock` Work Internally?
 
-`StampedLock` 不是直接实现 `Lock` 或 `ReadWriteLock` 接口，而是基于 **CLH 锁** 实现的（AQS 也是基于这玩意），CLH 锁是对自旋锁的一种改良，是一种隐式的链表队列。`StampedLock` 通过 CLH 队列进行线程的管理，通过同步状态值 `state` 来表示锁的状态和类型。
+`StampedLock` does not implement `Lock` or `ReadWriteLock`; it uses a **CLH lock**, as AQS does. A CLH lock improves on a spin lock by using an implicit linked queue. `StampedLock` manages threads through this queue and uses the `state` value to represent the lock's state and mode.
 
-`StampedLock` 的原理和 AQS 原理比较类似，这里就不详细介绍了，感兴趣的可以看看下面这两篇文章：
+`StampedLock` works in a way similar to AQS, so its internals are not covered here. For more, see:
 
-- [AQS 详解](https://javaguide.cn/java/concurrent/aqs.html)
-- [StampedLock 底层原理分析](https://segmentfault.com/a/1190000015808032)
+- [AQS Explained](https://javaguide.cn/java/concurrent/aqs.html)
+- [An Analysis of `StampedLock` Internals](https://segmentfault.com/a/1190000015808032)
 
-如果你只是准备面试的话，建议多花点精力搞懂 AQS 原理即可，`StampedLock` 底层原理在面试中遇到的概率非常小。
+If you are preparing for interviews, focus on understanding AQS. `StampedLock` internals rarely come up.
 
-## Atomic 原子类
+## Atomic Classes
 
-Atomic 原子类部分的内容我单独写了一篇文章来总结：[Atomic 原子类总结](./atomic-classes.md)。
+Atomic classes are covered separately in [Java Atomic Classes](./atomic-classes.md).
 
-## 参考
+## References
 
-- 《深入理解 Java 虚拟机》
-- 《实战 Java 高并发程序设计》
+- _Understanding the Java Virtual Machine_
+- _Practical Java High-Concurrency Programming_
 - Guide to the Volatile Keyword in Java - Baeldung：<https://www.baeldung.com/java-volatile>
-- 不可不说的 Java“锁”事 - 美团技术团队：<https://tech.meituan.com/2018/11/15/java-lock.html>
-- 在 ReadWriteLock 类中读锁为什么不能升级为写锁？：<https://cloud.tencent.com/developer/article/1176230>
-- 高性能解决线程饥饿的利器 StampedLock：<https://mp.weixin.qq.com/s/2Acujjr4BHIhlFsCLGwYSg>
-- 理解 Java 中的 ThreadLocal - 技术小黑屋：<https://droidyue.com/blog/2016/03/13/learning-threadlocal-in-java/>
+- _Java Locks: What You Need to Know_ - Meituan: <https://tech.meituan.com/2018/11/15/java-lock.html>
+- [Why Can't a Read Lock Be Upgraded to a Write Lock?](https://cloud.tencent.com/developer/article/1176230)
+- [StampedLock: A High-Performance Solution to Thread Starvation](https://mp.weixin.qq.com/s/2Acujjr4BHIhlFsCLGwYSg)
+- [Understanding `ThreadLocal` in Java](https://droidyue.com/blog/2016/03/13/learning-threadlocal-in-java/)
 - ThreadLocal (Java Platform SE 8 ) - Oracle Help Center：<https://docs.oracle.com/javase/8/docs/api/java/lang/ThreadLocal.html>
 
 <!-- @include: @article-footer.snippet.md -->

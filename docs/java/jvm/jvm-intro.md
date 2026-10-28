@@ -1,136 +1,136 @@
 ---
-title: 大白话带你认识 JVM
-description: 用通俗方式介绍 JVM 的基本组成与类加载执行流程，帮助快速入门虚拟机原理。
+title: The JVM Explained Simply
+description: A plain-language introduction to the JVM's main components and class-loading and execution processes.
 category: Java
 tag:
   - JVM
 head:
   - - meta
     - name: keywords
-      content: JVM 基础,类加载,方法区,堆栈,程序计数器,运行时数据区
+      content: JVM fundamentals,class loading,method area,heap and stack,program counter,runtime data areas
 ---
 
-> 来自[说出你的愿望吧丷](https://juejin.im/user/5c2400afe51d45451758aa96)投稿，原文地址：<https://juejin.im/post/5e1505d0f265da5d5d744050>。
+> Contributed by [说出你的愿望吧丷](https://juejin.im/user/5c2400afe51d45451758aa96). [Original article](https://juejin.im/post/5e1505d0f265da5d5d744050).
 
-## 前言
+## Introduction
 
-如果在文中用词或者理解方面出现问题，欢迎指出。此文旨在提及而不深究，但会尽量效率地把知识点都抛出来
+Please point out any errors in terminology or explanation. This article provides a brief overview rather than an in-depth treatment, but aims to cover the key concepts efficiently.
 
-## 一、JVM 的基本介绍
+## 1. JVM Basics
 
-JVM 是 Java Virtual Machine 的缩写，它是一个虚构出来的计算机，一种规范。通过在实际的计算机上仿真模拟各类计算机功能实现···
+JVM stands for Java Virtual Machine. It is an abstract machine defined by a specification. A JVM implementation emulates the required machine functions on a real computer.
 
-好，其实抛开这么专业的句子不说，就知道 JVM 其实就类似于一台小电脑运行在 windows 或者 linux 这些操作系统环境下即可。它直接和操作系统进行交互，与硬件不直接交互，而操作系统可以帮我们完成和硬件进行交互的工作。
+Put simply, you can think of the JVM as a small computer running on an operating system such as Windows or Linux. It interacts with the operating system rather than directly with the hardware; the operating system handles hardware interactions.
 
 ![](https://static001.geekbang.org/infoq/da/da0380a04d9c04facd2add5f6dba06fa.png)
 
-### 1.1 Java 文件是如何被运行的
+### 1.1 How Does Java Run a Source File?
 
-比如我们现在写了一个 HelloWorld.java 好了，那这个 HelloWorld.java 抛开所有东西不谈，那是不是就类似于一个文本文件，只是这个文本文件它写的都是英文，而且有一定的缩进而已。
+Suppose we write `HelloWorld.java`. At its simplest, it is a text file containing source code written with a defined syntax and indentation.
 
-那我们的 **JVM** 是不认识文本文件的，所以它需要一个 **编译**，让其成为一个它会读二进制文件的 **HelloWorld.class**
+The **JVM** does not execute source text directly. The source must be **compiled** into a binary **`HelloWorld.class`** file that the JVM can read.
 
-#### ① 类加载器
+#### 1. Class Loader
 
-如果 **JVM** 想要执行这个 **.class** 文件，我们需要将其装进一个 **类加载器** 中，它就像一个搬运工一样，会把所有的 **.class** 文件全部搬进 JVM 里面来。
+For the **JVM** to execute a **`.class`** file, a **class loader** loads it into the JVM. You can think of the loader as a worker that brings class files into the runtime.
 
 ![](https://static001.geekbang.org/infoq/2f/2f012fde94376f43a25dbe1dd07e0dd8.png)
 
-#### ② 方法区
+#### 2. Method Area
 
-**方法区** 是用于存放类似于元数据信息方面的数据的，比如类信息，常量，静态变量，编译后代码···等
+The **method area** stores class metadata, such as class information, constants, static fields, and compiled code.
 
-类加载器将 .class 文件搬过来就是先丢到这一块上
+The class loader places the loaded class information here.
 
-#### ③ 堆
+#### 3. Heap
 
-**堆** 主要存放对象实例和数组等数据，它和方法区都属于 **线程共享区域**。线程共享只表示多个线程可以访问这些区域，并不意味着区域本身“线程不安全”；是否存在数据竞争取决于程序如何访问其中的数据。
+The **heap** primarily stores object instances and arrays. Like the method area, it is a **shared area** that multiple threads can access. Sharing does not automatically make an area thread-unsafe; data races depend on how the program accesses the data.
 
-#### ④ 栈
+#### 4. Stack
 
-**栈** 这是我们的代码运行空间。我们编写的每一个方法都会放到 **栈** 里面运行。
+The **stack** is the runtime space for method calls. Each method call uses a stack frame on the stack.
 
-我们会听说过本地方法栈或 Java Native Interface（JNI）这两个名词。本地方法由 Java 之外的本地代码实现，常见实现语言是 C 或 C++，具体实现取决于虚拟机和本地库。
+You may also encounter the terms native method stack and Java Native Interface (JNI). Native methods are implemented in code outside Java, commonly C or C++. The exact implementation depends on the JVM and native libraries.
 
-#### ⑤ 程序计数器
+#### 5. Program Counter
 
-程序计数器记录当前线程正在执行的 JVM 指令地址；执行分支、循环、异常处理或线程切换后，虚拟机依靠它继续执行。它和栈一样属于 **线程私有** 区域。执行 native 方法时，规范不规定其取值。
+The program counter records the address of the JVM instruction currently being executed by a thread. The JVM uses it to resume execution after branches, loops, exception handling, or thread switches. Like the stack, it is **thread-private**. The specification does not define its value while a native method is running.
 
 ![](https://static001.geekbang.org/infoq/c6/c602f57ea9297f50bbc265f1821d6263.png)
 
-#### 小总结
+#### Summary
 
-1. Java 文件经过编译后变成 .class 字节码文件
-2. 字节码文件通过类加载器被搬运到 JVM 虚拟机中
-3. 虚拟机运行时数据区中，方法区和堆为线程共享区域；虚拟机栈、本地方法栈和程序计数器为线程私有区域。共享与否是内存区域的可见范围，不直接等同于线程安全或不安全
+1. The Java source file is compiled into a `.class` bytecode file.
+2. A class loader loads the bytecode into the JVM.
+3. In the runtime data areas, the method area and heap are shared, while each thread has its own JVM stack, native method stack, and program counter. Whether an area is shared describes its visibility; it does not by itself determine thread safety.
 
-### 1.2 简单的代码例子
+### 1.2 A Simple Code Example
 
-一个简单的学生类
+A simple `Student` class:
 
 ![](https://static001.geekbang.org/infoq/12/12f0b239db65b8a95f0ce90e9a580e4d.png)
 
-一个 main 方法
+A `main` method:
 
 ![](https://static001.geekbang.org/infoq/0c/0c6d94ab88a9f2b923f5fea3f95bc2eb.png)
 
-执行 main 方法的步骤如下:
+The JVM runs `main` in these steps:
 
-1. 编译好 App.java 后得到 App.class 后，执行 App.class，系统会启动一个 JVM 进程，从 classpath 路径中找到一个名为 App.class 的二进制文件，将 App 的类信息加载到运行时数据区的方法区内，这个过程叫做 App 类的加载
-2. JVM 找到 App 的主程序入口，执行 main 方法
-3. 这个 main 中的第一条语句为 Student student = new Student("tellUrDream")，就是让 JVM 创建一个 Student 对象，但是这个时候方法区中是没有 Student 类的信息的，所以 JVM 马上加载 Student 类，把 Student 类的信息放到方法区中
-4. 加载完 Student 类后，JVM 在堆中为一个新的 Student 实例分配内存，然后调用构造函数初始化 Student 实例，这个 Student 实例持有 **指向方法区中的 Student 类的类型信息** 的引用
-5. 执行 student.sayName();时，JVM 根据 student 的引用找到 student 对象，然后根据 student 对象持有的引用定位到方法区中 student 类的类型信息的方法表，获得 sayName() 的字节码地址。
-6. 执行 sayName()
+1. Compile `App.java` to `App.class`. When `App.class` is run, the system starts a JVM process, finds the binary file on the classpath, and loads the class information into the method area. This is class loading.
+2. The JVM finds the entry point and runs `App.main()`.
+3. The first statement creates a `Student`: `Student student = new Student("tellUrDream")`. If `Student` has not been loaded, the JVM loads its class information into the method area.
+4. After loading `Student`, the JVM allocates memory for an instance on the heap and calls its constructor. The instance has a reference to the type information for `Student` in the method area.
+5. When `student.sayName()` runs, the JVM uses `student` to locate the instance and its class information, then resolves the bytecode for `sayName()`.
+6. The JVM executes `sayName()`.
 
-其实也不用管太多，只需要知道对象实例初始化时会去方法区中找类信息，完成后再到栈那里去运行方法。找方法就在方法表中找。
+The key idea is that object creation uses the class information loaded into the method area, while method calls execute using stack frames. The JVM resolves methods through class metadata.
 
-## 二、类加载器的介绍
+## 2. Class Loaders
 
-之前也提到了它是负责加载.class 文件的，它们在文件开头会有特定的文件标示，将 class 文件字节码内容加载到内存中，并将这些内容转换成方法区中的运行时数据结构，并且 ClassLoader 只负责 class 文件的加载，而是否能够运行则由 Execution Engine 来决定
+A class loader loads `.class` files. It reads their bytecode and makes the class information available to the JVM. A `ClassLoader` is responsible for loading classes; the execution engine runs their bytecode.
 
-### 2.1 类加载器的流程
+### 2.1 Class-Loading Process
 
-从类被加载到虚拟机内存中开始，到释放内存总共有 7 个步骤：加载，验证，准备，解析，初始化，使用，卸载。其中**验证，准备，解析三个部分统称为连接**
+From loading a class into JVM memory to unloading it, the lifecycle has seven stages: loading, verification, preparation, resolution, initialization, use, and unloading. **Verification, preparation, and resolution together are called linking.**
 
-#### 2.1.1 加载
+#### 2.1.1 Loading
 
-1. 将 class 文件加载到内存
-2. 将静态数据结构转化成方法区中运行时的数据结构
-3. 在堆中生成一个代表这个类的 java.lang.Class 对象作为数据访问的入口
+1. Load the `.class` file into memory.
+2. Convert its static structures into runtime data structures in the method area.
+3. Create a `java.lang.Class` object on the heap as an entry point for accessing the class.
 
-#### 2.1.2 链接
+#### 2.1.2 Linking
 
-1. 验证：确保加载的类符合 JVM 规范和安全，保证被校验类的方法在运行时不会做出危害虚拟机的事件，其实就是一个安全检查
-2. 准备：为类变量（`static` 字段）分配存储空间并设置默认初始值，例如 `static int a = 3` 在准备阶段通常先得到默认值 0，在初始化阶段再赋值为 3。具体存储位置属于虚拟机实现细节
-3. 解析：虚拟机把运行时常量池中的符号引用转换为直接引用。源码中的 `import` 只是编译期名称解析机制，不是常量池符号引用；直接引用的具体表示也不一定是对象地址
+1. **Verification**: Checks that the class conforms to JVM requirements and safety rules.
+2. **Preparation**: Allocates storage for class variables (`static` fields) and assigns default values. For example, `static int a = 3` usually has the default value `0` during preparation and is assigned `3` during initialization. The exact storage location is a JVM implementation detail.
+3. **Resolution**: Converts symbolic references in the runtime constant pool into direct references. A source-code `import` is a compile-time name-resolution mechanism, not a constant-pool symbolic reference. A direct reference is not necessarily an object address.
 
-#### 2.1.3 初始化
+#### 2.1.3 Initialization
 
-初始化其实就是执行类构造器方法的 `<clinit>()` 的过程，而且要保证执行前父类的 `<clinit>()` 方法执行完毕。这个方法由编译器收集，顺序执行所有类变量（static 修饰的成员变量）显式初始化和静态代码块中语句。此时准备阶段时的那个 `static int a` 由默认初始化的 0 变成了显式初始化的 3。 由于执行顺序缘故，初始化阶段类变量如果在静态代码块中又进行了更改，会覆盖类变量的显式初始化，最终值会为静态代码块中的赋值。
+Initialization executes the class initialization method, `<clinit>()`. Before a class is initialized, its superclass must be initialized. The compiler generates `<clinit>()` from explicit initializers for class variables (`static` fields) and static initializer blocks, preserving their source order. For `static int a = 3`, the value changes from the default `0` assigned during preparation to `3` during initialization. A later assignment in a static block can overwrite that value.
 
-> 注意：字节码文件中初始化方法有两种，非静态资源初始化的 `<init>` 和静态资源初始化的 `<clinit>`，类构造器方法 `<clinit>()` 不同于类的构造器，这些方法都是字节码文件中只能给 JVM 识别的特殊方法。
+> Note: Class files have two special initialization methods: `<init>` for instance initialization and `<clinit>` for class initialization. `<clinit>()` is not a class constructor; both are special methods recognized by the JVM.
 
-#### 2.1.4 卸载
+#### 2.1.4 Unloading
 
-类卸载是指虚拟机回收不再可达的类元数据及其关联资源，通常要求定义该类的类加载器也不再可达。它不同于普通对象的垃圾回收，而且是否、何时卸载由虚拟机实现和垃圾收集器决定。
+Class unloading reclaims class metadata and related resources that are no longer reachable. It usually requires the class loader that defined the class to become unreachable as well. Unlike ordinary object collection, whether and when classes are unloaded depends on the JVM implementation and garbage collector.
 
-### 2.2 类加载器的加载顺序
+### 2.2 Class-Loader Hierarchy
 
-以 JDK 8 的 HotSpot 为例，常见类加载器层次如下。JDK 9 模块化后 Extension ClassLoader 被 Platform ClassLoader 取代，`rt.jar` 也不再存在：
+In JDK 8 HotSpot, the common class-loader hierarchy is shown below. With the module system in JDK 9, `Platform ClassLoader` replaced `Extension ClassLoader`, and `rt.jar` was removed:
 
-1. BootStrap ClassLoader：rt.jar
-2. Extension ClassLoader: 加载扩展的 jar 包
-3. App ClassLoader：指定的 classpath 下面的 jar 包
-4. Custom ClassLoader：自定义的类加载器
+1. `Bootstrap ClassLoader`: Loads core classes such as those that were in `rt.jar`.
+2. `Extension ClassLoader`: Loads extension JARs.
+3. `App ClassLoader`: Loads classes and JARs from the classpath.
+4. `Custom ClassLoader`: A user-defined class loader.
 
-### 2.3 双亲委派机制
+### 2.3 Parent Delegation
 
-当一个类收到了加载请求时，它是不会先自己去尝试加载的，而是委派给父类去完成，比如我现在要 new 一个 Person，这个 Person 是我们自定义的类，如果我们要加载它，就会先委派 App ClassLoader，只有当父类加载器都反馈自己无法完成这个请求（也就是父类加载器都没有找到加载所需的 Class）时，子类加载器才会自行尝试加载。
+When a class loader receives a request to load a class, it first delegates the request to its parent. For example, when loading a custom `Person` class, the request is delegated up the hierarchy. The child loader tries to load the class only after its parents cannot find it.
 
-这样做的好处是，加载位于 rt.jar 包中的类时不管是哪个加载器加载，最终都会委托到 BootStrap ClassLoader 进行加载，这样保证了使用不同的类加载器得到的都是同一个结果。
+This means that classes in core Java packages are ultimately loaded by the bootstrap loader, regardless of which loader first received the request. This helps ensure a consistent definition of core classes.
 
-其实这个也是一个隔离的作用，避免了我们的代码影响了 JDK 的代码，比如我现在自己定义一个 `java.lang.String`：
+Parent delegation also provides isolation and prevents application code from replacing core JDK classes. For example, suppose we define our own `java.lang.String`:
 
 ```java
 package java.lang;
@@ -141,29 +141,29 @@ public class String {
 }
 ```
 
-尝试运行当前类的 `main` 函数的时候，我们的代码肯定会报错。这是因为在加载的时候其实是找到了 rt.jar 中的 `java.lang.String`，然而发现这个里面并没有 `main` 方法。
+Running this class's `main` method fails because the class loader finds the JDK's `java.lang.String` first, and that class does not define `main`.
 
-## 三、运行时数据区
+## 3. Runtime Data Areas
 
-### 3.1 本地方法栈和程序计数器
+### 3.1 Native Method Stack and Program Counter
 
-比如说我们现在点开 Thread 类的源码，会看到它的 `start0` 方法带有 `native` 关键字修饰，而且不存在 Java 方法体。这类方法由 Java 之外的本地代码实现，常见实现语言是 C 或 C++；虚拟机使用本地方法栈支持 native 方法的执行。
+For example, the `Thread` source contains a `start0` method marked `native` with no Java method body. Such methods are implemented in native code outside Java, commonly C or C++. The JVM uses the native method stack to support their execution.
 
-程序计数器记录当前线程正在执行的 JVM 指令地址。它也是《Java 虚拟机规范》中唯一没有规定任何 `OutOfMemoryError` 情形的运行时数据区。字节码解释器通过改变程序计数器的值来选取下一条需要执行的字节码指令。
+The program counter records the address of the JVM instruction currently being executed by a thread. It is also the only runtime data area for which the Java Virtual Machine Specification does not define an `OutOfMemoryError` condition. The bytecode interpreter changes the program counter to select the next instruction.
 
-如果执行的是 native 方法，规范不规定程序计数器的取值。
+If the thread is executing a native method, the specification does not define the program counter's value.
 
-### 3.2 方法区
+### 3.2 Method Area
 
-方法区主要的作用是存放类的元数据信息，常量和静态变量···等。当它存储的信息过大时，会在无法满足内存分配时报错。
+The method area stores class metadata, constants, and static fields. If the JVM cannot allocate enough memory for this data, it may throw an error.
 
-### 3.3 虚拟机栈和虚拟机堆
+### 3.3 JVM Stack and Heap
 
-一句话便是：栈管运行，堆管存储。则虚拟机栈负责运行代码，而虚拟机堆负责存储数据。
+In short, the stack handles method execution and the heap stores data.
 
-#### 3.3.1 虚拟机栈的概念
+#### 3.3.1 JVM Stack
 
-它是 Java 方法执行的内存模型。每次方法调用都会创建栈帧，栈帧中包含局部变量表、操作数栈、动态链接和方法返回地址等信息，并且由线程独享。局部变量表是栈帧的一部分。
+The JVM stack is the memory model for Java method execution. Each method call creates a stack frame containing information such as the local-variable table, operand stack, dynamic linking, and return address. Each thread has its own stack, and the local-variable table is part of each frame.
 
 ```java
 public class Person{
@@ -175,164 +175,164 @@ public class Person{
 }
 ```
 
-#### 3.3.2 虚拟机栈存在的异常
+#### 3.3.2 JVM Stack Errors
 
-如果线程请求的栈的深度大于虚拟机栈的最大深度，就会报 **StackOverflowError**（这种错误经常出现在递归中）。Java 虚拟机也可以动态扩展，但随着扩展会不断地申请内存，当无法申请足够内存时就会报错 **OutOfMemoryError**。
+If a thread's stack depth exceeds the permitted limit, the JVM throws **`StackOverflowError`**, which often occurs with deep or infinite recursion. A JVM may also support stack expansion; if it cannot allocate the required memory, it can throw **`OutOfMemoryError`**.
 
-#### 3.3.3 虚拟机栈的生命周期
+#### 3.3.3 JVM Stack Lifecycle
 
-对于栈来说，不存在垃圾回收。只要程序运行结束，栈的空间自然就会释放了。栈的生命周期和所处的线程是一致的。
+The JVM stack is not garbage-collected. Its memory is released when its thread terminates, so the stack's lifecycle matches the thread's.
 
-这里补充一句：方法参数和方法内定义的基本类型变量、对象引用通常保存在当前栈帧的局部变量表中；对象实例通常分配在堆上。方法的字节码属于类元数据，不会作为“实例方法”分配在栈中。
+Method parameters, primitive local variables, and object references are usually stored in the current stack frame's local-variable table. Object instances are usually allocated on the heap. Method bytecode is part of class metadata; an instance method is not allocated on the stack.
 
-#### 3.3.4 虚拟机栈的执行
+#### 3.3.4 Stack-Frame Execution
 
-栈帧并不是方法本身，而是一次方法调用所对应的运行时数据结构，用于保存局部变量表、操作数栈、动态链接等信息。方法的字节码和元数据不存放在虚拟机栈中。
+A stack frame is not the method itself; it is the runtime data structure for one method invocation. It stores information such as the local-variable table, operand stack, and dynamic linking data. Method bytecode and metadata are not stored on the JVM stack.
 
-栈中的数据都是以栈帧的格式存在，它是一个关于方法和运行期数据的数据集。比如我们执行一个方法 a，就会对应产生一个栈帧 A1，然后 A1 会被压入栈中。同理方法 b 会有一个 B1，方法 c 会有一个 C1，等到这个线程执行完毕后，栈会先弹出 C1，后 B1,A1。它是一个先进后出，后进先出原则。
+Stack data is organized into frames, each holding method-specific runtime data. If method `a` calls `b`, which calls `c`, frames A1, B1, and C1 are pushed in that order. They are popped in reverse order: C1, B1, then A1. The stack follows last-in, first-out order.
 
-#### 3.3.5 局部变量的复用
+#### 3.3.5 Reusing Local Variables
 
-局部变量表用于存放方法参数和方法内部所定义的局部变量。它的容量是以 Slot 为最小单位，一个 slot 可以存放 32 位以内的数据类型。
+The local-variable table stores method parameters and local variables. Its capacity is measured in slots; one slot can hold a value up to 32 bits wide.
 
-虚拟机通过索引定位局部变量表中的 Slot。若局部变量表容量为 n，有效索引范围是 `[0, n)`；`long` 和 `double` 会占用两个连续 Slot。方法参数会按规范规定的顺序排列在局部变量表中。为了节省栈帧空间，当执行位置超出某个局部变量的作用范围后，其 Slot 可以被其他变量复用；局部变量表中仍被视为有效的对象引用会参与 GC Roots 扫描。
+The JVM locates slots in the local-variable table by index. If its capacity is `n`, valid indexes range from `[0, n)`. A `long` or `double` uses two consecutive slots. Method parameters are placed in the order specified by the JVM. To save stack-frame space, a slot may be reused after execution leaves a variable's scope. Object references still considered live in the local-variable table participate in GC Root scanning.
 
-#### 3.3.6 虚拟机堆的概念
+#### 3.3.6 JVM Heap
 
-以 HotSpot 的分代垃圾收集器为例，堆通常划分为**年轻代**和**老年代**，年轻代又可以分为 **Eden** 和两个 **Survivor** 区。一次复制过程中，一个 Survivor 区作为 from，另一个作为 to。Eden 与单个 Survivor 区的默认比例通常为 **8:1:1**，但实际大小可能受所用收集器和自适应策略影响。永久代则是 JDK 7 及以前 HotSpot 对方法区的一种实现，并不等同于全部“非堆内存”。
+With a generational HotSpot collector, the heap is usually divided into the **young generation** and **old generation**. The young generation may be divided into **Eden** and two **Survivor** areas. During a copying collection, one Survivor area is the from-space and the other is the to-space. The common initial ratio is **8:1:1** for Eden and the two Survivor areas, but actual sizes depend on the collector and adaptive policies. PermGen was one HotSpot implementation of the method area in JDK 7 and earlier; it was not synonymous with all “non-heap memory.”
 
-堆内存中主要存放对象，垃圾收集器会判断并回收其中不可达的对象。HotSpot 所称的非堆内存不只包含方法区的实现，还包括 Code Cache 等区域。JDK 8 移除永久代后，类元数据改由 JVM 管理的元空间（Metaspace）保存；元空间使用本地内存，而不是 Java 堆。相关参数包括：
+The heap primarily stores objects, and the garbage collector reclaims unreachable ones. In HotSpot, non-heap memory includes more than the method-area implementation; it also includes areas such as the Code Cache. After PermGen was removed in JDK 8, class metadata moved to Metaspace, which is managed by the JVM and uses native memory rather than the Java heap. Related options include:
 
 ```plain
-MetaspaceSize：触发元数据 GC 的初始高水位阈值，之后 JVM 会动态调整
-MaxMetaspaceSize：限制元空间大小上限
+MetaspaceSize: Initial high-water mark that triggers metadata GC; the JVM adjusts it dynamically afterward.
+MaxMetaspaceSize: Maximum Metaspace size.
 ```
 
-移除永久代后，不会再出现由永久代耗尽导致的 `java.lang.OutOfMemoryError: PermGen space`。但元空间仍可能因类元数据过多或达到 `MaxMetaspaceSize` 等限制而抛出 `OutOfMemoryError: Metaspace`。
+After PermGen was removed, exhaustion no longer causes `java.lang.OutOfMemoryError: PermGen space`. Metaspace can still run out if there is too much class metadata or it reaches a limit such as `MaxMetaspaceSize`, resulting in `OutOfMemoryError: Metaspace`.
 
-#### 3.3.7 Eden 年轻代的介绍
+#### 3.3.7 Eden and the Young Generation
 
-当我们 new 一个对象后，会先放到 Eden 划分出来的一块作为存储空间的内存，但是我们知道对堆内存是线程共享的，所以有可能会出现两个对象共用一个内存的情况。这里 JVM 的处理是为每个线程都预先申请好一块连续的内存空间并规定了对象存放的位置，而如果空间不足会再申请多块内存空间。这个操作我们会称作 TLAB，有兴趣可以了解一下。
+When an object is created, it is often allocated in the Eden area. Although the heap is shared, the JVM can give each thread a private allocation buffer and allocate objects there, reducing contention. This is called a thread-local allocation buffer (TLAB). A thread can request another buffer when the current one is full.
 
-当 Eden 空间不足以继续分配对象时，通常会触发 Minor GC（即发生在年轻代的 GC），存活对象可能被复制到 Survivor 区或直接晋升到老年代。复制完成后，from 和 to 两个 Survivor 区会交换角色。对象年龄达到晋升阈值后可以进入老年代；在常见 HotSpot 分代收集器中，`-XX:MaxTenuringThreshold` 的默认值通常是 15，但实际晋升年龄还会受到动态年龄判断、Survivor 空间容量和收集器策略影响，并非所有对象都固定经历 15 次 Minor GC。
+When Eden no longer has room for new objects, the JVM typically runs a Minor GC (a young-generation collection). Surviving objects may be copied to a Survivor area or promoted directly to the old generation. After copying, the from and to Survivor areas switch roles. Objects may be promoted when they reach an age threshold. Although `-XX:MaxTenuringThreshold` is often 15 in common HotSpot collectors, promotion also depends on dynamic age calculations, Survivor capacity, and collector policy; objects do not always undergo exactly 15 Minor GCs.
 
-> 🐛 修正：当 Eden 区内存空间满了的时候，就会触发 Minor GC，Survivor0 区满不会触发 Minor GC。
+> 🐛 Correction: A full Eden area can trigger a Minor GC; a full Survivor0 area alone does not trigger one.
 >
-> **那 Survivor0 区 的对象什么时候垃圾回收呢？**
+> **When are objects in Survivor0 collected?**
 >
-> 假设 Survivor0 区现在是满的，此时又触发了 Minor GC，发现 Survivor0 区依旧是满的，存不下，此时会将 S0 区与 Eden 区的对象一起进行可达性分析，找出活跃的对象，将它复制到 S1 区并且将 S0 区域和 Eden 区的对象给清空，这样那些不可达的对象进行清除，并且将 S0 区 和 S1 区交换。
+> If Survivor0 is full when a Minor GC occurs, the collector analyzes objects in both Survivor0 and Eden. It copies live objects to Survivor1, reclaims unreachable objects, clears the old areas, and swaps the roles of Survivor0 and Survivor1.
 
-老年代主要存储长期存活或直接晋升的对象。老年代空间不足可能触发老年代收集或 Full GC，具体行为取决于垃圾收集器；不同收集器的停顿范围也不相同，不能一概而论为全程停止所有应用线程。
+The old generation mainly stores long-lived objects and objects promoted directly from the young generation. If it runs low on space, the JVM may run an old-generation collection or Full GC, depending on the collector. Pause behavior also varies; it is not accurate to say that every collector stops all application threads for the entire collection.
 
-而且当老年区执行了 full gc 之后仍然无法进行对象保存的操作，就会产生 OOM，这时候就是虚拟机中的堆内存不足，原因可能会是堆内存设置的大小过小，这个可以通过参数-Xms、-Xmx 来调整。也可能是代码中创建的对象大且多，而且它们一直在被引用从而长时间垃圾收集无法收集它们。
+If a Full GC cannot free enough space for an allocation, the JVM may throw an OOM error. The heap may be too small, in which case `-Xms` and `-Xmx` may need adjustment. The application may also create many large objects that remain reachable and cannot be collected.
 
 ![](https://static001.geekbang.org/infoq/39/398255141fde8ba208f6c99f4edaa9fe.png)
 
-补充说明：关于-XX:TargetSurvivorRatio 参数的问题。其实也不一定是要满足-XX:MaxTenuringThreshold 才移动到老年代。可以举个例子：如对象年龄 5 的占 30%，年龄 6 的占 36%，年龄 7 的占 34%，加入某个年龄段（如例子中的年龄 6）后，总占用超过 Survivor 空间\*TargetSurvivorRatio 的时候，从该年龄段开始及大于的年龄对象就要进入老年代（即例子中的年龄 6 对象，就是年龄 6 和年龄 7 晋升到老年代），这时候无需等到 MaxTenuringThreshold 中要求的 15
+Note about `-XX:TargetSurvivorRatio`: objects do not always need to reach `-XX:MaxTenuringThreshold` before promotion. For example, if objects of age 5 use 30% of the Survivor space, age 6 use 36%, and age 7 use 34%, adding age 6 would exceed the `TargetSurvivorRatio` target. Objects of age 6 and older may then be promoted without waiting for the threshold of 15. Exact behavior depends on the collector.
 
-#### 3.3.8 如何判断一个对象需要被干掉
+#### 3.3.8 How Does the JVM Determine Whether an Object Is Reachable?
 
 ![](https://static001.geekbang.org/infoq/1b/1ba7f3cff6e07c6e9c6765cc4ef74997.png)
 
-图中程序计数器、虚拟机栈、本地方法栈，3 个区域随着线程的生存而生存的。内存分配和回收都是确定的。随着线程的结束内存自然就被回收了，因此不需要考虑垃圾回收的问题。而 Java 堆和方法区则不一样，各线程共享，内存的分配和回收都是动态的。因此垃圾收集器所关注的都是堆和方法这部分内存。
+The program counter, JVM stack, and native method stack live as long as their thread. Their memory is reclaimed when the thread ends, so they are not managed like heap objects. The heap and method area are shared and allocated dynamically, so the garbage collector focuses on reclaiming data in those areas.
 
-在进行回收前就要判断哪些对象还存活，哪些已经死去。下面介绍两个基础的计算方法
+Before reclaiming memory, the JVM must determine which objects are still reachable. Two basic approaches are:
 
-1. 引用计数器计算：给对象添加一个引用计数器，每次引用这个对象时计数器加一，引用失效时减一，计数器等于 0 时就是不会再次使用的。不过这个方法有一种情况就是出现对象的循环引用时 GC 没法回收。
+1. **Reference counting**: Each object has a counter that increases when a reference is added and decreases when one becomes invalid. An object with a zero count can be reclaimed, but reference counting cannot reclaim cycles of mutually referencing objects.
 
-2. 可达性分析计算：从一系列 GC Roots 出发，沿对象之间的引用关系进行搜索，搜索所走过的路径称为引用链。对象之间的引用关系构成的是图，并不是二叉树。当一个对象与 GC Roots 之间不存在任何引用链时，则说明该对象不可达。主流的商用程序语言，例如 Java、C# 等，都会使用这种思路判断对象是否存活。
+2. **Reachability analysis**: Start from a set of GC Roots and follow references between objects. The relationships form a graph, not a binary tree. An object is unreachable if no reference path connects it to any GC Root. Languages such as Java and C# use this approach to determine object reachability.
 
-（了解一下即可）在 Java 语言汇总能作为 GC Roots 的对象分为以下几种：
+Common GC Roots in Java include:
 
-1. 虚拟机栈（栈帧中的本地方法表）中引用的对象（局部变量）
-2. 方法区中静态变量所引用的对象（静态变量）
-3. 方法区中常量引用的对象
-4. 本地方法栈（即 native 修饰的方法）中 JNI 引用的对象（JNI 是 Java 虚拟机调用对应的 C 函数的方式，通过 JNI 函数也可以创建新的 Java 对象。且 JNI 对于对象的局部引用或者全局引用都会把它们指向的对象都标记为不可回收）
-5. 已启动的且未终止的 Java 线程
+1. Objects referenced from local variables in JVM stack frames.
+2. Objects referenced by static fields.
+3. Objects referenced by constants.
+4. Objects referenced through JNI from native methods. JNI lets the JVM call native functions such as C functions, which can also create Java objects. JNI local and global references keep their target objects reachable.
+5. Started Java threads that have not terminated.
 
-这种方法的优点是能够解决循环引用的问题。收集器需要在某些阶段获得一致的对象引用关系，通常会产生 Stop-The-World 停顿；现代并发收集器可将大量标记工作与应用线程并发执行，并不是整个可达性分析过程都要“停止所有进程”。
+Reachability analysis handles cyclic references. A collector needs a consistent view of object references at certain points, which can require a Stop-The-World pause. Modern concurrent collectors perform much of the marking alongside application threads, so the entire analysis does not stop all application work.
 
-#### 3.3.9 如何宣告一个对象的真正死亡
+#### 3.3.9 When Is an Object Actually Reclaimed?
 
-首先必须要提到的是一个名叫 **finalize()** 的方法
+First, consider the **`finalize()`** method.
 
-`finalize()` 是 `Object` 类的一个方法。一个对象的 `finalize()` 方法至多会被系统自动调用一次；如果对象通过该方法重新建立了可达关系，下一次被判定为不可达时不会再次调用。
+`finalize()` is a method in `Object`. The system automatically calls an object's `finalize()` method at most once. If the object becomes reachable again during finalization, the method is not called again when the object later becomes unreachable.
 
-补充一句：并不提倡在程序中调用 `finalize()` 来进行自救。它的执行时间不确定，甚至不保证一定会执行，而且运行代价高昂，无法保证各个对象的调用顺序。`finalize()` 在 Java 9 中被弃用，并在 Java 18 中被标记为待移除。需要管理堆外资源时，可以根据场景使用 `try-with-resources` 或 `java.lang.ref.Cleaner`；`Cleaner` 本身并不是强、软、弱、幻象引用的统称。
+Do not rely on `finalize()` to rescue an object. Its execution time is unpredictable, it is not guaranteed to run, it has a high cost, and the order of calls is not guaranteed. `finalize()` was deprecated in Java 9 and marked for removal in Java 18. Use `try-with-resources` or `java.lang.ref.Cleaner` to manage off-heap resources, as appropriate; `Cleaner` is not another name for strong, soft, weak, or phantom references.
 
 ![](https://static001.geekbang.org/infoq/8d/8d7f0381c7d857c7ceb8ae5a5fef0f4a.png)
 
-对于重写了 `finalize()` 方法且该方法尚未执行过的对象，其处理过程通常被概括为两次标记：
+Objects that override `finalize()` and have not yet run it are often described as going through a two-stage process:
 
-1. 如果对象经过可达性分析后没有发现与 GC Roots 相连的引用链，它会被第一次标记并接受筛选。对于有必要执行 `finalize()` 方法的对象，HotSpot 可能会将对应的终结引用加入待处理队列，由 Finalizer 线程异步处理。
-2. 如果对象在 `finalize()` 方法中重新与引用链上的对象建立了关联，后续垃圾收集会将其移出“即将回收”集合；否则，对象仍然可以被回收。这个过程不代表垃圾收集器会同步等待 `finalize()` 方法执行，也不保证该方法一定会被调用。
+1. If reachability analysis finds no path from the object to a GC Root, the object is marked and considered for finalization. HotSpot may enqueue a finalization reference for asynchronous processing by the Finalizer thread.
+2. If `finalize()` makes the object reachable again, a later collection removes it from the set of objects to reclaim. Otherwise, it can be reclaimed. The collector does not wait synchronously for `finalize()` to run, and the method is not guaranteed to run.
 
-如果确定对象已经死亡，我们又该如何回收这些垃圾呢
+Once an object is determined to be unreachable, how does the JVM reclaim it?
 
-### 3.4 垃圾回收算法
+### 3.4 Garbage Collection Algorithms
 
-关于常见垃圾回收算法的详细介绍，建议阅读这篇：[JVM 垃圾回收详解（重点）](https://javaguide.cn/java/jvm/jvm-garbage-collection.html)。
+For an in-depth look at common GC algorithms, see [JVM Garbage Collection](https://javaguide.cn/java/jvm/jvm-garbage-collection.html).
 
-### 3.5（了解）各种各样的垃圾回收器
+### 3.5 (Overview) Garbage Collectors
 
-HotSpot VM 中的垃圾回收器，以及适用场景
+Garbage collectors available in HotSpot and their use cases:
 
 ![](https://static001.geekbang.org/infoq/9f/9ff72176ab0bf58bc43e142f69427379.png)
 
-在常见的 JDK 8 Server HotSpot 配置中，默认组合通常是 Parallel Scavenge 和 Parallel Old；实际默认值仍可能受虚拟机实现、运行模式和平台影响。
+In a common JDK 8 Server HotSpot configuration, the default collector pair is usually Parallel Scavenge and Parallel Old. Actual defaults may vary by JVM implementation, runtime mode, and platform.
 
-JDK 9 将 G1 设为 Server HotSpot 的默认垃圾收集器。不同收集器在吞吐量、延迟、内存占用和 CPU 开销之间各有取舍，不能脱离应用负载和 JVM 配置断言某个收集器的停顿一定最短。
+JDK 9 made G1 the default garbage collector for Server HotSpot. Collectors trade off throughput, latency, memory use, and CPU overhead. No collector can be said to have the shortest pauses without considering the workload and JVM configuration.
 
-### 3.6（了解）JVM 的常用参数
+### 3.6 (Overview) Common JVM Options
 
-JVM 的参数非常之多，这里只列举比较重要的几个，通过各种各样的搜索引擎也可以得知这些信息。
+The JVM has many options. This table lists a few important ones; consult the documentation for a complete list.
 
-| 参数名称                     | 含义                                  | 说明                                                                      |
-| ---------------------------- | ------------------------------------- | ------------------------------------------------------------------------- |
-| `-Xms`                       | 初始堆大小                            | 默认值由 HotSpot 的自适应策略根据运行环境计算，不宜写成固定的物理内存比例 |
-| `-Xmx`                       | 最大堆大小                            | 默认值由 HotSpot 的自适应策略根据运行环境计算                             |
-| `-Xmn`                       | 年轻代大小                            | 仅适用于具有固定年轻代概念的收集器；显式设置会限制自适应调整              |
-| `-XX:NewSize`                | 年轻代初始大小                        | 仅对支持该参数的分代收集器有效                                            |
-| `-XX:MaxNewSize`             | 年轻代最大值                          | 仅对支持该参数的分代收集器有效                                            |
-| `-XX:PermSize`               | 永久代初始大小                        | 仅适用于 JDK 7 及以前的 HotSpot，JDK 8 已移除永久代                       |
-| `-XX:MaxPermSize`            | 永久代最大值                          | 仅适用于 JDK 7 及以前的 HotSpot，JDK 8 已移除永久代                       |
-| `-Xss`                       | 每个线程的栈大小                      | 默认值依赖平台和 JVM 版本，应结合线程数量、调用深度和测试结果设置         |
-| `-XX:NewRatio`               | 老年代与年轻代的容量比                | 例如值为 4 时，老年代与年轻代为 4:1；是否生效取决于收集器                 |
-| `-XX:SurvivorRatio`          | Eden 与单个 Survivor 区的容量比       | 例如值为 8 时，Eden:From:To 通常为 8:1:1；自适应策略可能调整实际大小      |
-| `-XX:+DisableExplicitGC`     | 忽略 `System.gc()` 发出的显式 GC 请求 | 不等于关闭 JVM 的自动垃圾回收，使用前需要评估直接内存等场景               |
-| `-XX:PretenureSizeThreshold` | 大对象直接进入老年代的阈值            | 是否支持和如何生效取决于垃圾收集器                                        |
-| `-XX:ParallelGCThreads`      | Stop-The-World 并行阶段的 GC 线程数   | 默认值由 JVM 根据可用处理器数量等因素计算                                 |
-| `-XX:MaxGCPauseMillis`       | 最大 GC 停顿时间目标                  | 这是软目标而不是硬性保证，具体效果取决于所用垃圾收集器                    |
+| Option                       | Meaning                                            | Notes                                                                         |
+| ---------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `-Xms`                       | Initial heap size                                  | HotSpot calculates the default based on the runtime environment.              |
+| `-Xmx`                       | Maximum heap size                                  | HotSpot calculates the default based on the runtime environment.              |
+| `-Xmn`                       | Young-generation size                              | Applies only to collectors with a fixed young generation; limits adaptation.  |
+| `-XX:NewSize`                | Initial young-generation size                      | Applies only to generational collectors that support it.                      |
+| `-XX:MaxNewSize`             | Maximum young-generation size                      | Applies only to generational collectors that support it.                      |
+| `-XX:PermSize`               | Initial PermGen size                               | HotSpot JDK 7 and earlier only; PermGen was removed in JDK 8.                 |
+| `-XX:MaxPermSize`            | Maximum PermGen size                               | HotSpot JDK 7 and earlier only; PermGen was removed in JDK 8.                 |
+| `-Xss`                       | Stack size per thread                              | Defaults depend on the platform and JVM version.                              |
+| `-XX:NewRatio`               | Old-to-young generation size ratio                 | A value of 4 means 4:1; whether it applies depends on the collector.          |
+| `-XX:SurvivorRatio`          | Eden-to-single-Survivor size ratio                 | A value of 8 commonly means Eden:From:To = 8:1:1; adaptive sizing may vary.   |
+| `-XX:+DisableExplicitGC`     | Ignores explicit GC requests such as `System.gc()` | Does not disable automatic GC; evaluate effects on direct memory.             |
+| `-XX:PretenureSizeThreshold` | Threshold for direct old-generation allocation     | Support and behavior depend on the collector.                                 |
+| `-XX:ParallelGCThreads`      | GC threads for Stop-The-World parallel phases      | The JVM calculates a default based on available processors and other factors. |
+| `-XX:MaxGCPauseMillis`       | Target maximum GC pause                            | A soft target, not a guarantee; behavior depends on the collector.            |
 
-其实还有一些打印及 CMS 方面的参数，这里就不以一一列举了
+There are other options for logging and CMS, but they are not listed here.
 
-## 四、关于 JVM 调优的一些方面
+## 4. JVM Tuning
 
-根据刚刚涉及的 jvm 的知识点，我们可以尝试对 JVM 进行调优，主要就是堆内存那块
+Based on the JVM concepts above, we can look at tuning. This section focuses mainly on the heap.
 
-对于采用固定分代布局的收集器，Java 堆可近似看作年轻代与老年代之和；永久代或元空间不属于 Java 堆。在堆总大小固定时，增大年轻代会压缩老年代空间，但具体比例没有适用于所有应用的“官方最优值”，需要根据对象分配、存活情况和所用收集器进行测试。
+For collectors with a fixed generational layout, the Java heap can be viewed as the young and old generations combined; PermGen and Metaspace are not part of the Java heap. If total heap size is fixed, increasing the young generation reduces the space available to the old generation. There is no universally optimal ratio; test based on allocation rates, object lifetimes, and the collector in use.
 
-### 4.1 调整最大堆内存和最小堆内存
+### 4.1 Set the Initial and Maximum Heap Sizes
 
-`-Xmx` 和 `-Xms` 分别指定 Java 堆的最大值和初始值。未显式设置时，默认值由 HotSpot 根据 JVM 版本、可用内存、容器限制和运行环境自适应计算，不应按固定的物理内存比例估算。
+`-Xmx` and `-Xms` specify the maximum and initial Java heap sizes, respectively. If they are not set, HotSpot calculates defaults based on the JVM version, available memory, container limits, and runtime environment. Do not estimate them as a fixed percentage of physical memory.
 
-HotSpot 可以在 `-Xms` 与 `-Xmx` 之间调整已提交堆空间，`MinHeapFreeRatio` 和 `MaxHeapFreeRatio` 是部分收集器用于控制 GC 后空闲比例的参数。实际扩缩容行为和默认比例取决于所用收集器、JDK 版本及自适应策略，不能统一概括为固定的 40% 和 70%。
+HotSpot can adjust committed heap space between `-Xms` and `-Xmx`. Some collectors use `MinHeapFreeRatio` and `MaxHeapFreeRatio` to control the desired free-heap ratio after GC. Resizing behavior and defaults vary by collector, JDK version, and adaptive policy; they cannot be summarized as fixed values of 40% and 70%.
 
-将 `-Xms` 与 `-Xmx` 配置为相同值可以避免运行期间调整已提交堆大小，但会从启动时就保留较大的堆容量，是否采用仍应结合部署环境和负载评估。
+Setting `-Xms` and `-Xmx` to the same value avoids resizing the committed heap at runtime, but reserves a larger heap from startup. Decide based on the deployment environment and workload.
 
-我们执行下面的代码
+Run the following code:
 
 ```java
-System.out.println("Xmx=" + Runtime.getRuntime().maxMemory() / 1024.0 / 1024 + "M");    //系统的最大空间
-System.out.println("free mem=" + Runtime.getRuntime().freeMemory() / 1024.0 / 1024 + "M");  //系统的空闲空间
-System.out.println("total mem=" + Runtime.getRuntime().totalMemory() / 1024.0 / 1024 + "M");  //当前可用的总空间
+System.out.println("Xmx=" + Runtime.getRuntime().maxMemory() / 1024.0 / 1024 + "M");    // Maximum heap size.
+System.out.println("free mem=" + Runtime.getRuntime().freeMemory() / 1024.0 / 1024 + "M");  // Free heap memory.
+System.out.println("total mem=" + Runtime.getRuntime().totalMemory() / 1024.0 / 1024 + "M");  // Currently committed heap size.
 ```
 
-注意：此处设置的是 Java 堆大小，也就是新生代大小 + 老年代大小
+Note: These options set the Java heap size, which includes the young and old generations.
 
 ![](https://static001.geekbang.org/infoq/11/114f32ddd295b2e30444f42f6180538c.png)
 
-设置一个 VM options 的参数
+Set these VM options:
 
 ```plain
 -Xmx20m -Xms5m -XX:+PrintGCDetails
@@ -340,200 +340,200 @@ System.out.println("total mem=" + Runtime.getRuntime().totalMemory() / 1024.0 / 
 
 ![](https://static001.geekbang.org/infoq/7e/7ea0bf0dec20e44bf95128c571d6ef0e.png)
 
-再次启动 main 方法
+Run `main()` again.
 
 ![](https://static001.geekbang.org/infoq/c8/c89edbd0a147a791cfabdc37923c6836.png)
 
-这里 GC 弹出了一个 Allocation Failure 分配失败，这个事情发生在 PSYoungGen，也就是年轻代中
+The GC log reports an allocation failure in `PSYoungGen`, the young generation.
 
-这时候申请到的内存为 18M，空闲内存为 4.214195251464844M
+At this point, the committed heap is 18 MB and the free memory is about 4.21 MB.
 
-我们此时创建一个字节数组看看，执行下面的代码
+Now create a byte array:
 
 ```java
 byte[] b = new byte[1 * 1024 * 1024];
-System.out.println("分配了1M空间给数组");
-System.out.println("Xmx=" + Runtime.getRuntime().maxMemory() / 1024.0 / 1024 + "M");  //系统的最大空间
-System.out.println("free mem=" + Runtime.getRuntime().freeMemory() / 1024.0 / 1024 + "M");  //系统的空闲空间
+System.out.println("Allocated 1 MB for the array");
+System.out.println("Xmx=" + Runtime.getRuntime().maxMemory() / 1024.0 / 1024 + "M");  // Maximum heap size.
+System.out.println("free mem=" + Runtime.getRuntime().freeMemory() / 1024.0 / 1024 + "M");  // Free heap memory.
 System.out.println("total mem=" + Runtime.getRuntime().totalMemory() / 1024.0 / 1024 + "M");
 ```
 
 ![](https://static001.geekbang.org/infoq/db/dbeb6aea0a90949f7d7fe4746ddb11a3.png)
 
-此时 free memory 就又缩水了，不过 total memory 是没有变化的。Java 会尽可能将 total mem 的值维持在最小堆内存大小
+Free memory has decreased, but total memory has not changed. Java tries to keep the committed heap at the initial heap size when possible.
 
 ```java
 byte[] b = new byte[10 * 1024 * 1024];
-System.out.println("分配了10M空间给数组");
-System.out.println("Xmx=" + Runtime.getRuntime().maxMemory() / 1024.0 / 1024 + "M");  //系统的最大空间
-System.out.println("free mem=" + Runtime.getRuntime().freeMemory() / 1024.0 / 1024 + "M");  //系统的空闲空间
-System.out.println("total mem=" + Runtime.getRuntime().totalMemory() / 1024.0 / 1024 + "M");  //当前可用的总空间
+System.out.println("Allocated 10 MB for the array");
+System.out.println("Xmx=" + Runtime.getRuntime().maxMemory() / 1024.0 / 1024 + "M");  // Maximum heap size.
+System.out.println("free mem=" + Runtime.getRuntime().freeMemory() / 1024.0 / 1024 + "M");  // Free heap memory.
+System.out.println("total mem=" + Runtime.getRuntime().totalMemory() / 1024.0 / 1024 + "M");  // Currently committed heap size.
 ```
 
 ![](https://static001.geekbang.org/infoq/b6/b6a7c522166dbd425dbb06eb56c9b071.png)
 
-这时候我们创建了一个 10M 的字节数据，这时候最小堆内存是顶不住的。我们会发现现在的 total memory 已经变成了 15M，这就是已经申请了一次内存的结果。
+Creating a 10 MB byte array exceeds the initial heap size. The committed heap has grown to 15 MB to accommodate it.
 
-此时我们再跑一下这个代码
+Now run this code:
 
 ```java
 System.gc();
-System.out.println("Xmx=" + Runtime.getRuntime().maxMemory() / 1024.0 / 1024 + "M");    //系统的最大空间
-System.out.println("free mem=" + Runtime.getRuntime().freeMemory() / 1024.0 / 1024 + "M");  //系统的空闲空间
-System.out.println("total mem=" + Runtime.getRuntime().totalMemory() / 1024.0 / 1024 + "M");  //当前可用的总空间
+System.out.println("Xmx=" + Runtime.getRuntime().maxMemory() / 1024.0 / 1024 + "M");    // Maximum heap size.
+System.out.println("free mem=" + Runtime.getRuntime().freeMemory() / 1024.0 / 1024 + "M");  // Free heap memory.
+System.out.println("total mem=" + Runtime.getRuntime().totalMemory() / 1024.0 / 1024 + "M");  // Currently committed heap size.
 ```
 
 ![](https://static001.geekbang.org/infoq/8d/8dd6e8fccfd1394b83251c136ee44ceb.png)
 
-此处调用 `System.gc()` 只是向 JVM 提交一次垃圾收集建议，并不保证一定执行 Full GC；截图中的这次运行确实触发了相应收集并缩小了已提交堆空间，但不同 JVM 参数和收集器下结果可能不同。
+Calling `System.gc()` only requests garbage collection; it does not guarantee a Full GC. This run triggered a collection and reduced the committed heap, but results vary with JVM options and the collector.
 
-### 4.2 调整新生代和老年代的比值
-
-```plain
--XX:NewRatio --- 新生代（eden+2\*Survivor）和老年代（不包含永久区）的比值
-
-例如：-XX:NewRatio=4，表示新生代:老年代=1:4，即新生代占整个堆的 1/5。在 Xms=Xmx 并且设置了 Xmn 的情况下，该参数不需要进行设置。
-```
-
-### 4.3 调整 Survivor 区和 Eden 区的比值
+### 4.2 Set the Young-to-Old Generation Ratio
 
 ```plain
--XX:SurvivorRatio（幸存代）--- 设置两个 Survivor 区和 eden 的比值
+-XX:NewRatio --- Ratio of the young generation (Eden + two Survivor areas) to the old generation (excluding PermGen).
 
-例如：8，表示两个 Survivor:eden=2:8，即一个 Survivor 占年轻代的 1/10
+For example, `-XX:NewRatio=4` means young:old = 1:4, so the young generation occupies one fifth of the heap. If `-Xms` equals `-Xmx` and `-Xmn` is set, this option is unnecessary.
 ```
 
-### 4.4 设置年轻代和老年代的大小
+### 4.3 Set the Survivor-to-Eden Ratio
 
 ```plain
--XX:NewSize --- 设置年轻代大小
--XX:MaxNewSize --- 设置年轻代最大值
+-XX:SurvivorRatio --- Sets the size ratio between Eden and each Survivor area.
+
+For example, a value of 8 means the two Survivor areas together have a 2:8 ratio to Eden; each Survivor area is one tenth of the young generation.
 ```
 
-可以通过设置不同参数测试不同情况。Eden 与两个 Survivor 区的常见初始比例是 8:1:1，但这不是适用于所有应用和收集器的最优解；`-Xms` 与 `-Xmx` 不同也不意味着一定会导致多次 GC。
-
-### 4.5 小总结
-
-应根据实际负载、所用垃圾收集器和 GC 日志调整年轻代与 Survivor 区大小，不存在对所有应用都成立的固定推荐比例。
-
-在 OOM 时，记得 Dump 出堆，确保可以排查现场问题。通过下面命令可以输出一个 `.dump` 文件，该文件可使用 VisualVM 等工具分析。VisualVM 从 JDK 9 起不再随 Oracle JDK 一起提供，需要单独安装。
+### 4.4 Set Young- and Old-Generation Sizes
 
 ```plain
--Xmx20m -Xms5m -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=你要输出的日志路径
+-XX:NewSize --- Sets the young-generation size.
+-XX:MaxNewSize --- Sets the maximum young-generation size.
 ```
 
-一般我们也可以通过编写脚本的方式来让 OOM 出现时给我们报个信，可以通过发送邮件或者重启程序等来解决。
+You can test different configurations with these options. A common initial ratio for Eden and the two Survivor areas is 8:1:1, but it is not optimal for every application or collector. Having different `-Xms` and `-Xmx` values does not necessarily cause repeated GC.
 
-### 4.6 永久区的设置（仅适用于 JDK 7 及以前的 HotSpot）
+### 4.5 Summary
+
+Adjust the young generation and Survivor areas based on the workload, collector, and GC logs. There is no fixed ratio that works for every application.
+
+When an OOM occurs, capture a heap dump so you can investigate the state of the application. The following options generate a dump file that can be analyzed with tools such as VisualVM. VisualVM has not been bundled with Oracle JDK since JDK 9 and must be installed separately.
+
+```plain
+-Xmx20m -Xms5m -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/path/to/dump
+```
+
+You can also configure a script to notify you when an OOM occurs, for example by sending an email or restarting the application.
+
+### 4.6 Configure PermGen (HotSpot JDK 7 and Earlier Only)
 
 ```plain
 -XX:PermSize -XX:MaxPermSize
 ```
 
-`PermSize` 设置永久代的初始大小，`MaxPermSize` 设置其上限；具体默认值与 JVM 版本和平台有关，不能统一写成固定的物理内存比例。JDK 8 及以后应关注元空间相关参数，而不是这两个永久代参数。
+`PermSize` sets the initial PermGen size, and `MaxPermSize` sets its limit. Defaults depend on the JVM version and platform; they are not a fixed percentage of physical memory. For JDK 8 and later, use Metaspace options instead.
 
-tips：如果堆空间没有用完也抛出了 OOM，有可能是永久区导致的。堆空间实际占用非常少，但是永久区溢出 一样抛出 OOM。
+Tip: An OOM can occur even when the Java heap is not full. In JDK 7 and earlier, PermGen exhaustion could cause an OOM while heap usage remained low.
 
-### 4.7 JVM 的栈参数调优
+### 4.7 Tune JVM Stack Options
 
-#### 4.7.1 调整每个线程栈空间的大小
+#### 4.7.1 Change the Stack Size per Thread
 
-可以通过-Xss：调整每个线程栈空间的大小
+Use `-Xss` to set the stack size for each thread.
 
-线程栈的默认大小取决于 JVM 版本、平台和运行模式，并不是 JDK 5 以后统一为 1 MB。在其他条件相同时，减小线程栈可以为更多平台线程留出地址空间，但线程数量还受操作系统限制，并且栈过小会增加 `StackOverflowError` 风险。
+The default thread stack size depends on the JVM version, platform, and runtime mode; it has not been a uniform 1 MB since JDK 5. With other factors unchanged, smaller stacks can leave address space for more platform threads, but thread counts are also limited by the operating system, and stacks that are too small increase the risk of `StackOverflowError`.
 
-#### 4.7.2 设置线程栈的大小
+#### 4.7.2 Set the Thread Stack Size
 
 ```plain
--XX:ThreadStackSize=<size>：
-设置线程栈的大小(0 means use default stack size)
+-XX:ThreadStackSize=<size>
+Set the thread stack size (`0` means use the default stack size).
 ```
 
-这些参数都是可以通过自己编写程序去简单测试的，这里碍于篇幅问题就不再提供 demo 了
+You can test these options with a small program. To keep this article concise, no additional demo is included here.
 
-### 4.8（可以直接跳过了）JVM 其他参数介绍
+### 4.8 (Optional) Other JVM Options
 
-形形色色的参数很多，就不会说把所有都扯个遍了，因为大家其实也不会说一定要去深究到底。
+There are many JVM options, and this section covers only a few. Most developers do not need to explore every option in detail.
 
-#### 4.8.1 设置大内存页的大小
+#### 4.8.1 Set the Large-Page Size
 
 ```plain
 -XX:LargePageSizeInBytes=<size>
 ```
 
-该参数用于设置大内存页大小，是否生效取决于操作系统、JVM 构建和大页配置。
+This option sets the large-page size. Whether it takes effect depends on the operating system, JVM build, and large-page configuration.
 
-#### 4.8.2 历史参数 `UseFastAccessorMethods`
+#### 4.8.2 Historical Option: `UseFastAccessorMethods`
 
 ```plain
 -XX:+UseFastAccessorMethods
 ```
 
-该旧版 HotSpot 参数针对反射访问器优化，并非“原始类型的快速优化”；现代 JDK 已不再提供该参数。
+This older HotSpot option optimized reflection accessors; it was not a general optimization for primitive types. Modern JDKs no longer provide it.
 
-#### 4.8.3 设置关闭手动 GC
+#### 4.8.3 Disable Explicit GC Requests
 
 ```plain
 -XX:+DisableExplicitGC：
-设置关闭System.gc()(这个参数需要严格的测试)
+Ignore explicit GC requests such as `System.gc()`. Test this option carefully.
 ```
 
-#### 4.8.4 设置垃圾最大年龄
+#### 4.8.4 Set the Maximum Object Age
 
 ```plain
 -XX:MaxTenuringThreshold
-设置对象晋升年龄上限。设置为 0 时，支持该参数的分代收集器会让年轻代存活对象不经过 Survivor 区而直接晋升。增大该值可能让对象在 Survivor 区经历更多次复制，但实际晋升还受动态年龄判断、Survivor 容量和收集器策略影响。
+Sets the maximum age before promotion. With a value of 0, generational collectors that support this option promote surviving young-generation objects without passing them through a Survivor area. Increasing the value may keep objects in Survivor longer, but promotion also depends on dynamic age calculations, Survivor capacity, and collector policy.
 ```
 
-并不是所有垃圾收集器都使用同样的分代和年龄晋升机制，是否生效应以当前收集器的文档为准。
+Not all garbage collectors use the same generational and promotion mechanisms. Check the documentation for the collector in use to see whether this option applies.
 
-#### 4.8.5 历史参数 `AggressiveOpts`
+#### 4.8.5 Historical Option: `AggressiveOpts`
 
 ```plain
 -XX:+AggressiveOpts
 ```
 
-这是旧版 HotSpot 中用于启用实验性性能优化的参数，不能简单理解为“加快编译速度”，并且已在 JDK 12 中移除。
+This option enabled experimental performance optimizations in older HotSpot releases. It did not simply “speed up compilation” and was removed in JDK 12.
 
-#### 4.8.6 历史参数 `UseBiasedLocking`
+#### 4.8.6 Historical Option: `UseBiasedLocking`
 
 ```plain
 -XX:+UseBiasedLocking
 ```
 
-偏向锁在 JDK 15 中默认关闭并被弃用，相关实现随后已从 HotSpot 移除，不应作为现代 JDK 的通用调优参数。
+Biased locking was disabled by default and deprecated in JDK 15. Its implementation was later removed from HotSpot, so this is not a general tuning option for modern JDKs.
 
-#### 4.8.7 禁用类卸载
+#### 4.8.7 Disable Class Unloading
 
 ```plain
 -Xnoclassgc
 ```
 
-该参数禁用的是类的垃圾回收，而不是对象垃圾回收。
+This option disables class unloading, not object garbage collection.
 
-#### 4.8.8 设置堆空间存活时间
+#### 4.8.8 Set the Lifetime of Soft References
 
 ```plain
 -XX:SoftRefLRUPolicyMSPerMB
-设置每兆堆空闲空间中SoftReference的存活时间，默认值是1s。
+Sets the lifetime of a `SoftReference` per megabyte of free heap. The default is 1 second.
 ```
 
-#### 4.8.9 设置对象直接分配在老年代
+#### 4.8.9 Set the Threshold for Direct Old-Generation Allocation
 
 ```plain
 -XX:PretenureSizeThreshold
-设置对象超过多大时直接在老年代分配，默认值是0。
+Sets the size threshold above which objects are allocated directly in the old generation. The default is 0.
 ```
 
-#### 4.8.10 设置 TLAB 占 eden 区的比例
+#### 4.8.10 Set the TLAB Percentage of Eden
 
 ```plain
 -XX:TLABWasteTargetPercent
-设置TLAB占eden区的百分比，默认值是1% 。
+Sets the percentage of Eden that TLABs may occupy. The default is 1%.
 ```
 
-## finally
+## Final Notes
 
-真的扯了很久这东西，参考了多方的资料，有极客时间的《深入拆解虚拟机》和《Java 核心技术面试精讲》，也有百度，也有自己在学习的一些线上课程的总结。希望对你有所帮助，谢谢。
+This article took a long time to put together. It draws on several sources, including _JVM Internals Explained_ and _Java Core Technology Interview Guide_ from Geek Time, online references, and notes from courses. I hope it helps.
 
 <!-- @include: @article-footer.snippet.md -->

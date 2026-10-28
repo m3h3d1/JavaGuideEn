@@ -1,63 +1,63 @@
 ---
-title: Java内存区域详解（重点）
-description: JVM内存区域详解：深入剖析Java运行时数据区（堆、方法区、虚拟机栈、本地方法栈、程序计数器）、对象创建过程、内存分配策略、对象访问定位方式。
+title: Java Memory Areas Explained (Key Topic)
+description: A detailed guide to JVM runtime memory areas, object creation and allocation, and object access, including the heap, method area, JVM stack, native method stack, and program counter.
 category: Java
 tag:
   - JVM
 head:
   - - meta
     - name: keywords
-      content: JVM内存区域,运行时数据区,堆内存,方法区,虚拟机栈,程序计数器,对象创建,Java内存模型
+      content: JVM memory areas,runtime data areas,heap,memory area,JVM stack,program counter,object creation,Java memory model
 ---
 
-> 如果没有特殊说明，都是针对的是 HotSpot 虚拟机。
+> Unless stated otherwise, this article refers to the HotSpot VM.
 >
-> 本文基于《深入理解 Java 虚拟机：JVM 高级特性与最佳实践》进行总结补充。
+> This article summarizes and expands on _Understanding the Java Virtual Machine: Advanced Features and Best Practices_.
 >
-> 常见面试题：
+> Common interview questions:
 >
-> - 介绍下 Java 内存区域（运行时数据区）
-> - Java 对象的创建过程（五步，建议能默写出来并且要知道每一步虚拟机做了什么）
-> - 对象的访问定位的两种方式（句柄和直接指针两种方式）
+> - Describe the Java memory areas (runtime data areas).
+> - What are the five steps in Java object creation? Be able to list them and explain what the VM does at each step.
+> - What are the two ways to access an object: handles and direct pointers?
 
-## 前言
+## Introduction
 
-对于 Java 程序员来说，在虚拟机自动内存管理机制下，不再需要像 C/C++程序开发程序员这样为每一个 new 操作去写对应的 delete/free 操作，不容易出现内存泄漏和内存溢出问题。正是因为 Java 程序员把内存控制权利交给 Java 虚拟机，一旦出现内存泄漏和溢出方面的问题，如果不了解虚拟机是怎样使用内存的，那么排查错误将会是一个非常艰巨的任务。
+Java's automatic memory management means developers do not need to write a matching `delete` or `free` for every `new`, as they would in C or C++. This makes some memory leaks and overflows less likely, but Java developers also hand memory management to the JVM. When memory problems occur, diagnosing them can be difficult without understanding how the JVM uses memory.
 
-## 运行时数据区域
+## Runtime Data Areas
 
-Java 虚拟机在执行 Java 程序的过程中会把它管理的内存划分成若干个不同的数据区域。
+While running a Java program, the JVM divides the memory it manages into several data areas.
 
-JDK 1.8 和之前的版本略有不同，我们这里以 JDK 1.7 和 JDK 1.8 这两个版本为例介绍。
+The memory layout changed slightly in JDK 8. This section compares JDK 7 and JDK 8.
 
 **JDK 1.7**：
 
-![Java 运行时数据区域（JDK1.7）](https://oss.javaguide.cn/github/javaguide/java/jvm/java-runtime-data-areas-jdk1.7.png)
+![Java runtime data areas (JDK 7)](https://oss.javaguide.cn/github/javaguide/java/jvm/java-runtime-data-areas-jdk1.7.png)
 
 **JDK 1.8**：
 
-![Java 运行时数据区域（JDK1.8 ）](https://oss.javaguide.cn/github/javaguide/java/jvm/java-runtime-data-areas-jdk1.8.png)
+![Java runtime data areas (JDK 8)](https://oss.javaguide.cn/github/javaguide/java/jvm/java-runtime-data-areas-jdk1.8.png)
 
-**线程私有的：**
+**Thread-private areas:**
 
-- 程序计数器
-- 虚拟机栈
-- 本地方法栈
+- Program counter
+- JVM stack
+- Native method stack
 
-**线程共享的：**
+**Shared areas:**
 
-- 堆
-- 方法区
+- Heap
+- Method area
 
-直接内存经常与这些区域一起讨论，但它不是《Java 虚拟机规范》定义的运行时数据区，也不应被当作规范中的“线程共享运行时数据区”。
+Direct memory is often discussed alongside these areas, but it is not a runtime data area defined by the Java Virtual Machine Specification and should not be described as a specification-defined shared runtime area.
 
-Java 虚拟机规范对于运行时数据区域的规定是相当宽松的。以堆为例：堆可以是连续空间，也可以不连续。堆的大小可以固定，也可以在运行时按需扩展。虚拟机实现者可以使用任何垃圾回收算法管理堆，甚至完全不进行垃圾收集也是可以的。
+The Java Virtual Machine Specification leaves many details of runtime data areas to the implementation. For example, the heap may be contiguous or non-contiguous, and its size may be fixed or grow as needed at runtime. A VM implementation may manage the heap with any garbage collection algorithm, or even choose not to collect garbage.
 
-### 程序计数器
+### Program Counter
 
 ```mermaid
 graph LR
-    %% 颜色定义
+    %% Color definitions.
     classDef main fill:#005D7B,color:#fff,rx:10,ry:10;
     classDef feature fill:#00838F,color:#fff,rx:10,ry:10;
     classDef function fill:#4CA497,color:#fff,rx:10,ry:10;
@@ -65,249 +65,249 @@ graph LR
     classDef lifecycle fill:#E4C189,color:#333,rx:10,ry:10;
     classDef warning fill:#C44545,color:#fff,rx:10,ry:10;
 
-    %% 核心节点
-    Root(JVM 程序计数器):::main
+    %% Main node.
+    Root(JVM Program Counter):::main
 
-    %% 分支1：基本特性
-    Root --> Attr[核心特性]:::feature
-    Attr --> Attr1[线程私有/独立存储]:::feature
-    Attr --> Attr2[较小内存空间]:::feature
+    %% Branch 1: Key properties.
+    Root --> Attr[Key properties]:::feature
+    Attr --> Attr1[Thread-private / stored separately]:::feature
+    Attr --> Attr2[Small memory area]:::feature
 
-    %% 分支2：核心功能
-    Root --> Func[主要功能]:::function
-    Func --> Func1[代码流程控制: 分支/循环/异常]:::function
-    Func --> Func2[线程恢复: 记录切换位置]:::function
+    %% Branch 2: Main functions.
+    Root --> Func[Main functions]:::function
+    Func --> Func1[Control flow: branches / loops / exceptions]:::function
+    Func --> Func2[Thread resumption: records position at switch]:::function
 
-    %% 分支3：执行状态
-    Root --> Run[执行状态]:::state
-    Run --> Run1[Java方法: 记录字节码指令地址]:::state
-    Run --> Run2[Native方法: Undefined]:::state
+    %% Branch 3: Execution state.
+    Root --> Run[Execution state]:::state
+    Run --> Run1[Java method: bytecode instruction address]:::state
+    Run --> Run2[Native method: Undefined]:::state
 
-    %% 分支4：生命周期与异常
-    Root --> Life[生命周期与异常]:::lifecycle
-    Life --> Life1[随线程创建而创建/销毁]:::lifecycle
-    Life --> Life2[唯一不报 OutOfMemoryError 区域]:::warning
+    %% Branch 4: Lifecycle and errors.
+    Root --> Life[Lifecycle and errors]:::lifecycle
+    Life --> Life1[Created and destroyed with its thread]:::lifecycle
+    Life --> Life2[Only area with no OutOfMemoryError specified]:::warning
 
-    %% 线条样式
+    %% Line style.
     linkStyle default stroke:#005D7B,stroke-width:1.5px,opacity:0.8
 ```
 
-程序计数器是一块较小的内存空间，可以看作是当前线程所执行的字节码的行号指示器。字节码解释器工作时通过改变这个计数器的值来选取下一条需要执行的字节码指令，分支、循环、跳转、异常处理、线程恢复等功能都需要依赖这个计数器来完成。
+The program counter is a small memory area that acts as a line-number indicator for the bytecode currently being executed by a thread. The bytecode interpreter changes its value to select the next instruction. Branches, loops, jumps, exception handling, and resuming a thread all depend on it.
 
-另外，为了线程切换后能恢复到正确的执行位置，每条线程都需要有一个独立的程序计数器，各线程之间计数器互不影响，独立存储，我们称这类内存区域为“线程私有”的内存。
+Each thread needs its own program counter so it can resume at the correct position after a context switch. The counters are independent, so this area is considered thread-private.
 
-从上面的介绍中我们知道了程序计数器主要有两个作用：
+The program counter has two main roles:
 
-- 字节码解释器通过改变程序计数器来依次读取指令，从而实现代码的流程控制，如：顺序执行、选择、循环、异常处理。
-- 在多线程的情况下，程序计数器用于记录当前线程执行的位置，从而当线程被切换回来的时候能够知道该线程上次运行到哪儿了。
+- The bytecode interpreter changes the counter to read instructions in sequence and control program flow, including sequential execution, branching, loops, and exception handling.
+- In a multithreaded program, the counter records where a thread is executing so it can resume from that point when scheduled again.
 
-程序计数器的生命周期与线程完全同步：
+The program counter's lifecycle matches that of its thread:
 
-- **创建**：随着线程的创建而创建。
-- **销毁**：随着线程的结束而销毁。
+- **Created:** When the thread is created.
+- **Destroyed:** When the thread ends.
 
-在执行 **Java 方法**（非 native）时，程序计数器记录的是 **当前正在执行的 JVM 字节码指令的地址**。当线程执行的是一个 **native 方法**（本地方法）时，程序计数器的值为 **Undefined（未定义）**，因为此时执行的不是 JVM 字节码指令。
+When executing a **Java method** (not a native method), the program counter records the **address of the current JVM bytecode instruction**. When a thread executes a **native method**, its program counter is **undefined** because the thread is not executing JVM bytecode.
 
-⚠️ 注意：程序计数器是 JVM 规范中唯一没有规定任何 `OutOfMemoryError` 情况的内存区域。规范只规定了这一结论，并未要求所有实现都采用某种固定大小的具体表示。
+⚠️ Note: The program counter is the only memory area for which the JVM specification does not define an `OutOfMemoryError` condition. The specification does not require a particular fixed-size representation across all implementations.
 
-### Java 虚拟机栈
+### JVM Stack
 
 ```mermaid
 graph LR
-    %% 颜色定义
+    %% Color definitions.
     classDef main fill:#005D7B,color:#fff,rx:10,ry:10;
     classDef compare fill:#00838F,color:#fff,rx:10,ry:10;
     classDef structure fill:#4CA497,color:#fff,rx:10,ry:10;
     classDef error fill:#C44545,color:#fff,rx:10,ry:10;
 
-    %% 核心节点
-    Root(虚拟机栈<br/>Java Stack):::main
+    %% Main node.
+    Root(JVM Stack<br/>Java Stack):::main
 
-    %% 分支1：定义与对比
-    Root --> Comp[基本特征]:::compare
-    Comp --> Comp1[线程私有，随线程创建/销毁]:::compare
-    Comp --> Comp2[服务对象: Java 方法]:::compare
-    Comp --> Comp3[栈帧先进后出]:::compare
+    %% Branch 1: Definition and properties.
+    Root --> Comp[Key properties]:::compare
+    Comp --> Comp1[Thread-private; created / destroyed with thread]:::compare
+    Comp --> Comp2[Serves Java methods]:::compare
+    Comp --> Comp3[Stack frames are last-in, first-out]:::compare
 
-    %% 分支2：栈帧结构
-    Root --> Struct[栈帧结构]:::structure
-    Struct --> S1[局部变量表、操作数栈、动态链接、出口信息]:::structure
+    %% Branch 2: Stack frame structure.
+    Root --> Struct[Stack frame structure]:::structure
+    Struct --> S1[Local variable table, operand stack, dynamic linking, return info]:::structure
 
-    %% 分支3：异常情况
-    Root --> Err[异常情况]:::error
-    Err --> Err1[StackOverflowError: 栈深度溢出]:::error
-    Err --> Err2[OutOfMemoryError: 内存扩展失败]:::error
+    %% Branch 3: Errors.
+    Root --> Err[Errors]:::error
+    Err --> Err1[StackOverflowError: stack depth exceeded]:::error
+    Err --> Err2[OutOfMemoryError: unable to expand memory]:::error
 
-    %% 线条样式
+    %% Line style.
     linkStyle default stroke:#005D7B,stroke-width:1.5px,opacity:0.8
 ```
 
-与程序计数器一样，Java 虚拟机栈（后文简称栈）也是线程私有的，它的生命周期和线程相同，随着线程的创建而创建，随着线程的死亡而死亡。
+Like the program counter, the JVM stack (the stack, for short) is thread-private. Its lifecycle matches the thread's: it is created with the thread and destroyed when the thread ends.
 
-栈绝对算的上是 JVM 运行时数据区域的一个核心，除了一些 Native 方法调用是通过本地方法栈实现的（后面会提到），其他所有的 Java 方法调用都是通过栈来实现的（也需要和其他运行时数据区域比如程序计数器配合）。
+The stack is a core part of the JVM runtime data areas. Except for native method calls, which use the native method stack described below, Java method calls use the JVM stack. It also works with other runtime areas, such as the program counter.
 
-方法调用的数据需要通过栈进行传递，每一次方法调用都会有一个对应的栈帧被压入栈中，每一个方法调用结束后，都会有一个栈帧被弹出。
+Method call data is passed through the stack. Each method call pushes a corresponding stack frame, and each completed call pops one.
 
-栈由一个个栈帧组成，而每个栈帧中都拥有：局部变量表、操作数栈、动态链接、方法返回地址。和数据结构上的栈类似，两者都是先进后出的数据结构，只支持出栈和入栈两种操作。
+The stack consists of stack frames. Each frame contains a local variable table, operand stack, dynamic link, and method return address. Like the stack data structure, it is last-in, first-out and supports push and pop operations.
 
-![Java 虚拟机栈](https://oss.javaguide.cn/github/javaguide/java/jvm/stack-area.png)
+![JVM stack](https://oss.javaguide.cn/github/javaguide/java/jvm/stack-area.png)
 
-**局部变量表** 主要存放了编译期可知的各种数据类型（boolean、byte、char、short、int、float、long、double）、对象引用（reference 类型，它不同于对象本身，可能是一个指向对象起始地址的引用指针，也可能是指向一个代表对象的句柄或其他与此对象相关的位置）。
+The **local variable table** stores values of types known at compile time (`boolean`, `byte`, `char`, `short`, `int`, `float`, `long`, and `double`) and object references. A reference is not the object itself: it may be a pointer to the object's start, a handle to the object, or another location associated with it.
 
-![局部变量表](https://oss.javaguide.cn/github/javaguide/java/jvm/local-variables-table.png)
+![Local variable table](https://oss.javaguide.cn/github/javaguide/java/jvm/local-variables-table.png)
 
-**操作数栈** 主要作为方法调用的中转站使用，用于存放方法执行过程中产生的中间计算结果。另外，计算过程中产生的临时变量也会放在操作数栈中。
+The **operand stack** acts as an intermediary during method execution. It stores intermediate calculation results and temporary values.
 
-**动态链接**是栈帧的一项功能。每个栈帧都持有指向当前方法所属类型的运行时常量池的引用，用于把方法代码中的方法符号引用转换为具体的方法引用，并把变量访问转换为对应运行时存储结构中的偏移；解析尚未确定的符号时还可能触发类加载。需要根据接收者实际类型选择虚方法实现的过程属于方法调用指令的动态分派，不能简单等同于这里的动态链接。
+**Dynamic linking** is a function of a stack frame. Each frame holds a reference to the runtime constant pool of the type that owns the current method. It uses this reference to resolve symbolic references to methods and offsets for accessing variables in runtime storage. Resolving an unresolved symbol may also trigger class loading. Choosing a virtual method implementation based on the receiver's runtime type is dynamic dispatch, which is distinct from the dynamic linking described here.
 
-![](https://oss.javaguide.cn/github/javaguide/jvmimage-20220331175738692.png)
+![Dynamic linking in a stack frame](https://oss.javaguide.cn/github/javaguide/jvmimage-20220331175738692.png)
 
-栈空间虽然不是无限的，但一般正常调用的情况下是不会出现问题的。不过，如果函数调用陷入无限递归的话，就会导致栈中被压入太多栈帧而占用太多空间，导致栈空间过深。那么当线程请求栈的深度超过当前 Java 虚拟机栈的最大深度的时候，就抛出 `StackOverflowError` 错误。
+The stack is finite, but ordinary method calls usually do not cause problems. Infinite recursion can push too many frames onto the stack. If a thread's requested stack depth exceeds the maximum allowed by the JVM, it throws `StackOverflowError`.
 
-**Java 方法有两种返回方式**：
+**A Java method can return in two ways:**
 
-- **正常返回**：执行 return 语句，返回值传递给调用者。
-- **异常返回**：方法执行过程中抛出异常且未被捕获。
+- **Normal return:** The method executes a `return` statement and passes the return value to its caller.
+- **Abrupt return:** The method throws an exception that is not caught during execution.
 
-不管哪种返回方式，都会导致栈帧被弹出。也就是说， **栈帧随着方法调用而创建，随着方法结束而销毁。无论方法正常完成还是异常完成都算作方法结束。**
+Either kind of return pops the stack frame. **A frame is created when a method is called and destroyed when the method ends, whether it completes normally or abruptly.**
 
-除了 `StackOverflowError` 错误之外，栈还可能会出现 `OutOfMemoryError` 错误，这是因为如果栈的内存大小可以动态扩展， 那么当虚拟机在动态扩展栈时无法申请到足够的内存空间，则抛出 `OutOfMemoryError` 异常。
+The stack can also cause `OutOfMemoryError`. If its size can grow dynamically and the VM cannot allocate enough memory while expanding it, the VM throws this error.
 
-简单总结一下程序运行中栈可能会出现两种错误：
+In summary, the stack can cause two kinds of errors:
 
-- **`StackOverflowError`：** 当线程执行所需的栈空间超过 JVM 允许的大小时，抛出 `StackOverflowError` 错误。
-- **`OutOfMemoryError`：** 如果栈的内存大小可以动态扩展， 那么当虚拟机在动态扩展栈时无法申请到足够的内存空间，则抛出 `OutOfMemoryError` 异常。
+- **`StackOverflowError`:** Thrown when a thread needs more stack space than the JVM allows.
+- **`OutOfMemoryError`:** If the stack can grow dynamically, thrown when the VM cannot allocate enough memory to expand it.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/jvm/%E3%80%8A%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3%E8%99%9A%E6%8B%9F%E6%9C%BA%E3%80%8B%E7%AC%AC%E4%B8%89%E7%89%88%E7%9A%84%E7%AC%AC2%E7%AB%A0-%E8%99%9A%E6%8B%9F%E6%9C%BA%E6%A0%88.png)
 
-### 本地方法栈
+### Native Method Stack
 
 ```mermaid
 graph LR
-    %% 颜色定义
+    %% Color definitions.
     classDef main fill:#005D7B,color:#fff,rx:10,ry:10;
     classDef compare fill:#00838F,color:#fff,rx:10,ry:10;
     classDef structure fill:#4CA497,color:#fff,rx:10,ry:10;
     classDef implement fill:#E99151,color:#fff,rx:10,ry:10;
     classDef error fill:#C44545,color:#fff,rx:10,ry:10;
 
-    %% 核心节点
-    Root(本地方法栈):::main
+    %% Main node.
+    Root(Native Method Stack):::main
 
-    %% 分支1：定义与对比
-    Root --> Comp[定义与对比]:::compare
-    Comp --> Comp1[作用与虚拟机栈相似]:::compare
-    Comp --> Comp2[服务对象: Native 方法]:::compare
+    %% Branch 1: Definition and comparison.
+    Root --> Comp[Definition and comparison]:::compare
+    Comp --> Comp1[Similar role to the JVM stack]:::compare
+    Comp --> Comp2[Serves native methods]:::compare
 
-    %% 分支2：HotSpot 实现
-    Root --> Imp[虚拟机实现]:::implement
-    Imp --> Imp1[HotSpot 与虚拟机栈合二为一]:::implement
+    %% Branch 2: HotSpot implementation.
+    Root --> Imp[VM implementation]:::implement
+    Imp --> Imp1[HotSpot combines it with the JVM stack]:::implement
 
-    %% 分支3：栈帧结构
-    Root --> Struct[栈帧内容]:::structure
-    Struct --> S1[局部变量表、操作数栈、动态链接]:::structure
+    %% Branch 3: Frame structure.
+    Root --> Struct[Frame contents]:::structure
+    Struct --> S1[Local variable table, operand stack, dynamic link]:::structure
 
-    %% 分支4：异常情况
-    Root --> Err[异常与内存]:::error
-    Err --> Err1[StackOverflowError: 栈深度溢出]:::error
-    Err --> Err2[OutOfMemoryError: 内存扩展失败]:::error
+    %% Branch 4: Errors and memory.
+    Root --> Err[Errors and memory]:::error
+    Err --> Err1[StackOverflowError: stack depth exceeded]:::error
+    Err --> Err2[OutOfMemoryError: unable to expand memory]:::error
 
-    %% 线条样式
+    %% Line style.
     linkStyle default stroke:#005D7B,stroke-width:1.5px,opacity:0.8
 ```
 
-和虚拟机栈所发挥的作用非常相似，区别是：**虚拟机栈为虚拟机执行 Java 方法（也就是字节码）服务，而本地方法栈则为虚拟机使用到的 Native 方法服务。** 在 HotSpot 虚拟机中和 Java 虚拟机栈合二为一。
+The native method stack has a role similar to that of the JVM stack, but they serve different methods: **the JVM stack serves Java methods (bytecode), while the native method stack serves native methods used by the VM.** HotSpot combines the native method stack with the JVM stack.
 
-执行本地方法时，虚拟机实现可以使用传统的本地栈（通常称为 C 栈）。《Java 虚拟机规范》没有规定本地方法栈必须采用与 JVM 栈帧相同的局部变量表、操作数栈和动态链接结构。
+When executing a native method, a VM implementation may use a traditional native stack, often called a C stack. The Java Virtual Machine Specification does not require the native method stack to use the same local variable table, operand stack, and dynamic link structure as JVM stack frames.
 
-本地方法执行完毕后，相应的实现相关栈数据会被释放。本地方法栈也可能出现 `StackOverflowError` 和 `OutOfMemoryError` 两种错误。
+After a native method finishes, its implementation-specific stack data is released. The native method stack can also cause `StackOverflowError` and `OutOfMemoryError`.
 
-### 堆
+### Heap
 
 ```mermaid
 graph LR
-    %% 颜色定义
+    %% Color definitions.
     classDef main fill:#005D7B,color:#fff,rx:10,ry:10;
     classDef compare fill:#00838F,color:#fff,rx:10,ry:10;
     classDef structure fill:#4CA497,color:#fff,rx:10,ry:10;
     classDef implement fill:#E99151,color:#fff,rx:10,ry:10;
     classDef error fill:#C44545,color:#fff,rx:10,ry:10;
 
-    %% 核心节点
-    Root(Java 堆):::main
+    %% Main node.
+    Root(Java Heap):::main
 
-    %% 分支1：基本定义与地位
-    Root --> Def[定义与地位]:::compare
-    Def --> Def1[JVM 内存中最大区域]:::compare
-    Def --> Def2[所有线程共享]:::compare
-    Def --> Def3[虚拟机启动时创建，生命周期长]:::compare
+    %% Branch 1: Definition and role.
+    Root --> Def[Definition and role]:::compare
+    Def --> Def1[Largest JVM memory area]:::compare
+    Def --> Def2[Shared by all threads]:::compare
+    Def --> Def3[Created at VM startup; long-lived]:::compare
 
-    %% 分支2：核心用途
-    Root --> Use[核心用途]:::structure
-    Use --> Use1[存放对象实例（非静态字段）]:::structure
-    Use --> Use2[存放数组数据]:::structure
-    Use --> Use3[对象内存统一管理]:::structure
+    %% Branch 2: Main uses.
+    Root --> Use[Main uses]:::structure
+    Use --> Use1[Stores object instances (not static fields)]:::structure
+    Use --> Use2[Stores array data]:::structure
+    Use --> Use3[Centralized object memory management]:::structure
 
-    %% 分3：分代结构 (GC 堆)
-    Root --> GC[分代结构]:::implement
-    GC --> GC1[新生代：Eden 区 + 两个 Survivor 区]:::implement
-    GC --> GC2[老年代：Old Generation]:::implement
-    GC --> GC3[目的：优化垃圾回收效率]:::implement
+    %% Branch 3: Generational structure (GC heap).
+    Root --> GC[Generational structure]:::implement
+    GC --> GC1[Young generation: Eden + two Survivor spaces]:::implement
+    GC --> GC2[Old generation]:::implement
+    GC --> GC3[Purpose: improve collection efficiency]:::implement
 
-    %% 线条样式
+    %% Line style.
     linkStyle default stroke:#005D7B,stroke-width:1.5px,opacity:0.8
 ```
 
-Java 虚拟机所管理的内存中最大的一块，Java 堆是所有线程共享的一块内存区域，在虚拟机启动时创建。**此内存区域的唯一目的就是存放对象实例，几乎所有的对象实例以及数组都在这里分配内存。**
+The Java heap is the largest area of memory managed by the JVM. It is shared by all threads and created when the VM starts. **Its purpose is to store object instances; nearly all object instances and arrays are allocated here.**
 
-Java 世界中“几乎”所有的对象都在堆中分配。不过，JIT 编译器可以基于逃逸分析进行标量替换，从而消除部分对象的实际分配。HotSpot 的这类优化不能简单表述为“对象直接在 Java 虚拟机栈上分配”。
+Nearly all Java objects are allocated on the heap. However, a JIT compiler can use escape analysis and scalar replacement to eliminate some object allocations. This HotSpot optimization should not be oversimplified as "objects are allocated directly on the JVM stack."
 
-Java 堆是垃圾收集器管理的主要区域，因此也被称作 **GC 堆（Garbage Collected Heap）**。从垃圾回收的角度，由于现在收集器基本都采用分代垃圾收集算法，所以 Java 堆还可以细分为：新生代和老年代；再细致一点有：Eden、Survivor、Old 等空间。进一步划分的目的是更好地回收内存，或者更快地分配内存。
+The Java heap is the main area managed by garbage collectors, so it is also called the **GC heap (Garbage Collected Heap)**. Most collectors use generational collection, so the heap may be divided into a young generation and an old generation, with spaces such as Eden, Survivor, and Old. These divisions can help reclaim memory or allocate it more quickly.
 
-在 JDK 7 及更早版本的 HotSpot 中，GC 通常按下面三部分介绍，其中永久代是方法区的实现，并不属于 Java 堆：
+In HotSpot JDK 7 and earlier, the GC-managed memory is often described in three parts. PermGen is an implementation of the method area and is not part of the Java heap:
 
-1. 新生代内存(Young Generation)
-2. 老生代(Old Generation)
-3. 永久代(Permanent Generation)
+1. Young generation
+2. Old generation
+3. Permanent generation (PermGen)
 
-下图所示的 Eden 区、两个 Survivor 区 S0 和 S1 都属于新生代，中间一层属于老年代，最下面一层属于永久代。
+In the diagram below, Eden and the two Survivor spaces, S0 and S1, belong to the young generation. The middle layer is the old generation, and the bottom layer is PermGen.
 
-![堆内存结构](https://oss.javaguide.cn/github/javaguide/java/jvm/hotspot-heap-structure.png)
+![Heap memory layout](https://oss.javaguide.cn/github/javaguide/java/jvm/hotspot-heap-structure.png)
 
-**JDK 8 版本之后 PermGen（永久代） 已被 Metaspace（元空间） 取代，元空间使用的是本地内存。**（我会在方法区这部分内容详细介绍到）。
+**Starting with JDK 8, PermGen was replaced by Metaspace, which uses native memory.** The method area section below covers this in more detail.
 
-大部分情况，对象都会首先在 Eden 区域分配，在一次新生代垃圾回收后，如果对象还存活，则会进入 S0 或者 S1，并且对象的年龄还会加 1（Eden 区->Survivor 区后对象的初始年龄变为 1）。对象达到晋升年龄阈值后会进入老年代，该阈值受收集器、自适应策略和 `-XX:MaxTenuringThreshold` 参数共同影响，并非所有收集器的默认值都是 15。对于采用 4 位年龄字段的经典分代收集器，该参数的上限是 15。
+In most cases, objects are first allocated in Eden. If an object survives a young-generation collection, it moves to S0 or S1 and its age increases by one (its initial age becomes 1 when it moves from Eden to a Survivor space). Once it reaches the promotion threshold, it moves to the old generation. The threshold depends on the collector, adaptive policies, and `-XX:MaxTenuringThreshold`; 15 is not the default for every collector. For classic generational collectors that use a 4-bit age field, the parameter's maximum is 15.
 
 ```bash
 MaxTenuringThreshold of 20 is invalid; must be between 0 and 15
 ```
 
-**为什么年龄只能是 0-15?**
+**Why is the age limited to 0–15?**
 
-因为记录年龄的区域在对象头中，这个区域的大小通常是 4 位。这 4 位可以表示的最大二进制数字是 1111，即十进制的 15。因此，对象的年龄被限制为 0 到 15。
+The age is stored in the object header, usually in a 4-bit field. Four bits can represent at most `1111` in binary, or 15 in decimal, so the age is limited to 0–15.
 
-这里我们简单结合对象布局来详细介绍一下。
+The object layout helps explain this limit.
 
-在 HotSpot 虚拟机中，对象在内存中存储的布局可以分为 3 块区域：对象头（Header）、实例数据（Instance Data）和对齐填充（Padding）。其中，对象头包括两部分：标记字段（Mark Word）和类型指针（Klass Word）。关于对象内存布局的详细介绍，后文会介绍到，这里就不重复提了。
+In HotSpot, an object's memory layout has three parts: the object header, instance data, and alignment padding. The header contains a mark word and a class pointer (Klass Word). The object layout is covered in more detail later.
 
-这个年龄信息就是在标记字段中存放的（标记字段还存放了对象自身的其他信息比如哈希码、锁状态信息等等）。下面旧版 HotSpot 源码中的 `markOop.hpp` 展示了当时标记字（Mark Word）的结构；现代 JDK 的对应实现和对象头布局已经发生变化：
+The age is stored in the mark word, which also holds other object information such as the hash code and lock state. The image below shows the mark word structure in an older version of HotSpot's `markOop.hpp`; the implementation and object header layout have changed in modern JDKs:
 
-![标记字段结构](https://oss.javaguide.cn/github/javaguide/java/jvm/hotspot-markOop.hpp..png)
+![Mark word structure](https://oss.javaguide.cn/github/javaguide/java/jvm/hotspot-markOop.hpp..png)
 
-可以看到对象年龄占用的大小确实是 4 位。
+As shown, the object age occupies 4 bits.
 
-> **🐛 修正（参见：[issue552](https://github.com/Snailclimb/JavaGuide/issues/552)）**：“Hotspot 遍历所有对象时，按照年龄从小到大对其所占用的大小进行累加，当累加到某个年龄时，所累加的大小超过了 Survivor 区的一半，则取这个年龄和 `MaxTenuringThreshold` 中更小的一个值，作为新的晋升年龄阈值”。
+> **🐛 Correction (see [issue 552](https://github.com/Snailclimb/JavaGuide/issues/552))**: "HotSpot traverses objects in ascending order of age and adds up the space they occupy. When the total for an age exceeds half the Survivor space, the smaller of that age and `MaxTenuringThreshold` becomes the new promotion threshold."
 >
-> **动态年龄计算的代码如下**
+> **The dynamic age calculation is implemented as follows:**
 >
 > ```c++
 > uint ageTable::compute_tenuring_threshold(size_t survivor_capacity) {
->  //survivor_capacity是survivor空间的大小
-> size_t desired_survivor_size = (size_t)((((double) survivor_capacity)*TargetSurvivorRatio)/100);//TargetSurvivorRatio 为50
+>  // survivor_capacity is the size of the Survivor space.
+> size_t desired_survivor_size = (size_t)((((double) survivor_capacity)*TargetSurvivorRatio)/100);// TargetSurvivorRatio is 50.
 > size_t total = 0;
 > uint age = 1;
 > while (age < table_size) {
-> total += sizes[age];//sizes数组是每个年龄段对象大小
+> total += sizes[age];// sizes contains the size of objects at each age.
 > if (total > desired_survivor_size) break;
 > age++;
 > }
@@ -316,396 +316,396 @@ MaxTenuringThreshold of 20 is invalid; must be between 0 and 15
 > }
 > ```
 
-堆这里最容易出现的就是 `OutOfMemoryError` 错误，并且出现这种错误之后的表现形式还会有几种，比如：
+The heap is a common source of `OutOfMemoryError`. The error can take several forms, including:
 
-1. **`java.lang.OutOfMemoryError: GC Overhead Limit Exceeded`**：当 JVM 花太多时间执行垃圾回收并且只能回收很少的堆空间时，就会发生此错误。
-2. **`java.lang.OutOfMemoryError: Java heap space`** :假如在创建新的对象时, 堆内存中的空间不足以存放新创建的对象, 就会引发此错误。(和配置的最大堆内存有关，且受制于物理内存大小。最大堆内存可通过 `-Xmx` 参数配置，若没有特别配置，将会使用默认值，详见：[Default Java 8 max heap size](https://stackoverflow.com/questions/28272923/default-xmxsize-in-java-8-max-heap-size))
+1. **`java.lang.OutOfMemoryError: GC Overhead Limit Exceeded`**: This occurs when the JVM spends too much time collecting garbage but recovers very little heap space.
+2. **`java.lang.OutOfMemoryError: Java heap space`**: This occurs when the heap does not have enough space for a newly created object. It depends on the maximum heap size and available physical memory. Configure the maximum heap with `-Xmx`; if it is not set, the JVM uses a default value. See [Default Java 8 max heap size](https://stackoverflow.com/questions/28272923/default-xmxsize-in-java-8-max-heap-size).
 3. ……
 
-### 方法区
+### Method Area
 
 ```mermaid
 graph LR
-    %% 颜色定义
+    %% Color definitions.
     classDef main fill:#005D7B,color:#fff,rx:10,ry:10;
     classDef compare fill:#00838F,color:#fff,rx:10,ry:10;
     classDef structure fill:#4CA497,color:#fff,rx:10,ry:10;
     classDef implement fill:#E99151,color:#fff,rx:10,ry:10;
     classDef error fill:#C44545,color:#fff,rx:10,ry:10;
 
-    %% 核心节点
-    Root(方法区):::main
+    %% Main node.
+    Root(Method Area):::main
 
-    %% 分支1：基本定义与地位
-    Root --> Def[定义与地位]:::compare
-    Def --> Def1[线程共享的内存区域]:::compare
-    Def --> Def2[JVM 规范定义的逻辑区域]:::compare
-    Def --> Def3[具体实现随虚拟机而异]:::compare
+    %% Branch 1: Definition and role.
+    Root --> Def[Definition and role]:::compare
+    Def --> Def1[Shared by threads]:::compare
+    Def --> Def2[Logical area defined by the JVM specification]:::compare
+    Def --> Def3[Implementation varies by VM]:::compare
 
-    %% 分支2：核心存储内容
-    Root --> Store[核心存储内容]:::structure
-    Store --> Store1[类的元数据: 结构/字段/方法信息]:::structure
-    Store --> Store2[方法的字节码: 原始指令序列]:::structure
-    Store --> Store3[运行时常量池: 字面量与符号引用]:::structure
+    %% Branch 2: Main contents.
+    Root --> Store[Main contents]:::structure
+    Store --> Store1[Class metadata: structure, fields, and methods]:::structure
+    Store --> Store2[Method bytecode: instruction sequences]:::structure
+    Store --> Store3[Runtime constant pool: literals and symbolic references]:::structure
 
-    %% 分支3：HotSpot 位置演变 (JDK 7+)
-    Root --> Change[位置演变与例外]:::implement
-    Change --> Change1[静态变量: 移至 Java 堆（JDK 7）]:::implement
-    Change --> Change2[字符串常量池: 移至 Java 堆（JDK 7）]:::implement
-    Change --> Change3[JIT 代码缓存: 独立 Code Cache 区域]:::implement
+    %% Branch 3: HotSpot changes (JDK 7+).
+    Root --> Change[Location changes and exceptions]:::implement
+    Change --> Change1[Static variables: moved to Java heap (JDK 7)]:::implement
+    Change --> Change2[String pool: moved to Java heap (JDK 7)]:::implement
+    Change --> Change3[JIT code cache: separate Code Cache area]:::implement
 
-    %% 线条样式
+    %% Line style.
     linkStyle default stroke:#005D7B,stroke-width:1.5px,opacity:0.8
 ```
 
-方法区属于是 JVM 运行时数据区域的一块逻辑区域，是各个线程共享的内存区域。
+The method area is a logical part of the JVM runtime data areas and is shared by all threads.
 
-《Java 虚拟机规范》只是规定了有方法区这么个概念和它的作用，方法区到底要如何实现那就是虚拟机自己要考虑的事情了。也就是说，在不同的虚拟机实现上，方法区的实现是不同的。
+The Java Virtual Machine Specification defines the method area and its purpose, but leaves its implementation to each VM. As a result, the method area can be implemented differently by different VMs.
 
-当虚拟机加载一个类时，它会从 Class 文件中解析出相应的信息，并将这些**元数据**存入方法区。具体来说，方法区主要存储以下核心数据：
+When the VM loads a class, it parses information from the class file and stores the resulting **metadata** in the method area. The method area mainly stores:
 
-1. **类的元数据**：包括类的完整结构，如类名、父类、实现的接口、访问修饰符，以及字段和方法的详细信息（名称、类型、修饰符等）。
-2. **方法的字节码**：每个方法的原始指令序列。
-3. **运行时常量池**：每个类独有的，由 Class 文件中的常量池转换而来，用于存放编译期生成的各种字面量和对类型、字段、方法的符号引用。
+1. **Class metadata:** The class's full structure, including its name, superclass, implemented interfaces, access modifiers, and details about its fields and methods (names, types, modifiers, and more).
+2. **Method bytecode:** The original instruction sequence for each method.
+3. **Runtime constant pool:** A per-class structure derived from the class file's constant pool. It stores compile-time literals and symbolic references to types, fields, and methods.
 
-需要特别注意的是，以下几类数据虽然在逻辑上与类相关，但在 HotSpot 虚拟机中，它们并不存储在方法区内：
+Note that the following data is logically related to classes but is not stored in the method area in HotSpot:
 
-- **静态变量（Static Variables）**：自 JDK 7 起，类静态变量与对应的 `java.lang.Class` 对象一起存放在 Java 堆中。
-- **字符串常量池（String Pool）**：同样自 JDK 7 起，字符串常量池也**移至 Java 堆中**。
-- **即时编译器编译后的代码缓存（JIT Code Cache）**：JIT 编译器将热点方法的字节码编译成的本地机器码，存放在一个**独立的、名为“Code Cache”的内存区域**，而不是方法区本身。这样做是为了实现更高效的执行和内存管理。
+- **Static variables:** Since JDK 7, a class's static variables are stored on the Java heap together with the corresponding `java.lang.Class` object.
+- **String pool:** Since JDK 7, the string pool has also been **moved to the Java heap**.
+- **JIT code cache:** The JIT compiler translates hot methods into native machine code and stores it in a **separate memory area called the Code Cache**, not in the method area. This supports more efficient execution and memory management.
 
 ![method-area-jdk1.7](https://oss.javaguide.cn/github/javaguide/java/jvm/method-area-jdk1.7.png)
 
-**方法区和永久代以及元空间是什么关系呢？** 方法区和永久代以及元空间的关系很像 Java 中接口和类的关系，类实现了接口，这里的类就可以看作是永久代和元空间，接口可以看作是方法区，也就是说永久代以及元空间是 HotSpot 虚拟机对虚拟机规范中方法区的两种实现方式。并且，永久代是 JDK 1.8 之前的方法区实现，JDK 1.8 及以后方法区的实现变成了元空间。
+**How are the method area, PermGen, and Metaspace related?** Think of the method area as an interface and PermGen and Metaspace as two implementations. They are HotSpot's implementations of the method area defined by the JVM specification. PermGen was used before JDK 8; Metaspace has been used since JDK 8.
 
-![HotSpot 虚拟机方法区的两种实现](https://oss.javaguide.cn/github/javaguide/java/jvm/method-area-implementation.png)
+![Two HotSpot implementations of the method area](https://oss.javaguide.cn/github/javaguide/java/jvm/method-area-implementation.png)
 
-**为什么要将永久代 (PermGen) 替换为元空间 (MetaSpace) 呢?**
+**Why was PermGen replaced by Metaspace?**
 
-下图来自《深入理解 Java 虚拟机》第 3 版 2.2.5
+The following diagram is from section 2.2.5 of the third edition of _Understanding the Java Virtual Machine_.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/jvm/20210425134508117.png)
 
-1、永久代的容量受 `-XX:MaxPermSize` 上限约束，这个上限可以配置；元空间改用本地内存，并可通过 `-XX:MaxMetaspaceSize` 限制。两者都可能溢出，实际风险取决于配置和类元数据的增长情况。
+1. PermGen's capacity was limited by `-XX:MaxPermSize`. Metaspace uses native memory and can be limited with `-XX:MaxMetaspaceSize`. Either can run out of space; the actual risk depends on the configuration and growth of class metadata.
 
-> 当元空间溢出时会得到如下错误：`java.lang.OutOfMemoryError: Metaspace`
+> When Metaspace runs out of space, the JVM reports: `java.lang.OutOfMemoryError: Metaspace`
 
-你可以使用 `-XX:MaxMetaspaceSize` 设置最大元空间大小。若不设置，类元数据空间可继续增长，直到受到可用本地内存等条件限制。`-XX:MetaspaceSize` 不是元空间的初始容量，而是触发元数据 GC 的初始高水位阈值，之后 JVM 会动态调整该阈值。
+Use `-XX:MaxMetaspaceSize` to set the maximum Metaspace size. If it is not set, class metadata can continue to grow until limited by available native memory and other constraints. `-XX:MetaspaceSize` is not the initial Metaspace capacity; it is the initial high-water mark that triggers metadata GC, and the JVM adjusts it dynamically.
 
-2、元空间里面存放的是类的元数据，这样加载多少类的元数据就不由 `MaxPermSize` 控制了, 而由系统的实际可用空间来控制，这样能加载的类就更多了。
+2. Metaspace stores class metadata, so the number of classes that can be loaded is no longer limited by `MaxPermSize`; it depends on available system memory, which may allow more classes to be loaded.
 
-3、在 JDK8，合并 HotSpot 和 JRockit 的代码时, JRockit 从来没有一个叫永久代的东西, 合并之后就没有必要额外的设置这么一个永久代的地方了。
+3. When HotSpot and JRockit code was combined in JDK 8, there was no need to retain PermGen because JRockit had never used it.
 
-4、永久代会为 GC 带来不必要的复杂度，并且回收效率偏低。
+4. PermGen added unnecessary complexity to GC and was relatively inefficient to reclaim.
 
-**方法区常用参数有哪些？**
+**Which options are commonly used to configure the method area?**
 
-JDK 1.8 之前永久代还没被彻底移除的时候通常通过下面这些参数来调节方法区大小。
-
-```java
--XX:PermSize=N //方法区 (永久代) 初始大小
--XX:MaxPermSize=N //方法区 (永久代) 最大大小,超过这个值将会抛出 OutOfMemoryError 异常:java.lang.OutOfMemoryError: PermGen
-```
-
-相对而言，垃圾收集行为在这个区域是比较少出现的，但并非数据进入方法区后就“永久存在”了。
-
-JDK 1.8 的时候，方法区（HotSpot 的永久代）被彻底移除了（JDK1.7 就已经开始了），取而代之是元空间，元空间使用的是本地内存。下面是一些常用参数：
+Before PermGen was removed in JDK 8, these options were commonly used to adjust the method area size:
 
 ```java
--XX:MetaspaceSize=N //设置触发元数据 GC 的初始高水位阈值
--XX:MaxMetaspaceSize=N //设置 Metaspace 的最大大小
+-XX:PermSize=N // Initial method area (PermGen) size.
+-XX:MaxPermSize=N // Maximum method area (PermGen) size; exceeding it causes java.lang.OutOfMemoryError: PermGen.
 ```
 
-与永久代很大的不同是，如果不指定 `MaxMetaspaceSize`，元空间没有由该参数设定的固定上限，持续的类元数据增长可能消耗大量本地内存。
+Garbage collection in this area is relatively uncommon, but data does not remain there "permanently."
 
-### 运行时常量池
+In JDK 8, HotSpot removed PermGen as its method area implementation, a change that began in JDK 7. Metaspace, which uses native memory, replaced it. Common options include:
+
+```java
+-XX:MetaspaceSize=N // Initial high-water mark that triggers metadata GC.
+-XX:MaxMetaspaceSize=N // Maximum Metaspace size.
+```
+
+Unlike PermGen, Metaspace has no fixed upper limit set by this option if `MaxMetaspaceSize` is omitted. Continued growth in class metadata can consume substantial native memory.
+
+### Runtime Constant Pool
 
 ```mermaid
 graph LR
-    %% 颜色定义
+    %% Color definitions.
     classDef main fill:#005D7B,color:#fff,rx:10,ry:10;
     classDef compare fill:#00838F,color:#fff,rx:10,ry:10;
     classDef structure fill:#4CA497,color:#fff,rx:10,ry:10;
     classDef implement fill:#E99151,color:#fff,rx:10,ry:10;
     classDef error fill:#C44545,color:#fff,rx:10,ry:10;
 
-    %% 核心节点
-    Root(运行时常量池):::main
+    %% Main node.
+    Root(Runtime Constant Pool):::main
 
-    %% 分支1：来源与地位
-    Root --> Source[定义与地位]:::compare
-    Source --> Source1[源自 Class 文件的常量池表]:::compare
-    Source --> Source2[类加载后存入方法区]:::compare
-    Source --> Source3[功能类似于高级符号表]:::compare
+    %% Branch 1: Source and role.
+    Root --> Source[Definition and role]:::compare
+    Source --> Source1[Derived from the class file constant pool]:::compare
+    Source --> Source2[Stored in the method area after class loading]:::compare
+    Source --> Source3[Works like an extended symbol table]:::compare
 
-    %% 分支2：存储内容分类
-    Root --> Content[存储内容]:::structure
-    Content --> Content1[字面量: 文本字符串/常量值等]:::structure
-    Content --> Content2[符号引用: 类/字段/方法的描述]:::structure
+    %% Branch 2: Contents.
+    Root --> Content[Contents]:::structure
+    Content --> Content1[Literals: strings, constant values, and more]:::structure
+    Content --> Content2[Symbolic references: classes, fields, and methods]:::structure
 
-    %% 分支3：异常处理
-    Root --> Error[异常情况]:::error
-    Error --> Error2[无法申请内存时抛出 OutOfMemoryError]:::error
+    %% Branch 3: Errors.
+    Root --> Error[Errors]:::error
+    Error --> Error2[OutOfMemoryError if memory cannot be allocated]:::error
 
-    %% 线条样式
+    %% Line style.
     linkStyle default stroke:#005D7B,stroke-width:1.5px,opacity:0.8
 ```
 
-Class 文件中除了有类的版本、字段、方法、接口等描述信息外，还有用于存放编译期生成的各种字面量（Literal）和符号引用（Symbolic Reference）的 **常量池表(Constant Pool Table)**。
+In addition to class version information and descriptions of fields, methods, and interfaces, a class file contains a **constant pool table** for literals and symbolic references generated at compile time.
 
-字面量是源代码中的固定值的表示法，即通过字面我们就能知道其值的含义。字面量包括整数、浮点数和字符串字面量。常见的符号引用包括类符号引用、字段符号引用、方法符号引用、接口方法符号。
+Literals represent fixed values in source code. Their values can be understood directly from their notation. Integer, floating-point, and string values are examples of literals. Common symbolic references include references to classes, fields, methods, and interface methods.
 
-《深入理解 Java 虚拟机》7.34 节第三版对符号引用和直接引用的解释如下：
+The third edition of _Understanding the Java Virtual Machine_ explains symbolic and direct references in section 7.34:
 
-![符号引用和直接引用](https://oss.javaguide.cn/github/javaguide/java/jvm/symbol-reference-and-direct-reference.png)
+![Symbolic references and direct references](https://oss.javaguide.cn/github/javaguide/java/jvm/symbol-reference-and-direct-reference.png)
 
-常量池表会在类加载后存放到方法区的运行时常量池中。
+After class loading, the constant pool table is stored in the method area's runtime constant pool.
 
-运行时常量池的功能类似于传统编程语言的符号表，尽管它包含了比典型符号表更广泛的数据。
+The runtime constant pool works like a symbol table in traditional programming languages, though it contains a wider range of data than a typical symbol table.
 
-既然运行时常量池是方法区的一部分，自然受到方法区内存的限制，当常量池无法再申请到内存时会抛出 `OutOfMemoryError` 错误。
+Because the runtime constant pool is part of the method area, it is limited by the memory available to that area. It can throw `OutOfMemoryError` if it cannot allocate more memory.
 
-### 字符串常量池
+### String Pool
 
 ```mermaid
 graph LR
-    %% 颜色定义
+    %% Color definitions.
     classDef main fill:#005D7B,color:#fff,rx:10,ry:10;
     classDef compare fill:#00838F,color:#fff,rx:10,ry:10;
     classDef structure fill:#4CA497,color:#fff,rx:10,ry:10;
     classDef implement fill:#E99151,color:#fff,rx:10,ry:10;
     classDef error fill:#C44545,color:#fff,rx:10,ry:10;
 
-    %% 核心节点
-    Root(字符串常量池):::main
+    %% Main node.
+    Root(String Pool):::main
 
-    %% 分支1：内存位置演进
-    Root --> History[内存位置演进]:::compare
-    History --> Hist1[JDK 1.6: 存在于永久代 PermGen]:::compare
-    History --> Hist2[JDK 1.7+: 移至堆 Heap 中]:::compare
-    History --> Hist3[目的: 避免永久代 OOM 且方便 GC]:::compare
+    %% Branch 1: Location over time.
+    Root --> History[Location over time]:::compare
+    History --> Hist1[JDK 6: in PermGen]:::compare
+    History --> Hist2[JDK 7+: moved to the heap]:::compare
+    History --> Hist3[Goal: avoid PermGen OOM and simplify GC]:::compare
 
-    %% 分支2：底层实现结构
-    Root --> Impl[底层实现机制]:::structure
-    Impl --> Impl1[现代 HotSpot: ConcurrentHashTable]:::structure
-    Impl --> Impl2[通过弱句柄保存字符串对象]:::structure
-    Impl --> Impl3[支持扩容、重哈希与清理]:::structure
+    %% Branch 2: Implementation.
+    Root --> Impl[Implementation]:::structure
+    Impl --> Impl1[Modern HotSpot: ConcurrentHashTable]:::structure
+    Impl --> Impl2[String objects held through weak handles]:::structure
+    Impl --> Impl3[Supports resizing, rehashing, and cleanup]:::structure
 
-    %% 分支3：风险与调优
-    Root --> Tuning[风险与调优]:::error
-    Tuning --> Risk1[StringTable 过小导致 Hash 冲突严重]:::error
-    Tuning --> Risk2[大量 intern 导致性能下降]:::error
-    Tuning --> Param[-XX:StringTableSize 调优参数]:::error
+    %% Branch 3: Risks and tuning.
+    Root --> Tuning[Risks and tuning]:::error
+    Tuning --> Risk1[StringTable too small: more hash collisions]:::error
+    Tuning --> Risk2[Excessive intern calls: lower performance]:::error
+    Tuning --> Param[-XX:StringTableSize tuning option]:::error
 
-    %% 线条样式
+    %% Line style.
     linkStyle default stroke:#005D7B,stroke-width:1.5px,opacity:0.8
 ```
 
-**字符串常量池** 是 JVM 为了提升性能和减少内存消耗针对字符串（String 类）专门开辟的一块区域，主要目的是为了避免字符串的重复创建。
+The **string pool** is an area the JVM uses to improve performance and reduce memory use by avoiding duplicate `String` objects.
 
 ```java
-// 1.在字符串常量池中查询字符串对象 "ab"，如果没有则创建"ab"并放入字符串常量池
-// 2.将字符串对象 "ab" 的引用赋值给 aa
+// 1. Look for "ab" in the string pool. If it is absent, create it and add it to the pool.
+// 2. Assign the reference to the pooled "ab" string to aa.
 String aa = "ab";
-// 直接返回字符串常量池中字符串对象 "ab"，赋值给引用 bb
+// Return the pooled "ab" string and assign it to bb.
 String bb = "ab";
 System.out.println(aa==bb); // true
 ```
 
-HotSpot 虚拟机中字符串常量池的实现可以在 `src/hotspot/share/classfile/stringTable.cpp` 中看到。现代 HotSpot 的本地 `StringTable` 使用并发哈希表，并通过弱句柄保存堆中的字符串对象，支持扩容、重哈希以及清理失效条目；`-XX:StringTableSize` 用于设置初始桶数量。因此，“固定长度数组 + 链表”的说法只适用于部分旧版实现，不能用于概括当前 HotSpot。
+The string pool implementation in HotSpot can be found in `src/hotspot/share/classfile/stringTable.cpp`. Modern HotSpot uses a native `StringTable` implemented as a concurrent hash table. It holds heap string objects through weak handles and supports resizing, rehashing, and removing stale entries. `-XX:StringTableSize` sets the initial number of buckets. The description "fixed-size array plus linked lists" applies only to some older implementations, not to current HotSpot in general.
 
-JDK1.7 之前，字符串常量池存放在永久代。JDK1.7 将字符串常量池和类静态变量移到了 Java 堆中。
+Before JDK 7, the string pool was stored in PermGen. JDK 7 moved the string pool and class static variables to the Java heap.
 
 ![method-area-jdk1.6](https://oss.javaguide.cn/github/javaguide/java/jvm/method-area-jdk1.6.png)
 
 ![method-area-jdk1.7](https://oss.javaguide.cn/github/javaguide/java/jvm/method-area-jdk1.7.png)
 
-**JDK 1.7 为什么要将字符串常量池移动到堆中？**
+**Why did JDK 7 move the string pool to the heap?**
 
-主要是因为永久代（方法区实现）的 GC 回收效率太低，只有在整堆收集 (Full GC)的时候才会被执行 GC。Java 程序中通常会有大量的被创建的字符串等待回收，将字符串常量池放到堆中，能够更高效及时地回收字符串内存。
+One reason was that GC of PermGen, the method area implementation, was relatively inefficient and generally occurred only during a Full GC. Java programs often create many strings that can later be reclaimed. Moving the string pool to the heap made it possible to reclaim their memory more efficiently and promptly.
 
-相关问题：[JVM 常量池中存储的是对象还是引用呢？ - RednaxelaFX - 知乎](https://www.zhihu.com/question/57109429/answer/151717241)
+Related discussion: [Does the JVM constant pool store objects or references? — RednaxelaFX](https://www.zhihu.com/question/57109429/answer/151717241)
 
-最后再来分享一段周志明老师在[《深入理解 Java 虚拟机（第 3 版）》样例代码&勘误](https://github.com/fenixsoft/jvm_book) GitHub 仓库的 [issue#112](https://github.com/fenixsoft/jvm_book/issues/112) 中说过的话：
+Finally, here's a note from Zhou Zhiming in [issue 112](https://github.com/fenixsoft/jvm_book/issues/112) of the GitHub repository for the [sample code and errata for _Understanding the Java Virtual Machine_, 3rd edition](https://github.com/fenixsoft/jvm_book):
 
-> **运行时常量池、方法区、字符串常量池这些都是不随虚拟机实现而改变的逻辑概念，是公共且抽象的，Metaspace、Heap 是与具体某种虚拟机实现相关的物理概念，是私有且具体的。**
+> **The runtime constant pool, method area, and string pool are logical concepts that do not change with a VM implementation; they are general and abstract. Metaspace and the heap are physical concepts tied to a specific VM implementation; they are concrete and implementation-specific.**
 
-### 直接内存
+### Direct Memory
 
 ```mermaid
 graph LR
-    %% 颜色定义
+    %% Color definitions.
     classDef main fill:#005D7B,color:#fff,rx:10,ry:10;
     classDef compare fill:#00838F,color:#fff,rx:10,ry:10;
     classDef structure fill:#4CA497,color:#fff,rx:10,ry:10;
     classDef implement fill:#E99151,color:#fff,rx:10,ry:10;
     classDef error fill:#C44545,color:#fff,rx:10,ry:10;
 
-    %% 核心节点
-    Root(直接内存):::main
+    %% Main node.
+    Root(Direct Memory):::main
 
-    %% 分支1：定义与地位
-    Root --> Source[定义与地位]:::compare
-    Source --> Source1[非运行时数据区的一部分]:::compare
-    Source --> Source2[非 JVM 规范定义的内存区域]:::compare
-    Source --> Source3[在本地内存分配]:::compare
+    %% Branch 1: Definition and role.
+    Root --> Source[Definition and role]:::compare
+    Source --> Source1[Not part of the runtime data areas]:::compare
+    Source --> Source2[Not defined by the JVM specification]:::compare
+    Source --> Source3[Allocated in native memory]:::compare
 
-    %% 分支2：核心优势
-    Root --> Advantage[核心优势]:::implement
-    Advantage --> Adv1[某些 I/O 场景可减少中间复制]:::implement
-    Advantage --> Adv2[部分场景可提高 I/O 性能]:::implement
-    Advantage --> Adv3[减少垃圾回收对应用的影响]:::implement
+    %% Branch 2: Main benefits.
+    Root --> Advantage[Main benefits]:::implement
+    Advantage --> Adv1[Can reduce intermediate copies in some I/O cases]:::implement
+    Advantage --> Adv2[Can improve I/O performance in some cases]:::implement
+    Advantage --> Adv3[Reduces GC impact on the application]:::implement
 
-    %% 分支3：限制与异常
-    Root --> Error[限制与异常]:::error
-    Error --> Error1[不计入 Java 堆]:::error
-    Error --> Error2[受直接内存上限及本机内存限制]:::error
-    Error --> Error3[内存不足时抛出 OutOfMemoryError]:::error
+    %% Branch 3: Limits and errors.
+    Root --> Error[Limits and errors]:::error
+    Error --> Error1[Not included in the Java heap]:::error
+    Error --> Error2[Limited by direct memory settings and native memory]:::error
+    Error --> Error3[OutOfMemoryError if memory runs out]:::error
 
-    %% 线条样式
+    %% Line style.
     linkStyle default stroke:#005D7B,stroke-width:1.5px,opacity:0.8
 ```
 
-直接内存是一种特殊的内存缓冲区，并不在 Java 堆或方法区中分配，而是在本地内存中分配。具体分配机制属于虚拟机实现细节，并不等同于必须通过 JNI 分配。
+Direct memory is a special kind of memory buffer. It is allocated in native memory rather than in the Java heap or method area. The allocation mechanism is VM-specific and does not necessarily use JNI.
 
-直接内存并不是虚拟机运行时数据区的一部分，也不是虚拟机规范中定义的内存区域，但是这部分内存也被频繁地使用。而且也可能导致 `OutOfMemoryError` 错误出现。
+Direct memory is not part of the VM runtime data areas or a memory area defined by the JVM specification, but it is used frequently and can also cause `OutOfMemoryError`.
 
-JDK1.4 中新加入的 **NIO（New I/O）**，引入了一种基于**通道（Channel）**与**缓冲区（Buffer）**的 I/O 方式。直接字节缓冲区可以在 Java 堆外分配内容，并通过 Java 堆中的 `DirectByteBuffer` 对象进行操作。JVM 会尽力直接在这种缓冲区上执行本地 I/O，从而在某些场景中减少中间缓冲区的数据复制；NIO 中只有可选择通道与 Selector 等部分提供非阻塞 I/O 能力，不能把整个 NIO 展开为 Non-Blocking I/O。
+Introduced in JDK 1.4, **NIO (New I/O)** provides I/O APIs based on **channels** and **buffers**. Direct byte buffers can be allocated outside the Java heap and accessed through a `DirectByteBuffer` object on the heap. The JVM tries to perform native I/O directly on these buffers, which can reduce intermediate copies in some cases. Only parts of NIO, such as selectable channels used with a `Selector`, provide non-blocking I/O; NIO as a whole does not mean Non-Blocking I/O.
 
-直接内存不计入 Java 堆，但仍会受到本机总内存、处理器寻址空间等条件的限制。对于 NIO 直接缓冲区，还可以通过 [`-XX:MaxDirectMemorySize`](https://docs.oracle.com/en/java/javase/25/docs/specs/man/java.html#extra-options-for-java) 限制总分配量。
+Direct memory is not included in the Java heap, but it is still limited by total native memory, the processor's address space, and other conditions. For NIO direct buffers, [`-XX:MaxDirectMemorySize`](https://docs.oracle.com/en/java/javase/25/docs/specs/man/java.html#extra-options-for-java) can limit the total allocation.
 
-类似的概念还有 **堆外内存**。在一些文章中将直接内存等价于堆外内存，个人觉得不是特别准确。
+Another related term is **off-heap memory**. Some articles use it as a synonym for direct memory, but the terms are not quite equivalent.
 
-堆外内存是分配在 Java 堆之外的内存的统称，底层通常使用操作系统提供的本地内存。它是否以及如何受到 JVM 或 JDK 管理，取决于具体的分配方式。例如，在 OpenJDK/HotSpot 中，`DirectByteBuffer` 对应的本地内存会关联 Java 堆中的缓冲区对象，并在对象变为不可达后通过 `Cleaner` 等机制参与清理。由于清理时机不由应用程序直接控制，使用堆外内存可以减少 Java 堆的压力，但仍然需要关注本地内存泄漏和 `OutOfMemoryError`。
+Off-heap memory is a general term for memory allocated outside the Java heap, usually using native memory provided by the operating system. Whether and how the JVM or JDK manages it depends on the allocation mechanism. For example, in OpenJDK/HotSpot, native memory used by a `DirectByteBuffer` is associated with a buffer object on the Java heap and can be cleaned up through mechanisms such as `Cleaner` after the object becomes unreachable. Because applications do not directly control when cleanup occurs, off-heap memory can reduce pressure on the Java heap, but native memory leaks and `OutOfMemoryError` remain possible.
 
-## HotSpot 虚拟机对象探秘
+## HotSpot Object Internals
 
-通过上面的介绍我们大概知道了虚拟机的内存情况，下面我们来详细的了解一下 HotSpot 虚拟机在 Java 堆中对象分配、布局和访问的全过程。
+The previous sections introduced the VM's memory areas. Next, we'll look at how HotSpot allocates, lays out, and accesses objects in the Java heap.
 
-### 对象的创建
+### Object Creation
 
-Java 对象的创建过程我建议最好是能默写出来，并且要掌握每一步在做什么。
+It's useful to memorize the steps in Java object creation and understand what happens at each step.
 
 ```mermaid
 graph TD
-    %% 颜色定义
+    %% Color definitions.
     classDef root fill:#004D61,color:#fff,rx:10,ry:10;
     classDef step fill:#005D7B,color:#fff,rx:10,ry:10;
     classDef detail fill:#4CA497,color:#fff,rx:10,ry:10;
     classDef logic fill:#E99151,color:#fff,rx:10,ry:10;
 
-    %% 核心流程
-    Start(new 指令触发):::root
+    %% Main flow.
+    Start(new instruction):::root
 
-    Start --> S1[Step 1: 类加载检查]:::step
-    S1 --> S1_1[检查常量池是否有类符号引用]:::detail
-    S1_1 --> S1_2[检查类是否已加载/解析/初始化]:::detail
+    Start --> S1[Step 1: Class loading check]:::step
+    S1 --> S1_1[Check for the class symbol reference in the constant pool]:::detail
+    S1_1 --> S1_2[Check whether the class is loaded, resolved, and initialized]:::detail
 
-    S1_2 --> S2[Step 2: 分配内存]:::step
-    S2 --> S2_Method{分配方式}:::logic
-    S2_Method -->|堆内存规整| S2_A[指针碰撞]:::logic
-    S2_Method -->|堆内存交错| S2_B[空闲列表]:::logic
-    S2_A & S2_B --> S2_Safe[并发安全: TLAB 或 CAS 重试]:::detail
+    S1_2 --> S2[Step 2: Allocate memory]:::step
+    S2 --> S2_Method{Allocation method}:::logic
+    S2_Method -->|Contiguous heap| S2_A[Bump-pointer allocation]:::logic
+    S2_Method -->|Fragmented heap| S2_B[Free list]:::logic
+    S2_A & S2_B --> S2_Safe[Concurrency safety: TLAB or CAS retry]:::detail
 
-    S2_Safe --> S3[Step 3: 初始化零值]:::step
-    S3 --> S3_1[将分配到的内存空间初始化为 0]:::detail
-    S3_1 --> S3_2[保证实例字段不赋初值即可直接使用]:::detail
+    S2_Safe --> S3[Step 3: Zero initialization]:::step
+    S3 --> S3_1[Initialize the allocated memory to zero]:::detail
+    S3_1 --> S3_2[Instance fields can be used without explicit initial values]:::detail
 
-    S3_2 --> S4[Step 4: 设置对象头]:::step
-    S4 --> S4_1[Mark Word: 哈希码/GC分代年龄/锁状态]:::detail
-    S4_1 --> S4_2[Klass Pointer: 元数据指针指向类]:::detail
+    S3_2 --> S4[Step 4: Set the object header]:::step
+    S4 --> S4_1[Mark Word: hash code, GC age, lock state]:::detail
+    S4_1 --> S4_2[Klass pointer: points to class metadata]:::detail
 
-    S4_2 --> S5[Step 5: 执行 init 方法]:::step
-    S5 --> S5_1[按照程序员意愿进行初始化]:::detail
-    S5_1 --> S5_2[执行构造方法]:::detail
+    S4_2 --> S5[Step 5: Run the init method]:::step
+    S5 --> S5_1[Initialize as specified by the program]:::detail
+    S5_1 --> S5_2[Run the constructor]:::detail
 
-    S5_2 --> End((对象创建完成)):::root
+    S5_2 --> End((Object creation complete)):::root
 
-    %% 线条样式
+    %% Line style.
     linkStyle default stroke:#005D7B,stroke-width:1.5px,opacity:0.8
 ```
 
-#### Step1:类加载检查
+#### Step 1: Class Loading Check
 
-虚拟机遇到一条 new 指令时，首先将去检查这个指令的参数是否能在常量池中定位到这个类的符号引用，并且检查这个符号引用代表的类是否已被加载过、解析和初始化过。如果没有，那必须先执行相应的类加载过程。
+When the VM encounters a `new` instruction, it first checks whether the instruction's operand can be resolved to a symbolic reference for the class in the constant pool. It then checks whether that class has been loaded, resolved, and initialized. If not, the corresponding class loading process must run first.
 
-#### Step2:分配内存
+#### Step 2: Allocate Memory
 
-在**类加载检查**通过后，接下来虚拟机将为新生对象**分配内存**。对象所需的内存大小在类加载完成后便可确定，为对象分配空间的任务等同于把一块确定大小的内存从 Java 堆中划分出来。**分配方式**有 **“指针碰撞”** 和 **“空闲列表”** 两种，**选择哪种分配方式由 Java 堆是否规整决定，而 Java 堆是否规整又由所采用的垃圾收集器是否带有压缩整理功能决定**。
+After the **class loading check** passes, the VM **allocates memory** for the new object. Its required size is known after class loading, so allocation means carving out a block of that size from the Java heap. The two **allocation methods** are **bump-pointer allocation** and a **free list**. **The choice depends on whether the heap is contiguous, which in turn depends on whether the collector compacts memory.**
 
-**内存分配的两种方式**（补充内容，需要掌握）：
+**The two memory allocation methods** (additional material worth knowing):
 
-- 指针碰撞：
-  - 适用场合：堆内存规整（即没有内存碎片）的情况下。
-  - 原理：用过的内存全部整合到一边，没有用过的内存放在另一边，中间有一个分界指针，只需要向着没用过的内存方向将该指针移动对象内存大小位置即可。
-  - 使用该分配方式的 GC 收集器：Serial, ParNew
-- 空闲列表：
-  - 适用场合：堆内存不规整的情况下。
-  - 原理：虚拟机会维护一个列表，该列表中会记录哪些内存块是可用的，在分配的时候，找一块儿足够大的内存块儿来划分给对象实例，最后更新列表记录。
-  - 使用该分配方式的 GC 收集器：CMS
+- **Bump-pointer allocation:**
+  - **When used:** When the heap is contiguous (that is, it has no fragmentation).
+  - **How it works:** Used memory is grouped on one side and free memory on the other. A pointer marks the boundary between them. Allocation moves the pointer forward by the object's size.
+  - **Collectors that use it:** Serial and ParNew.
+- **Free list:**
+  - **When used:** When the heap is fragmented.
+  - **How it works:** The VM maintains a list of free memory blocks. For an allocation, it finds a block large enough for the object and updates the list.
+  - **Collectors that use it:** CMS.
 
-选择以上两种方式中的哪一种，取决于 Java 堆内存是否规整。而 Java 堆内存是否规整，取决于 GC 收集器的算法是“标记-清除”，还是“标记-整理”（也称作“标记-压缩”），值得注意的是，复制算法内存也是规整的。
+The choice between these methods depends on whether the Java heap is contiguous. That depends on the collector's algorithm: mark-sweep or mark-compact (also called mark-compact). Note that copying collectors also leave memory contiguous.
 
-**内存分配并发问题（补充内容，需要掌握）**
+**Concurrent memory allocation** (additional material worth knowing)
 
-在创建对象的时候有一个很重要的问题，就是线程安全，因为在实际开发过程中，创建对象是很频繁的事情，作为虚拟机来说，必须要保证线程是安全的，通常来讲，虚拟机采用两种方式来保证线程安全：
+Object creation is frequent, so allocation must be thread-safe. VMs commonly use two approaches:
 
-- **CAS+失败重试：** CAS 是乐观锁的一种实现方式。所谓乐观锁就是，每次不加锁而是假设没有冲突而去完成某项操作，如果因为冲突失败就重试，直到成功为止。**虚拟机采用 CAS 配上失败重试的方式保证更新操作的原子性。**
-- **TLAB：** 为每一个线程预先在 Eden 区分配一块儿内存，JVM 在给线程中的对象分配内存时，首先在 TLAB 分配，当对象大于 TLAB 中的剩余内存或 TLAB 的内存已用尽时，再采用上述的 CAS 进行内存分配
+- **CAS and retry:** CAS is one way to implement optimistic locking. An operation proceeds assuming there is no conflict; if it fails because of a conflict, it retries until successful. **The VM uses CAS with retries to make updates atomic.**
+- **TLAB:** The VM reserves a region of Eden for each thread. It first allocates that thread's objects in its TLAB. If an object is larger than the remaining space or the TLAB is full, the VM falls back to the CAS-based allocation described above.
 
-#### Step3:初始化零值
+#### Step 3: Zero Initialization
 
-内存分配完成后，虚拟机需要将分配到的内存空间都初始化为零值（不包括对象头），这一步操作保证了对象的实例字段在 Java 代码中可以不赋初始值就直接使用，程序能访问到这些字段的数据类型所对应的零值。
+After allocation, the VM initializes the allocated memory to zero, excluding the object header. This lets Java code use instance fields without explicitly assigning initial values: each field has the zero value for its type.
 
-#### Step4:设置对象头
+#### Step 4: Set the Object Header
 
-初始化零值完成之后，**虚拟机要对对象进行必要的设置**，例如这个对象是哪个类的实例、如何才能找到类的元数据信息、对象的哈希码、对象的 GC 分代年龄等信息。 **这些信息存放在对象头中。** 另外，对象头的具体布局与 JDK 版本和虚拟机配置有关；例如偏向锁在 JDK 15 起默认禁用，相关实现后来又被移除。
+After zero initialization, **the VM sets the object's metadata**, including its class, how to find the class metadata, its hash code, and its GC age. **This information is stored in the object header.** The header layout depends on the JDK version and VM configuration. For example, biased locking was disabled by default in JDK 15, and its implementation was later removed.
 
-#### Step5:执行 init 方法
+#### Step 5: Run the `init` Method
 
-在上面工作都完成之后，从虚拟机的视角来看，一个新的对象已经产生了，但从 Java 程序的视角来看，对象创建才刚开始，`<init>` 方法还没有执行，所有的字段都还为零。所以一般来说，执行 new 指令之后会接着执行 `<init>` 方法，把对象按照程序员的意愿进行初始化，这样一个真正可用的对象才算完全产生出来。
+After these steps, the VM considers the new object created. From the Java program's perspective, however, construction has just begun: `<init>` has not run, and all fields still hold zero values. The `new` instruction is generally followed by `<init>`, which initializes the object as specified by the program. Only then is the object ready to use.
 
-### 对象的内存布局
+### Object Memory Layout
 
-在 Hotspot 虚拟机中，对象在内存中的布局可以分为 3 块区域：**对象头（Header）**、**实例数据（Instance Data）**和**对齐填充（Padding）**。
+In HotSpot, an object has three memory regions: the **object header**, **instance data**, and **alignment padding**.
 
-对象头包括两部分信息：
+The object header contains two parts:
 
-1. 标记字段（Mark Word）：用于存储对象自身的运行时数据，如哈希码（HashCode）、GC 分代年龄、锁状态等；偏向线程 ID、偏向时间戳只适用于仍实现并启用偏向锁的旧版 HotSpot。
-2. 类型指针（Klass pointer）：对象指向它的类元数据的指针，虚拟机通过这个指针来确定这个对象是哪个类的实例。
+1. **Mark word:** Stores runtime data about the object, such as its hash code, GC age, and lock state. A biased thread ID and timestamp apply only to older HotSpot versions that implemented and enabled biased locking.
+2. **Klass pointer:** A pointer to the object's class metadata, which the VM uses to determine the object's class.
 
-**实例数据部分是对象真正存储的有效信息**，也是在程序中所定义的各种类型的字段内容。
+**Instance data is the information the object actually stores**, including the fields defined by the program.
 
-**对齐填充部分不是必然存在的，也没有什么特别的含义，仅仅起占位作用。** HotSpot 会按对象对齐边界分配对象，默认对齐通常是 8 字节，也可受 `-XX:ObjectAlignmentInBytes` 等配置影响。因此对象总大小需要补齐到对齐边界；对象头本身并不保证总是 8 字节的整数倍，例如启用压缩类指针时常见的对象头大小是 12 字节。
+**Alignment padding is optional and has no special meaning; it fills space to meet alignment requirements.** HotSpot aligns objects on a boundary that is usually 8 bytes by default and can be affected by options such as `-XX:ObjectAlignmentInBytes`. The total object size is padded to that boundary. The object header itself is not always a multiple of 8 bytes; for example, a common header size with compressed class pointers is 12 bytes.
 
-### 对象的访问定位
+### Object Access
 
-建立对象就是为了使用对象，我们的 Java 程序通过栈上的 reference 数据来操作堆上的具体对象。对象的访问方式由虚拟机实现而定，目前主流的访问方式有：**使用句柄**、**直接指针**。
+Objects are created to be used. Java code uses references in stack frames to access objects on the heap. The access method depends on the VM implementation. Two common approaches are **handles** and **direct pointers**.
 
-#### 句柄
+#### Handles
 
-如果使用句柄的话，那么 Java 堆中将会划分出一块内存来作为句柄池，reference 中存储的就是对象的句柄地址，而句柄中包含了对象实例数据与对象类型数据各自的具体地址信息。
+With handles, the Java heap contains a handle pool. A reference stores the address of an object's handle, which in turn contains the addresses of the object's instance data and type data.
 
-![对象的访问定位-使用句柄](https://oss.javaguide.cn/github/javaguide/java/jvm/access-location-of-object-handle.png)
+![Object access through a handle](https://oss.javaguide.cn/github/javaguide/java/jvm/access-location-of-object-handle.png)
 
-#### 直接指针
+#### Direct Pointers
 
-如果使用直接指针访问，reference 中存储的直接就是对象的地址。
+With direct pointer access, the reference stores the object's address directly.
 
-![对象的访问定位-直接指针](https://oss.javaguide.cn/github/javaguide/java/jvm/access-location-of-object-handle-direct-pointer.png)
+![Object access through a direct pointer](https://oss.javaguide.cn/github/javaguide/java/jvm/access-location-of-object-handle-direct-pointer.png)
 
-这两种对象访问方式各有优势。使用句柄来访问的最大好处是 reference 中存储的是稳定的句柄地址，在对象被移动时只会改变句柄中的实例数据指针，而 reference 本身不需要修改。使用直接指针访问方式最大的好处就是速度快，它节省了一次指针定位的时间开销。
+Both approaches have advantages. With handles, a reference contains a stable handle address. When an object moves, only the instance data pointer in the handle changes; the reference itself does not. Direct pointer access is faster because it avoids one level of pointer indirection.
 
-HotSpot 虚拟机主要使用的就是这种方式来进行对象访问。
+HotSpot mainly uses direct pointer access.
 
-## 参考
+## References
 
-- 《深入理解 Java 虚拟机：JVM 高级特性与最佳实践（第二版》
-- 《自己动手写 Java 虚拟机》
+- _Understanding the Java Virtual Machine: Advanced Features and Best Practices_, 2nd edition
+- _Write Your Own Java Virtual Machine_
 - Chapter 2. The Structure of the Java Virtual Machine：<https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-2.html>
-- JVM 栈帧内部结构-动态链接：<https://chenxitag.com/archives/368>
-- Java 中 new String（“字面量”） 中 “字面量” 是何时进入字符串常量池的？ - 木女孩的回答 - 知乎：<https://www.zhihu.com/question/55994121/answer/147296098>
-- JVM 常量池中存储的是对象还是引用呢？ - RednaxelaFX 的回答 - 知乎：<https://www.zhihu.com/question/57109429/answer/151717241>
+- JVM stack frame internals: dynamic linking: <https://chenxitag.com/archives/368>
+- When does the string literal in `new String("literal")` enter the string pool? — Zhihu answer by Mu Nühai: <https://www.zhihu.com/question/55994121/answer/147296098>
+- Does the JVM constant pool store objects or references? — Zhihu answer by RednaxelaFX: <https://www.zhihu.com/question/57109429/answer/151717241>
 - <http://www.pointsoftware.ch/en/under-the-hood-runtime-data-areas-javas-memory-model/>
 - <https://dzone.com/articles/jvm-permgen-%E2%80%93-where-art-thou>
 - <https://stackoverflow.com/questions/9095748/method-area-and-permgen>

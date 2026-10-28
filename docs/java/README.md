@@ -79,8 +79,8 @@ head:
 - [Java内存区域详解（重点）](./jvm/memory-area.md)：理解程序计数器、虚拟机栈、本地方法栈、堆和方法区。
 - [JVM垃圾回收详解（重点）](./jvm/jvm-garbage-collection.md)：理解对象存活判断、垃圾收集算法和主流垃圾收集器。
 - [类加载过程详解](./jvm/class-loading-process.md) 和 [类加载器详解（重点）](./jvm/classloader.md)：掌握类生命周期和双亲委派模型。
-- [Java IO 专题](./io/)：从 BIO、NIO、AIO 讲到 IO 模型和 IO 设计模式。
-- [Java IO 基础知识总结](./io/io-basis.md)、[Java NIO 核心知识总结](./io/nio-basis.md)、[Java IO 模型详解](./io/io-model.md)：补齐网络编程和中间件学习前置知识。
+- [Java I/O](./io/): Covers BIO, NIO, AIO, I/O models, and design patterns.
+- [Java I/O Basics](./io/io-basis.md), [Java NIO Basics](./io/nio-basis.md), and [Java I/O Models](./io/io-model.md): Build the foundation for network programming and middleware.
 
 ### Java 新特性
 
