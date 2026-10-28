@@ -1,91 +1,91 @@
 ---
-title: Java 新特性专题：Java 8 到 Java 26 重要特性梳理
-description: Java 新特性学习路线，梳理 Java 8 到 Java 26 的语言特性、标准库增强、JVM 改进、LTS 版本、Lambda、Stream、Record 和虚拟线程。
+title: "Java New Features: Key Changes from Java 8 to Java 26"
+description: A guide to Java 8–26 language features, standard library updates, JVM improvements, LTS releases, Lambda, Stream, records, and virtual threads.
 category: Java
 tag:
   - Java
-  - Java新特性
-  - Java面试
+  - Java New Features
+  - Java Interview Prep
 sitemap:
   changefreq: weekly
   priority: 0.9
 head:
   - - meta
     - name: keywords
-      content: Java新特性,Java8新特性,Java11新特性,Java17新特性,Java21新特性,Lambda,Stream,Optional,模块化,var,Record,Switch,虚拟线程,模式匹配
+      content: Java new features,Java 8,Java 11,Java 17,Java 21,Lambda,Stream,Optional,modules,var,records,switch,virtual threads,pattern matching
 ---
 
-Java 新特性不适合按版本机械背诵，更适合抓住“语言表达能力、标准库增强、并发模型、JVM 改进、长期支持版本”这几条主线。日常开发优先掌握 Java 8、11、17、21 等 LTS 版本中的稳定特性，再按需了解后续版本的预览和孵化特性。
+Rather than memorizing Java features release by release, focus on a few themes: language features, standard library updates, concurrency models, JVM improvements, and long-term support releases. For day-to-day development, learn the stable features in LTS releases such as Java 8, 11, 17, and 21 first, then explore preview and incubator features as needed.
 
-时间比较紧的话，可以先看面试突击版的 [Java 新特性常见面试题总结](https://interview.javaguide.cn/java/java-new-features.html)，再回到本专题查看对应版本的完整说明。
+If you are short on time, start with [Common Java Feature Interview Questions](https://interview.javaguide.cn/java/java-new-features.html), then return here for the full details by release.
 
-## 适合谁看
+## Who This Guide Is For
 
-- 想系统了解 Java 8 之后版本变化的 Java 开发者。
-- 准备 Java 新特性、LTS 版本差异、虚拟线程、Record、模式匹配等面试题的同学。
-- 负责 JDK 升级，需要判断哪些特性会影响项目代码和运行时表现的工程师。
-- 已经熟悉 Java 8，但对 Java 11、17、21 之后变化不够清楚的读者。
+- Java developers who want a structured overview of changes since Java 8.
+- Candidates preparing for interviews on Java features, LTS releases, virtual threads, records, and pattern matching.
+- Engineers planning JDK upgrades and assessing their impact on application code and runtime behavior.
+- Readers familiar with Java 8 who want to understand what changed in Java 11, 17, 21, and later releases.
 
-## 学习重点
+## Key Topics
 
-- Java 8 的 Lambda、Stream、Optional、接口默认方法和新日期 API。
-- Java 9 的模块化，以及后续版本对语言语法和标准库的持续增强。
-- Java 11、17、21 等 LTS 版本中更值得优先掌握的稳定能力。
-- var、文本块、Record、Switch 表达式、密封类、模式匹配等语言层变化。
-- 虚拟线程、结构化并发、分代 ZGC、Foreign Function & Memory API 等运行时和并发相关变化。
-- 区分正式特性、预览特性、孵化特性，避免在生产升级中误判风险。
+- Java 8 features: Lambda, Stream, Optional, interface default methods, and the Date-Time API.
+- Java 9 modules and later language and standard library updates.
+- Stable features in LTS releases such as Java 11, 17, and 21.
+- Language changes such as `var`, text blocks, records, switch expressions, sealed classes, and pattern matching.
+- Runtime and concurrency updates such as virtual threads, structured concurrency, generational ZGC, and the Foreign Function & Memory API.
+- The differences between permanent, preview, and incubator features, so you can assess upgrade risks accurately.
 
-## 建议阅读顺序
+## Recommended Reading Order
 
-1. [Java8 新特性实战](./java8-common-new-features.md)：先掌握 Lambda、Stream、Optional、接口默认方法和新日期 API。
-2. [Java 9 新特性概览](./java9.md)、[Java 10 新特性概览](./java10.md)：理解模块化和局部变量类型推断等基础变化。
-3. [Java 11 新特性概览（重要）](./java11.md)：重点关注第一个 8 之后被广泛采用的 LTS 版本。
-4. [Java 17 新特性概览（重要）](./java17.md)：掌握 Record、密封类、Switch、模式匹配等现代 Java 语法演进。
-5. [Java 21 新特性概览(重要)](./java21.md)：重点学习虚拟线程、分代 ZGC、模式匹配和字符串模板等变化。
-6. 再按需阅读 [Java 22 & 23 新特性概览](./java22-23.md)、[Java 24 新特性概览](./java24.md)、[Java 25 新特性概览](./java25.md)、[Java 26 新特性概览](./java26.md)。
+1. [Java 8 Features in Practice](./java8-common-new-features.md): Start with Lambda, Stream, Optional, interface default methods, and the Date-Time API.
+2. [Java 9 New Features](./java9.md) and [Java 10 New Features](./java10.md): Learn about modules and local variable type inference.
+3. [Java 11 New Features](./java11.md): Focus on the first widely adopted LTS release after Java 8.
+4. [Java 17 New Features](./java17.md): Learn about records, sealed classes, switch expressions, and pattern matching.
+5. [Java 21 New Features](./java21.md): Focus on virtual threads, generational ZGC, pattern matching, and string templates.
+6. Then explore [Java 22 and 23](./java22-23.md), [Java 24](./java24.md), [Java 25](./java25.md), and [Java 26](./java26.md) as needed.
 
-## 核心文章
+## Core Guides
 
-### Java 8 基础能力
+### Java 8 Fundamentals
 
-- [Java8 新特性实战](./java8-common-new-features.md)：掌握 Lambda、函数式接口、Stream、Optional、接口默认方法和新日期 API。
-- [《Java8 指南》中文翻译](./java8-tutorial-translate.md)：通过更系统的教程理解 Java 8 常用特性。
+- [Java 8 Features in Practice](./java8-common-new-features.md): Learn about Lambda, functional interfaces, Stream, Optional, interface default methods, and the Date-Time API.
+- [Java 8 Tutorial](./java8-tutorial-translate.md): Explore common Java 8 features in a more structured tutorial.
 
-### 重要 LTS 版本
+### Key LTS Releases
 
-- [Java 11 新特性概览（重要）](./java11.md)：关注 HTTP Client、字符串 API、集合 API、ZGC 实验特性等变化。
-- [Java 17 新特性概览（重要）](./java17.md)：关注 Record、密封类、Switch 表达式、文本块和模式匹配相关能力。
-- [Java 21 新特性概览(重要)](./java21.md)：关注虚拟线程、分代 ZGC、Record Pattern、Pattern Matching for switch 等特性。
+- [Java 11 New Features](./java11.md): See changes to the HTTP Client, String and collection APIs, and the ZGC experiment.
+- [Java 17 New Features](./java17.md): Learn about records, sealed classes, switch expressions, text blocks, and pattern matching.
+- [Java 21 New Features](./java21.md): Explore virtual threads, generational ZGC, record patterns, and pattern matching for switch.
 
-### 按版本追踪
+### Release-by-Release Guides
 
-- [Java 9 新特性概览](./java9.md)：理解模块化系统和 JShell。
-- [Java 10 新特性概览](./java10.md)：了解局部变量类型推断和运行时改进。
-- [Java 12 & 13 新特性概览](./java12-13.md)：了解 Switch 表达式、文本块等变化。
-- [Java 14 & 15 新特性概览](./java14-15.md)：了解 Record、文本块、隐藏类等特性。
-- [Java 16 新特性概览](./java16.md)：了解 Record 正式转正、Pattern Matching for instanceof 等变化。
-- [Java 18 新特性概览](./java18.md)、[Java 19 新特性概览](./java19.md)、[Java 20 新特性概览](./java20.md)：跟进 UTF-8 默认字符集、虚拟线程预览、结构化并发等演进。
-- [Java 22 & 23 新特性概览](./java22-23.md)、[Java 24 新特性概览](./java24.md)、[Java 25 新特性概览](./java25.md)、[Java 26 新特性概览](./java26.md)：了解较新版本中的预览、孵化和正式特性。
+- [Java 9 New Features](./java9.md): Learn about the module system and JShell.
+- [Java 10 New Features](./java10.md): Explore local variable type inference and runtime improvements.
+- [Java 12 and 13 New Features](./java12-13.md): Learn about switch expressions, text blocks, and other changes.
+- [Java 14 and 15 New Features](./java14-15.md): Explore records, text blocks, and hidden classes.
+- [Java 16 New Features](./java16.md): Learn about records becoming permanent and pattern matching for `instanceof`.
+- [Java 18 New Features](./java18.md), [Java 19 New Features](./java19.md), and [Java 20 New Features](./java20.md): Follow updates to the default UTF-8 charset, virtual threads, and structured concurrency.
+- [Java 22 and 23](./java22-23.md), [Java 24](./java24.md), [Java 25](./java25.md), and [Java 26](./java26.md): Explore preview, incubator, and permanent features in recent releases.
 
-## 高频问题
+## Common Questions
 
-- Java 8 为什么重要？Lambda 和 Stream 分别解决什么问题？
-- `Optional` 适合用在哪些场景？为什么不建议滥用？
-- Java 9 模块化解决了什么问题？
-- `var` 是动态类型吗？它适合在哪些场景使用？
-- Record 和普通 JavaBean 有什么区别？
-- Switch 表达式和传统 switch 有什么区别？
-- 密封类适合解决什么问题？
-- 模式匹配带来了哪些代码简化？
-- 虚拟线程适合什么场景？和平台线程有什么区别？
-- 生产升级 JDK 时，如何区分正式特性、预览特性和孵化特性？
+- Why is Java 8 important? What problems do Lambda and Stream address?
+- When should you use `Optional`, and why should you avoid overusing it?
+- What problem does the Java 9 module system solve?
+- Is `var` dynamic typing? When should you use it?
+- How do records differ from regular JavaBeans?
+- How do switch expressions differ from traditional `switch` statements?
+- What problems are sealed classes designed to solve?
+- How does pattern matching simplify code?
+- When are virtual threads useful, and how do they differ from platform threads?
+- How do you distinguish permanent, preview, and incubator features when upgrading a production JDK?
 
-## 相关专题
+## Related Guides
 
-- [Java 知识体系](../)
-- [Java 基础专题](../basis/)
-- [Java 并发编程专题](../concurrent/)
-- [JVM 专题](../jvm/)
-- [Java IO 专题](../io/)
+- [Java Guide](../)
+- [Java Fundamentals](../basis/)
+- [Java Concurrency](../concurrent/)
+- [JVM](../jvm/)
+- [Java I/O](../io/)
 
 <!-- @include: @article-footer.snippet.md -->

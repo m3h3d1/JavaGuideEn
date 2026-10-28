@@ -1,78 +1,78 @@
 ---
-title: Java8 新特性实战
-description: 实战讲解 Java 8 的核心新特性，包括 Lambda、Stream、Optional、日期时间 API 与接口默认方法等。
+title: Java 8 Features in Practice
+description: A practical guide to Java 8 features, including Lambda, Stream, Optional, the Date-Time API, and interface default methods.
 category: Java
 tag:
-  - Java新特性
+  - Java New Features
 head:
   - - meta
     - name: keywords
-      content: Java 8,Lambda,Stream API,Optional,Date/Time API,默认方法,函数式接口
+      content: Java 8,Lambda,Stream API,Optional,Date-Time API,default methods,functional interfaces
 ---
 
-> 本文来自[cowbi](https://github.com/cowbi)的投稿~
+> Contributed by [cowbi](https://github.com/cowbi).
 
 <!-- markdownlint-disable MD024 -->
 
-JDK 8 于 2014 年 3 月 18 日发布，这是一个 LTS（长期支持版）版本，也是 Java 生态中长期广泛使用的版本之一。Oracle 当前列出的 LTS 版本包括 JDK 8、JDK 11、JDK 17、JDK 21 和 JDK 25。
+JDK 8 was released on March 18, 2014. It is an LTS (Long-Term Support) release and remains widely used in the Java ecosystem. Oracle's listed LTS releases are JDK 8, 11, 17, 21, and 25.
 
-JDK 8 引入了许多重要的新特性，这篇文章会挑选其中较为重要的一些新特性进行详细介绍：
+JDK 8 introduced many important features. This article covers some of the key ones:
 
-- Lambda 表达式
+- Lambda expressions
 - Stream API
-- Optional 类
-- Date-Time API
-- 接口默认方法
-- 函数式接口
+- The Optional class
+- The Date-Time API
+- Interface default methods
+- Functional interfaces
 
-下图是从 JDK 8 到 JDK 24 每个版本的更新带来的新特性数量和更新时间：
+The chart below shows the number of features and release dates for each update from JDK 8 through JDK 24:
 
 ![](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
 
-Oracle 于 2014 年发布了 Java 8（JDK 1.8），此后它在 Java 生态中得到了长期而广泛的使用。很多程序员对其部分新特性仍不够了解，尤其是习惯了 Java 8 之前版本的开发者，比如我。
+Oracle released Java 8 (JDK 1.8) in 2014, and it has remained widely used in the Java ecosystem. Many developers, especially those used to earlier versions, are still unfamiliar with some of its features.
 
-为了不脱离队伍太远，还是有必要对这些新特性做一些总结梳理。它较 jdk.7 有很多变化或者说是优化，比如 interface 里可以有静态方法，并且可以有方法体，这一点就颠覆了之前的认知；`java.util.HashMap` 数据结构里增加了红黑树；还有众所周知的 Lambda 表达式等等。本文不能把所有的新特性都给大家一一分享，只列出比较常用的新特性给大家做详细讲解。更多相关内容请看[官网关于 Java8 的新特性的介绍](https://www.oracle.com/java/technologies/javase/8-whats-new.html)。
+It is useful to review these changes. Compared with JDK 7, Java 8 introduced many updates: interfaces can have static and default methods with bodies, `java.util.HashMap` added red-black tree bins, and Lambda expressions arrived. This article focuses on commonly used features. For the full list, see [Oracle's overview of Java 8 features](https://www.oracle.com/java/technologies/javase/8-whats-new.html).
 
-## Interface
+## Interfaces
 
-interface 的设计初衷是面向抽象，提高扩展性。这也留有一点遗憾，Interface 修改的时候，实现它的类也必须跟着改。
+Interfaces provide abstraction and extensibility. However, changing an interface used to require changing every class that implemented it.
 
-为了解决接口的修改与现有的实现不兼容的问题。新 interface 的方法可以用 `default` 或 `static` 修饰，这样就可以有方法体，实现类也不必重写此方法。
+To preserve compatibility with existing implementations, Java 8 allows interface methods to use `default` or `static` and have a method body. Implementing classes do not have to override these methods.
 
-一个 interface 中可以有多个方法被它们修饰，这 2 个修饰符的区别主要也是普通方法和静态方法的区别。
+An interface can declare multiple methods with these modifiers. Their main difference is the same as that between instance methods and static methods:
 
-1. `default` 修饰的方法，是普通实例方法，可以用 `this` 调用，可以被子类继承、重写。
-2. `static` 修饰的方法，使用上和一般类静态方法一样。但它不能被子类继承，只能用 `Interface` 调用。
+1. A `default` method is an instance method. It can use `this` and can be inherited or overridden by implementing classes.
+2. A `static` method works like a static method in a class. It is not inherited and must be called through the interface.
 
-我们来看一个实际的例子。
+Here is an example:
 
 ```java
 public interface InterfaceNew {
     static void sm() {
-        System.out.println("interface提供的方式实现");
+        System.out.println("Implemented in the interface");
     }
     static void sm2() {
-        System.out.println("interface提供的方式实现");
+        System.out.println("Implemented in the interface");
     }
 
     default void def() {
-        System.out.println("interface default方法");
+        System.out.println("Interface default method");
     }
     default void def2() {
-        System.out.println("interface default2方法");
+        System.out.println("Second interface default method");
     }
-    //须要实现类重写
+    // Must be implemented by implementing classes.
     void f();
 }
 
 public interface InterfaceNew1 {
     default void def() {
-        System.out.println("InterfaceNew1 default方法");
+        System.out.println("InterfaceNew1 default method");
     }
 }
 ```
 
-如果有一个类既实现了 `InterfaceNew` 接口又实现了 `InterfaceNew1` 接口，它们都有 `def()`，并且 `InterfaceNew` 接口和 `InterfaceNew1` 接口没有继承关系的话，这时就必须重写 `def()`。不然的话，编译的时候就会报错。
+If a class implements both `InterfaceNew` and `InterfaceNew1`, and both define `def()` without either interface extending the other, the class must override `def()`. Otherwise, compilation fails.
 
 ```java
 public class InterfaceNewImpl implements InterfaceNew , InterfaceNew1{
@@ -92,55 +92,55 @@ public class InterfaceNewImpl implements InterfaceNew , InterfaceNew1{
 }
 ```
 
-**在 Java 8，接口和抽象类有什么区别的？**
+**In Java 8, how do interfaces differ from abstract classes?**
 
-很多小伙伴认为：“既然 interface 也可以有自己的方法实现，似乎和 abstract class 没多大区别了。”
+Some developers may think that interfaces are now much like abstract classes because they can provide method implementations.
 
-其实它们还是有区别的
+They still differ:
 
-1. interface 和 class 的区别，好像是废话，主要有：
+1. The main differences between interfaces and classes are:
 
-   - 接口多实现，类单继承
-   - 接口中没有方法体的实例方法隐式为 `public abstract`，字段隐式为 `public static final`；此外，接口还可以声明 `default`、`static` 等方法。abstract class 的成员可以使用更多修饰符
+   - A class can implement multiple interfaces but extend only one class.
+   - Interface instance methods without a body are implicitly `public abstract`, and fields are implicitly `public static final`. Interfaces can also declare `default` and `static` methods. Abstract classes support more member modifiers.
 
-2. interface 的方法是更像是一个扩展插件。而 abstract class 的方法是要继承的。
+2. Interface methods act more like extension points, while abstract class methods are inherited as part of a class hierarchy.
 
-开始我们也提到，interface 新增 `default` 和 `static` 修饰的方法，为了解决接口的修改与现有的实现不兼容的问题，并不是为了要替代 `abstract class`。在使用上，该用 abstract class 的地方还是要用 abstract class，不要因为 interface 的新特性而将之替换。
+As noted above, `default` and `static` methods were added to interfaces to preserve compatibility when interfaces change, not to replace abstract classes. Use an abstract class when it fits the design; these interface features are not a reason to replace one.
 
-**记住接口永远和类不一样。**
+**Remember that interfaces and classes are different.**
 
-## functional interface 函数式接口
+## Functional Interfaces
 
-**定义**：也称 SAM 接口，即 Single Abstract Method interfaces，有且只有一个抽象方法，但可以有多个非抽象方法的接口。
+**Definition:** A functional interface, also called a SAM (Single Abstract Method) interface, has exactly one abstract method. It can also have multiple non-abstract methods.
 
-在 java 8 中专门有一个包放函数式接口 `java.util.function`，该包下的所有接口都有 `@FunctionalInterface` 注解，提供函数式编程。
+Java 8 provides the `java.util.function` package for functional interfaces. Its interfaces use the `@FunctionalInterface` annotation and support functional programming.
 
-在其他包中也有函数式接口，其中一些没有 `@FunctionalInterface` 注解，但是只要符合函数式接口的定义就是函数式接口，与是否有 `@FunctionalInterface` 注解无关，注解只是在编译时起到强制规范定义的作用。其在 Lambda 表达式中有广泛的应用。
+Other packages also contain functional interfaces, some without the `@FunctionalInterface` annotation. An interface is functional if it meets the definition, whether or not it has the annotation. The annotation lets the compiler enforce that definition. Functional interfaces are widely used with Lambda expressions.
 
-## Lambda 表达式
+## Lambda Expressions
 
-接下来谈众所周知的 Lambda 表达式。它是推动 Java 8 发布的最重要新特性。是继泛型(`Generics`)和注解(`Annotation`)以来最大的变化。
+Lambda expressions were one of the most important features in Java 8 and a major change after generics and annotations.
 
-使用 Lambda 表达式可以使代码变的更加简洁紧凑。让 java 也能支持简单的*函数式编程*。
+Lambda expressions make code more concise and let Java support basic _functional programming_.
 
-> Lambda 表达式是一个匿名函数，java 8 允许把函数作为参数传递进方法中。
+> A Lambda expression is an anonymous function. Java 8 lets you pass functions as method arguments.
 
-### 语法格式
+### Syntax
 
 ```java
-(parameters) -> expression 或
+(parameters) -> expression or
 (parameters) ->{ statements; }
 ```
 
-### Lambda 实战
+### Lambda in Practice
 
-我们用常用的实例来感受 Lambda 带来的便利
+These common examples show how Lambda expressions can simplify code.
 
-#### 替代匿名内部类
+#### Replacing Anonymous Inner Classes
 
-过去给方法传动态参数的唯一方法是使用内部类。比如
+Anonymous inner classes were the usual way to pass behavior to a method. For example:
 
-**1.`Runnable` 接口**
+**1. `Runnable` interface**
 
 ```java
 new Thread(new Runnable() {
@@ -149,11 +149,11 @@ new Thread(new Runnable() {
                 System.out.println("The runable now is using!");
             }
 }).start();
-//用lambda
+// With a Lambda expression.
 new Thread(() -> System.out.println("It's a lambda function!")).start();
 ```
 
-**2.`Comparator` 接口**
+**2. `Comparator` interface**
 
 ```java
 List<Integer> strings = Arrays.asList(1, 2, 3);
@@ -164,14 +164,14 @@ public int compare(Integer o1, Integer o2) {
     return Integer.compare(o1, o2);}
 });
 
-//Lambda
+// Lambda expression.
 Collections.sort(strings, (Integer o1, Integer o2) -> Integer.compare(o1, o2));
-//分解开
+// Split into separate statements.
 Comparator<Integer> comparator = (Integer o1, Integer o2) -> Integer.compare(o1, o2);
 Collections.sort(strings, comparator);
 ```
 
-**3.`Listener` 接口**
+**3. `Listener` interface**
 
 ```java
 JButton button = new JButton();
@@ -181,13 +181,13 @@ public void itemStateChanged(ItemEvent e) {
    e.getItem();
 }
 });
-//lambda
+// Lambda expression.
 button.addItemListener(e -> e.getItem());
 ```
 
-**4.自定义接口**
+**4. Custom interfaces**
 
-上面的 3 个例子是我们在开发过程中最常见的，从中也能体会到 Lambda 带来的便捷与清爽。它只保留实际用到的代码，把无用代码全部省略。那它对接口有没有要求呢？我们发现这些匿名内部类只重写了接口的一个方法，当然也只有一个方法须要重写。这就是我们上文提到的**函数式接口**，也就是说只要方法的参数是函数式接口都可以用 Lambda 表达式。
+The three examples above are common in application development. Lambda expressions keep the code that matters and remove boilerplate. They work when the parameter type is a **functional interface**: an interface with one abstract method, which is why each anonymous inner class above overrides only one method.
 
 ```java
 @FunctionalInterface
@@ -201,47 +201,47 @@ public interface Runnable{
 }
 ```
 
-我们自定义一个函数式接口
+Here is a custom functional interface:
 
 ```java
 @FunctionalInterface
 public interface LambdaInterface {
  void f();
 }
-//使用
+// Usage.
 public class LambdaClass {
     public static void forEg() {
-        lambdaInterfaceDemo(()-> System.out.println("自定义函数式接口"));
+        lambdaInterfaceDemo(()-> System.out.println("Custom functional interface"));
     }
-    //函数式接口参数
+    // Takes a functional interface as an argument.
     static void lambdaInterfaceDemo(LambdaInterface i){
         i.f();
     }
 }
 ```
 
-#### 集合迭代
+#### Iterating Over Collections
 
 ```java
 void lamndaFor() {
         List<String> strings = Arrays.asList("1", "2", "3");
-        //传统foreach
+        // Traditional for-each loop.
         for (String s : strings) {
             System.out.println(s);
         }
-        //Lambda foreach
+        // forEach with a Lambda expression.
         strings.forEach((s) -> System.out.println(s));
-        //or
+        // Or use a method reference.
         strings.forEach(System.out::println);
-     //map
+     // Map.
         Map<Integer, String> map = new HashMap<>();
         map.forEach((k,v)->System.out.println(v));
 }
 ```
 
-#### 方法的引用
+#### Method References
 
-Java 8 允许使用 `::` 关键字来传递方法或者构造函数引用，无论如何，表达式返回的类型必须是 functional-interface。
+Java 8 lets you pass method or constructor references with the `::` operator. The expression must match a functional interface.
 
 ```java
 public class LambdaClassSuper {
@@ -260,23 +260,23 @@ public class LambdaClass extends LambdaClassSuper {
     }
 
     void show() {
-        //1.调用静态函数，返回类型必须是functional-interface
+        // 1. Reference a static method; the target type must be a functional interface.
         LambdaInterface t = LambdaClass::staticF;
 
-        //2.实例方法调用
+        // 2. Reference an instance method.
         LambdaClass lambdaClass = new LambdaClass();
         LambdaInterface lambdaInterface = lambdaClass::f;
 
-        //3.超类上的方法调用
+        // 3. Reference a superclass method.
         LambdaInterface superf = super::sf;
 
-        //4. 构造方法调用
+        // 4. Reference a constructor.
         LambdaInterface tt = LambdaClassSuper::new;
     }
 }
 ```
 
-#### 访问变量
+#### Accessing Variables
 
 ```java
 int i = 0;
@@ -284,43 +284,43 @@ Collections.sort(strings, (Integer o1, Integer o2) -> o1 - i);
 //i =3;
 ```
 
-lambda 表达式可以引用外部局部变量，但该变量必须是 `final` 或 effectively final（初始化后不再赋值）。编译器不会自动为变量添加 `final` 修饰符。
+Lambda expressions can reference local variables from the enclosing scope, but those variables must be `final` or effectively final (not reassigned after initialization). The compiler does not add the `final` modifier automatically.
 
-## Stream
+## Stream API
 
-java 新增了 `java.util.stream` 包，它和之前的流大同小异。之前接触最多的是资源流，比如 `java.io.FileInputStream`，通过流把文件从一个地方输入到另一个地方，它只是内容搬运工，对文件内容不做任何*CRUD*。
+Java added the `java.util.stream` package. Unlike resource streams such as `java.io.FileInputStream`, which move data from one place to another without operating on its contents, the Stream API processes data.
 
-`Stream` 依然不存储数据，不同的是它可以检索(Retrieve)和逻辑处理集合数据、包括筛选、排序、统计、计数等。可以想象成是 Sql 语句。
+`Stream` does not store data. It retrieves and processes collection data through operations such as filtering, sorting, statistics, and counting. You can think of it as similar to an SQL query.
 
-它的源数据可以是 `Collection`、`Array` 等。由于它的方法参数都是函数式接口类型，所以一般和 Lambda 配合使用。
+Its source can be a `Collection`, an array, and more. Since many methods take functional interfaces, Streams are often used with Lambda expressions.
 
-### 流类型
+### Stream Types
 
-1. stream 串行流
-2. parallelStream 并行流，可多线程执行
+1. `stream`: a sequential stream.
+2. `parallelStream`: a parallel stream that can use multiple threads.
 
-### 常用方法
+### Common Methods
 
-接下来我们看 `java.util.stream.Stream` 常用方法
+Here are some commonly used methods in `java.util.stream.Stream`:
 
 ```java
 /**
-* 返回一个串行流
+* Returns a sequential stream.
 */
 default Stream<E> stream()
 
 /**
-* 返回一个并行流
+* Returns a parallel stream.
 */
 default Stream<E> parallelStream()
 
 /**
-* 返回T的流
+* Returns a stream containing the given value.
 */
 public static<T> Stream<T> of(T t)
 
 /**
-* 返回其元素是指定值的顺序流。
+* Returns a sequential stream containing the specified values.
 */
 public static<T> Stream<T> of(T... values) {
     return Arrays.stream(values);
@@ -328,144 +328,144 @@ public static<T> Stream<T> of(T... values) {
 
 
 /**
-* 过滤，返回由与给定predicate匹配的该流的元素组成的流
+* Filters this stream to elements that match the given predicate.
 */
 Stream<T> filter(Predicate<? super T> predicate);
 
 /**
-* 此流的所有元素是否与提供的predicate匹配。
+* Returns whether all elements in this stream match the given predicate.
 */
 boolean allMatch(Predicate<? super T> predicate)
 
 /**
-* 此流任意元素是否有与提供的predicate匹配。
+* Returns whether any element in this stream matches the given predicate.
 */
 boolean anyMatch(Predicate<? super T> predicate);
 
 /**
-* 返回一个 Stream的构建器。
+* Returns a Stream builder.
 */
 public static<T> Builder<T> builder();
 
 /**
-* 使用 Collector对此流的元素进行归纳
+* Reduces this stream's elements using a Collector.
 */
 <R, A> R collect(Collector<? super T, A, R> collector);
 
 /**
- * 返回此流中的元素数。
+ * Returns the number of elements in this stream.
 */
 long count();
 
 /**
-* 返回由该流的不同元素（根据 Object.equals(Object) ）组成的流。
+* Returns a stream containing the distinct elements, based on `Object.equals(Object)`.
 */
 Stream<T> distinct();
 
 /**
- * 遍历
+* Performs an action for each element.
 */
 void forEach(Consumer<? super T> action);
 
 /**
-* 用于获取指定数量的流，截短长度不能超过 maxSize 。
+* Returns a stream truncated to at most `maxSize` elements.
 */
 Stream<T> limit(long maxSize);
 
 /**
-* 用于映射每个元素到对应的结果
+* Maps each element to a corresponding result.
 */
 <R> Stream<R> map(Function<? super T, ? extends R> mapper);
 
 /**
-* 根据提供的 Comparator进行排序。
+* Sorts elements using the given Comparator.
 */
 Stream<T> sorted(Comparator<? super T> comparator);
 
 /**
-* 丢弃此流中的前 n 个元素，返回由剩余元素组成的新流。
+* Skips the first `n` elements and returns a stream of the remaining elements.
 */
 Stream<T> skip(long n);
 
 /**
-* 返回一个包含此流的元素的数组。
+* Returns an array containing this stream's elements.
 */
 Object[] toArray();
 
 /**
-* 使用提供的 generator函数返回一个包含此流的元素的数组，以分配返回的数组，以及分区执行或调整大小可能需要的任何其他数组。
+* Uses the given generator to return an array containing this stream's elements.
 */
 <A> A[] toArray(IntFunction<A[]> generator);
 
 /**
-* 合并流
+* Concatenates two streams.
 */
 public static <T> Stream<T> concat(Stream<? extends T> a, Stream<? extends T> b)
 ```
 
-### 实战
+### Examples
 
-本文列出 `Stream` 具有代表性的方法之使用，更多的使用方法还是要看 Api。
+These examples demonstrate representative `Stream` methods. See the API documentation for more.
 
 ```java
 @Test
 public void test() {
   List<String> strings = Arrays.asList("abc", "def", "gkh", "abc");
-    //返回符合条件的stream
+    // Return a stream that matches the condition.
     Stream<String> stringStream = strings.stream().filter(s -> "abc".equals(s));
-    //计算流符合条件的流的数量
+    // Count the matching elements.
     long count = stringStream.count();
 
-    //forEach遍历->打印元素
+    // Print each element.
     strings.stream().forEach(System.out::println);
 
-    //limit 获取到1个元素的stream
+    // Limit the stream to one element.
     Stream<String> limit = strings.stream().limit(1);
-    //toArray 比如我们想看这个limitStream里面是什么，比如转换成String[],比如循环
+    // Convert the limited stream to a String array.
     String[] array = limit.toArray(String[]::new);
 
-    //map 对每个元素进行操作返回新流
+    // Apply an operation to each element and return a new stream.
     Stream<String> map = strings.stream().map(s -> s + "22");
 
-    //sorted 排序并打印
+    // Sort and print the elements.
     strings.stream().sorted().forEach(System.out::println);
 
-    //Collectors collect 把abc放入容器中
+    // Collect matching elements into a list.
     List<String> collect = strings.stream().filter(string -> "abc".equals(string)).collect(Collectors.toList());
-    //把list转为string，各元素用，号隔开
+    // Join non-empty elements with commas.
     String mergedString = strings.stream().filter(string -> !string.isEmpty()).collect(Collectors.joining(","));
 
-    //对数组的统计，比如用
+    // Summarize the numbers in the list.
     List<Integer> number = Arrays.asList(1, 2, 5, 4);
 
     IntSummaryStatistics statistics = number.stream().mapToInt((x) -> x).summaryStatistics();
-    System.out.println("列表中最大的数 : "+statistics.getMax());
-    System.out.println("列表中最小的数 : "+statistics.getMin());
-    System.out.println("平均数 : "+statistics.getAverage());
-    System.out.println("所有数之和 : "+statistics.getSum());
+    System.out.println("Maximum: " + statistics.getMax());
+    System.out.println("Minimum: " + statistics.getMin());
+    System.out.println("Average: " + statistics.getAverage());
+    System.out.println("Sum: " + statistics.getSum());
 
-    //concat 合并流
+    // Concatenate streams.
     List<String> strings2 = Arrays.asList("xyz", "jqx");
     Stream.concat(strings2.stream(),strings.stream()).count();
 
-    //注意 一个Stream只能操作一次，不能断开，否则会报错。
+    // A stream can be operated on only once.
     Stream stream = strings.stream();
-    //第一次使用
+    // First operation.
     stream.limit(2);
-    //第二次使用
+    // Second operation.
     stream.forEach(System.out::println);
-    //报错 java.lang.IllegalStateException: stream has already been operated upon or closed
+    // Throws java.lang.IllegalStateException: stream has already been operated upon or closed.
 
-    //可以在同一条流水线中连续调用
+    // Chain operations in one pipeline.
     strings.stream().limit(2).forEach(System.out::println);
 }
 ```
 
-### 延迟执行
+### Lazy Evaluation
 
-在执行返回 `Stream` 的方法时，并不立刻执行，而是等返回一个非 `Stream` 的方法后才执行。因为拿到 `Stream` 并不能直接用，而是需要处理成一个常规类型。这里的 `Stream` 可以想象成是二进制流（2 个完全不一样的东东），拿到也看不懂。
+Methods that return a `Stream` do not execute the pipeline immediately. Execution begins when a terminal operation returns a non-`Stream` result. A `Stream` describes a sequence of operations; it is not itself the final result.
 
-我们下面分解一下 `filter` 方法。
+Here is an example using `filter`:
 
 ```java
 @Test
@@ -474,25 +474,25 @@ public void laziness(){
   Stream<Integer> stream = strings.stream().filter(new Predicate() {
       @Override
       public boolean test(Object o) {
-        System.out.println("Predicate.test 执行");
+        System.out.println("Predicate.test called");
         return true;
         }
       });
 
-   System.out.println("count 执行");
+   System.out.println("count called");
    stream.count();
 }
-/*-------执行结果--------*/
-count 执行
-Predicate.test 执行
-Predicate.test 执行
-Predicate.test 执行
-Predicate.test 执行
+/*-------Output--------*/
+count called
+Predicate.test called
+Predicate.test called
+Predicate.test called
+Predicate.test called
 ```
 
-按执行顺序应该是先打印 4 次「`Predicate.test` 执行」，再打印「`count` 执行」。实际结果恰恰相反。说明 filter 中的方法并没有立刻执行，而是等调用 `count()` 方法后才执行。
+You might expect `Predicate.test` to print four times before `count`, but the output is the other way around. This shows that the predicate passed to `filter` is not evaluated until the terminal `count()` operation runs.
 
-上面都是串行 `Stream` 的实例。并行 `parallelStream` 在使用方法上和串行一样。主要区别是 `parallelStream` 可多线程执行，是基于 ForkJoin 框架实现的，有时间大家可以了解一下 `ForkJoin` 框架和 `ForkJoinPool`。这里可以简单的理解它是通过线程池来实现的，这样就会涉及到线程安全，线程消耗等问题。下面我们通过代码来体验一下并行流的多线程执行。
+The examples above use sequential streams. `parallelStream` has a similar API but can use multiple threads. It is built on the Fork/Join framework; see `ForkJoin` and `ForkJoinPool` for details. Parallel streams use a thread pool, so consider thread safety and thread overhead. The example below shows a parallel stream in action.
 
 ```java
 @Test
@@ -500,49 +500,45 @@ public void parallelStreamTest(){
    List<Integer> numbers = Arrays.asList(1, 2, 5, 4);
    numbers.parallelStream() .forEach(num->System.out.println(Thread.currentThread().getName()+">>"+num));
 }
-//执行结果
+// Output
 main>>5
 ForkJoinPool.commonPool-worker-2>>4
 ForkJoinPool.commonPool-worker-11>>1
 ForkJoinPool.commonPool-worker-9>>2
 ```
 
-从结果中我们看到，for-each 用到的是多线程。
+The output shows that `forEach` runs on multiple threads.
 
-### 小结
+### Summary
 
-从源码和实例中我们可以总结出一些 stream 的特点
+The examples and source API show several characteristics of streams:
 
-1. 通过简单的链式编程，使得它可以方便地对遍历处理后的数据进行再处理。
-2. 方法参数都是函数式接口类型
-3. 一个 Stream 只能操作一次，操作完就关闭了，继续使用这个 stream 会报错。
-4. Stream 不保存数据，不改变数据源
+1. Chained operations make it easy to process data after traversing it.
+2. Many methods take functional interface arguments.
+3. A stream can be operated on only once. Reusing it after a terminal operation causes an error.
+4. A stream does not store data or modify its source.
 
 ## Optional
 
-在[阿里巴巴开发手册关于 Optional 的介绍](https://share.weiyun.com/ThuqEbD5)中这样写到：
+The [Alibaba Java Development Manual](https://share.weiyun.com/ThuqEbD5) notes the following common sources of `NullPointerException` (NPE):
 
-> 防止 NPE，是程序员的基本修养，注意 NPE 产生的场景：
+> Preventing NPEs is a basic programming practice. Common sources include:
 >
-> 1） 返回类型为基本数据类型，return 包装数据类型的对象时，自动拆箱有可能产生 NPE。
+> 1. Returning a wrapper object from a method with a primitive return type can cause an NPE during automatic unboxing.
 >
-> 反例：public int f() { return Integer 对象}， 如果为 null，自动解箱抛 NPE。
+> For example, `public int f() { return integerObject; }` throws an NPE during unboxing if `integerObject` is `null`.
 >
-> 2） 数据库的查询结果可能为 null。
+> 2. A database query may return `null`.
+> 3. A collection may contain `null` elements even when it is not empty.
+> 4. Check for `null` in objects returned by remote calls.
+> 5. Check data retrieved from a session for `null`.
+> 6. Chained calls such as `obj.getA().getB().getC()` can cause an NPE.
 >
-> 3） 集合里的元素即使 isNotEmpty，取出的数据元素也可能为 null。
->
-> 4） 远程调用返回对象时，一律要求进行空指针判断，防止 NPE。
->
-> 5） 对于 Session 中获取的数据，建议进行 NPE 检查，避免空指针。
->
-> 6） 级联调用 obj.getA().getB().getC()；一连串调用，易产生 NPE。
->
-> 正例：使用 JDK8 的 Optional 类来防止 NPE 问题。
+> One approach is to use the JDK 8 `Optional` class to handle potentially absent values.
 
-这里建议使用 `Optional` 显式表达“可能没有结果”，以减少部分 NPE（`java.lang.NullPointerException`）风险。Optional 要么包含一个非 `null` 值，要么为空，并不会在内部保存 `null`。下面我们通过源码逐步揭开 `Optional` 的红盖头。
+Use `Optional` to express explicitly that a result may be absent. It can reduce some `NullPointerException` risks. An `Optional` either contains a non-`null` value or is empty; it does not contain `null`. The following examples explore how `Optional` works.
 
-假设有一个 `Zoo` 类，里面有个属性 `Dog`，需求要获取 `Dog` 的 `age`。
+Suppose a `Zoo` has a `Dog` field, and you need to get the dog's `age`:
 
 ```java
 class Zoo {
@@ -554,7 +550,7 @@ class Dog {
 }
 ```
 
-传统解决 NPE 的办法如下：
+One traditional way to avoid an NPE is to check each reference:
 
 ```java
 Zoo zoo = getZoo();
@@ -567,9 +563,9 @@ if(zoo != null){
 }
 ```
 
-层层判断对象非空，有人说这种方式很丑陋不优雅，我并不这么认为。反而觉得很整洁，易读，易懂。你们觉得呢？
+Some consider these nested null checks inelegant, but they can be clear and easy to read.
 
-`Optional` 是这样的实现的：
+The same logic can use `Optional`:
 
 ```java
 Optional.ofNullable(zoo).map(o -> o.getDog()).map(d -> d.getAge()).ifPresent(age ->
@@ -577,50 +573,50 @@ Optional.ofNullable(zoo).map(o -> o.getDog()).map(d -> d.getAge()).ifPresent(age
 );
 ```
 
-是不是简洁了很多呢？
+This is more concise.
 
-### 如何创建一个 Optional
+### Creating an Optional
 
-上例中 `Optional.ofNullable` 是其中一种创建 Optional 的方式。我们先看一下它的含义和其他创建 Optional 的源码方法。
+The previous example uses `Optional.ofNullable`. Here are its behavior and other factory methods:
 
 ```java
 /**
-* Common instance for {@code empty()}. 全局EMPTY对象
+* Common instance returned by {@code empty()}.
 */
 private static final Optional<?> EMPTY = new Optional<>();
 
 /**
-* Optional维护的值
+* Value held by the Optional.
 */
 private final T value;
 
 /**
-* 如果value是null就返回EMPTY，否则就返回of(T)
+* Returns EMPTY if the value is null; otherwise, returns {@code of(T)}.
 */
 public static <T> Optional<T> ofNullable(T value) {
    return value == null ? empty() : of(value);
 }
 /**
-* 返回 EMPTY 对象
+* Returns the EMPTY object.
 */
 public static<T> Optional<T> empty() {
    Optional<T> t = (Optional<T>) EMPTY;
    return t;
 }
 /**
-* 返回Optional对象
+* Returns an Optional containing the value.
 */
 public static <T> Optional<T> of(T value) {
     return new Optional<>(value);
 }
 /**
-* 私有构造方法，给value赋值
+* Private constructor that assigns the value.
 */
 private Optional(T value) {
   this.value = Objects.requireNonNull(value);
 }
 /**
-* 所以如果of(T value) 的value是null，会抛出NullPointerException异常，这样貌似就没处理NPE问题
+* If {@code of(T value)} receives null, it throws NullPointerException.
 */
 public static <T> T requireNonNull(T obj) {
   if (obj == null)
@@ -629,13 +625,13 @@ public static <T> T requireNonNull(T obj) {
 }
 ```
 
-`ofNullable` 方法和 `of` 方法的主要区别是：当 value 为 `null` 时，`ofNullable` 返回空 Optional，而 `of` 会抛出 `NullPointerException`。当 `null` 表示合法的“没有值”时使用 `ofNullable`；当参数按约定必须非 `null` 时可以使用 `of` 及早暴露错误。
+The main difference between `ofNullable` and `of` is how they handle `null`: `ofNullable` returns an empty `Optional`, while `of` throws `NullPointerException`. Use `ofNullable` when absence is valid; use `of` when the argument is required to be non-null so errors surface early.
 
-**`map()` 和 `flatMap()` 有什么区别的？**
+**What is the difference between `map()` and `flatMap()`?**
 
-`map` 和 `flatMap` 都是将一个函数应用于集合中的每个元素，但不同的是 `map` 返回一个新的集合，`flatMap` 是将每个元素都映射为一个集合，最后再将这个集合展平。
+Both `map` and `flatMap` apply a function to each element. `map` returns a new collection of mapped values; `flatMap` maps each element to a collection and then flattens the result.
 
-在实际应用场景中，如果 `map` 返回的是数组，那么最后得到的是一个二维数组，使用 `flatMap` 就是为了将这个二维数组展平变成一个一维数组。
+If `map` returns an array for each element, the result is a nested collection. `flatMap` flattens it into a single collection.
 
 ```java
 public class MapAndFlatMapExample {
@@ -664,7 +660,7 @@ public class MapAndFlatMapExample {
 
 ```
 
-运行结果:
+Output:
 
 ```plain
 Using map:
@@ -674,17 +670,17 @@ Using flatMap:
 [APPLE, BANANA, CHERRY, ORANGE, GRAPE, PEAR, KIWI, MELON, PINEAPPLE]
 ```
 
-最简单的理解就是 `flatMap()` 可以将 `map()` 的结果展开。
+In short, `flatMap()` flattens the result of `map()`.
 
-在 `Optional` 里面，当使用 `map()` 时，如果映射函数返回的是一个普通值，它会将这个值包装在一个新的 `Optional` 中。而使用 `flatMap` 时，如果映射函数返回的是一个 `Optional`，它会将这个返回的 `Optional` 展平，不再包装成嵌套的 `Optional`。
+With `Optional`, `map()` wraps a regular value returned by the mapping function in a new `Optional`. `flatMap()` expects the function to return an `Optional` and avoids wrapping it in a nested `Optional`.
 
-下面是一个对比的示例代码：
+Here is a comparison:
 
 ```java
 public static void main(String[] args) {
         int userId = 1;
 
-        // 使用flatMap的代码
+        // Using flatMap.
         String cityUsingFlatMap = getUserById(userId)
                 .flatMap(OptionalExample::getAddressByUser)
                 .map(Address::getCity)
@@ -692,7 +688,7 @@ public static void main(String[] args) {
 
         System.out.println("User's city using flatMap: " + cityUsingFlatMap);
 
-        // 不使用flatMap的代码
+        // Without flatMap.
         Optional<Optional<Address>> optionalAddress = getUserById(userId)
                 .map(OptionalExample::getAddressByUser);
 
@@ -713,19 +709,19 @@ public static void main(String[] args) {
     }
 ```
 
-在 `Stream` 和 `Optional` 中正确使用 `flatMap` 可以减少很多不必要的代码。
+Using `flatMap` appropriately with `Stream` and `Optional` can eliminate unnecessary code.
 
-### 判断 value 是否为 null
+### Checking Whether a Value Is Present
 
 ```java
 /**
-* value是否为null
+* Returns whether a value is present.
 */
 public boolean isPresent() {
     return value != null;
 }
 /**
-* 如果value不为null执行consumer.accept
+* If a value is present, passes it to the consumer.
 */
 public void ifPresent(Consumer<? super T> consumer) {
    if (value != null)
@@ -733,27 +729,27 @@ public void ifPresent(Consumer<? super T> consumer) {
 }
 ```
 
-### 获取 value
+### Getting a Value
 
 ```java
 /**
 * Return the value if present, otherwise invoke {@code other} and return
 * the result of that invocation.
-* 如果value != null 返回value，否则返回other的执行结果
+* Returns the value if present; otherwise, invokes `other` and returns its result.
 */
 public T orElseGet(Supplier<? extends T> other) {
     return value != null ? value : other.get();
 }
 
 /**
-* 如果value != null 返回value，否则返回T
+* Returns the value if present; otherwise, returns `other`.
 */
 public T orElse(T other) {
     return value != null ? value : other;
 }
 
 /**
-* 如果value != null 返回value，否则抛出参数返回的异常
+* Returns the value if present; otherwise, throws the exception supplied by the argument.
 */
 public <X extends Throwable> T orElseThrow(Supplier<? extends X> exceptionSupplier) throws X {
         if (value != null) {
@@ -763,7 +759,7 @@ public <X extends Throwable> T orElseThrow(Supplier<? extends X> exceptionSuppli
         }
 }
 /**
-* value为null抛出NoSuchElementException，不为空返回value。
+* Throws `NoSuchElementException` if the value is absent; otherwise, returns it.
 */
 public T get() {
   if (value == null) {
@@ -773,12 +769,12 @@ public T get() {
 }
 ```
 
-### 过滤值
+### Filtering a Value
 
 ```java
 /**
-* 1. 如果是empty返回empty
-* 2. predicate.test(value)==true 返回this，否则返回empty
+* 1. If empty, returns empty.
+* 2. Returns this if `predicate.test(value)` is true; otherwise, returns empty.
 */
 public Optional<T> filter(Predicate<? super T> predicate) {
         Objects.requireNonNull(predicate);
@@ -789,9 +785,9 @@ public Optional<T> filter(Predicate<? super T> predicate) {
 }
 ```
 
-### 小结
+### Summary
 
-看完 `Optional` 源码可以发现，`of()` 要求参数非 `null`，`get()` 在 Optional 为空时抛出的是 `NoSuchElementException`，而 `flatMap()` 用于将返回 Optional 的映射结果展平，并不是应当避免的方法。通常应根据值是否允许缺失选择 `of()` 或 `ofNullable()`，并优先使用 `orElse`、`orElseGet`、`orElseThrow` 等方法处理空值。最后再综合用一下 `Optional` 的高频方法。
+The `Optional` implementation shows that `of()` requires a non-`null` argument, `get()` throws `NoSuchElementException` when empty, and `flatMap()` flattens mapped `Optional` values. It is not a method to avoid. Choose `of()` or `ofNullable()` based on whether the value may be absent, and use methods such as `orElse`, `orElseGet`, and `orElseThrow` to handle empty values.
 
 ```java
 Optional.ofNullable(zoo).map(o -> o.getDog()).map(d -> d.getAge()).filter(v->v==1).orElse(3);
@@ -799,28 +795,28 @@ Optional.ofNullable(zoo).map(o -> o.getDog()).map(d -> d.getAge()).filter(v->v==
 
 ## Date-Time API
 
-这是对 `java.util.Date` 强有力的补充，解决了 Date 类的大部分痛点：
+The Date-Time API addresses many of the shortcomings of `java.util.Date`:
 
-1. 非线程安全
-2. 时区处理麻烦
-3. 各种格式化、和时间计算繁琐
-4. 设计有缺陷，Date 类同时包含日期和时间；还有一个 java.sql.Date，容易混淆。
+1. It is not thread-safe.
+2. Time zone handling is difficult.
+3. Formatting and date calculations are cumbersome.
+4. `Date` combines date and time, and `java.sql.Date` has a similar name but a different purpose.
 
-我们从常用的时间实例来对比 java.util.Date 和新 Date 有什么区别。用 `java.util.Date` 的代码该改改了。
+The examples below compare common operations with `java.util.Date` and the newer date-time types.
 
-### java.time 主要类
+### Main `java.time` Types
 
-`java.util.Date` 既包含日期又包含时间，而 `java.time` 把它们进行了分离
+`java.util.Date` represents both a date and a time, while `java.time` provides separate types:
 
 ```java
-LocalDateTime.class //日期+时间 format: yyyy-MM-ddTHH:mm:ss.SSS
-LocalDate.class //日期 format: yyyy-MM-dd
-LocalTime.class //时间 format: HH:mm:ss
+LocalDateTime.class // Date and time: yyyy-MM-ddTHH:mm:ss.SSS
+LocalDate.class // Date: yyyy-MM-dd
+LocalTime.class // Time: HH:mm:ss
 ```
 
-### 格式化
+### Formatting
 
-**Java 8 之前:**
+**Before Java 8:**
 
 ```java
 public void oldFormat(){
@@ -842,7 +838,7 @@ public void oldFormat(){
 }
 ```
 
-**Java 8 之后:**
+**Since Java 8:**
 
 ```java
 public void newFormat(){
@@ -862,19 +858,19 @@ public void newFormat(){
 }
 ```
 
-### 字符串转日期格式
+### Parsing Dates from Strings
 
-**Java 8 之前:**
+**Before Java 8:**
 
 ```java
-//已弃用
+// Deprecated.
 Date date = new Date("2021-01-26");
-//替换为
+// Use this instead.
 SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
 Date date1 = sdf.parse("2021-01-26");
 ```
 
-**Java 8 之后:**
+**Since Java 8:**
 
 ```java
 LocalDate date = LocalDate.of(2021, 1, 26);
@@ -887,88 +883,88 @@ LocalTime time = LocalTime.of(12, 12, 22);
 LocalTime.parse("12:12:22");
 ```
 
-**Java 8 之前** 转换都需要借助 `SimpleDateFormat` 类，而**Java 8 之后**只需要 `LocalDate`、`LocalTime`、`LocalDateTime` 的 `of` 或 `parse` 方法。
+**Before Java 8**, parsing required `SimpleDateFormat`. **Since Java 8**, use the `of` or `parse` methods on `LocalDate`, `LocalTime`, or `LocalDateTime`.
 
-### 日期计算
+### Date Calculations
 
-下面仅以**一周后日期**为例，其他单位（年、月、日、1/2 日、时等等）大同小异。另外，这些单位都在 _java.time.temporal.ChronoUnit_ 枚举中定义。
+The example below calculates the date one week from now. Other units, such as years, months, days, half-days, and hours, work similarly. These units are defined in `java.time.temporal.ChronoUnit`.
 
-**Java 8 之前:**
+**Before Java 8:**
 
 ```java
 public void afterDay(){
-     //一周后的日期
+     // Date one week from now.
      SimpleDateFormat formatDate = new SimpleDateFormat("yyyy-MM-dd");
      Calendar ca = Calendar.getInstance();
      ca.add(Calendar.DATE, 7);
      Date d = ca.getTime();
      String after = formatDate.format(d);
-     System.out.println("一周后日期：" + after);
+     System.out.println("Date one week from now: " + after);
 
-   //算两个日期间隔多少天，计算间隔多少年，多少月方法类似
+   // Calculate the number of days between two dates. Years and months work similarly.
      String dates1 = "2021-12-23";
    String dates2 = "2021-02-26";
      SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
      Date date1 = format.parse(dates1);
      Date date2 = format.parse(dates2);
      int day = (int) ((date1.getTime() - date2.getTime()) / (1000 * 3600 * 24));
-     System.out.println(dates1 + "和" + dates2 + "相差" + day + "天");
-     //结果：2021-02-26和2021-12-23相差300天
+     System.out.println(dates1 + " and " + dates2 + " are " + day + " days apart");
+     // Output: 2021-02-26 and 2021-12-23 are 300 days apart.
 }
 ```
 
-**Java 8 之后:**
+**Since Java 8:**
 
 ```java
 public void pushWeek(){
-     //一周后的日期
+     // Date one week from now.
      LocalDate localDate = LocalDate.now();
-     //方法1
+     // Option 1.
      LocalDate after = localDate.plus(1, ChronoUnit.WEEKS);
-     //方法2
+     // Option 2.
      LocalDate after2 = localDate.plusWeeks(1);
-     System.out.println("一周后日期：" + after);
+     System.out.println("Date one week from now: " + after);
 
-     //算两个日期间隔多少天，计算间隔多少年，多少月
+     // Calculate the difference in years, months, and days.
      LocalDate date1 = LocalDate.parse("2021-02-26");
      LocalDate date2 = LocalDate.parse("2021-12-23");
      Period period = Period.between(date1, date2);
-     System.out.println("date1 到 date2 相隔："
-                + period.getYears() + "年"
-                + period.getMonths() + "月"
-                + period.getDays() + "天");
-   //打印结果是 “date1 到 date2 相隔：0年9月27天”
-     //这里period.getDays()得到的天是抛去年月以外的天数，并不是总天数
-     //如果要获取纯粹的总天数应该用下面的方法
+     System.out.println("Time between date1 and date2: "
+                + period.getYears() + " years, "
+                + period.getMonths() + " months, "
+                + period.getDays() + " days");
+   // Output: 0 years, 9 months, 27 days.
+     // period.getDays() returns the remaining days after years and months, not the total number of days.
+     // Use the following method to get the total number of days.
      long day = date2.toEpochDay() - date1.toEpochDay();
-     System.out.println(date1 + "和" + date2 + "相差" + day + "天");
-     //打印结果：2021-02-26和2021-12-23相差300天
+     System.out.println(date1 + " and " + date2 + " are " + day + " days apart");
+     // Output: 2021-02-26 and 2021-12-23 are 300 days apart.
 }
 ```
 
-### 获取指定日期
+### Getting Specific Dates
 
-除了日期计算繁琐，获取特定一个日期也很麻烦，比如获取本月最后一天，第一天。
+Getting a specific date, such as the first or last day of the current month, can also be cumbersome.
 
-**Java 8 之前:**
+**Before Java 8:**
 
 ```java
 public void getDay() {
 
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
-        //获取当前月第一天：
+        // Get the first day of the current month.
         Calendar c = Calendar.getInstance();
         c.set(Calendar.DAY_OF_MONTH, 1);
         String first = format.format(c.getTime());
         System.out.println("first day:" + first);
 
-        //获取当前月最后一天
+        // Get the last day of the current month.
         Calendar ca = Calendar.getInstance();
         ca.set(Calendar.DAY_OF_MONTH, ca.getActualMaximum(Calendar.DAY_OF_MONTH));
         String last = format.format(ca.getTime());
         System.out.println("last day:" + last);
 
-        //当年最后一天
+        // Get the last day of the current year.
         Calendar currCal = Calendar.getInstance();
         Calendar calendar = Calendar.getInstance();
         calendar.clear();
@@ -979,102 +975,102 @@ public void getDay() {
 }
 ```
 
-**Java 8 之后:**
+**Since Java 8:**
 
 ```java
 public void getDayNew() {
     LocalDate today = LocalDate.now();
-    //获取当前月第一天：
+    // Get the first day of the current month.
     LocalDate firstDayOfThisMonth = today.with(TemporalAdjusters.firstDayOfMonth());
-    // 取本月最后一天
+    // Get the last day of the current month.
     LocalDate lastDayOfThisMonth = today.with(TemporalAdjusters.lastDayOfMonth());
-    //取下一天：
+    // Get the next day.
     LocalDate nextDay = lastDayOfThisMonth.plusDays(1);
-    //当年最后一天
+    // Get the last day of the current year.
     LocalDate lastday = today.with(TemporalAdjusters.lastDayOfYear());
-    //2021年最后一个周日，如果用Calendar是不得烦死。
+    // Get the last Sunday of 2021.
     LocalDate lastMondayOf2021 = LocalDate.parse("2021-12-31").with(TemporalAdjusters.lastInMonth(DayOfWeek.SUNDAY));
 }
 ```
 
-`java.time.temporal.TemporalAdjusters` 里面还有很多便捷的算法，这里就不带大家看 Api 了，都很简单，看了秒懂。
+`java.time.temporal.TemporalAdjusters` provides many other useful date adjustments. See the API documentation for details.
 
-### JDBC 和 java8
+### JDBC and Java 8
 
-现在 jdbc 时间类型和 java8 时间类型对应关系是
+The JDBC and Java 8 date-time types correspond as follows:
 
 1. `Date` ---> `LocalDate`
 2. `Time` ---> `LocalTime`
 3. `Timestamp` ---> `LocalDateTime`
 
-在 JDBC 4.2 之前，通常使用 `java.sql.Date`、`java.sql.Time` 和 `java.sql.Timestamp` 分别表示这些 SQL 时间类型。
+Before JDBC 4.2, `java.sql.Date`, `java.sql.Time`, and `java.sql.Timestamp` were commonly used to represent these SQL time types.
 
-### 时区
+### Time Zones
 
-> 时区：正式的时区划分为每隔经度 15° 划分一个时区，全球共 24 个时区，每个时区相差 1 小时。但为了行政上的方便，常将 1 个国家或 1 个省份划在一起，比如我国幅员宽广，大概横跨 5 个时区，实际上只用东八时区的标准时即北京时间为准。
+> In theory, time zones are divided every 15 degrees of longitude, giving 24 zones with a one-hour difference between them. For administrative convenience, countries and regions may use a single time zone. For example, China spans roughly five theoretical time zones but uses China Standard Time (UTC+8).
 
-`java.util.Date` 对象实质上存的是 1970 年 1 月 1 日 0 点（GMT）至 Date 对象所表示时刻所经过的毫秒数。也就是说不管在哪个时区 new Date，它记录的毫秒数都一样，和时区无关。但在使用上应该把它转换成当地时间，这就涉及到了时间的国际化。`java.util.Date` 本身并不支持国际化，需要借助 `TimeZone`。
+`java.util.Date` stores the number of milliseconds since midnight on January 1, 1970 (GMT). A `Date` created in any time zone represents the same instant; its value is independent of the time zone. To display it as local time, use `TimeZone`, since `java.util.Date` does not handle time zones itself.
 
 ```java
-//北京时间：Wed Jan 27 14:05:29 CST 2021
+// Beijing time: Wed Jan 27 14:05:29 CST 2021.
 Date date = new Date();
 
 SimpleDateFormat bjSdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-//北京时区
+// Beijing time zone.
 bjSdf.setTimeZone(TimeZone.getTimeZone("Asia/Shanghai"));
-System.out.println("毫秒数:" + date.getTime() + ", 北京时间:" + bjSdf.format(date));
+System.out.println("Milliseconds: " + date.getTime() + ", Beijing time: " + bjSdf.format(date));
 
-//东京时区
+// Tokyo time zone.
 SimpleDateFormat tokyoSdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-tokyoSdf.setTimeZone(TimeZone.getTimeZone("Asia/Tokyo"));  // 设置东京时区
-System.out.println("毫秒数:" + date.getTime() + ", 东京时间:" + tokyoSdf.format(date));
+tokyoSdf.setTimeZone(TimeZone.getTimeZone("Asia/Tokyo"));  // Set the Tokyo time zone.
+System.out.println("Milliseconds: " + date.getTime() + ", Tokyo time: " + tokyoSdf.format(date));
 
-//如果直接print会自动转成当前时区的时间
+// Printing the Date directly uses the current time zone.
 System.out.println(date);
 //Wed Jan 27 14:05:29 CST 2021
 ```
 
-在新特性中引入了 `java.time.ZonedDateTime` 来表示带时区的时间。它可以看成是 `LocalDateTime + ZoneId`。
+Java 8 introduced `java.time.ZonedDateTime` to represent a date and time with a time zone. You can think of it as `LocalDateTime + ZoneId`.
 
 ```java
-//当前时区时间
+// Current time zone.
 ZonedDateTime zonedDateTime = ZonedDateTime.now();
-System.out.println("当前时区时间: " + zonedDateTime);
+System.out.println("Current time: " + zonedDateTime);
 
-//东京时间
+// Tokyo time.
 ZoneId zoneId = ZoneId.of(ZoneId.SHORT_IDS.get("JST"));
 ZonedDateTime tokyoTime = zonedDateTime.withZoneSameInstant(zoneId);
-System.out.println("东京时间: " + tokyoTime);
+System.out.println("Tokyo time: " + tokyoTime);
 
-// ZonedDateTime 转 LocalDateTime
+// Convert ZonedDateTime to LocalDateTime.
 LocalDateTime localDateTime = tokyoTime.toLocalDateTime();
-System.out.println("东京时间转当地时间: " + localDateTime);
+System.out.println("Tokyo time as a local date-time: " + localDateTime);
 
-//LocalDateTime 转 ZonedDateTime
+// Convert LocalDateTime to ZonedDateTime.
 ZonedDateTime localZoned = localDateTime.atZone(ZoneId.systemDefault());
-System.out.println("本地时区时间: " + localZoned);
+System.out.println("Local time with zone: " + localZoned);
 
-//打印结果
-当前时区时间: 2021-01-27T14:43:58.735+08:00[Asia/Shanghai]
-东京时间: 2021-01-27T15:43:58.735+09:00[Asia/Tokyo]
-东京时间转当地时间: 2021-01-27T15:43:58.735
-当地时区时间: 2021-01-27T15:43:58.735+08:00[Asia/Shanghai]
+// Output
+Current time: 2021-01-27T14:43:58.735+08:00[Asia/Shanghai]
+Tokyo time: 2021-01-27T15:43:58.735+09:00[Asia/Tokyo]
+Tokyo time as a local date-time: 2021-01-27T15:43:58.735
+Local time with zone: 2021-01-27T15:43:58.735+08:00[Asia/Shanghai]
 ```
 
-### 小结
+### Summary
 
-通过上面比较新老 `Date` 的不同，当然只列出部分功能上的区别，更多功能还得自己去挖掘。总之 date-time-api 给日期操作带来了福利。在日常工作中遇到 date 类型的操作，第一考虑的是 date-time-api，实在解决不了再考虑老的 Date。
+These examples cover only some differences between the old and new date-time APIs. The Date-Time API makes date operations easier. Prefer it for date and time work, and use the older `Date` API only when needed.
 
-## 总结
+## Summary
 
-我们梳理总结的 java 8 新特性有
+The Java 8 features covered in this article are:
 
-- Interface & functional Interface
+- Interfaces and functional interfaces
 - Lambda
 - Stream
 - Optional
-- Date time-api
+- The Date-Time API
 
-这些都是开发当中比较常用的特性。梳理下来发现它们真香，而我却没有更早的应用。总觉得学习 java 8 新特性比较麻烦，一直使用老的实现方式。其实这些新特性几天就可以掌握，一但掌握，效率会有很大的提高。其实我们涨工资也是涨的学习的钱，不学习终究会被淘汰，35 岁危机会提前来临。
+These features are common in everyday development and can improve productivity once learned. They may take a few days to get familiar with, but are well worth adopting over older approaches.
 
 <!-- @include: @article-footer.snippet.md -->

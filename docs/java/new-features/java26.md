@@ -1,50 +1,50 @@
 ---
-title: Java 26 新特性概览
-description: 概览 JDK 26 的关键新特性与预览改动，关注 HTTP/3、GC 性能优化、AOT 缓存与语言/平台增强。
+title: Java 26 New Features
+description: An overview of key features and preview changes in JDK 26, including HTTP/3, garbage collection, AOT caching, and language and platform updates.
 category: Java
 tag:
-  - Java新特性
+  - Java New Features
 head:
   - - meta
     - name: keywords
-      content: Java 26,JDK26,HTTP/3,G1 GC,AOT 缓存,延迟常量,结构化并发,向量 API,模式匹配
+      content: Java 26,JDK 26,HTTP/3,G1 GC,AOT caching,lazy constants,structured concurrency,Vector API,pattern matching
 ---
 
-JDK 26 于 2026 年 3 月 17 日 发布，这是一个非 LTS（非长期支持版）版本。上一个长期支持版是 **JDK 25**，下一个长期支持版预计是 **JDK 29**。
+JDK 26 was released on March 17, 2026, as a non-LTS release. The previous LTS release was **JDK 25**, and the next is expected to be **JDK 29**.
 
-JDK 26 共有 10 个新特性，这篇文章会挑选其中较为重要的一些新特性进行详细介绍：
+JDK 26 includes 10 new features. This article covers some of the key ones:
 
-- [JEP 517: HTTP/3 for the HTTP Client API (为 HTTP Client API 引入 HTTP/3 支持)](https://openjdk.org/jeps/517)
-- [JEP 522: G1 GC: Improve Throughput by Reducing Synchronization (G1 GC 吞吐量优化)](https://openjdk.org/jeps/522)
-- [JEP 516: Ahead-of-Time Object Caching with Any GC (AOT 对象缓存支持任意 GC)](https://openjdk.org/jeps/516)
-- [JEP 500: Prepare to Make Final Mean Final (准备让 final 真正不可变)](https://openjdk.org/jeps/500)
-- [JEP 526: Lazy Constants (延迟常量, 第二次预览)](https://openjdk.org/jeps/526)
-- [JEP 525: Structured Concurrency (结构化并发, 第六次预览)](https://openjdk.org/jeps/525)
-- [JEP 530: Primitive Types in Patterns, instanceof, and switch (模式匹配支持基本类型, 第四次预览)](https://openjdk.org/jeps/530)
-- [JEP 524: PEM Encodings of Cryptographic Objects (加密对象 PEM 编码, 第二次预览)](https://openjdk.org/jeps/524)
-- [JEP 529: Vector API (向量 API, 第十一次孵化)](https://openjdk.org/jeps/529)
-- [JEP 504: Remove the Applet API (移除 Applet API)](https://openjdk.org/jeps/504)
+- [JEP 517: HTTP/3 for the HTTP Client API](https://openjdk.org/jeps/517)
+- [JEP 522: G1 GC: Improve Throughput by Reducing Synchronization](https://openjdk.org/jeps/522)
+- [JEP 516: Ahead-of-Time Object Caching with Any Garbage Collector](https://openjdk.org/jeps/516)
+- [JEP 500: Prepare to Make `final` Mean `final`](https://openjdk.org/jeps/500)
+- [JEP 526: Lazy Constants (Second Preview)](https://openjdk.org/jeps/526)
+- [JEP 525: Structured Concurrency (Sixth Preview)](https://openjdk.org/jeps/525)
+- [JEP 530: Primitive Types in Patterns, `instanceof`, and `switch` (Fourth Preview)](https://openjdk.org/jeps/530)
+- [JEP 524: PEM Encodings of Cryptographic Objects (Second Preview)](https://openjdk.org/jeps/524)
+- [JEP 529: Vector API (Eleventh Incubator)](https://openjdk.org/jeps/529)
+- [JEP 504: Remove the Applet API](https://openjdk.org/jeps/504)
 
-下图是从 JDK 8 到 JDK 25 每个版本的更新带来的新特性数量和更新时间：
+The chart below shows the number of features and release dates for each update from JDK 8 through JDK 25:
 
 ![](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
 
-## JEP 517: 为 HTTP Client API 引入 HTTP/3 支持
+## JEP 517: HTTP/3 for the HTTP Client API
 
-JDK 26 为 `java.net.http.HttpClient` API 正式添加了 **HTTP/3** 支持，这是一个期待已久的重要更新。
+JDK 26 adds **HTTP/3** support to the `java.net.http.HttpClient` API.
 
-**HTTP/3 的优势**：
+**Benefits of HTTP/3:**
 
-- **基于 QUIC 协议**：HTTP/2 是基于 TCP 协议实现的，HTTP/3 新增了 QUIC（Quick UDP Internet Connections） 协议来实现可靠的传输，提供与 TLS/SSL 相当的安全性，具有较低的连接和传输延迟。你可以将 QUIC 看作是 UDP 的升级版本，在其基础上新增了很多功能比如加密、重传等等。
-- **消除队头阻塞**：HTTP/2 多请求复用一个 TCP 连接，一旦发生丢包，就会阻塞住所有的 HTTP 请求。由于 QUIC 协议的特性，HTTP/3 在一定程度上解决了队头阻塞（Head-of-Line blocking, 简写：HOL blocking）问题，一个连接建立多个不同的数据流，某个数据流发生丢包时，其他数据流不受影响。
-- **更快的连接建立**：HTTP/2 需要经过经典的 TCP 三次握手过程（由于安全的 HTTPS 连接建立还需要 TLS 握手，共需要大约 3 个 RTT）。由于 QUIC 协议的特性（TLS 1.3，TLS 1.3 除了支持 1 个 RTT 的握手，还支持 0 个 RTT 的握手）连接建立仅需 0-RTT 或者 1-RTT。这意味着 QUIC 在最佳情况下不需要任何的额外往返时间就可以建立新连接。
-- **更好的移动端体验**：HTTP/3 支持基于 QUIC 连接迁移。QUIC 使用由端点选择的可变长连接 ID 来标识和路由连接，连接 ID 还可以在连接期间更换；经过路径验证等处理后，网络地址变化（如从 Wi-Fi 切换到移动数据）不必像传统 TCP 四元组变化那样重新建立整条连接。
+- **Built on QUIC:** HTTP/2 uses TCP, while HTTP/3 uses QUIC (Quick UDP Internet Connections) for reliable transport. QUIC provides security comparable to TLS and can reduce connection and transport latency. It adds features such as encryption and retransmission on top of UDP.
+- **Less head-of-line blocking:** HTTP/2 multiplexes requests over one TCP connection, so packet loss can block all requests on that connection. QUIC carries multiple independent streams, so packet loss on one stream does not block the others.
+- **Faster connection setup:** HTTP/2 over HTTPS typically requires TCP and TLS handshakes. QUIC uses TLS 1.3 and supports 1-RTT and 0-RTT handshakes, which can reduce connection setup time.
+- **Improved mobile experience:** QUIC supports connection migration. Its connection IDs can remain valid when a device changes networks, such as switching from Wi-Fi to mobile data, after path validation.
 
-详细介绍可以阅读这篇文章：[计算机网络常见面试题总结（上）](https://javaguide.cn/cs-basics/network/other-network-questions.html)（网络分层模型、常见网路协议总结、HTTP、WebSocket、DNS 等）
+For more details, see [Common Computer Networking Interview Questions (Part 1)](https://javaguide.cn/cs-basics/network/other-network-questions.html), which covers network layers, common protocols, HTTP, WebSocket, and DNS.
 
-**使用方式**：
+**Usage:**
 
-JDK 26 中 `HttpClient` 的默认协议仍然是 HTTP/2。要使用 HTTP/3，需要在 `HttpClient` 或单个 `HttpRequest` 上显式指定 `HTTP_3`：
+In JDK 26, `HttpClient` still uses HTTP/2 by default. To use HTTP/3, specify `HTTP_3` on an `HttpClient` or an individual `HttpRequest`:
 
 ```java
 HttpClient client = HttpClient.newBuilder()
@@ -55,71 +55,71 @@ HttpRequest request = HttpRequest.newBuilder()
     .uri(URI.create("https://example.com"))
     .build();
 
-// 优先尝试 HTTP/3；服务器不支持时默认回退到 HTTP/2 或 HTTP/1.1
+// Prefer HTTP/3; fall back to HTTP/2 or HTTP/1.1 if the server does not support it.
 HttpResponse<String> response = client.send(request,
     HttpResponse.BodyHandlers.ofString());
 
 System.out.println(response.body());
 ```
 
-如果需要明确指定使用 HTTP/3，可以通过 `version()` 方法设置：
+To explicitly set HTTP/3 as the preferred version, use the `version()` method:
 
 ```java
-// 所有请求默认优先使用 HTTP/3
+// Prefer HTTP/3 for all requests.
 HttpClient client = HttpClient.newBuilder()
-    .version(HttpClient.Version.HTTP_3)  // 明确指定 HTTP/3
+    .version(HttpClient.Version.HTTP_3)  // Specify HTTP/3 explicitly.
     .build();
 
-// 设置单个HttpRequest对象的首选协议版本
+// Set the preferred protocol version for one HttpRequest.
 HttpRequest request = HttpRequest.newBuilder(URI.create("https://javaguide.cn/"))
                          .version(HttpClient.Version.HTTP_3)
                          .GET().build();
 ```
 
-## JEP 522: G1 GC 吞吐量优化
+## JEP 522: Improve G1 GC Throughput
 
-**从 JDK9 开始，G1 垃圾收集器成为了默认的垃圾收集器。** 它在延迟和吞吐量之间寻求平衡。然而，这种平衡有时会影响应用程序的性能。与面向吞吐量的 Parallel GC 相比，G1 更多地与应用程序并发工作，以减少 GC 暂停时间。但这意味着应用线程必须与 GC 线程共享 CPU 并进行协调，这种同步会降低吞吐量并增加延迟。
+**G1 has been the default garbage collector since JDK 9.** It balances latency and throughput, but that balance can affect application performance. Compared with the throughput-oriented Parallel GC, G1 does more work concurrently with the application to reduce pauses. This means application threads and GC threads must share CPU time and coordinate, which can reduce throughput and increase latency.
 
-JEP 522 引入了**双卡表（Card Table）**机制：
+JEP 522 introduces a **dual card-table** mechanism:
 
-1. **第一张卡表**：应用线程的写屏障在更新这张卡表时**无需任何同步**，使得写屏障代码更简单、更快速。
-2. **第二张卡表**：优化器线程在后台并行处理这张初始为空的卡表。
+1. **First card table:** Application-thread write barriers can update this table **without synchronization**, making the barrier code simpler and faster.
+2. **Second card table:** The optimizer thread processes this initially empty table in the background.
 
-当 G1 检测到扫描第一张卡表可能超过暂停时间目标时，它会原子性地交换这两张卡表。应用线程继续更新空的、原先的第二张表，而优化器线程则处理满的、原先的第一张表，无需进一步同步。
+When G1 detects that scanning the first card table might exceed the pause-time goal, it atomically swaps the tables. Application threads continue updating the now-empty table, while the optimizer processes the full table without further synchronization.
 
-**性能提升效果**：
+**Performance gains:**
 
-- 在**频繁修改对象引用字段**的应用中，吞吐量提升 **5-15%**
-- 即使在不频繁修改引用字段的应用中，由于写屏障简化（x64 上从约 50 条指令减少到仅 12 条），吞吐量也能提升高达 **5%**
-- GC 暂停时间也有**轻微下降**
+- Throughput improves by **5–15%** in applications that **frequently update object reference fields**.
+- Throughput can improve by up to **5%** even in applications that rarely update reference fields, because the write barrier is simpler (about 12 instructions instead of 50 on x64).
+- GC pause times also decrease slightly.
 
-**内存开销**：
+**Memory overhead:**
 
-第二张卡表与第一张容量相同，每张卡表需要 Java 堆容量的 0.2%，即每 1GB 堆内存额外使用约 2MB 原生内存。
+The second card table has the same capacity as the first. Each table uses 0.2% of the Java heap size, so a 1 GB heap requires about 2 MB of additional native memory per table.
 
-## JEP 516: AOT 对象缓存支持任意 GC
+## JEP 516: AOT Object Caching with Any Garbage Collector
 
-这是 **Project Leyden** 的重要里程碑，使得提前（AOT）对象缓存能够与**任意垃圾收集器**配合使用。
+This is an important milestone for **Project Leyden**: ahead-of-time (AOT) object caching can now work with **any garbage collector**.
 
-之前在 JDK 24 中引入的 AOT 类数据共享（JEP 483）只支持 G1 垃圾收集器，无法与 ZGC 等其他 GC 配合使用。这是因为 AOT 缓存中存储的对象引用使用的是物理内存地址，而不同 GC 的内存布局和对象移动策略不同。
+The AOT class-data sharing introduced in JDK 24 (JEP 483) supported only G1, not other collectors such as ZGC. The cache stored object references as physical memory addresses, but collectors use different memory layouts and object-movement strategies.
 
-JEP 516 将对象引用的存储方式从**物理内存地址**改为**逻辑索引**：
+JEP 516 replaces **physical memory addresses** with **logical indexes** for stored object references:
 
-- 使用 GC 无关的流式格式存储缓存
-- 缓存可以在运行时被任意 GC 加载和解析
-- JVM 在加载时将逻辑索引转换为实际的内存地址
+- The cache uses a garbage-collector-independent stream format.
+- Any garbage collector can load and parse the cache at run time.
+- The JVM converts logical indexes to actual memory addresses when loading the cache.
 
-**性能收益**：
+**Benefits:**
 
-- **启动时间优化**：显著减少 Java 应用的冷启动时间
-- **支持 ZGC**：低延迟的 ZGC 现在也能享受 AOT 缓存带来的启动加速
-- **云原生友好**：对于微服务和无服务器函数等启动时间敏感的场景特别有价值
+- **Faster startup:** AOT caching can significantly reduce Java application cold-start time.
+- **ZGC support:** Low-latency ZGC can also benefit from faster startup.
+- **Useful for cloud-native workloads:** This is valuable for startup-sensitive services such as microservices and serverless functions.
 
-## JEP 500: 准备让 final 真正不可变
+## JEP 500: Prepare to Make `final` Mean `final`
 
-这个特性为 Java 的完整性优先原则铺平道路，准备让 `final` 字段真正变得不可变。
+This feature advances Java's integrity-by-default principle and prepares to make `final` fields truly immutable.
 
-从 JDK 5 开始，为支持序列化等场景，反射 API 允许通过**深度反射**修改部分 `final` 字段：
+Since JDK 5, reflection has allowed some `final` fields to be modified through **deep reflection**, partly to support serialization:
 
 ```java
 import java.lang.reflect.Field;
@@ -136,131 +136,131 @@ class Example {
     }
 }
 
-// 通过反射修改 final 字段
+// Modify a final field through reflection.
 Example example = new Example("Original");
 Field field = Example.class.getDeclaredField("name");
 field.setAccessible(true);
-field.set(example, "Modified");  // JDK 26 默认会成功，同时发出非法 final 字段修改警告
-System.out.println(example.getName());  // 输出 "Modified"
+field.set(example, "Modified");  // Succeeds by default in JDK 26, with a warning.
+System.out.println(example.getName());  // Prints "Modified".
 ```
 
-这种能力虽然被一些框架（如序列化库、依赖注入框架、测试工具）使用，但破坏了 `final` 的不可变性保证，也阻碍了编译器优化。
+Although frameworks such as serialization libraries, dependency-injection frameworks, and test tools use this capability, it weakens the immutability guarantee of `final` and limits compiler optimizations.
 
-在 JDK 26 中，当通过深度反射修改 `final` 字段时，JVM 会**发出警告**。这是为未来版本中默认禁止此类操作做准备。
+In JDK 26, the JVM **warns** when deep reflection modifies a `final` field. This prepares for such modifications to be disallowed by default in a future release.
 
-对于确实需要修改 `final` 字段的场景，JDK 26 提供了显式的选择机制，允许开发者在过渡期继续使用此能力，同时为未来的严格模式做好准备。
+For cases that still require modifying `final` fields, JDK 26 provides an explicit opt-in so developers can continue during the transition to stricter defaults.
 
-## JEP 526: 延迟常量（第二次预览）
+## JEP 526: Lazy Constants (Second Preview)
 
-该特性在 JDK 25 中由 [JEP 502: Stable Values（预览）](https://openjdk.org/jeps/502) 首次预览；JDK 26 的 JEP 526 将 API 更名为 Lazy Constants，并进行第二次预览。
+This feature was first previewed in JDK 25 as [JEP 502: Stable Values (Preview)](https://openjdk.org/jeps/502). In JDK 26, JEP 526 renames the API to Lazy Constants and previews it for a second time.
 
-传统的 `static final` 字段通常在类初始化时就会初始化，这会：
+Traditional `static final` fields are usually initialized when the class is initialized. This can:
 
-- 增加启动时间。
-- 如果该常量从未被使用，则浪费内存。
-- 需要复杂的延迟初始化模式（如双重检查锁定、Holder 类模式等）。
+- Increase startup time.
+- Waste memory if the constant is never used.
+- Require complex lazy-initialization patterns, such as double-checked locking or the holder class idiom.
 
-JEP 526 引入了 `LazyConstant<T>`，一种持有不可变数据的对象，JVM 将其视为真正的常量，以获得与声明 `final` 字段相同的性能。
+JEP 526 introduces `LazyConstant<T>`, an object that holds immutable data. The JVM treats it as a true constant to provide performance similar to a `final` field.
 
 ```java
-// 传统方式：类初始化时立即初始化
+// Traditional approach: initialize when the class is initialized.
 static final ExpensiveObject TRADITIONAL = new ExpensiveObject();
 
-// 新方式：首次访问时才初始化
+// New approach: initialize on first access.
 static final LazyConstant<ExpensiveObject> LAZY =
     LazyConstant.of(() -> new ExpensiveObject());
 
-// 使用时
-ExpensiveObject obj = LAZY.get();  // 此时才初始化
+// Use the constant.
+ExpensiveObject obj = LAZY.get();  // Initialized on first access.
 ```
 
-**优势**：
+**Benefits:**
 
-- **按需初始化**：只在首次访问时初始化，提升启动性能。
-- **线程安全**：内置线程安全保证，无需手动同步。
-- **JVM 优化**：JVM 可以像对待 `final` 字段一样优化延迟常量。
-- **简化代码**：消除双重检查锁定等复杂的延迟初始化模式。
+- **On-demand initialization:** Initialize only on first access to improve startup performance.
+- **Thread safety:** Built-in thread safety without manual synchronization.
+- **JVM optimizations:** The JVM can optimize lazy constants like `final` fields.
+- **Simpler code:** Avoid complex lazy-initialization patterns such as double-checked locking.
 
-## JEP 525: 结构化并发（第六次预览）
+## JEP 525: Structured Concurrency (Sixth Preview)
 
-JDK 19 以孵化器 API 的形式引入了结构化并发。JDK 26 中该 API 处于第六次预览阶段，目的是简化多线程编程，并不是为了取代 `java.util.concurrent`。
+Structured concurrency was introduced as an incubating API in JDK 19. In JDK 26, it is in its sixth preview. It aims to simplify multithreaded programming, not replace `java.util.concurrent`.
 
-结构化并发将不同线程中运行的多个任务视为单个工作单元，从而简化错误处理、提高可靠性并增强可观察性。也就是说，结构化并发保留了单线程代码的可读性、可维护性和可观察性。
+Structured concurrency treats multiple tasks running in different threads as a single unit of work. This simplifies error handling, improves reliability and observability, and preserves the readability and maintainability of single-threaded code.
 
-结构化并发的基本 API 是 `StructuredTaskScope`，它支持将任务拆分为多个并发子任务，在它们自己的线程中执行，并且子任务必须在主/父任务继续之前完成或者子任务随主/父任务失败而取消。
+The core API, `StructuredTaskScope`, splits a task into concurrent subtasks that run in their own threads. The subtasks must finish before the parent task continues, or be cancelled if the parent fails.
 
-`StructuredTaskScope` 的基本用法如下：
+Here is a basic example of `StructuredTaskScope`:
 
 ```java
     try (var scope = StructuredTaskScope.open()) {
-        // 使用fork方法派生线程来执行子任务
+        // Fork threads to run subtasks.
         Subtask<Integer> subtask1 = scope.fork(task1);
         Subtask<String> subtask2 = scope.fork(task2);
-        // 等待线程完成
+        // Wait for the threads to finish.
         scope.join();
-        // 结果的处理可能包括处理或重新抛出异常
+        // Process results or rethrow exceptions.
         ... process results/exceptions ...
     } // close
 ```
 
-结构化并发非常适合虚拟线程，虚拟线程是 JDK 实现的轻量级线程。许多虚拟线程共享同一个操作系统线程，从而允许非常多的虚拟线程。
+Structured concurrency works well with virtual threads, which are lightweight threads implemented by the JDK. Many virtual threads can share an operating system thread, allowing applications to create large numbers of them.
 
-**Java 26 的新变动**：
+**Changes in Java 26:**
 
-- **Joiner 增强**：`Joiner` 接口新增 `onTimeout()` 方法，允许在超时发生时返回特定结果。
-- **返回类型优化**：`allSuccessfulOrThrow()` 现在直接返回结果列表（`List`），而非之前的子任务流。
-- **API 简化**：将 `anySuccessfulResultOrThrow()` 简化更名为 `anySuccessfulOrThrow()`。
+- **Improved Joiner:** The `Joiner` interface adds `onTimeout()` to return a specific result when a timeout occurs.
+- **Updated return type:** `allSuccessfulOrThrow()` now returns a list of results (`List`) instead of a stream of subtasks.
+- **Simplified API:** `anySuccessfulResultOrThrow()` is renamed to `anySuccessfulOrThrow()`.
 
-## JEP 530: 模式匹配支持基本类型（第四次预览）
+## JEP 530: Primitive Types in Patterns, `instanceof`, and `switch` (Fourth Preview)
 
-该特性第一次预览是由 [JEP 455](https://openjdk.org/jeps/455 "JEP 455")（JDK 23）提出。
+This feature was first previewed in JDK 23 through [JEP 455](https://openjdk.org/jeps/455 "JEP 455").
 
-模式匹配可以在 `switch` 和 `instanceof` 语句中处理所有的基本数据类型（`int`, `double`, `boolean` 等）
+Pattern matching can handle all primitive types (`int`, `double`, `boolean`, and others) in `switch` and `instanceof` statements.
 
 ```java
 static void test(Object obj) {
     if (obj instanceof int i) {
-        System.out.println("这是一个int类型: " + i);
+        System.out.println("This is an int: " + i);
     }
 }
 ```
 
-JDK 26 对该特性进行了进一步增强：
+JDK 26 further enhances this feature:
 
-- 消除了与基本类型相关的多项限制，使模式匹配、`instanceof` 和 `switch` 更加统一和表达力更强。
-- 增强了无条件精确性的定义。
-- 在 `switch` 构造中应用更严格的支配性检查，使编译器能够识别并减少更广泛的编码错误。
+- Removes several restrictions related to primitive types, making pattern matching, `instanceof`, and `switch` more consistent and expressive.
+- Refines the definition of unconditional exactness.
+- Applies stricter dominance checks in `switch` constructs so the compiler can detect more coding errors.
 
-这样就可以像处理对象类型一样，对基本类型进行更安全、更简洁的类型匹配和转换，进一步消除了 Java 中的模板代码。
+This enables safer and simpler matching and conversion for primitive types, much like for reference types, while reducing Java boilerplate.
 
-## JEP 524: 加密对象 PEM 编码（第二次预览）
+## JEP 524: PEM Encodings of Cryptographic Objects (Second Preview)
 
-该特性第一次预览是由 [JEP 518](https://openjdk.org/jeps/518)（JDK 25）提出。
+This feature was first previewed in JDK 25 through [JEP 518](https://openjdk.org/jeps/518).
 
-PEM（Privacy-Enhanced Mail）是一种广泛使用的文本格式，用于存储和传输加密对象，如证书、私钥和公钥。JEP 524 提供了一个新的 API，用于将加密对象编码为 PEM 格式，以及从 PEM 格式解码回加密对象。
+PEM (Privacy-Enhanced Mail) is a widely used text format for storing and transmitting cryptographic objects such as certificates, private keys, and public keys. JEP 524 provides an API to encode cryptographic objects as PEM and decode them from PEM.
 
 ```java
-// 将密钥编码为 PEM 格式
+// Encode the key as PEM.
 KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
 kpg.initialize(2048);
 KeyPair keyPair = kpg.generateKeyPair();
 
-// 编码为 PEM
+// Encode as PEM.
 String pemEncoded = PEMEncoder.of().encodeToString(keyPair.getPrivate());
 
-// 从 PEM 解码
+// Decode from PEM.
 PrivateKey decodedKey = PEMDecoder.of().decode(pemEncoded, PrivateKey.class);
 ```
 
-这个 API 减少了错误风险，简化了合规性要求，并通过简化企业、云和监管需求的加密设置和集成，增强了安全 Java 应用程序的可移植性和互操作性。
+This API reduces the risk of errors, simplifies compliance, and improves the portability and interoperability of secure Java applications by making cryptographic setup and integration easier across enterprise, cloud, and regulated environments.
 
-## JEP 529: Vector API（向量 API, 第十一次孵化）
+## JEP 529: Vector API (Eleventh Incubator)
 
-向量计算由对向量的一系列操作组成。向量 API 用来表达向量计算，该计算可以在运行时可靠地编译为支持的 CPU 架构上的最佳向量指令，从而实现优于等效标量计算的性能。
+Vector computations consist of a series of operations on vectors. The Vector API expresses these computations so they can be compiled at runtime to optimal vector instructions for supported CPU architectures, outperforming equivalent scalar computations.
 
-向量 API 的目标是为用户提供简洁易用且与平台无关的表达范围广泛的向量计算。
+The API aims to provide a concise, easy-to-use, platform-independent way to express a wide range of vector computations.
 
-这是对数组元素的简单标量计算：
+Here is a simple scalar computation over array elements:
 
 ```java
 void scalarComputation(float[] a, float[] b, float[] c) {
@@ -270,7 +270,7 @@ void scalarComputation(float[] a, float[] b, float[] c) {
 }
 ```
 
-这是使用 Vector API 进行的等效向量计算：
+Here is the equivalent vector computation using the Vector API:
 
 ```java
 static final VectorSpecies<Float> SPECIES = FloatVector.SPECIES_PREFERRED;
@@ -293,31 +293,31 @@ void vectorComputation(float[] a, float[] b, float[] c) {
 }
 ```
 
-尽管仍在孵化中，但其第十一次迭代足以证明其重要性。它使得 Java 在科学计算、机器学习、AI 推理、大数据处理等性能敏感领域，能够编写出接近甚至媲美 C++ 等本地语言性能的代码。
+Although it is still incubating, its eleventh iteration shows its importance. It helps Java remain competitive in performance-sensitive areas such as scientific computing, machine learning, AI inference, and big data processing.
 
-## JEP 504: 移除 Applet API
+## JEP 504: Remove the Applet API
 
-Applet API 在 JDK 9 中被标记为废弃，在 JDK 17 中被标记为即将移除。在 JDK 26 中，Applet API 终于被**完全移除**。大快人心啊！
+The Applet API was deprecated in JDK 9 and marked for removal in JDK 17. JDK 26 **removes it**.
 
-这意味着：
+This means:
 
-- `java.applet.Applet` 类及其相关类已被删除。
-- 减少了 JDK 的安装和源代码体积。
-- 提升了应用程序的性能、稳定性和安全性。
+- The `java.applet.Applet` class and related classes are removed.
+- The JDK installation and source code are smaller.
+- Applications can benefit from improved performance, stability, and security.
 
-Applet 技术早已过时，现代 Web 开发已完全转向其他技术栈。移除这个遗留 API 是 Java 平台现代化的必要步骤。
+Applet technology is obsolete, and modern web development has moved to other platforms. Removing this legacy API is part of modernizing the Java platform.
 
-## 总结
+## Summary
 
-JDK 26 虽然是一个非 LTS 版本，但包含了一些值得关注的重要特性：
+Although JDK 26 is a non-LTS release, it includes several notable features:
 
-| 类别     | 特性                                                       |
-| -------- | ---------------------------------------------------------- |
-| **网络** | HTTP/3 支持                                                |
-| **性能** | G1 GC 吞吐量优化、AOT 缓存支持任意 GC                      |
-| **语言** | 模式匹配支持基本类型（第四次预览）、延迟常量（第二次预览） |
-| **并发** | 结构化并发（第六次预览）、向量 API（第十一次孵化）         |
-| **安全** | 让 final 真正不可变、PEM 编码支持                          |
-| **清理** | 移除 Applet API                                            |
+| Category        | Features                                                                  |
+| --------------- | ------------------------------------------------------------------------- |
+| **Networking**  | HTTP/3 support                                                            |
+| **Performance** | Improved G1 GC throughput, AOT caching with any garbage collector         |
+| **Language**    | Primitive type patterns (fourth preview), lazy constants (second preview) |
+| **Concurrency** | Structured concurrency (sixth preview), Vector API (eleventh incubator)   |
+| **Security**    | Prepare to make `final` mean `final`, PEM encoding support                |
+| **Cleanup**     | Remove the Applet API                                                     |
 
-Oracle 将提供更新直到 2026 年 9 月，届时将被 Oracle JDK 27 取代。
+Oracle will provide updates through September 2026, when Oracle JDK 27 is expected to replace it.

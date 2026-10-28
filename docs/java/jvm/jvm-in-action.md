@@ -1,111 +1,111 @@
 ---
-title: Java 后端线上问题排查：CPU、内存、GC、线程池、数据库与 Redis
-description: Java 后端线上故障排查指南，覆盖告警确认、止血留证、CPU 飙高、OOM、频繁 GC、线程池与连接池耗尽、慢 SQL、Redis 阻塞、消息积压和故障复盘。
+title: "Troubleshooting Java Production Issues: CPU, Memory, GC, Thread Pools, Databases, and Redis"
+description: A guide to Java production troubleshooting, covering alerts, incident containment, evidence collection, high CPU, OOM, frequent GC, exhausted pools, slow SQL, Redis latency, message backlogs, and incident reviews.
 category: Java
 tag:
   - JVM
-  - 线上排查
-  - 性能调优
-  - Java面试
+  - Production Troubleshooting
+  - Performance Tuning
+  - Java Interviews
 sitemap:
   changefreq: monthly
   priority: 0.9
 head:
   - - meta
     - name: keywords
-      content: Java线上问题排查,JVM故障排查,CPU飙高,OOM排查,Full GC,线程池耗尽,连接池耗尽,慢SQL,Redis故障,MQ积压
+      content: Java production troubleshooting,JVM troubleshooting,high CPU,OOM,Full GC,thread pool exhaustion,connection pool exhaustion,slow SQL,Redis issues,message queue backlog
 ---
 
-告警刚响，排查很容易被监控页面上最显眼的那条曲线带着走。看到 CPU 高就抓线程栈，看到 Full GC 就查堆，发布刚结束就准备回滚。可这些现象经常互相传导：慢 SQL 会占住数据库连接，连接池等待又会拖住业务线程，最后可能同时看到延迟、错误率和 CPU 上升。单看其中一项，很难定根因。
+When an alert fires, it is easy to chase the most prominent graph on the monitoring dashboard. High CPU prompts a thread dump, Full GC prompts a heap check, and a recent release prompts a rollback. But these symptoms can trigger one another: a slow SQL query holds a database connection, waiting for a connection blocks application threads, and latency, error rates, and CPU may all rise. Any one metric alone may not reveal the root cause.
 
-故障还在扩大时，先按预案控制影响。实例还有余量，确认取证不会继续压垮服务后，再保存日志、Trace、线程栈和内存信息。重启往往能暂时恢复，但也会清掉现场；为了抓取 Heap Dump 一直让异常实例承载流量，同样可能把问题拖大。现场情况决定先摘流量、回滚，还是先取证。
+If the incident is still spreading, contain the impact according to the incident plan. If an instance has enough headroom and collecting evidence will not overload the service, save logs, traces, thread stacks, and memory data. A restart may restore service temporarily, but it also erases evidence. Keeping an unhealthy instance in service just to capture a Heap Dump can make the problem worse. Decide whether to remove traffic, roll back, or collect evidence first based on the situation.
 
-下面只讨论 Java 应用侧的常见问题。如果证据已经指向容器调度、内核、网络设备或云平台，需要转到相应平台的监控和操作手册继续排查，这里不展开。
+This guide covers common issues in Java applications. If the evidence points to container scheduling, the kernel, network devices, or a cloud platform, continue with the relevant platform monitoring and operations guides; those topics are outside this article's scope.
 
-::: warning 生产环境操作提醒
-线上执行诊断命令前，先看实例是否仍在承载流量、磁盘还有多少空间，以及命令本身的开销。连续抓线程栈要控制频率；Heap Dump、类直方图和主动 GC 可能带来明显的 CPU、I/O 或停顿。实例已经接近不可用时，先摘流量或止损，别为了留现场继续扛着业务流量。
+::: warning Production diagnostics
+Before running diagnostic commands in production, check whether the instance is still serving traffic, how much disk space remains, and how much overhead the command may cause. Limit the frequency of thread dumps. Heap Dumps, class histograms, and explicit GC requests can add CPU and I/O load or cause pauses. If an instance is close to becoming unavailable, remove its traffic or contain the impact first. Do not keep serving traffic just to preserve evidence.
 :::
 
-## 收到告警后先确认什么？
+## What Should You Check After an Alert?
 
-收到告警后先看用户侧有没有异常。单个实例 CPU 高，但请求仍能被其他实例正常承接，和整个服务的错误率一起上升不是一个级别。还要排除监控误报、指标采集延迟，以及下游超时把线程堵在本服务里的情况。
+First check whether users are affected. High CPU on one instance, while other instances still handle requests normally, is different from an increase in errors across the whole service. Also rule out false alarms, delayed metrics, and downstream timeouts that are blocking threads in this service.
 
-把告警前后十几分钟的请求量、错误率、P95/P99、CPU、内存、GC、线程池和连接池曲线放在一起看，再对照发布、配置变更、定时任务和流量突增的时间点。数据库、Redis、消息队列和外部接口的告警也要拉进来。沿着时间线确认哪些接口和用户受到了影响、异常从什么时候开始、最早变化的是哪项指标。
+Review request volume, error rate, P95/P99 latency, CPU, memory, GC, thread pool, and connection pool metrics together for the 10–15 minutes around the alert. Compare them with release times, configuration changes, scheduled jobs, and traffic spikes. Include alerts from the database, Redis, message queues, and external services. Follow the timeline to identify which endpoints and users were affected, when the issue began, and which metric changed first.
 
-平均响应时间正常，也不代表请求都正常。少量超慢请求可能正好卡在登录、下单或支付等关键链路上，这时 P95/P99、超时率和业务成功率更有参考价值。
+An average response time within the normal range does not mean every request is healthy. A small number of very slow requests may affect critical flows such as login, checkout, or payment. P95/P99 latency, timeout rate, and business success rate are more useful in this case.
 
-## 止血和留证怎么取舍？
+## How Should You Balance Containment and Evidence Collection?
 
-故障仍在扩大时，先按预案止血。常见措施包括回滚最近版本、摘除异常实例、关闭有问题的定时任务、限流、熔断、降级非核心功能以及扩容。每项措施都有副作用：扩容可能继续压垮数据库，重试会放大下游流量，回滚也未必能兼容已经变更的数据。
+If the incident is still spreading, contain it according to the plan. Common actions include rolling back a release, removing unhealthy instances, disabling a problematic scheduled job, applying rate limits or circuit breakers, degrading non-critical features, and scaling out. Each action has trade-offs: scaling out may overload the database, retries increase downstream traffic, and a rollback may not be compatible with data that has already changed.
 
-条件允许时，在重启或回滚前保留这些信息：
+If conditions allow, preserve this information before restarting or rolling back:
 
-- 告警发生前后的监控截图或时间范围。
-- 应用日志、访问日志、GC 日志和变更记录。
-- 一到三份间隔数秒的线程栈，而不是只留一份。
-- Trace 中的慢调用、错误调用和上下游耗时。
-- 进程 CPU、RSS、堆、线程数、文件描述符和网络连接状态。
-- 数据库慢查询、锁等待、连接池状态、Redis 慢命令和 MQ 消费积压。
+- Monitoring screenshots or time ranges around the alert.
+- Application, access, and GC logs, plus change records.
+- One to three thread dumps captured a few seconds apart, rather than a single dump.
+- Slow and failed calls in traces, including time spent in upstream and downstream services.
+- Process CPU, RSS, heap, thread count, file descriptors, and network connections.
+- Database slow queries, lock waits, connection pool state, Redis slow commands, and message queue lag.
 
-实例已经摘除流量，也不要马上假设它可以安全做 Heap Dump。转储大堆需要足够磁盘空间和 I/O，某些命令还可能触发较长停顿。更稳妥的做法是在启动参数中提前配置 OOM 自动转储，并把转储文件写到容量和权限都合适的目录。
+Even after removing traffic from an instance, do not assume it is safe to capture a Heap Dump. Dumping a large heap requires enough disk space and I/O, and some commands may cause long pauses. A safer approach is to configure automatic OOM dumps at startup and write them to a directory with enough space and appropriate permissions.
 
 ```bash
 -XX:+HeapDumpOnOutOfMemoryError
 -XX:HeapDumpPath=/path/with/enough/space
 ```
 
-## 怎样快速判断问题在哪一层？
+## How Can You Quickly Identify the Affected Layer?
 
-暂时没有调用链线索时，先按现象选择排查入口。表里的对应关系不能替代后续验证。
+If there is no trace information yet, use the symptoms to choose where to start. The table is a starting point, not a substitute for verification.
 
-| 现象                      | 优先检查                                                 |
-| ------------------------- | -------------------------------------------------------- |
-| CPU 高，接口同时变慢      | 热点线程、死循环、序列化、锁竞争、频繁 GC                |
-| CPU 不高，Load 很高       | 磁盘 I/O、不可中断睡眠、网络存储、容器 CPU 限额          |
-| RSS 持续上涨，Java 堆稳定 | 直接内存、线程栈、Metaspace、JNI、本地库和内存映射       |
-| Old 区回收后仍持续上涨    | 长生命周期对象、无界缓存、集合持有、监听器或 ThreadLocal |
-| 线程数和队列长度上涨      | 下游变慢、锁等待、任务处理变慢、线程池隔离不足           |
-| 数据库连接池等待上涨      | 慢 SQL、长事务、连接泄漏、数据库容量不足                 |
-| Redis RT 上涨             | 慢命令、大 Key、热 Key、网络抖动、连接池等待             |
-| MQ Lag 持续上涨           | 消费变慢、分区不均、异常消息重试、下游容量不足           |
+| Symptom                                        | Check first                                                                                    |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| High CPU and slow endpoints                    | Hot threads, infinite loops, serialization, lock contention, frequent GC                       |
+| Low CPU and high system load                   | Disk I/O, uninterruptible sleep, network storage, container CPU limits                         |
+| RSS keeps growing while Java heap stays stable | Direct memory, thread stacks, Metaspace, JNI, native libraries, memory-mapped files            |
+| Old generation keeps growing after GC          | Long-lived objects, unbounded caches, retained collections, listeners, or ThreadLocal values   |
+| Thread count and queue length rise             | Slow downstream services, lock waits, slow task processing, insufficient thread pool isolation |
+| Database connection pool wait rises            | Slow SQL, long transactions, connection leaks, insufficient database capacity                  |
+| Redis response time rises                      | Slow commands, large or hot keys, network issues, connection pool waits                        |
+| Message queue lag keeps growing                | Slow consumers, uneven partitions, repeated retries, insufficient downstream capacity          |
 
-问题也可能跨层传播。一个慢 SQL 占住数据库连接，业务线程随后阻塞在连接池，线程池队列开始堆积，上游超时后重试，最终看到的是 CPU、延迟和错误率一起上升。排查时要按时间线确认哪个指标最先变化。
+Problems can also propagate across layers. A slow SQL query holds a database connection, application threads wait for connections, the thread pool queue grows, and upstream timeouts trigger retries. CPU, latency, and error rates may all rise. Use the timeline to determine which metric changed first.
 
-## CPU 飙高怎么排查？
+## How Do You Investigate High CPU Usage?
 
-先确认高 CPU 来自哪个进程，再找到进程内占用 CPU 的线程。下面是 Linux 上常见的排查方式：
+First identify which process is using the CPU, then find the threads consuming CPU within that process. Common Linux commands include:
 
 ```bash
-# 找到 Java 进程
+# Find Java processes.
 jps -l
 
-# 查看进程内各线程的 CPU 使用情况
+# Check CPU usage for each thread in the process.
 top -H -p <pid>
 
-# 也可以按线程查看一段时间内的 CPU 使用
+# Alternatively, check per-thread CPU usage over time.
 pidstat -t -p <pid> 1
 ```
 
-`top -H` 里看到的是十进制线程 ID，而线程栈中的 `nid` 通常使用十六进制。先转换，再到线程栈里查对应线程：
+`top -H` displays thread IDs in decimal, while `nid` in a thread dump is usually hexadecimal. Convert the ID, then find the matching thread in the dump:
 
 ```bash
 printf '%x\n' <tid>
 jcmd <pid> Thread.print > /tmp/thread-dump.txt
 ```
 
-线程栈需要连续抓几份。某个线程只在一份栈里执行 JSON 序列化，可能只是恰好采样到；多份栈都停在同一段代码，才值得继续检查。常见原因包括：
+Capture several thread dumps over time. A thread doing JSON serialization in one dump may have been sampled at that moment; if it appears in the same code across several dumps, investigate further. Common causes include:
 
-- 无法退出的循环或递归。
-- 大对象序列化、正则回溯和加解密等计算任务。
-- 大量对象分配引发频繁 GC。
-- 多线程争用同一把锁，伴随上下文切换。
-- 流量上涨或重试放大，CPU 只是正常做了更多工作。
+- Loops or recursion that do not terminate.
+- CPU-intensive work such as serializing large objects, regex backtracking, or encryption and decryption.
+- Frequent GC caused by a high rate of object allocation.
+- Threads contending for a lock and causing context switches.
+- Increased traffic or retry amplification, where CPU is simply doing more work.
 
-CPU 已经接近打满时，不要同时启动多个高开销诊断任务。先摘除部分流量或选择一个异常实例取证，避免诊断操作继续抢占资源。
+When CPU is near saturation, avoid running several high-overhead diagnostics at once. Remove some traffic or collect evidence from one unhealthy instance so the diagnostics do not compete for more resources.
 
-## CPU 不高但 Load 很高怎么办？
+## What If CPU Usage Is Low but System Load Is High?
 
-Linux Load Average 统计运行中和不可中断睡眠的任务。磁盘、网络存储或某些内核 I/O 等待严重时，CPU 使用率可能不高，Load 仍会持续上升。
+Linux Load Average counts running tasks and tasks in uninterruptible sleep. Severe waits on disk, network storage, or some kernel I/O can cause system load to rise even when CPU usage is low.
 
 ```bash
 vmstat 1
@@ -113,26 +113,26 @@ iostat -xz 1
 pidstat -d -p <pid> 1
 ```
 
-重点观察 `vmstat` 中的运行队列、I/O 等待和阻塞任务，以及 `iostat` 中设备利用率、等待时间和队列。`iostat`、`pidstat` 通常由 sysstat 软件包提供，线上环境是否可用要提前确认。
+Check the run queue, I/O wait, and blocked tasks in `vmstat`, and device utilization, wait time, and queue length in `iostat`. `iostat` and `pidstat` are usually provided by the `sysstat` package; confirm they are available in the production environment.
 
-## 接口很慢但 CPU 不高怎么排查？
+## How Do You Investigate Slow Endpoints When CPU Is Low?
 
-这类问题经常发生在等待上：等数据库连接、等下游响应、等锁、等线程池任务或者等磁盘 I/O。
+These issues often involve waiting: for a database connection, downstream response, lock, thread pool task, or disk I/O.
 
-先从 Trace 找到耗时最长的一段。如果没有 Trace，可以结合访问日志里的请求耗时、数据库慢查询、客户端连接池指标和线程栈缩小范围。线程栈中常见的状态包括：
+Start by finding the longest span in the trace. If traces are unavailable, use request durations from access logs, database slow queries, client connection pool metrics, and thread dumps to narrow down the cause. Common thread dump patterns include:
 
-- 大量线程停在数据库连接池的 `getConnection()`，检查连接池等待、活跃连接、慢 SQL 和长事务。
-- 大量线程停在 HTTP 客户端读取响应，检查下游延迟、超时配置和重试次数。
-- 大量线程处于 `BLOCKED`，检查锁持有者和临界区内的慢操作。
-- 业务线程空闲但任务队列堆积，检查消费者线程、任务提交方式和执行器状态。
+- Many threads are blocked in a database pool's `getConnection()`: check pool wait time, active connections, slow SQL, and long transactions.
+- Many threads are waiting for an HTTP client response: check downstream latency, timeout settings, and retry count.
+- Many threads are `BLOCKED`: identify the lock owner and slow operations inside the critical section.
+- Application threads are idle while the task queue grows: check worker threads, task submission, and executor state.
 
-一次慢请求的总耗时应能和各阶段对上。若 Trace 只记录了业务方法耗时，连接池等待、线程池排队和客户端 DNS/TLS 时间没有被记录，中间会出现一段无法解释的空白，需要补充相应监控或埋点。
+The total duration of a slow request should add up across its stages. If a trace records only business method time and omits connection pool waits, thread pool queueing, or client DNS/TLS time, there will be an unexplained gap. Add the relevant instrumentation or monitoring.
 
-## 内存持续上涨和 OOM 怎么排查？
+## How Do You Investigate Growing Memory Use and OOM?
 
-先分清上涨的是 Java 堆、进程 RSS 还是容器总内存。`-Xmx` 只限制 Java 堆，进程还会使用 Metaspace、Code Cache、线程栈、直接内存、GC 自身数据结构和本地库内存。
+First determine whether Java heap, process RSS, or total container memory is growing. `-Xmx` limits only the Java heap. A process also uses Metaspace, Code Cache, thread stacks, direct memory, GC data structures, and native library memory.
 
-先查看 JVM 和系统两边的数据：
+Check both JVM and system-level data:
 
 ```bash
 jcmd <pid> GC.heap_info
@@ -140,217 +140,217 @@ jcmd <pid> VM.flags
 jcmd <pid> VM.native_memory summary
 ```
 
-`VM.native_memory` 依赖 Native Memory Tracking（NMT），需要在 JVM 启动时开启，例如 `-XX:NativeMemoryTracking=summary`。它会带来额外开销，不能在故障发生后临时补开。
+`VM.native_memory` requires Native Memory Tracking (NMT), which must be enabled when the JVM starts, for example with `-XX:NativeMemoryTracking=summary`. NMT adds overhead and cannot be enabled retroactively after an incident starts.
 
-NMT 主要统计 JVM/HotSpot 自身管理的本地内存，无法覆盖 JNI 或第三方本地库的全部内存分配。RSS 持续上涨而 NMT 没有对应变化时，还要借助操作系统和本地内存分析工具继续排查。
+NMT mainly reports native memory managed by the JVM/HotSpot. It does not cover all allocations made through JNI or third-party native libraries. If RSS keeps rising without a corresponding change in NMT, continue with operating system and native memory analysis tools.
 
-常见 OOM 信息对应不同方向：
+Common OOM messages point to different areas to investigate:
 
-| OOM 信息                         | 常见排查方向                                           |
-| -------------------------------- | ------------------------------------------------------ |
-| `Java heap space`                | 大对象、对象持有、无界集合、缓存、一次查询返回过多数据 |
-| `GC overhead limit exceeded`     | 堆接近耗尽，GC 花费大量时间但回收很少                  |
-| `Metaspace`                      | 动态类生成、类加载器泄漏、Metaspace 上限过小           |
-| `Direct buffer memory`           | NIO 直接内存、Netty Buffer、释放延迟或上限不合理       |
-| `unable to create native thread` | 线程数过多、进程限制、容器内存不足、单线程栈过大       |
+| OOM message                      | Common causes to investigate                                                                |
+| -------------------------------- | ------------------------------------------------------------------------------------------- |
+| `Java heap space`                | Large objects, retained objects, unbounded collections or caches, oversized query results   |
+| `GC overhead limit exceeded`     | Heap nearly exhausted; GC spends a lot of time reclaiming little memory                     |
+| `Metaspace`                      | Dynamic class generation, class loader leaks, or a low Metaspace limit                      |
+| `Direct buffer memory`           | NIO direct memory, Netty buffers, delayed cleanup, or an unsuitable limit                   |
+| `unable to create native thread` | Too many threads, process limits, insufficient container memory, or oversized thread stacks |
 
-Heap Dump 可以使用 MAT、VisualVM 等工具分析。先看占用最大的对象、Dominator Tree、到 GC Roots 的引用链和可疑类加载器，不要只根据对象数量下结论。
+Analyze Heap Dumps with tools such as MAT or VisualVM. Start with the largest objects, the Dominator Tree, paths to GC Roots, and suspicious class loaders. Do not draw conclusions from object counts alone.
 
-需要手动转储时，可以使用：
+To create a dump manually, use:
 
 ```bash
 jcmd <pid> GC.heap_dump filename=/path/with/enough/space/heap.hprof
 ```
 
-这个命令可能对应用产生明显影响。执行前应评估堆大小、磁盘余量、I/O 和停顿风险。生产实例仍在承载流量时，优先在摘流量后的异常实例操作。`jmap -dump:live` 可能触发 Full GC，不适合当作无风险命令直接执行。
+This command can have a significant impact on the application. Before running it, assess heap size, free disk space, I/O, and pause risk. If a production instance is still serving traffic, prefer an unhealthy instance after removing its traffic. `jmap -dump:live` may trigger Full GC, so do not treat it as risk-free.
 
-## 怎么判断是内存泄漏还是正常增长？
+## How Can You Distinguish a Memory Leak from Normal Growth?
 
-观察完整 GC 之后的堆占用。如果业务流量和数据规模稳定，Old 区在多次完整回收后仍持续抬升，才需要重点怀疑对象无法释放。缓存预热、类加载和流量增长也会让堆在启动后逐步上升，它们不一定是泄漏。
+Observe heap usage after full collections. If traffic and data volume are stable but old-generation usage continues to rise after several full collections, suspect objects that cannot be reclaimed. Cache warm-up, class loading, and increased traffic can also cause heap usage to rise after startup; they are not necessarily leaks.
 
-分析时还要看对象为什么被持有。一个 `Map` 很大，只能说明它占用内存；继续沿引用链找到无界缓存、静态集合、监听器、ThreadLocal 或错误的会话生命周期，才能确认修复位置。
+Also find out why the objects are being retained. A large `Map` only tells you that it consumes memory. Follow the reference chain to an unbounded cache, static collection, listener, ThreadLocal, or incorrectly managed session lifecycle to identify where to fix the problem.
 
-## Young GC 频繁怎么排查？
+## How Do You Investigate Frequent Young GC?
 
-Young GC 频繁通常表示对象分配速度快或年轻代容量不足。先看分配速率、每次回收后的存活量和停顿时间，再判断是否需要改代码或调参数。
+Frequent Young GC usually means objects are being allocated quickly or the young generation is too small. Check the allocation rate, live data after each collection, and pause time before deciding whether to change the code or tune options.
 
 ```bash
 jstat -gcutil <pid> 1000 10
 jcmd <pid> GC.heap_info
 ```
 
-常见原因包括一次查询加载大量对象、接口返回超大结果、日志或序列化创建大量临时对象、批处理没有控制批次，以及年轻代设置与负载不匹配。
+Common causes include queries that load many objects at once, endpoints that return oversized results, temporary objects created by logging or serialization, unbounded batch sizes, and young-generation settings that do not match the workload.
 
-调整年轻代只能改变 GC 节奏，无法修复无界查询和高分配代码。先通过 GC 日志、JFR、分配采样或压测确认对象从哪里产生。改参数后要在相同流量和数据条件下比较吞吐、P95/P99、GC 次数和总停顿时间。
+Changing the young-generation size only changes GC frequency; it cannot fix unbounded queries or code with a high allocation rate. Use GC logs, JFR, allocation profiling, or load tests to find where objects are created. After changing options, compare throughput, P95/P99 latency, GC count, and total pause time under the same traffic and data conditions.
 
-## Full GC 频繁怎么排查？
+## How Do You Investigate Frequent Full GC?
 
-先从 GC 日志确认触发原因、回收前后占用和停顿时间。不同收集器的日志字段和触发原因并不完全相同，不能把所有 Full GC 都归结为“老年代满了”。
+Start with the GC logs to identify the trigger, memory use before and after collection, and pause duration. Log fields and triggers differ between collectors, so do not assume that every Full GC means the old generation is full.
 
-排查时重点看：
+Check these points:
 
-- Old 区在回收后能否明显下降。
-- 大对象和晋升对象是否过多。
-- Metaspace 是否接近上限。
-- 是否存在显式 `System.gc()` 或诊断工具触发。
-- 堆大小、容器内存限制和收集器配置是否匹配。
-- GC 之前是否先出现流量上涨、批任务或缓存刷新。
+- Whether old-generation usage drops after collection.
+- Whether too many large objects or promoted objects are being created.
+- Whether Metaspace is near its limit.
+- Whether `System.gc()` or a diagnostic tool triggered collection.
+- Whether heap size, container memory limit, and collector settings are compatible.
+- Whether traffic spikes, batch jobs, or cache refreshes occurred before GC.
 
-回收后占用仍然很高，继续分析对象持有；回收效果正常但很快再次填满，重点查分配速率、晋升速度和堆容量。修改 JVM 参数以前，先确认应用行为，否则加大堆只会延后下一次故障，并可能增加停顿或转储成本。
+If usage remains high after collection, investigate object retention. If collection works but the heap quickly fills again, check allocation rate, promotion rate, and heap capacity. Before changing JVM options, understand the application's behavior. Increasing the heap may only delay the next incident and can increase pause times or dump costs.
 
-## 线程池队列堆积怎么排查？
+## How Do You Investigate a Growing Thread Pool Queue?
 
-线程池问题不能只看活跃线程数。至少要同时监控：
+Do not diagnose a thread pool by looking only at active thread count. Monitor at least:
 
-- `corePoolSize`、`maximumPoolSize` 和当前线程数。
-- 活跃线程数、队列长度和队列容量。
-- 任务提交速率、完成速率、等待时间和执行时间。
-- 拒绝次数以及具体拒绝策略。
+- `corePoolSize`, `maximumPoolSize`, and current thread count.
+- Active thread count, queue length, and queue capacity.
+- Task submission and completion rates, wait time, and execution time.
+- Rejection count and the configured rejection policy.
 
-队列持续上涨，表示任务进入速度高于完成速度。原因可能是突发流量，也可能是任务本身变慢，例如数据库连接等待、下游超时或者锁竞争。直接增加线程数会增加对数据库、Redis 和外部接口的并发访问，可能把问题推到下游。
+If the queue keeps growing, tasks are arriving faster than they are completed. This may be due to a traffic spike or slower tasks, such as those waiting for database connections, timing out downstream, or contending for locks. Increasing the thread count directly also increases concurrent access to databases, Redis, and external services, potentially pushing the problem downstream.
 
-按下面的顺序排查：
+Investigate in this order:
 
-1. 确认哪些业务任务使用这个线程池，是否有无关任务混用。
-2. 比较提交速率、完成速率、排队时间和执行时间。
-3. 抽取正在运行任务的线程栈，确认它们在计算还是等待。
-4. 检查数据库、HTTP 和 Redis 连接池是否同步耗尽。
-5. 根据任务重要性决定限流、降级、扩容、隔离或丢弃策略。
+1. Identify which business tasks use the pool and whether unrelated tasks share it.
+2. Compare submission and completion rates, queue wait time, and execution time.
+3. Capture thread dumps for running tasks to see whether they are computing or waiting.
+4. Check whether database, HTTP, and Redis connection pools are also exhausted.
+5. Choose rate limiting, degradation, scaling, isolation, or task dropping based on task priority.
 
-`CallerRunsPolicy` 会让提交任务的线程自己执行任务，可以暂时减慢提交速度，但 Web 请求线程因此被长任务占住后，接口延迟也会升高。它适不适合当前线程池，需要结合调用方和任务类型判断。
+`CallerRunsPolicy` makes the thread submitting a task run it, which can temporarily slow task submission. But if a long-running task occupies a web request thread, endpoint latency will rise. Whether this policy suits a pool depends on the caller and task type.
 
-## 数据库连接池耗尽怎么排查？
+## How Do You Investigate Database Connection Pool Exhaustion?
 
-连接池耗尽时，先看活跃连接、空闲连接、等待线程和获取连接耗时。业务线程大量等待连接，通常继续沿三个方向检查：
+When a connection pool is exhausted, check active and idle connections, waiting threads, and connection acquisition time. If many application threads are waiting for connections, investigate three common causes:
 
-- SQL 执行慢，连接长时间无法归还。
-- 事务范围过大，包含远程调用、文件处理或大量计算。
-- 代码没有在所有分支正确关闭连接，出现连接泄漏。
+- Slow SQL that holds connections for too long.
+- Transactions that include remote calls, file processing, or extensive computation.
+- Connections not closed on every code path, causing leaks.
 
-数据库侧再检查当前会话、慢查询、锁等待、长事务和实例资源。MySQL 可以结合 `SHOW PROCESSLIST`、慢查询日志、Performance Schema、`EXPLAIN` 和 InnoDB 事务锁信息定位。执行计划来自当前 SQL、参数和数据分布，测试库里“走索引”不能证明生产环境一定相同。
+On the database side, check current sessions, slow queries, lock waits, long transactions, and instance resources. For MySQL, use `SHOW PROCESSLIST`, the slow query log, Performance Schema, `EXPLAIN`, and InnoDB transaction lock information. An execution plan depends on the SQL, parameters, and data distribution; using an index in a test database does not prove the production query will do the same.
 
-扩充连接池之前要确认数据库还能承受更多并发。应用实例数乘以每个实例的连接池上限，才是数据库可能面对的总连接数；服务扩容后，这个总数也会跟着增加。
+Before increasing the pool size, confirm the database can handle more concurrent connections. The maximum connection count is the number of application instances multiplied by each instance's pool limit. Scaling out the service increases this total as well.
 
-相关内容：[MySQL 执行计划分析](../../database/mysql/mysql-query-execution-plan.md)、[SQL 优化总结](../../high-performance/sql-optimization.md)。
+Related guides: [MySQL execution plan analysis](../../database/mysql/mysql-query-execution-plan.md) and [SQL optimization](../../high-performance/sql-optimization.md).
 
-## Redis 变慢怎么排查？
+## How Do You Investigate Slow Redis Responses?
 
-应用访问 Redis 变慢时，先区分客户端等待和服务端执行。连接池耗尽、网络抖动、DNS 问题都会让一次 Redis 调用变慢，即使命令本身执行很快。
+When Redis calls from an application slow down, distinguish client-side waiting from server-side execution. An exhausted connection pool, network instability, or DNS problems can delay a Redis call even if the command itself executes quickly.
 
-Redis 服务端重点看：
+On the Redis server, check:
 
-- 命令延迟和慢日志。
-- CPU、内存、网络流量和连接数。
-- 大 Key、热 Key、过期删除以及持久化操作。
-- 主从复制延迟、集群状态和故障切换。
+- Command latency and slow logs.
+- CPU, memory, network traffic, and connection count.
+- Large keys, hot keys, expiration cleanup, and persistence operations.
+- Replication lag, cluster state, and failover activity.
 
-`SLOWLOG GET` 记录的是命令在 Redis 服务端的执行时间，不包含排队和网络传输。应用总耗时很高而 Slow Log 正常时，继续检查连接池等待、网络和客户端处理。
+`SLOWLOG GET` records command execution time on the Redis server; it does not include queueing or network time. If the application's total latency is high but the Slow Log looks normal, check connection pool waits, the network, and client-side processing.
 
-排查大 Key 时可以使用 `redis-cli --bigkeys` 等工具，但它需要扫描键空间，会增加额外负载。生产环境应选择低峰期、从节点或受控采样，并提前确认命令对当前版本和集群的影响。不要在线上直接执行 `KEYS *`。
+Tools such as `redis-cli --bigkeys` can help find large keys, but they scan the key space and add load. In production, run them during off-peak hours, against a replica, or with controlled sampling, after confirming their impact on the current version and cluster. Do not run `KEYS *` directly in production.
 
-热 Key 需要结合访问频率和节点负载确认。只看 Key 的体积找不到读取次数特别高的小 Key；可以使用代理层、客户端统计、监控平台或受控的热点 Key 分析能力获取证据。
+Confirm hot keys using access frequency and node load. Key size alone will not reveal a small key that is read very often. Gather evidence from a proxy, client statistics, a monitoring platform, or a controlled hot-key analysis tool.
 
-相关内容：[Redis 常见面试题](../../database/redis/redis-questions-02.md)。
+Related guide: [Common Redis interview questions](../../database/redis/redis-questions-02.md).
 
-## 消息队列积压怎么排查？
+## How Do You Investigate a Message Queue Backlog?
 
-先比较生产速率和消费速率，并确认积压集中在哪个 Topic、队列或分区。随后检查消费者实例是否存活、消费线程是否阻塞、单条消息处理时间是否变化，以及下游数据库和接口是否变慢。
+Compare production and consumption rates, and identify which topic, queue, or partition has the backlog. Then check whether consumer instances are alive, consumer threads are blocked, per-message processing time has changed, or downstream databases and services are slow.
 
-常见原因包括：
+Common causes include:
 
-- 流量上涨，生产速度超过设计容量。
-- 某类消息处理变慢，拖住整个分区或队列。
-- 异常消息不断重试，形成重试风暴。
-- 分区分配不均或消费者频繁 Rebalance。
-- 消费成功后提交位点失败，造成重复消费。
-- 下游数据库、Redis 或外部接口成为瓶颈。
+- Traffic increases beyond the system's designed capacity.
+- A type of message takes longer to process and holds up a partition or queue.
+- A failing message is retried repeatedly, causing a retry storm.
+- Partitions are unevenly distributed or consumers frequently rebalance.
+- Offset commits fail after successful processing, causing duplicate consumption.
+- A downstream database, Redis, or external service becomes a bottleneck.
 
-增加消费者是否有效取决于消息队列模型。Kafka 同一消费组里的有效并行度受分区数限制；消费者继续增加但没有分区可分配，不会提高吞吐。即使增加分区和消费者，也要确认下游容量，避免消费恢复后把积压流量一次性打到数据库。
+Whether adding consumers helps depends on the queue model. In Kafka, effective parallelism within a consumer group is limited by the number of partitions. Adding consumers when no partitions are available does not increase throughput. Even when adding partitions and consumers, check downstream capacity so that the backlog does not overwhelm the database once consumption resumes.
 
-处理积压期间还要保证幂等，监控消费错误和死信。需要跳过异常消息时，应保留消息内容和失败原因，后续补偿，而不是直接丢弃。
+Keep processing idempotent while handling a backlog, and monitor consumer errors and dead-letter queues. If a problematic message must be skipped, preserve its contents and failure reason for later recovery instead of discarding it.
 
-相关内容：[消息队列常见问题](../../high-performance/message-queue/message-queue.md)。
+Related guide: [Common message queue issues](../../high-performance/message-queue/message-queue.md).
 
-## 下游接口超时怎么排查？
+## How Do You Investigate Downstream Timeouts?
 
-先把一次调用的时间拆开：连接池等待、DNS、TCP 建连、TLS 握手、请求发送、服务端处理和响应读取。不同阶段需要不同的超时配置，只设置一个总超时不容易判断时间花在哪里。
+Break a call into stages: connection pool wait, DNS lookup, TCP connection, TLS handshake, request transmission, server processing, and response reading. Different stages need different timeout settings; a single overall timeout makes it hard to identify where time was spent.
 
-检查调用方时重点看：
+On the caller side, check:
 
-- 连接超时、读取超时和调用链总预算。
-- HTTP 连接池的活跃连接、等待队列和连接复用。
-- 重试次数、退避策略以及哪些错误会触发重试。
-- 熔断器状态、降级结果和首次请求成功率。
+- Connection timeout, read timeout, and the total time budget for the call chain.
+- Active connections, wait queue, and connection reuse in the HTTP pool.
+- Retry count, backoff policy, and which errors trigger retries.
+- Circuit breaker state, fallback results, and first-attempt success rate.
 
-下游已经变慢时，多层重试会迅速放大流量。网关、业务服务和 SDK 各重试三次，最坏情况下会产生远超一次调用的请求量。先限制重试层级和总预算，再根据接口是否幂等决定能不能重试。
+When a downstream service is already slow, retries at multiple layers quickly amplify traffic. If a gateway, application service, and SDK each retry three times, the resulting request count can greatly exceed a single call. Limit retry layers and the total retry budget, then decide whether retries are safe based on whether the endpoint is idempotent.
 
-## 用一条慢接口串起排查过程
+## Walk Through an Investigation of a Slow Endpoint
 
-假设订单查询接口在一次版本发布后 P99 上升，错误率也开始增加，按下面的顺序排查。这个例子用于说明方法，不代表真实生产事故。
+Suppose P99 latency and the error rate for an order lookup endpoint rise after a release. Investigate in the following order. This example illustrates the process and does not describe a real production incident.
 
-1. 从监控确认问题开始于发布后，集中在新版本实例和订单查询接口。
-2. 暂停继续发布，摘除部分异常实例，错误率下降，先控制影响范围。
-3. 对比新旧实例的 Trace，发现大部分时间消耗在获取数据库连接和执行查询。
-4. 连接池监控显示等待线程增加，数据库慢查询出现同一条 SQL。
-5. 使用生产参数对应的查询条件查看执行计划，发现新加的筛选条件使原联合索引无法有效过滤，并伴随额外排序。
-6. 在接近生产数据分布的测试环境修改查询和索引，比较扫描行数、P95/P99、CPU 和连接占用。
-7. 变更经过灰度后继续观察慢查询、连接池等待和业务错误率，再逐步恢复流量。
-8. 复盘时补充相应查询场景的性能测试和发布后监控项。
+1. Use monitoring to confirm that the issue started after the release and is concentrated on the new instances and order lookup endpoint.
+2. Pause further releases and remove some unhealthy instances from service. The error rate falls, containing the impact.
+3. Compare traces from old and new instances. Most of the time is spent acquiring database connections and running a query.
+4. Connection pool metrics show more waiting threads, and the database slow query log shows the same SQL statement.
+5. Inspect the execution plan with production-equivalent query parameters. A new filter prevents the existing composite index from filtering effectively and adds a sort.
+6. Adjust the query and index in a test environment with a similar data distribution. Compare rows scanned, P95/P99, CPU, and connection use.
+7. After canarying the change, monitor slow queries, connection pool waits, and business errors, then gradually restore traffic.
+8. In the incident review, add performance tests for this query pattern and post-release monitoring.
 
-在这个假设场景中，线程池和连接池堆积出现在慢 SQL 之后；执行计划和慢查询记录把根因指向了 SQL。若第 4 步发现 SQL 很快、时间主要花在连接池外，就要回到其他假设继续验证。
+In this hypothetical incident, thread and connection pool queues grow after the slow SQL begins. The execution plan and slow query log point to SQL as the root cause. If step 4 shows that SQL is fast and most time is spent outside the connection pool, revisit other hypotheses.
 
-## 修复以后怎么验证？
+## How Do You Verify a Fix?
 
-代码或配置修复以后，还要确认用户侧指标恢复、临时措施可以撤销，并且没有引入新的数据问题。
+After fixing the code or configuration, confirm that user-facing metrics have recovered, temporary measures can be removed, and no data issues were introduced.
 
-验证时对比故障前、故障中和修复后的同一组指标：请求量、P95/P99、错误率、业务成功率、CPU、内存、GC、线程池、连接池和依赖延迟。涉及重复消费、库存、订单和资金状态时，还要做数据对账。
+Compare the same metrics before, during, and after the incident: request volume, P95/P99 latency, error rate, business success rate, CPU, memory, GC, thread pools, connection pools, and dependency latency. Reconcile data if the issue involved duplicate consumption, inventory, orders, or financial state.
 
-性能改动需要在相近的数据量、流量模型、机器配置和缓存状态下比较。只跑一次单接口压测，不能代表整条业务链路已经恢复。具体可以参考：[性能测试和压力测试入门](../../high-availability/performance-test.md)。
+Compare performance changes under similar data volumes, traffic patterns, machine configuration, and cache state. A single load test of one endpoint does not prove that the whole business flow has recovered. See [Introduction to performance and stress testing](../../high-availability/performance-test.md).
 
-## 故障复盘应该记录什么？
+## What Should an Incident Review Record?
 
-复盘要留下能在下次故障里直接使用的材料。文档至少保留：
+An incident review should leave material that can be used during the next incident. At a minimum, record:
 
-- 故障时间线、影响范围和用户表现。
-- 直接原因、触发条件以及故障为什么会扩大。
-- 止血、定位和修复过程中使用的证据。
-- 哪些监控、预案或测试没有发挥作用。
-- 后续改进项、负责人和完成时间。
+- Incident timeline, scope, and user impact.
+- Direct cause, trigger, and why the incident spread.
+- Evidence used to contain, diagnose, and fix the issue.
+- Monitoring, runbooks, or tests that did not help.
+- Follow-up actions, owners, and due dates.
 
-“开发加强代码检查”很难验证是否完成。改进项应落到具体机制，例如给连接池等待时间增加告警、限制批量查询条数、为消息消费补幂等测试、给发布流程增加关键接口对比检查。
+"Improve code reviews" is difficult to verify. Make action items concrete, such as alerting on connection pool wait time, limiting batch query size, adding idempotency tests for message consumption, or comparing key endpoints during release checks.
 
-## 面试中怎么回答线上故障排查？
+## How Should You Answer Production Troubleshooting Questions in an Interview?
 
-面试官问“线上 CPU 飙高怎么处理”，可以先回答通用顺序，再结合自己做过的案例：
+If an interviewer asks, "How would you handle high CPU in production?", give the general steps first, then connect them to an incident you handled:
 
-> 我会先确认影响范围、流量和最近变更，判断是否需要摘实例、限流或回滚。条件允许时保留监控、日志和多份线程栈。CPU 确实来自 Java 进程后，用 `top -H` 或 `pidstat -t` 找热点线程，把线程 ID 转为十六进制后和线程栈中的 `nid` 对应。连续采样确认线程长期停在哪段代码，再结合 GC、Trace 和流量判断是计算热点、死循环、锁竞争还是频繁 GC。修复后使用相同场景验证，并补监控和回归测试。
+> First, I would confirm the impact, traffic, and recent changes, then decide whether to remove instances, apply rate limits, or roll back. If conditions allow, I would preserve monitoring data, logs, and several thread dumps. After confirming that the Java process is using the CPU, I would use `top -H` or `pidstat -t` to find hot threads, convert their IDs to hexadecimal, and match them to `nid` values in the thread dump. I would sample repeatedly to see which code the threads remain in, then use GC data, traces, and traffic metrics to distinguish CPU-intensive work, an infinite loop, lock contention, or frequent GC. After the fix, I would verify it under the same conditions and add monitoring and regression tests.
 
-如果没有处理过真实生产故障，可以说明自己在测试环境演练过哪些场景，以及参考过什么案例。不要把阅读过的文章说成亲自负责的事故。
+If you have not handled a real production incident, describe scenarios you practiced in a test environment and the cases you studied. Do not present an incident from an article as one you personally handled.
 
-## 常用工具速查
+## Common Tools at a Glance
 
-| 工具               | 常见用途                       | 使用提醒                              |
-| ------------------ | ------------------------------ | ------------------------------------- |
-| `top`、`pidstat`   | 进程和线程 CPU、I/O            | 先确认容器和宿主机观察口径            |
-| `vmstat`、`iostat` | 系统运行队列、内存和磁盘       | 需要结合一段时间趋势                  |
-| `jcmd`             | 线程栈、堆信息、JFR、类直方图  | 部分命令开销较高，执行前评估          |
-| `jstat`            | GC 和各内存区域变化            | 连续采样比单点数据更有用              |
-| JFR、JMC           | CPU、分配、锁、I/O 等事件分析  | 采集配置要结合线上开销                |
-| MAT、VisualVM      | Heap Dump 分析                 | 重点看引用链和 GC Roots               |
-| Arthas             | 方法耗时、线程、类和运行时诊断 | 高流量方法执行 Trace/Watch 要限制范围 |
-| Trace/监控平台     | 请求链、错误率、延迟和依赖     | 关注采样率、脱敏和时间同步            |
+| Tool                        | Common use                                           | Notes                                                          |
+| --------------------------- | ---------------------------------------------------- | -------------------------------------------------------------- |
+| `top`, `pidstat`            | Process/thread CPU and I/O                           | Confirm whether metrics are from the container or host         |
+| `vmstat`, `iostat`          | System queues, memory, and disk                      | Review trends over time                                        |
+| `jcmd`                      | Thread dumps, heap info, JFR, class histograms       | Some commands have significant overhead; assess before running |
+| `jstat`                     | GC and memory area changes                           | Repeated samples are more useful than a single reading         |
+| JFR, JMC                    | CPU, allocation, locks, and I/O events               | Configure collection with production overhead in mind          |
+| MAT, VisualVM               | Heap Dump analysis                                   | Focus on reference paths and GC Roots                          |
+| Arthas                      | Method timing, threads, classes, runtime diagnostics | Limit Trace/Watch on high-traffic methods                      |
+| Tracing/monitoring platform | Request paths, errors, latency, dependencies         | Consider sampling, redaction, and clock synchronization        |
 
-## 推荐阅读
+## Further Reading
 
-- [JDK 监控和故障处理工具总结](./jdk-monitoring-and-troubleshooting-tools.md)
-- [最重要的 JVM 参数总结](./jvm-parameters-intro.md)
-- [JVM 垃圾回收详解](./jvm-garbage-collection.md)
-- [Java 线程池详解](../concurrent/java-thread-pool-summary.md)
-- [死锁详解](../../cs-basics/operating-system/dead-lock.md)
-- [Oracle Java 故障排查指南：内存泄漏](https://docs.oracle.com/en/java/javase/17/troubleshoot/troubleshooting-memory-leaks.html)
-- [Redis 延迟问题排查](https://redis.io/docs/latest/operate/oss_and_stack/management/optimization/latency/)
+- [JDK monitoring and troubleshooting tools](./jdk-monitoring-and-troubleshooting-tools.md)
+- [Important JVM options](./jvm-parameters-intro.md)
+- [JVM garbage collection explained](./jvm-garbage-collection.md)
+- [Java thread pools explained](../concurrent/java-thread-pool-summary.md)
+- [Deadlocks explained](../../cs-basics/operating-system/dead-lock.md)
+- [Oracle Java troubleshooting guide: Memory leaks](https://docs.oracle.com/en/java/javase/17/troubleshoot/troubleshooting-memory-leaks.html)
+- [Redis latency troubleshooting](https://redis.io/docs/latest/operate/oss_and_stack/management/optimization/latency/)
 - [Redis Slow Log](https://redis.io/docs/latest/commands/slowlog/)
-- [一次线上 OOM 问题分析](https://juejin.cn/post/7205141492264976445)
-- [Java 中 9 种常见的 CMS GC 问题分析与解决](https://tech.meituan.com/2020/11/12/java-9-cms-gc.html)
+- [Analysis of a production OOM incident](https://juejin.cn/post/7205141492264976445)
+- [Analysis and solutions for nine common CMS GC issues in Java](https://tech.meituan.com/2020/11/12/java-9-cms-gc.html)
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,46 +1,45 @@
 ---
-title: 《Java8 指南》中文翻译
-description: 翻译与整理 Java 8 教程，涵盖 Lambda、方法引用、接口默认方法、Stream 等新特性与示例代码。
+title: Java 8 Tutorial
+description: A Java 8 tutorial covering Lambda expressions, method references, interface default methods, Stream, and other features.
 category: Java
 tag:
-  - Java新特性
+  - Java New Features
 head:
   - - meta
     - name: keywords
-      content: Java 8,指南,Lambda,方法引用,默认方法,Stream API,函数式接口,Date/Time API
+      content: Java 8,tutorial,Lambda,method references,default methods,Stream API,functional interfaces,Date-Time API
 ---
 
-#《Java8 指南》中文翻译
+# Java 8 Tutorial
 
-JDK 8 于 2014 年 3 月 18 日发布，这是一个 LTS（长期支持版）版本，是 Java 历史上最重要的版本之一。至此为止，目前有 JDK8、JDK11、JDK17、JDK21 和 JDK 25 这五个长期支持版了。
+JDK 8 was released on March 18, 2014. It is an LTS (Long-Term Support) release and one of the most important versions in Java's history. Oracle's listed LTS releases are JDK 8, 11, 17, 21, and 25.
 
-JDK 8 引入了许多重要的新特性，这篇文章会挑选其中较为重要的一些新特性进行详细介绍：
+JDK 8 introduced many important features. This article covers some of the key ones:
 
-- Lambda 表达式
-- 方法引用
-- 接口默认方法
+- Lambda expressions
+- Method references
+- Interface default methods
 - Stream API
-- 函数式接口
-- Optional 类
-- Date/Time API
-- 注解增强
+- Functional interfaces
+- The Optional class
+- The Date-Time API
+- Annotation improvements
 
-下图是从 JDK 8 到 JDK 24 每个版本的更新带来的新特性数量和更新时间：
+The chart below shows the number of features and release dates for each update from JDK 8 through JDK 24:
 
 ![](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
 
-随着 Java 8 的普及度越来越高，很多人都提到面试中关于 Java 8 也是非常常问的知识点。应各位要求和需要，我打算对这部分知识做一个总结。本来准备自己总结的，后面看到 GitHub 上有一个相关的仓库，地址：
-[https://github.com/winterbe/java8-tutorial](https://github.com/winterbe/java8-tutorial)。这个仓库是英文的，我对其进行了翻译并添加和修改了部分内容，下面是正文。
+As Java 8 became more widely used, its features also became common interview topics. I planned to write a summary and found a related repository on GitHub: [https://github.com/winterbe/java8-tutorial](https://github.com/winterbe/java8-tutorial). The repository is in English. I translated it and added or revised some material. The tutorial begins below.
 
 ---
 
-欢迎阅读我对 Java 8 的介绍。本教程将逐步指导您完成所有新语言功能。 在简短的代码示例的基础上，您将学习如何使用默认接口方法，lambda 表达式，方法引用和可重复注释。 在本文的最后，您将熟悉最新的 API 更改，如流，函数式接口(Functional Interfaces)，Map 类的扩展和新的 Date API。 没有大段枯燥的文字，只有一堆注释的代码片段。
+Welcome to this introduction to Java 8. This tutorial walks through its new language features. With short code examples, you will learn about interface default methods, Lambda expressions, method references, and repeatable annotations. The final sections cover API updates such as Stream, functional interfaces, Map enhancements, and the Date-Time API. The tutorial focuses on annotated code examples rather than long explanations.
 
-## 接口的默认方法(Default Methods for Interfaces)
+## Default Methods for Interfaces
 
-Java 8 使我们能够通过使用 `default` 关键字向接口添加非抽象方法实现。 此功能也称为[虚拟扩展方法](http://stackoverflow.com/a/24102730)。
+Java 8 lets you add non-abstract method implementations to interfaces with the `default` keyword. This feature is also known as [virtual extension methods](http://stackoverflow.com/a/24102730).
 
-第一个例子：
+Here is a first example:
 
 ```java
 interface Formula{
@@ -54,13 +53,13 @@ interface Formula{
 }
 ```
 
-Formula 接口中除了抽象方法计算接口公式还定义了默认方法 `sqrt`。 实现该接口的类只需要实现抽象方法 `calculate`。 默认方法 `sqrt` 可以直接使用。当然你也可以直接通过接口创建对象，然后实现接口中的默认方法就可以了，我们通过代码演示一下这种方式。
+The `Formula` interface defines an abstract method, `calculate`, and a default method, `sqrt`. A class implementing the interface only needs to implement `calculate`; it can use `sqrt` directly. The example below uses an anonymous class to implement the interface.
 
 ```java
 public class Main {
 
   public static void main(String[] args) {
-    // 通过匿名内部类方式访问接口
+    // Implement the interface with an anonymous class.
     Formula formula = new Formula() {
         @Override
         public double calculate(int a) {
@@ -76,13 +75,13 @@ public class Main {
 }
 ```
 
-formula 是作为匿名对象实现的。该代码非常容易理解，6 行代码实现了计算 `sqrt(a * 100)`。在下一节中，我们将会看到在 Java 8 中实现单个方法对象有一种更好更方便的方法。
+`formula` is an instance of an anonymous class. The code is straightforward: six lines implement `sqrt(a * 100)`. The next section shows a simpler way to implement a single-method interface in Java 8.
 
-**译者注：** 不管是抽象类还是接口，都可以通过匿名内部类的方式访问。不能通过抽象类或者接口直接创建对象。对于上面通过匿名内部类方式访问接口，我们可以这样理解：一个内部类实现了接口里的抽象方法并且返回一个内部类对象，之后我们让接口的引用来指向这个对象。
+**Translator's note:** You can use an anonymous class with either an abstract class or an interface, but you cannot instantiate either one directly. In the example above, the anonymous class implements the interface's abstract method and creates an object. The interface reference then points to that object.
 
-## Lambda 表达式(Lambda expressions)
+## Lambda Expressions
 
-首先看看在老版本的 Java 中是如何排列字符串的：
+First, here is how to sort strings in older versions of Java:
 
 ```java
 List<String> names = Arrays.asList("peter", "anna", "mike", "xenia");
@@ -95,9 +94,9 @@ Collections.sort(names, new Comparator<String>() {
 });
 ```
 
-只需要给静态方法 `Collections.sort` 传入一个 List 对象以及一个比较器来按指定顺序排列。通常做法都是创建一个匿名的比较器对象然后将其传递给 `sort` 方法。
+Pass a `List` and a comparator to the static method `Collections.sort` to sort the list. The usual approach is to create an anonymous comparator and pass it to `sort`.
 
-在 Java 8 中你就没必要使用这种传统的匿名对象的方式了，Java 8 提供了更简洁的语法，lambda 表达式：
+In Java 8, you can use the more concise Lambda syntax instead of an anonymous class:
 
 ```java
 Collections.sort(names, (String a, String b) -> {
@@ -105,29 +104,29 @@ Collections.sort(names, (String a, String b) -> {
 });
 ```
 
-可以看出，代码变得更短且更具有可读性，但是实际上还可以写得更短：
+This is shorter and easier to read, and it can be simplified further:
 
 ```java
 Collections.sort(names, (String a, String b) -> b.compareTo(a));
 ```
 
-对于函数体只有一行代码的，你可以去掉大括号{}以及 return 关键字，但是你还可以写得更短点：
+For a one-line function body, you can omit the braces and `return` keyword. You can shorten it further:
 
 ```java
 names.sort((a, b) -> b.compareTo(a));
 ```
 
-List 类本身就有一个 `sort` 方法。并且 Java 编译器可以自动推导出参数类型，所以你可以不用再写一次类型。接下来我们看看 lambda 表达式还有什么其他用法。
+The `List` class has its own `sort` method, and the Java compiler infers the parameter types, so you do not need to write them again. Next, we will look at other uses of Lambda expressions.
 
-## 函数式接口(Functional Interfaces)
+## Functional Interfaces
 
-**译者注：** 原文对这部分解释不太清楚，故做了修改！
+**Translator's note:** The explanation in the original was unclear, so this section has been revised.
 
-Java 语言设计者们投入了大量精力来思考如何使现有的函数友好地支持 Lambda。最终采取的方法是：增加函数式接口的概念。**“函数式接口”是指仅仅只包含一个抽象方法，但是可以有多个非抽象方法（也就是上面提到的默认方法）的接口。** 像这样的接口，可以作为 lambda 表达式的目标类型。`java.lang.Runnable` 与 `java.util.concurrent.Callable` 是函数式接口最典型的两个例子。Java 8 增加了一种特殊的注解 `@FunctionalInterface`，但是这个注解通常不是必须的。只要接口满足函数式接口的定义，Java 编译器就可以将其作为 lambda 表达式的目标类型。一般建议在接口上使用 `@FunctionalInterface` 注解进行声明，这样编译器发现被标注的接口不满足函数式接口要求时就会报错，如下图所示。
+The Java language designers considered how to make existing APIs work well with Lambda expressions. One result was the functional interface: **an interface with exactly one abstract method, though it can have multiple non-abstract methods (such as the default methods described above).** A functional interface can be the target type of a Lambda expression. `java.lang.Runnable` and `java.util.concurrent.Callable` are common examples. Java 8 added the `@FunctionalInterface` annotation, but it is optional. Any interface that meets the definition can be a Lambda target type. It is recommended to use the annotation so the compiler reports an error if the interface no longer meets the requirements.
 
-![@FunctionalInterface 注解](https://oss.javaguide.cn/github/javaguide/java/@FunctionalInterface.png)
+![@FunctionalInterface annotation](https://oss.javaguide.cn/github/javaguide/java/@FunctionalInterface.png)
 
-示例：
+Example:
 
 ```java
 @FunctionalInterface
@@ -137,17 +136,17 @@ public interface Converter<F, T> {
 ```
 
 ```java
-    // TODO 将数字字符串转换为整数类型
+    // TODO Convert the numeric string to an integer.
     Converter<String, Integer> converter = (from) -> Integer.valueOf(from);
     Integer converted = converter.convert("123");
     System.out.println(converted.getClass()); //class java.lang.Integer
 ```
 
-**译者注：** 大部分函数式接口都不用我们自己写，Java8 都给我们实现好了，这些接口都在 java.util.function 包里。
+**Translator's note:** You usually do not need to write functional interfaces yourself. Java 8 provides many of them in the `java.util.function` package.
 
-## 方法和构造函数引用(Method and Constructor References)
+## Method and Constructor References
 
-前一节中的代码还可以通过静态方法引用来表示：
+The code from the previous section can also use a static method reference:
 
 ```java
     Converter<String, Integer> converter = Integer::valueOf;
@@ -155,7 +154,7 @@ public interface Converter<F, T> {
     System.out.println(converted.getClass());   //class java.lang.Integer
 ```
 
-Java 8 允许您通过 `::` 关键字传递方法或构造函数的引用。 上面的示例显示了如何引用静态方法。 但我们也可以引用对象方法：
+Java 8 lets you pass method or constructor references with the `::` operator. The previous example shows a static method reference. You can also reference an instance method:
 
 ```java
 class Something {
@@ -172,7 +171,7 @@ String converted = converter.convert("Java");
 System.out.println(converted);    // "J"
 ```
 
-接下来看看构造函数是如何使用 `::` 关键字来引用的，首先我们定义一个包含多个构造函数的简单类：
+To reference a constructor with `::`, first define a simple class with multiple constructors:
 
 ```java
 class Person {
@@ -188,7 +187,7 @@ class Person {
 }
 ```
 
-接下来我们指定一个用来创建 Person 对象的对象工厂接口：
+Next, define a factory interface for creating `Person` objects:
 
 ```java
 interface PersonFactory<P extends Person> {
@@ -196,20 +195,20 @@ interface PersonFactory<P extends Person> {
 }
 ```
 
-这里我们使用构造函数引用来将他们关联起来，而不是手动实现一个完整的工厂：
+Use a constructor reference to connect them instead of implementing a full factory:
 
 ```java
 PersonFactory<Person> personFactory = Person::new;
 Person person = personFactory.create("Peter", "Parker");
 ```
 
-我们只需要使用 `Person::new` 来获取 Person 类构造函数的引用，Java 编译器会自动根据 `PersonFactory.create` 方法的参数类型来选择合适的构造函数。
+Use `Person::new` to reference a `Person` constructor. The Java compiler selects the appropriate constructor based on the parameter types of `PersonFactory.create`.
 
-## Lambda 表达式作用域(Lambda Scopes)
+## Lambda Scopes
 
-### 访问局部变量
+### Accessing Local Variables
 
-我们可以直接在 lambda 表达式中访问外部的局部变量：
+You can access local variables from the enclosing scope inside a Lambda expression:
 
 ```java
 final int num = 1;
@@ -219,7 +218,7 @@ Converter<Integer, String> stringConverter =
 stringConverter.convert(2);     // 3
 ```
 
-但是和匿名对象不同的是，这里的变量 num 可以不用声明为 final，该代码同样正确：
+Unlike with anonymous classes, `num` does not have to be declared `final`:
 
 ```java
 int num = 1;
@@ -229,18 +228,18 @@ Converter<Integer, String> stringConverter =
 stringConverter.convert(2);     // 3
 ```
 
-不过这里的 num 必须不可被后面的代码修改（即隐性的具有 final 的语义），例如下面的就无法编译：
+However, `num` must not be reassigned later (it must be effectively final). The following code does not compile:
 
 ```java
 int num = 1;
 Converter<Integer, String> stringConverter =
         (from) -> String.valueOf(from + num);
-num = 3;//在lambda表达式中试图修改num同样是不允许的。
+num = 3; // Reassigning num after it is captured by the Lambda is not allowed.
 ```
 
-### 访问字段和静态变量
+### Accessing Fields and Static Variables
 
-与局部变量相比，我们在 lambda 表达式中对实例字段和静态变量都有读写访问权限。 该行为和匿名对象是一致的。
+Unlike local variables, instance fields and static variables can be read and written inside a Lambda expression. This matches the behavior of anonymous classes.
 
 ```java
 class Lambda4 {
@@ -261,27 +260,27 @@ class Lambda4 {
 }
 ```
 
-### 访问默认接口方法
+### Accessing Interface Default Methods
 
-还记得第一节中的 formula 示例吗？ `Formula` 接口定义了一个默认方法 `sqrt`，可以从包含匿名对象的每个 formula 实例访问该方法。 这不适用于 lambda 表达式。
+Remember the `formula` example from the first section? Each instance of the anonymous class could access the `sqrt` default method defined in `Formula`. Lambda expressions do not work the same way.
 
-无法从 lambda 表达式中访问默认方法，故以下代码无法编译：
+You cannot access a default method from a Lambda expression, so the following code does not compile:
 
 ```java
 Formula formula = (a) -> sqrt(a * 100);
 ```
 
-## 内置函数式接口(Built-in Functional Interfaces)
+## Built-in Functional Interfaces
 
-JDK 1.8 API 包含许多内置函数式接口。 其中一些接口在老版本的 Java 中是比较常见的比如：`Comparator` 或 `Runnable`，这些接口都增加了 `@FunctionalInterface` 注解以便能用在 lambda 表达式上。
+The JDK 8 API includes many built-in functional interfaces. Some, such as `Comparator` and `Runnable`, were already familiar from earlier Java versions. They can be used with Lambda expressions because they meet the functional interface requirements.
 
-但是 Java 8 API 同样还提供了很多全新的函数式接口来让你的编程工作更加方便，有一些接口是来自 [Google Guava](https://code.google.com/p/guava-libraries/) 库里的，即便你对这些很熟悉了，还是有必要看看这些是如何扩展到 lambda 上使用的。
+The Java 8 API also adds many functional interfaces to make common programming tasks easier. Some were inspired by the [Google Guava](https://code.google.com/p/guava-libraries/) library. Even if you already know them, it is useful to see how they work with Lambda expressions.
 
-### Predicate
+### `Predicate`
 
-Predicate 接口是只有一个参数的返回布尔类型值的 **断言型** 接口。该接口包含多种默认方法来将 Predicate 组合成其他复杂的逻辑（比如：与，或，非）：
+`Predicate` is a **predicate** interface that takes one argument and returns a boolean. It includes default methods for combining predicates into more complex logic, such as AND, OR, and NOT:
 
-**译者注：** Predicate 接口源码如下
+**Translator's note:** Here is the `Predicate` interface source:
 
 ```java
 package java.util.function;
@@ -290,24 +289,24 @@ import java.util.Objects;
 @FunctionalInterface
 public interface Predicate<T> {
 
-    // 该方法是接受一个传入类型,返回一个布尔值.此方法应用于判断.
+    // Takes a value and returns a boolean result.
     boolean test(T t);
 
-    //and方法与关系型运算符"&&"相似，两边都成立才返回true
+    // Like the && operator: both predicates must be true.
     default Predicate<T> and(Predicate<? super T> other) {
         Objects.requireNonNull(other);
         return (t) -> test(t) && other.test(t);
     }
-    // 与关系运算符"!"相似，对判断进行取反
+    // Like the ! operator: negates the predicate.
     default Predicate<T> negate() {
         return (t) -> !test(t);
     }
-    //or方法与关系型运算符"||"相似，两边只要有一个成立就返回true
+    // Like the || operator: either predicate can be true.
     default Predicate<T> or(Predicate<? super T> other) {
         Objects.requireNonNull(other);
         return (t) -> test(t) || other.test(t);
     }
-   // 该方法接收一个Object对象,返回一个Predicate类型.此方法用于判断第一个test的方法与第二个test方法相同(equal).
+   // Returns a predicate that checks whether its input is equal to the given object.
     static <T> Predicate<T> isEqual(Object targetRef) {
         return (null == targetRef)
                 ? Objects::isNull
@@ -315,7 +314,7 @@ public interface Predicate<T> {
     }
 ```
 
-示例：
+Example:
 
 ```java
 Predicate<String> predicate = (s) -> s.length() > 0;
@@ -330,11 +329,11 @@ Predicate<String> isEmpty = String::isEmpty;
 Predicate<String> isNotEmpty = isEmpty.negate();
 ```
 
-### Function
+### `Function`
 
-Function 接口接受一个参数并生成结果。默认方法可用于将多个函数链接在一起（compose, andThen）：
+`Function` takes one argument and returns a result. Its default methods can chain functions using `compose` and `andThen`:
 
-**译者注：** Function 接口源码如下
+**Translator's note:** Here is the `Function` interface source:
 
 ```java
 
@@ -345,14 +344,14 @@ import java.util.Objects;
 @FunctionalInterface
 public interface Function<T, R> {
 
-    //将Function对象应用到输入的参数上，然后返回计算结果。
+    // Applies this function to the input and returns the result.
     R apply(T t);
-    //将两个Function整合，并返回一个能够执行两个Function对象功能的Function对象。
+    // Composes this function with another function that runs first.
     default <V> Function<V, R> compose(Function<? super V, ? extends T> before) {
         Objects.requireNonNull(before);
         return (V v) -> apply(before.apply(v));
     }
-    //
+    // Runs another function after this one.
     default <V> Function<T, V> andThen(Function<? super R, ? extends V> after) {
         Objects.requireNonNull(after);
         return (T t) -> after.apply(apply(t));
@@ -370,27 +369,27 @@ Function<String, String> backToString = toInteger.andThen(String::valueOf);
 backToString.apply("123");     // "123"
 ```
 
-### Supplier
+### `Supplier`
 
-Supplier 接口产生给定泛型类型的结果。 与 Function 接口不同，Supplier 接口不接受参数。
+`Supplier` produces a result of a given type. Unlike `Function`, it takes no arguments.
 
 ```java
 Supplier<Person> personSupplier = Person::new;
 personSupplier.get();   // new Person
 ```
 
-### Consumer
+### `Consumer`
 
-Consumer 接口表示要对单个输入参数执行的操作。
+`Consumer` represents an operation that accepts a single input argument.
 
 ```java
 Consumer<Person> greeter = (p) -> System.out.println("Hello, " + p.firstName);
 greeter.accept(new Person("Luke", "Skywalker"));
 ```
 
-### Comparator
+### `Comparator`
 
-Comparator 是老 Java 中的经典接口， Java 8 在此之上添加了多种默认方法：
+`Comparator` is a familiar interface from earlier Java versions. Java 8 adds several default methods to it:
 
 ```java
 Comparator<Person> comparator = (p1, p2) -> p1.firstName.compareTo(p2.firstName);
@@ -404,32 +403,32 @@ comparator.reversed().compare(p1, p2);  // < 0
 
 ## Optional
 
-Optional 不是函数式接口，而是用于显式表示“可能没有值”的容器。正确使用它可以减少部分手动 `null` 检查，但不能保证程序不再出现 `NullPointerException`。这是下一节的一个重要概念，让我们快速了解一下 Optional 的工作原理。
+`Optional` is not a functional interface. It is a container that explicitly represents a value that may be absent. Used appropriately, it can reduce some manual `null` checks, but it does not prevent all `NullPointerException`s. Here is a quick look at how `Optional` works.
 
-Optional 是一个简单的容器，它要么包含一个非 `null` 值，要么为空。在适合表达“结果可能不存在”的返回值场景中，可以返回 Optional，而不是用 `null` 表示没有结果。
+`Optional` is a simple container that either holds a non-`null` value or is empty. For return values that may be absent, you can return an `Optional` instead of using `null` to represent no result.
 
-译者注：示例中每个方法的作用已经添加。
+**Translator's note:** Comments explain what each method does.
 
 ```java
-//of()：为非null的值创建一个Optional
+// of(): Creates an Optional for a non-null value.
 Optional<String> optional = Optional.of("bam");
-// isPresent()：如果值存在返回true，否则返回false
+// isPresent(): Returns true if a value is present; otherwise, false.
 optional.isPresent();           // true
-//get()：如果Optional有值则将其返回，否则抛出NoSuchElementException
+// get(): Returns the value or throws NoSuchElementException if empty.
 optional.get();                 // "bam"
-//orElse()：如果有值则将其返回，否则返回指定的其它值
+// orElse(): Returns the value or the specified fallback.
 optional.orElse("fallback");    // "bam"
-//ifPresent()：如果Optional实例有值则为其调用consumer，否则不做处理
+// ifPresent(): Calls the consumer if a value is present; otherwise, does nothing.
 optional.ifPresent((s) -> System.out.println(s.charAt(0)));     // "b"
 ```
 
-推荐阅读：[[Java8]如何正确使用 Optional](https://blog.kaaass.net/archives/764)
+Recommended reading: [How to Use Optional Correctly in Java 8](https://blog.kaaass.net/archives/764)
 
-## Streams（流）
+## Streams
 
-`java.util.stream.Stream` 表示能应用在一组元素上依次执行的操作序列。Stream 操作分为中间操作或者最终操作两种，最终操作返回一特定类型的计算结果，而中间操作返回 Stream 本身，这样你就可以将多个操作依次串起来。Stream 可以从集合、数组、生成函数等多种数据源创建；Map 本身没有 `stream()` 方法，但可以通过其 key、value 或 entry 视图创建流。Stream 的操作可以串行执行或者并行执行。
+`java.util.stream.Stream` represents a sequence of operations that can be applied to a group of elements. Stream operations are intermediate or terminal. A terminal operation returns a result of a specific type, while an intermediate operation returns a Stream so that operations can be chained. Streams can be created from collections, arrays, generator functions, and other sources. A `Map` does not have a `stream()` method, but you can create streams from its key, value, or entry views. Stream operations can run sequentially or in parallel.
 
-首先看看 Stream 是怎么用，首先创建实例代码需要用到的数据 List：
+First, create a list of data for the Stream examples:
 
 ```java
 List<String> stringList = new ArrayList<>();
@@ -443,62 +442,62 @@ stringList.add("bbb2");
 stringList.add("ddd1");
 ```
 
-Java 8 扩展了集合类，可以通过 Collection.stream() 或者 Collection.parallelStream() 来创建一个 Stream。下面几节将详细解释常用的 Stream 操作：
+Java 8 adds `Collection.stream()` and `Collection.parallelStream()` to create a Stream from a collection. The following sections explain common Stream operations.
 
-### Filter（过滤）
+### Filter
 
-过滤通过一个 predicate 接口来过滤并只保留符合条件的元素，该操作属于**中间操作**，所以我们可以在过滤后的结果来应用其他 Stream 操作（比如 forEach）。forEach 需要一个函数来对过滤后的元素依次执行。forEach 是一个最终操作，所以我们不能在 forEach 之后来执行其他 Stream 操作。
+`filter` uses a predicate to keep only matching elements. It is an **intermediate operation**, so you can apply other Stream operations (such as `forEach`) to the result. `forEach` applies a function to each filtered element. It is a terminal operation, so no further Stream operations can follow it.
 
 ```java
-        // 测试 Filter(过滤)
+        // Test filter.
         stringList
                 .stream()
                 .filter((s) -> s.startsWith("a"))
-                .forEach(System.out::println);//aaa2 aaa1
+                .forEach(System.out::println); // aaa2 aaa1
 ```
 
-forEach 是为 Lambda 而设计的，保持了最紧凑的风格。而且 Lambda 表达式本身是可以重用的，非常方便。
+`forEach` works naturally with Lambda expressions and keeps the code concise. Lambda expressions can also be reused.
 
-### Sorted（排序）
+### Sorted
 
-排序是一个 **中间操作**，返回的是排序好后的 Stream。**如果你不指定一个自定义的 Comparator 则会使用默认排序。**
+Sorting is an **intermediate operation** that returns a sorted Stream. **If you do not provide a custom Comparator, natural ordering is used.**
 
 ```java
-        // 测试 Sort (排序)
+        // Test sorting.
         stringList
                 .stream()
                 .sorted()
                 .filter((s) -> s.startsWith("a"))
-                .forEach(System.out::println);// aaa1 aaa2
+                .forEach(System.out::println); // aaa1 aaa2
 ```
 
-需要注意的是，排序只创建了一个排列好后的 Stream，而不会影响原有的数据源，排序之后原数据 stringList 是不会被修改的：
+Sorting creates a new sorted Stream and does not modify the source list, `stringList`:
 
 ```java
     System.out.println(stringList);// ddd2, aaa2, bbb1, aaa1, bbb3, ccc, bbb2, ddd1
 ```
 
-### Map（映射）
+### Map
 
-中间操作 map 会将元素根据指定的 Function 接口来依次将元素转成另外的对象。
+The intermediate `map` operation applies a `Function` to each element and transforms it into another value.
 
-下面的示例展示了将字符串转换为大写字符串。你也可以通过 map 来将对象转换成其他类型，map 返回的 Stream 类型是根据你 map 传递进去的函数的返回值决定的。
+The following example converts strings to uppercase. You can also use `map` to convert objects to other types; the returned Stream type is determined by the function's return type.
 
 ```java
-        // 测试 Map 操作
+        // Test the map operation.
         stringList
                 .stream()
                 .map(String::toUpperCase)
                 .sorted((a, b) -> b.compareTo(a))
-                .forEach(System.out::println);// "DDD2", "DDD1", "CCC", "BBB3", "BBB2", "BBB1", "AAA2", "AAA1"
+                .forEach(System.out::println); // DDD2, DDD1, CCC, BBB3, BBB2, BBB1, AAA2, AAA1
 ```
 
-### Match（匹配）
+### Match
 
-Stream 提供了多种匹配操作，允许检测指定的 Predicate 是否匹配整个 Stream。所有的匹配操作都是 **最终操作**，并返回一个 boolean 类型的值。
+Stream provides several matching operations to test whether elements satisfy a given `Predicate`. All matching operations are **terminal operations** and return a boolean.
 
 ```java
-        // 测试 Match (匹配)操作
+        // Test matching operations.
         boolean anyStartsWithA =
                 stringList
                         .stream()
@@ -520,12 +519,12 @@ Stream 提供了多种匹配操作，允许检测指定的 Predicate 是否匹�
         System.out.println(noneStartsWithZ);      // true
 ```
 
-### Count（计数）
+### Count
 
-计数是一个 **最终操作**，返回 Stream 中元素的个数，**返回值类型是 long**。
+Counting is a **terminal operation** that returns the number of elements in the Stream. **The return type is `long`.**
 
 ```java
-      //测试 Count (计数)操作
+      // Test counting.
         long startsWithB =
                 stringList
                         .stream()
@@ -534,12 +533,12 @@ Stream 提供了多种匹配操作，允许检测指定的 Predicate 是否匹�
         System.out.println(startsWithB);    // 3
 ```
 
-### Reduce（规约）
+### Reduce
 
-这是一个 **最终操作**，允许通过指定的函数来将 stream 中的多个元素规约为一个元素，规约后的结果是通过 Optional 接口表示的：
+This is a **terminal operation** that combines the Stream's elements into one result using the given function. The result is represented by `Optional`:
 
 ```java
-        //测试 Reduce (规约)操作
+        // Test reduction.
         Optional<String> reduced =
                 stringList
                         .stream()
@@ -549,32 +548,32 @@ Stream 提供了多种匹配操作，允许检测指定的 Predicate 是否匹�
         reduced.ifPresent(System.out::println);//aaa1#aaa2#bbb1#bbb2#bbb3#ccc#ddd1#ddd2
 ```
 
-**译者注：** 这个方法的主要作用是把 Stream 元素组合起来。它提供一个起始值（种子），然后依照运算规则（BinaryOperator），和前面 Stream 的第一个、第二个、第 n 个元素组合。从这个意义上说，字符串拼接、数值的 sum、min、max、average 都是特殊的 reduce。例如 Stream 的 sum 就相当于 `Integer sum = integers.reduce(0, (a, b) -> a+b);` 也有没有起始值的情况，这时会把 Stream 的前面两个元素组合起来，返回的是 Optional。
+**Translator's note:** `reduce` combines Stream elements. It can take an initial value (the identity) and a `BinaryOperator` that combines it with each element. String concatenation and numeric sum, minimum, maximum, and average are examples of reduction. For example, summing a Stream is similar to `Integer sum = integers.reduce(0, (a, b) -> a + b);`. Without an initial value, `reduce` combines the first two elements and returns an `Optional` because the Stream may be empty.
 
 ```java
-// 字符串连接，concat = "ABCD"
+// Concatenate strings; concat = "ABCD".
 String concat = Stream.of("A", "B", "C", "D").reduce("", String::concat);
-// 求最小值，minValue = -3.0
+// Find the minimum; minValue = -3.0.
 double minValue = Stream.of(-1.5, 1.0, -3.0, -2.0).reduce(Double.MAX_VALUE, Double::min);
-// 求和，sumValue = 10, 有起始值
+// Sum with an initial value; sumValue = 10.
 int sumValue = Stream.of(1, 2, 3, 4).reduce(0, Integer::sum);
-// 求和，sumValue = 10, 无起始值
+// Sum without an initial value; sumValue = 10.
 sumValue = Stream.of(1, 2, 3, 4).reduce(Integer::sum).get();
-// 过滤，字符串连接，concat = "ace"
+// Filter and concatenate strings; concat = "ace".
 concat = Stream.of("a", "B", "c", "D", "e", "F").
  filter(x -> x.compareTo("Z") > 0).
  reduce("", String::concat);
 ```
 
-上面代码例如第一个示例的 reduce()，第一个参数（空白字符）即为起始值，第二个参数（String::concat）为 BinaryOperator。这类有起始值的 reduce() 都返回具体的对象。而对于第四个示例没有起始值的 reduce()，由于可能没有足够的元素，返回的是 Optional，请留意这个区别。更多内容查看：[IBM：Java 8 中的 Streams API 详解](https://www.ibm.com/developerworks/cn/java/j-lo-java8streamapi/index.html)
+In the first example, the first argument (an empty string) is the initial value, and the second (`String::concat`) is the `BinaryOperator`. A `reduce()` call with an initial value returns a concrete value. The fourth example has no initial value, so it returns an `Optional` in case the Stream has too few elements. For more, see [IBM: Processing Data with Java SE 8 Streams](https://www.ibm.com/developerworks/cn/java/j-lo-java8streamapi/index.html).
 
-## Parallel Streams（并行流）
+## Parallel Streams
 
-前面提到过 Stream 有串行和并行两种，串行 Stream 上的操作是在一个线程中依次完成，而并行 Stream 则是在多个线程上同时执行。
+As mentioned earlier, Streams can be sequential or parallel. A sequential Stream processes operations on one thread, while a parallel Stream can process them across multiple threads.
 
-下面的例子展示了是如何通过并行 Stream 来提升性能：
+The following example compares performance with a parallel Stream.
 
-首先我们创建一个没有重复元素的大表：
+First, create a large list of unique values:
 
 ```java
 int max = 1000000;
@@ -585,12 +584,12 @@ for (int i = 0; i < max; i++) {
 }
 ```
 
-我们分别用串行和并行两种方式对其进行排序，最后看看所用时间的对比。
+Sort the list sequentially and in parallel, then compare the execution times.
 
-### Sequential Sort（串行排序）
+### Sequential Sort
 
 ```java
-//串行排序
+// Sequential sort.
 long t0 = System.nanoTime();
 long count = Arrays.stream(list.stream().sorted().toArray()).count();
 System.out.println(count);
@@ -603,13 +602,13 @@ System.out.println(String.format("sequential sort took: %d ms", millis));
 
 ```plain
 1000000
-sequential sort took: 709 ms//串行排序所用的时间
+sequential sort took: 709 ms // Time for sequential sorting.
 ```
 
-### Parallel Sort（并行排序）
+### Parallel Sort
 
 ```java
-//并行排序
+// Parallel sort.
 long t0 = System.nanoTime();
 
 long count = Arrays.stream(list.parallelStream().sorted().toArray()).count();
@@ -624,16 +623,16 @@ System.out.println(String.format("parallel sort took: %d ms", millis));
 
 ```java
 1000000
-parallel sort took: 475 ms//并行排序所用的时间
+parallel sort took: 475 ms // Time for parallel sorting.
 ```
 
-上面两个代码几乎是一样的，但是并行版的快了 50% 左右，唯一需要做的改动就是将 `stream()` 改为 `parallelStream()`。
+The code is almost identical, but the parallel version is about 50% faster in this run. The only change is replacing `stream()` with `parallelStream()`.
 
 ## Maps
 
-前面提到过，Map 类型不支持 streams，不过 Map 提供了一些新的有用的方法来处理一些日常任务。Map 接口本身没有可用的 `stream()` 方法，但是你可以在键，值上创建专门的流或者通过 `map.keySet().stream()`,`map.values().stream()` 和 `map.entrySet().stream()`。
+As mentioned earlier, `Map` does not provide a `stream()` method, but it has useful methods for common tasks. You can create streams from its keys, values, or entries with `map.keySet().stream()`, `map.values().stream()`, and `map.entrySet().stream()`.
 
-此外,Maps 支持各种新的和有用的方法来执行常见任务。
+`Map` also supports several new methods for common tasks.
 
 ```java
 Map<Integer, String> map = new HashMap<>();
@@ -642,12 +641,12 @@ for (int i = 0; i < 10; i++) {
     map.putIfAbsent(i, "val" + i);
 }
 
-map.forEach((id, val) -> System.out.println(val));//val0 val1 val2 val3 val4 val5 val6 val7 val8 val9
+map.forEach((id, val) -> System.out.println(val)); // val0 val1 val2 val3 val4 val5 val6 val7 val8 val9
 ```
 
-`putIfAbsent` 阻止我们在 null 检查时写入额外的代码;`forEach` 接受一个 consumer 来对 map 中的每个元素操作。
+`putIfAbsent` avoids extra null-checking code. `forEach` accepts a consumer that is applied to each map entry.
 
-此示例显示如何使用函数在 map 上计算代码：
+This example shows how to compute values in a map:
 
 ```java
 map.computeIfPresent(3, (num, val) -> val + num);
@@ -663,7 +662,7 @@ map.computeIfAbsent(3, num -> "bam");
 map.get(3);             // val33
 ```
 
-接下来展示如何在 Map 里删除一个键值全都匹配的项：
+The following example removes an entry only when both its key and value match:
 
 ```java
 map.remove(3, "val3");
@@ -672,13 +671,13 @@ map.remove(3, "val33");
 map.get(3);             // null
 ```
 
-另外一个有用的方法：
+Another useful method:
 
 ```java
 map.getOrDefault(42, "not found");  // not found
 ```
 
-对 Map 的元素做合并也变得很容易了：
+Merging map values is also straightforward:
 
 ```java
 map.merge(9, "val9", (value, newValue) -> value.concat(newValue));
@@ -687,23 +686,23 @@ map.merge(9, "concat", (value, newValue) -> value.concat(newValue));
 map.get(9);             // val9concat
 ```
 
-Merge 做的事情是如果键名不存在则插入，否则对原键对应的值做合并操作并重新插入到 map 中。
+`merge` inserts the value if the key is absent. Otherwise, it combines the existing value with the new value and stores the result.
 
-## Date API（日期相关 API）
+## Date-Time API
 
-Java 8 在 `java.time` 包下包含一个全新的日期和时间 API。新的 Date API 与 Joda-Time 库相似，但它们不一样。以下示例涵盖了此新 API 的最重要部分。译者对这部分内容参考相关书籍做了大部分修改。
+Java 8 includes a new date and time API in the `java.time` package. It is similar to, but different from, the Joda-Time library. The examples below cover its most important parts. The translator revised much of this section using additional references.
 
-**译者注（总结）：**
+**Translator's summary:**
 
-- Clock 类提供了访问当前日期和时间的方法，Clock 是时区敏感的，可以用来获取当前的毫秒数。某一个特定的时间点也可以使用 `Instant` 类来表示，`Instant` 类也可以用来创建旧版本的 `java.util.Date` 对象。
+- `Clock` provides access to the current date and time. It is time-zone-aware and can provide the current time in milliseconds. `Instant` represents a specific moment and can be used to create a legacy `java.util.Date` object.
 
-- 在新 API 中时区使用 ZoneId 来表示。时区可以很方便的使用静态方法 of 来获取到。 抽象类 `ZoneId`（在 `java.time` 包中）表示一个区域标识符。 它有一个名为 `getAvailableZoneIds` 的静态方法，它返回所有区域标识符。
+- The new API represents time zones with `ZoneId`, which you can obtain with the static `of` method. `ZoneId` represents a region identifier and provides `getAvailableZoneIds()` to list all available identifiers.
 
-- jdk1.8 中新增了 LocalDate 与 LocalDateTime 等类来解决日期处理方法，同时引入了一个新的类 DateTimeFormatter 来解决日期格式化问题。可以使用 Instant 代替 Date，LocalDateTime 代替 Calendar，DateTimeFormatter 代替 SimpleDateFormat。
+- JDK 8 adds types such as `LocalDate` and `LocalDateTime` for date handling, and `DateTimeFormatter` for formatting. Use `Instant` instead of `Date`, `LocalDateTime` instead of `Calendar`, and `DateTimeFormatter` instead of `SimpleDateFormat` where appropriate.
 
 ### Clock
 
-Clock 类提供了访问当前日期和时间的方法，Clock 是时区敏感的，可以用来获取当前的毫秒数。某一个特定的时间点也可以使用 `Instant` 类来表示，`Instant` 类也可以用来创建旧版本的 `java.util.Date` 对象。
+`Clock` provides access to the current date and time. It is time-zone-aware and can provide the current time in milliseconds. `Instant` represents a specific moment and can be used to create a legacy `java.util.Date` object.
 
 ```java
 Clock clock = Clock.systemDefaultZone();
@@ -715,12 +714,12 @@ Date legacyDate = Date.from(instant); //2019-03-12T08:46:42.588Z
 System.out.println(legacyDate);//Tue Mar 12 16:32:59 CST 2019
 ```
 
-### Timezones（时区）
+### Time Zones
 
-在新 API 中时区使用 ZoneId 来表示。时区可以很方便的使用静态方法 of 来获取到。 抽象类 `ZoneId`（在 `java.time` 包中）表示一个区域标识符。 它有一个名为 `getAvailableZoneIds` 的静态方法，它返回所有区域标识符。
+The new API represents time zones with `ZoneId`. Use its static `of` method to obtain a zone. `ZoneId` represents a region identifier and provides `getAvailableZoneIds()` to list all available identifiers.
 
 ```java
-//输出所有区域标识符
+// Print all available region IDs.
 System.out.println(ZoneId.getAvailableZoneIds());
 
 ZoneId zone1 = ZoneId.of("Europe/Berlin");
@@ -729,9 +728,9 @@ System.out.println(zone1.getRules());// ZoneRules[currentStandardOffset=+01:00]
 System.out.println(zone2.getRules());// ZoneRules[currentStandardOffset=-03:00]
 ```
 
-### LocalTime（本地时间）
+### LocalTime
 
-LocalTime 定义了一个没有时区信息的时间，例如 晚上 10 点或者 17:30:15。下面的例子使用前面代码创建的时区创建了两个本地时间。之后比较时间并以小时和分钟为单位计算两个时间的时间差：
+`LocalTime` represents a time without a time zone, such as 10 p.m. or 17:30:15. The example below creates two local times in the zones defined earlier, compares them, and calculates the difference in hours and minutes:
 
 ```java
 LocalTime now1 = LocalTime.now(zone1);
@@ -745,7 +744,7 @@ System.out.println(hoursBetween);       // -3
 System.out.println(minutesBetween);     // -239
 ```
 
-LocalTime 提供了多种工厂方法来简化对象的创建，包括解析时间字符串.
+`LocalTime` provides factory methods to simplify object creation, including parsing time strings.
 
 ```java
 LocalTime late = LocalTime.of(23, 59, 59);
@@ -759,42 +758,43 @@ LocalTime leetTime = LocalTime.parse("13:37", germanFormatter);
 System.out.println(leetTime);   // 13:37
 ```
 
-### LocalDate（本地日期）
+### LocalDate
 
-LocalDate 表示了一个确切的日期，比如 2014-03-11。该对象值是不可变的，用起来和 LocalTime 基本一致。下面的例子展示了如何给 Date 对象加减天/月/年。另外要注意的是这些对象是不可变的，操作返回的总是一个新实例。
+`LocalDate` represents a date, such as 2014-03-11. It is immutable and works much like `LocalTime`. The example below adds and subtracts days, months, and years. Since these objects are immutable, each operation returns a new instance.
 
 ```java
-LocalDate today = LocalDate.now();//获取现在的日期
-System.out.println("今天的日期: "+today);//2019-03-12
+LocalDate today = LocalDate.now(); // Get today's date.
+System.out.println("Today's date: " + today); // 2019-03-12
 LocalDate tomorrow = today.plus(1, ChronoUnit.DAYS);
-System.out.println("明天的日期: "+tomorrow);//2019-03-13
+System.out.println("Tomorrow's date: " + tomorrow); // 2019-03-13
 LocalDate yesterday = tomorrow.minusDays(2);
-System.out.println("昨天的日期: "+yesterday);//2019-03-11
+System.out.println("Yesterday's date: " + yesterday); // 2019-03-11
 LocalDate independenceDay = LocalDate.of(2019, Month.MARCH, 12);
 DayOfWeek dayOfWeek = independenceDay.getDayOfWeek();
-System.out.println("今天是周几:"+dayOfWeek);//TUESDAY
+System.out.println("Day of the week: " + dayOfWeek); // TUESDAY
 ```
 
-从字符串解析一个 LocalDate 类型和解析 LocalTime 一样简单，下面是使用 `DateTimeFormatter` 解析字符串的例子：
+Parsing a `LocalDate` from a string is as simple as parsing a `LocalTime`. Here is an example using `DateTimeFormatter`:
 
 ```java
-    String str1 = "2014==04==12 01时06分09秒";
-        // 根据需要解析的日期、时间字符串定义解析所用的格式器
+    String str1 = "2014==04==12 01:06:09";
+        // Define a formatter for the date and time string.
         DateTimeFormatter fomatter1 = DateTimeFormatter
-                .ofPattern("yyyy==MM==dd HH时mm分ss秒");
+                .ofPattern("yyyy==MM==dd HH:mm:ss");
 
         LocalDateTime dt1 = LocalDateTime.parse(str1, fomatter1);
-        System.out.println(dt1); // 输出 2014-04-12T01:06:09
+        System.out.println(dt1); // Prints 2014-04-12T01:06:09.
 
-        String str2 = "2014$$$四月$$$13 20小时";
+        String str2 = "2014$$$Apr$$$13 20 hours";
         DateTimeFormatter fomatter2 = DateTimeFormatter
-                .ofPattern("yyy$$$MMM$$$dd HH小时");
+                .ofPattern("yyyy$$$MMM$$$dd HH 'hours'")
+                .withLocale(Locale.ENGLISH);
         LocalDateTime dt2 = LocalDateTime.parse(str2, fomatter2);
-        System.out.println(dt2); // 输出 2014-04-13T20:00
+        System.out.println(dt2); // Prints 2014-04-13T20:00.
 
 ```
 
-再来看一个使用 `DateTimeFormatter` 格式化日期的示例
+Here is an example of formatting a date with `DateTimeFormatter`:
 
 ```java
 LocalDateTime rightNow=LocalDateTime.now();
@@ -804,9 +804,9 @@ DateTimeFormatter formatter=DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 System.out.println(formatter.format(rightNow));//2019-03-12 16:26:48
 ```
 
-**🐛 修正（参见：[issue#1157](https://github.com/Snailclimb/JavaGuide/issues/1157)）**：使用 `YYYY` 显示年份时，会显示当前时间所在周的年份，在跨年周会有问题。一般情况下都使用 `yyyy`，来显示准确的年份。
+**🐛 Correction (see [issue #1157](https://github.com/Snailclimb/JavaGuide/issues/1157)):** `YYYY` displays the week-based year, which can produce unexpected results in weeks that cross calendar years. Use `yyyy` in most cases to display the calendar year.
 
-跨年导致日期显示错误示例：
+Example of an incorrect date caused by a year boundary:
 
 ```java
 LocalDateTime rightNow = LocalDateTime.of(2020, 12, 31, 12, 0, 0);
@@ -822,13 +822,13 @@ DateTimeFormatter formatterOfYyyy = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:m
 System.out.println(formatterOfYyyy.format(rightNow));
 ```
 
-从下图可以更清晰的看到具体的错误，并且 IDEA 已经智能地提示更倾向于使用 `yyyy` 而不是 `YYYY`。
+The image below shows the issue. IntelliJ IDEA also recommends using `yyyy` instead of `YYYY`.
 
 ![](https://oss.javaguide.cn/github/javaguide/java/new-features/2021042717491413.png)
 
-### LocalDateTime（本地日期时间）
+### LocalDateTime
 
-LocalDateTime 同时表示了时间和日期，相当于前两节内容合并到一个对象上了。LocalDateTime 和 LocalTime 还有 LocalDate 一样，都是不可变的。LocalDateTime 提供了一些能访问具体字段的方法。
+`LocalDateTime` combines a date and a time in one object. Like `LocalTime` and `LocalDate`, it is immutable. It provides methods for accessing individual fields.
 
 ```java
 LocalDateTime sylvester = LocalDateTime.of(2014, Month.DECEMBER, 31, 23, 59, 59);
@@ -843,7 +843,7 @@ long minuteOfDay = sylvester.getLong(ChronoField.MINUTE_OF_DAY);
 System.out.println(minuteOfDay);    // 1439
 ```
 
-只要附加上时区信息，就可以将其转换为一个时间点 Instant 对象，Instant 时间点对象可以很容易的转换为老式的 `java.util.Date`。
+Add a time zone to convert it to an `Instant`, which can then be converted to a legacy `java.util.Date`.
 
 ```java
 Instant instant = sylvester
@@ -854,7 +854,7 @@ Date legacyDate = Date.from(instant);
 System.out.println(legacyDate);     // Wed Dec 31 23:59:59 CET 2014
 ```
 
-格式化 LocalDateTime 和格式化时间和日期一样的，除了使用预定义好的格式外，我们也可以自己定义格式：
+Formatting a `LocalDateTime` works like formatting a date or time. You can use predefined formats or define your own:
 
 ```java
 DateTimeFormatter formatter =
@@ -865,13 +865,11 @@ String string = formatter.format(parsed);
 System.out.println(string);     // Nov 03, 2014 - 07:13
 ```
 
-和 java.text.NumberFormat 不一样的是新版的 DateTimeFormatter 是不可变的，所以它是线程安全的。
-关于时间日期格式的详细信息在[这里](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html)。
+Unlike `java.text.NumberFormat`, `DateTimeFormatter` is immutable and thread-safe. See the [DateTimeFormatter documentation](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html) for details about date and time formats.
 
-## Annotations（注解）
+## Annotations
 
-在 Java 8 中支持多重注解了，先看个例子来理解一下是什么意思。
-首先定义一个包装类 Hints 注解用来放置一组具体的 Hint 注解：
+Java 8 supports repeating the same annotation. The following example shows how this works. First, define a container annotation, `Hints`, to hold a group of `Hint` annotations:
 
 ```java
 @Retention(RetentionPolicy.RUNTIME)
@@ -884,16 +882,16 @@ System.out.println(string);     // Nov 03, 2014 - 07:13
 }
 ```
 
-Java 8 允许我们把同一个类型的注解使用多次，只需要给该注解标注一下 `@Repeatable` 即可。
+Java 8 lets you apply the same annotation more than once by marking it with `@Repeatable`.
 
-例 1: 使用包装类当容器来存多个注解（老方法）
+Example 1: Use the container annotation to hold multiple annotations (the old approach).
 
 ```java
 @Hints({@Hint("hint1"), @Hint("hint2")})
 class Person {}
 ```
 
-例 2：使用多重注解（新方法）
+Example 2: Repeat the annotation directly (the new approach).
 
 ```java
 @Hint("hint1")
@@ -901,7 +899,7 @@ class Person {}
 class Person {}
 ```
 
-第二个例子里 java 编译器会隐性的帮你定义好@Hints 注解，了解这一点有助于你用反射来获取这些信息：
+In the second example, the Java compiler implicitly creates the `@Hints` container. This is useful to know when retrieving annotations with reflection:
 
 ```java
 Hint hint = Person.class.getAnnotation(Hint.class);
@@ -913,16 +911,15 @@ Hint[] hints2 = Person.class.getAnnotationsByType(Hint.class);
 System.out.println(hints2.length);          // 2
 ```
 
-即便我们没有在 `Person` 类上定义 `@Hints` 注解，我们还是可以通过 `getAnnotation(Hints.class)` 来获取 `@Hints` 注解，更加方便的方法是使用 `getAnnotationsByType` 可以直接获取到所有的 `@Hint` 注解。
-另外 Java 8 的注解还增加到两种新的 target 上了：
+Even though `@Hints` is not declared on `Person`, you can retrieve it with `getAnnotation(Hints.class)`. More conveniently, `getAnnotationsByType` returns all `@Hint` annotations directly. Java 8 also adds two annotation targets:
 
 ```java
 @Target({ElementType.TYPE_PARAMETER, ElementType.TYPE_USE})
 @interface MyAnnotation {}
 ```
 
-## Where to go from here?
+## Where to Go from Here
 
-关于 Java 8 的新特性就写到这了，肯定还有更多的特性等待发掘。JDK 1.8 里还有很多很有用的东西，比如 `Arrays.parallelSort`, `StampedLock` 和 `CompletableFuture` 等等。
+That covers the Java 8 features in this tutorial, though there is more to explore. JDK 8 also includes useful features such as `Arrays.parallelSort`, `StampedLock`, and `CompletableFuture`.
 
 <!-- @include: @article-footer.snippet.md -->
