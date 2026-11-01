@@ -21,7 +21,7 @@ JDK 19 included seven new features. This article covers some of the more notable
 
 The chart below shows the number of features and release dates for each update from JDK 8 through JDK 25:
 
-![Feature counts and release dates for JDK 8 through JDK 25](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
+![Feature counts and release dates for JDK 8 through JDK 25](./images/shared/jdk8-jdk24.png)
 
 ## JEP 424: Foreign Function & Memory API (Preview)
 

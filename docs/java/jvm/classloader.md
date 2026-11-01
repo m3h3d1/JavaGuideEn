@@ -17,7 +17,7 @@ Before looking at class loaders and the parent delegation model, let's briefly r
 - Class loading consists of **loading -> linking -> initialization**.
 - Linking has three steps: **verification -> preparation -> resolution**.
 
-![Class loading process](https://oss.javaguide.cn/github/javaguide/java/jvm/class-loading-procedure.png)
+![Class loading process](./images/shared/class-loading-procedure.png)
 
 Loading is the first step of class loading. It mainly does the following:
 
@@ -103,7 +103,7 @@ The three commonly discussed class loaders in JDK 8 are:
 
 Users can also add custom class loaders for specific needs. For example, a custom class loader can decrypt Java bytecode (`.class` files) as it loads them.
 
-![Class loader hierarchy](https://oss.javaguide.cn/github/javaguide/java/jvm/class-loader-parents-delegation-model.png)
+![Class loader hierarchy](./images/shared/class-loader-parents-delegation-model.png)
 
 The bootstrap class loader is built into the VM and is usually represented as `null` in the Java API. The platform, application, and most custom class loaders are instances of `ClassLoader`. Applications can define custom class loaders to control how classes are found.
 
@@ -203,7 +203,7 @@ This means:
 
 The hierarchy between class loaders shown below is known as the **parent delegation model**.
 
-![Class loader hierarchy](https://oss.javaguide.cn/github/javaguide/java/jvm/class-loader-parents-delegation-model.png)
+![Class loader hierarchy](./images/shared/class-loader-parents-delegation-model.png)
 
 ⚠️ Note: Parent delegation is not mandatory; it is the approach recommended by the JDK. It can be changed to meet specific requirements, as described later.
 
@@ -348,7 +348,7 @@ Tomcat uses a custom `WebAppClassLoader` to load classes from a web application'
 
 Tomcat's class loader hierarchy is shown below:
 
-![Tomcat class loader hierarchy](https://oss.javaguide.cn/github/javaguide/java/jvm/tomcat-class-loader-parents-delegation-model.png)
+![Tomcat class loader hierarchy](./images/shared/tomcat-class-loader-parents-delegation-model.png)
 
 Modern Tomcat uses the `Bootstrap -> System -> Common -> WebappX` hierarchy by default. The loaders search these locations:
 

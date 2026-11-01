@@ -27,7 +27,7 @@ JDK 8 introduced many important features. This article covers some of the key on
 
 The chart below shows the number of features and release dates for each update from JDK 8 through JDK 24:
 
-![](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
+![](./images/shared/jdk8-jdk24.png)
 
 As Java 8 became more widely used, its features also became common interview topics. I planned to write a summary and found a related repository on GitHub: [https://github.com/winterbe/java8-tutorial](https://github.com/winterbe/java8-tutorial). The repository is in English. I translated it and added or revised some material. The tutorial begins below.
 
@@ -124,7 +124,7 @@ The `List` class has its own `sort` method, and the Java compiler infers the par
 
 The Java language designers considered how to make existing APIs work well with Lambda expressions. One result was the functional interface: **an interface with exactly one abstract method, though it can have multiple non-abstract methods (such as the default methods described above).** A functional interface can be the target type of a Lambda expression. `java.lang.Runnable` and `java.util.concurrent.Callable` are common examples. Java 8 added the `@FunctionalInterface` annotation, but it is optional. Any interface that meets the definition can be a Lambda target type. It is recommended to use the annotation so the compiler reports an error if the interface no longer meets the requirements.
 
-![@FunctionalInterface annotation](https://oss.javaguide.cn/github/javaguide/java/@FunctionalInterface.png)
+![@FunctionalInterface annotation](./images/shared/-FunctionalInterface.png)
 
 Example:
 
@@ -824,7 +824,7 @@ System.out.println(formatterOfYyyy.format(rightNow));
 
 The image below shows the issue. IntelliJ IDEA also recommends using `yyyy` instead of `YYYY`.
 
-![](https://oss.javaguide.cn/github/javaguide/java/new-features/2021042717491413.png)
+![](./images/shared/2021042717491413.png)
 
 ### LocalDateTime
 

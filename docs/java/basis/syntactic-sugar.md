@@ -22,7 +22,7 @@ This article examines Java compilation, bytecode, and class files to explain how
 
 **Syntactic sugar** is a term coined by British computer scientist Peter J. Landin. It refers to syntax that doesn't change what a language can do but makes it easier for programmers to use. In short, syntactic sugar makes code shorter and more readable.
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/syntactic-sugar/image-20220818175953954.png)
+![](./images/shared/image-20220818175953954.png)
 
 > In programming, there are also terms such as syntactic salt and syntactic saccharin, but they are outside the scope of this article.
 

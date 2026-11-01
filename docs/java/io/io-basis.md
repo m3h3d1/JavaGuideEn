@@ -63,7 +63,7 @@ try (InputStream fis = new FileInputStream("input.txt")) {
 
 Contents of `input.txt`:
 
-![](https://oss.javaguide.cn/github/javaguide/java/image-20220419155214614.png)
+![](./images/shared/image-20220419155214614.png)
 
 Output:
 
@@ -134,7 +134,7 @@ try (FileOutputStream output = new FileOutputStream("output.txt")) {
 
 Result:
 
-![](https://oss.javaguide.cn/github/javaguide/java/image-20220419155514392.png)
+![](./images/shared/image-20220419155514392.png)
 
 Like `FileInputStream`, `FileOutputStream` is usually wrapped in a `BufferedOutputStream` (a buffered byte output stream, described below).
 
@@ -173,7 +173,7 @@ There are two main reasons:
 
 You can reproduce an encoding problem by putting non-ASCII text in `input.txt` from the `FileInputStream` example above. The code itself does not need to change.
 
-![](https://oss.javaguide.cn/github/javaguide/java/image-20220419154632551.png)
+![](./images/shared/image-20220419154632551.png)
 
 Output:
 
@@ -234,7 +234,7 @@ try (FileReader fileReader = new FileReader("input.txt");) {
 
 Contents of `input.txt`:
 
-![](https://oss.javaguide.cn/github/javaguide/java/image-20220419154632551.png)
+![](./images/shared/image-20220419154632551.png)
 
 Output:
 
@@ -282,7 +282,7 @@ try (Writer output = new FileWriter("output.txt")) {
 
 Result:
 
-![](https://oss.javaguide.cn/github/javaguide/java/image-20220419155802288.png)
+![](./images/shared/image-20220419155802288.png)
 
 ## Buffered Byte Streams
 
@@ -517,7 +517,7 @@ System.out.println("Offset before read: " + randomAccessFile.getFilePointer() + 
 
 Contents of `input.txt`:
 
-![](https://oss.javaguide.cn/github/javaguide/java/image-20220421162050158.png)
+![](./images/shared/image-20220421162050158.png)
 
 Output:
 
@@ -542,11 +542,11 @@ One common use of `RandomAccessFile` is **resumable uploads** of large files. If
 
 `RandomAccessFile` can also be used to combine file chunks, as shown below:
 
-![](https://oss.javaguide.cn/github/javaguide/java/io/20210609164749122.png)
+![](./images/shared/20210609164749122.png)
 
 For more detail about large-file uploads, see [Java Interview Guide](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html).
 
-![](https://oss.javaguide.cn/github/javaguide/java/image-20220428104115362.png)
+![](./images/shared/image-20220428104115362.png)
 
 `RandomAccessFile` relies on `FileDescriptor` and `FileChannel` (for memory-mapped files).
 

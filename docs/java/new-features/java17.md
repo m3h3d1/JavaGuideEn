@@ -14,7 +14,7 @@ Java 17 was released on September 14, 2021. Oracle designated it as a Long-Term 
 
 According to Oracle's Java SE support roadmap, updated in April 2026, Premier Support for Oracle JDK 17 runs through September 2026, and Extended Support through September 2029. Free updates and commercial support vary by JDK distribution, so check the policy for the distribution used in production.
 
-![](https://oss.javaguide.cn/github/javaguide/java/new-features/4c1611fad59449edbbd6e233690e9fa7.png)
+![](./images/shared/4c1611fad59449edbbd6e233690e9fa7.png)
 
 When upgrading from JDK 11 to JDK 17, pay attention to sealed classes, switch pattern matching, the new pseudorandom number APIs, and compatibility changes caused by stronger encapsulation of JDK internals. Spring 6.x and Spring Boot 3.x also require Java 17 or later.
 
@@ -33,7 +33,7 @@ JDK 17 includes 14 new features. This article covers some of the more notable on
 
 The chart below shows the number of features and release dates for each update from JDK 8 through JDK 16:
 
-![](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
+![](./images/shared/jdk8-jdk24.png)
 
 Related reading: [OpenJDK Java 17 documentation](https://openjdk.java.net/projects/jdk/17/).
 

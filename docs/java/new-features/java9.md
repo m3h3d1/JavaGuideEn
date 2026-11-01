@@ -24,7 +24,7 @@ This article covers some of the key features:
 
 The chart below shows the number of features and release dates for each update from JDK 8 through JDK 25:
 
-![](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
+![](./images/shared/jdk8-jdk24.png)
 
 ## JEP 222: Java Shell Tool (JShell)
 
@@ -32,7 +32,7 @@ JShell is a command-line tool introduced in Java 9. It provides an interactive s
 
 You can enter expressions directly in JShell and see their results immediately.
 
-![](https://oss.javaguide.cn/java-guide-blog/image-20210816083417616.png)
+![](./images/shared/image-20210816083417616.png)
 
 **What are the benefits of JShell?**
 
@@ -59,7 +59,7 @@ In simple terms, a module is a uniquely named, reusable group of packages and re
 
 Any JAR file can become a module by adding a module descriptor (`module-info.java`).
 
-![](https://oss.javaguide.cn/java-guide-blog/module-structure.png)
+![](./images/shared/module-structure.png)
 
 With the module system, the JDK was reorganized into 94 modules. Java applications can use the **[jlink tool](http://openjdk.java.net/jeps/282)**, introduced with Java 9, to create custom run-time images containing only the JDK modules they need. This can significantly reduce the size of the Java runtime environment.
 
@@ -247,7 +247,7 @@ System.out.println(currentProcess.info());
 
 Overview of the `ProcessHandle` interface:
 
-![](https://oss.javaguide.cn/java-guide-blog/image-20210816104614414.png)
+![](./images/shared/image-20210816104614414.png)
 
 ### Other API Updates
 

@@ -18,7 +18,7 @@ The previous article on the `HashMap` source code received a good response and s
 
 ### 1. Data Structure
 
-![Java 7 ConcurrentHashMap data structure](https://oss.javaguide.cn/github/javaguide/java/collection/java7_concurrenthashmap.png)
+![Java 7 ConcurrentHashMap data structure](./images/shared/java7_concurrenthashmap.png)
 
 As shown above, Java 7 `ConcurrentHashMap` is composed of multiple `Segment` instances. Each `Segment` has a structure similar to `HashMap` and can resize independently. The number of `Segment` instances is fixed after initialization. The default is 16, so up to 16 segments can perform updates concurrently.
 
@@ -421,7 +421,7 @@ Overall, `ConcurrentHashMap` changed significantly from Java 7 to Java 8.
 
 ### 1. Data Structure
 
-![Java 8 ConcurrentHashMap data structure (image from javadoop)](https://oss.javaguide.cn/github/javaguide/java/collection/java8_concurrenthashmap.png)
+![Java 8 ConcurrentHashMap data structure (image from javadoop)](./images/shared/java8_concurrenthashmap.png)
 
 Java 8 `ConcurrentHashMap` differs substantially from Java 7. Its structure is no longer **a Segment array + HashEntry arrays + linked lists**; it is now **a Node array + linked lists / red-black trees**. A collision list becomes a red-black tree when it reaches a certain length.
 

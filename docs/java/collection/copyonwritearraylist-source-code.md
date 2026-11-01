@@ -65,7 +65,7 @@ implements List<E>, RandomAccess, Cloneable, Serializable
 - `Cloneable`: Indicates that the object can be copied with `clone()`. `CopyOnWriteArrayList#clone()` returns a shallow copy.
 - `Serializable`: Indicates that the object can be serialized to a byte stream for storage or network transfer.
 
-![CopyOnWriteArrayList class diagram](https://oss.javaguide.cn/github/javaguide/java/collection/copyonwritearraylist-class-diagram.png)
+![CopyOnWriteArrayList class diagram](./images/shared/copyonwritearraylist-class-diagram.png)
 
 ### Initialization
 

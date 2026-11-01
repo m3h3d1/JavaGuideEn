@@ -14,7 +14,7 @@ head:
 
 The chart below shows the number of features and release dates for each update from JDK 8 through JDK 25:
 
-![Feature counts and release dates for JDK 8 through JDK 25](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
+![Feature counts and release dates for JDK 8 through JDK 25](./images/shared/jdk8-jdk24.png)
 
 This article covers some of the more notable features:
 
@@ -94,7 +94,7 @@ static <E> List<E> copyOf(Collection<? extends E> coll) {
 
 Collections created with `copyOf()` are unmodifiable. Attempts to add, remove, replace, or sort elements throw `java.lang.UnsupportedOperationException`. IntelliJ IDEA also warns about these operations.
 
-![Collections created with `copyOf()` are unmodifiable](https://oss.javaguide.cn/java-guide-blog/image-20210816154125579.png)
+![Collections created with `copyOf()` are unmodifiable](./images/shared/image-20210816154125579.png)
 
 `java.util.stream.Collectors` also gained static methods for collecting stream elements into unmodifiable collections.
 

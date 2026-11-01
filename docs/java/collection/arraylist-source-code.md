@@ -29,7 +29,7 @@ public class ArrayList<E> extends AbstractList<E>
 - `Cloneable`: indicates that it supports copying with `clone()`. `ArrayList#clone()` returns a shallow copy.
 - `Serializable`: indicates that it can be serialized, converting the object to a byte stream for persistent storage or network transfer.
 
-![ArrayList class diagram](https://oss.javaguide.cn/github/javaguide/java/collection/arraylist-class-diagram.png)
+![ArrayList class diagram](./images/shared/arraylist-class-diagram.png)
 
 ### How do `ArrayList` and `Vector` differ? (For reference)
 

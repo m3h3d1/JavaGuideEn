@@ -272,7 +272,7 @@ In HotSpot JDK 7 and earlier, the GC-managed memory is often described in three 
 
 In the diagram below, Eden and the two Survivor spaces, S0 and S1, belong to the young generation. The middle layer is the old generation, and the bottom layer is PermGen.
 
-![Heap memory layout](https://oss.javaguide.cn/github/javaguide/java/jvm/hotspot-heap-structure.png)
+![Heap memory layout](./images/shared/hotspot-heap-structure.png)
 
 **Starting with JDK 8, PermGen was replaced by Metaspace, which uses native memory.** The method area section below covers this in more detail.
 

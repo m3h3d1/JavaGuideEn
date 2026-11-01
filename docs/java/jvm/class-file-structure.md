@@ -16,7 +16,7 @@ In Java, code understood by the JVM is called `bytecode` and is stored in files 
 
 Languages such as Clojure (a Lisp dialect), Groovy, Scala, JRuby, and Kotlin also run on the JVM. The diagram below shows how different compilers generate `.class` files that run on the JVM. You can inspect the binary format of a `.class` file with a tool such as [WinHex](https://www.x-ways.net/winhex/).
 
-![Programming languages that run on the Java Virtual Machine](https://oss.javaguide.cn/github/javaguide/java/basis/java-virtual-machine-program-language-os.png)
+![Programming languages that run on the Java Virtual Machine](./images/shared/java-virtual-machine-program-language-os.png)
 
 The `.class` file is an important bridge that lets different languages run on the JVM, and it is also a key reason Java is cross-platform.
 
@@ -49,11 +49,11 @@ ClassFile {
 
 The `ClassFile` structure shows how a class file is organized.
 
-![Analysis of ClassFile contents](https://oss.javaguide.cn/java-guide-blog/16d5ec47609818fc.jpeg)
+![Analysis of ClassFile contents](./images/shared/16d5ec47609818fc.jpeg)
 
 The following image shows a class file viewed with the IntelliJ IDEA plugin `jclasslib`, which provides a more visual representation of its structure.
 
-![](https://oss.javaguide.cn/java-guide-blog/image-20210401170711475.png)
+![](./images/shared/image-20210401170711475.png)
 
 With `jclasslib`, you can inspect a class's bytecode file as well as its basic information, constant pool, interfaces, attributes, and methods.
 
@@ -129,7 +129,7 @@ The two bytes after the constant pool contain the access flags. They identify cl
 
 Class access and modifier flags:
 
-![Class access and modifier flags](https://oss.javaguide.cn/github/javaguide/java/%E8%AE%BF%E9%97%AE%E6%A0%87%E5%BF%97.png)
+![Class access and modifier flags](./images/shared/-.png)
 
 Suppose we define an `Employee` class:
 
@@ -142,7 +142,7 @@ public class Employee {
 
 Use `javap -v ClassName` to inspect the class's access flags.
 
-![Inspecting a class's access flags](https://oss.javaguide.cn/github/javaguide/java/%E6%9F%A5%E7%9C%8B%E7%B1%BB%E7%9A%84%E8%AE%BF%E9%97%AE%E6%A0%87%E5%BF%97.png)
+![Inspecting a class's access flags](./images/shared/--2.png)
 
 ### Indexes for this class, its superclass, and its interfaces
 
@@ -170,7 +170,7 @@ The field table (`field_info`) describes variables declared in a class or interf
 
 **Structure of `field_info`:**
 
-![Structure of the field table](https://oss.javaguide.cn/github/javaguide/java/%E5%AD%97%E6%AE%B5%E8%A1%A8%E7%9A%84%E7%BB%93%E6%9E%84.png)
+![Structure of the field table](./images/shared/--2.png)
 
 - **access_flags:** The field's scope (`public`, `private`, or `protected`), whether it is an instance or class variable (`static`), whether it is excluded from serialization (`transient`), whether it is immutable (`final`), and whether reads and writes must use main memory (`volatile`).
 - **name_index:** A constant pool reference to the field name.
@@ -182,7 +182,7 @@ Each modifier above is a boolean value, so it can be represented by a flag. A fi
 
 **Possible field access flag values:**
 
-![Possible field access flag values](https://oss.javaguide.cn/github/javaguide/java/jvm/class-file-fields-access_flag.png)
+![Possible field access flag values](./images/shared/class-file-fields-access_flag.png)
 
 ### Method table
 
@@ -197,11 +197,11 @@ The class file describes methods in almost the same way as fields. Like the fiel
 
 **Structure of `method_info`:**
 
-![Structure of the method table](https://oss.javaguide.cn/github/javaguide/java/%E6%96%B9%E6%B3%95%E8%A1%A8%E7%9A%84%E7%BB%93%E6%9E%84.png)
+![Structure of the method table](./images/shared/--2.png)
 
 **Possible method access flag values:**
 
-![Possible method access flag values](https://oss.javaguide.cn/github/javaguide/java/jvm/class-file-methods-access_flag.png)
+![Possible method access flag values](./images/shared/class-file-methods-access_flag.png)
 
 The `volatile` and `transient` modifiers cannot be applied to methods, so the method access flags do not include them. Methods can use modifiers such as `synchronized`, `native`, and `abstract`, so the table includes corresponding flags.
 

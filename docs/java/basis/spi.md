@@ -26,7 +26,7 @@ SPI separates the service interface from its implementation and decouples caller
 
 Many frameworks use Java SPI, including Spring, database driver loading, logging APIs, and Dubbo extensions.
 
-<img src="https://oss.javaguide.cn/github/javaguide/java/basis/spi/22e1830e0b0e4115a882751f6c417857tplv-k3u1fbpfcp-zoom-1.jpeg" style="zoom:50%;" />
+<img src="./images/shared/22e1830e0b0e4115a882751f6c417857tplv-k3u1fbpfcp-zoom-1.jpeg" style="zoom:50%;" />
 
 ### How Do SPI and API Differ?
 
@@ -34,7 +34,7 @@ Many frameworks use Java SPI, including Spring, database driver loading, logging
 
 API stands for **Application Programming Interface**. Both SPI and API are interfaces in a broad sense and can be easy to confuse. The diagram below illustrates the difference:
 
-![SPI VS API](https://oss.javaguide.cn/github/javaguide/java/basis/spi-vs-api.png)
+![SPI VS API](./images/shared/spi-vs-api.png)
 
 Modules usually communicate through interfaces, so an interface sits between the service caller and the service implementation, also called the provider.
 
@@ -47,7 +47,7 @@ For example, suppose company H designs a chip and needs to manufacture it at sca
 
 SLF4J (Simple Logging Facade for Java) is a logging facade, or interface. It has several implementations, including Logback, Log4j, and Log4j2. You can switch implementations without changing project code; just update the Maven dependencies.
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/spi/image-20220723213306039-165858318917813.png)
+![](./images/shared/image-20220723213306039-165858318917813.png)
 
 This is enabled by SPI. Let's build a simple logging framework to see how it works.
 
@@ -219,11 +219,11 @@ Add the `service-provider-interface` JAR to the project.
 
 Create a `lib` directory, copy the JAR into it, and add it to the project.
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/spi/523d5e25198444d3b112baf68ce49daetplv-k3u1fbpfcp-watermark.png)
+![](./images/shared/523d5e25198444d3b112baf68ce49daetplv-k3u1fbpfcp-watermark.png)
 
 Then click **OK**.
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/spi/f4ba0aa71e9b4d509b9159892a220850tplv-k3u1fbpfcp-watermark.png)
+![](./images/shared/f4ba0aa71e9b4d509b9159892a220850tplv-k3u1fbpfcp-watermark.png)
 
 You can now import classes and methods from the JAR, just as you would use a JDK library.
 
@@ -243,7 +243,7 @@ To make the result clearer, create a separate test project named `java-spi-test`
 
 Add the JAR containing the `Logger` interface, then add the provider implementation JAR.
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/spi/image-20220723215812708-165858469599214.png)
+![](./images/shared/image-20220723215812708-165858469599214.png)
 
 Create a `main` method to test it:
 

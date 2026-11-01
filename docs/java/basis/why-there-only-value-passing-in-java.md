@@ -80,7 +80,7 @@ Explanation:
 
 Swapping `a` and `b` inside `swap()` doesn't affect `num1` and `num2`. The method receives copies of their values, so changing those copies doesn't change the original variables.
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/java-value-passing-01.png)
+![](./images/shared/java-value-passing-01.png)
 
 The example shows that a method can't change the caller's primitive variable. Object references behave differently; see Example 2.
 
@@ -111,7 +111,7 @@ Output:
 
 Explanation:
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/java-value-passing-02.png)
+![](./images/shared/java-value-passing-02.png)
 
 This example may make it seem like Java passes object references by reference.
 
@@ -161,7 +161,7 @@ Swapping the two object-reference parameters didn't change the caller's variable
 
 The `swap` method receives copies of the references stored in `zhang` and `li`. Swapping `person1` and `person2` only swaps those copies; it doesn't change the caller's variables.
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/java-value-passing-03.png)
+![](./images/shared/java-value-passing-03.png)
 
 ## What Does Pass-by-Reference Look Like?
 

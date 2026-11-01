@@ -27,7 +27,7 @@ What does this class do, and when is it used? This article explains.
 
 The functions provided by `Unsafe` rely on native methods. Think of a native method as a Java method implemented in another programming language. It is declared in Java with the **`native`** keyword, while its implementation is provided by **native code**.
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/unsafe/image-20220717115231125.png)
+![](./images/shared/image-20220717115231125.png)
 
 **Why use native methods?**
 
@@ -377,7 +377,7 @@ Ordered writes have lower overhead than volatile writes because they provide ord
 
 The difference is that an ordered write uses a `StoreStore` barrier, while a volatile write uses a `StoreLoad` barrier, as shown below:
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/unsafe/image-20220717144834132.png)
+![](./images/shared/image-20220717144834132.png)
 
 An ordered write uses a `StoreStore` barrier to ensure that `Store1` happens before `Store2` and later store operations. A volatile write uses a `StoreLoad` barrier, which orders `Store1` before `Load2` and subsequent loads. A `StoreLoad` barrier also ensures that all memory accesses before it complete before accesses after it run.
 
@@ -434,7 +434,7 @@ public native int arrayIndexScale(Class<?> arrayClass);
 
 These methods are used by `AtomicIntegerArray` in `java.util.concurrent.atomic`, which supports atomic operations on individual array elements. As shown in the source below, it uses `Unsafe.arrayBaseOffset` and `arrayIndexScale` to get the first element's offset (`base`) and the size of each element (`scale`). Atomic operations use these values to locate array elements. For example, `getAndAdd` calls `checkedByteOffset` to find an element's offset, then uses CAS to update it atomically.
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/unsafe/image-20220717144927257.png)
+![](./images/shared/image-20220717144927257.png)
 
 ### CAS Operations
 
@@ -541,7 +541,7 @@ In the example, two threads try to update the shared variable `a`. Each thread c
 
 This mechanism ensures that each number from 1 to 9 is set and printed once, in order.
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/unsafe/image-20220717144939826.png)
+![](./images/shared/image-20220717144939826.png)
 
 Keep these points in mind:
 
@@ -615,7 +615,7 @@ unpark mainThread success
 
 The flow is straightforward: the child thread sleeps so the main thread can call `park` and block. After five seconds, the child calls `unpark` to wake the main thread, which then continues. The diagram below illustrates the flow:
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/unsafe/image-20220717144950116.png)
+![](./images/shared/image-20220717144950116.png)
 
 ### Class Operations
 
@@ -705,7 +705,7 @@ private static void defineTest() {
 
 This historical code reads a `.class` file into a byte array, then uses `defineClass` to create and instantiate the class. The JVM still checks the class file format, verifies the bytecode, and enforces loading constraints; this method doesn't bypass all security checks.
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/unsafe/image-20220717145000710.png)
+![](./images/shared/image-20220717145000710.png)
 
 Older versions of Unsafe also provided the `defineAnonymousClass` method:
 

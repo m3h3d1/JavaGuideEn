@@ -48,7 +48,7 @@ The Java Virtual Machine (JVM) runs Java bytecode. JVM implementations are avail
 
 As shown below, languages such as Java, Groovy, Kotlin, JRuby, and Clojure can be compiled into `.class` files and run on different platforms (Windows, macOS, and Linux) through the JVM.
 
-![Languages that run on the Java Virtual Machine](https://oss.javaguide.cn/github/javaguide/java/basis/java-virtual-machine-program-language-os.png)
+![Languages that run on the Java Virtual Machine](../jvm/images/shared/java-virtual-machine-program-language-os.png)
 
 **There is more than one JVM. Any company, organization, or individual can develop a JVM implementation as long as it meets the JVM specification.** HotSpot VM, which most of us use, is just one such implementation.
 

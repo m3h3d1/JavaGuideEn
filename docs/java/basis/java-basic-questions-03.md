@@ -14,7 +14,7 @@ head:
 
 **Overview of the Java exception hierarchy:**
 
-![Java exception hierarchy](https://oss.javaguide.cn/github/javaguide/java/basis/types-of-exceptions-in-java.png)
+![Java exception hierarchy](./images/shared/types-of-exceptions-in-java.png)
 
 ### What is the difference between `Exception` and `Error`?
 
@@ -34,7 +34,7 @@ In Java, all exceptions and errors share the `Throwable` class in the `java.lang
 
 For example, the following I/O operation:
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/checked-exception.png)
+![](./images/shared/checked-exception.png)
 
 Except for `RuntimeException` and its subclasses, `Exception` and its subclasses are checked exceptions. Common examples include I/O exceptions, `ClassNotFoundException`, and `SQLException`.
 
@@ -52,7 +52,7 @@ Except for `RuntimeException` and its subclasses, `Exception` and its subclasses
 - `UnsupportedOperationException` (unsupported operation, such as trying to create a duplicate user)
 - ……
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/unchecked-exception.png)
+![](./images/shared/unchecked-exception.png)
 
 ### Do you prefer checked or unchecked exceptions?
 
@@ -437,7 +437,7 @@ AOP (aspect-oriented programming) encapsulates logic that is shared across busin
 
 Spring AOP uses dynamic proxies. If the target object implements an interface, Spring AOP uses **JDK Proxy** to create the proxy. If it does not implement an interface, Spring AOP cannot use JDK Proxy and instead uses **CGLIB** to generate a subclass as the proxy, as shown below:
 
-![SpringAOPProcess](https://oss.javaguide.cn/github/javaguide/system-design/framework/spring/230ae587a322d6e4d09510161987d346.jpeg)
+![SpringAOPProcess](./images/shared/230ae587a322d6e4d09510161987d346.jpeg)
 
 ## Annotations
 
@@ -480,7 +480,7 @@ SPI separates a service interface from its implementation and decouples callers 
 
 Many frameworks use Java's SPI mechanism, including Spring, JDBC driver loading, logging APIs, and Dubbo extensions.
 
-<img src="https://oss.javaguide.cn/github/javaguide/java/basis/spi/22e1830e0b0e4115a882751f6c417857tplv-k3u1fbpfcp-zoom-1.jpeg" style="zoom:50%;" />
+<img src="./images/shared/22e1830e0b0e4115a882751f6c417857tplv-k3u1fbpfcp-zoom-1.jpeg" style="zoom:50%;" />
 
 ### What is the difference between SPI and API?
 
@@ -488,7 +488,7 @@ Many frameworks use Java's SPI mechanism, including Spring, JDBC driver loading,
 
 SPI brings up API (Application Programming Interface). In a broad sense, both are interfaces and can be easy to confuse. The diagram below illustrates the distinction:
 
-![SPI VS API](https://oss.javaguide.cn/github/javaguide/java/basis/spi-vs-api.png)
+![SPI VS API](./images/shared/spi-vs-api.png)
 
 Modules generally communicate through interfaces, so an interface is used between the service caller and the service implementation (also called the provider).
 
@@ -532,7 +532,7 @@ Wikipedia describes serialization as follows:
 
 In short, **serialization converts an object into a representation suitable for network transmission or persistence in a file system, database, cache, or other medium.**
 
-![](https://oss.javaguide.cn/github/javaguide/a478c74d-2c48-40ae-9374-87aacf05188c.png)
+![](./images/shared/a478c74d-2c48-40ae-9374-87aacf05188c.png)
 
 <p style="text-align:right;font-size:13px;color:gray">https://www.corejavaguru.com/java/serialization/interview-questions-1</p>
 
@@ -545,7 +545,7 @@ The two sides of a network connection must use and follow the same protocol. The
 3. Internet layer
 4. Network interface layer
 
-![The four-layer TCP/IP model](https://oss.javaguide.cn/github/javaguide/cs-basics/network/tcp-ip-4-model.png)
+![The four-layer TCP/IP model](./images/shared/tcp-ip-4-model.png)
 
 As shown above, the presentation layer in the seven-layer OSI model converts application data to a binary stream and back. This corresponds to serialization and deserialization.
 

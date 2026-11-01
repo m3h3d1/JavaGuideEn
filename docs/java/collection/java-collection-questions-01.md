@@ -20,7 +20,7 @@ Java collections, also called containers, are built around two main interfaces: 
 
 The diagram below shows the Java Collections Framework:
 
-![Overview of the Java Collections Framework](https://oss.javaguide.cn/github/javaguide/java/collection/java-collection-hierarchy.png)
+![Overview of the Java Collections Framework](./images/java-collection-questions-01/collection-hierarchy.png)
 
 Note: The diagram shows only the main inheritance relationships. It omits abstract classes such as `AbstractList` and `NavigableSet`, along with other helper classes. See the source code for the full hierarchy.
 
@@ -192,7 +192,7 @@ Here is a simple example:
 
 For example, to remove node 9, the list must first be traversed to find it. The node pointers are then updated. See [LinkedList Source Code](https://javaguide.cn/java/collection/linkedlist-source-code.html) for the implementation.
 
-![How the unlink method works](https://oss.javaguide.cn/github/javaguide/java/collection/linkedlist-unlink.jpg)
+![How the unlink method works](./images/shared/linkedlist-unlink.jpg)
 
 ### Why doesn't `LinkedList` implement `RandomAccess`?
 
@@ -210,7 +210,7 @@ For example, to remove node 9, the list must first be traversed to find it. The 
 
 In many projects, `ArrayList` can replace `LinkedList` and often performs better. Josh Bloch, who wrote `LinkedList`, has even said that he never uses it.
 
-![](https://oss.javaguide.cn/github/javaguide/redisimage-20220412110853807.png)
+![](./images/shared/linked-list.png)
 
 Do not assume that `LinkedList` is always the best choice for frequent insertions and removals. Only operations at the head or tail are close to `O(1)`; most other insertions and removals take `O(n)` because the target node must first be found.
 
@@ -218,11 +218,11 @@ Do not assume that `LinkedList` is always the best choice for frequent insertion
 
 **Doubly linked list:** Each node has two pointers: `prev` points to the previous node, and `next` points to the next node.
 
-![Doubly linked list](https://oss.javaguide.cn/github/javaguide/cs-basics/data-structure/bidirectional-linkedlist.png)
+![Doubly linked list](./images/shared/doubly-linked-list.png)
 
 **Doubly circular linked list:** The last node's `next` points to the head, and the head's `prev` points to the last node, forming a loop.
 
-![Doubly circular linked list](https://oss.javaguide.cn/github/javaguide/cs-basics/data-structure/bidirectional-circular-linkedlist.png)
+![Doubly circular linked list](./images/shared/doubly-circular-linked-list.png)
 
 #### More on the `RandomAccess` Interface
 
@@ -348,7 +348,7 @@ final void checkForComodification() {
 
 This idea is used in concurrent collections. A common example is `CopyOnWriteArrayList`: each write copies the array, applies the change to the copy, and then points the list to the new array. Iterators keep using the snapshot they started with, so concurrent writes do not disrupt iteration. The tradeoff is that an iterator does not see changes made after its snapshot was created.
 
-![](https://oss.javaguide.cn/github/javaguide/java/collection/fail-fast-and-fail-safe-copyonwritearraylist.png)
+![](./images/shared/fail-fast-copy-on-write-array-list.png)
 
 The following code shows the core of this behavior in `CopyOnWriteArrayList`. It gets the current array with `getArray()`, copies it with `Arrays.copyOf()`, adds the element to the copy, and then updates the `array` reference:
 
@@ -585,11 +585,11 @@ public interface BlockingQueue<E> extends Queue<E> {
 
 `BlockingQueue` is commonly used in the producer-consumer pattern: producer threads add data to the queue, and consumer threads retrieve and process it.
 
-![BlockingQueue](https://oss.javaguide.cn/github/javaguide/java/collection/blocking-queue.png)
+![BlockingQueue](./images/shared/blocking-queue.png)
 
 ### What Are Some `BlockingQueue` Implementations?
 
-![Implementations of BlockingQueue](https://oss.javaguide.cn/github/javaguide/java/collection/blocking-queue-hierarchy.png)
+![Implementations of BlockingQueue](./images/shared/blocking-queue-hierarchy.png)
 
 Common `BlockingQueue` implementations include:
 

@@ -27,7 +27,7 @@ JDK 8 introduced many important features. This article covers some of the key on
 
 The chart below shows the number of features and release dates for each update from JDK 8 through JDK 24:
 
-![](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
+![](./images/shared/jdk8-jdk24.png)
 
 Oracle released Java 8 (JDK 1.8) in 2014, and it has remained widely used in the Java ecosystem. Many developers, especially those used to earlier versions, are still unfamiliar with some of its features.
 

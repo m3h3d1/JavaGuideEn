@@ -16,11 +16,11 @@ head:
 
 `LinkedList` is a collection backed by a doubly linked list and is often compared with `ArrayList`. For a detailed comparison, see [Common Java Collection Interview Questions (Part 1)](./java-collection-questions-01.md).
 
-![Doubly linked list](https://oss.javaguide.cn/github/javaguide/cs-basics/data-structure/bidirectional-linkedlist.png)
+![Doubly linked list](./images/shared/doubly-linked-list.png)
 
 In most projects, `ArrayList` can replace `LinkedList` in many of its use cases and often performs better. Josh Bloch, who wrote `LinkedList`, has even said that he never uses it.
 
-![](https://oss.javaguide.cn/github/javaguide/redisimage-20220412110853807.png)
+![](./images/shared/linked-list.png)
 
 Do not assume that `LinkedList` is always the best choice for frequent insertions and removals. Only operations at the head or tail are close to `O(1)`; most other insertions and removals take `O(n)` because the target node must first be found.
 
@@ -60,7 +60,7 @@ Like `ArrayList`, `LinkedList` inherits from `AbstractList`, so many of their me
 - `Cloneable`: indicates that the class supports copying with `clone()`.
 - `Serializable`: indicates that instances can be serialized to a byte stream for storage or network transfer.
 
-![LinkedList class diagram](https://oss.javaguide.cn/github/javaguide/java/collection/linkedlist--class-diagram.png)
+![LinkedList class diagram](./images/shared/linkedlist--class-diagram.png)
 
 `LinkedList` stores its elements in `Node` objects:
 
@@ -342,7 +342,7 @@ The `unlink()` method works as follows:
 
 The diagram below illustrates the process. Source: [LinkedList Source Code (JDK 1.8)](https://www.tianxiaobo.com/2018/01/31/LinkedList-%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90-JDK-1-8/).
 
-![How the unlink method works](https://oss.javaguide.cn/github/javaguide/java/collection/linkedlist-unlink.jpg)
+![How the unlink method works](./images/shared/linkedlist-unlink.jpg)
 
 ### Iterating Over the List
 

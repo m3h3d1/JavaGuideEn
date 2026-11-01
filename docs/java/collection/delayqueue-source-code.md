@@ -14,7 +14,7 @@ head:
 
 `DelayQueue`, part of `java.util.concurrent` (JUC), is a thread-safe, unbounded `BlockingQueue` backed by a `PriorityQueue`. It is useful for delayed tasks, such as canceling an order that remains unpaid for 15 minutes. See [PriorityQueue Source Code Analysis](./priorityqueue-source-code.md) for details about `PriorityQueue`.
 
-![BlockingQueue implementations](https://oss.javaguide.cn/github/javaguide/java/collection/blocking-queue-hierarchy.png)
+![BlockingQueue implementations](./images/shared/blocking-queue-hierarchy.png)
 
 Elements stored in a `DelayQueue` must implement the `Delayed` interface and its `getDelay()` method, which reports the remaining delay.
 
@@ -32,7 +32,7 @@ By default, `DelayQueue` orders tasks by their expiration time. An element can b
 
 Suppose we submit three tasks with delays of 1, 2, and 3 seconds. Even if they are added out of order, the task with the earliest expiration becomes available first.
 
-![Delayed tasks](https://oss.javaguide.cn/github/javaguide/java/collection/delayed-task.png)
+![Delayed tasks](./images/shared/delayed-task.png)
 
 We can implement this with `DelayQueue`. First, define a `DelayedTask` that implements `Delayed` and provides `getDelay` and `compareTo`:
 
@@ -125,7 +125,7 @@ public class DelayQueue<E extends Delayed> extends AbstractQueue<E> implements B
 
 `DelayQueue` extends `AbstractQueue` and implements `BlockingQueue`.
 
-![DelayQueue class diagram](https://oss.javaguide.cn/github/javaguide/java/collection/delayqueue-class-diagram.png)
+![DelayQueue class diagram](./images/shared/delayqueue-class-diagram.png)
 
 ### Core Fields
 
@@ -207,7 +207,7 @@ public boolean offer(E e) {
 
 1. First, three threads try to acquire the reentrant `lock`. Suppose `t1` gets it while `t2` and `t3` enter the lock's wait queue.
 
-![](https://oss.javaguide.cn/github/javaguide/java/collection/delayqueue-take-0.png)
+![](./images/shared/delayqueue-take-0.png)
 
 2. `t1` begins retrieving an element.
 
@@ -215,11 +215,11 @@ public boolean offer(E e) {
 
 4. If the queue is empty, `t1` blocks in the `conditionWaiter` queue.
 
-![](https://oss.javaguide.cn/github/javaguide/java/collection/delayqueue-take-1.png)
+![](./images/shared/delayqueue-take-1.png)
 
 After calling `await`, `t1` releases the `lock`. If the `DelayQueue` remains empty, `t2` and `t3` follow the same steps and also enter `conditionWaiter`.
 
-![](https://oss.javaguide.cn/github/javaguide/java/collection/delayqueue-take-2.png)
+![](./images/shared/delayqueue-take-2.png)
 
 If the queue is not empty, the thread checks whether the head task has expired. If it has, the task is returned immediately. Otherwise, the thread checks whether `leader` is already set. If so, another thread is waiting for a task that expires sooner, so `t1` waits indefinitely until the leader retrieves that task and signals it. If there is no leader, `t1` becomes the leader and waits for the head task's remaining delay. It then retrieves the task when it expires.
 

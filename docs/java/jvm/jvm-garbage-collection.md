@@ -46,7 +46,7 @@ In HotSpot JDK 7 and earlier, GC-managed memory is commonly described in three p
 
 In the diagram below, Eden and the two Survivor spaces, S0 and S1, belong to the young generation. The middle layer is the old generation, and the bottom layer is PermGen.
 
-![Heap memory layout](https://oss.javaguide.cn/github/javaguide/java/jvm/hotspot-heap-structure.png)
+![Heap memory layout](./images/shared/hotspot-heap-structure.png)
 
 **JDK 8 removed PermGen and moved class metadata to Metaspace, which uses native memory.**
 
@@ -70,14 +70,14 @@ public class GCTest {
 ```
 
 Run it as follows:
-![](https://oss.javaguide.cn/github/javaguide/java/jvm/25178350.png)
+![](./images/shared/25178350.png)
 
 Add the option `-XX:+PrintGCDetails`.
-![](https://oss.javaguide.cn/github/javaguide/java/jvm/run-with-PrintGCDetails.png)
+![](./images/shared/run-with-PrintGCDetails.png)
 
 Output (the red label is incorrect; it refers to PermGen in JDK 7):
 
-![](https://oss.javaguide.cn/github/javaguide/java/jvm/28954286.jpg)
+![](./images/shared/28954286.jpg)
 
 The diagram shows that Eden is almost full. Even when the program does nothing, the young generation uses more than 2,000 KB.
 
@@ -87,7 +87,7 @@ What happens if we allocate memory for `allocation2` as well?
 allocation2 = new byte[900*1024];
 ```
 
-![](https://oss.javaguide.cn/github/javaguide/java/jvm/28128785.jpg)
+![](./images/shared/28128785.jpg)
 
 When allocating `allocation2`, Eden is almost full.
 
@@ -129,7 +129,7 @@ Each time an object survives a Minor GC in a Survivor space, its age increases b
 >
 > JDK 8 documentation: <https://docs.oracle.com/javase/8/docs/technotes/tools/unix/java.html>.
 >
-> ![](https://oss.javaguide.cn/java-guide-blog/image-20210523201742303.png)
+> ![](./images/shared/image-20210523201742303.png)
 >
 > **The dynamic age calculation is implemented as follows:**
 >
@@ -166,7 +166,7 @@ In the second edition of _Understanding the Java Virtual Machine_, Zhou Zhiming 
 
 This statement was corrected in the third edition of _Understanding the Java Virtual Machine_. Thanks to R's answer:
 
-![R's answer](https://oss.javaguide.cn/github/javaguide/java/jvm/rf-hotspot-vm-gc.png)
+![R's answer](./images/shared/rf-hotspot-vm-gc.png)
 
 **Summary:**
 
@@ -204,7 +204,7 @@ Add a reference counter to each object:
 
 **This method is simple to implement, but mainstream Java VMs do not use it to manage object lifecycles. One important reason is that it cannot handle circular references between objects on its own.**
 
-![Circular references between objects](https://oss.javaguide.cn/github/javaguide/java/jvm/object-circular-reference.png)
+![Circular references between objects](./images/shared/object-circular-reference.png)
 
 The following code illustrates the circular reference problem. Apart from referring to each other, `objA` and `objB` have no other references. But because they refer to one another, their counters are not 0, so reference counting cannot tell the GC to reclaim them.
 
@@ -228,7 +228,7 @@ This algorithm starts from a set of objects called **GC Roots** and searches dow
 
 In the diagram below, `Object 6` through `Object 10` refer to one another, but none is reachable from a GC Root, so they can be reclaimed.
 
-![Reachability analysis](https://oss.javaguide.cn/github/javaguide/java/jvm/jvm-gc-roots.png)
+![Reachability analysis](./images/shared/jvm-gc-roots.png)
 
 **Which objects can act as GC Roots?**
 
@@ -258,7 +258,7 @@ Before JDK 1.2, a reference in Java had a traditional definition: if a value sto
 
 Since JDK 1.2, Java has expanded the concept of references into four kinds, in decreasing order of strength: strong, soft, weak, and phantom. Strong references are ordinary references used throughout Java code. The JDK classes for the other three kinds are `SoftReference`, `WeakReference`, and `PhantomReference`.
 
-![Java reference types](https://oss.javaguide.cn/github/javaguide/java/jvm/java-reference-type.png)
+![Java reference types](./images/shared/java-reference-type.png)
 
 **1. Strong References**
 
@@ -367,7 +367,7 @@ This is the most basic collection algorithm. Later algorithms were developed to 
 1. **Efficiency:** Neither the marking nor the sweeping phase is very efficient.
 2. **Space:** It leaves many noncontiguous memory fragments.
 
-![Mark-sweep algorithm](https://oss.javaguide.cn/github/javaguide/java/jvm/mark-and-sweep-garbage-collection-algorithm.png)
+![Mark-sweep algorithm](./images/shared/mark-and-sweep-garbage-collection-algorithm.png)
 
 There are different descriptions of what gets marked: reclaimable (unreachable) objects or objects to keep (reachable). Both descriptions can work; I prefer the latter.
 
@@ -381,7 +381,7 @@ Using the latter approach, mark-sweep works roughly as follows:
 
 The copying algorithm was developed to address the efficiency and fragmentation problems of mark-sweep. It divides memory into two equal spaces and uses one at a time. When the active space fills up, it copies live objects to the other space and clears the entire space it just used. Each collection therefore reclaims half of the memory area.
 
-![Copying algorithm](https://oss.javaguide.cn/github/javaguide/java/jvm/copying-garbage-collection-algorithm.png)
+![Copying algorithm](./images/shared/copying-garbage-collection-algorithm.png)
 
 Although it improves on mark-sweep, it still has these limitations:
 
@@ -392,7 +392,7 @@ Although it improves on mark-sweep, it still has these limitations:
 
 Mark-compact was designed for the characteristics of the old generation. It marks objects like mark-sweep, but instead of immediately reclaiming dead objects, it moves all live objects toward one end of the memory area and clears everything beyond that boundary.
 
-![Mark-compact algorithm](https://oss.javaguide.cn/github/javaguide/java/jvm/mark-and-compact-garbage-collection-algorithm.png)
+![Mark-compact algorithm](./images/shared/mark-and-compact-garbage-collection-algorithm.png)
 
 The additional compaction step makes it less efficient, so it suits areas such as the old generation, which are collected less frequently.
 
@@ -423,7 +423,7 @@ The Serial collector is the most basic and oldest garbage collector. As its name
 
 **It uses copying in the young generation and mark-compact in the old generation.**
 
-![Serial collector](https://oss.javaguide.cn/github/javaguide/java/jvm/serial-garbage-collector.png)
+![Serial collector](./images/shared/serial-garbage-collector.png)
 
 VM designers are aware of the poor user experience caused by stop-the-world pauses, so later collectors have focused on reducing pause times. Pauses still occur, and collector designs continue to evolve.
 
@@ -435,7 +435,7 @@ The ParNew collector is the multithreaded version of Serial. Apart from using mu
 
 ParNew handles only the young generation and uses a copying algorithm. It was commonly paired with CMS, which handled the old generation.
 
-![ParNew collector](https://oss.javaguide.cn/github/javaguide/java/jvm/parnew-garbage-collector.png)
+![ParNew collector](./images/shared/parnew-garbage-collector.png)
 
 In JDK versions that still support CMS, ParNew is its young-generation partner. CMS was removed in JDK 14, so this pairing applies only to older HotSpot versions.
 
@@ -463,7 +463,7 @@ Parallel Scavenge focuses on throughput, or using CPU time efficiently. Collecto
 
 **It uses copying in the young generation and mark-compact in the old generation.**
 
-![Parallel Scavenge collector](https://oss.javaguide.cn/github/javaguide/java/jvm/parallel-scavenge-garbage-collector.png)
+![Parallel Scavenge collector](./images/shared/parallel-scavenge-garbage-collector.png)
 
 **This is the default collector in JDK 8.**
 
@@ -482,13 +482,13 @@ JDK 8 uses Parallel Scavenge and Parallel Old by default. Specifying `-XX:+UsePa
 
 **Serial Old is the old-generation version of the Serial collector.** It is also single-threaded. It was paired with Parallel Scavenge in JDK 5 and earlier, and it can serve as a fallback for CMS.
 
-![Serial Old collector](https://oss.javaguide.cn/github/javaguide/java/jvm/serial-garbage-collector.png)
+![Serial Old collector](./images/shared/serial-garbage-collector.png)
 
 ### Parallel Old Collector
 
 **Parallel Old is the old-generation version of Parallel Scavenge.** It uses multiple threads and mark-compact. Consider pairing it with Parallel Scavenge when throughput and CPU utilization are priorities.
 
-![Parallel Old collector](https://oss.javaguide.cn/github/javaguide/java/jvm/parallel-scavenge-garbage-collector.png)
+![Parallel Old collector](./images/shared/parallel-scavenge-garbage-collector.png)
 
 ### CMS Collector
 
@@ -503,7 +503,7 @@ As its name suggests, CMS uses the **mark-sweep algorithm**. Its process is more
 - **Remark:** Briefly pauses application threads to correct marks affected by reference updates during concurrent marking. This pause is usually longer than the initial mark, but much shorter than concurrent marking.
 - **Concurrent sweep:** Resumes application threads while GC threads reclaim unmarked objects.
 
-![CMS collector](https://oss.javaguide.cn/github/javaguide/java/jvm/cms-garbage-collector.png)
+![CMS collector](./images/shared/cms-garbage-collector.png)
 
 CMS offers **concurrent collection and short pauses**, but it has three notable drawbacks:
 
@@ -531,7 +531,7 @@ G1 collection roughly consists of these phases:
 - **Remark:** Briefly pauses application threads to process the remaining reference updates from concurrent marking.
 - **Evacuation:** Selects valuable regions, copies their live objects to new regions, and reclaims the old ones. This phase includes one or more pauses, depending on the work required.
 
-![G1 collector](https://oss.javaguide.cn/github/javaguide/java/jvm/g1-garbage-collector.png)
+![G1 collector](./images/shared/g1-garbage-collector.png)
 
 **G1 maintains a priority list and, within the available collection time, prioritizes regions with the most reclaimable space.** This is where the name Garbage-First comes from. Dividing the heap into regions lets G1 focus collection work where it can reclaim the most memory.
 

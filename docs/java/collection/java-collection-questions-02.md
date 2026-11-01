@@ -77,7 +77,7 @@ static final int tableSizeFor(int cap) {
 
 Both `TreeMap` and `HashMap` extend `AbstractMap`. `TreeMap` also implements the `NavigableMap` and `SortedMap` interfaces.
 
-![TreeMap inheritance hierarchy](https://oss.javaguide.cn/github/javaguide/java/collection/treemap_hierarchy.png)
+![TreeMap inheritance hierarchy](./images/shared/treemap_hierarchy.png)
 
 Implementing `NavigableMap` gives `TreeMap` additional ways to search its entries.
 
@@ -218,7 +218,7 @@ The JDK 7 `hash` method is slightly more expensive than the JDK 8 version becaus
 
 **Separate chaining** combines an array with linked lists: each array slot points to a list. When a hash collision occurs, the new entry is added to that bucket's list.
 
-![HashMap's internal structure before JDK 8](https://oss.javaguide.cn/github/javaguide/java/collection/jdk1.7_hashmap.png)
+![HashMap's internal structure before JDK 8](./images/shared/jdk1.7_hashmap.png)
 
 #### Starting with JDK 8
 
@@ -226,7 +226,7 @@ Starting with JDK 8, `HashMap` handles collisions differently. When a bucket's l
 
 This reduces lookup time. Searching a linked list takes `O(n)`, where `n` is the list length; searching a red-black tree takes `O(log n)`. The difference is small for short lists, but lookups slow down as a list grows.
 
-![HashMap's internal structure starting with JDK 8](https://oss.javaguide.cn/github/javaguide/java/collection/jdk1.8_hashmap.png)
+![HashMap's internal structure starting with JDK 8](./images/shared/jdk1.8_hashmap.png)
 
 **Why resize before converting a bucket to a red-black tree?**
 
@@ -459,13 +459,13 @@ The diagrams below compare their underlying data structures.
 
 **`Hashtable`:**
 
-![Hashtable's internal structure](https://oss.javaguide.cn/github/javaguide/java/collection/jdk1.7_hashmap.png)
+![Hashtable's internal structure](./images/shared/jdk1.7_hashmap.png)
 
 <p style="text-align:right;font-size:13px;color:gray">https://www.cnblogs.com/chengxiao/p/6842045.html></p>
 
 **JDK 7 `ConcurrentHashMap`:**
 
-![JDK 7 ConcurrentHashMap storage structure](https://oss.javaguide.cn/github/javaguide/java/collection/java7_concurrenthashmap.png)
+![JDK 7 ConcurrentHashMap storage structure](./images/shared/java7_concurrenthashmap.png)
 
 `ConcurrentHashMap` consists of an array of `Segment`s, each containing an array of `HashEntry`s.
 
@@ -473,7 +473,7 @@ Each `Segment` contains a `HashEntry` array whose entries form linked lists.
 
 **JDK 8 `ConcurrentHashMap`:**
 
-![JDK 8 ConcurrentHashMap storage structure](https://oss.javaguide.cn/github/javaguide/java/collection/java8_concurrenthashmap.png)
+![JDK 8 ConcurrentHashMap storage structure](./images/shared/java8_concurrenthashmap.png)
 
 JDK 8 `ConcurrentHashMap` no longer uses **a `Segment` array + `HashEntry` arrays + linked lists**. It uses **a `Node` array + linked lists or red-black trees**. A `Node` is used for a linked-list bucket; a tree bucket uses `TreeNode`. A collision list can be converted to a red-black tree once it reaches a certain length.
 
@@ -497,7 +497,7 @@ static final class TreeBin<K,V> extends Node<K,V> {
 
 #### Before JDK 8
 
-![JDK 7 ConcurrentHashMap storage structure](https://oss.javaguide.cn/github/javaguide/java/collection/java7_concurrenthashmap.png)
+![JDK 7 ConcurrentHashMap storage structure](./images/shared/java7_concurrenthashmap.png)
 
 The table was divided into segments, each protected by its own lock. While one thread held a segment's lock, other threads could still access different segments.
 
@@ -516,7 +516,7 @@ Each `Segment` has a structure similar to `HashMap`: an array of linked-list buc
 
 #### Starting with JDK 8
 
-![JDK 8 ConcurrentHashMap storage structure](https://oss.javaguide.cn/github/javaguide/java/collection/java8_concurrenthashmap.png)
+![JDK 8 ConcurrentHashMap storage structure](./images/shared/java8_concurrenthashmap.png)
 
 Java 8 almost completely rewrote `ConcurrentHashMap`; the implementation grew from more than 1,000 lines in Java 7 to more than 6,000 lines.
 

@@ -170,7 +170,7 @@ statements;
 
 A class can have multiple static initializer blocks outside its methods. They run once during class initialization, in the order they appear in the source. Class loading can happen before initialization.
 
-![](https://oss.javaguide.cn/github/javaguide/88531075.jpg)
+![](./images/shared/88531075.jpg)
 
 In a static initializer block, you can assign to a static field declared later in the class, but you can't read it before its declaration.
 

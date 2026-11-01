@@ -30,7 +30,7 @@ For production upgrades, start with Sequenced Collections, generational ZGC, and
 
 The chart below shows the number of features and release dates for each update from JDK 8 through JDK 24:
 
-![](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
+![](./images/shared/jdk8-jdk24.png)
 
 ## JEP 430: String Templates (Preview)
 

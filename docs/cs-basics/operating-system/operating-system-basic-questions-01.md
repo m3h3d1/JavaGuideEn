@@ -1,6 +1,6 @@
 ---
 title: "Common Operating System Interview Questions (Part 1)"
-description: A review of common operating system interview topics: user and kernel modes, interrupts, exceptions, system calls, processes, threads, IPC, scheduling, Linux CFS/EEVDF, load average, and deadlocks.
+description: "A review of common operating system interview topics: user and kernel modes, interrupts, exceptions, system calls, processes, threads, IPC, scheduling, Linux CFS/EEVDF, load average, and deadlocks."
 category: Computer Science Fundamentals
 tag:
   - Operating Systems

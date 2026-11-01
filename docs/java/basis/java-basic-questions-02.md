@@ -31,7 +31,7 @@ POP is often simpler and more direct, making it suitable for some straightforwar
 
 Performance differences between POP and OOP depend mainly on how they are implemented, not on the paradigms alone. A simple comparison of their performance is therefore misleading (related issue: [Is procedural programming faster than object-oriented programming?](https://github.com/Snailclimb/JavaGuide/issues/431)).
 
-![A direct performance comparison between POP and OOP is not meaningful](https://oss.javaguide.cn/github/javaguide/java/basis/pop-vs-oop-performance.png)
+![A direct performance comparison between POP and OOP is not meaningful](./images/shared/pop-vs-oop-performance.png)
 
 Performance is not the only factor when choosing a programming paradigm. Maintainability, extensibility, and development efficiency also matter.
 
@@ -404,7 +404,7 @@ The output shows that the cloned `Person` and its `Address` are now separate obj
 
 The following diagram illustrates shallow copies, deep copies, and reference copies:
 
-![Shallow copies, deep copies, and reference copies](https://oss.javaguide.cn/github/javaguide/java/basis/shallow&deep-copy.png)
+![Shallow copies, deep copies, and reference copies](./images/shared/shallow-deep-copy.png)
 
 ## ⭐️ Object
 
@@ -530,7 +530,7 @@ public boolean equals(Object anObject) {
 
 `hashCode()` returns an integer hash code. A hash table uses it to help determine where to store the object.
 
-![The hashCode() method](https://oss.javaguide.cn/github/javaguide/java/basis/java-hashcode-method.png)
+![The hashCode() method](./images/shared/java-hashcode-method.png)
 
 `hashCode()` is defined in `Object`, so every Java class has this method. The `Object` implementation is native, meaning it is implemented outside Java, commonly in C or C++.
 
@@ -627,7 +627,7 @@ abstract class AbstractStringBuilder implements Appendable, CharSequence {
 
 `String` objects are immutable and therefore safe to share between threads. `AbstractStringBuilder`, the common superclass of `StringBuilder` and `StringBuffer`, defines basic string operations such as `expandCapacity`, `append`, `insert`, and `indexOf`. `StringBuffer` synchronizes its methods and is thread-safe; `StringBuilder` does not, so it is not thread-safe.
 
-<img src="https://oss.javaguide.cn/github/javaguide/java/basis/stringbuffer-methods.png" style="zoom:50%;" />
+<img src="./images/shared/stringbuffer-methods.png" style="zoom:50%;" />
 
 **Performance**
 

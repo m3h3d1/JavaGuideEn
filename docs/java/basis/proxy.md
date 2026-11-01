@@ -18,7 +18,7 @@ The proxy pattern is a straightforward design pattern. **A proxy object stands i
 
 For example, a bride might ask her aunt to handle questions from the groom. The aunt filters the questions before passing them along. Here, the aunt acts as a proxy, and handling questions is the proxy's behavior.
 
-![Understanding the Proxy Design Pattern | by Mithun Sasidharan | Medium](https://oss.javaguide.cn/2020-8/1*DjWCgTFm-xqbhbNQVsaWQw.png)
+![Understanding the Proxy Design Pattern | by Mithun Sasidharan | Medium](./images/shared/1-DjWCgTFm-xqbhbNQVsaWQw.png)
 
 <p style="text-align:right;font-size:13px;color:gray">https://medium.com/@mithunsasidharan/understanding-the-proxy-design-pattern-5e63fe38052a</p>
 

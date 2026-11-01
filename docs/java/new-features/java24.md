@@ -26,7 +26,7 @@ JDK 24 includes 24 new features. This article covers some of the key ones:
 
 The chart below shows the number of features and release dates for each update from JDK 8 through JDK 25:
 
-![](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
+![](./images/shared/jdk8-jdk24.png)
 
 ## JEP 478: Key Derivation Function API (Preview)
 

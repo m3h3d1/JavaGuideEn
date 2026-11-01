@@ -26,7 +26,7 @@ JDK 20 included seven new features. This article covers some of the more notable
 
 The chart below shows the number of features and release dates for each update from JDK 8 through JDK 25:
 
-![Feature counts and release dates for JDK 8 through JDK 25](https://oss.javaguide.cn/github/javaguide/java/new-features/jdk8~jdk24.png)
+![Feature counts and release dates for JDK 8 through JDK 25](./images/shared/jdk8-jdk24.png)
 
 ## JEP 429: Scoped Values (First Incubator)
 
@@ -221,7 +221,7 @@ Before virtual threads, `java.lang.Thread` supported what are now called platfor
 
 The diagram below shows the relationship between virtual threads, platform threads, and OS threads. Source: [How to Use Java 19 Virtual Threads](https://medium.com/javarevisited/how-to-use-java-19-virtual-threads-c16a32bad5f7).
 
-![Relationship between virtual threads, platform threads, and OS threads](https://oss.javaguide.cn/github/javaguide/java/new-features/virtual-threads-platform-threads-kernel-threads-relationship.png)
+![Relationship between virtual threads, platform threads, and OS threads](./images/shared/virtual-threads-platform-threads-kernel-threads-relationship.png)
 
 On mainstream operating systems such as Windows and Linux, Java uses a one-to-one thread model: each platform thread maps to one OS thread. Solaris is an exception; HotSpot VM supports both many-to-many and one-to-one models there. See [Is the JVM's thread model user-level?](https://www.zhihu.com/question/23096638/answer/29617153) for details.
 

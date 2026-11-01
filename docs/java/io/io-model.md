@@ -29,7 +29,7 @@ I/O stands for **input/output**.
 
 The von Neumann architecture divides a computer into five parts: the arithmetic logic unit, control unit, memory, input devices, and output devices.
 
-![Von Neumann architecture](https://oss.javaguide.cn/github/javaguide/java/io/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9pcy1jbG91ZC5ibG9nLmNzZG4ubmV0,size_16,color_FFFFFF,t_70.jpeg)
+![Von Neumann architecture](./images/shared/watermark-type_ZmFuZ3poZW5naGVpdGk-shadow_10-text_aHR0cHM6Ly9pcy1jbG91ZC5ibG9nLmNzZG4ubmV0-size_16-color_FFFFFF-t_70.jpeg)
 
 Input devices, such as keyboards, and output devices, such as displays, are peripherals. A network card or disk can act as either an input or an output device.
 
@@ -72,7 +72,7 @@ These are the five I/O models commonly discussed.
 
 In synchronous blocking I/O, the application blocks after calling `read()` until the kernel has copied the data into user space.
 
-![Source: *Tomcat and Jetty Internals Explained*](https://oss.javaguide.cn/p3-juejin/6a9e704af49b4380bb686f0c96d33b81~tplv-k3u1fbpfcp-watermark.png)
+![Source: *Tomcat and Jetty Internals Explained*](./images/shared/6a9e704af49b4380bb686f0c96d33b81-tplv-k3u1fbpfcp-watermark.png)
 
 BIO works well when the number of client connections is small. It does not scale well to hundreds of thousands or millions of connections, so higher concurrency calls for a more efficient I/O model.
 
@@ -86,7 +86,7 @@ Let's continue to see how these models differ.
 
 First, consider **synchronous non-blocking I/O**.
 
-![Source: *Tomcat and Jetty Internals Explained*](https://oss.javaguide.cn/p3-juejin/bb174e22dbe04bb79fe3fc126aed0c61~tplv-k3u1fbpfcp-watermark.png)
+![Source: *Tomcat and Jetty Internals Explained*](./images/shared/bb174e22dbe04bb79fe3fc126aed0c61-tplv-k3u1fbpfcp-watermark.png)
 
 In synchronous non-blocking I/O, the application repeatedly calls `read()`. Although it does not block while waiting for data to become available, the thread blocks while the kernel copies data from kernel space to user space.
 
@@ -98,7 +98,7 @@ This model still has a problem: **repeatedly polling with I/O system calls to ch
 
 This is where the **I/O multiplexing model** helps.
 
-![](https://oss.javaguide.cn/github/javaguide/java/io/88ff862764024c3b8567367df11df6ab~tplv-k3u1fbpfcp-watermark.png)
+![](./images/shared/88ff862764024c3b8567367df11df6ab-tplv-k3u1fbpfcp-watermark.png)
 
 With I/O multiplexing, a thread first calls `select()` to ask the kernel whether data is ready. Once the kernel reports that it is ready, the user thread calls `read()`. The `read()` call can still block while copying data from kernel space to user space.
 
@@ -111,7 +111,7 @@ With I/O multiplexing, a thread first calls `select()` to ask the kernel whether
 
 Java NIO has an important **selector** abstraction, also called a **multiplexer**. A single thread can use it to manage multiple client connections and handle a connection when data becomes available.
 
-![How Buffer, Channel, and Selector work together](https://oss.javaguide.cn/github/javaguide/java/nio/channel-buffer-selector.png)
+![How Buffer, Channel, and Selector work together](./images/shared/channel-buffer-selector.png)
 
 ### AIO (Asynchronous I/O)
 
@@ -119,13 +119,13 @@ AIO usually refers to the asynchronous channel APIs introduced by NIO.2 in Java 
 
 Asynchronous channel operations return immediately. Callers can retrieve the result through a `Future` or provide a `CompletionHandler` to run a callback when the operation completes.
 
-![](https://oss.javaguide.cn/github/javaguide/java/io/3077e72a1af049559e81d18205b56fd7~tplv-k3u1fbpfcp-watermark.png)
+![](./images/shared/3077e72a1af049559e81d18205b56fd7-tplv-k3u1fbpfcp-watermark.png)
 
 AIO is not widely used today. Netty experimented with it but later dropped it because it did not provide much of a performance improvement on Linux.
 
 The following diagram summarizes BIO, NIO, and AIO in Java.
 
-![BIO, NIO, and AIO compared](https://oss.javaguide.cn/github/javaguide/java/nio/bio-aio-nio.png)
+![BIO, NIO, and AIO compared](./images/shared/bio-aio-nio.png)
 
 ## References
 

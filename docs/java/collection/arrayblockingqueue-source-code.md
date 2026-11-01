@@ -224,7 +224,7 @@ Now that we have seen the basic operations, let's examine how `ArrayBlockingQueu
 
 First, let's look at the `ArrayBlockingQueue` class diagram.
 
-![ArrayBlockingQueue class diagram](https://oss.javaguide.cn/github/javaguide/java/collection/arrayblockingqueue-class-diagram.png)
+![ArrayBlockingQueue class diagram](./images/shared/arrayblockingqueue-class-diagram.png)
 
 As shown, `ArrayBlockingQueue` implements the `BlockingQueue` interface, which defines common blocking queue operations.
 
@@ -390,11 +390,11 @@ These methods rely on the `notEmpty` and `notFull` conditions introduced in the 
 
 The following diagrams show how these conditions work in the queue.
 
-![ArrayBlockingQueue not-empty condition](https://oss.javaguide.cn/github/javaguide/java/collection/ArrayBlockingQueue-notEmpty-take.png)
+![ArrayBlockingQueue not-empty condition](./images/shared/ArrayBlockingQueue-notEmpty-take.png)
 
 Suppose the consumer starts first and finds the queue empty. It waits on the `notEmpty` condition. When the producer gets CPU time, it adds an element and signals `notEmpty`. The consumer then wakes and can retrieve the element with `take`.
 
-![ArrayBlockingQueue not-full condition](https://oss.javaguide.cn/github/javaguide/java/collection/ArrayBlockingQueue-notFull-put.png)
+![ArrayBlockingQueue not-full condition](./images/shared/ArrayBlockingQueue-notFull-put.png)
 
 If the producer is much faster than the consumer, the queue eventually fills up. The producer then waits on `notFull`. When the consumer removes an element, it signals `notFull`, allowing the producer to try inserting again when it gets CPU time.
 
@@ -498,7 +498,7 @@ The `dequeue` steps mirror those of `enqueue`, so they are not repeated here.
 
 This diagram shows how the `notEmpty` and `notFull` conditions coordinate insertion and retrieval in `ArrayBlockingQueue`.
 
-![ArrayBlockingQueue not-empty and not-full conditions](https://oss.javaguide.cn/github/javaguide/java/collection/ArrayBlockingQueue-notEmpty-notFull.png)
+![ArrayBlockingQueue not-empty and not-full conditions](./images/shared/ArrayBlockingQueue-notEmpty-notFull.png)
 
 - **Consumer:** After a consumer retrieves an element with `take`, `poll`, or a similar operation, it signals `notFull`. Producers waiting for space can wake and try to insert when scheduled.
 - **Producer:** After a producer inserts an element, it signals `notEmpty`. Consumers waiting for data can wake and try to retrieve it when scheduled. Together, the two conditions coordinate reads and writes between threads.
@@ -715,7 +715,7 @@ Retrieval and removal:
 | `peek()`                            | Returns `null` immediately                                | E            |
 | `remove()`                          | Throws `NoSuchElementException`                           | boolean      |
 
-![](https://oss.javaguide.cn/github/javaguide/java/collection/ArrayBlockingQueue-get-add-element-methods.png)
+![](./images/shared/ArrayBlockingQueue-get-add-element-methods.png)
 
 ## Common ArrayBlockingQueue Interview Questions
 

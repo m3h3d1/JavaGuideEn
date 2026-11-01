@@ -34,7 +34,7 @@ Wikipedia describes serialization as follows:
 
 In short, **serialization converts objects to a representation suitable for network transmission or storage in files, databases, caches, and other media.**
 
-![](https://oss.javaguide.cn/github/javaguide/a478c74d-2c48-40ae-9374-87aacf05188c.png)
+![](./images/shared/a478c74d-2c48-40ae-9374-87aacf05188c.png)
 
 <p style="text-align:right;font-size:13px;color:gray">https://www.corejavaguru.com/java/serialization/interview-questions-1</p>
 
@@ -47,7 +47,7 @@ Both sides of a network connection must use the same protocol. The four layers o
 3. Internet
 4. Network access
 
-![Four-layer TCP/IP model](https://oss.javaguide.cn/github/javaguide/cs-basics/network/tcp-ip-4-model.png)
+![Four-layer TCP/IP model](./images/shared/tcp-ip-4-model.png)
 
 In the OSI seven-layer model, the presentation layer converts application data to a binary stream and back. This corresponds to serialization and deserialization.
 
@@ -218,7 +218,7 @@ GitHub: [protostuff/protostuff](https://github.com/protostuff/protostuff).
 
 Hessian is a lightweight, self-describing binary RPC protocol. It's an older serialization format and supports multiple languages.
 
-![](https://oss.javaguide.cn/github/javaguide/8613ec4c-bde5-47bf-897e-99e0f90b9fa3.png)
+![](./images/shared/8613ec4c-bde5-47bf-897e-99e0f90b9fa3.png)
 
 Dubbo 2.x uses Hessian2 by default, with some modifications to the implementation.
 
@@ -226,7 +226,7 @@ Dubbo 2.x uses Hessian2 by default, with some modifications to the implementatio
 
 Kryo is designed for Java and performs well. Consider it if your application only needs to support Java. The Dubbo documentation also recommends Kryo for production use: <https://cn.dubbo.apache.org/zh-cn/docsv2.7/user/serialization/>.
 
-![](https://oss.javaguide.cn/github/javaguide/java/569e541a-22b2-4846-aa07-0ad479f07440-20230814090158124.png)
+![](./images/shared/569e541a-22b2-4846-aa07-0ad479f07440-20230814090158124.png)
 
 Protobuf, Protostuff, and Hessian support multiple languages and are options when you need cross-language compatibility.
 

@@ -65,7 +65,7 @@ The JDK 7 `hash()` method is slightly more expensive than the JDK 8 version beca
 
 **Separate chaining** combines an array with linked lists: each array slot points to a list. When a hash collision occurs, the new entry is added to that bucket's list.
 
-![HashMap's internal structure before JDK 8](https://oss.javaguide.cn/github/javaguide/java/collection/jdk1.7_hashmap.png)
+![HashMap's internal structure before JDK 8](./images/shared/jdk1.7_hashmap.png)
 
 ### Starting with JDK 8
 
@@ -73,7 +73,7 @@ Starting with JDK 8, `HashMap` handles hash collisions differently.
 
 When a bucket's list exceeds the threshold (8 by default), `HashMap` calls `treeifyBin()`. This method checks the table size before converting the list to a red-black tree. Treeification only happens when the table has at least 64 slots; otherwise, `resize()` expands the array. The key method to look at is `treeifyBin()`.
 
-![HashMap's internal structure starting with JDK 8](https://oss.javaguide.cn/github/javaguide/java/collection/jdk1.8_hashmap.png)
+![HashMap's internal structure starting with JDK 8](./images/shared/jdk1.8_hashmap.png)
 
 **Class fields:**
 
@@ -274,7 +274,7 @@ final void putMapEntries(Map<? extends K, ? extends V> m, boolean evict) {
 1. If the target array slot is empty, insert the entry there.
 2. If the slot is occupied, compare the existing key with the key being inserted. If they match, replace the value. Otherwise, if `p` is a tree node, call `putTreeVal()` to add the entry to the tree. If not, traverse the linked list and append the new entry at the tail.
 
-![ ](https://oss.javaguide.cn/github/javaguide/database/sql/put.png)
+![ ](./images/shared/put.png)
 
 ```java
 public V put(K key, V value) {

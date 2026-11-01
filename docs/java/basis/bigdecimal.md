@@ -51,7 +51,7 @@ Most business calculations that require precise decimal results, such as monetar
 
 The _Alibaba Java Coding Guidelines_ also notes: **Don't compare floating-point values using `==` for primitive types or `equals()` for wrapper types.**
 
-![](https://oss.javaguide.cn/javaguide/image-20211213101646884.png)
+![](./images/shared/image-20211213101646884.png)
 
 The reason is described above.
 
@@ -76,7 +76,7 @@ To avoid precision loss when creating a `BigDecimal`, use the `BigDecimal(String
 
 The _Alibaba Java Coding Guidelines_ also covers this, as shown below.
 
-![](https://oss.javaguide.cn/javaguide/image-20211213102222601.png)
+![](./images/shared/image-20211213102222601.png)
 
 ### Addition, Subtraction, Multiplication, and Division
 
@@ -147,7 +147,7 @@ System.out.println(n);// 1.255
 
 The _Alibaba Java Coding Guidelines_ notes:
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/image-20220714161315993.png)
+![](./images/shared/image-20220714161315993.png)
 
 This example shows a potential issue when comparing `BigDecimal` values with `equals()`:
 
@@ -161,7 +161,7 @@ System.out.println(a.equals(b));//false
 
 The scale of 1.0 is 1, while the scale of 1 is 0, so `a.equals(b)` returns false.
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/image-20220714164706390.png)
+![](./images/shared/image-20220714164706390.png)
 
 Use `compareTo()` to compare two `BigDecimal` values. It returns 0 if they are equal, 1 if the first is greater, and -1 if it is less.
 
@@ -360,7 +360,7 @@ public class BigDecimalUtil {
 
 Related issue: [Use RoundingMode.HALF_EVEN](https://github.com/Snailclimb/JavaGuide/issues/2129).
 
-![RoundingMode.HALF_EVEN](https://oss.javaguide.cn/github/javaguide/java/basis/RoundingMode.HALF_EVEN.png)
+![RoundingMode.HALF_EVEN](./images/shared/RoundingMode.HALF_EVEN.png)
 
 ## Summary
 

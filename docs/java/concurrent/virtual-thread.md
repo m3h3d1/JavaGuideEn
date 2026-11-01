@@ -37,7 +37,7 @@ Key points about virtual threads:
 
 In Java, virtual threads, platform threads, and operating system threads relate roughly as follows:
 
-![How virtual threads, platform threads, and OS threads relate](https://oss.javaguide.cn/github/javaguide/java/new-features/virtual-threads-platform-threads-kernel-threads-relationship.png)
+![How virtual threads, platform threads, and OS threads relate](../new-features/images/shared/virtual-threads-platform-threads-kernel-threads-relationship.png)
 
 On mainstream operating systems such as Windows and Linux, HotSpot JVM platform threads usually use a one-to-one model: each platform thread maps to an OS thread. Virtual threads add another scheduling layer on top:
 

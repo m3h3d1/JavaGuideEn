@@ -21,7 +21,7 @@ To address this, Java 1.4 introduced **NIO** (“New I/O,” also known as non-b
 
 The diagram below compares how BIO, NIO, and AIO handle client requests. For more about AIO, see [Java I/O Models Explained](https://javaguide.cn/java/io/io-model.html); a basic understanding is enough here.
 
-![BIO, NIO, and AIO compared](https://oss.javaguide.cn/github/javaguide/java/nio/bio-aio-nio.png)
+![BIO, NIO, and AIO compared](./images/shared/bio-aio-nio.png)
 
 ⚠️ Note: Using NIO does not automatically mean better performance. Its advantages are most noticeable in high-concurrency, high-latency network environments. With few connections, low concurrency, or fast network transfers, NIO may not outperform traditional BIO.
 
@@ -35,7 +35,7 @@ NIO has three main components:
 
 The diagram below shows how these components relate. The details will become clearer in the sections that follow.
 
-![How Buffer, Channel, and Selector work together](https://oss.javaguide.cn/github/javaguide/java/nio/channel-buffer-selector.png)
+![How Buffer, Channel, and Selector work together](./images/shared/channel-buffer-selector.png)
 
 The following sections explain each component in more detail.
 
@@ -47,7 +47,7 @@ In the Java 1.4 NIO library, all data is processed through buffers. This is a ke
 
 The diagram shows the `Buffer` subclasses. The most common is `ByteBuffer`, which stores and manipulates byte data.
 
-![Buffer subclasses](https://oss.javaguide.cn/github/javaguide/java/nio/buffer-subclasses.png)
+![Buffer subclasses](./images/shared/buffer-subclasses.png)
 
 You can think of a `Buffer` as a finite, linear sequence of values of the same type. Some buffers are backed by arrays, but implementations such as direct buffers do not necessarily expose an accessible backing array.
 
@@ -74,9 +74,9 @@ When `mark` is set, these fields satisfy **0 <= mark <= position <= limit <= cap
 
 Buffers have read and write modes. A new buffer starts in write mode; call `flip()` to switch to read mode. Call `clear()` or `compact()` to switch back to write mode.
 
-![Relationship between position, limit, and capacity](https://oss.javaguide.cn/github/javaguide/java/nio/JavaNIOBuffer.png)
+![Relationship between position, limit, and capacity](./images/shared/JavaNIOBuffer.png)
 
-![Relationship between position, limit, and capacity](https://oss.javaguide.cn/github/javaguide/java/nio/NIOBufferClassAttributes.png)
+![Relationship between position, limit, and capacity](./images/shared/NIOBufferClassAttributes.png)
 
 You cannot instantiate a `Buffer` with `new`; use a static factory method instead.
 
@@ -166,7 +166,7 @@ capacity: 8, limit: 8, position: 0
 
 The diagram below shows how `capacity`, `limit`, and `position` change at each stage.
 
-![Changes to capacity, limit, and position at each stage](https://oss.javaguide.cn/github/javaguide/java/nio/NIOBufferClassAttributesDataChanges.png)
+![Changes to capacity, limit, and position at each stage](./images/shared/NIOBufferClassAttributesDataChanges.png)
 
 ### Channel
 
@@ -176,13 +176,13 @@ BIO streams are unidirectional: `InputStream` reads and `OutputStream` writes. C
 
 Channels work with the `Buffer` described above. A read fills a buffer with data from the channel; a write sends buffered data to the channel.
 
-![Relationship between Channel and Buffer](https://oss.javaguide.cn/github/javaguide/java/nio/channel-buffer.png)
+![Relationship between Channel and Buffer](./images/shared/channel-buffer.png)
 
 Some channels, such as `SocketChannel`, support both reading and writing, directly reflecting the operating system's bidirectional communication capabilities.
 
 The diagram below shows the `Channel` subclasses.
 
-![Channel subclasses](https://oss.javaguide.cn/github/javaguide/java/nio/channel-subclasses.png)
+![Channel subclasses](./images/shared/channel-subclasses.png)
 
 The most commonly used channel types are:
 
@@ -190,7 +190,7 @@ The most commonly used channel types are:
 - `SocketChannel` and `ServerSocketChannel`: TCP communication.
 - `DatagramChannel`: UDP communication.
 
-![Channel inheritance hierarchy](https://oss.javaguide.cn/github/javaguide/java/nio/channel-inheritance-relationship.png)
+![Channel inheritance hierarchy](./images/shared/channel-inheritance-relationship.png)
 
 The two core `Channel` methods are:
 
@@ -210,7 +210,7 @@ channel.read(buffer);
 
 `Selector` is a key NIO component that lets one thread handle multiple channels. It provides event-driven I/O multiplexing: register channel events with the selector, which monitors the channels for readiness. When a channel is ready—for example, when a TCP connection arrives or data can be read or written—the selector makes it available in the selected-key set. Use the corresponding `SelectionKey` to retrieve the ready channel and perform I/O.
 
-![How Selector works](https://oss.javaguide.cn/github/javaguide/java/nio/selector-channel-selectionkey.png)
+![How Selector works](./images/shared/selector-channel-selectionkey.png)
 
 A `Selector` can monitor multiple channels at once. Its implementation depends on the platform's `SelectorProvider`; for example, Linux may use `epoll`, while other platforms use their own mechanisms. The number of connections is still limited by resources such as file descriptors, memory, and system settings.
 

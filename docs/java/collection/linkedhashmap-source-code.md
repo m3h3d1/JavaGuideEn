@@ -20,7 +20,7 @@ head:
 
 The diagram below shows the structure of `LinkedHashMap`. It maintains a doubly linked list across the nodes in the underlying `HashMap`, linking entries from different buckets, lists, or red-black trees in order.
 
-![LinkedHashMap structure](https://oss.javaguide.cn/github/javaguide/java/collection/linkhashmap-structure-overview.png)
+![LinkedHashMap structure](./images/shared/linkhashmap-structure-overview.png)
 
 ## `LinkedHashMap` Examples
 
@@ -89,7 +89,7 @@ The iteration order now follows the access order.
 
 As shown above, you can use `LinkedHashMap` to implement a simple LRU (**l**east **r**ecently **u**sed) cache that removes the least recently accessed entry when the cache exceeds its capacity.
 
-![](https://oss.javaguide.cn/github/javaguide/java/collection/lru-cache.png)
+![](./images/shared/lru-cache.png)
 
 The implementation works as follows:
 
@@ -156,7 +156,7 @@ Before looking at `LinkedHashMap` itself, let's examine its `Entry` nodes. In `H
 >
 > The list threshold is 8, not 7. The source starts iterating from the first node, whose index is 0. The condition is therefore checked when the index reaches `8 - 1 = 7`, by which point the list has at least 8 nodes and can be treeified.
 >
-> ![](https://oss.javaguide.cn/github/javaguide/java/jvm/LinkedHashMap-putval-TREEIFY.png)
+> ![](./images/shared/LinkedHashMap-putval-TREEIFY.png)
 
 `LinkedHashMap` adds a doubly linked list across the nodes in each `HashMap` bucket. As a result, nodes that are converted to a red-black tree must retain their linked-list properties. Each tree node needs two additional references for its predecessor and successor, which complicates the design of `TreeNode`.
 
@@ -165,7 +165,7 @@ The class diagram below shows the relationship between the node classes:
 1. `LinkedHashMap.Entry` extends the `HashMap` node and adds `before` and `after` references for the doubly linked list.
 2. `HashMap.TreeNode` extends `LinkedHashMap.Entry`, so tree nodes also have the linked-list references.
 
-![Relationship between LinkedHashMap and HashMap](https://oss.javaguide.cn/github/javaguide/java/collection/map-hashmap-linkedhashmap.png)
+![Relationship between LinkedHashMap and HashMap](./images/shared/map-hashmap-linkedhashmap.png)
 
 You may wonder why `HashMap.TreeNode` gets its linked-list references through `LinkedHashMap.Entry` instead of adding predecessor and successor references directly to `Node`.
 
@@ -316,7 +316,7 @@ The `afterNodeAccess()` method performs these operations:
 
 The diagram shows how the entry with key 13 moves to the end of the list.
 
-![LinkedHashMap moves entry 13 to the end of the list](https://oss.javaguide.cn/github/javaguide/java/collection/linkedhashmap-get.png)
+![LinkedHashMap moves entry 13 to the end of the list](./images/shared/linkedhashmap-get.png)
 
 If the details are not clear yet, focus on what the method does and return to the implementation later.
 
@@ -434,7 +434,7 @@ The `afterNodeRemoval()` method unlinks `p` from its predecessor and successor s
 
 The diagram shows how the entry with key 13 is removed from the list.
 
-![LinkedHashMap removes entry 13](https://oss.javaguide.cn/github/javaguide/java/collection/linkedhashmap-remove.png)
+![LinkedHashMap removes entry 13](./images/shared/linkedhashmap-remove.png)
 
 If the details are not clear yet, focus on what the method does and return to the implementation later.
 
@@ -483,11 +483,11 @@ protected boolean removeEldestEntry(Map.Entry < K, V > eldest) {
 
 In the example below, a new entry with key 19 is inserted and the capacity is 4. `removeEldestEntry()` returns `true`, so the head entry must be removed.
 
-![Insert a new entry with key 19 into LinkedHashMap](https://oss.javaguide.cn/github/javaguide/java/collection/linkedhashmap-after-insert-1.png)
+![Insert a new entry with key 19 into LinkedHashMap](./images/shared/linkedhashmap-after-insert-1.png)
 
 Removal is straightforward: if the list has a head node, unlink it from its successor and point `head` to the next node. In this example, `head` now points to 12, and no references point to node 10, so it can be garbage-collected.
 
-![LinkedHashMap after inserting a new entry with key 19](https://oss.javaguide.cn/github/javaguide/java/collection/linkedhashmap-after-insert-2.png)
+![LinkedHashMap after inserting a new entry with key 19](./images/shared/linkedhashmap-after-insert-2.png)
 
 ```java
 void afterNodeInsertion(boolean evict) { // possibly remove eldest

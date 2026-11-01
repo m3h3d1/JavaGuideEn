@@ -24,7 +24,7 @@ The seven stages are shown below:
 
 The JVM loads a class file in three main steps: **loading → linking → initialization**. Linking consists of **verification → preparation → resolution**.
 
-![The class loading process](https://oss.javaguide.cn/github/javaguide/java/jvm/class-loading-procedure.png)
+![The class loading process](./images/shared/class-loading-procedure.png)
 
 See [Java Virtual Machine Specification - 5.3. Creation and Loading](https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-5.html#jvms-5.3 "Java Virtual Machine Specification - 5.3. Creation and Loading").
 
