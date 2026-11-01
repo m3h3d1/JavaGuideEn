@@ -319,7 +319,7 @@ Next, scan forward from `staleSlot` (`index=7`). **If an entry with the same key
 
 Scan forward from `staleSlot` for an `Entry` with the same key. When found, update its value and swap it with the stale entry at `staleSlot`, then clean up stale entries, as shown below:
 
-![](https://oss.javaguide.cn/java-guide-blog/view.png) **If no entry with the same key is found during the forward scan:**
+![](../images/shared/view.png) **If no entry with the same key is found during the forward scan:**
 
 ![](./images/thread-local/15.png)
 

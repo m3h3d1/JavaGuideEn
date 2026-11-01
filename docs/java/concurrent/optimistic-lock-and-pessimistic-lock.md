@@ -41,7 +41,7 @@ Under high concurrency, intense lock contention blocks threads. A large number o
 Optimistic locking assumes that conflicts are uncommon. Threads proceed without acquiring a lock or waiting, then check at commit time whether another thread changed the data. Common approaches include versioning and CAS.
 
 In Java, atomic variable classes such as `AtomicInteger` use **CAS**, one form of optimistic locking. `LongAdder` also uses atomic updates, while spreading updates across internal cells under contention.
-![Overview of JUC atomic classes](https://oss.javaguide.cn/github/javaguide/java/JUC%E5%8E%9F%E5%AD%90%E7%B1%BB%E6%A6%82%E8%A7%88-20230814005211968.png)
+![Overview of JUC atomic classes](../images/shared/juc-20230814005211968.png)
 
 ```java
 // LongAdder can perform better than AtomicInteger and AtomicLong under high contention

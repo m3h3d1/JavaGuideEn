@@ -22,7 +22,7 @@ In Java, starting the `main` method starts a JVM process. The thread that runs `
 
 As shown below, you can use Windows Task Manager to view running processes, including active `.exe` files.
 
-![Example of a process in Windows](https://oss.javaguide.cn/github/javaguide/java/%E8%BF%9B%E7%A8%8B%E7%A4%BA%E4%BE%8B%E5%9B%BE%E7%89%87-Windows.png)
+![Example of a process in Windows](../images/shared/windows.png)
 
 #### What Is a Thread?
 
@@ -76,7 +76,7 @@ Thread models describe how user threads map to kernel threads. The three common 
 2. Many-to-one: Multiple user threads map to one kernel thread.
 3. Many-to-many: Multiple user threads map to multiple kernel threads.
 
-![Three common thread models](https://oss.javaguide.cn/github/javaguide/java/concurrent/three-types-of-thread-models.png)
+![Three common thread models](../images/shared/three-types-of-thread-models.png)
 
 On mainstream operating systems such as Windows and Linux, HotSpot platform threads usually use a one-to-one model: each platform thread maps to one OS thread. Virtual threads do not use this mapping; the JVM schedules them across a set of platform threads.
 
@@ -139,7 +139,7 @@ A thread moves between states as its code runs; it does not remain in one state 
 
 Java thread state diagram (source: [Corrections to three thread-state errors in _The Art of Java Concurrency Programming_](https://mp.weixin.qq.com/s/0UTyrJpRKaKhkhHcQtXAiA)):
 
-![Java thread state transitions](https://oss.javaguide.cn/github/javaguide/java/concurrent/640.png)
+![Java thread state transitions](../images/shared/640.png)
 
 As shown above, a thread starts in **NEW**. Calling `start()` makes it **READY**. Once it receives a CPU time slice, it is **RUNNING**.
 
@@ -147,7 +147,7 @@ As shown above, a thread starts in **NEW**. Calling `start()` makes it **READY**
 >
 > **Why does the JVM not distinguish these states?** `Thread.State` describes thread states at the JVM level; it does not expose every internal state of the OS scheduler. Scheduling policy, time slice length, and whether round-robin scheduling is used depend on the operating system and its configuration. They cannot be summarized as a fixed 10–20 ms time slice.
 
-![RUNNABLE vs. RUNNING](https://oss.javaguide.cn/github/javaguide/java/RUNNABLE-VS-RUNNING.png)
+![RUNNABLE vs. RUNNING](../images/shared/runnable-vs-running.png)
 
 - After calling `wait()`, a thread enters **WAITING**. It needs another thread to notify it before it can resume.
 - **TIMED_WAITING** is waiting with a time limit. For example, `sleep(long millis)` or `wait(long millis)` puts a thread in this state until the timeout expires, after which it returns to `RUNNABLE`.

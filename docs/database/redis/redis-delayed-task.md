@@ -46,7 +46,7 @@ Redis 中有很多默认的 channel，这些 channel 是由 Redis 本身向它�
 
 官方文档的一段介绍解释了时效性差的原因，地址：<https://redis.io/docs/manual/keyspace-notifications/#timing-of-expired-events> 。
 
-![Redis 过期事件](https://oss.javaguide.cn/github/javaguide/database/redis/redis-timing-of-expired-events.png)
+![Redis 过期事件](../images/shared/redis-timing-of-expired-events.png)
 
 这段话的核心是：过期事件消息是在 Redis 服务器删除 key 时发布的，而不是一个 key 过期之后就会就会直接发布。
 

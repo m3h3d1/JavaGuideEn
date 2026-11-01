@@ -98,13 +98,13 @@ AQS wraps each thread requesting a shared resource in a CLH variant queue node (
 
 The diagram shows the structure of AQS's CLH variant queue:
 
-![CLH variant queue structure](https://oss.javaguide.cn/github/javaguide/java/concurrent/clh-queue-structure-bianti.png)
+![CLH variant queue structure](../images/shared/clh-queue-structure-bianti.png)
 
 For a detailed explanation of AQS's CLH queue, see [Java AQS Core Data Structure: CLH Lock - Qunar Tech Salon](https://mp.weixin.qq.com/s/jEx-4XhNGOFdCo4Nou5tqg).
 
 A core diagram of AQS (`AbstractQueuedSynchronizer`):
 
-![CLH variant queue](https://oss.javaguide.cn/github/javaguide/java/concurrent/clh-queue-state.png)
+![CLH variant queue](../images/shared/clh-queue-state.png)
 
 AQS uses the **`int` field `state` to represent synchronization state** and an internal **FIFO wait queue** to order threads requesting resources.
 
@@ -136,7 +136,7 @@ Consider the reentrant mutual-exclusion lock `ReentrantLock`, which uses `state`
 
 The diagram shows how thread A attempts to acquire the lock (source: [AQS Principles and Applications Through ReentrantLock](./reentrantlock.md)):
 
-![AQS acquiring a lock in exclusive mode](https://oss.javaguide.cn/github/javaguide/java/concurrent/aqs-exclusive-mode-acquire-lock.png)
+![AQS acquiring a lock in exclusive mode](../images/shared/aqs-exclusive-mode-acquire-lock.png)
 
 For a `CountDownLatch`, `state` can start at N, representing the number of `countDown()` calls required. N counts events, not threads: one thread can call `countDown()` multiple times, or several threads can each call it. When `state` reaches `0`, AQS unparks threads blocked in `await()`, allowing them to continue.
 
@@ -425,7 +425,7 @@ Queue initialization has two steps: create the `head` node, then set `tail` to `
 
 **The initialized queue looks like this:**
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/clh-queue-structure-init.png)
+![](../images/shared/clh-queue-structure-init.png)
 
 #### Analyzing `acquireQueued()`
 
@@ -689,7 +689,7 @@ private Node addWaiter(Node mode) {
 
 In an edge case, the node after `head` may be `CANCELLED` while a newly enqueued node has updated `node.prev` but not yet `pred.next`, as shown below:
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/aqs-addWaiter.png)
+![](../images/shared/aqs-addwaiter.png)
 
 In this case, a forward scan from `head` cannot find the new node, so AQS scans backward from `tail`.
 
@@ -703,25 +703,25 @@ Suppose three threads, `T1`, `T2`, and `T3`, try to acquire the lock.
 
 Suppose `T1` acquires the lock first and `T2` waits in the queue. Before `T2` can join, AQS initializes its internal queue. The initial `head` state is `0`, as shown below:
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/aqs-acquire-and-release-process.png)
+![](../images/shared/aqs-acquire-and-release-process.png)
 
 `T2` then tries to acquire the lock, but `T1` still holds it, so `T2` joins the queue. Its predecessor (`head`) changes from `0` to `SIGNAL`, indicating that it must unpark its successor. The queue now looks like this:
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/aqs-acquire-and-release-process-2.png)
+![](../images/shared/aqs-acquire-and-release-process-2.png)
 
 `T3` also tries to acquire the lock while `T1` holds it, so it joins the queue. The predecessor node (`T2`) changes from `0` to `SIGNAL`, indicating that it must unpark its successor. The queue now looks like this:
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/aqs-acquire-and-release-process-3.png)
+![](../images/shared/aqs-acquire-and-release-process-3.png)
 
 When `T1` releases the lock, it unparks its successor, `T2`. After waking, `T2` acquires the lock and leaves the wait queue.
 
 The `T2` node is not removed directly. Instead, it becomes the new `head`, which marks the end of its wait. The queue now looks like this:
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/aqs-acquire-and-release-process-4.png)
+![](../images/shared/aqs-acquire-and-release-process-4.png)
 
 When `T2` releases the lock, it unparks `T3`. After acquiring the lock, `T3` also leaves the wait queue by becoming the new `head` node. The queue now looks like this:
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/aqs-acquire-and-release-process-5.png)
+![](../images/shared/aqs-acquire-and-release-process-5.png)
 
 ### AQS Resource Acquisition: Shared Mode
 

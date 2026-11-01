@@ -49,7 +49,7 @@ These CAS methods in JDK 8's `Unsafe` are `native` methods. Java code uses them 
 
 The `java.util.concurrent.atomic` package provides classes for atomic operations.
 
-![Overview of JUC atomic classes](https://oss.javaguide.cn/github/javaguide/java/JUC%E5%8E%9F%E5%AD%90%E7%B1%BB%E6%A6%82%E8%A7%88.png)
+![Overview of JUC atomic classes](../images/shared/juc-.png)
 
 For an introduction to these Atomic classes and examples, see [Java Atomic Classes](https://javaguide.cn/java/concurrent/atomic-classes.html).
 

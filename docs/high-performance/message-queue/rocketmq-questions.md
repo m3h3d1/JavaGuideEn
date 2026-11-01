@@ -37,13 +37,13 @@ RocketMQ 面试一般不会停在“消息队列是什么”。更常见的追�
 
 以购票系统为例，需求是用户在购买完成之后能接收到购买完成的短信通知。
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef37fee7e09230.jpg)
+![](../images/shared/16ef37fee7e09230.jpg)
 
 我们省略中间的网络通信时间消耗，假如购票系统处理需要 150ms ，短信系统处理需要 200ms ，那么整个处理流程的时间消耗就是 150ms + 200ms = 350ms。
 
 当然，乍看没什么问题。但仔细分析会发现问题：用户购票在购票系统处理完成时就已经完成了购买动作，而现在通过同步调用非要让整个请求时间变长。短信系统只是一个辅助功能，用于增强用户体验感，并非核心业务。整个调用流程显得 **头重脚轻**——购票是一个不太耗时的流程，但因为同步调用，必须等待发送短信这个较耗时的操作完成才能返回结果。如果再加一个发送邮件的需求呢？
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef380429cf373e.jpg)
+![](../images/shared/16ef380429cf373e.jpg)
 
 这样整个系统的调用链又变长了，整个时间就变成了 550ms。
 
@@ -61,7 +61,7 @@ RocketMQ 面试一般不会停在“消息队列是什么”。更常见的追�
 
 所以，为了解决这一个问题，聪明的程序员在中间也加了个类似于服务员的中间件——消息队列。这个时候我们就可以把模型给改造了。
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef38124f55eaea.jpg)
+![](../images/shared/16ef38124f55eaea.jpg)
 
 这样，我们在将消息存入消息队列之后我们就可以直接返回了(我们告诉服务员我们要吃什么然后玩手机)，所以整个耗时只是 150ms + 10ms = 160ms。
 
@@ -71,7 +71,7 @@ RocketMQ 面试一般不会停在“消息队列是什么”。更常见的追�
 
 回到最初同步调用的过程，我们写个伪代码简单概括一下。
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef381a505d3e1f.jpg)
+![](../images/shared/16ef381a505d3e1f.png)
 
 那么第二步，我们又添加了一个发送邮件，我们就得重新去修改代码，如果我们又加一个需求：用户购买完还需要给他加积分，这个时候我们是不是又得改代码？
 

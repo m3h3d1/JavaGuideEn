@@ -96,11 +96,11 @@ If a thread uses two `ThreadLocal` objects, both values are stored in the same `
 
 The diagram below shows the `ThreadLocal` data structure:
 
-![ThreadLocal data structure](https://oss.javaguide.cn/github/javaguide/java/concurrent/threadlocal-data-structure.png)
+![ThreadLocal data structure](../images/shared/threadlocal-data-structure.png)
 
 `ThreadLocalMap` is a static inner class of `ThreadLocal`.
 
-![ThreadLocal inner class](https://oss.javaguide.cn/github/javaguide/java/concurrent/thread-local-inner-class.png)
+![ThreadLocal inner class](../images/shared/thread-local-inner-class.png)
 
 ### ⭐️ How Can `ThreadLocal` Cause a Memory Leak?
 
@@ -246,7 +246,7 @@ Thread → ThreadLocalMap → Entry(ThreadLocal, value)
 
 The diagram below shows the `ThreadLocal` data structure:
 
-![ThreadLocal data structure](https://oss.javaguide.cn/github/javaguide/java/concurrent/threadlocal-data-structure.png)
+![ThreadLocal data structure](../images/shared/threadlocal-data-structure.png)
 
 Asynchronous execution often moves a task to another thread, such as a worker in a thread pool. Each thread maintains its own `ThreadLocalMap`, so context is not automatically passed to the other thread.
 
@@ -308,7 +308,7 @@ TTL's core logic has three stages (CRR):
 
 This sequence diagram of the CRR process is from the TTL project:
 
-![TTL CRR sequence diagram](https://oss.javaguide.cn/github/javaguide/java/concurrent/ttl-crr-timing-diagram.png)
+![TTL CRR sequence diagram](../images/shared/ttl-crr-timing-diagram.png)
 
 The following diagram shows the same CRR process in more detail:
 
@@ -480,7 +480,7 @@ There are two main ways to create a thread pool in Java:
 
 **Option 1: Create one directly with the `ThreadPoolExecutor` constructor (recommended)**
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/threadpoolexecutor-construtors.png)
+![](../images/shared/threadpoolexecutor-construtors.png)
 
 “Default thread factory” and “default rejection policy” in the diagram refer to the implementations `ThreadPoolExecutor` uses when those arguments are omitted. They are not mismatched labels.
 
@@ -490,7 +490,7 @@ This is the recommended approach because it lets you set the pool's core paramet
 
 The diagram below shows the thread pool factory methods provided by `Executors`:
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/executors-new-thread-pool-methods.png)
+![](../images/shared/executors-new-thread-pool-methods.png)
 
 The `Executors` utility class can create several types of thread pools:
 
@@ -590,7 +590,7 @@ Other common `ThreadPoolExecutor` parameters:
 
 The diagram below illustrates how the thread pool parameters relate to one another (from _Java Performance Tuning in Practice_):
 
-![Relationships between thread pool parameters](https://oss.javaguide.cn/github/javaguide/java/concurrent/relationship-between-thread-pool-parameters.png)
+![Relationships between thread pool parameters](../images/shared/relationship-between-thread-pool-parameters.jpg)
 
 ### Are Core Threads Reclaimed?
 
@@ -795,7 +795,7 @@ The goal of choosing `CallerRunsPolicy` is to execute tasks instead of rejecting
 
 You can also adjust `maximumPoolSize` to use CPU capacity more effectively and process tasks faster, reducing the chance that too many tasks accumulate in the queue.
 
-![Adjusting the queue capacity and maximum thread count](https://oss.javaguide.cn/github/javaguide/java/concurrent/threadpool-reject-2-threadpool-reject-01.png)
+![Adjusting the queue capacity and maximum thread count](../images/shared/threadpool-reject-2-threadpool-reject-01.png)
 
 If the server has reached its resource limits, the scheduling strategy needs to change. The main thread blocks because we want to avoid dropping tasks. Can we preserve tasks and process them when the server has capacity?
 
@@ -810,7 +810,7 @@ Here is a high-level outline using the first option:
 1. Implement `RejectedExecutionHandler` and persist tasks that the pool cannot accept to MySQL. The rejection policy runs only after the task queue is full.
 2. Extend `BlockingQueue` to create a combined queue that includes an `ArrayBlockingQueue`. Override `take()` so workers read the oldest task from the database first, then read from the in-memory queue if the database is empty.
 
-![Persisting some tasks in MySQL](https://oss.javaguide.cn/github/javaguide/java/concurrent/threadpool-reject-2-threadpool-reject-02.png)
+![Persisting some tasks in MySQL](../images/shared/threadpool-reject-2-threadpool-reject-02.png)
 
 The key pieces are the custom rejection policy and queue. When the pool is saturated, the policy persists new tasks in MySQL. When capacity becomes available, workers process persisted tasks first to avoid starvation.
 
@@ -864,7 +864,7 @@ Different thread pool factories use different blocking queues:
 
 ### ⭐️ How Does a Thread Pool Process Tasks?
 
-![Thread pool workflow](https://oss.javaguide.cn/github/javaguide/java/concurrent/thread-pool-principle.png)
+![Thread pool workflow](../images/shared/thread-pool-principle.png)
 
 1. If the worker count is below `corePoolSize`, the pool creates a worker to run the task.
 2. If the worker count is at least `corePoolSize` but below `maximumPoolSize`, the pool queues the task.
@@ -994,7 +994,7 @@ As explained in [Java Thread Pool Explained](https://javaguide.cn/java/concurren
 
 **How can you change them at runtime?** `ThreadPoolExecutor` provides the methods shown below.
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/threadpoolexecutor-methods.png)
+![](../images/shared/threadpoolexecutor-methods.png)
 
 Pay special attention to `corePoolSize`. If you lower it at runtime, existing threads above the new core count terminate when they next become idle. If you raise it while the queue contains tasks, the pool may start new threads to process them.
 
@@ -1002,7 +1002,7 @@ There is no method above for changing queue capacity. Meituan uses a custom `Res
 
 The result is a thread pool whose parameters can be changed at runtime:
 
-![Changing thread pool parameters at runtime](https://oss.javaguide.cn/github/javaguide/java/concurrent/meituan-dynamically-configuring-thread-pool-parameters.png)
+![Changing thread pool parameters at runtime](../images/shared/meituan-dynamically-configuring-thread-pool-parameters.png)
 
 For more detail, see [High-Frequency Backend System Design and Scenario Questions](https://javaguide.cn/zhuanlan/back-end-interview-high-frequency-system-design-and-scenario-questions.html), which also covers designing a dynamic thread pool.
 
@@ -1021,7 +1021,7 @@ As mentioned above, different thread pools use different task queues. `FixedThre
 
 To build a pool that runs tasks by priority, you can use a `PriorityBlockingQueue` as the task queue. Pass it through the `workQueue` argument of the `ThreadPoolExecutor` constructor.
 
-![ThreadPoolExecutor constructor](https://oss.javaguide.cn/github/javaguide/java/concurrent/common-parameters-of-threadpool-workqueue.jpg)
+![ThreadPoolExecutor constructor](../images/shared/common-parameters-of-threadpool-workqueue.jpg)
 
 `PriorityBlockingQueue` is an unbounded blocking queue that supports priorities. It is similar to a thread-safe `PriorityQueue`; both use a min-heap, so the smallest element is removed first. Unlike `PriorityBlockingQueue`, `PriorityQueue` does not support blocking operations.
 
@@ -1095,7 +1095,7 @@ Future<?> submit(Runnable task);
 
 `FutureTask` implements both `Future` and `Runnable`, so a thread can execute it directly.
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/completablefuture-class-diagram.jpg)
+![](../images/shared/completablefuture-class-diagram.jpg)
 
 `FutureTask` has constructors that accept either a `Callable` or a `Runnable`. A `Runnable` is internally adapted to a `Callable`.
 
@@ -1132,13 +1132,13 @@ public class CompletableFuture<T> implements Future<T>, CompletionStage<T> {
 
 `CompletableFuture` implements both `Future` and `CompletionStage`.
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/completablefuture-class-diagram.jpg)
+![](../images/shared/completablefuture-class-diagram.jpg)
 
 `CompletionStage` represents one stage of an asynchronous computation. When a computation has multiple steps, the stages can be composed into an asynchronous pipeline.
 
 `CompletionStage` provides many methods, including the functional operations used by `CompletableFuture`. Its method parameters make extensive use of the functional programming features introduced in Java 8.
 
-![](https://oss.javaguide.cn/javaguide/image-20210902093026059.png)
+![](../images/shared/image-20210902093026059.png)
 
 ### ⭐️ How Do You Run a Task After Two Other Tasks Complete?
 
@@ -1236,11 +1236,11 @@ AQS wraps each thread requesting a shared resource in a queue node. Each node re
 
 The diagram below shows the AQS CLH variant queue:
 
-![CLH variant queue structure](https://oss.javaguide.cn/github/javaguide/java/concurrent/clh-queue-structure-bianti.png)
+![CLH variant queue structure](../images/shared/clh-queue-structure-bianti.png)
 
 Core AQS (`AbstractQueuedSynchronizer`) structure:
 
-![CLH variant queue](https://oss.javaguide.cn/github/javaguide/java/concurrent/clh-queue-state.png)
+![CLH variant queue](../images/shared/clh-queue-state.png)
 
 AQS uses the **`int` field `state` to represent synchronization state** and an internal **thread wait queue** to line up threads requesting a resource.
 

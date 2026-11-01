@@ -62,7 +62,7 @@ void *zmalloc(size_t size) {
 
 这个在 Redis 官方文档中也有对应的原话:
 
-![](https://oss.javaguide.cn/github/javaguide/redis-docs-memory-optimization.png)
+![](../images/shared/redis-docs-memory-optimization.png)
 
 文档地址：<https://redis.io/topics/memory-optimization> 。
 
@@ -70,7 +70,7 @@ void *zmalloc(size_t size) {
 
 使用 `info memory` 命令即可查看 Redis 内存相关的信息。下图中每个参数具体的含义，Redis 官方文档有详细的介绍：<https://redis.io/commands/INFO> 。
 
-![](https://oss.javaguide.cn/github/javaguide/redis-info-memory.png)
+![](../images/shared/redis-info-memory.png)
 
 Redis 内存碎片率的计算公式：`mem_fragmentation_ratio` （内存碎片率）= `used_memory_rss` (操作系统实际分配给 Redis 的物理内存空间大小)/ `used_memory`(Redis 内存分配器为了存储数据实际申请使用的内存空间大小)
 

@@ -22,9 +22,9 @@ The Java Memory Model (JMM) comes up often in interviews, so it has a dedicated 
 
 In Java, `volatile` guarantees visibility. A write to a `volatile` variable happens-before a subsequent read of that same variable. The reading thread therefore sees the write and any prior writes that happen-before it. This is the JMM's guarantee; it does not mean every access bypasses the CPU cache and directly reads or writes physical memory.
 
-![Java Memory Model](https://oss.javaguide.cn/github/javaguide/java/concurrent/jmm.png)
+![Java Memory Model](../images/shared/jmm.png)
 
-![Java Memory Model visibility](https://oss.javaguide.cn/github/javaguide/java/concurrent/jmm2.png)
+![Java Memory Model visibility](../images/shared/jmm2.png)
 
 The `volatile` keyword is not unique to Java, but its meaning differs across languages. Java's `volatile` provides visibility and ordering guarantees defined by the JMM; it does not “disable the CPU cache.”
 
@@ -307,7 +307,7 @@ Under high contention, locks can block threads and lead to many context switches
 Optimistic locking assumes conflicts are rare. Threads proceed without locking or waiting, then check when committing an update whether another thread changed the data. Common implementations use version numbers or CAS.
 
 Java's atomic variable classes, such as `AtomicInteger` and `LongAdder` in `java.util.concurrent.atomic`, use **CAS**, one implementation of optimistic locking.
-![Overview of JUC atomic classes](https://oss.javaguide.cn/github/javaguide/java/JUC%E5%8E%9F%E5%AD%90%E7%B1%BB%E6%A6%82%E8%A7%88-20230814005211968.png)
+![Overview of JUC atomic classes](../images/shared/juc-20230814005211968.png)
 
 ```java
 // LongAdder can outperform AtomicInteger and AtomicLong under high contention.
@@ -422,7 +422,7 @@ In JDK 8, these CAS methods in `Unsafe` are `native`. Java code uses them to exp
 
 The `java.util.concurrent.atomic` package provides classes for atomic operations. These classes use low-level atomic instructions to make operations thread-safe.
 
-![Overview of JUC atomic classes](https://oss.javaguide.cn/github/javaguide/java/JUC%E5%8E%9F%E5%AD%90%E7%B1%BB%E6%A6%82%E8%A7%88.png)
+![Overview of JUC atomic classes](../images/shared/juc-.png)
 
 For an introduction to the atomic classes, see [Java Atomic Classes](https://javaguide.cn/java/concurrent/atomic-classes.html).
 
@@ -629,7 +629,7 @@ public class SynchronizedDemo {
 
 Use the JDK's `javap` command to inspect the bytecode for `SynchronizedDemo`. First, go to the class directory and run `javac SynchronizedDemo.java` to generate the `.class` file. Then run `javap -c -s -v -l SynchronizedDemo.class`.
 
-![How the synchronized keyword works](https://oss.javaguide.cn/github/javaguide/java/concurrent/synchronized-principle.png)
+![How the synchronized keyword works](../images/shared/synchronized-principle.png)
 
 The bytecode shows that **a `synchronized` block uses `monitorenter` and `monitorexit`: `monitorenter` marks the start of the block, and `monitorexit` marks its end.**
 
@@ -643,11 +643,11 @@ When `monitorenter` executes, the thread tries to acquire the lock, or ownership
 
 When `monitorenter` runs, it tries to acquire the object's lock. A lock count of 0 means the lock is available; after acquisition, the count is incremented.
 
-![Acquiring a lock with monitorenter](https://oss.javaguide.cn/github/javaguide/java/concurrent/synchronized-get-lock-code-block.png)
+![Acquiring a lock with monitorenter](../images/shared/synchronized-get-lock-code-block.png)
 
 Only the thread that owns the object's lock can release it with `monitorexit`. This decrements the lock count; when the count reaches 0, the lock is released and other threads can try to acquire it.
 
-![Releasing a lock with monitorexit](https://oss.javaguide.cn/github/javaguide/java/concurrent/synchronized-release-lock-block.png)
+![Releasing a lock with monitorexit](../images/shared/synchronized-release-lock-block.png)
 
 If a thread cannot acquire the object lock, it blocks until another thread releases it.
 
@@ -662,7 +662,7 @@ public class SynchronizedDemo2 {
 
 ```
 
-![How the synchronized keyword works](https://oss.javaguide.cn/github/javaguide/synchronized%E5%85%B3%E9%94%AE%E5%AD%97%E5%8E%9F%E7%90%862.png)
+![How the synchronized keyword works](../images/shared/synchronized-2.png)
 
 Methods marked `synchronized` do not use `monitorenter` and `monitorexit`. Instead, they have the `ACC_SYNCHRONIZED` flag, which tells the JVM to invoke them as synchronized methods.
 
@@ -755,7 +755,7 @@ public class ReentrantLock implements Lock, java.io.Serializable {}
 
 `ReentrantLock` contains an inner class called `Sync`, which extends AQS (`AbstractQueuedSynchronizer`). Most lock and unlock operations are implemented in `Sync`. Its two subclasses, `FairSync` and `NonfairSync`, implement fair and non-fair locking.
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/reentrantlock-class-diagram.png)
+![](../images/shared/reentrantlock-class-diagram.png)
 
 `ReentrantLock` uses a non-fair lock by default. You can request a fair lock through its constructor.
 
@@ -934,7 +934,7 @@ public interface ReadWriteLock {
 
 Like `ReentrantLock`, `ReentrantReadWriteLock` is built on AQS.
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/reentrantreadwritelock-class-diagram.png)
+![](../images/shared/reentrantreadwritelock-class-diagram.png)
 
 `ReentrantReadWriteLock` supports fair and non-fair modes. It uses a non-fair lock by default; you can choose the mode in its constructor.
 

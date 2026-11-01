@@ -167,11 +167,11 @@ Isolation does not mean creating a pool for every endpoint. Group tasks by prior
 
 The article previously cited a production incident caused by parent and child tasks sharing a pool (source: [A Production Incident Caused by Misusing a Thread Pool](https://heapdump.cn/article/646639)):
 
-![Example code from the incident](https://oss.javaguide.cn/github/javaguide/java/concurrent/production-accident-threadpool-sharing-example.png)
+![Example code from the incident](../images/shared/production-accident-threadpool-sharing-example.png)
 
 Suppose a pool has $n$ workers and is running $n$ parent tasks. Each parent submits a child task and then waits synchronously for it. The child tasks enter the queue, but no worker is free to run them. The parent tasks cannot finish and release their workers, resulting in thread-starvation deadlock.
 
-![Deadlock caused by thread-pool misuse](https://oss.javaguide.cn/github/javaguide/java/concurrent/production-accident-threadpool-sharing-deadlock.png)
+![Deadlock caused by thread-pool misuse](../images/shared/production-accident-threadpool-sharing-deadlock.png)
 
 Do not let parent tasks and their synchronously awaited children form a dependency cycle in the same bounded pool. The parent can run the child logic directly, use non-blocking task composition, or assign isolated execution resources to child tasks that need them.
 

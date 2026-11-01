@@ -274,7 +274,7 @@ public abstract class AbstractLoadBalance implements LoadBalance {
 
 我们把这些权重值分布在坐标区间会得到：S1->[0, 7) ，S2->[7, 10)。我们生成[0, 10) 之间的随机数，随机数落到对应的区间，我们就选择对应的服务器来处理请求。
 
-![RandomLoadBalance](https://oss.javaguide.cn/java-guide-blog/%20RandomLoadBalance.png)
+![RandomLoadBalance](../images/shared/randomloadbalance.png)
 
 `RandomLoadBalance` 的源码非常简单，简单花几分钟时间看一下。
 
@@ -419,11 +419,11 @@ public class RpcStatus {
 
 `ConsistentHashLoadBalance` 即**一致性 Hash 负载均衡策略**。 `ConsistentHashLoadBalance` 中没有权重的概念，具体是哪个服务提供者处理请求是由你的请求的参数决定的，也就是说相同参数的请求总是发到同一个服务提供者。
 
-![](https://oss.javaguide.cn/java-guide-blog/consistent-hash-data-incline.jpg)
+![](../images/shared/consistent-hash-data-incline.jpg)
 
 另外，Dubbo 为了避免数据倾斜问题（节点不够分散，大量请求落到同一节点），还引入了虚拟节点的概念。通过虚拟节点可以让节点更加分散，有效均衡各个节点的请求量。
 
-![](https://oss.javaguide.cn/java-guide-blog/consistent-hash-invoker.jpg)
+![](../images/shared/consistent-hash-invoker.jpg)
 
 官方有详细的源码分析：[https://dubbo.apache.org/zh/docs/v2.7/dev/source/loadbalance/#23-consistenthashloadbalance](https://dubbo.apache.org/zh/docs/v2.7/dev/source/loadbalance/#23-consistenthashloadbalance) 。这里还有一个相关的 [PR#5440](https://github.com/apache/dubbo/pull/5440) 来修复老版本中 ConsistentHashLoadBalance 存在的一些 Bug。感兴趣的小伙伴，可以多花点时间研究一下。我这里不多分析了，这个作业留给你们！
 
@@ -443,7 +443,7 @@ Dubbo 中的 `RoundRobinLoadBalance` 的代码实现被修改重建了好几次�
 
 ### Dubbo 支持哪些序列化方式呢？
 
-![Dubbo 支持的序列化协议](https://oss.javaguide.cn/github/javaguide/csdn/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzM0MzM3Mjcy,size_16,color_FFFFFF,t_70-20230309234143460.png)
+![Dubbo 支持的序列化协议](../images/shared/watermark-type_zmfuz3pozw5nagvpdgk-shadow_10-text_ahr0chm6ly9ibg9nlmnzzg4ubmv0l3fxxzm0mzm3mjcy-size_16-color_ffffff-t_70-20230309234143460.png)
 
 Dubbo 支持多种序列化方式：JDK 自带的序列化、hessian2、JSON、Kryo、FST、Protostuff，ProtoBuf 等等。
 
@@ -464,6 +464,6 @@ Kryo 和 FST 这两种序列化方式是 Dubbo 后来才引入的，性能非常
 
 Dubbo 官方文档中还有一个关于这些[序列化协议的性能对比图](https://dubbo.apache.org/zh/docs/v2.7/user/serialization/#m-zhdocsv27userserialization)可供参考。
 
-![序列化协议的性能对比](https://oss.javaguide.cn/github/javaguide/distributed-system/rpc/dubbo-serialization-protocol-performance-comparison.png)
+![序列化协议的性能对比](../images/shared/dubbo-serialization-protocol-performance-comparison.png)
 
 <!-- @include: @article-footer.snippet.md -->

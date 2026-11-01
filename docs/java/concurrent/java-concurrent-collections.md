@@ -26,13 +26,13 @@ Most of these collections are provided in the `java.util.concurrent` package.
 
 In JDK 7, `ConcurrentHashMap` divided its table into segments protected by separate locks. Each lock protected only part of the collection (see the diagram below), so threads accessing different segments could update the map without contending for the same lock.
 
-![Java 7 ConcurrentHashMap data structure](https://oss.javaguide.cn/github/javaguide/java/collection/java7_concurrenthashmap.png)
+![Java 7 ConcurrentHashMap data structure](../images/shared/java7_concurrenthashmap.png)
 
 JDK 8 removed `Segment` locks and instead uses `Node`, CAS, and `synchronized` to ensure thread safety. Its data structure is similar to Java 8 `HashMap`: an array of linked lists or red-black trees. When a list exceeds a threshold of 8, Java 8 converts it from a linked list (lookup complexity O(n)) to a red-black tree (O(log n)).
 
 In Java 8, updates use finer-grained locking: when a lock is needed, `synchronized` locks the first node in the relevant bin. Updates to different bins can usually proceed concurrently. Reads generally do not need a lock and can run alongside updates.
 
-![Java 8 ConcurrentHashMap data structure](https://oss.javaguide.cn/github/javaguide/java/collection/java8_concurrenthashmap.png)
+![Java 8 ConcurrentHashMap data structure](../images/shared/java8_concurrenthashmap.png)
 
 For details, see [ConcurrentHashMap Source Code Analysis](./../collection/concurrent-hash-map-source-code.md).
 
@@ -70,7 +70,7 @@ We have already mentioned `ConcurrentLinkedQueue` as a high-performance non-bloc
 
 `BlockingQueue` is an interface that extends `Queue`, so its implementations can also be used as queues. `Queue` in turn extends `Collection`. The diagram below shows some `BlockingQueue` implementations:
 
-![BlockingQueue implementations](https://oss.javaguide.cn/github/javaguide/java/51622268.jpg)
+![BlockingQueue implementations](../images/shared/51622268.png)
 
 The following sections introduce three common implementations: `ArrayBlockingQueue`, `LinkedBlockingQueue`, and `PriorityBlockingQueue`.
 
@@ -143,13 +143,13 @@ In a sorted singly linked list, finding an element still requires traversing fro
 
 In essence, a skip list maintains multiple linked lists in layers.
 
-![Skip list with two index levels](https://oss.javaguide.cn/github/javaguide/java/93666217.jpg)
+![Skip list with two index levels](../images/shared/93666217.jpg)
 
 The bottom-level list contains every element. Each higher-level list is a subset of the level below it.
 
 The elements in every list are sorted. A search starts at the top level. When the target is smaller than the current node's successor, or there is no successor, the search drops down one level and continues. The search therefore skips through the list. The diagram below shows a search for 18.
 
-![Searching for 18 in a skip list](https://oss.javaguide.cn/github/javaguide/java/32005738.jpg)
+![Searching for 18 in a skip list](../images/shared/32005738.jpg)
 
 The search for 18 takes 7 steps instead of 18. Index levels can greatly improve lookup efficiency in long lists.
 

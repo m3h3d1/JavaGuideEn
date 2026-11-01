@@ -22,7 +22,7 @@ Atomic classes use compare-and-swap (CAS) to make their methods atomic, without 
 
 This article introduces the atomic classes. For details about their implementation, see [CAS Explained](./cas.md).
 
-![Overview of JUC atomic classes](https://oss.javaguide.cn/github/javaguide/java/JUC%E5%8E%9F%E5%AD%90%E7%B1%BB%E6%A6%82%E8%A7%88.png)
+![Overview of JUC atomic classes](../images/shared/juc-.png)
 
 The atomic classes in JUC can be divided into four groups based on the data they operate on:
 

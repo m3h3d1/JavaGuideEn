@@ -14,11 +14,11 @@ In real applications, an endpoint often needs to fetch several kinds of data and
 
 Running these tasks serially can make the endpoint slow. Since many tasks have **no ordering dependency**, they can run **in parallel**. For example, the product and shipping calls can run at the same time, reducing response time.
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/serial-to-parallel.png)
+![](../images/shared/serial-to-parallel.png)
 
 Tasks with dependencies can be composed into an execution flow.
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/serial-to-parallel2.png)
+![](../images/shared/serial-to-parallel2.png)
 
 1. Fetch user information before calling the product and shipping APIs.
 2. Fetch recommendations after the product and shipping information has been retrieved.
@@ -80,11 +80,11 @@ public class CompletableFuture<T> implements Future<T>, CompletionStage<T> {
 
 `CompletableFuture` implements both `Future` and `CompletionStage`.
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/completablefuture-class-diagram.jpg)
+![](../images/shared/completablefuture-class-diagram.jpg)
 
 In addition to `Future` capabilities, `CompletableFuture` supports functional programming.
 
-![](https://oss.javaguide.cn/javaguide/image-20210902092441434.png)
+![](../images/shared/image-20210902092441434.png)
 
 The `Future` interface has five methods:
 
@@ -98,7 +98,7 @@ The `Future` interface has five methods:
 
 `CompletionStage` defines many methods and provides much of `CompletableFuture`'s functional API. Its method parameters make extensive use of the functional interfaces introduced in Java 8.
 
-![](https://oss.javaguide.cn/javaguide/image-20210902093026059.png)
+![](../images/shared/image-20210902093026059.png)
 
 There are too many methods to cover individually, so the following sections focus on the most common ones.
 
@@ -719,7 +719,7 @@ Use methods such as `thenCompose()`, `thenCombine()`, `acceptEither()`, `allOf()
 
 You can also use or learn from existing task-composition frameworks, such as JD.com's [asyncTool](https://gitee.com/jd-platform-opensource/asyncTool).
 
-![asyncTool README](https://oss.javaguide.cn/github/javaguide/java/concurrent/asyncTool-readme.png)
+![asyncTool README](../images/shared/asynctool-readme.png)
 
 ## Further Reading
 

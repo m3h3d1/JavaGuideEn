@@ -113,7 +113,7 @@ SET GLOBAL time_zone = 'Europe/Helsinki';
 
 下图是 MySQL 日期类型所占的存储空间（官方文档传送门：<https://dev.mysql.com/doc/refman/8.0/en/storage-requirements.html>）：
 
-![](https://oss.javaguide.cn/github/javaguide/FhRGUVHFK0ujRPNA75f6CuOXQHTE.jpeg)
+![](../images/shared/fhrguvhfk0ujrpna75f6cuoxqhte.jpg)
 
 在 MySQL 5.6.4 之前，DateTime 和 TIMESTAMP 的存储空间是固定的，分别为 8 字节和 4 字节。但是从 MySQL 5.6.4 开始，它们的存储空间会根据毫秒精度的不同而变化，DateTime 的范围是 5~8 字节，TIMESTAMP 的范围是 4~7 字节。
 
@@ -166,7 +166,7 @@ mysql> SELECT FROM_UNIXTIME(1578707612);
 
 由于有读者提到 PostgreSQL（PG） 的时间类型，因此这里拓展补充一下。PG 官方文档对时间类型的描述地址：<https://www.postgresql.org/docs/current/datatype-datetime.html>。
 
-![PostgreSQL 时间类型总结](https://oss.javaguide.cn/github/javaguide/mysql/pg-datetime-types.png)
+![PostgreSQL 时间类型总结](../images/shared/pg-datetime-types.png)
 
 可以看到，PG 没有名为 `DATETIME` 的类型：
 

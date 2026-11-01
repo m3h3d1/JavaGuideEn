@@ -36,7 +36,7 @@ Modern CPUs usually have three cache levels: L1, L2, and L3. Some CPUs also have
 
 **CPUs can address cache inconsistency with cache-coherence protocols, such as [MESI](https://en.wikipedia.org/wiki/MESI_protocol), or other mechanisms.** A cache-coherence protocol defines rules for interactions between CPU caches and main memory. Different CPUs may use different protocols.
 
-![Cache-coherence protocol](https://oss.javaguide.cn/github/javaguide/java/concurrent/cpu-cache-protocol.png)
+![Cache-coherence protocol](../images/shared/cpu-cache-protocol.png)
 
 CPU cache coherence is implemented jointly by the processor and its memory subsystem. Processor architectures also define the order in which memory operations can appear to other processors; this is called the hardware memory model. The JMM sits at a higher, language level, and the JVM maps its requirements to instructions and barriers provided by the target processor.
 
@@ -96,7 +96,7 @@ This is similar to the CPU cache model described above.
 
 The diagram below illustrates the JMM:
 
-![Java Memory Model](https://oss.javaguide.cn/github/javaguide/java/concurrent/jmm.png)
+![Java Memory Model](../images/shared/jmm.png)
 
 For thread 1 and thread 2 to communicate in this model, two steps are involved:
 
@@ -152,7 +152,7 @@ JSR 133 uses happens-before to describe memory visibility between two operations
 
 The following diagram is adapted from a JMM illustration in _The Art of Java Concurrency Programming_.
 
-![JMM design](https://oss.javaguide.cn/github/javaguide/java/concurrent/jmm-design-idea.png)
+![JMM design](../images/shared/jmm-design-idea.png)
 
 With that design in mind, here is the JSR-133 definition of happens-before:
 
@@ -193,7 +193,7 @@ This list is not exhaustive; there are also rules for thread termination and int
 
 The diagram shows how happens-before relates to the JMM:
 
-![jmm-vs-happens-before](https://oss.javaguide.cn/github/javaguide/java/concurrent/jmm-vs-happens-before.png)
+![jmm-vs-happens-before](../images/shared/jmm-vs-happens-before.png)
 
 - The JMM gives programmers **happens-before rules**, such as program order and volatile-variable rules. These provide the appearance of a **strong memory model**: follow the rules without needing to manage low-level reordering details, and the required visibility is guaranteed.
 - At runtime, the JVM maps happens-before rules to platform-specific behavior. To preserve performance while maintaining correctness, the JMM **prevents reorderings that could change the result** while allowing reorderings that do not change single-threaded behavior.

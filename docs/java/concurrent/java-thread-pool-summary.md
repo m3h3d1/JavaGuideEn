@@ -44,7 +44,7 @@ Tasks implement either the **`Runnable`** or **`Callable`** interface. Implement
 
 As shown below, the core task execution interface is **`Executor`**. **`ExecutorService`** extends it, and the key classes **`ThreadPoolExecutor`** and **`ScheduledThreadPoolExecutor`** implement `ExecutorService`.
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/executor-class-diagram.png)
+![](../images/shared/executor-class-diagram.png)
 
 There are several relationships between these classes, but `ThreadPoolExecutor` is the one you will most often use directly.
 
@@ -134,7 +134,7 @@ Other common `ThreadPoolExecutor` parameters:
 
 The diagram below shows how these thread pool parameters relate to each other (source: _Java Performance Tuning in Practice_):
 
-![How thread pool parameters relate to each other](https://oss.javaguide.cn/github/javaguide/java/concurrent/relationship-between-thread-pool-parameters.png)
+![How thread pool parameters relate to each other](../images/shared/relationship-between-thread-pool-parameters.jpg)
 
 ### Thread Pool Lifecycle States
 
@@ -209,7 +209,7 @@ There are two common ways to create a thread pool in Java:
 
 **Option 1: Create one directly with the `ThreadPoolExecutor` constructor (recommended)**
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/threadpoolexecutor-construtors.png)
+![](../images/shared/threadpoolexecutor-construtors.png)
 
 In the diagram, “default thread factory” and “default rejection policy” mean that `ThreadPoolExecutor` uses its default implementation when the constructor does not receive those arguments.
 
@@ -219,7 +219,7 @@ This is the recommended approach because it lets you set the key parameters and 
 
 The diagram below shows the thread pool factory methods provided by `Executors`:
 
-![](https://oss.javaguide.cn/github/javaguide/java/concurrent/executors-new-thread-pool-methods.png)
+![](../images/shared/executors-new-thread-pool-methods.png)
 
 The `Executors` utility class can create several types of thread pools:
 
@@ -465,7 +465,7 @@ In simplified terms, the process is:
 
 > **Note:** Non-core workers are not created only to sit idle after the queue fills up. After finishing their first task, they also fetch work from the queue through `getTask()`. Core workers usually wait with `workQueue.take()`, while workers eligible for timeout use `workQueue.poll(keepAliveTime, unit)`. If a task arrives before the timeout, they keep working; otherwise, the worker is reclaimed. An idle non-core worker can therefore take a newly queued task before the queue fills up.
 
-![How a thread pool works](https://oss.javaguide.cn/github/javaguide/java/concurrent/thread-pool-principle.png)
+![How a thread pool works](../images/shared/thread-pool-principle.png)
 
 The `execute` method calls `addWorker` several times. This method creates a worker thread and returns `true` if the worker was created and started successfully; otherwise, it returns `false`.
 

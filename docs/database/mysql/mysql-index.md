@@ -349,7 +349,7 @@ ALTER TABLE `cus_order` ADD INDEX id_score_name(score, name);
 
 创建完成之后，再用 `EXPLAIN` 命令分析再次分析这条 SQL 语句。
 
-![](https://oss.javaguide.cn/github/javaguide/mysql/using-covering-index-demo.png)
+![](../images/shared/using-covering-index-demo.png)
 
 通过 `Extra` 这一列的 `Using index`，说明这条 SQL 语句成功使用了覆盖索引。
 
@@ -391,7 +391,7 @@ CREATE TABLE `student` (
 
 2、下面我们分别测试三条不同的 SQL 语句。
 
-![](https://oss.javaguide.cn/github/javaguide/database/mysql/leftmost-prefix-matching-rule.png)
+![](../images/shared/leftmost-prefix-matching-rule.png)
 
 ```sql
 # 可以命中索引
@@ -434,9 +434,9 @@ SELECT * FROM user WHERE zipcode = '431200' AND MONTH(birthdate) = 3;
 - 没有索引下推之前，即使 `zipcode` 字段利用索引可以帮助我们快速定位到 `zipcode = '431200'` 的用户，但我们仍然需要对每一个找到的用户进行回表操作，获取完整的用户数据，再去判断 `MONTH(birthdate) = 3`。
 - 有了索引下推之后，存储引擎会在使用 `zipcode` 字段索引查找 `zipcode = '431200'` 的用户时，同时判断 `MONTH(birthdate) = 3`。这样，只有同时满足条件的记录才会被返回，减少了回表次数。
 
-![](https://oss.javaguide.cn/github/javaguide/database/mysql/index-condition-pushdown.png)
+![](../images/shared/index-condition-pushdown.png)
 
-![](https://oss.javaguide.cn/github/javaguide/database/mysql/index-condition-pushdown-graphic-illustration.png)
+![](../images/shared/index-condition-pushdown-graphic-illustration.png)
 
 再来讲讲索引下推的具体原理，先看下面这张 MySQL 简要架构图。
 
