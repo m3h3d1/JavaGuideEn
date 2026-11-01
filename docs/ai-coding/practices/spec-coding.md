@@ -348,7 +348,7 @@ AI 遇到拿不准的操作时，到底该自己决定还是停下来问你？
 
 三种颜色，三种权限。
 
-![三色标签：AI 决策权限的风险控制机制](https://oss.javaguide.cn/github/javaguide/ai/coding/spec-coding-three-color-labels.png)
+![三色标签：AI 决策权限的风险控制机制](../images/shared/spec-coding-three-color-labels.png)
 
 - ✅ **Always（自动执行）**：代码检查、测试、格式化这些，AI 自己拍板就行。比如提交前自动跑 `make lint`。
 - ⚠️ **Ask first（需确认）**：可能影响其他模块的变更，AI 出方案等你审。改数据库索引、改 API 路由这种就属于这类。

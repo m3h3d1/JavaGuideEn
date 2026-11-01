@@ -26,7 +26,7 @@ head:
 
 ### 什么是 Dubbo?
 
-![Dubbo 官网](https://oss.javaguide.cn/github/javaguide/system-design/distributed-system/rpc/dubbo.org-overview.png)
+![Dubbo 官网](../images/shared/dubbo.org-overview.png)
 
 [Apache Dubbo](https://github.com/apache/dubbo) |ˈdʌbəʊ| 是一款高性能、轻量级的开源 WEB 和 RPC 框架。
 
@@ -39,7 +39,7 @@ head:
 5. 运行期流量调度。
 6. 可视化的服务治理与运维。
 
-![Dubbo提供的六大核心能力](https://oss.javaguide.cn/%E6%BA%90%E7%A0%81/dubbo/dubbo%E6%8F%90%E4%BE%9B%E7%9A%84%E5%85%AD%E5%A4%A7%E6%A0%B8%E5%BF%83%E8%83%BD%E5%8A%9B.png)
+![Dubbo提供的六大核心能力](../images/shared/dubbo-.png)
 
 简单来说就是：**Dubbo 不光可以帮助我们调用远程服务，还提供了一些其他开箱即用的功能比如智能负载均衡。**
 
@@ -47,7 +47,7 @@ Dubbo 目前已经有接近 34.4 k 的 Star 。
 
 在 **2020 年度 OSC 中国开源项目** 评选活动中，Dubbo 位列开发框架和基础组件类项目的第 7 名。相比几年前来说，热度和排名有所下降。
 
-![](https://oss.javaguide.cn/%E6%BA%90%E7%A0%81/dubbo/image-20210107153159545.png)
+![](../images/shared/image-20210107153159545.png)
 
 Dubbo 是由阿里开源，后来加入了 Apache 。正是由于 Dubbo 的出现，才使得越来越多的公司开始使用以及接受分布式架构。
 
@@ -66,7 +66,7 @@ Dubbo 是由阿里开源，后来加入了 Apache 。正是由于 Dubbo 的出�
 3. **服务访问压力以及时长统计、资源调度和治理**：基于访问压力实时管理集群容量，提高集群利用率。
 4. ……
 
-![Dubbo 能力概览](https://oss.javaguide.cn/github/javaguide/system-design/distributed-system/rpc/dubbo-features-overview.jpg)
+![Dubbo 能力概览](../images/shared/dubbo-features-overview.jpg)
 
 另外，Dubbo 除了能够应用在分布式系统中，也可以应用在现在比较火的微服务系统中。不过，由于 Spring Cloud 在微服务中应用更加广泛，所以，我觉得一般我们提 Dubbo 的话，大部分是分布式系统的情况。
 
@@ -78,7 +78,7 @@ Dubbo 是由阿里开源，后来加入了 Apache 。正是由于 Dubbo 的出�
 
 分布式或者说 SOA 分布式重要的就是面向服务，说简单的分布式就是我们把整个系统拆分成不同的服务然后将这些服务放在不同的服务器上减轻单体服务的压力提高并发量和性能。比如电商系统可以简单地拆分成订单系统、商品系统、登录系统等等，拆分之后的每个服务可以部署在不同的机器上，如果某一个服务的访问量比较大的话也可以将这个服务同时部署在多台机器上。
 
-![分布式事务示意图](https://oss.javaguide.cn/java-guide-blog/%E5%88%86%E5%B8%83%E5%BC%8F%E4%BA%8B%E5%8A%A1%E7%A4%BA%E6%84%8F%E5%9B%BE.png)
+![分布式事务示意图](../images/shared/.png.png)
 
 ### 为什么要分布式?
 
@@ -92,7 +92,7 @@ Dubbo 是由阿里开源，后来加入了 Apache 。正是由于 Dubbo 的出�
 
 [官方文档中的框架设计章节](https://dubbo.apache.org/zh/docs/v2.7/dev/design/) 已经介绍的非常详细了，我这里把一些比较重要的点再提一下。
 
-![Dubbo 架构中的核心角色](https://oss.javaguide.cn/%E6%BA%90%E7%A0%81/dubbo/dubbo-relation.jpg)
+![Dubbo 架构中的核心角色](../../cs-basics/images/shared/dubbo-relation.jpg)
 
 上述节点简单介绍以及他们之间的关系：
 
@@ -108,7 +108,7 @@ Dubbo 是由阿里开源，后来加入了 Apache 。正是由于 Dubbo 的出�
 
 简单来说，`Invoker` 就是 Dubbo 对远程调用的抽象。
 
-![dubbo_rpc_invoke.jpg](https://oss.javaguide.cn/java-guide-blog/dubbo_rpc_invoke.jpg)
+![dubbo_rpc_invoke.jpg](../images/shared/dubbo_rpc_invoke.jpg)
 
 按照 Dubbo 官方的话来说，`Invoker` 分为
 
@@ -123,7 +123,7 @@ Dubbo 是由阿里开源，后来加入了 Apache 。正是由于 Dubbo 的出�
 
 > 左边淡蓝背景的为服务消费方使用的接口，右边淡绿色背景的为服务提供方使用的接口，位于中轴线上的为双方都用到的接口。
 
-![dubbo-framework](https://oss.javaguide.cn/source-code/dubbo/dubbo-framework.jpg)
+![dubbo-framework](../images/shared/dubbo-framework.jpg)
 
 - **config 配置层**：Dubbo 相关的配置。支持代码配置，同时也支持基于 Spring 来做配置，以 `ServiceConfig`, `ReferenceConfig` 为中心
 - **proxy 服务代理层**：调用远程方法像调用本地的方法一样简单的一个关键，真实调用过程依赖代理类，以 `ServiceProxy` 为中心。
@@ -195,7 +195,7 @@ Dubbo 采用 微内核（Microkernel） + 插件（Plugin） 模式，简单来�
 
 微内核架构包含两类组件：**核心系统（core system）** 和 **插件模块（plug-in modules）**。
 
-![](https://oss.javaguide.cn/source-code/dubbo/%E5%BE%AE%E5%86%85%E6%A0%B8%E6%9E%B6%E6%9E%84%E7%A4%BA%E6%84%8F%E5%9B%BE.png)
+![](../images/shared/-1.png)
 
 核心系统提供系统所需核心能力，插件模块可以扩展系统的功能。因此， 基于微内核架构的系统，非常易于扩展功能。
 
@@ -262,7 +262,7 @@ public abstract class AbstractLoadBalance implements LoadBalance {
 
 `AbstractLoadBalance` 的实现类有下面这些：
 
-![](https://oss.javaguide.cn/java-guide-blog/image-20210326105257812.png)
+![](../images/shared/image-20210326105257812.png)
 
 官方文档对负载均衡这部分的介绍非常详细，推荐小伙伴们看看，地址：[https://dubbo.apache.org/zh/docs/v2.7/dev/source/loadbalance/#m-zhdocsv27devsourceloadbalance](https://dubbo.apache.org/zh/docs/v2.7/dev/source/loadbalance/#m-zhdocsv27devsourceloadbalance) 。
 

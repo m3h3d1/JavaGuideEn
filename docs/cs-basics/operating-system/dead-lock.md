@@ -22,7 +22,7 @@ A **thread deadlock** occurs when a group of threads waits for one another to re
 
 If these threads handle important workflows such as orders, payments, or inventory, the effects can include request timeouts, growing queues, and a process that takes a long time to shut down.
 
-![Deadlock: thread A holds resource 1 and waits for resource 2, while thread B holds resource 2 and waits for resource 1](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/dead-lock-deadlock-scenario.png)
+![Deadlock: thread A holds resource 1 and waits for resource 2, while thread B holds resource 2 and waits for resource 1](../images/shared/dead-lock-deadlock-scenario.png)
 
 Deadlocks are not limited to Java threads. Processes, database transactions, and distributed tasks can all deadlock when they hold resources while waiting for other resources. A resource does not have to be a printer or tape drive from an operating systems textbook. It can be a Java monitor, `ReentrantLock`, database row lock, distributed lock, connection-pool connection, thread-pool worker, or even a pipe buffer.
 
@@ -61,7 +61,7 @@ Operating systems textbooks describe the Coffman conditions. All four must hold 
 | No preemption    | A resource cannot be forcibly taken away; its holder must release it | Another thread cannot forcibly take a Java intrinsic lock            |
 | Circular wait    | The wait relationships form a cycle                                  | Thread 1 waits for thread 2, which waits for thread 1                |
 
-![The four necessary conditions: mutual exclusion, hold and wait, no preemption, and circular wait](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/dead-lock-four-conditions.png)
+![The four necessary conditions: mutual exclusion, hold and wait, no preemption, and circular wait](../images/shared/dead-lock-four-conditions.png)
 
 Do not treat this table as a checklist where any one condition means deadlock. It says that all four must hold for a deadlock to be possible. Breaking any one makes the cycle difficult to form.
 
@@ -200,7 +200,7 @@ T2 -> T1
 
 This simplified graph is called a **wait-for graph**. Java thread deadlock diagnosis, database deadlock detection, and Linux lockdep use similar graph reasoning, but at different times. A database usually checks for a cycle after transactions block. Lockdep records lock acquisition order and can identify combinations that may form a cycle before a deadlock occurs.
 
-![A resource-allocation graph includes thread and resource nodes; a wait-for graph keeps only the wait relationships between threads](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/dead-lock-resource-allocation-graph.png)
+![A resource-allocation graph includes thread and resource nodes; a wait-for graph keeps only the wait relationships between threads](../images/shared/dead-lock-resource-allocation-graph.png)
 
 ## Prevention, Avoidance, Detection, and Recovery
 
@@ -215,7 +215,7 @@ Application code most often uses prevention, such as a consistent lock order or 
 | Detection  | Allow deadlocks, then check for cycles periodically or on demand    | Detection has a cost                                      | Common in databases and diagnostic tools     |
 | Recovery   | Terminate, roll back, or preempt resources after detection          | May discard completed work                                | Natural for database transactions            |
 
-![Deadlock strategies: prevention, avoidance, detection, and recovery](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/dead-lock-strategies.png)
+![Deadlock strategies: prevention, avoidance, detection, and recovery](../images/shared/dead-lock-strategies.png)
 
 ### Deadlock Prevention
 
@@ -320,15 +320,15 @@ If the output includes `Found one Java-level deadlock`, `waiting to lock`, or `w
 
 For local reproduction, JConsole and VisualVM are useful. In JConsole, find the JDK `bin` directory and run `jconsole`.
 
-![JConsole](https://oss.javaguide.cn/github/javaguide/java/concurrent/jdk-home-bin-jconsole.png)
+![JConsole](../images/shared/jdk-home-bin-jconsole.png)
 
 Connect to the Java process, open the Threads page, and select **Detect Deadlock**.
 
-![Detect deadlocks in JConsole](https://oss.javaguide.cn/github/javaguide/java/concurrent/jconsole-check-deadlock.png)
+![Detect deadlocks in JConsole](../images/shared/jconsole-check-deadlock.png)
 
 If the process has deadlocked Java threads, JConsole lists them separately.
 
-![JConsole reports a deadlock](https://oss.javaguide.cn/github/javaguide/java/concurrent/jconsole-check-deadlock-done.png)
+![JConsole reports a deadlock](../images/shared/jconsole-check-deadlock-done.png)
 
 In production, prefer `jcmd` or `jstack`. They can be run over SSH, and their output is easy to archive. JConsole is more suitable for local reproduction, demonstrations, or quick checks in a test environment. Remote JConsole access in production also requires attention to permissions, network exposure, and runtime overhead. Many teams export a thread dump and analyze it offline instead.
 
@@ -434,7 +434,7 @@ All three can look like “the program is not making progress,” but their symp
 | Starvation | One execution unit waits for a long time while the system as a whole progresses | Low priority or unfair lock competition                                          |
 | Livelock   | Execution units keep acting but yield to one another, so none completes         | Synchronized retries or backoff                                                  |
 
-![Deadlock forms a wait cycle, starvation leaves one task without resources, and livelock keeps tasks active without progress](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/dead-lock-deadlock-vs-starvation-livelock.png)
+![Deadlock forms a wait cycle, starvation leaves one task without resources, and livelock keeps tasks active without progress](../images/shared/dead-lock-deadlock-vs-starvation-livelock.png)
 
 Three images can help distinguish them. Deadlock is like two cars blocking each other on a narrow bridge. Starvation is like someone at the back of a line who is continually skipped. Livelock is like two people who keep stepping in the same direction to let each other pass, so neither gets by.
 

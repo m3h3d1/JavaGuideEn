@@ -32,7 +32,7 @@ This gives us two terms:
 
 When a process accesses a virtual address, the CPU's memory management unit (MMU) translates it to a physical address using the mapping. The same virtual address in two processes can map to entirely different physical addresses.
 
-![Different processes can map the same virtual address to different physical pages through the MMU and page tables](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-virtual-physical-mapping.png)
+![Different processes can map the same virtual address to different physical pages through the MMU and page tables](../images/shared/virtual-memory-virtual-physical-mapping.png)
 
 The benefits of virtual memory can be summarized in three points:
 
@@ -52,7 +52,7 @@ The selector is stored in a segment register. Its segment number indexes a segme
 
 Translation is straightforward: use the segment number to find the base address, then check that the offset does not exceed the segment limit. In a model using segmentation without paging, the physical address is the base plus the offset. For example, segment 3 with base address 7000 and offset 500 maps to physical address 7500. If paging is enabled too, this calculation produces a linear address that must then be translated through the page tables.
 
-![Segmented address translation using the segment number and offset](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-segmentation.png)
+![Segmented address translation using the segment number and offset](../images/shared/virtual-memory-segmentation.png)
 
 Segmentation lets programs avoid dealing directly with physical addresses, but has two main drawbacks.
 
@@ -72,7 +72,7 @@ Page tables map virtual pages to physical page frames, and the MMU performs the 
 - Look up the physical page-frame number using the page number.
 - Combine the frame number with the offset to form the physical address.
 
-![Paging translates a virtual page number and offset to a physical page frame](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-paging.png)
+![Paging translates a virtual page number and offset to a physical page frame](../images/shared/virtual-memory-paging.png)
 
 Fixed-size pages avoid the gaps between variable-sized segments, so paging largely **eliminates external fragmentation** caused by contiguous allocation. The tradeoff is internal fragmentation: even a process that uses only a few bytes of a page occupies the whole page. This waste is usually manageable and easier to handle than external fragmentation.
 
@@ -124,7 +124,7 @@ Two levels are not enough for a 64-bit address space. Linux's generic page-table
 - Page Middle Directory (PMD)
 - Page Table Entry (PTE)
 
-![Multilevel page tables use PGD, PUD, PMD, and PTE levels, creating lower-level tables only for used ranges](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-multi-level-page-table.png)
+![Multilevel page tables use PGD, PUD, PMD, and PTE levels, creating lower-level tables only for used ranges](../images/shared/virtual-memory-multi-level-page-table.png)
 
 On x86-64 systems using four-level hardware paging, the P4D level is folded and does not take part in address translation. That is why you may hear about “four-level page tables,” even though Linux defines five levels.
 
@@ -143,7 +143,7 @@ When translating an address, the CPU checks the TLB first:
 - **TLB hit:** It gets the physical page number immediately and skips the multilevel page-table walk.
 - **TLB miss:** It reads the page tables in memory, then caches the result in the TLB for future accesses.
 
-![The CPU checks the TLB first and walks the multilevel page table on a miss](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-tlb-cache.png)
+![The CPU checks the TLB first and walks the multilevel page table on a miss](../images/shared/virtual-memory-tlb-cache.png)
 
 Because programs repeatedly access a set of hot pages, the TLB hit rate is often high. It absorbs much of the lookup cost introduced by multilevel page tables.
 
@@ -159,7 +159,7 @@ The handling path is:
 4. The kernel reads the requested page from a file or Swap, updates the page table to point to the physical frame, then returns.
 5. The CPU retries the instruction that caused the fault, which can now complete.
 
-![Page Fault handling checks access, allocates or replaces a frame, updates the page table, and retries the instruction](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-page-fault.png)
+![Page Fault handling checks access, allocates or replaces a frame, updates the page table, and retries the instruction](../images/shared/virtual-memory-page-fault.png)
 
 Linux performance statistics distinguish two main types of page faults, exposed as `ru_minflt` and `ru_majflt` by `getrusage`:
 
@@ -184,7 +184,7 @@ Common algorithms include:
 
 **CLOCK (second chance):** An approximation of LRU that avoids its high cost. Each page has a reference bit, and pages form a circular queue. When replacing a page, the pointer checks its bit: if it is 1, the page gets a second chance, the bit is cleared, and the pointer moves on. A page with a clear bit is evicted. This approximates recent use with one bit and a circular scan.
 
-![CLOCK replacement uses a circular queue and reference bit R to give pages a second chance](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-clock-algorithm.png)
+![CLOCK replacement uses a circular queue and reference bit R to give pages a second chance](../images/shared/virtual-memory-clock-algorithm.png)
 
 **LFU (least frequently used):** Track how often each page is accessed and evict the least frequent one. It tracks frequency rather than recency, so a page that was hot earlier may keep a high count long after it stops being useful. Implementations often use aging to reduce old counts.
 

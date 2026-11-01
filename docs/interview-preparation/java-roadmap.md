@@ -19,15 +19,15 @@ After a month of work, I have substantially updated the roadmap based on current
 
 Light theme preview:
 
-![Java learning roadmap PDF preview in the light theme](https://oss.javaguide.cn/github/javaguide/interview-preparation/java-road-map-pdf.png)
+![Java learning roadmap PDF preview in the light theme](images/shared/java-road-map-pdf.png)
 
 Dark theme preview:
 
-![Java learning roadmap PDF preview in the dark theme](https://oss.javaguide.cn/github/javaguide/interview-preparation/java-road-map-pdf-dark.png)
+![Java learning roadmap PDF preview in the dark theme](images/shared/java-road-map-pdf-dark.png)
 
 This may be one of the most carefully prepared and comprehensive Java backend roadmaps you'll find. It contains more than **40,000 words**, but you don't need to master every topic at once. Topics are divided by difficulty, from the essentials for landing a role at a smaller company to a longer path for building stronger Java backend skills.
 
-![Java learning roadmap](https://oss.javaguide.cn/github/javaguide/interview-preparation/java-road-map.png)
+![Java learning roadmap](images/shared/java-road-map.webp)
 
 Beginners can follow the recommended sequence and resources to study systematically. Experienced developers can use the roadmap to deepen their Java backend knowledge and strengthen their skills.
 

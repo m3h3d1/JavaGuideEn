@@ -78,7 +78,7 @@ RTO/RPO 给出容灾目标，完成配置并不能证明系统已经达到目标
 
 这三种机制处理的问题不同。限流控制进入系统的请求量，降级根据业务优先级减少服务能力，熔断在下游持续异常时停止调用。隔离则把线程、连接或并发额度分开，避免一个依赖占满全部资源。
 
-![熔断器状态机](https://oss.javaguide.cn/github/javaguide/high-availability/fallback-and-circuit-breaker-fuse-state-machine.png)
+![熔断器状态机](../distributed-system/images/shared/fallback-and-circuit-breaker-fuse-state-machine.png)
 
 相关内容：
 

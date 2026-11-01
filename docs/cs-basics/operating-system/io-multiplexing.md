@@ -29,7 +29,7 @@ To understand it, first split a network read into two stages:
 1. **Wait for data to become ready:** Data is still arriving from the network. The kernel waits for it and copies it into a kernel buffer. This can take a long time.
 2. **Copy the data:** Once the data is in the kernel buffer, it is copied into the application's user-space buffer. This is usually quick.
 
-![Network reads first wait for data in the kernel buffer, then copy it to the user buffer with copy_to_user](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/io-multiplexing-io-two-phases.png)
+![Network reads first wait for data in the kernel buffer, then copy it to the user buffer with copy_to_user](../images/shared/io-multiplexing-io-two-phases.png)
 
 In a blocking model with one thread per connection, the thread gets stuck in the first stage after calling `recv`. It waits for that connection and cannot do other work while waiting.
 
@@ -51,7 +51,7 @@ UNP describes five Unix I/O models. Their differences make the role of multiplex
 - **Signal-driven I/O:** Register for `SIGIO`, and the kernel sends a signal when data is ready. It is uncommon.
 - **Asynchronous I/O:** Submit a request and return immediately; the application is notified when I/O completes. This describes an API model, while implementation depends on platform and API. For example, Linux glibc's POSIX `aio_read` is mainly implemented with user-space worker threads and is not the same as native kernel asynchronous I/O.
 
-![Comparison of blocking, nonblocking, multiplexed, signal-driven, and asynchronous I/O](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/io-multiplexing-five-io-models.png)
+![Comparison of blocking, nonblocking, multiplexed, signal-driven, and asynchronous I/O](../images/shared/io-multiplexing-five-io-models.png)
 
 The key question is who performs the final copy from the kernel buffer to the user buffer. In the first four models, the application calls `read` or `recv` to perform it and uses the data after that call returns; these are synchronous models. Whether that call actually sleeps depends on the fd and the data's current state. Asynchronous I/O delegates both waiting and copying to the kernel, then notifies the application on completion. Multiplexing does not make an individual read faster; it lets one thread wait on several connections at once.
 
@@ -221,7 +221,7 @@ This is more than an interface change; it reflects a different internal data str
 - **Red-black tree (`rbr`):** Stores fds registered with `epoll_ctl`, with an `epitem` node for each. Add, remove, and update operations are O(log N). Each fd is registered once and remains in the kernel, rather than having the full list copied on every wait as with `select` or `poll`.
 - **Ready list (`rdllist`):** A doubly linked list of fds that are ready.
 
-![epoll maintains an interest list; callbacks add ready fds to a ready list that epoll_wait returns](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/io-multiplexing-epoll-architecture.png)
+![epoll maintains an interest list; callbacks add ready fds to a ready list that epoll_wait returns](../images/shared/io-multiplexing-epoll-architecture.png)
 
 Callbacks are central to the design. When `epoll_ctl` registers an fd, the kernel installs a callback for it. When data arrives or the fd becomes readable, the callback adds the ready item to the ready list and wakes threads blocked in `epoll_wait`. The wait call checks whether the ready list has entries: it copies ready events to user space if it does, or sleeps until a callback wakes it. (The red-black tree and ready list describe the current implementation. The user-space contract is the abstraction of a registered set and a ready list; the tree is not a stable ABI.)
 
@@ -244,7 +244,7 @@ Suppose the peer writes 2 KB to a socket, as in the classic Linux man-page examp
 - In LT mode, `epoll_wait` reports readability. If the application reads only 1 KB, the remaining 1 KB causes another notification on the next `epoll_wait`, until all data is read.
 - In ET mode, `epoll_wait` reports the change once. If the application reads only 1 KB and returns, the remaining 1 KB may sit in the buffer without another notification unless the peer writes more data and causes another state change.
 
-![LT continues notifying while data remains; ET notifies when the state changes](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/io-multiplexing-lt-vs-et.png)
+![LT continues notifying while data remains; ET notifies when the state changes](../images/shared/io-multiplexing-lt-vs-et.png)
 
 ET requires two rules: **set the fd to nonblocking**, and **keep reading in a loop until `EAGAIN` or `EWOULDBLOCK`** so the buffer is drained. A typical ET read loop is:
 
@@ -285,7 +285,7 @@ A production event loop must handle more than reads. Retry `epoll_wait` if it re
 | Finding ready fds    | Scan through `nfds - 1`, usually O(N)                                | Scan the full array, O(N)                                                           | Wait does not scan the full set; return cost mainly depends on ready events                                    |
 | Trigger modes        | LT only                                                              | LT only                                                                             | LT by default; also ET with `EPOLLET`                                                                          |
 
-![Comparison of select, poll, and epoll data structures, fd limits, wait arguments, scan costs, and trigger modes](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/io-multiplexing-select-poll-epoll.png)
+![Comparison of select, poll, and epoll data structures, fd limits, wait arguments, scan costs, and trigger modes](../images/shared/io-multiplexing-select-poll-epoll.png)
 
 ## epoll Is Not a Silver Bullet
 
@@ -305,7 +305,7 @@ High-performance components commonly rely on I/O multiplexing.
 
 **Redis** is a classic example of a single-threaded event loop with I/O multiplexing. Rather than starting one thread per client, one thread watches many sockets and invokes the handler for whichever becomes ready. Redis wraps this in `ae.c` and selects epoll, kqueue, or select on different platforms. This is one reason it can handle high concurrency without the context switching and lock contention of a multithreaded design.
 
-![Redis file event handler](https://oss.javaguide.cn/github/javaguide/database/redis/redis-event-handler.png)
+![Redis file event handler](../images/shared/redis-event-handler.png)
 
 Redis 6.0 introduced multithreading, but only for network I/O and protocol parsing; command execution remains single-threaded. The multiplexed event loop is still the core. The added threads distribute the work of reading sockets and parsing requests so it does not become a single-thread bottleneck.
 
@@ -315,7 +315,7 @@ For more detail, see [Common Redis Interview Questions (Part 1)](https://javagui
 
 **Java NIO `Selector`** is Java's multiplexing abstraction. On Linux it uses epoll through `EPollSelectorImpl`; on other operating systems it uses the corresponding implementation. This platform choice is transparent to application code.
 
-![Java NIO Selector selects channels and selection keys](https://oss.javaguide.cn/github/javaguide/java/nio/selector-channel-selectionkey.png)
+![Java NIO Selector selects channels and selection keys](../images/shared/selector-channel-selectionkey.png)
 
 Netty provides a native epoll transport in addition to standard NIO through `EpollEventLoop`, bypassing the JDK wrapper to improve Linux performance. Behavior differs by version: Netty 4.0's native epoll transport emphasized edge-triggered mode; in Netty 4.2, `EpollMode` is deprecated and the documentation says the transport always uses level-triggered mode. For Netty 4.1, check the source and API for the exact version in use.
 

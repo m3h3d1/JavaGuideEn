@@ -455,7 +455,7 @@ PFCOUNT PAGE_1:UV
 
 Bloom Filter 的简单原理图如下：
 
-![Bloom Filter 的简单原理示意图](https://oss.javaguide.cn/github/javaguide/cs-basics/algorithms/bloom-filter-simple-schematic-diagram.png)
+![Bloom Filter 的简单原理示意图](../../cs-basics/images/shared/bloom-filter-simple-schematic-diagram.png)
 
 当字符串存储要加入到布隆过滤器中时，该字符串首先由多个哈希函数生成不同的哈希值，然后将对应的位数组的下标设置为 1（当位数组初始化时，所有位置均为 0）。当第二次存储相同字符串时，因为先前的对应位置已设置为 1，所以很容易知道此值已经存在（去重非常方便）。
 
@@ -497,7 +497,7 @@ Redis 通过 **IO 多路复用程序** 来监听来自客户端的大量连接�
 - 文件事件分派器（将 socket 关联到相应的事件处理器）
 - 事件处理器（连接应答处理器、命令请求处理器、命令回复处理器）
 
-![文件事件处理器（file event handler）](https://oss.javaguide.cn/github/javaguide/database/redis/redis-event-handler.png)
+![文件事件处理器（file event handler）](../../cs-basics/images/shared/redis-event-handler.png)
 
 ### Redis6.0 之前为什么不使用多线程？
 

@@ -21,7 +21,7 @@ This article is adapted from the **[Java Interview Guide](../zhuanlan/java-mian-
 
 Start with the overview below; each topic is explained later in the article.
 
-![Key topics for Java backend interviews](https://oss.javaguide.cn/github/javaguide/interview-preparation/back-end-interview-focus.png)
+![Key topics for Java backend interviews](images/shared/back-end-interview-focus.png)
 
 Here are some practical guidelines:
 

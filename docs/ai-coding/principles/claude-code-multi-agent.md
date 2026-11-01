@@ -78,7 +78,7 @@ Claude Code Multi-Agent 盯着的，正是这类**上下文和任务拆分问题
 - `/subtask` 在当前会话内复制上下文做支线任务；`/fork` 创建独立后台 Session。
 - Agent Teams 则让几个独立实例一起做项目，可以发消息、领任务、最后再汇总。
 
-![Subagents 和 Agent Teams 对比](https://oss.javaguide.cn/github/javaguide/ai/coding/claude-code-subagents-vs-agent-teams.png)
+![Subagents 和 Agent Teams 对比](../images/shared/claude-code-subagents-vs-agent-teams.png)
 
 这里还有个细节：Subagent 不一定要你手动点名。官方文档里说，Claude 会根据 Subagent 的 `description` 判断什么时候委派；内置的 Explore、Plan、general-purpose 等 Subagent，也会在合适任务里自动用上。
 
@@ -104,7 +104,7 @@ Subagent 是 Claude Code 里最常用、也最不容易用过头的一种委派�
 
 这块我觉得挺香：主会话不用跟着一起外耗。
 
-![Claude Code Explore Subagent：支线搜索在后台执行](https://oss.javaguide.cn/github/javaguide/ai/coding/claude-code-explore-subagent-demo.png)
+![Claude Code Explore Subagent：支线搜索在后台执行](../images/shared/claude-code-explore-subagent-demo.png)
 
 上图里，主会话只是把登录、鉴权、权限校验相关搜索交给 Explore subagent。搜索过程在后台跑，主线继续保持干净，等子代理结束后再拿整理后的文件列表、调用链和后续关注点。
 
@@ -194,7 +194,7 @@ Subagent 文件就是 Markdown + YAML frontmatter，里面可以配置名称、�
 
 这时 `/subtask` 比普通 Subagent 更合适。每个 child 都能拿到父会话刚刚建立好的上下文，不用重新读一遍项目。
 
-![Claude Code Fork：基于当前上下文启动后台分支](https://oss.javaguide.cn/github/javaguide/ai/coding/claude-code-fork-subagent-demo.png)
+![Claude Code Fork：基于当前上下文启动后台分支](../images/shared/claude-code-fork-subagent-demo.png)
 
 上图记录的是旧版 `/fork` 行为。按 v2.1.212 之后的命名，启用 Agent View 时，当前会话内做这种上下文分支应使用 `/subtask`；现在的 `/fork` 会复制整个对话到独立后台 Session，可单独查看、恢复和继续。关闭 Agent View 后，`/subtask` 不可用，`/fork` 仍保持旧的 forked subagent 行为。
 
@@ -285,7 +285,7 @@ Agent Teams 不是让几个 teammate 在一个大聊天框里刷消息。它主�
 
 prompt 怎么写也会跟着变。用 Subagent 时，任务最好一次讲清楚；用 Agent Teams 时，lead 可以先把大任务拆到 shared task list 里，teammate 再围绕任务列表和消息往前推。
 
-![Claude Code Agent Teams：多个 teammate 围绕完整分析链路协作审查](https://oss.javaguide.cn/github/javaguide/ai/coding/claude-code-agent-teams-agentinvest-review.png)
+![Claude Code Agent Teams：多个 teammate 围绕完整分析链路协作审查](../images/shared/claude-code-agent-teams-agentinvest-review.png)
 
 上图是一个更接近真实项目的例子：team lead 先把 AgentInvest 的完整分析链路拆成后端 SSE、Agent 编排、前端渲染、测试与韧性风险四条线，再 spawn 4 个 teammate 分别认领。这里的重点不是多开几个搜索任务，而是 teammate 围绕同一份 shared task list 分工推进，最后由 lead 汇总跨模块问题。
 

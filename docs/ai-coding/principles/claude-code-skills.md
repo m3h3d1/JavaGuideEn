@@ -213,7 +213,7 @@ Claude Code 会从多个来源加载 Skills。常见位置包括：
 
 用户级 Skills 放在 `~/.claude/skills/`，所有项目都能用。项目级 Skills 放在项目的 `.claude/skills/`，适合和团队共享。
 
-![项目里的 .claude/skills 目录示例](https://oss.javaguide.cn/github/javaguide/ai/coding/claude-code-project-skills-folder.png)
+![项目里的 .claude/skills 目录示例](../images/shared/claude-code-project-skills-folder.png)
 
 从源码看，Skills 目录采用的是：
 
@@ -236,7 +236,7 @@ Claude Code 的 Skill 来源大致可以分几类：
 
 Claude Code 包含一些 bundled skills，比如 `/code-review`、`/batch`、`/debug`、`/loop` 和 `/claude-api`。它们和普通内置命令不一样，属于 prompt-based skill。
 
-![Claude Code 官方文档中的 Bundled skills 说明](https://oss.javaguide.cn/github/javaguide/ai/coding/claude-code-bundled-skills-docs.png)
+![Claude Code 官方文档中的 Bundled skills 说明](../images/shared/claude-code-bundled-skills-docs.png)
 
 嵌套 `.claude/skills` 目录也要留意。
 

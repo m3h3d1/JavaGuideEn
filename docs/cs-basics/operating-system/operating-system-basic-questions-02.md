@@ -22,7 +22,7 @@ Keep this main idea in mind: **the operating system uses virtual memory to manag
 
 ### What Does Memory Management Do?
 
-![Overview of memory management responsibilities](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-management-responsibilities.webp)
+![Overview of memory management responsibilities](../images/shared/memory-management-responsibilities.webp)
 
 In an interview, you can describe five main responsibilities of memory management:
 
@@ -58,7 +58,7 @@ Memory fragmentation can result from allocating and freeing memory. It is usuall
 - **Internal memory fragmentation**: Memory allocated to a process but left unused. It often occurs when allocation uses fixed sizes, such as powers of two, and the allocated block is larger than the process needs. For example, if a process needs 65 bytes but receives 128 bytes (2^7), the remaining 63 bytes are internal fragmentation.
 - **External memory fragmentation**: Free memory is split into small, non-contiguous regions that cannot satisfy a larger allocation request. Segmentation, described below, can cause external fragmentation.
 
-![Contiguous memory allocation and fragmentation](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-fragmentation.webp)
+![Contiguous memory allocation and fragmentation](../images/shared/memory-fragmentation.webp)
 
 Memory fragmentation reduces memory utilization, so memory management aims to limit it.
 
@@ -79,11 +79,11 @@ When allocating memory, the buddy system looks for a suitably sized block. If th
 
 When two adjacent buddy blocks are freed, the system can merge them into a larger block for future allocations. This helps reduce fragmentation and improve memory utilization.
 
-![Memory management with the buddy system](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux-buddy-system.png)
+![Memory management with the buddy system](../images/shared/linux-buddy-system.png)
 
 Although the buddy system helps with external fragmentation, it can still waste memory through internal fragmentation. It allocates blocks sized as powers of two, so a request that does not match one of those sizes wastes space. For example, a 65-byte request requires a 128-byte block (2^7).
 
-![Memory waste in the buddy system](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/buddy-system-memory-waste.png)
+![Memory waste in the buddy system](../images/shared/buddy-system-memory-waste.png)
 
 To reduce fragmentation and allocation overhead for frequently allocated small objects, Linux also uses allocators such as **SLAB/SLUB**. They cache common kernel objects and reuse initialized memory by object type, reducing repeated allocation, initialization, and freeing. This topic is outside the scope of this guide.
 
@@ -103,7 +103,7 @@ There are three common forms of non-contiguous memory management:
 
 In simple terms, virtual memory separates the addresses used by a program from the actual addresses in RAM. When a process accesses a virtual address, the CPU's MMU uses mappings such as page tables to translate it into a physical address before accessing memory.
 
-![Virtual memory as the bridge between a process and physical memory](https://oss.javaguide.cn/xingqiu/virtual-memory.png)
+![Virtual memory as the bridge between a process and physical memory](../images/shared/virtual-memory.png)
 
 Virtual memory provides several key capabilities:
 
@@ -133,7 +133,7 @@ In other words, programmers work with virtual addresses. For example, a pointer 
 
 The CPU's **memory management unit (MMU)** translates virtual addresses into physical addresses. This is called **address translation**. Modern systems generally use page tables for translation, while a TLB caches recent results to reduce page-table lookup overhead.
 
-![Address translation](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/physical-virtual-address-translation.png)
+![Address translation](../images/shared/physical-virtual-address-translation.png)
 
 After the MMU translates a virtual address, the CPU accesses the corresponding physical memory location to complete the read or write. This translation lets the same virtual address in different processes map to completely different physical pages.
 
@@ -176,7 +176,7 @@ Address translation works as follows:
 3. It checks that the offset is within the segment limit and that the access permissions allow the operation.
 4. If the checks pass, it adds the offset to the segment base address to get the physical address.
 
-![Segmentation address translation: a virtual address contains a segment number and offset; the segment table provides the base address used to calculate the physical address](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-segmentation.png)
+![Segmentation address translation: a virtual address contains a segment number and offset; the segment table provides the base address used to calculate the physical address](../images/shared/virtual-memory-segmentation.png)
 
 For example, suppose an address refers to segment 3 with an offset of 500. If segment 3 has a base address of 7000 and the offset is within the segment limit, the physical address is 7000 + 500 = 7500.
 
@@ -195,7 +195,7 @@ For example, suppose a system with 5 GB of physical memory uses segmentation and
 
 If processes 1 and 4 are closed, their segments are freed, leaving 1.5 GB of free physical memory. Because this memory is not contiguous, it cannot be allocated to a process that needs one contiguous 1.5 GB region.
 
-![External memory fragmentation caused by segmentation](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/segment-external-memory-fragmentation.png)
+![External memory fragmentation caused by segmentation](../images/shared/segment-external-memory-fragmentation.png)
 
 Memory compaction can reduce external fragmentation by moving active segments together to create contiguous free space. Moving large segments takes time, and swapping them to and from disk can slow the system significantly.
 
@@ -213,7 +213,7 @@ Paging also supports demand paging. A program does not need to load every page i
 
 Paging uses a **page table** to map virtual addresses to physical addresses. A page-table entry maps a virtual page number to a physical page-frame number and can also record status such as access, dirty, permission, and present bits. The diagram below illustrates translation with a single-level page table.
 
-![Single-level page table](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/page-table.png)
+![Single-level page table](../images/shared/page-table.png)
 
 Each process has its own page tables. Because page tables are process-specific, the same virtual page number can map to different physical page frames in different processes, providing address-space isolation.
 
@@ -228,7 +228,7 @@ Address translation works as follows:
 2. It uses that number to look up the corresponding physical page-frame number in the process's page table.
 3. It adds the page offset to the physical page-frame base address to get the physical address.
 
-![Paging address translation: the virtual address is split into a page number and offset, and the page table maps the virtual page to a physical page frame](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-paging.png)
+![Paging address translation: the virtual address is split into a page number and offset, and the page table maps the virtual page to a physical page frame](../images/shared/virtual-memory-paging.png)
 
 If a page-table entry is missing, the page is not currently resident in physical memory, or the access violates permissions, the CPU raises a page fault. The kernel then determines whether it can resolve the fault by creating a mapping or loading the page. If it cannot, it typically sends `SIGSEGV` to the current thread.
 
@@ -248,7 +248,7 @@ For example, a two-level page table might have 1024 entries in the first-level t
 
 If only two second-level tables are needed, the total memory use is 4 KB for the first-level table + 4 KB × 2 for the second-level tables = 12 KB.
 
-![Multilevel page tables use PGD, PUD, PMD, and PTE indexes, creating lower-level tables only for address ranges in use](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-multi-level-page-table.png)
+![Multilevel page tables use PGD, PUD, PMD, and PTE indexes, creating lower-level tables only for address ranges in use](../images/shared/virtual-memory-multi-level-page-table.png)
 
 Multilevel page tables save memory: they add lookup levels in exchange for a smaller page-table footprint. Real systems use the TLB to cache commonly used translations, so the full cost of the extra lookups is not incurred on every access.
 
@@ -267,7 +267,7 @@ With a TLB, address translation works as follows:
 3. If there is no matching entry, the CPU looks up the page table in memory and may add the resulting mapping to the TLB. This is a **TLB miss**.
 4. When the TLB is full and a new entry is needed, an existing entry is evicted according to a replacement policy.
 
-![TLB translation flow: the CPU checks the TLB first, accesses memory directly on a hit, and looks up the multilevel page table and updates the TLB on a miss](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-tlb-cache.png)
+![TLB translation flow: the CPU checks the TLB first, accesses memory directly on a hit, and looks up the multilevel page table and updates the TLB on a miss](../images/shared/virtual-memory-tlb-cache.png)
 
 Page tables are stored in main memory. Without a TLB, the CPU may need to access memory to look up the page table and then access memory again to read or write the data; multilevel tables can require even more lookups. On a TLB hit, the CPU gets the physical page-frame number without looking up the page table, making translation much faster.
 
@@ -299,7 +299,7 @@ For performance statistics, recoverable page faults are often divided into:
 
 Out-of-bounds access in C or C++ does not always trigger `SIGSEGV` immediately. If the address is still within a mapped page with suitable permissions, the CPU cannot detect the violation of the language-level array bounds, and the program may simply corrupt adjacent data.
 
-![Page-fault handling: after the MMU cannot complete address translation or a permission check, the kernel validates the access, allocates or evicts a page frame, updates the page table, and retries the instruction](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-page-fault.png)
+![Page-fault handling: after the MMU cannot complete address translation or a permission check, the kernel validates the access, allocates or evicts a page frame, updates the page table, and retries the instruction](../images/shared/virtual-memory-page-fault.png)
 
 For the relationship between page faults, system calls, and signals, see [Interrupts, Exceptions, and System Calls: From Kernel Entry to Page Faults](./interrupt-exception-syscall.md).
 
@@ -313,7 +313,7 @@ Frequent page faults can significantly hurt performance, so a good replacement a
 
 Five common page-replacement algorithms are listed below. Many others are variations on these:
 
-![Comparison of page-replacement algorithms](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-page-replacement.webp)
+![Comparison of page-replacement algorithms](../images/shared/memory-page-replacement.webp)
 
 1. **Optimal (OPT)**: Evicts the page that will not be used for the longest time. It has the lowest possible fault rate in theory, but requires knowing the future, so it is mainly used as a benchmark.
 2. **First In, First Out (FIFO)**: Evicts the page that has been in memory the longest. It is simple to implement but may evict frequently used pages and can exhibit Belady's anomaly.
@@ -321,7 +321,7 @@ Five common page-replacement algorithms are listed below. Many others are variat
 4. **Least Frequently Used (LFU)**: Evicts the page with the fewest accesses over a period. It considers access frequency, but may keep pages that were popular earlier and are no longer used. Implementations often reduce old counts over time.
 5. **Clock**: Also called the second-chance algorithm, it approximates LRU at lower cost. Each page has a reference bit and pages form a circular queue. A page with its bit set to 1 gets the bit cleared and another chance; a page with a bit of 0 is evicted.
 
-![Clock page-replacement algorithm: pages form a circular queue, and a pointer uses the reference bit R to give a page another chance or evict it](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-clock-algorithm.png)
+![Clock page-replacement algorithm: pages form a circular queue, and a pointer uses the reference bit R to give a page another chance or evict it](../images/shared/virtual-memory-clock-algorithm.png)
 
 **Why can FIFO perform poorly?**
 
@@ -334,7 +334,7 @@ There are two main reasons:
 
 LRU and its approximations are common because they fit program locality. Real systems rarely use textbook algorithms without modification. For example, the Linux kernel does not simply choose OPT, FIFO, LRU, or Clock; it uses mechanisms such as active/inactive LRU lists, workingset tracking, and refault detection. The InnoDB Buffer Pool also modifies traditional LRU to keep preloaded pages and full-table scans from displacing hot pages.
 
-![Linux page-reclamation approach](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-page-reclaim.webp)
+![Linux page-reclamation approach](../images/shared/memory-page-reclaim.webp)
 
 ### What Are Swap, the Working Set, and Thrashing?
 
@@ -422,7 +422,7 @@ When asked about virtual memory in an interview, explain more than process isola
 
 Processes access virtual addresses (VAs), which are translated to physical addresses (PAs) in RAM. Each process has its own virtual address space and page tables, so the same virtual address in different processes can map to different physical pages, providing isolation.
 
-![Virtual-to-physical address mapping: the same virtual address in different processes maps to different physical pages through the MMU and page tables](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-virtual-physical-mapping.png)
+![Virtual-to-physical address mapping: the same virtual address in different processes maps to different physical pages through the MMU and page tables](../images/shared/virtual-memory-virtual-physical-mapping.png)
 
 Isolation does not prevent processes from sharing data. The operating system can let multiple processes map the same physical pages, as with shared libraries, file mappings through `mmap`, and shared-memory IPC. By default, page-table permissions enforce isolation. Sharing requires the kernel to establish mappings explicitly and control permissions; shared-memory IPC also requires synchronization.
 
@@ -452,7 +452,7 @@ I/O multiplexing is not about making a single read or write faster. It is about 
 
 A network read usually has two stages: wait for data to arrive from the network card and enter a kernel buffer, then copy it from the kernel buffer to a user buffer. Blocking I/O can stall at the first stage: after a thread calls `recv`, it must wait if that connection has no data.
 
-![Two stages of a network read: wait for data from the network card to enter the kernel buffer, then copy it to the user buffer with copy_to_user](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/io-multiplexing-io-two-phases.png)
+![Two stages of a network read: wait for data from the network card to enter the kernel buffer, then copy it to the user buffer with copy_to_user](../images/shared/io-multiplexing-io-two-phases.png)
 
 I/O multiplexing passes a set of fds to the kernel and lets a thread block in a system call such as `select`, `poll`, or `epoll`. The call returns when any fd is ready, and the application handles the corresponding connection. This lets one thread manage thousands of connections and works especially well when most connections are idle and only a few are active, as in high-performance network software such as Redis, Nginx, and Netty.
 
@@ -470,7 +470,7 @@ In short, `select` and `poll` pass the full set of monitored fds to the kernel o
 
 `epoll` uses `epoll_ctl` to maintain the monitored set and `epoll_wait` to get ready events. The kernel maintains an interest list and a ready list; when an fd becomes ready, it enters the ready list, and the application retrieves ready events when it waits. `epoll` supports level-triggered (LT) and edge-triggered (ET) modes. LT repeatedly reports readiness while data remains in the buffer. ET reports a state change once, so it must be used with nonblocking fds and reads must continue until `EAGAIN`.
 
-![Comparison of select, poll, and epoll: data structures, fd limits, arguments passed on each wait, readiness lookup costs, and triggering modes](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/io-multiplexing-select-poll-epoll.png)
+![Comparison of select, poll, and epoll: data structures, fd limits, arguments passed on each wait, readiness lookup costs, and triggering modes](../images/shared/io-multiplexing-select-poll-epoll.png)
 
 However, `epoll` is not faster in every situation. With few connections or when all connections are active, the maintenance costs of `epoll_ctl`, callbacks, and ready lists also matter. It is best suited to servers with many long-lived connections that are idle most of the time.
 
@@ -482,7 +482,7 @@ Zero-copy does not mean that no copying happens at all. It **avoids, where possi
 
 With traditional `read + write` file transfer, data usually goes through four copies: DMA copies it from disk to a kernel buffer, the CPU copies it to a user buffer, the CPU copies it again to a socket buffer, and DMA copies it to the network card. The two CPU copies are wasteful when the application does not modify the data and merely sends it through user space.
 
-![Traditional read/write data-copy path: disk to kernel buffer, kernel to user buffer, user to socket buffer, and socket to network card](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-traditional-read-write.png)
+![Traditional read/write data-copy path: disk to kernel buffer, kernel to user buffer, user to socket buffer, and socket to network card](../images/shared/zero-copy-traditional-read-write.png)
 
 Zero-copy aims to keep data in the kernel path as it is forwarded. For example, `sendfile` can send file data from the Page Cache to a socket. If the network card supports SG-DMA, the socket buffer may contain only descriptors while DMA sends the payload directly from the kernel buffer to the card.
 
@@ -500,7 +500,7 @@ In short: **use `mmap` when you need to modify data, `sendfile` to forward a fil
 
 `splice` moves page references within the kernel using a pipe, and supports more general forwarding between descriptors, such as socket to socket or file to pipe to socket. It usually requires a pipe in the path, and forwarding from a file to a socket often takes two `splice` calls, so consider the added complexity and system calls.
 
-![Comparison of copies and mode switches for traditional read/write, mmap + write, sendfile + SG-DMA, and splice](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-four-ways-comparison.png)
+![Comparison of copies and mode switches for traditional read/write, mmap + write, sendfile + SG-DMA, and splice](../images/shared/zero-copy-four-ways-comparison.png)
 
 Zero-copy is less useful when the application must process the payload, such as for TLS encryption, compression, format conversion, content filtering, or watermarking. In those cases, data cannot remain entirely in the kernel path. For small files or random access, the fixed costs of mapping, page faults, or pipes may also outweigh the benefits.
 
@@ -512,7 +512,7 @@ For details, see [Zero-Copy: `mmap`, `sendfile`, and `splice`](./zero-copy.md).
 
 A filesystem organizes blocks on a storage device into files and directories that applications can use. In an interview, you can describe six main responsibilities:
 
-![Overview of filesystem responsibilities](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-system-responsibilities.webp)
+![Overview of filesystem responsibilities](../images/shared/file-system-responsibilities.webp)
 
 1. **Naming**: Find a file by its path and name, such as `/var/log/app.log`.
 2. **Organization**: Use a directory tree to organize files and directories.
@@ -527,7 +527,7 @@ Not every filesystem is backed by a local disk. `tmpfs` is backed mainly by memo
 
 In Linux and Unix filesystems, the filename is usually not stored in the inode.
 
-![Relationship between filenames, dentries, and inodes](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-inode-dentry-relation.webp)
+![Relationship between filenames, dentries, and inodes](../images/shared/file-inode-dentry-relation.webp)
 
 - **Directory entry**: Maps a filename to an inode number.
 - **Inode**: Records the file type, permissions, owner, size, timestamps, link count, and mapping information for data blocks or extents.
@@ -548,7 +548,7 @@ df -i
 
 `open()` does not read the entire file into memory. It mainly resolves the path and creates an open-file object.
 
-![From a file path to a file descriptor](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-path-to-fd.webp)
+![From a file path to a file descriptor](../images/shared/file-path-to-fd.webp)
 
 The process is roughly as follows:
 
@@ -563,7 +563,7 @@ An fd is an index in a process's file descriptor table, not an inode. After `dup
 
 The filesystem divides a partition or volume into blocks and uses metadata to record how file contents relate to those blocks. Textbooks commonly describe three allocation methods:
 
-![File data block allocation methods](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-block-allocation.webp)
+![File data block allocation methods](../images/shared/file-block-allocation.webp)
 
 - **Contiguous allocation**: A file occupies a sequence of contiguous blocks, making sequential and random access fast. File growth is difficult, and external fragmentation can occur.
 - **Linked allocation**: Each block points to the next, so the blocks need not be contiguous. Random access is slow.
@@ -575,7 +575,7 @@ Classic ext2/ext3 use direct block pointers and single-, double-, and triple-ind
 
 Both hard and symbolic links let a path refer to a file, but they point to different things.
 
-![Comparison of hard and symbolic links](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-hardlink-symlink.webp)
+![Comparison of hard and symbolic links](../images/shared/file-hardlink-symlink.webp)
 
 | Comparison                         | Hard link                                                                                        | Symbolic link                                  |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
@@ -607,7 +607,7 @@ A symbolic link stores a path string. The target is looked up by path, so the li
 
 No. With ordinary buffered I/O, a successful `write()` usually means only that the kernel accepted the data. It commonly enters the Page Cache and is marked as a dirty page; this does not mean the data has reached persistent storage.
 
-![File write and persistence path](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-write-persistence.webp)
+![File write and persistence path](../images/shared/file-write-persistence.webp)
 
 For stronger durability guarantees, use:
 
@@ -666,7 +666,7 @@ The SCAN, SSTF, and LOOK algorithms described below are mainly for hard disk dri
 
 Six common disk-scheduling algorithms are listed below. Many others are variations on these:
 
-![Common disk-scheduling algorithms](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/disk-scheduling-algorithms.png)
+![Common disk-scheduling algorithms](../images/shared/disk-scheduling-algorithms.png)
 
 1. **First-Come, First-Served (FCFS)**: Processes requests in the order they arrive. It is simple but ignores the head's path and direction, so average seek time may be high. It does not indefinitely skip a request, so algorithmic starvation is generally not an issue, though requests behind a long queue may wait a while.
 2. **Shortest Seek Time First (SSTF)**: Selects the request closest to the current head position. It can reduce seek time but may starve requests far from the head if nearby requests keep arriving. Practical implementations need to guard against starvation.

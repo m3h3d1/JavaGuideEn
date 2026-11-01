@@ -75,17 +75,17 @@ RocketMQ 面试一般不会停在“消息队列是什么”。更常见的追�
 
 那么第二步，我们又添加了一个发送邮件，我们就得重新去修改代码，如果我们又加一个需求：用户购买完还需要给他加积分，这个时候我们是不是又得改代码？
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef381c4e1b1ac7.jpg)
+![](../images/shared/16ef381c4e1b1ac7.png)
 
 如果还觉得可以接受，那么当需要移除发送邮件服务时，是不是又得改代码、又得重启应用？
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef381f273a66bd.jpg)
+![](../images/shared/16ef381f273a66bd.jpg)
 
 这样频繁改动代码显然很麻烦，此时可以 **使用消息队列进行解耦** 。需要注意的是，后面的发送短信、发送邮件、添加积分等操作都依赖于 `result`，即购票的处理结果（如订单号、用户账号等），也就是说后续服务都需要相同的消息来进行处理。因此可以通过 **“广播消息”** 模式来实现。
 
 这里所说的“广播”并不是真正的广播，而是下游系统作为消费者去 **订阅** 特定的主题。比如主题可以命名为 `订票`，购买系统作为生产者将消息发送到消息队列，消费者订阅该主题后，从消息队列中拉取消息并消费。在生产者端只需要关注 **生产消息到指定主题** ，**消费者只需要关注从指定主题中拉取消息** 。
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef382674b66892.jpg)
+![](../images/shared/16ef382674b66892.jpg)
 
 > 如果没有消息队列，每当一个新的业务接入，我们都要在主系统调用新接口、或者当我们取消某些业务，我们也得在主系统删除某些接口调用。有了消息队列，我们只需要关心消息是否送达了队列，至于谁希望订阅，接下来收到消息如何处理，是下游的事情，无疑极大地减少了开发和联调的工作量。
 
@@ -93,7 +93,7 @@ RocketMQ 面试一般不会停在“消息队列是什么”。更常见的追�
 
 回到同步调用系统的场景，思考一下：如果此时有大量用户请求购票，整个系统会变成什么样？
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef382a9756bb1c.jpg)
+![](../images/shared/16ef382a9756bb1c.jpg)
 
 假设有一万个请求进入购票系统，运行主业务的服务器配置通常较好，购票系统可以承受这一万个用户请求。但这意味着同时也会产生一万个调用短信服务的请求。短信系统并非主要业务，配备的硬件资源不会太高。此时短信系统能否承受这一万的峰值？很可能系统会 **直接崩溃** 。
 
@@ -162,13 +162,13 @@ flowchart LR
 
 可用性降低、复杂度上升，同时还带来重复消费、顺序消费、分布式事务、消息堆积等一系列问题。这些问题如何解决？
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef382d709abc9d.png)
+![](../images/shared/16ef382d709abc9d.jpg)
 
 下面我们逐一讨论这些问题的解决方案。
 
 ## RocketMQ 是什么？
 
-![RocketMQ 官网介绍](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef383014430799.jpg)
+![RocketMQ 官网介绍](../images/shared/16ef383014430799.png)
 
 在讨论上述问题的解决方案之前，我们先来了解一下 RocketMQ 的内部构造。建议带着问题去阅读和了解。
 
@@ -192,7 +192,7 @@ RocketMQ 具备高吞吐、低延迟、高可用的特点，经过了双十一�
 
 就像我们理解队列一样，消息中间件的队列模型就真的只是一个队列。
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef3834ae653469.jpg)
+![](../images/shared/16ef3834ae653469.jpg)
 
 队列模型的特点：**一个消息只能被一个消费者消费**。
 
@@ -227,7 +227,7 @@ flowchart LR
 
 其中，发布者将消息发送到指定主题中，订阅者需要 **提前订阅主题** 才能接受特定主题的消息。
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef3837887d9a54sds.jpg)
+![](../images/shared/16ef3837887d9a54sds.jpg)
 
 主题模型的特点：**一个 Topic 可以被多个消费者组订阅，每个消费者组都有独立的消费进度**。在集群消费模式下，同一消费者组内通常只由一个消费者实例处理某条消息；在广播消费模式下，同一消费者组内的每个消费者都会收到消息。
 
@@ -258,7 +258,7 @@ RocketMQ 中的消息模型就是按照 **主题模型** 所实现的。那么 *
 
 所以，RocketMQ 中的 **主题模型** 到底是如何实现的呢？先看一张图：
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef383d3e8c9788.jpg)
+![](../images/shared/16ef383d3e8c9788.jpg)
 
 我们可以看到在整个图中有 `Producer Group`、Topic、`Consumer Group` 三个角色。这个图更接近早期和兼容模型，理解 5.x 时要记住：新版领域模型里生产者本身是轻量、匿名的，生产者组不再是重点概念。
 
@@ -309,7 +309,7 @@ flowchart TB
 
 下面这张图仅适用于**队列粒度负载均衡**。消费者个数小于队列个数并不是问题，一个消费者可以消费多个队列；如果希望扩容后的消费者都能分到队列，就需要有足够的队列。消息粒度负载均衡下，消费者实例数则不受队列数的直接限制。
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef3850c808d707.jpg)
+![](../images/shared/16ef3850c808d707.jpg)
 
 **为什么不同消费者组要分别记录每个队列的消费进度？**
 
@@ -334,7 +334,7 @@ Q0 和 Q1 的 offset 分别在各自队列内递增。Group A 推进 Q0 的位�
 
 答案是 **提高并发能力**。每个主题中只存在一个队列也是可行的，不同消费者组仍可以分别订阅它，并维护各自的消费进度。下图展示的是队列粒度负载均衡下的单队列场景。
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef38600cdb6d4b.jpg)
+![](../images/shared/16ef38600cdb6d4b.jpg)
 
 只有一个队列时，生产者的消息都写入这个队列，无法利用多个队列分散到不同 Broker。在队列粒度负载均衡下，同组也只有一个消费者实例能分到该队列，其他实例无法分担；这是队列分配策略的限制，不是维护消费位点必然导致的。消息粒度负载均衡允许组内多个消费者分担单队列中的不同消息，多队列仍有利于存储和读写负载的分散。
 
@@ -478,7 +478,7 @@ Broker 负责消息的存储、投递和查询以及服务高可用保证。
 
 Topic 消息量都比较均匀的情况下，如果某个 Broker 上的队列越多，则该 Broker 压力越大。
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef38687488a5a4.jpg)
+![](../images/shared/16ef38687488a5a4.jpg)
 
 ### Producer（生产者）
 
@@ -599,7 +599,7 @@ Proxy 的价值不只是“多一层代理”。在云原生场景下，它可�
 
 先看一个简单的架构模型：
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef386c6d1e8bdb.jpg)
+![](../images/shared/16ef386c6d1e8bdb.jpg)
 
 你可能会发现一个问题：NameServer 是做什么的？直接让 Producer、Consumer 和 Broker 进行生产和消费消息不行吗？
 
@@ -611,7 +611,7 @@ NameServer 是 **无状态的、各节点之间互不通信** 的。这与 ZooKe
 
 下面是官网的架构图：
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef386fa3be1e53.jpg)
+![](../images/shared/16ef386fa3be1e53.jpg)
 
 和前面的简化架构图相比，主要是一些细节上的差别：
 
@@ -1309,7 +1309,7 @@ RocketMQ 服务端 3.x/4.x 历史版本：上述消费逻辑由消费者客户�
 
 那么，我们现在使用了 **普通顺序模式** ，我们从上面学习知道了在 Producer 生产消息的时候会进行轮询(取决你的负载均衡策略)来向同一主题的不同消息队列发送消息。那么如果此时我有几个消息分别是同一个订单的创建、支付、发货，在轮询的策略下这 **三个消息会被发送到不同队列** ，因为在不同的队列此时就无法使用 RocketMQ 带来的队列有序特性来保证消息有序性了。
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef3874585e096e.jpg)
+![](../images/shared/16ef3874585e096e.jpg)
 
 那么，怎么解决呢？
 
@@ -1398,7 +1398,7 @@ RocketMQ 消费端幂等可以优先按业务唯一键设计，而不是只依�
 
 在 RocketMQ 中使用的是 **事务消息加上事务反查机制** 来解决分布式事务问题的。我画了张图，大家可以对照着图进行理解。
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef38798d7a987f.png)
+![](../images/shared/16ef38798d7a987f.jpg)
 
 **事务消息处理流程详解**
 
@@ -1644,7 +1644,7 @@ public class ConsumerAddViewHistory implements RocketMQListener<Message> {
 >
 > RocketMQ 5.x 的 PushConsumer 和 SimpleConsumer 默认使用**消息粒度负载均衡策略**，同一消费者分组内的多个消费者可以按照消息粒度共同消费同一个队列中的消息，因此即使消费者数量多于队列数量，仍能提升消费并行度。PullConsumer 仍是队列粒度，扩容时还是要关注队列数。
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef387d939ab66d.jpg)
+![](../images/shared/16ef387d939ab66d.jpg)
 
 生产排查消息堆积时，可以按这个顺序来：
 
@@ -1664,7 +1664,7 @@ public class ConsumerAddViewHistory implements RocketMQListener<Message> {
 
 ### 传统 IO 方式
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/31699457085_.pic.jpg)
+![](../images/shared/31699457085_.pic.png)
 
 传统的 IO 读写其实就是 read + write 的操作，整个过程会分为如下几步
 
@@ -1687,7 +1687,7 @@ mmap（memory map）是一种内存映射文件的方法，即将一个文件或
 
 简单地说就是内核缓冲区和应用缓冲区共享，从而减少了从读缓冲区到用户缓冲区的一次 CPU 拷贝。基于此上述架构图可变为：
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/41699457086_.pic.jpg)
+![](../images/shared/41699457086_.pic.png)
 
 基于 mmap IO 读写其实就变成 mmap + write 的操作，也就是用 mmap 替代传统 IO 中的 read 操作。
 
@@ -1704,7 +1704,7 @@ MappedByteBuffer mappedByteBuffer = fileChannel.map(FileChannel.MapMode.READ_WRI
 
 sendfile()跟 mmap()一样，也会减少一次 CPU 拷贝，但是它同时也会减少两次上下文切换。
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/51699457087_.pic.jpg)
+![](../images/shared/51699457087_.pic.png)
 
 如图，用户在发起 sendfile()调用时会发生切换 1，之后数据通过 DMA 拷贝到内核缓冲区，再由内核把数据发送到 Socket 相关缓冲区，最后写入网卡，sendfile()返回，发生切换 2。不同操作系统和网卡能力下具体拷贝次数会有差异，但核心收益是减少用户态和内核态之间的数据拷贝与上下文切换。Java 也提供了相应 api：
 
@@ -1730,7 +1730,7 @@ RocketMQ 快不只是因为 mmap。更关键的是 CommitLog 顺序追加写、P
 
 ### 同步刷盘和异步刷盘
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef387fba311cda-20230814005009889.jpg)
+![](../images/shared/16ef387fba311cda-20230814005009889.jpg)
 
 如上图所示，在同步刷盘中需要等待一个刷盘成功的 ACK ，同步刷盘对 `MQ` 消息可靠性来说是一种不错的保障，但是 **性能上会有较大影响** ，一般地适用于金融等特定业务场景。
 
@@ -1755,7 +1755,7 @@ RocketMQ 快不只是因为 mmap。更关键的是 CommitLog 顺序追加写、P
 
 在单主从架构中，如果一个主节点挂掉了，那么整个系统就不能再生产消息了。那么这个可用性的问题能否解决呢？**可以通过多主从架构来解决**，在最初的架构图中，每个 Topic 是分布在不同 Broker 中的。
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef38687488a5asadasfg4.jpg)
+![](../images/shared/16ef38687488a5asadasfg4.jpg)
 
 但是这种复制方式同样也会带来一个问题，那就是无法保证 **严格顺序** 。在上文中我们提到了如何保证的消息顺序性是通过将一个语义的消息发送在同一个队列中，使用 Topic 下的队列来保证顺序性的。如果此时我们主节点 A 负责的是订单 A 的一系列语义消息，然后它挂了，这样其他节点是无法代替主节点 A 的，如果我们任意节点都可以存入任何消息，那就没有顺序性可言了。
 
@@ -1777,7 +1777,7 @@ RocketMQ 快不只是因为 mmap。更关键的是 CommitLog 顺序追加写、P
 
 总结来说，整个消息存储的结构，最主要的就是 `CommitLog` 和 ConsumeQueue。MessageQueue 是 Topic 下的逻辑队列，ConsumeQueue 是这个逻辑队列对应的物理索引文件，不要把两者完全等同。
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef3884c02acc72.png)
+![](../images/shared/16ef3884c02acc72.jpg)
 
 RocketMQ 采用的是 **混合型的存储结构** ，即 Broker 单个实例下所有的队列共用一个日志数据文件（CommitLog）来存储消息。而 Kafka 会为每个分区（Partition）分配一个独立的存储文件。
 
@@ -1787,7 +1787,7 @@ RocketMQ 这么做的原因是 **提高数据的写入效率** ，不分 Topic �
 
 下面结合架构图来理解存储结构：
 
-![](https://oss.javaguide.cn/github/javaguide/high-performance/message-queue/16ef388763c25c62.jpg)
+![](../images/shared/16ef388763c25c62.png)
 
 > 如果上面没看懂的读者一定要认真看下面的流程分析！
 

@@ -263,7 +263,7 @@ A deadlock occurs when multiple threads are blocked, each waiting for a resource
 
 In the diagram below, Thread A holds resource 1 and waits for resource 2, while Thread B holds resource 2 and waits for resource 1. They wait on each other, creating a deadlock.
 
-![Deadlock scenario: Thread A holds resource1 and waits for resource2, while Thread B holds resource2 and waits for resource1, forming a cycle](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/dead-lock-deadlock-scenario.png)
+![Deadlock scenario: Thread A holds resource1 and waits for resource2, while Thread B holds resource2 and waits for resource1, forming a cycle](../../cs-basics/images/shared/dead-lock-deadlock-scenario.png)
 
 The following example reproduces the deadlock shown above (from _Beautiful Concurrency_):
 
@@ -333,7 +333,7 @@ The following steps use JConsole as an example.
 
 First, find the JDK `bin` directory and open `jconsole`.
 
-![jconsole](https://oss.javaguide.cn/github/javaguide/java/concurrent/jdk-home-bin-jconsole.png)
+![jconsole](../../cs-basics/images/shared/jdk-home-bin-jconsole.png)
 
 On macOS, run `/usr/libexec/java_home -V` to find the JDK installation directory, then open it with `open . <directory>`. For example:
 
@@ -343,9 +343,9 @@ On macOS, run `/usr/libexec/java_home -V` to find the JDK installation directory
 
 After opening JConsole, connect to the target process, open the Threads tab, and select **Detect Deadlock**.
 
-![Detecting a deadlock with JConsole](https://oss.javaguide.cn/github/javaguide/java/concurrent/jconsole-check-deadlock.png)
+![Detecting a deadlock with JConsole](../../cs-basics/images/shared/jconsole-check-deadlock.png)
 
-![JConsole detects a deadlock](https://oss.javaguide.cn/github/javaguide/java/concurrent/jconsole-check-deadlock-done.png)
+![JConsole detects a deadlock](../../cs-basics/images/shared/jconsole-check-deadlock-done.png)
 
 ### How Can You Prevent and Avoid Deadlocks?
 

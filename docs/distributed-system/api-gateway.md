@@ -24,7 +24,7 @@ API 网关（API Gateway）是位于客户端与后端服务之间的**统一入
 - **管理分散**：缺乏统一的配置和监控视图
 - **维护成本高**：功能变更需要修改所有服务
 
-![网关示意图](https://oss.javaguide.cn/github/javaguide/system-design/distributed-system/api-gateway-overview.png)
+![网关示意图](../ai/images/shared/api-gateway-overview.png)
 
 ### 核心职责
 
@@ -235,7 +235,7 @@ APISIX 同样支持定制化的插件开发。开发者除了能够使用 Lua �
 
 ShenYu 是一款基于 WebFlux 的可扩展、高性能、响应式网关，Apache 顶级开源项目。
 
-![ShenYu 架构](https://oss.javaguide.cn/github/javaguide/distributed-system/api-gateway/shenyu-architecture.png)
+![ShenYu 架构](images/shared/shenyu-architecture.png)
 
 ShenYu 通过插件扩展功能，插件是 ShenYu 的灵魂，并且插件也是可扩展和热插拔的。不同的插件实现不同的功能。ShenYu 自带了诸如限流、熔断、转发、重写、重定向和路由监控等插件。
 

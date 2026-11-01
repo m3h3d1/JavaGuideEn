@@ -20,11 +20,11 @@ That is why **IPC (Inter-Process Communication)** relies on mechanisms provided 
 
 It helps to think of IPC in terms of three questions: **how data is transferred, how execution is synchronized, and how endpoints are named and access-controlled**. Memorizing names such as pipes, message queues, and shared memory without these roles makes the topic harder to remember.
 
-![Process address-space isolation means processes need operating-system IPC mechanisms to communicate](https://oss.javaguide.cn/github/javaguide/java/new-features/ipc-why-ipc.png)
+![Process address-space isolation means processes need operating-system IPC mechanisms to communicate](../images/shared/ipc-why-ipc.png)
 
 ## What Problems Does IPC Solve?
 
-![IPC addresses data transfer, synchronization, naming, and permission checks](https://oss.javaguide.cn/github/javaguide/java/new-features/what-problem-does-ipc-solve.png)
+![IPC addresses data transfer, synchronization, naming, and permission checks](../images/shared/what-problem-does-ipc-solve.png)
 
 **First, IPC transfers data.** Pipes and byte-stream sockets carry a continuous sequence of bytes; the application defines message boundaries. Message queues, datagram sockets, and Binder transactions carry messages with boundaries. Shared memory maps the same physical memory into multiple processes, so once the mapping exists, each read or write does not need to enter the kernel.
 
@@ -38,7 +38,7 @@ A pipe is one of the most familiar IPC mechanisms. In a Shell command such as `p
 
 On Linux, `pipe()` returns two file descriptors: a read end and a write end. If a parent creates a pipe and then calls `fork()`, the child inherits those descriptors, allowing the parent and child to communicate through the same pipe. An anonymous pipe has no name and is usually used between related processes.
 
-![A pipe passes a one-way byte stream between parent and child through a kernel buffer](https://oss.javaguide.cn/github/javaguide/java/new-features/ipc-pipe-flow.png)
+![A pipe passes a one-way byte stream between parent and child through a kernel buffer](../images/shared/ipc-pipe-flow.png)
 
 A pipe is a one-way byte stream. POSIX requires only one-way communication; two-way communication usually uses two pipes. It does not preserve message boundaries: three writes by the sender do not guarantee three reads by the receiver. The buffer is in the kernel. A blocking write sleeps when the buffer is full, while a nonblocking write may return `EAGAIN`. A pipe is not a regular file, so `lseek()` cannot reposition within it.
 
@@ -64,7 +64,7 @@ Shared memory maps the same physical memory into the virtual address spaces of m
 
 Linux commonly provides two interfaces. System V shared memory uses `shmget()`, `shmat()`, `shmdt()`, and `shmctl()`. POSIX shared memory uses `shm_open()` to create an object, `ftruncate()` to set its size, and `mmap()` to map it into each process.
 
-![Shared memory maps the same physical memory into several processes, but still needs semaphores, futexes, or other synchronization](https://oss.javaguide.cn/github/javaguide/java/new-features/ipc-shared-memory.png)
+![Shared memory maps the same physical memory into several processes, but still needs semaphores, futexes, or other synchronization](../images/shared/ipc-shared-memory.png)
 
 Shared memory can be fast because its data path is short. Pipes, message queues, and sockets typically pass data to the kernel, which then passes it to another process. With shared memory, processes access the same physical pages after mapping, so the data does not need to be copied between user and kernel space for every exchange. It can suit large local data transfers such as log collection, audio/video processing, or database caches.
 
@@ -94,7 +94,7 @@ If asked to choose between a pipe and a Unix Domain Socket: a pipe is enough for
 
 ## Android Binder: IPC as a System-Service Call
 
-![Android Binder uses AIDL, Parcel, the Binder driver, and Service Manager to expose IPC as system-service calls](https://oss.javaguide.cn/github/javaguide/java/new-features/android-binder-turning-ipc-into-system-service-calls.png)
+![Android Binder uses AIDL, Parcel, the Binder driver, and Service Manager to expose IPC as system-service calls](../images/shared/android-binder-turning-ipc-into-system-service-calls.png)
 
 Binder is the primary IPC mechanism in Android. Applications use it to call system services, communicate with services in other processes, and invoke remote interfaces generated from AIDL.
 
@@ -128,11 +128,11 @@ Do not ask only “Which one is fastest?” Ask: How large is the data? Are mess
 | TCP/UDP socket     | Stream or datagram                   | Depends on protocol           | Depends on protocol and implementation | Yes                   | Communication across machines                    |
 | Binder             | Transactions, object references, fds | Yes                           | Not for large objects directly         | No, Android local IPC | Android system-service calls                     |
 
-![Comparison of common IPC mechanisms by data form, message boundaries, large-data support, and network scope](https://oss.javaguide.cn/github/javaguide/java/new-features/ipc-ipc-comparison.png)
+![Comparison of common IPC mechanisms by data form, message boundaries, large-data support, and network scope](../images/shared/ipc-ipc-comparison.png)
 
 For a small byte stream between parent and child, use a pipe. For bidirectional request/response between unrelated local processes, use a Unix Domain Socket. Message queues suit small structured events. For large data, consider shared memory plus a synchronization notification. Use TCP/UDP or higher-level RPC across machines. Android applications generally use Binder for cross-process service calls.
 
-![Choose IPC based on data size, message boundaries, network scope, and process relationship](https://oss.javaguide.cn/github/javaguide/java/new-features/ipc-ipc-selection.png)
+![Choose IPC based on data size, message boundaries, network scope, and process relationship](../images/shared/ipc-ipc-selection.png)
 
 ## How to Explain IPC in an Interview
 

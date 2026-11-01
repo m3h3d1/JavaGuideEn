@@ -16,7 +16,7 @@ head:
 
 ## RPC 是什么?
 
-![RPC 概览](https://oss.javaguide.cn/github/javaguide/distributed-system/rpc/rpc-overview.png)
+![RPC 概览](../../cs-basics/images/shared/rpc-overview.png)
 
 **RPC（Remote Procedure Call）** 即远程过程调用，通过名字我们就能看出 RPC 关注的是远程调用而非本地调用。
 
@@ -40,7 +40,7 @@ head:
 
 具体原理图如下，后面我会串起来将整个 RPC 的过程给大家说一下。
 
-![RPC 原理图](https://oss.javaguide.cn/github/javaguide/distributed-system/rpc/rpc-principle.png)
+![RPC 原理图](../../cs-basics/images/shared/rpc-principle.png)
 
 1. 服务消费端（client）以本地调用的方式调用远程服务；
 1. 客户端 Stub（client stub） 接收到调用后负责将方法、参数等组装成能够进行网络传输的消息体（序列化）：`RpcRequest`；
@@ -69,7 +69,7 @@ Apache Dubbo 是一款微服务框架，为大规模微服务实践提供高性�
 
 Dubbo 提供了从服务定义、服务发现、服务通信到流量管控等几乎所有的服务治理能力，支持 Triple 协议（基于 HTTP/2 之上定义的下一代 RPC 通信协议）、应用级服务发现、Dubbo Mesh （Dubbo3 赋予了很多云原生友好的新特性）等特性。
 
-![Dubbo3](https://oss.javaguide.cn/github/javaguide/distributed-system/rpc/image-20220716111545343.png)
+![Dubbo3](../../cs-basics/images/shared/image-20220716111545343.png)
 
 Dubbo 是由阿里开源，后来加入了 Apache 。正是由于 Dubbo 的出现，才使得越来越多的公司开始使用以及接受分布式架构。
 

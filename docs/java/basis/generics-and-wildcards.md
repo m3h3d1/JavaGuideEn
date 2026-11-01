@@ -144,7 +144,7 @@ public void print(List<String> list)  { }
 public void print(List<Integer> list) { }
 ```
 
-![Type erasure in Java generics](https://oss.javaguide.cn/github/javaguide/java/basis/generics-runtime-erasure.png)
+![Type erasure in Java generics](../images/shared/generics-runtime-erasure.png)
 
 After type erasure, both `List<String>` and `List<Integer>` become `List`.
 

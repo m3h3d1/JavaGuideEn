@@ -311,7 +311,7 @@ Fallback 本身也可能出问题，而且这种问题比正常故障更难发�
 | **Open（打开）**     | 熔断触发，拒绝请求     | 快速返回 Fallback，不再调用下游        | 经过冷却时间（不同框架名称不同，如 Hystrix 的 sleepWindow、Resilience4j 的 waitDurationInOpenState，典型值 10s） → HalfOpen |
 | **HalfOpen（半开）** | 探测服务是否恢复       | 放行少量探路请求（数量取决于框架实现） | 探测请求满足成功条件 → Closed；失败 → Open                                                                                  |
 
-![熔断器状态机](https://oss.javaguide.cn/github/javaguide/high-availability/fallback-and-circuit-breaker-fuse-state-machine.png)
+![熔断器状态机](../distributed-system/images/shared/fallback-and-circuit-breaker-fuse-state-machine.png)
 
 ### Half-Open 和 Warm Up 不是一回事
 

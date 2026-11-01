@@ -1223,7 +1223,7 @@ AQS works as follows: if the requested shared resource is available, the request
 
 A **CLH lock** is a linked-list-based spin lock. Threads waiting for a lock form a singly linked queue. Each waiting thread spins while checking the state of its predecessor, and can acquire the lock after that predecessor releases it. The diagram below shows the queue structure.
 
-![CLH lock queue structure](https://oss.javaguide.cn/github/javaguide/open-source-project/clh-lock-queue-structure.png)
+![CLH lock queue structure](../images/shared/clh-lock-queue-structure.png)
 
 The **wait queue** used by AQS is a variation of the CLH lock queue (referred to below as the CLH variant queue).
 

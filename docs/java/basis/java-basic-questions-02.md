@@ -684,7 +684,7 @@ public final class String implements java.io.Serializable, Comparable<String>, C
 >
 > The JDK team notes that most string objects contain only characters representable in Latin-1.
 >
-> ![](https://oss.javaguide.cn/github/javaguide/jdk9-string-latin1.png)
+> ![](../images/shared/jdk9-string-latin1.png)
 >
 > If a string contains characters that Latin-1 cannot represent (such as Chinese characters), it uses UTF-16, with two bytes per code unit.
 >
@@ -703,7 +703,7 @@ String str4 = str1 + str2 + str3;
 
 The bytecode for the code above is shown below:
 
-![](https://oss.javaguide.cn/github/javaguide/java/image-20220422161637929.png)
+![](../images/shared/image-20220422161637929.png)
 
 In the JDK 8 bytecode shown here, `javac` translates string concatenation with `+` into calls to `StringBuilder.append()`. Starting with JDK 9, `javac` uses `invokedynamic` and `StringConcatFactory` by default, so `StringBuilder` is not the implementation used by every Java version.
 
@@ -720,7 +720,7 @@ System.out.println(s);
 
 The `StringBuilder` is created inside the loop, so a new one may be created on every iteration.
 
-![](https://oss.javaguide.cn/github/javaguide/java/image-20220422161320823.png)
+![](../images/shared/image-20220422161320823.png)
 
 Using one `StringBuilder` directly for concatenation avoids this issue.
 
@@ -733,7 +733,7 @@ for (String value : arr) {
 System.out.println(s);
 ```
 
-![](https://oss.javaguide.cn/github/javaguide/java/image-20220422162327415.png)
+![](../images/shared/image-20220422162327415.png)
 
 If you use IntelliJ IDEA, its code inspections can suggest this change.
 
@@ -879,13 +879,13 @@ System.out.println(str4 == str5); // false
 
 > **Note:** Use `equals()` to compare string values. `String` overrides `equals()`: `Object.equals()` checks whether two references point to the same object, while `String.equals()` compares string values. IntelliJ IDEA will suggest using `equals()` instead of `==` for string comparison.
 
-![](https://oss.javaguide.cn/java-guide-blog/image-20210817123252441.png)
+![](../images/shared/image-20210817123252441.png)
 
 **For string expressions whose values are known at compile time, the compiler performs constant folding and stores the result as a string constant in the class file's constant pool. The corresponding string object is created at runtime and placed in the string pool.**
 
 During compilation, `javac` performs an optimization called **constant folding**. This is also discussed in _Understanding the Java Virtual Machine_:
 
-![](https://oss.javaguide.cn/javaguide/image-20210817142715396.png)
+![](../images/shared/image-20210817142715396.png)
 
 Constant folding evaluates constant expressions and embeds their values as constants in the generated code. It is one of the few optimizations `javac` performs on source code; most code optimization happens in the JIT compiler.
 

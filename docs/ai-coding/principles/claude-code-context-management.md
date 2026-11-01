@@ -15,7 +15,7 @@ head:
 
 大家好，我是小 G。最近星球里有不少 G 友分享 Agent 岗位的面经，我看了一下，发现问到上下文管理的次数比较多。
 
-![Claude Code、Skills 与上下文工程面试题记录](https://oss.javaguide.cn/github/javaguide/ai/claude-code/claude-code-context-management-interview-questions.png)
+![Claude Code、Skills 与上下文工程面试题记录](../images/shared/claude-code-context-management-interview-questions.png)
 
 我在之前的文章中已经分享过一篇： [上下文工程(Context Engineering) 是什么？和 Prompt Engineering 有什么区别？](https://javaguide.cn/ai/agent/context-engineering.html)，介绍了上下文管理的核心内容。
 
@@ -33,7 +33,7 @@ Claude Code 执行 `/compact` 后，会用结构化摘要替换此前的会话�
 
 ## Claude Code 架构全景
 
-![Claude Code 架构全景](https://oss.javaguide.cn/github/javaguide/ai/claude-code/ctx-mgmt-arch-arch.png)
+![Claude Code 架构全景](../images/shared/ctx-mgmt-arch-arch.png)
 
 窗口承压时，可以直接清理工具结果、压缩历史、重置上下文，或者把支线隔离到子代理。Skills 的按需加载、任务状态写入文件系统，以及后台任务的独立执行，也会改变可用预算。
 
@@ -86,7 +86,7 @@ Prompt Engineering 和 Context Engineering 的区别也在这里。前者关心�
 
 想看当前会话实际占用，可以使用 `/context` 命令。它会把当前模型窗口、已用 Token、剩余空间，以及 System Prompt、工具、Skills、消息等分类占用列出来。
 
-![Claude Code /context 命令运行结果](https://oss.javaguide.cn/github/javaguide/ai/skills/claude-code-context-command-result.png)
+![Claude Code /context 命令运行结果](../images/shared/claude-code-context-command-result.png)
 
 动态内容里，工具调用通常是大头。一个几百行的源文件可能就是几千 Token；搜索结果和测试日志可能更长。工具调用参数和结果会进入当前会话，文件内容、命令输出和搜索结果会随着任务推进不断累积。接近窗口上限时，Claude Code 会先清理较旧的工具结果，空间仍然不够时再压缩会话。
 
@@ -233,7 +233,7 @@ Cursor 这类 AI IDE 会做 Codebase Indexing，用索引辅助低延迟补全�
 
 [Harness design for long-running application development](https://www.anthropic.com/engineering/harness-design-long-running-apps "Harness design for long-running application development")这篇文章中的完整描述如下：
 
-![context-anxiety-harness-design-long-running-apps](https://oss.javaguide.cn/github/javaguide/ai/claude-code/context-anxiety-harness-design-long-running-apps.png)
+![context-anxiety-harness-design-long-running-apps](../images/shared/context-anxiety-harness-design-long-running-apps.png)
 
 旧判断、重复搜索结果、已解决问题和无用日志也会消耗注意力，即使窗口还没有临界。它们在每轮请求里反复出现，新决策却可能只有一句；这种信噪比下降的状态称为 **Context Rot**。窗口变大只能延后压力，信息过多仍会让中间位置的限制被遗漏，最后还可能进入 Context Anxiety。
 
@@ -277,7 +277,7 @@ MicroCompact 会把旧工具结果替换为 `[Old tool result content cleared]`�
 
 工具结果清掉以后，对话历史还在涨。到一定程度，就需要把旧历史改写成状态摘要。在本文观察的实现里，这件事会走一条多级流水线。官方文档能确认的是：接近上限时会先清旧工具结果，不够再摘要会话。
 
-![五级渐进压缩流水线](https://oss.javaguide.cn/github/javaguide/ai/claude-code/ctx-mgmt-pipeline-flow.png)
+![五级渐进压缩流水线](../images/shared/ctx-mgmt-pipeline-flow.png)
 
 | 级别 | 名称         | 动作                                       | 信息损失   | API 成本 |
 | ---- | ------------ | ------------------------------------------ | ---------- | -------- |
@@ -297,7 +297,7 @@ Collapse 也属于这部分实现，比 AutoCompact 更轻。调用 API 时，�
 
 AutoCompact 会用一份新的状态摘要替换旧聊天记录。目标、进度、决策和待办会被保留，读过哪些文件、搜过哪些关键词以及测试输出全文通常不会；需要这些细节时，Agent 需重新从文件系统读取。
 
-![AutoCompact 压缩前后对比](https://oss.javaguide.cn/github/javaguide/ai/claude-code/ctx-mgmt-compare.png)
+![AutoCompact 压缩前后对比](../images/shared/ctx-mgmt-compare.png)
 
 手动 `/compact` 与自动压缩使用同类能力，但输入参数不同。手动调用可以明确指定摘要必须保留的内容；自动调用会打开 `suppressFollowUpQuestions`，避免摘要器在中途追问。
 
@@ -390,7 +390,7 @@ Full / Partial Compact 结束后，新的消息链通常包含边界标记、摘
 
 第四层就不再执着于“把旧窗口救回来”了。Compaction 是在旧上下文上修补，修补次数多了，细节损失会叠加。到了某个点，继续压不如直接重开。Context Reset 的做法是清空窗口，把当前状态写成交接文档，新的 Agent 从交接文档恢复。
 
-![上下文重置交接流程](https://oss.javaguide.cn/github/javaguide/ai/claude-code/ctx-mgmt-reset-flow.png)
+![上下文重置交接流程](../images/shared/ctx-mgmt-reset-flow.png)
 
 Anthropic 在基于 Sonnet 4.5 的特定长任务 Harness 中观察到，模型接近上下文上限时会草草收尾，也就是 Context Anxiety。这个场景下，单靠 Compaction 不够。
 
@@ -465,7 +465,7 @@ Circuit Breaker 是自动压缩的硬保护。官方文档说明：某个大文�
 
 Anthropic Labs 团队在 2026 年发了一个受 **GAN（Generative Adversarial Network，生成对抗网络）** 思路启发的三智能体架构：
 
-![Anthropic 三智能体架构](https://oss.javaguide.cn/github/javaguide/ai/claude-code/ctx-mgmt-triagent-arch.png)
+![Anthropic 三智能体架构](../images/shared/ctx-mgmt-triagent-arch.png)
 
 Planner 把 1-4 句话的产品描述扩成完整规格，Generator 按 Sprint 实现功能，Evaluator 再用 Playwright MCP 实际操作运行中的应用，并按产品设计深度、功能性、视觉设计和代码质量打分。角色分工让规划、实现和评估各自保有独立上下文。
 
@@ -557,7 +557,7 @@ Carlini 后来在 [Building a C compiler with a team of parallel Claudes](https:
 
 会话历史只服务当前会话，之后可能被压缩。用户或项目写入的持久指令放在 `CLAUDE.md` / Rules；Auto Memory 按 Git 仓库保存经验笔记，默认路径为 `~/.claude/projects/<project>/memory/`，可由 `CLAUDE_COWORK_MEMORY_PATH_OVERRIDE` 或可信 settings 中的 `autoMemoryDirectory` 覆盖。会话启动时只加载 `MEMORY.md` 的前 200 行或 25KB。
 
-![Claude Code Auto Memory](https://oss.javaguide.cn/github/javaguide/ai/skills/claude-code-auto-memory.png)
+![Claude Code Auto Memory](../images/shared/claude-code-auto-memory.png)
 
 记忆文件变多后，启动时只加载索引；需要具体细节再打开对应文件。
 
@@ -581,7 +581,7 @@ Carlini 后来在 [Building a C compiler with a team of parallel Claudes](https:
 | CLAUDE.md / Rules | 用户、项目、组织写入的持久指令   | 项目 `.claude/` 或 `~/.claude/`                                                                                                                         |
 | Auto Memory       | Claude 按 Git 仓库维护的经验笔记 | 默认在 `~/.claude/projects/<project>/memory/`，可被 `CLAUDE_COWORK_MEMORY_PATH_OVERRIDE` 或可信 settings 覆盖；`MEMORY.md` 是索引入口，跨 worktree 共享 |
 
-![Claude Code  /memory](https://oss.javaguide.cn/github/javaguide/ai/skills/claudecode-memory-command.png)
+![Claude Code  /memory](../images/shared/claudecode-memory-command.png)
 
 临时绕过 Bug 的方案一旦写入项目记忆，后续会话可能继续沿用错误前提。文件路径、依赖版本和函数签名可直接从源码查询，无需重复记录；条目增加会抬高固定开销，错误条目还会持续影响判断。
 

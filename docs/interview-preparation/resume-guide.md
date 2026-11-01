@@ -60,7 +60,7 @@ A few **resume formatting tips**:
 
 The Knowledge Planet community also has real resume examples: <https://t.zsxq.com/12ypxGNzU> (available to [members](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html)).
 
-![](https://oss.javaguide.cn/javamianshizhibei/image-20230918073550606.png)
+![](images/shared/image-20230918073550606.png)
 
 ## Resume content
 
@@ -71,7 +71,7 @@ The Knowledge Planet community also has real resume examples: <https://t.zsxq.co
 
 Example:
 
-![](https://oss.javaguide.cn/zhishixingqiu/20210428212337599.png)
+![](images/shared/20210428212337599.png)
 
 **Should you include a photo?** This is a common question.
 
@@ -83,7 +83,7 @@ State which role you are applying for and your preferred location. You can put t
 
 Example:
 
-![](https://oss.javaguide.cn/zhishixingqiu/20210428212410288.png)
+![](images/shared/20210428212410288.png)
 
 ### Education
 
@@ -101,11 +101,11 @@ Start by listing the skills you have, then compare them with the requirements of
 
 The template below lists common Java backend development skills. Adjust it to match your experience and the job description; the goal is to cover the role's requirements honestly.
 
-![Java backend skills template](https://oss.javaguide.cn/zhishixingqiu/jinengmuban.png)
+![Java backend skills template](images/shared/jinengmuban.png)
 
 Here is a skills section from a candidate's resume. Let's identify some issues:
 
-![](https://oss.javaguide.cn/zhishixingqiu/up-a58d644340f8ce5cd32f9963f003abe4233.png)
+![](images/shared/up-a58d644340f8ce5cd32f9963f003abe4233.png)
 
 Issues with the skills section above:
 
@@ -150,7 +150,7 @@ What you learned and the project results are optional. If you include them, keep
 
 **2. List technology names in the architecture section; do not explain what each technology does.** That explanation usually adds little value.
 
-![](https://oss.javaguide.cn/github/javaguide/interview-preparation/46c92fbc5160e65dd85c451143177144.png)
+![](images/shared/46c92fbc5160e65dd85c451143177144.png)
 
 **3. Avoid describing only routine business tasks. Find a few contributions that show your range.** Around six to eight responsibility bullets is usually enough. You might explain how you coordinated development with teammates, solved a difficult problem, or improved a module's performance.
 
@@ -188,15 +188,15 @@ Example responsibility bullets (do not copy them directly; tailor them to your o
 
 Project experience is an important part of your resume. The interview preparation section of the [Java Interview Guide](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html) has several articles on improving project descriptions; they are worth reading.
 
-![](https://oss.javaguide.cn/zhishixingqiu/4e11dbc842054e53ad6c5f0445023eb5~tplv-k3u1fbpfcp-zoom-1.png)
+![](images/shared/4e11dbc842054e53ad6c5f0445023eb5-tplv-k3u1fbpfcp-zoom-1.png)
 
 **5. Do not make every responsibility bullet about the same technology.**
 
-![](https://oss.javaguide.cn/zhishixingqiu/image-20230424222513028.png)
+![](images/shared/image-20230424222513028.png)
 
 **6. Avoid vague wording. Be specific about the technology, scenario, and result, and keep the writing concise.** Do not pile up technology names or include unnecessary details.
 
-![](https://oss.javaguide.cn/github/javaguide/interview-preparation/project-experience-avoiding-ambiguity-descriptio.png)
+![](images/shared/project-experience-avoiding-ambiguity-descriptio.png)
 
 ### Awards (optional)
 
@@ -253,7 +253,7 @@ Be concise and highlight your strengths. As a general guide, keep a new-grad res
 
 After reviewing thousands of resumes, I have seen a few that were close to ten pages long. That's a lot to get through.
 
-![A resume that is too long](https://oss.javaguide.cn/zhishixingqiu/image-20230508223646164.png)
+![A resume that is too long](images/shared/image-20230508223646164.png)
 
 ### Avoid vague language
 
@@ -282,7 +282,7 @@ Resume layout matters. You do not need decorative design, but the structure shou
 
 So far, I have provided free resume reviews to **6,000+** Knowledge Planet members. Because of limited time, this service is available only to members. To request a review, join the [official JavaGuide Knowledge Planet](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html#%E7%AE%80%E5%8E%86%E4%BF%AE%E6%94%B9) (follow the link for details).
 
-![Resume review](https://oss.javaguide.cn/xingqiu/%E7%AE%80%E5%8E%86%E4%BF%AE%E6%94%B92.jpg)
+![Resume review](images/shared/2.jpg)
 
 Membership costs about one percent of a typical training program, while offering in-depth content and a wide range of services for Java learners and interview candidates.
 

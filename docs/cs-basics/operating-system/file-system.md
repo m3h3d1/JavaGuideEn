@@ -27,7 +27,7 @@ Not every filesystem is backed by a local disk. `tmpfs` primarily uses memory, `
 
 A filesystem does more than store file contents. It handles four main tasks:
 
-![Overview of filesystem responsibilities](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-system-responsibilities.webp)
+![Overview of filesystem responsibilities](../images/shared/file-system-responsibilities.webp)
 
 - **Naming:** Find a file by path and filename, such as `/var/log/app.log`.
 - **Organization:** Use a directory tree to group files.
@@ -75,7 +75,7 @@ Linux VFS also keeps dentries in memory. A dentry represents a component in a pa
 
 This is also why renaming a file is usually fast. When `mv a.txt b.txt` happens within one filesystem, the filesystem often changes a directory entry; it does not move the file contents.
 
-![Relationship between filenames, dentries, and inodes](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-inode-dentry-relation.webp)
+![Relationship between filenames, dentries, and inodes](../images/shared/file-inode-dentry-relation.webp)
 
 Use these commands to inspect the information:
 
@@ -105,7 +105,7 @@ The Linux man-pages explain that `open()` returns an index in the process's file
 
 These structures are easy to confuse:
 
-![From a path to a file descriptor](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-path-to-fd.webp)
+![From a path to a file descriptor](../images/shared/file-path-to-fd.webp)
 
 | Structure             | Scope                 | What it records                                  |
 | --------------------- | --------------------- | ------------------------------------------------ |
@@ -136,7 +136,7 @@ Textbooks commonly describe contiguous, linked, and indexed file allocation. The
 
 Classic ext2/ext3 use direct block pointers and single-, double-, and triple-indirect blocks to locate file data. ext4 usually uses an extent tree. An extent records a logical start, physical start, and length for a run of contiguous physical blocks. For a large contiguous file, this needs much less mapping metadata than storing an address for every block.
 
-![Methods for locating file data blocks](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-block-allocation.webp)
+![Methods for locating file data blocks](../images/shared/file-block-allocation.webp)
 
 Other modern filesystems combine B-trees, extents, delayed allocation, copy-on-write, and other techniques. Direct and indirect block pointers are not a universal design for modern filesystems.
 
@@ -180,7 +180,7 @@ Both kinds of link let a path refer to a file, but they point to different thing
 | Can cross filesystems?           | No                                                                                | Yes                                            |
 | Can link directories?            | Linux does not allow ordinary hard links to directories                           | Yes                                            |
 
-![Hard links and symbolic links](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-hardlink-symlink.webp)
+![Hard links and symbolic links](../images/shared/file-hardlink-symlink.webp)
 
 Hard links cannot cross filesystems because an inode number is meaningful only within its filesystem. Another filesystem has its own inode table, so the same number does not identify the same file.
 
@@ -214,7 +214,7 @@ A common safe replacement sequence is to create a temporary file in the same dir
 
 Databases, message queues, and logging systems all deal with this. Some try to persist each transaction commit; others accept a short window of possible data loss in exchange for throughput. The right choice depends on the recovery point the application can tolerate.
 
-![File write and persistence path](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-write-persistence.webp)
+![File write and persistence path](../images/shared/file-write-persistence.webp)
 
 ## How Do Journaling Filesystems Reduce Crash Damage?
 

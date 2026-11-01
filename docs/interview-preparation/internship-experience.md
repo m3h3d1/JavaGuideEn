@@ -81,7 +81,7 @@ Here are examples. Assume the details of the project are described in the intern
 
 Here is an internship description shared by a Knowledge Planet member. It is a strong example:
 
-![Internship experience example](https://oss.javaguide.cn/github/javaguide/interview-preparation/qiuyou-shixijingli-demo.png)
+![Internship experience example](images/shared/qiuyou-shixijingli-demo.webp)
 
 📌 A final note on internships: Many students may not get substantial development tasks during an internship. Much of their time may go to learning and maintaining the project.
 

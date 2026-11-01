@@ -18,7 +18,7 @@ This is a quick review that connects core concepts. For deeper study, pair it wi
 
 ## Operating System Fundamentals
 
-![Operating system fundamentals mind map](https://oss.javaguide.cn/2020-8/image-20200807161118901.png)
+![Operating system fundamentals mind map](../images/shared/image-20200807161118901.png)
 
 ### What Is an Operating System?
 
@@ -36,7 +36,7 @@ The kernel and the central processing unit (CPU) are different:
 
 The diagram shows the relationship between applications, the kernel, and the CPU.
 
-![Relationship between applications, the kernel, and the CPU](https://oss.javaguide.cn/2020-8/Kernel_Layout.png)
+![Relationship between applications, the kernel, and the CPU](../images/shared/kernel_layout.png)
 
 ### What Are the Main Functions of an Operating System?
 
@@ -75,7 +75,7 @@ Unix was one of the most influential early multiuser, multitasking operating sys
 >
 > Some people prefer the term “GNU/Linux” for the systems commonly called “Linux.”
 
-![Linux desktop and command-line interfaces](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/linux.png)
+![Linux desktop and command-line interfaces](../images/shared/linux.jpg)
 
 #### macOS
 
@@ -89,7 +89,7 @@ macOS is Apple's operating system. It offers a Unix-like development environment
 
 User mode and kernel mode describe CPU privilege levels. Application code normally runs in user mode. To access protected resources, the CPU enters kernel mode through a defined entry point, and the kernel performs the operation on the current thread's behalf.
 
-![User mode and kernel mode](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/usermode-and-kernelmode.png)
+![User mode and kernel mode](../images/shared/usermode-and-kernelmode.png)
 
 - **User mode:** Has fewer privileges. Code cannot execute privileged instructions, freely access kernel address space, or operate hardware directly. To read a file or send network data, an application requests a kernel service through a system call.
 - **Kernel mode:** Has higher privileges and can perform operations such as managing page tables, interrupts, and devices. After a system call, interrupt, or synchronous exception enters the kernel, the CPU executes kernel code; the whole user process does not become a “kernel process.”
@@ -107,7 +107,7 @@ Hardware privilege levels keep ordinary applications in a controlled environment
 
 #### How Does the CPU Switch Between Modes?
 
-![Three ways to enter kernel mode](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/the-way-switch-between-user-mode-and-kernel-mode.drawio.png)
+![Three ways to enter kernel mode](../images/shared/the-way-switch-between-user-mode-and-kernel-mode.drawio.png)
 
 Three main types of events can move the CPU from user mode to kernel mode:
 
@@ -125,7 +125,7 @@ Entry details vary by architecture, but each event is routed to an appropriate k
 
 A system call is a controlled service interface provided by the kernel. Applications cannot directly operate a disk, page table, or network card, so they ask the kernel to perform those operations.
 
-![A user program requests a kernel service through a system call](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/system-call.png)
+![A user program requests a kernel service through a system call](../images/shared/system-call.png)
 
 System calls can be grouped by purpose:
 
@@ -147,7 +147,7 @@ Consider `read(fd, buf, count)` on Linux x86-64:
 4. If data is ready, the kernel completes the read and returns a result. If data is not ready, the current thread may wait while the scheduler runs another runnable task.
 5. On completion, the result is returned in a register. On error, glibc usually converts the kernel error code to `-1` and sets `errno`.
 
-![System call flow](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/system-call-procedure.png)
+![System call flow](../images/shared/system-call-procedure.png)
 
 #### Does a System Call Always Cause a Context Switch?
 
@@ -169,7 +169,7 @@ Processes and threads are core operating system topics. These are short answers 
 
 Processes and threads are two core concepts for concurrent execution. One analogy is a **factory and its workers**.
 
-![Relationship between programs, processes, and threads](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/relationship-between-program-process-and-thread.png)
+![Relationship between programs, processes, and threads](../images/shared/relationship-between-program-process-and-thread.png)
 
 A **process** is like a factory. The operating system allocates resources to a process, such as its own virtual address space and file descriptors. It is isolated from other processes, such as a browser.
 
@@ -177,7 +177,7 @@ A **thread** is like a worker in the factory. Several workers can share the fact
 
 Here is an illustration of the factory analogy:
 
-![A messaging-app factory analogy for processes and threads](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/wechat-factory-process-thread.png)
+![A messaging-app factory analogy for processes and threads](../images/shared/wechat-factory-process-thread.png)
 
 The Java runtime data areas provide another view from the JVM perspective.
 
@@ -185,7 +185,7 @@ The Java runtime data areas provide another view from the JVM perspective.
 
 One process can contain multiple threads. Threads share the process's **heap** and **method area (Metaspace since JDK 8)**, while each thread has its own **program counter**, **JVM stack**, and **native method stack**.
 
-![Resources shared by threads and their private state](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/thread-shared-and-private-content.png)
+![Resources shared by threads and their private state](../images/shared/thread-shared-and-private-content.png)
 
 Compare them across five dimensions:
 
@@ -262,7 +262,7 @@ Textbooks often use a five-state model, similar to the model for threads:
 - **Blocked/Waiting:** It is waiting for an event, such as a resource or I/O completion. It cannot run even if a processor is idle.
 - **Terminated:** The process has exited normally or been stopped and the system is cleaning up its resources.
 
-![Process state transitions](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/state-transition-of-process.png)
+![Process state transitions](../images/shared/state-transition-of-process.png)
 
 Focus on what causes a transition: a ready task gets CPU time and runs; a running task may return to ready when its time slice expires; a blocking I/O request, lock wait, or event wait moves it to blocked; when the event completes, it usually returns to ready and waits to be scheduled.
 
@@ -287,7 +287,7 @@ For the full classification and tradeoffs, see [Interprocess Communication (IPC)
 
 Unix/Linux process creation and program replacement often involve `fork()`, `exec()`, and `wait()`. For file descriptor inheritance, copy-on-write, and `fork()` from multithreaded programs, see [Processes and Threads](./process-and-thread.md).
 
-![The fork, exec, and wait call sequence](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/fork-exec-wait-call-chain.png)
+![The fork, exec, and wait call sequence](../images/shared/fork-exec-wait-call-chain.png)
 
 - **`fork()`:** Creates a child process. Parent and child continue from the same point but receive different return values.
 - **`exec()`:** Loads another program into the current process. It does not create a process; it replaces the current process's user-space program and data.
@@ -299,7 +299,7 @@ When a Shell starts an external command, it commonly calls `fork()`, the child c
 
 A context switch occurs when the CPU changes from one execution entity to another. The operating system saves the current entity's registers, program counter, stack pointer, and other state, then restores the next entity's state.
 
-![Comparison of thread and process context-switch costs](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/context-switch-cost-comparison.png)
+![Comparison of thread and process context-switch costs](../images/shared/context-switch-cost-comparison.png)
 
 Both thread and process switches have costs, but a process switch is usually heavier. Processes have separate address spaces, so a switch may change page tables, invalidate TLB entries, and reduce cache locality. Threads in one process share an address space, so their switch usually does not require changing the entire memory mapping.
 
@@ -309,7 +309,7 @@ Also distinguish a **context switch** from a **user/kernel mode transition**. Sy
 
 ### What Process-Scheduling Algorithms Are There?
 
-![Common process-scheduling algorithms](https://oss.javaguide.cn/github/javaguide/cs-basics/network/scheduling-algorithms-of-process.png)
+![Common process-scheduling algorithms](../images/shared/scheduling-algorithms-of-process.png)
 
 Textbook scheduling algorithms explain how to choose which runnable task should run when there are more runnable tasks than CPU cores. A scheduler balances **throughput, turnaround time, response time, fairness,** and switching costs.
 
@@ -370,7 +370,7 @@ A classic example is **cross-locking** with two threads and two locks:
 
 Thread 1 waits for thread 2 to release B, while thread 2 waits for thread 1 to release A. They hold resources the other needs and form a wait cycle.
 
-![Thread A holds resource 1 and waits for resource 2; thread B holds resource 2 and waits for resource 1](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/dead-lock-deadlock-scenario.png)
+![Thread A holds resource 1 and waits for resource 2; thread B holds resource 2 and waits for resource 1](../images/shared/dead-lock-deadlock-scenario.png)
 
 ### What Are the Four Necessary Conditions for Deadlock?
 
@@ -381,7 +381,7 @@ All four of the following conditions must hold at the same time:
 3. **No preemption:** Resources cannot be forcibly taken away; the process holding a resource must release it.
 4. **Circular wait:** A set of processes `{P0, P1, ..., Pn}` forms a cycle: P0 waits for a resource held by P1, P1 waits for one held by P2, and so on, until Pn waits for a resource held by P0.
 
-![The four necessary conditions for deadlock: mutual exclusion, hold and wait, no preemption, and circular wait](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/dead-lock-four-conditions.png)
+![The four necessary conditions for deadlock: mutual exclusion, hold and wait, no preemption, and circular wait](../images/shared/dead-lock-four-conditions.png)
 
 These are necessary conditions, not a claim that any one condition causes deadlock. All four must hold together. Structurally preventing any one of them can prevent deadlock.
 
@@ -448,7 +448,7 @@ Four general approaches are **prevention, avoidance, detection, and recovery**:
 - **Detection:** Allow waits and check for a cycle in a wait-for or resource-allocation graph. In Java, use `jcmd <pid> Thread.print -l`, `jstack -l <pid>`, or `ThreadMXBean.findDeadlockedThreads()` to help diagnose. Databases also detect transaction wait cycles.
 - **Recovery:** Break the cycle after detection, for example by terminating a process, rolling back a transaction, preempting a resource, or retrying at the application layer. Database transactions have rollback support, so detection and recovery are natural there.
 
-![Deadlock prevention, avoidance, detection, and recovery strategies](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/dead-lock-strategies.png)
+![Deadlock prevention, avoidance, detection, and recovery strategies](../images/shared/dead-lock-strategies.png)
 
 For more on resource-allocation graphs, wait-for graphs, Java thread dumps, and database retries, see [Deadlocks](./dead-lock.md).
 

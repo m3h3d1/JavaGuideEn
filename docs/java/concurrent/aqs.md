@@ -16,7 +16,7 @@ head:
 
 The full name of AQS is `AbstractQueuedSynchronizer`. It is an abstract queue synchronizer in the `java.util.concurrent.locks` package.
 
-![](https://oss.javaguide.cn/github/javaguide/AQS.png)
+![](../images/shared/aqs.png)
 
 AQS is an abstract class used to build locks and synchronizers.
 
@@ -85,7 +85,7 @@ AQS works as follows: if a requested shared resource is available, the requestin
 
 **CLH locks** improve on spin locks using a singly linked list. In a multithreaded setting, threads that request the lock form a queue. Each waiting thread spins while checking its predecessor's state, and can acquire the lock after the predecessor releases it. The diagram shows the CLH queue:
 
-![CLH lock queue structure](https://oss.javaguide.cn/github/javaguide/open-source-project/clh-lock-queue-structure.png)
+![CLH lock queue structure](../images/shared/clh-lock-queue-structure.png)
 
 AQS uses a **wait queue** that is a variant of the CLH queue (called the CLH variant queue below).
 

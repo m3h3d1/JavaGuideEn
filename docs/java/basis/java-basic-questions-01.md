@@ -54,7 +54,7 @@ As shown below, languages such as Java, Groovy, Kotlin, JRuby, and Clojure can b
 
 Besides the commonly used HotSpot VM, other JVMs include J9 VM, Zing VM, and JRockit VM. See [Comparison of Java virtual machines](https://en.wikipedia.org/wiki/Comparison_of_Java_virtual_machines) for an overview. The JVM specification for each JDK version is available in the [Java SE Specifications](https://docs.oracle.com/javase/specs/index.html).
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/JavaSeSpecifications.jpg)
+![](../images/shared/javasespecifications.jpg)
 
 #### JDK and JRE
 
@@ -71,7 +71,7 @@ Install the JDK if you need to write or compile Java programs, or use the develo
 
 The diagram below shows the relationship between the JDK, JRE, and JVM.
 
-![jdk-include-jre](https://oss.javaguide.cn/github/javaguide/java/basis/jdk-include-jre.png)
+![jdk-include-jre](../images/shared/jdk-include-jre.png)
 
 Starting with JDK 9, the module system and the [jlink](http://openjdk.java.net/jeps/282) tool changed how custom runtimes are created. The JDK was reorganized into modules, and `jlink` can create a custom runtime image containing only the modules an application needs. Oracle stopped providing separate JRE downloads starting with JDK 11.
 
@@ -89,7 +89,7 @@ In Java, bytecode is the code understood by the JVM and is stored in `.class` fi
 
 **The diagram below shows how a Java program goes from source code to execution:**
 
-![How a Java program is translated into machine code](https://oss.javaguide.cn/github/javaguide/java/basis/java-code-to-machine-code.png)
+![How a Java program is translated into machine code](../images/shared/java-code-to-machine-code.png)
 
 Pay particular attention to the `.class` to machine code step. In HotSpot, for example, the JVM can first interpret loaded bytecode and identify frequently called methods and code blocks (hot code). The **Just-in-Time (JIT) compiler** can then compile that hot bytecode into machine code, which the JVM process can use on subsequent executions. This is why Java is often described as a language that combines compilation and interpretation. The JVM specification does not require a particular implementation to include an interpreter or a JIT compiler.
 
@@ -98,17 +98,17 @@ Pay particular attention to the `.class` to machine code step. In HotSpot, for e
 > - [Java Fundamentals: How the JIT Compiler Works - Meituan Tech](https://mp.weixin.qq.com/s/7PH8o1tbjLsM4-nOnjbwLw)
 > - [Building Microservices with Static Compilation - Alibaba Middleware](https://mp.weixin.qq.com/s/4haTyXUmh8m-dBQaEzwDJw)
 
-![How a Java program is translated into machine code with JIT](https://oss.javaguide.cn/github/javaguide/java/basis/java-code-to-machine-code-with-jit.png)
+![How a Java program is translated into machine code with JIT](../images/shared/java-code-to-machine-code-with-jit.png)
 
 > HotSpot uses lazy evaluation. In line with the Pareto principle, a small portion of the code (the hot code) consumes most system resources, so that is the code JIT needs to compile. The JVM gathers information as code runs and uses it to optimize execution. As a result, frequently executed code can run faster over time.
 
 The diagram below shows the relationship between the JDK, JRE, JVM, and JIT.
 
-![Relationship between the JDK, JRE, JVM, and JIT](https://oss.javaguide.cn/github/javaguide/java/basis/jdk-jre-jvm-jit.png)
+![Relationship between the JDK, JRE, JVM, and JIT](../images/shared/jdk-jre-jvm-jit.png)
 
 The diagram below shows a simplified model of the JVM.
 
-![Simplified model of the JVM](https://oss.javaguide.cn/github/javaguide/java/basis/jvm-rough-structure-model.png)
+![Simplified model of the JVM](../images/shared/jvm-rough-structure-model.jpg)
 
 ### ⭐️ Why is Java described as combining compilation and interpretation?
 
@@ -119,7 +119,7 @@ High-level programming languages can be grouped by how they execute programs:
 - **Compiled languages** translate source code into machine code for a target platform before execution. They generally run faster, while development can take longer. Common examples include C, C++, Go, and Rust.
 - **Interpreted languages** use an interpreter to translate and execute code one statement at a time. They can be quicker to develop with, but generally run more slowly. Common examples include Python, JavaScript, and PHP.
 
-![Compiled and interpreted languages](https://oss.javaguide.cn/github/javaguide/java/basis/compiled-and-interpreted-languages.png)
+![Compiled and interpreted languages](../images/shared/compiled-and-interpreted-languages.png)
 
 According to Wikipedia:
 
@@ -206,7 +206,7 @@ Here is a brief summary of the differences between Oracle JDK and OpenJDK:
 >
 > For these reasons, OpenJDK still has an important role.
 
-![oracle jdk release cadence](https://oss.javaguide.cn/github/javaguide/java/basis/oracle-jdk-release-cadence.jpg)
+![oracle jdk release cadence](../images/shared/oracle-jdk-release-cadence.jpg)
 
 **Which should you choose: Oracle JDK or OpenJDK?**
 
@@ -243,7 +243,7 @@ Java has three types of comments:
 
 Single-line and documentation comments are the most common. Multiline comments are used less often in practice.
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/image-20220714112336911.png)
+![](../images/shared/image-20220714112336911.png)
 
 When a codebase is small, you and your teammates may be able to understand it easily. As a project grows more complex, comments can help explain the logic. Comments are not executed; the compiler removes ordinary comments before compiling, so they are not present in bytecode. Comments act as notes for programmers and can help readers follow the relationships between parts of the code. Adding useful comments is a good habit.
 
@@ -749,7 +749,7 @@ Therefore, the answer is `false`.
 
 Remember: **Use `equals()` to compare the values of integer wrapper objects.**
 
-![](https://oss.javaguide.cn/github/javaguide/up-1ae0425ce8646adfb768b5374951eeb820d.png)
+![](../images/shared/up-1ae0425ce8646adfb768b5374951eeb820d.png)
 
 ### What are boxing and unboxing, and how do they work?
 
@@ -987,7 +987,7 @@ public class VariableExample {
 
 A static variable is declared with the `static` keyword. It is shared by all instances of the class, so every object uses the same variable. It is allocated once regardless of how many objects are created.
 
-![](https://oss.javaguide.cn/github/javaguide/java/basis/java-basis-variables-static-variable.png)
+![](../images/shared/java-basis-variables-static-variable.png)
 
 Access a static variable through its class, for example, `StaticVariableExample.staticVar` (unless it is `private`).
 

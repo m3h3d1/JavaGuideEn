@@ -25,7 +25,7 @@ head:
 - **版本管理**：记录每次配置变更的修改人、修改时间、修改内容，支持一键回滚。
 - **灰度发布**：先将配置推送给部分实例验证，降低变更风险（Apollo、Nacos 1.1.0+ 支持）。
 
-![Apollo 配置中心](https://oss.javaguide.cn/github/javaguide/config-center/view-release-history.png)
+![Apollo 配置中心](images/shared/view-release-history.png)
 
 当然，不是所有系统都需要上配置中心。单体应用、单环境、配置项很少且变更频率低的场景，`application-{profile}.yml`、环境变量或 Kubernetes ConfigMap + 滚动重启通常就够了。配置中心会带来额外的运维成本、故障域和排查链路，小团队或低频配置场景不必过度工程化。
 

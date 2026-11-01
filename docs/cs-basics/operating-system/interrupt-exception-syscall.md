@@ -36,7 +36,7 @@ Common entry events can be grouped by their source:
 - **Fault:** The current instruction encounters a problem that the kernel may be able to fix. A page fault is a typical example; after fixing it, the CPU retries the instruction that caused the fault.
 - **Abort:** The processor detects a serious error that is difficult to recover from, so execution usually cannot return to the original instruction stream.
 
-![Relationship between interrupts, exceptions, and system calls](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/ecf-kernel-entry-map.webp)
+![Relationship between interrupts, exceptions, and system calls](../images/shared/ecf-kernel-entry-map.webp)
 
 Different sources use the word `trap` differently. In CSAPP, it usually means a synchronous exception deliberately raised by a program, such as a system call. RISC-V uses `trap` for control transfers caused by either exceptions or interrupts. This article uses the narrower CSAPP meaning for “trap / system call” and calls out RISC-V usage separately.
 
@@ -106,13 +106,13 @@ User-mode/kernel-mode transitions and thread context switches are different:
 
 A system call always enters the kernel, but it does not necessarily switch to another thread. A call such as `getpid()` usually returns quickly, and the same thread continues running. If `read()` must wait for data, the kernel may suspend the current thread and schedule another. Some time-related interfaces can use the vDSO to run in user mode; depending on the architecture and configuration, calls such as `clock_gettime()` and `gettimeofday()` can read data from a page mapped by the kernel without entering the kernel on every call.
 
-![Comparison of user-mode transitions and context switches](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/kernel-mode-vs-context-switch.webp)
+![Comparison of user-mode transitions and context switches](../images/shared/kernel-mode-vs-context-switch.webp)
 
 ## The `read()` System Call Path
 
 Consider `read(fd, buf, count)` on Linux x86-64. Application code usually calls the glibc wrapper rather than writing assembly itself.
 
-![The read system call flow](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/read-syscall-path.webp)
+![The read system call flow](../images/shared/read-syscall-path.webp)
 
 glibc puts the system call number in `rax` and the arguments in designated registers. On x86-64, system call arguments go in `rdi`, `rsi`, `rdx`, `r10`, `r8`, and `r9`, in that order.
 
@@ -170,7 +170,7 @@ Common cases include:
 4. The access violates permissions, such as user-mode access to a kernel page, writing to a read-only page, or executing a non-executable page.
 5. The address does not belong to a valid virtual memory area for the process.
 
-![Page Fault handling paths](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/page-fault-branching.webp)
+![Page Fault handling paths](../images/shared/page-fault-branching.webp)
 
 When handling a Page Fault, the kernel first checks whether the address falls within a valid VMA for the process, then checks whether the access type is allowed.
 

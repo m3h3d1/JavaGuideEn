@@ -15,15 +15,15 @@ In the **Interview Experience** section of the [Java Interview Guide](../zhuanla
 
 People without a computer science background can also find interview accounts from candidates with a similar background.
 
-![](https://oss.javaguide.cn/githubjuejinjihua/thinkimage-20220612185810480.png)
+![](images/shared/thinkimage-20220612185810480.png)
 
 The [Knowledge Planet](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html) community also has a section for interview experiences and questions, with many curated examples.
 
-![](https://oss.javaguide.cn/xingqiu/image-20220304120018731.png)
+![](images/shared/image-20220304120018731.png)
 
-![](https://oss.javaguide.cn/xingqiu/image-20220628101743381.png)
+![](images/shared/image-20220628101743381.png)
 
-![](https://oss.javaguide.cn/xingqiu/image-20220628101805897.png)
+![](images/shared/image-20220628101805897.png)
 
 Compared with interview accounts on Nowcoder and other sites, the ones collected in the **Java Interview Guide** are more detailed and include useful reference materials.
 

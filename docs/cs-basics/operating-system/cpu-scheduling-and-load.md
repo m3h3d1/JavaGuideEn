@@ -28,7 +28,7 @@ Different systems use different names for the objects they schedule. For backend
 
 A process can contain multiple threads. They share the process's address space and file descriptors, but each has its own execution context, including a stack, registers, and program counter.
 
-![Relationship between programs, processes, and threads](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/relationship-between-program-process-and-thread.png)
+![Relationship between programs, processes, and threads](../images/shared/relationship-between-program-process-and-thread.png)
 
 In the Linux kernel, both processes and threads are represented as tasks. The scheduler schedules tasks or scheduling entities; a thread visible in user space generally corresponds to a kernel-schedulable task.
 
@@ -36,7 +36,7 @@ Without scheduling, an infinite loop on a single-core machine could occupy the C
 
 The scheduler must balance interactive response, fairness, throughput, priorities, real-time tasks, power use, and cache locality. These goals can conflict: longer time slices reduce context switches but may make interactive tasks wait longer; shorter slices improve responsiveness but increase switching overhead.
 
-![CPU scheduling tradeoffs](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/scheduler-tradeoff-triangle.webp)
+![CPU scheduling tradeoffs](../images/shared/scheduler-tradeoff-triangle.webp)
 
 ## Why Does a Task Leave the CPU?
 
@@ -96,7 +96,7 @@ Whether a production machine uses EEVDF depends on its kernel version and whethe
 
 For backend interviews, explain CFS's `vruntime`, weights, and fair CPU shares, along with EEVDF's lag, virtual deadlines, and latency-sensitive tasks. More detail requires discussing the kernel implementation.
 
-![CFS and EEVDF comparison](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/cfs-eevdf-comparison.webp)
+![CFS and EEVDF comparison](../images/shared/cfs-eevdf-comparison.webp)
 
 ## Load Average Is Not CPU Usage
 
@@ -120,7 +120,7 @@ CPU usage shows where CPU time is spent. Common fields in `top`'s `%Cpu(s)` line
 - `hi` / `si`: Time spent on hardware and software interrupts. Watch these when packet volume is high, NIC interrupts are concentrated, or protocol-stack processing is under pressure.
 - `st`: CPU time taken by the hypervisor in a virtualized environment. If this is high on a cloud VM, investigate the host before changing application code.
 
-![Load average compared with CPU usage](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/load-average-vs-cpu-usage.webp)
+![Load average compared with CPU usage](../images/shared/load-average-vs-cpu-usage.webp)
 
 `wa` is especially easy to misread. I/O wait is not a reliable attribution: the CPU does not literally wait for I/O to finish, and on a multicore system an I/O-waiting task is not running on a CPU. High `wa` is a clue that I/O waits exist; it does not mean the CPU is busy doing I/O.
 
@@ -130,7 +130,7 @@ Next, inspect `b`, `bi/bo`, and `si/so` in `vmstat`, then use `pidstat -d` and `
 
 Do not start by diving into Java stack traces. First identify the type of pressure, then narrow it down to a process, thread, CPU core, or hot function.
 
-![CPU alert troubleshooting flow](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/load-cpu-alert-triage.webp)
+![CPU alert troubleshooting flow](../images/shared/load-cpu-alert-triage.webp)
 
 Start with `uptime` to check the load trend. A high 1-minute value with lower 5- and 15-minute values may indicate a brief spike; if all three are high, the pressure has lasted longer. Then open `top` and check whether `us`, `ni`, `sy`, `wa`, `si`, or `st` is elevated, along with process rankings and task states.
 

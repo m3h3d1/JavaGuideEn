@@ -35,7 +35,7 @@ The table below separates the different classification dimensions:
 
 Locks address the critical-section problem. A critical section is code that accesses shared mutable state and must not interleave arbitrarily across multiple execution units.
 
-![Critical-section access protocol: threads use the same lock to access shared state; bypassing the lock or using a different lock object breaks mutual exclusion](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/os-lock-critical-section.png)
+![Critical-section access protocol: threads use the same lock to access shared state; bypassing the lock or using a different lock object breaks mutual exclusion](../../cs-basics/images/shared/os-lock-critical-section.png)
 
 For example, consider this increment:
 

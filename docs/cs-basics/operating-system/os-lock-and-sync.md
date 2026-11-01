@@ -33,7 +33,7 @@ This article focuses on synchronization from the operating system's perspective.
 
 A **critical section** is code that accesses shared mutable state and must not be interleaved arbitrarily with other execution flows. It could be a counter update in an application or kernel code that updates a scheduler queue, file descriptor table, page table, or device state.
 
-![A shared-state access protocol uses a common lock; bypassing the lock or using a different lock breaks mutual exclusion](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/os-lock-critical-section.png)
+![A shared-state access protocol uses a common lock; bypassing the lock or using a different lock breaks mutual exclusion](../images/shared/os-lock-critical-section.png)
 
 Evaluate a lock or synchronization mechanism from four angles: correctness, progress, fairness, and performance.
 
@@ -80,7 +80,7 @@ When a mutex is unavailable, a thread can sleep until the kernel wakes it. A **s
 
 This can make sense when the wait is very short.
 
-![A mutex may sleep in a blocking path; a spinlock briefly busy-waits in a short path that cannot sleep](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/os-lock-mutex-spinlock.png)
+![A mutex may sleep in a blocking path; a spinlock briefly busy-waits in a short path that cannot sleep](../images/shared/os-lock-mutex-spinlock.png)
 
 If a lock protects only a few instructions and the owner will soon leave the critical section, putting the waiter to sleep may cost more. Sleeping and waking involve the scheduler and may cause a context switch. On a multicore machine, the owner may be running on another CPU and release the lock in a few instructions, so a few spins can be cheaper.
 
@@ -116,7 +116,7 @@ Its common use, however, is resource counting: a buffer has N free slots, a conn
 
 A binary semaphore can imitate mutual exclusion, but it is not the same as a mutex. A mutex emphasizes ownership of a critical section; a semaphore represents a count of permits. A bounded buffer usually separates the concerns: semaphores manage available slots, and a mutex protects the buffer's internal structure.
 
-![Semaphores track empty and filled buffer slots while a mutex protects the buffer structure](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/os-lock-semaphore-buffer.png)
+![Semaphores track empty and filled buffer slots while a mutex protects the buffer structure](../images/shared/os-lock-semaphore-buffer.png)
 
 The code below omits the `item_t` and buffer implementation and shows only the synchronization:
 
@@ -213,7 +213,7 @@ void producer(item_t item) {
 
 `pthread_cond_wait()` atomically releases the mutex and waits on the condition variable. Before returning after a wakeup, it reacquires the mutex. These actions must be combined; otherwise, a notification can be lost if the producer signals just before the consumer goes to sleep.
 
-![A thread checks shared state in a while loop, releases the mutex and sleeps if the condition is false, then checks again after being signaled](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/os-lock-condition-variable.png)
+![A thread checks shared state in a while loop, releases the mutex and sleeps if the condition is false, then checks again after being signaled](../images/shared/os-lock-condition-variable.png)
 
 Three rules matter when using condition variables.
 
@@ -238,7 +238,7 @@ A simplified path is:
 3. If it fails because another thread holds the lock, it calls `FUTEX_WAIT` so the kernel can suspend it.
 4. When the owner releases the lock and sees waiters, it calls `FUTEX_WAKE` to wake one or more threads.
 
-![A futex uses a user-space atomic fast path and kernel FUTEX_WAIT/FUTEX_WAKE paths when contended](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/os-lock-futex.png)
+![A futex uses a user-space atomic fast path and kernel FUTEX_WAIT/FUTEX_WAKE paths when contended](../images/shared/os-lock-futex.png)
 
 `FUTEX_WAIT` uses compare-and-block: the kernel first verifies that the futex word still equals the expected value. It blocks the thread only if the value matches. The comparison and blocking step are atomic, connecting the user-space atomic operation to the kernel wait queue.
 
@@ -296,7 +296,7 @@ When reading kernel-locking code, ask:
 - Is this a regular kernel or a PREEMPT_RT kernel?
 - Is priority inheritance needed to control real-time latency?
 
-![Kernel locking must account for sleeping, preemption, interrupt context, and cross-CPU sharing in addition to thread coordination](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/os-lock-kernel-context.png)
+![Kernel locking must account for sleeping, preemption, interrupt context, and cross-CPU sharing in addition to thread coordination](../images/shared/os-lock-kernel-context.png)
 
 Some common distinctions:
 

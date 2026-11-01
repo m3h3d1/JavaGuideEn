@@ -15,7 +15,7 @@ head:
 
 你好，我是小 G。上个周末，我通过文字消息分享了一些 Vibe Coding 的小技巧。这篇文章把当时没展开的内容补完整，也顺便整理一下这几年实际用 AI 编程时踩过的坑。
 
-![ Vibe Coding 技巧分享读者评论](https://oss.javaguide.cn/github/javaguide/ai/coding/claudecode/vibe-coding-practices-comments.png)
+![ Vibe Coding 技巧分享读者评论](../images/shared/vibe-coding-practices-comments.png)
 
 正文开始之前，想问问大家：你还记得自己第一次 Vibe Coding 的感觉吗？
 
@@ -228,7 +228,7 @@ Anthropic 的建议是，`SKILL.md` 正文最好控制在 500 行以内；如果
 
 代码审计也可以这么干。先让便宜模型扫一遍项目，把疑似问题列出来；再让强模型复核这些问题到底成不成立。直接让高价模型全量扫，当然也不是不行，就是钱烧得快，收益未必成比例。
 
-![DeepSeek V4 Benchmark 数据](https://oss.javaguide.cn/github/javaguide/ai/coding/deepseek-v4/v4-benchmark.png)
+![DeepSeek V4 Benchmark 数据](../images/shared/v4-benchmark.png)
 
 ## 别听它说修好了，看证据
 

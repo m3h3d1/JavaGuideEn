@@ -26,7 +26,7 @@ LLM Gateway 更像是：**API 网关能力 + 模型调用控制面**。
 
 传统 API 网关是位于客户端与后端服务之间的**统一入口**，所有客户端请求先经过网关，再由网关路由到具体的目标服务，主要管 HTTP 流量：鉴权、限流、转发、日志、熔断。
 
-![传统 API 网关示意图](https://oss.javaguide.cn/github/javaguide/system-design/distributed-system/api-gateway-overview.png)
+![传统 API 网关示意图](../images/shared/api-gateway-overview.png)
 
 LLM Gateway 则面对的是大模型调用，它除了处理普通 API 问题，还要处理模型特有的问题：模型选择、Token 预算、上下文长度、供应商差异、流式输出、工具调用、结构化响应、成本统计、Prompt 版本和输出质量。
 
@@ -133,7 +133,7 @@ Gateway 在同机房完成路由、Token 估算和日志写入，耗时相对有
 
 不过，它还不是本文后面所说的完整生产级网关：跨 Provider 自动 Fallback、Token 预算、按调用成本归因、网关级多维限流和智能路由等能力，仍要等业务确实需要时再补。这个边界也说明了一件事：LLM Gateway 首先是一组需要集中治理的职责，不一定非要对应一个独立服务或第三方组件。
 
-![LLM Gateway 演进路径](https://oss.javaguide.cn/github/javaguide/ai/llm/llm-gateway-evolution-path.webp)
+![LLM Gateway 演进路径](../images/shared/llm-gateway-evolution-path.webp)
 
 是否收口要看一次模型策略修改会影响多少服务，以及一次故障需要排查多少调用链。调用集中在一个模块时，后续增加模型、切换供应商或补审计都只改这一处；调用散进各个业务服务后，即使流量不大，也应先建立统一入口。
 
@@ -351,7 +351,7 @@ public class RuleBasedModelRouter {
 
 这段代码不复杂，重点在职责边界：路由器只负责选模型，不负责调模型；健康检查只提供状态，不掺业务逻辑；预算判断单独放出来，后续替换估算方式也方便。
 
-![LLM Gateway 模型路由决策图](https://oss.javaguide.cn/github/javaguide/ai/llm/llm-gateway-routing-decision.webp)
+![LLM Gateway 模型路由决策图](../images/shared/llm-gateway-routing-decision.webp)
 
 ### 优雅降级
 
@@ -443,7 +443,7 @@ Token 估算不可能完全准，但粗估也比不估强。尤其是 RAG、长�
 
 这里更推荐按四步走：**estimate → reserve → 真实 usage → reconcile**。先用估算值占住预算，调用结束后再用供应商返回的真实 `usage` 对账修正。不同供应商、不同模型的 tokenizer 和 usage 字段并不完全一致，生产里通常会先用统一近似器扣预算，再用真实 `input_tokens`、`output_tokens` 修正。如果直接按估算落库，长时间跑下来，成本和配额统计很容易积累出偏差。
 
-![Token 预算预留与对账闭环](https://oss.javaguide.cn/github/javaguide/ai/llm/llm-gateway-token-budget-lifecycle.webp)
+![Token 预算预留与对账闭环](../images/shared/llm-gateway-token-budget-lifecycle.webp)
 
 ### 成本统计
 
@@ -566,7 +566,7 @@ Token 估算和路由紧接着发生。网关为候选模型预留输入与最�
 
 发生网络错误、429 或解析失败时，错误分类决定重试、切候选、排队还是直接失败。每次新 attempt 都重新预留预算；调用结束后再按真实 usage 结算，写入模型、供应商、Prompt 版本、路由原因、延迟和错误信息，最后才把统一结果交回业务服务。
 
-![LLM Gateway 请求生命周期](https://oss.javaguide.cn/github/javaguide/ai/llm/llm-gateway-request-lifecycle.webp)
+![LLM Gateway 请求生命周期](../images/shared/llm-gateway-request-lifecycle.webp)
 
 ### 路由策略怎么从简单演进到智能？
 

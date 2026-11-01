@@ -137,7 +137,7 @@ flowchart TB
 
 ## 如何处理结构丢失问题？
 
-![结构丢失问题：不同格式，坑完全不一样](https://oss.javaguide.cn/github/javaguide/ai/rag/rag-document-processing-structure-loss.png)
+![结构丢失问题：不同格式，坑完全不一样](../images/shared/rag-document-processing-structure-loss.png)
 
 不同文件格式在解析阶段丢失结构的原因各不相同，不能全部交给同一个纯文本提取器。
 
@@ -217,7 +217,7 @@ Excel 的单元格含义由行表头、列表头、合并单元格和 Sheet 名�
 
 ## 如何设计分层校验策略？
 
-![分层校验策略：没有质检的管线，不是生产级管线](https://oss.javaguide.cn/github/javaguide/ai/rag/rag-document-processing-hierarchical-verification-strategy.png)
+![分层校验策略：没有质检的管线，不是生产级管线](../images/shared/rag-document-processing-hierarchical-verification-strategy.png)
 
 生产环境中的上传文档质量参差不齐，文档处理管线必须在上传、解析和切分三个阶段设置校验关卡，并为失败文档准备明确的降级路径。
 
@@ -426,7 +426,7 @@ flowchart LR
 
 ## 如何从零搭建文档处理管线？
 
-![如何从零搭一套企业级文档处理管线？](https://oss.javaguide.cn/github/javaguide/ai/rag/rag-document-processing-build-enterprise-document-processing-pipeline-from-scratch.png)
+![如何从零搭一套企业级文档处理管线？](../images/shared/rag-document-processing-build-enterprise-document-processing-pipeline-from-scratch.png)
 
 搭建企业文档处理管线时，建议按格式复杂度分阶段推进，不要一开始就在所有文件上叠加高成本的视觉模型：
 

@@ -501,7 +501,7 @@ Claude Code on the web 中的任务需要访问本地仓库或命令行时，可
 
 项目地址：[https://github.com/farion1231/cc-switch](https://github.com/farion1231/cc-switch)
 
-![CC Switch 主界面](https://oss.javaguide.cn/github/javaguide/ai/coding/cc-switch-main-interface.png)
+![CC Switch 主界面](../images/shared/cc-switch-main-interface.png)
 
 启动 CC Switch，点击右上角的 `+`，选择预设的 MiniMax/GLM 供应商，填写 API Key 和模型后添加。
 

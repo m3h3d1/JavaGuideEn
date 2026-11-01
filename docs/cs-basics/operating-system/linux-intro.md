@@ -15,7 +15,7 @@ head:
 
 Linux is a free and open-source operating system kernel first released by Linus Torvalds in 1991. It is used in servers, embedded systems, mobile devices, and desktop computers. Strictly speaking, Linux is the kernel; the complete operating system combines it with user-space tools, libraries, and applications.
 
-![Linux's family tree](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/linux-father.png)
+![Linux's family tree](../images/shared/linux-father.png)
 
 ### The Origins of Linux
 
@@ -25,11 +25,11 @@ In 1989, Linus Torvalds began 11 months of compulsory military service in Finlan
 
 In 1991, Torvalds released the Linux kernel as open source. Linux uses a friendly penguin as its mascot.
 
-![Linux logo](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/Linux-Logo.png)
+![Linux logo](../images/shared/linux-logo.jpg)
 
 ### Common Linux Distributions
 
-![Linux desktop and command-line interfaces](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/linux.png)
+![Linux desktop and command-line interfaces](../images/shared/linux.jpg)
 
 Torvalds released the Linux kernel, not a complete operating system. Organizations and vendors package the kernel with software, documentation, an installer, and tools for configuration and system management to create Linux distributions.
 
@@ -157,11 +157,11 @@ This section lists commonly used commands.
 
 For quick command lookup, see [Linux Command](https://wangchujiang.com/linux-command/).
 
-![Linux command reference](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/linux-command-search.png)
+![Linux command reference](../images/shared/linux-command-search.png)
 
 [shell.how](https://www.shell.how/) can explain common commands, including Linux commands, Git, and NPM.
 
-![Example of shell.how](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/shell-now.png)
+![Example of shell.how](../images/shared/shell-now.png)
 
 ### Changing Directories
 

@@ -39,7 +39,7 @@ while ((n = read(file_fd, buf, BUF_SIZE)) > 0)
 
 The code is short, but a full “read from disk and send over the network” operation moves the data four times using the CPU and DMA, with four user/kernel mode transitions.
 
-![Traditional read/write copies data from disk to kernel buffer, to user buffer, to socket buffer, and then to the network card](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-traditional-read-write.png)
+![Traditional read/write copies data from disk to kernel buffer, to user buffer, to socket buffer, and then to the network card](../images/shared/zero-copy-traditional-read-write.png)
 
 The `read` half works like this:
 
@@ -87,7 +87,7 @@ The original `read` + `write` sequence can therefore use `mmap` + `write`. One i
 4. The application calls `write`. The CPU copies data from Page Cache to the socket buffer (CPU copy). This avoids the extra CPU copy from kernel to user and back in the traditional path.
 5. DMA sends data from the socket buffer to the network card (DMA copy), and `write` returns.
 
-![mmap and write map Page Cache into user space, then copy data to the socket buffer](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-mmap-write.png)
+![mmap and write map Page Cache into user space, then copy data to the socket buffer](../images/shared/zero-copy-mmap-write.png)
 
 For a cache miss and the full path, that is roughly **2 DMA copies and 1 CPU copy**. There is one `mmap` transition and one `write` transition, plus page-fault handling on first access. Compared with traditional I/O, mmap removes the CPU copy from the kernel buffer to the user buffer.
 
@@ -136,7 +136,7 @@ The updated path is:
 3. Instead of copying payload, the CPU writes **descriptors** (memory address, offset, and length) for that data into the socket buffer.
 4. SG-DMA uses the descriptors to send the data directly from the kernel read buffer to the network card (DMA copy), then execution returns to user mode (second transition) and `sendfile` returns.
 
-![With sendfile and SG-DMA, the socket buffer holds descriptors and the network card reads the kernel buffer directly](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-sendfile-sg-dma.png)
+![With sendfile and SG-DMA, the socket buffer holds descriptors and the network card reads the kernel buffer directly](../images/shared/zero-copy-sendfile-sg-dma.png)
 
 That is **2 mode transitions and 2 data copies, both by DMA, with zero CPU payload copies**.
 
@@ -160,7 +160,7 @@ splice(file_fd, NULL, pipe_w, NULL, len, SPLICE_F_MOVE);   // File -> pipe write
 splice(pipe_r, NULL, socket_fd, NULL, len, SPLICE_F_MOVE); // Pipe read end -> socket
 ```
 
-![splice attaches file pages to a pipe buffer, then forwards them from the pipe to a socket](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-splice-flow.png)
+![splice attaches file pages to a pipe buffer, then forwards them from the pipe to a socket](../images/shared/zero-copy-splice-flow.png)
 
 The first call attaches Page Cache pages to the pipe buffer. The second passes references to those pages as network packet fragments to the socket. The data never enters user space, and the CPU does not copy the payload. However, this uses **two `splice` calls**, each entering and leaving the kernel, for about four mode transitions in total. It is not one system call and two transitions like some explanations claim. In practice, both fds may need to be nonblocking and used with epoll; handle short transfers and `EAGAIN` too.
 
@@ -180,7 +180,7 @@ Version detail: in Linux 2.6.30 and earlier, exactly one of `fd_in` and `fd_out`
 | `sendfile`                        | 0 or 1, depending on path |  Usually 2 | 2                                                          | `sendfile`                    |
 | `splice` (file -> pipe -> socket) |         Usually avoidable |  Usually 2 | 4                                                          | Two `splice` calls            |
 
-![Copy counts and mode transitions for read/write, mmap/write, sendfile with SG-DMA, and splice](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-four-ways-comparison.png)
+![Copy counts and mode transitions for read/write, mmap/write, sendfile with SG-DMA, and splice](../images/shared/zero-copy-four-ways-comparison.png)
 
 The mmap copy and transition counts vary with Page Cache hits and page-fault timing. With SG-DMA support, `sendfile` can reduce CPU payload copies to zero.
 

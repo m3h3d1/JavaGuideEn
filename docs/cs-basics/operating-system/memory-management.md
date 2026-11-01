@@ -36,7 +36,7 @@ cat /proc/<pid>/smaps_rollup
 
 From the operating system's perspective, memory management has at least five responsibilities.
 
-![Overview of memory management responsibilities](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-management-responsibilities.webp)
+![Overview of memory management responsibilities](../images/shared/memory-management-responsibilities.webp)
 
 **First, allocate and reclaim memory.** User-space `malloc()` and `free()` manage blocks in a process heap. For example, glibc may use interfaces such as `brk()` and `mmap()` to expand the available virtual address range. After the virtual range is created, physical pages are usually established on first access through the page-fault path. Inside the kernel, page allocators and object allocators such as SLAB/SLUB manage physical pages and kernel objects.
 
@@ -64,7 +64,7 @@ The simplest allocation model is contiguous allocation: the operating system fin
 
 The problem with contiguous allocation is fragmentation.
 
-![Contiguous memory allocation and fragmentation](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-fragmentation.webp)
+![Contiguous memory allocation and fragmentation](../images/shared/memory-fragmentation.webp)
 
 **Internal fragmentation** is allocated space that is not actually used. For example, if memory is allocated in 128-byte units and an object needs only 65 bytes, the remaining 63 bytes in that unit are wasted.
 
@@ -107,7 +107,7 @@ A virtual address has two parts:
 
 In broad terms, the CPU issues a virtual address, the MMU uses the virtual page number to look up a page-table entry, then combines the physical frame number with the page offset to form the physical address.
 
-![Virtual-to-physical address translation](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-address-translation.webp)
+![Virtual-to-physical address translation](../images/shared/memory-address-translation.webp)
 
 A page-table entry stores more than a physical frame number. It can include a present bit, read/write permissions, user/kernel permissions, a dirty bit, and an accessed bit. The present bit indicates whether the page is in physical memory; permission bits enforce protection; accessed and dirty bits can inform reclaim decisions.
 
@@ -121,7 +121,7 @@ Most processes do not use their entire virtual address space. A single-level pag
 
 Multilevel page tables are hierarchical. The top level covers the whole virtual address space, and lower-level tables are created only when needed. If a virtual-address range is unused, the corresponding lower-level table need not exist. Linux's architecture-independent page-table code uses a five-level hierarchy; levels that are not supported by the architecture or machine are folded.
 
-![Multilevel page tables created on demand](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-multilevel-page-table.webp)
+![Multilevel page tables created on demand](../images/shared/memory-multilevel-page-table.webp)
 
 Traditional x86-64 configurations usually use four-level paging. Five-level paging is used only when the CPU, kernel, and configuration support LA57. Linux documentation says five-level paging can provide a 56-bit user-space virtual address range. To preserve compatibility with programs that use high pointer bits, the kernel does not normally allocate addresses above 47 bits unless an application explicitly requests a high address hint.
 
@@ -157,7 +157,7 @@ Major faults are much slower than minor faults. In production, a fast increase i
 
 When physical memory is full and a new page must be loaded, the system needs to reclaim pages. Page replacement asks which page to evict to minimize the effect on future accesses.
 
-![Comparison of page replacement algorithms](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-page-replacement.webp)
+![Comparison of page replacement algorithms](../images/shared/memory-page-replacement.webp)
 
 The ideal algorithm is OPT: evict the page that will not be accessed for the longest time in the future. It is a theoretical bound because the operating system cannot know future accesses. FIFO is simpler: evict the page that entered memory first. It ignores whether a page is still hot and can exhibit Belady's anomaly, where adding more frames increases the number of faults.
 

@@ -22,7 +22,7 @@ This article works through these questions. It first clarifies the boundaries be
 
 ## What Are Programs, Processes, and Threads?
 
-![Relationship between programs, processes, and threads](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/relationship-between-program-process-and-thread.png)
+![Relationship between programs, processes, and threads](../images/shared/relationship-between-program-process-and-thread.png)
 
 A program is a set of instructions and data stored on disk, such as an executable or a JAR file. It has not started running; it is a static file.
 
@@ -34,7 +34,7 @@ As a first approximation, remember: **processes define resource boundaries; thre
 
 To decide whether a concept belongs more to a process or a thread, ask whether it describes a resource boundary or an execution path. Address spaces, open-file tables, and permissions are process-level; stacks, registers, and program counters are thread-level.
 
-![A factory analogy for processes and threads](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/wechat-factory-process-thread.png)
+![A factory analogy for processes and threads](../images/shared/wechat-factory-process-thread.png)
 
 This is a learning aid, not a description of every system's implementation. For example, the Linux kernel uses `task_struct` for scheduling entities; processes and threads are more like tasks that share different amounts of resources. Windows documentation explicitly describes a thread as the basic unit to which the operating system allocates processor time. Names vary across systems, but the high-level relationship is similar.
 
@@ -62,7 +62,7 @@ The five-state model commonly used in textbooks is enough for most interviews:
 - **Blocked/Waiting:** It is waiting for an event such as I/O completion, a released lock, or a timer.
 - **Terminated/Exit:** The process has ended, and the operating system is reclaiming its resources.
 
-![Process state transitions](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/state-transition-of-process.png)
+![Process state transitions](../images/shared/state-transition-of-process.png)
 
 The important part of state transitions is what triggers them. A ready process becomes running when it gets CPU time. When its time slice expires, it may return to ready. A blocking I/O request moves it to blocked. Once the event completes, it returns to ready and waits to be scheduled again.
 
@@ -86,7 +86,7 @@ Linux has a distinctive implementation: it treats both processes and threads as 
 
 ## What Do `fork`, `exec`, and `wait` Do on Linux?
 
-![The fork, exec, and wait call sequence](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/fork-exec-wait-call-chain.png)
+![The fork, exec, and wait call sequence](../images/shared/fork-exec-wait-call-chain.png)
 
 In Unix and Linux programming, process creation often involves `fork()`, `exec()`, and `wait()`.
 
@@ -104,7 +104,7 @@ One subtle detail: when a multithreaded process calls `fork()`, the child retain
 
 ## What Do Threads Share, and What Is Private?
 
-![Resources shared by threads and their private execution state](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/thread-shared-and-private-content.png)
+![Resources shared by threads and their private execution state](../images/shared/thread-shared-and-private-content.png)
 
 From the operating system's perspective, threads in the same process share most process resources, such as:
 
@@ -154,7 +154,7 @@ Based on who schedules them, threads can be classified as user-level or kernel-l
 
 There are three common thread models:
 
-![Three common thread models](https://oss.javaguide.cn/github/javaguide/java/new-features/process-and-thread-three-thread-models.png)
+![Three common thread models](../images/shared/process-and-thread-three-thread-models.png)
 
 | Model        | Mapping                                               | Advantage                                             | Main issue                                                                     |
 | ------------ | ----------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------ |
@@ -166,7 +166,7 @@ Linux POSIX threads and Windows threads generally use the one-to-one model. Unde
 
 ## How Do Thread and Process Context Switches Differ?
 
-![Comparing the costs of thread and process context switches](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/context-switch-cost-comparison.png)
+![Comparing the costs of thread and process context switches](../images/shared/context-switch-cost-comparison.png)
 
 A context switch is when the CPU moves from one execution entity to another. The operating system saves the current entity's registers, program counter, stack pointer, and other state, then restores the next entity's state.
 
@@ -188,7 +188,7 @@ Virtual threads are suited to many tasks that wait for I/O, such as concurrent r
 
 Relationship between virtual threads, platform threads, and kernel threads:
 
-![Virtual threads, platform threads, and kernel threads](https://oss.javaguide.cn/github/javaguide/java/new-features/virtual-threads-platform-threads-kernel-threads-relationship.png)
+![Virtual threads, platform threads, and kernel threads](../images/shared/virtual-threads-platform-threads-kernel-threads-relationship.png)
 
 Also consider pinning. In Java 21, a virtual thread performing a blocking operation inside a `synchronized` block or method, native method, or foreign function may not be unmounted from its platform thread. The platform thread is then occupied and cannot run other virtual threads. Occasional, brief pinning does not break a program, but frequent or long pinning can limit scalability. Later JDKs improved pinning related to `synchronized`; check the behavior of the JDK version you use. Native and foreign calls still need attention.
 
