@@ -1,130 +1,128 @@
 ---
-title: 中断、异常与系统调用详解：从内核入口到缺页异常
-description: 中断、异常与系统调用高频面试题总结，以 read() 为线索讲清硬件中断、同步异常、系统调用、信号、时钟中断、缺页异常和线程上下文切换之间的关系。
-category: 计算机基础
+title: "Interrupts, Exceptions, and System Calls: From Kernel Entry to Page Faults"
+description: A guide to common interview questions about interrupts, exceptions, system calls, and kernel entry, following read() through hardware interrupts, signals, clock interrupts, page faults, and thread context switches.
+category: Computer Science Fundamentals
 tag:
-  - 操作系统
+  - Operating Systems
   - Linux
-  - 系统调用
+  - System Calls
 head:
   - - meta
     - name: keywords
-      content: 中断,异常,系统调用,trap,信号,用户态,内核态,上下文切换,时钟中断,缺页异常,Page Fault,SIGSEGV,read,操作系统面试题
+      content: interrupts,exceptions,system calls,trap,signals,user mode,kernel mode,context switch,clock interrupt,page fault,Page Fault,SIGSEGV,read,operating system interview questions
 ---
 
-系统调用从用户态进入内核态，只是理解这条路径的起点。沿着一次 `read()` 往下看，还会遇到几个紧密相关的问题：
+A system call takes a program from user mode into kernel mode, but that is only the start of the story. Following a `read()` call raises several related questions:
 
-- `read()` 是怎么进入内核的？
-- 时钟中断为什么能让正在运行的线程停下来？
-- Page Fault 为什么有时是正常行为，有时又会变成 `SIGSEGV`？
-- 系统调用进了内核，是否一定会发生线程上下文切换？
+- How does `read()` enter the kernel?
+- How can a clock interrupt stop a thread that is running?
+- Why is a Page Fault sometimes normal and sometimes followed by `SIGSEGV`?
+- Does entering the kernel for a system call always switch to another thread?
 
-这些问题可借助一条 `read(fd, buf, count)` 调用串起来看。用户程序执行 `read()`，glibc 把系统调用号和参数放到约定寄存器里，CPU 执行 `syscall` 进内核。内核检查 fd、缓冲区地址、文件状态，再决定从 Page Cache、文件系统、socket 缓冲区或设备驱动里取数据。
+We can connect these questions by following `read(fd, buf, count)`. The user program calls `read()`. glibc puts the system call number and arguments in the designated registers, and the CPU executes `syscall` to enter the kernel. The kernel checks the file descriptor, buffer address, and file state, then decides whether to get data from the Page Cache, filesystem, socket buffer, or device driver.
 
-如果数据已经准备好，内核把数据复制回用户缓冲区，`read()` 很快返回。数据没准备好时，当前线程可能睡眠；磁盘 I/O 完成或网卡收到数据后，硬件中断进入内核，内核再唤醒等待队列里的线程。线程再次被调度到 CPU 上，`read()` 才继续返回。
+If the data is ready, the kernel copies it to the user buffer and `read()` returns. If it is not ready, the current thread may sleep. When disk I/O completes or a network packet arrives, a hardware interrupt enters the kernel, which can then wake a thread waiting in a queue. The thread must be scheduled on a CPU again before `read()` can return.
 
-一次普通 I/O 跑起来后，系统调用、中断、异常、调度常连在一起。
+A normal I/O operation can therefore involve system calls, interrupts, exceptions, and scheduling in sequence.
 
-## 进入内核的几类事件
+## Events That Enter the Kernel
 
-CPU 正常执行用户程序时，下一条指令由程序计数器和跳转逻辑决定。外设事件、当前指令出错、用户程序主动请求内核服务，都会让控制流转到内核。CSAPP 把这类跳出正常指令流的情况称为异常控制流（Exceptional Control Flow），并把 interrupt、trap、fault、abort 作为不同类型。
+While a CPU runs a user program, the program counter and branch logic determine the next instruction. A device event, an error in the current instruction, or a request from the program can redirect control to the kernel. CSAPP calls this exceptional control flow and distinguishes interrupts, traps, faults, and aborts.
 
-常见入口可按来源分：
+Common entry events can be grouped by their source:
 
-- **中断（Interrupt）**：来自外部硬件，和当前指令没有直接关系。网卡收包、磁盘 I/O 完成、定时器到点，都属于这一类。
-- **陷入（Trap）**：程序主动执行特殊指令进入内核。系统调用就是最常见的 trap。
-- **故障（Fault）**：当前指令执行时遇到问题，但内核可能进行修复。典型例子是缺页异常，修好后会重新执行触发 fault 的那条指令。
-- **终止（Abort）**：处理器发现难以恢复的严重错误，通常不再回到原来的指令流。
+- **Interrupt:** Comes from external hardware and is unrelated to the current instruction. Network packet arrival, disk I/O completion, and timer expiration are examples.
+- **Trap:** The program deliberately executes a special instruction to enter the kernel. A system call is the most common example.
+- **Fault:** The current instruction encounters a problem that the kernel may be able to fix. A page fault is a typical example; after fixing it, the CPU retries the instruction that caused the fault.
+- **Abort:** The processor detects a serious error that is difficult to recover from, so execution usually cannot return to the original instruction stream.
 
-![中断、异常与系统调用关系图](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/ecf-kernel-entry-map.webp)
+![Relationship between interrupts, exceptions, and system calls](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/ecf-kernel-entry-map.webp)
 
-`trap` 这个词在不同资料里的用法不完全一样。CSAPP 语境下，它通常指程序主动触发的同步异常，比如系统调用；RISC-V 则把 trap 定义为异常或中断引起的控制转移。本文提到“trap / 系统调用”时使用前一种狭义含义，涉及 RISC-V 时会单独说明。
+Different sources use the word `trap` differently. In CSAPP, it usually means a synchronous exception deliberately raised by a program, such as a system call. RISC-V uses `trap` for control transfers caused by either exceptions or interrupts. This article uses the narrower CSAPP meaning for “trap / system call” and calls out RISC-V usage separately.
 
-## 中断、异常、系统调用和信号的关系
+## How Interrupts, Exceptions, System Calls, and Signals Relate
 
-这几个词容易混，因为它们不在同一层。
+These terms are easy to confuse because they describe different layers.
 
-硬件中断、同步异常和系统调用描述 CPU 为什么进入内核；信号则是内核向进程或线程交付的软件通知。信号可能由硬件异常转化而来，也可能由其他进程、终端或定时器产生。
+Hardware interrupts, synchronous exceptions, and system calls describe why the CPU enters the kernel. A signal is a software notification delivered by the kernel to a process or thread. A signal may result from a hardware exception, or it may come from another process, a terminal, or a timer.
 
-先把这几个概念放到一张表里：
+| Concept               | Trigger                                                                          | Sync or async                                      | Handler                                                     | Common outcome                                                    |
+| --------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------- |
+| Hardware interrupt    | Device or timer                                                                  | Asynchronous                                       | Kernel interrupt handler                                    | Handle a device event, wake a waiting task, or trigger scheduling |
+| Synchronous exception | Current instruction                                                              | Synchronous                                        | Kernel exception handler                                    | Retry after repair, deliver a signal, or terminate the process    |
+| System call           | A user program deliberately executes an instruction such as `syscall` or `ecall` | Synchronous                                        | Kernel system call entry point                              | Return a result or error, or wait for a resource                  |
+| Signal                | Notification from the kernel or a process                                        | Usually asynchronous; may result from an exception | Target process's default action or user-mode signal handler | Ignore, terminate, stop, continue, or run a handler               |
 
-| 概念     | 触发来源                                             | 同步/异步                  | 谁处理                                    | 常见结果                             |
-| -------- | ---------------------------------------------------- | -------------------------- | ----------------------------------------- | ------------------------------------ |
-| 硬件中断 | 外设或定时器                                         | 异步                       | 内核中断处理程序                          | 处理设备事件、唤醒等待任务、触发调度 |
-| 同步异常 | 当前指令执行过程                                     | 同步                       | 内核异常处理程序                          | 修复后重试、转成信号、终止进程       |
-| 系统调用 | 用户程序执行 `syscall`/`ecall` 等指令主动触发的 trap | 同步                       | 内核系统调用入口                          | 返回结果、返回错误码、阻塞等待资源   |
-| 信号     | 内核或进程发出的通知                                 | 通常异步，也可能由异常引发 | 目标进程的默认动作或用户态 signal handler | 忽略、终止、暂停、继续、执行 handler |
+For sync versus async, the question is whether the event was caused by the current instruction. Division by zero, an illegal instruction, a Page Fault, and a system call are synchronous. A hardware interrupt comes from a device or timer; for example, a network packet may arrive while the CPU is running a Java thread, independently of the user code it is executing. That makes it asynchronous.
 
-这张表里的同步/异步，看的是事件是不是由当前指令引出来。除零、非法指令、Page Fault、系统调用都和当前正在执行的指令有关，所以是同步事件。硬件中断来自外设或定时器，CPU 正在跑 Java 线程时，网卡也可能刚好收到包，这件事和当前那条用户代码没有直接关系，所以是异步事件。
+Blocking versus nonblocking is a separate distinction. Entering the kernel with `read()` is synchronous, but if a resource is not ready, a blocking file descriptor can put the thread to sleep. A file descriptor opened with `O_NONBLOCK` may return `EAGAIN` instead.
 
-阻塞和非阻塞是另一个维度。`read()` 进入内核这一步是同步的，但进入内核后，如果资源还没有准备好，阻塞 fd 会让线程睡眠；设置了 `O_NONBLOCK` 的 fd 可能直接返回 `EAGAIN`。
+A hardware interrupt is like a device alerting the CPU. Suppose the CPU is running your Java thread when a clock interrupt arrives. The CPU finishes the current instruction and enters the kernel's interrupt handler. The kernel updates the clock and runtime statistics, and may ask the scheduler to give the CPU to another thread. Your code does not need to yield explicitly for it to be preempted.
 
-硬件中断像是外设敲了一下 CPU。比如 CPU 正在跑你的 Java 线程，时钟中断来了，CPU 跑完当前指令后会进入内核的中断入口。内核更新时钟、统计运行时间，必要时让调度器把 CPU 交给另一个线程。你的代码里没有写过让出 CPU，但它还是可能被抢占。
+An exception is caused by the current instruction. Division by zero, an illegal instruction, or accessing an address without permission are examples. A page fault is also an exception: a process accesses a virtual address without a valid page-table mapping, so the CPU transfers control to the kernel. A synchronous exception is not necessarily recoverable. If the kernel cannot fix it, it may deliver a signal or terminate the process.
 
-异常出在当前指令身上。除以 0、执行非法指令、访问没有权限的地址，都是这条指令触发的问题。缺页异常也算这一类：进程访问某个虚拟地址，页表里暂时没有有效映射，CPU 只能把现场交给内核。同步异常不代表一定能修好，内核修不了时，还是会投递信号或终止进程。
+A system call is a program's explicit request for kernel services. User-mode code cannot read a disk directly, modify page tables, or operate a network card, so glibc functions such as `read()`, `write()`, `fork()`, and `mmap()` ultimately use system call interfaces provided by the kernel.
 
-系统调用就是用户程序主动找内核帮忙。用户态程序不能直接读磁盘、改页表、操作网卡，所以 glibc 的 `read()`、`write()`、`fork()`、`mmap()` 最后都要走到内核提供的系统调用接口。
+A signal is not a CPU entry mechanism. It is a notification from the kernel to a process or thread. An invalid memory access may first cause a Page Fault; if the kernel cannot fix it, the kernel can deliver `SIGSEGV`. When the user presses `Ctrl+C`, the terminal driver asks the kernel to send `SIGINT` to the foreground process group. Another process can also send a signal with `kill()`.
 
-信号不属于 CPU 入口机制。它是内核给进程或线程发的通知。非法内存访问可能先触发 Page Fault，内核发现无法修复，再给进程投递 `SIGSEGV`。用户按下 `Ctrl+C`，终端驱动会让内核给前台进程组发 `SIGINT`。另一个进程也可调用 `kill()` 发信号。
+Keep these dimensions separate:
 
-几个容易混的维度可以拆开看：
+| Dimension                           | Question                                                  | Example                                                                |
+| ----------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Synchronous or asynchronous event   | Was the event directly caused by the current instruction? | A Page Fault is synchronous; a network card interrupt is asynchronous  |
+| Blocking or nonblocking I/O         | Does the thread wait when a resource is not ready?        | A blocking `read()` sleeps; a nonblocking `read()` may return `EAGAIN` |
+| User-mode or kernel-mode transition | Does execution enter the kernel to run privileged code?   | `syscall`, a Page Fault, and a hardware interrupt all enter the kernel |
+| Thread context switch               | Does the CPU switch from one thread to another?           | May happen during blocking, preemption, or scheduling                  |
 
-| 维度              | 关注的问题                       | 例子                                                  |
-| ----------------- | -------------------------------- | ----------------------------------------------------- |
-| 同步/异步事件     | 事件是否由当前指令直接触发       | Page Fault 是同步异常；网卡中断是异步中断             |
-| 阻塞/非阻塞 I/O   | 资源未就绪时线程是否等待         | 阻塞 `read()` 会睡眠；非阻塞 `read()` 可返回 `EAGAIN` |
-| 用户态/内核态切换 | 是否进入内核执行特权代码         | `syscall`、Page Fault、硬件中断都会进入内核           |
-| 线程上下文切换    | CPU 是否从一个线程切到另一个线程 | 阻塞、抢占、调度时可能发生                            |
+A signal handler is not a kernel function. Before returning to user mode, the kernel usually checks for pending signals. To run a handler, it prepares the user stack, registers, and a trampoline, then returns to user mode so the thread can execute the handler. The handler is therefore not usually inserted immediately between arbitrary machine instructions; the kernel arranges it as the thread returns from the kernel or wakes from an interruptible wait. In a multithreaded program, a process-directed signal is not guaranteed to reach a particular thread: the kernel chooses a thread that has not blocked that signal.
 
-信号 handler 也不是内核函数。内核通常在从内核态返回用户态前检查待处理信号；如果要执行 handler，就准备用户栈、寄存器和 trampoline，再让线程回到用户态执行 handler。因此，信号 handler 通常不是在任意机器指令之间立刻插入执行，而是等线程从内核态返回用户态，或从可中断等待中被唤醒后，再按内核安排进入 handler。多线程程序还要多留意一步：发给进程的信号，不一定由预想中的那个线程处理，内核会选择一个没有屏蔽该信号的线程。
+Where execution resumes also depends on the event:
 
-事件处理完后，回到哪里也不一样：
+| Event              | Typical return point                                                                     |
+| ------------------ | ---------------------------------------------------------------------------------------- |
+| Interrupt          | Resume where execution was interrupted, or schedule another thread                       |
+| Trap / system call | Resume after the trapping instruction in most cases; system call restart is an exception |
+| Fault / page fault | Retry the instruction that caused the fault after it is fixed                            |
+| Abort              | Usually does not return to the original program                                          |
 
-| 类型            | 处理后通常回到哪里                                   |
-| --------------- | ---------------------------------------------------- |
-| 中断            | 回到被打断的位置继续执行，或者调度到别的线程         |
-| Trap / 系统调用 | 通常回到陷入指令之后继续执行；系统调用重启等情况除外 |
-| Fault / 缺页    | 修复后重新执行触发 fault 的那条指令                  |
-| Abort           | 通常不返回原程序                                     |
+These are the common paths. The kernel may also deliver a signal, restart a system call, switch to another thread, or terminate a process.
 
-这张表只描述最常见路径。真实系统里，内核还可能投递信号、重启系统调用、切换到别的线程，或者直接终止进程。
+## User-Mode Transitions and Context Switches
 
-## 用户态/内核态切换与上下文切换
+The difference between user mode and kernel mode is the CPU privilege level. User-mode code cannot execute privileged instructions or freely access kernel address space. Kernel-mode code can manage page tables, devices, interrupt controllers, and the scheduler.
 
-用户态和内核态的差别在 CPU 特权级。用户态不能执行特权指令，不能随便访问内核地址空间；内核态可以管理页表、设备、中断控制器和调度器。
+Entering the kernel from user mode is not an ordinary function call. The CPU and kernel must preserve enough state to know where to resume the user program.
 
-从用户态进入内核态，不是普通函数调用。CPU 和内核必须留下足够的现场信息，否则后面不知道该回到用户程序哪条指令。
+On x86-64, 64-bit system calls usually use the `syscall` instruction. Exceptions and external interrupts more often use entries configured in the IDT. Some exceptions push an error code and others do not; special entries such as NMI and Double Fault may use an IST stack.
 
-x86-64 上，64 位系统调用通常走 `syscall` 指令；异常和外部中断更多走 IDT 中配置好的入口。有些异常会压入错误码，有些不会；NMI、Double Fault 这类特殊入口还可能使用 IST 栈。
+This article uses Linux on x86-64 as its example, so it focuses on `syscall`. Other architectures and older ABIs may use entry instructions such as `int 0x80`, `sysenter`, `ecall`, or `svc`, with different register conventions.
 
-本文用 Linux x86-64 举例，所以主要写 `syscall`。其他架构或旧 ABI 可能使用 `int 0x80`、`sysenter`、`ecall`、`svc` 等入口指令，寄存器约定也不同。
+The `syscall` instruction does only part of the work. It places the return address and flags in `RCX` and `R11`, but does not save all registers as an ordinary function call would, or automatically switch to the kernel stack. Linux entry assembly does the remaining work, such as switching stacks, running `swapgs`, and saving registers.
 
-`syscall` 指令本身做的事有限。它会把返回地址和标志寄存器放到 `RCX`、`R11`，但不会像普通函数调用那样保存完整寄存器现场，也不会自动切到内核栈。Linux 入口汇编还要继续完成切栈、`swapgs`、保存寄存器等工作。
+User-mode/kernel-mode transitions and thread context switches are different:
 
-还要区分用户态/内核态切换和线程上下文切换：
+- **Mode transition:** The CPU moves from a lower privilege level to a higher one, runs kernel code, and returns to user mode.
+- **Context switch:** The scheduler switches the CPU from one thread or process to another execution entity.
 
-- 用户态/内核态切换：CPU 从低特权级进入高特权级，执行内核代码，再返回用户态。
-- 上下文切换：调度器把 CPU 从一个线程或进程切给另一个执行实体。
+A system call always enters the kernel, but it does not necessarily switch to another thread. A call such as `getpid()` usually returns quickly, and the same thread continues running. If `read()` must wait for data, the kernel may suspend the current thread and schedule another. Some time-related interfaces can use the vDSO to run in user mode; depending on the architecture and configuration, calls such as `clock_gettime()` and `gettimeofday()` can read data from a page mapped by the kernel without entering the kernel on every call.
 
-系统调用一定会进入内核，但不一定切换到另一个线程。`getpid()` 这类调用通常很快返回，还是当前线程继续运行。`read()` 如果要等待数据，内核可能挂起当前线程，先调度别的线程。另外，一些时间相关接口可借助 vDSO 在用户态完成，比如 `clock_gettime()`、`gettimeofday()` 在某些架构和配置下可以读取内核映射给用户态的数据页，不一定每次都真正进入内核。
+![Comparison of user-mode transitions and context switches](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/kernel-mode-vs-context-switch.webp)
 
-![用户态内核态切换与上下文切换对比图](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/kernel-mode-vs-context-switch.webp)
+## The `read()` System Call Path
 
-## `read()` 的系统调用路径
+Consider `read(fd, buf, count)` on Linux x86-64. Application code usually calls the glibc wrapper rather than writing assembly itself.
 
-以 Linux x86-64 上的 `read(fd, buf, count)` 为例，业务代码一般调用的是 glibc 包装函数，不会自己写汇编。
+![The read system call flow](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/read-syscall-path.webp)
 
-![read 系统调用流程图](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/read-syscall-path.webp)
+glibc puts the system call number in `rax` and the arguments in designated registers. On x86-64, system call arguments go in `rdi`, `rsi`, `rdx`, `r10`, `r8`, and `r9`, in that order.
 
-glibc 会把系统调用号放进 `rax`，把参数放进约定寄存器。x86-64 的系统调用参数依次放在 `rdi`、`rsi`、`rdx`、`r10`、`r8`、`r9`。
+After the CPU executes `syscall`, it jumps to the kernel entry point according to the architecture's rules. Linux entry code saves the registers it will need, then dispatches by system call number to the handler for `read`. The kernel checks the file descriptor, permissions, and other arguments. Copying data to the user buffer can still fail, for example with `EFAULT`.
 
-CPU 执行 `syscall` 后，会按架构约定跳到内核配置好的入口。Linux 入口代码保存后续要用到的寄存器状态，再根据系统调用号分发到 `read` 对应的处理函数。内核会检查 fd、访问权限和其他参数；真正向用户缓冲区复制数据时，地址问题仍可能导致 `EFAULT`。
+For a regular file, the path goes through the VFS and the specific filesystem, and the kernel first tries the Page Cache. For a socket, it checks whether the receive buffer contains data. Once data is ready, the kernel copies it to the user-provided `buf`.
 
-目标是普通文件时，路径会走 VFS 和具体文件系统，优先从 Page Cache 拿数据。目标是 socket 时，内核会检查接收缓冲区有没有数据。数据准备好后，内核把数据复制到用户传入的 `buf`。
+Accessing a user buffer in the kernel can itself cause a Page Fault. Linux records some user-memory access points that may fault in an exception table. If a fault occurs at a recoverable point, the kernel jumps to the associated fixup code and returns an error such as `-EFAULT` instead of crashing the kernel.
 
-内核访问用户缓冲区时，也可能触发 Page Fault。Linux 会把这类可能 fault 的用户内存访问点记录在 exception table 里；如果 fault 发生在可修复位置，内核会跳到对应 fixup 代码，把结果转换成 `-EFAULT` 这类错误返回，而不是直接让内核崩溃。
-
-例如，把 `read()` 的 `buf` 传成明显不可写的地址，系统调用通常不会把内核一起拖死，而是返回 `-1`，并把 `errno` 设为 `EFAULT`。
+For example, if `read()` receives an obviously unwritable buffer address, the system call normally returns `-1` and sets `errno` to `EFAULT`; it does not crash the kernel.
 
 ```c
 #include <errno.h>
@@ -140,70 +138,70 @@ int main(void) {
 }
 ```
 
-`read(2)` 对 `EFAULT` 的描述就是用户缓冲区不在可访问地址空间里。对应到内核路径，问题出在内核把数据拷回用户缓冲区这一步。x86 的 exception table 文档里也用 `get_user()` 做例子：可能 fault 的用户内存访问指令会和一段 fixup 代码配对；Page Fault 发生后，内核能查到这对地址，就把返回值改成 `-EFAULT`，再跳到 fixup 路径继续收尾。
+The `read(2)` documentation describes `EFAULT` as a buffer outside the accessible address space. In the kernel path, the failure happens while copying data back to the user buffer. The x86 exception table documentation also uses `get_user()` as an example: a potentially faulting user-memory instruction is paired with fixup code. When a Page Fault occurs, the kernel looks up the pair, sets the return value to `-EFAULT`, and jumps to the fixup path to finish handling the error.
 
-系统调用返回时，成功的 `read()` 返回实际读到的字节数，这个值可以小于 `count`，不算错误。失败时内核返回负错误码，glibc 包装函数通常把它转成 `-1` 并设置 `errno`。用户缓冲区不可访问时可能得到 `EFAULT`；阻塞等待期间被信号打断时，可能得到 `EINTR`。
+On success, `read()` returns the number of bytes actually read, which may be less than `count` and is not an error. On failure, the kernel returns a negative error code; the glibc wrapper usually converts it to `-1` and sets `errno`. An inaccessible user buffer may produce `EFAULT`; a signal that interrupts a blocking wait may produce `EINTR`.
 
-写生产代码时，不要默认一次 `read()` 要么读满，要么失败。阻塞系统调用等待期间，如果线程收到信号并执行了 handler，系统调用可能返回 `EINTR`；如果信号到达前已经读到部分数据，`read()` 也可能直接返回已经读到的字节数，而不是失败。如果安装 handler 时使用了 `SA_RESTART`，部分阻塞系统调用会在 handler 返回后自动重启。是否重启，取决于接口类型和信号处理设置。
+Production code should not assume that one `read()` either fills the buffer or fails. If a thread receives a signal and runs a handler while a blocking system call waits, the call may return `EINTR`. If some data was read before the signal arrived, `read()` may instead return the number of bytes already read. When a handler is installed with `SA_RESTART`, some blocking system calls restart automatically after the handler returns. Whether that happens depends on the interface and signal-handler settings.
 
-## 时钟中断与抢占
+## Clock Interrupts and Preemption
 
-抢占式操作系统不能指望每个程序主动让出 CPU。教材通常把这条路径简化为内核配置定时器、硬件周期性产生中断。现代 Linux 支持 tickless，实际机器不一定始终按固定频率产生调度 tick，但定时器中断仍是理解抢占的基础模型。
+A preemptive operating system cannot rely on every program to yield the CPU voluntarily. Textbooks often simplify the mechanism as a timer configured by the kernel that periodically generates hardware interrupts. Modern Linux supports tickless operation, so a machine does not necessarily receive scheduler ticks at a fixed rate all the time, but timer interrupts remain a useful model for understanding preemption.
 
-假设线程 A 正在用户态运行。定时器到点后，CPU 进入内核的时钟中断处理程序。内核更新当前线程的运行时间，检查是否要进行调度。如果不用调度，处理结束后返回 A，A 继续执行；如果要调度，内核保存 A 的执行现场，选出线程 B，切到 B 的内核栈和寄存器上下文，最后从内核返回到 B 的用户态位置。
+Suppose thread A is running in user mode. When the timer expires, the CPU enters the kernel's clock interrupt handler. The kernel updates A's runtime and checks whether to schedule. If not, it returns to A. If the scheduler chooses another thread, the kernel saves A's execution state, selects thread B, switches to B's kernel stack and register context, and eventually returns to B's user-mode execution point.
 
-OSTEP 讲 Limited Direct Execution 时，也是按这条链路展开的：定时器中断先让硬件和内核保存当前进程的用户寄存器，内核再调用切换例程保存旧进程上下文、恢复新进程上下文，最后通过 return-from-trap 回到新进程。
+OSTEP explains Limited Direct Execution along similar lines: the timer interrupt first lets the hardware and kernel save the current process's user registers. The kernel then calls the context-switch routine to save the old process and restore the new one, before returning from the trap to the new process.
 
-这条路径一定发生了中断，是否发生上下文切换则取决于调度器是否选中了另一个线程。
+An interrupt always occurs on this path, but a context switch happens only if the scheduler chooses another thread.
 
-硬件中断处理程序一般要快进快出，不能像普通进程上下文那样随便阻塞等待。较重的工作会被延后到软中断、工作队列或内核线程里处理。
+Interrupt handlers should finish quickly; they cannot block and wait like ordinary process-context code. Heavier work is deferred to a softirq, workqueue, or kernel thread.
 
-网卡收包就是一个常见例子。Linux NAPI 的基本路径是：设备先用硬件中断通知主机，驱动在中断处理里调度 NAPI，后面的包处理通常在 softirq 上下文里运行。驱动调度 NAPI 后通常会保持 IRQ masked，直到 NAPI polling 结束，因为这段时间继续收硬中断没有必要。处理量过大或 softirq 被推迟时，也可能由 `ksoftirqd` 这类内核线程继续处理。线上看到 `ksoftirqd` 或 `%si` 长时间偏高时，要联想到网络包处理、软中断压力和中断亲和性。硬中断只负责挂起后续工作，批量处理 packet 时已经切到了 softirq 或内核线程上下文。
+Network packet reception is a common example. In Linux NAPI, a device first notifies the host with a hardware interrupt. The driver schedules NAPI, and subsequent packet processing usually runs in softirq context. After scheduling NAPI, the driver typically keeps the IRQ masked until polling finishes, because more hard interrupts are not useful during that period. If the workload is heavy or softirq processing is deferred, a kernel thread such as `ksoftirqd` may continue the work. If `ksoftirqd` or `%si` stays high in production, investigate network packet processing, softirq pressure, and interrupt affinity. The hard interrupt schedules follow-up work; batch packet processing runs in a softirq or kernel-thread context.
 
-## 缺页异常的正常路径和错误路径
+## Recoverable and Invalid Page Faults
 
-Page Fault 这个名字容易让人以为程序已经出错。实际上，它只表示 CPU 做地址翻译或权限检查时，当前页表项没法直接完成这次访问。
+The name Page Fault can make it sound like a program error. It only means that the CPU could not complete an access because address translation or permission checks could not be satisfied by the current page table.
 
-常见情况有几类：
+Common cases include:
 
-1. 页还没分配物理内存，例如懒分配的堆页第一次被访问；
-2. 页在文件或 Swap 里，当前还没驻留到内存；
-3. COW 页被写入，页表暂时标成只读，要内核复制一份；
-4. 访问权限不对，比如用户态访问内核页、写只读页、执行不可执行页；
-5. 地址根本不属于进程合法的虚拟地址区域。
+1. The page has not been backed by physical memory yet, such as a lazily allocated heap page accessed for the first time.
+2. The page is in a file or Swap and is not currently resident in memory.
+3. A write to a copy-on-write (COW) page encounters a read-only page-table entry, so the kernel must copy the page.
+4. The access violates permissions, such as user-mode access to a kernel page, writing to a read-only page, or executing a non-executable page.
+5. The address does not belong to a valid virtual memory area for the process.
 
-![Page Fault 处理分支图](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/page-fault-branching.webp)
+![Page Fault handling paths](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/page-fault-branching.webp)
 
-内核处理 Page Fault 时，先看地址是否落在进程合法的 VMA 中，再看访问类型和权限是否契合。
+When handling a Page Fault, the kernel first checks whether the address falls within a valid VMA for the process, then checks whether the access type is allowed.
 
-合法缺页可以修复。内核分配物理页、从文件读页、从 Swap 换入，或者处理 COW，更新页表后返回。CPU 会重新执行触发异常的那条指令。这类缺页可能是 minor fault，也可能是 major fault，差别在于是否要实际 I/O。
+A valid fault can be fixed. The kernel may allocate a physical page, read a page from a file, swap a page in, or handle COW. It then updates the page table and returns. The CPU retries the instruction that caused the exception. These faults may be minor or major; the difference is whether actual I/O is needed.
 
-地址不属于任何合法 VMA，或者访问方式违反页级权限时，内核通常会向当前线程投递 `SIGSEGV`。访问 `NULL` 附近、写只读映射都属于这类情况。C/C++ 里的越界访问则不保证触发 Page Fault：如果目标地址仍在已映射且权限允许的页面内，程序可能只是破坏了相邻数据。只有越界地址落到未映射区域或违反页权限时，硬件才会通过 Page Fault 把问题交给内核。
+If an address is outside every valid VMA or the access violates page permissions, the kernel usually sends `SIGSEGV` to the current thread. Accessing near `NULL` or writing to a read-only mapping are examples. An out-of-bounds access in C or C++ does not necessarily cause a Page Fault: if the target address is in a mapped page with suitable permissions, the program may simply corrupt adjacent data. The hardware raises a Page Fault only when the address is unmapped or violates page permissions.
 
-xv6 的 COW fork 和 lazy allocation 很适合帮助理解这一点。父子进程先共享只读页，谁写谁触发页故障，内核复制页面后让写入继续；进程扩大地址空间时，内核可以先只记录范围，等第一次访问再分配物理页。两个场景都借助 Page Fault 把工作延后。
+xv6's COW fork and lazy allocation examples help explain this. Parent and child processes initially share read-only pages; the first process to write triggers a page fault, and the kernel copies the page so the write can continue. When a process expands its address space, the kernel can record the range first and allocate physical pages on first access. Both cases use Page Faults to defer work.
 
-`userfaultfd(2)` 可以作为一个高级例子：用户态注册某段内存后，missing、minor 或 write-protect 这类 page fault 可以变成 fd 上的事件；触发 fault 的线程先阻塞，另一个用户态线程补页、继续或解除写保护后再让它继续。这类机制常用于虚拟机迁移、懒加载和脏页跟踪，但普通后端业务很少直接用。
+`userfaultfd(2)` is a more advanced example. After user space registers a memory range, missing, minor, or write-protect page faults can become events on a file descriptor. The thread that caused the fault blocks while another user-mode thread supplies a page, continues the fault, or removes write protection. This mechanism is used for virtual machine migration, lazy loading, and dirty-page tracking, but is uncommon in ordinary backend services.
 
-## 系统调用的成本
+## The Cost of System Calls
 
-系统调用比普通函数调用重。普通函数调用仍在用户态，按照 ABI 传递参数、保存必要现场并完成跳转和返回；系统调用还要切到内核态，经过入口代码保存现场、执行权限检查，并可能访问页表、文件对象、设备驱动或等待队列。从内核返回用户态前，内核还可能检查待处理信号、抢占和调度标志等状态。
+A system call costs more than an ordinary function call. A regular call stays in user mode and follows the ABI to pass arguments, preserve necessary state, jump, and return. A system call also enters kernel mode, saves state in the entry code, checks permissions, and may access page tables, file objects, device drivers, or wait queues. Before returning to user mode, the kernel may also check pending signals, preemption, and scheduling flags.
 
-但系统调用的成本不能一概而论。`getpid()` 这类调用主要花在进入和退出内核；`read()` 碰到磁盘 I/O 时，主要成本在等待设备和数据复制。基于 futex 实现的锁在无竞争时通常只执行用户态原子操作，不调用 `futex(2)`；发生竞争、需要线程睡眠或唤醒时，才通过 `futex(2)` 进入内核。
+The cost varies by call. A call such as `getpid()` mainly pays for entering and leaving the kernel. If `read()` waits for disk I/O, most of its cost may come from waiting for the device and copying data. An uncontended futex-based lock usually uses only user-mode atomic operations and does not call `futex(2)`; the kernel is involved when contention requires a thread to sleep or wake.
 
-工程上不要为了少一次系统调用牺牲正确性。更常见的优化是批量化和减少无意义等待：缓冲 I/O、一次读写更多数据、I/O 多路复用、`sendfile()`、`mmap()`、`io_uring`，分别在不同场景里减少模式切换、复制或等待成本。
+Do not sacrifice correctness just to avoid a system call. More common optimizations batch work and avoid unnecessary waits: buffered I/O, larger reads and writes, I/O multiplexing, `sendfile()`, `mmap()`, and `io_uring` can reduce mode transitions, copying, or waiting in different situations.
 
-## 面试回答要点
+## Interview Notes
 
-回答“中断、异常、系统调用是什么关系”，可以按入口来源说：
+For “How are interrupts, exceptions, and system calls related?”, start with the source of the kernel entry:
 
-> CPU 正常按指令流执行。外设事件、当前指令错误、用户程序主动请求内核服务，都会让控制流进入内核。硬件中断来自外部设备，是异步的；同步异常由当前指令触发；系统调用则是程序通过 `syscall`、`ecall` 等指令主动触发的 trap，也属于同步事件。内核处理完以后，可能返回原程序继续执行，也可能调度别的线程，或者向进程投递信号。
+> The CPU normally follows its instruction stream. A device event, an error in the current instruction, or a program's request for a kernel service can transfer control to the kernel. Hardware interrupts come from external devices and are asynchronous. Synchronous exceptions are caused by the current instruction. A system call is a trap deliberately raised by the program with an instruction such as `syscall` or `ecall`, so it is synchronous. After handling the event, the kernel may resume the original program, schedule another thread, or deliver a signal.
 
-回答“系统调用流程”，可以抓 `read()`：
+For “What is the system call path?”, follow `read()`:
 
-> glibc 包装函数把系统调用号和参数放到约定寄存器里，执行 `syscall`。CPU 先按架构约定进入内核入口，Linux 入口代码再保存后续需要的寄存器状态，并根据系统调用号分发到对应处理函数，检查参数和权限，执行 VFS、网络、内存管理等逻辑。返回时把结果放回寄存器；出错时通常由 glibc 转成 `-1` 和 `errno`。如果调用要等待 I/O，线程会阻塞，后续设备中断再唤醒它。
+> The glibc wrapper puts the system call number and arguments in designated registers, then executes `syscall`. The CPU enters the kernel according to the architecture's rules. Linux entry code saves the registers it needs and dispatches to the handler for that system call, which checks arguments and permissions and runs the relevant VFS, network, or memory-management logic. The result is placed in a register on return; glibc usually converts an error into `-1` and `errno`. If the call must wait for I/O, the thread blocks and a later device interrupt can wake it.
 
-回答“缺页异常和非法访问的区别”，抓住内核分流：
+For “How does a Page Fault differ from an invalid access?”, focus on what the kernel can fix:
 
-> Page Fault 只是 CPU 发现这次地址翻译或权限检查过不去。内核会判断地址和权限是否合法。合法缺页可以修复，比如分配匿名页、从文件或 Swap 调页、处理 COW，然后重新执行触发异常的指令；非法访问无法修复，通常投递 `SIGSEGV`，进程默认终止。
+> A Page Fault means the CPU could not complete address translation or a permission check. The kernel checks whether the address and access are valid. It can fix a valid fault, for example by allocating an anonymous page, loading a page from a file or Swap, or handling COW, then retry the instruction. An invalid access cannot be fixed and usually results in `SIGSEGV`, which terminates the process by default.
 
-用户态/内核态切换和线程上下文切换不是一回事。一次真正的系统调用一定进入内核，但只有调度器选择了另一个执行实体时，CPU 才会切换线程，例如当前线程阻塞、主动让出 CPU 或被抢占。
+A user-mode/kernel-mode transition is different from a thread context switch. A system call enters the kernel, but the CPU switches threads only when the scheduler selects another execution entity, for example because the current thread blocks, yields, or is preempted.

@@ -1,256 +1,248 @@
 ---
-title: 零拷贝详解：mmap、sendfile 与 splice
-description: 零拷贝高频面试题总结，讲清传统 read/write、mmap、sendfile、splice 的拷贝路径、上下文切换、SG-DMA、Java NIO、Kafka 和 RocketMQ 的应用场景。
-category: 计算机基础
+title: "Zero-Copy: mmap, sendfile, and splice"
+description: Common zero-copy interview topics, including copy paths for read/write, mmap, sendfile, and splice, context switches, SG-DMA, and applications in Java NIO, Kafka, and RocketMQ.
+category: Computer Science Fundamentals
 tag:
-  - 操作系统
+  - Operating Systems
   - Linux
-  - 高性能
+  - High Performance
 head:
   - - meta
     - name: keywords
-      content: 零拷贝,mmap,sendfile,splice,SG-DMA,Page Cache,Java NIO,FileChannel,transferTo,Kafka,RocketMQ,操作系统面试题
+      content: zero-copy,mmap,sendfile,splice,SG-DMA,Page Cache,Java NIO,FileChannel,transferTo,Kafka,RocketMQ,operating system interview questions
 ---
 
-面试里有个很常见的套路：先问你“Kafka 为什么快”“RocketMQ 为什么扛得住堆积”，等你答出顺序写、Page Cache、零拷贝之后，面试官顺势往下挖：“零拷贝具体省掉了哪几次拷贝？”“mmap 和 sendfile 有什么区别？”“splice 又是干嘛的？”
+Interviewers often ask why Kafka is fast or how RocketMQ handles backlogs, then follow up on sequential writes, Page Cache, and zero-copy: Which copies does zero-copy remove? How do `mmap` and `sendfile` differ? What does `splice` do?
 
-到这一步，很多人就开始打太极了。能背出“零拷贝就是不经过用户态”的不少，能把四次拷贝、两次 DMA、几次上下文切换的账算清楚的不多。
+Many people can repeat that “zero-copy avoids user space,” but fewer can account for the four copies, two DMA transfers, and mode switches.
 
-这篇文章就从一次文件发送说起：**传统 I/O 会拷几次，零拷贝的“零”到底省在哪，mmap、sendfile、splice 三条路线分别省了什么，又各自要付出什么代价。**
+This article follows a file being sent over a network: **how many copies traditional I/O needs, what “zero” means, and what each of `mmap`, `sendfile`, and `splice` saves and costs.**
 
-在文章正式开始之前，我们需要把计算口径定下来。
+First, define the model. Unless otherwise stated, copy and switch counts below use these assumptions:
 
-后面提到“几次拷贝、几次切换”时，默认按下面这个简化模型来算。换了场景，数字就会变：
+- A regular file is sent through a TCP socket, and the data is not in Page Cache yet, so it must be read from disk.
+- The application does not process the data in user space for TLS encryption, compression, or format conversion.
+- The device supports common DMA and scatter-gather features.
+- “Copy” counts payload only, not descriptors or metadata.
+- “Context switch” below means a **mode transition** between user and kernel space; each system call entry and return counts once. This is different from a scheduler switching threads. A thread context switch is added only if a system call blocks and the thread is descheduled.
 
-- 场景是把一个普通文件通过 TCP socket 发出去，且数据初始不在 Page Cache 里（需要真正读盘）。
-- 不涉及 TLS 加密、压缩、格式转换这类要在用户态碰数据的处理。
-- 设备支持常见的 DMA 与 scatter-gather。
-- 数到的“拷贝次数”只算数据本身（payload），不含描述符、元数据。
-- 下文说的“上下文切换”，准确讲是**用户态和内核态之间的模式切换**（一次系统调用进出各算一次），它和线程被调度器换上换下的“线程上下文切换”不是一回事；只有系统调用真的阻塞、线程被换出时，才会额外发生线程上下文切换。
+Page Cache hits, TLS, and hardware without SG-DMA all change the counts. These assumptions explain the mechanisms; the numbers are not universal constants.
 
-Page Cache 命中、走 TLS、硬件不支持 SG-DMA，这些数字都会变。这里的假设只是为了把机制看清楚，别把数字当成所有环境里的固定答案。
+## How Many Copies Does Traditional `read`/`write` Need?
 
-## 传统 read/write 到底拷了几次
-
-先看一个最常见的场景：一个文件下载接口，服务端要把磁盘上的文件，通过已经建立好的 socket 发给客户端。最直接的写法就是一个 read 加一个 write：
+Consider a file-download endpoint that sends a disk file to a client over an established socket. The simple implementation reads into a buffer and writes it to the socket:
 
 ```c
 while ((n = read(file_fd, buf, BUF_SIZE)) > 0)
     write(socket_fd, buf, n);
 ```
 
-看着只有两行，底层却折腾得不轻。一次完整的“读磁盘 + 发网络”，CPU 和 DMA 一共要搬四趟数据，用户态和内核态之间还要来回切四次。
+The code is short, but a full “read from disk and send over the network” operation moves the data four times using the CPU and DMA, with four user/kernel mode transitions.
 
-![传统 read/write 的数据拷贝路径：磁盘到内核缓冲区、内核到用户缓冲区、用户到 Socket 缓冲区、Socket 到网卡](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-traditional-read-write.png)
+![Traditional read/write copies data from disk to kernel buffer, to user buffer, to socket buffer, and then to the network card](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-traditional-read-write.png)
 
-把这两行拆开看，read 这一半发生了什么：
+The `read` half works like this:
 
-1. 应用进程调用 read，发起系统调用，**上下文从用户态切到内核态**（第 1 次切换）。
-2. DMA 控制器把数据从磁盘读进内核读缓冲区（第 1 次拷贝，DMA 拷贝）。
-3. CPU 把内核读缓冲区的数据拷到用户缓冲区（第 2 次拷贝，CPU 拷贝），**上下文切回用户态**（第 2 次切换），read 返回。
+1. The application calls `read`, entering the kernel (first mode transition).
+2. DMA moves data from disk into the kernel read buffer (first copy, DMA).
+3. The CPU copies it from the kernel buffer to the user buffer (second copy, CPU), then execution returns to user mode (second transition) and `read` returns.
 
-write 这一半是对称的：
+The `write` half is similar:
 
-4. 应用进程调用 write，发起系统调用，**上下文切到内核态**（第 3 次切换）。
-5. CPU 把用户缓冲区的数据拷到 socket 缓冲区（第 3 次拷贝，CPU 拷贝）。
-6. DMA 把 socket 缓冲区的数据拷到网卡（第 4 次拷贝，DMA 拷贝），**上下文切回用户态**（第 4 次切换），write 返回。
+4. The application calls `write` and enters the kernel (third transition).
+5. The CPU copies data from the user buffer to the socket buffer (third copy, CPU).
+6. DMA moves data from the socket buffer to the network card (fourth copy, DMA), and execution returns to user mode (fourth transition).
 
-数一下：**4 次模式切换，4 次数据拷贝**，其中 2 次是 DMA 拷贝、2 次是 CPU 拷贝。（严格说，`write` 把数据复制进 socket 发送缓冲区后通常就返回了，网卡的排队、分段和 DMA 发送是协议栈异步完成的，并不需要等 DMA 真正发完才切回用户态。这里把它画进一次调用里，只是为了把账算齐。）
+That is **4 mode transitions and 4 data copies**: 2 DMA copies and 2 CPU copies. Strictly speaking, `write` usually returns after copying data to the socket send buffer. The network stack queues and segments it, and DMA transmission happens asynchronously; `write` does not wait for the DMA to finish. The diagram groups these steps to make the accounting easier.
 
-这里插一句 DMA（Direct Memory Access，直接内存访问）。它是设备控制器或系统里的 DMA 引擎提供的能力，能在外设和内存之间直接搬数据，全程基本不用 CPU 盯着（现代硬件里它通常集成在设备控制器、SoC 或芯片组中，未必是一块独立芯片）。磁盘到内核缓冲区、socket 缓冲区到网卡这种纯体力活交给它，CPU 就能腾出手算别的，所以 DMA 拷贝并不烧 CPU。
+DMA (Direct Memory Access) is a capability provided by device controllers or system DMA engines. It moves data between a device and memory with little CPU involvement. Modern DMA logic is often integrated into a device controller, SoC, or chipset rather than a separate chip. It handles work such as disk-to-kernel-buffer and socket-buffer-to-network-card transfers, leaving the CPU free for other tasks.
 
-真正难受的是那两次 **CPU 拷贝**。数据从内核读缓冲区拷到用户缓冲区，再从用户缓冲区原样拷回 socket 缓冲区，可我们这个下载接口压根没碰过它的内容，数据只是路过用户空间打了个转。CPU 全程在做无意义的搬运，外加四次切换的寄存器保存恢复开销。高并发、大文件场景下，这部分浪费会被放大得很明显。
+The waste is in the two **CPU copies**. Data goes from the kernel read buffer to the user buffer, then right back to the socket buffer, even though the download endpoint never changes it. The CPU only moves the data through user space and also pays the cost of four mode transitions. These costs become significant with many concurrent requests and large files.
 
-零拷贝要省的，就是这部分。
+Zero-copy aims to reduce this work.
 
-## 零拷贝的“零”，零的是哪个拷贝
+## What Does “Zero” Mean in Zero-Copy?
 
-先纠正一个常见误解：零拷贝不是真的一次拷贝都没有。
+First, a common misconception: zero-copy does not mean there are no copies at all.
 
-在本文设定的“文件未命中 Page Cache，再通过 TCP 发出”的模型里，数据仍要经历磁盘到内存、内存到网卡这两段 DMA 搬运。**零拷贝省掉的是 CPU 在内存之间复制 payload 的工作，并可能减少用户态和内核态之间的模式切换。** 换成 Page Cache 已命中、设备直接访问持久内存等场景，搬运次数还会变化。
+In the model above—a file missing from Page Cache and sent over TCP—the data still needs DMA transfers from disk to memory and from memory to the network card. **Zero-copy mainly avoids CPU copies of payload between memory buffers and may reduce user/kernel mode transitions.** The transfer count changes if, for example, the data is already in Page Cache or the device can access persistent memory directly.
 
-所以零拷贝更精确的定义是：在 I/O 操作中让 CPU 不再参与数据在内存之间的复制，从而减少 CPU 拷贝和用户态/内核态切换的次数。它是一类技术的统称，下面三条路线都是在围着“怎么干掉 CPU 拷贝”做文章。
+More precisely, zero-copy is a family of I/O techniques that reduce CPU involvement in copying data between memory buffers, and often reduce the number of user/kernel mode transitions as well. The approaches below focus on removing CPU copies.
 
-## 路线一：mmap + write
+## Route 1: `mmap` + `write`
 
-第一个思路来自虚拟内存。现代操作系统用虚拟地址替代物理地址，这里有个关键特性：**多个虚拟地址可以指向同一块物理内存**。
-
-mmap 用的正是这一点。它的函数签名长这样：
+Virtual memory allows multiple virtual addresses to refer to the same physical memory. `mmap` uses this property.
 
 ```c
 void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
 ```
 
-其中 fd 是要映射的文件描述符，length 是映射长度，offset 是文件偏移。调用之后，内核读缓冲区会和用户空间的一段虚拟地址映射到同一块物理内存上。换句话说，内核缓冲区和用户缓冲区“共享”了同一份数据，不再各存一份。
+The `fd` is the file to map, `length` is the mapping size, and `offset` is the file offset. The kernel's read buffer and a range of user-space virtual addresses can refer to the same physical memory. The two mappings share the data instead of holding separate copies.
 
-于是原来的 read + write 就变成了 mmap + write。这里要先破除一个常见误区：**`mmap` 调用本身只是建立文件到一段虚拟地址的映射，并不会立刻把文件读进内存**。真正的读盘发生在后面访问到尚未驻留的映射页、触发缺页异常时，由内核从 Page Cache（没有就从磁盘）按页加载。流程大致是：
+The original `read` + `write` sequence can therefore use `mmap` + `write`. One important detail: **`mmap` only establishes a mapping from the file to a virtual-address range; it does not immediately read the file into memory.** Disk I/O occurs later when the process accesses a mapped page that is not resident, causing a page fault. The kernel loads it from Page Cache or, on a miss, from disk.
 
-1. 应用进程调用 `mmap`，内核建立文件到虚拟地址区间的映射，进出内核态各一次，调用返回。此时还没有任何文件数据被搬进来。
-2. 后续访问这段映射区（典型是把它当作 `write` 的数据源），首次碰到未驻留的页就触发缺页异常；若 Page Cache 里没有该页，DMA 把数据从磁盘读进 Page Cache（DMA 拷贝）。
-3. 页表建立映射后，这段内核 Page Cache 页同时映射进了用户地址空间，两边共享同一份物理内存。
-4. 应用调用 `write`，CPU 把这份数据从内核 Page Cache 拷进 socket 缓冲区（CPU 拷贝）——因为共享物理内存，省掉了传统方式里“内核到用户、再回内核”那次多余的 CPU 拷贝。
-5. DMA 把 socket 缓冲区的数据发往网卡（DMA 拷贝），`write` 返回。
+1. The application calls `mmap`. The kernel maps the file to a virtual-address range and returns; this enters and leaves kernel mode. No file data has been loaded yet.
+2. The application later accesses the mapped region, for example as the source for `write`. Accessing a nonresident page causes a page fault; if it is not in Page Cache, DMA reads it from disk (DMA copy).
+3. The page table maps the Page Cache page into the user address space. The kernel and application now share the same physical page.
+4. The application calls `write`. The CPU copies data from Page Cache to the socket buffer (CPU copy). This avoids the extra CPU copy from kernel to user and back in the traditional path.
+5. DMA sends data from the socket buffer to the network card (DMA copy), and `write` returns.
 
-![mmap + write 的数据拷贝路径：Page Cache 与 mmap 映射区共享物理内存，再复制到 Socket 缓冲区](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-mmap-write.png)
+![mmap and write map Page Cache into user space, then copy data to the socket buffer](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-mmap-write.png)
 
-算账（缓存未命中、走完整路径时）：大致 **2 次 DMA + 1 次 CPU 拷贝**；切换上 `mmap` 一次、`write` 一次，外加首次访问的缺页处理。和传统方式比，mmap 干掉的是“内核到用户”那次 CPU 拷贝。
+For a cache miss and the full path, that is roughly **2 DMA copies and 1 CPU copy**. There is one `mmap` transition and one `write` transition, plus page-fault handling on first access. Compared with traditional I/O, mmap removes the CPU copy from the kernel buffer to the user buffer.
 
-所以“mmap + write 固定是 4 次切换、3 次拷贝”只能当教学简化模型——Page Cache 命中与否、缺页发生在哪，都会让真实数字浮动。
+So “mmap + write always has four transitions and three copies” is only a simplified teaching model. Page Cache hits and the timing of page faults change the real counts.
 
-mmap 还有个附带好处：用户进程不必再维护一份和 Page Cache 内容重复的用户态读缓冲区，省掉了这块额外的缓冲和复制。至于到底省多少物理内存，取决于处理窗口、缓冲区大小和访问模式，不能一概而论说“省一半”。
+Another benefit is that the process does not need a separate user-space read buffer duplicating Page Cache data. How much physical memory this saves depends on the processing window, buffer size, and access pattern; it is not always “half.”
 
-不过 mmap 不是没有坑。映射本身有成本，建立和拆除页表、处理缺页异常都要花时间，文件很小的时候，这点开销摊下来可能比老老实实 read/write 还慢，所以 mmap 更适合大文件、反复读写。还有个更隐蔽的雷：如果你映射的文件被另一个进程截断（truncate），你再去访问被截掉的那段映射区，会直接吃一个 SIGBUS 信号，程序当场挂掉。这类问题在生产环境里排查很费劲，用 mmap 时得心里有数。
+`mmap` also has costs. Establishing and tearing down mappings and page tables, and handling page faults, take time. For small files this overhead can be higher than straightforward `read`/`write`; mmap is more suitable for large files or repeated access. A less obvious hazard: if another process truncates a mapped file, accessing the truncated region may raise `SIGBUS` and terminate the program. This can be difficult to diagnose in production.
 
-## 路线二：sendfile
+## Route 2: `sendfile`
 
-mmap 省了一次 CPU 拷贝，但它仍然绕不开 `mmap` 和 `write` 两类系统调用；如果只是把文件原样发出去，能不能用一次系统调用把内核内的数据传输做完？
+`mmap` removes one CPU copy, but still uses both `mmap` and `write` system calls. If the file only needs to be sent unchanged, a single system call can perform the transfer inside the kernel.
 
-Linux 2.1 内核引入的 sendfile 就是干这个的：
+Linux 2.1 introduced `sendfile` for this purpose:
 
 ```c
 ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count);
 ```
 
-- in_fd：数据来源，必须是支持 mmap 式读取的对象（通常是普通文件），不能是 socket。
-- out_fd：数据去向，在 Linux 2.6.33 之前只能是 socket，之后可以是任意文件。具体限制要绑定内核版本看。
-- offset：从文件哪个位置开始读，传 NULL 表示用文件当前偏移。
-- count：传输多少字节。
+- `in_fd`: Data source, usually a regular file; it must support mmap-like reading and cannot be a socket.
+- `out_fd`: Destination. Before Linux 2.6.33 it had to be a socket; newer kernels allow other files. Check the kernel version for the exact constraints.
+- `offset`: File offset to start at; `NULL` uses the current file offset.
+- `count`: Number of bytes to transfer.
 
-它的语义是：在两个文件描述符之间直接传数据，整个过程都在内核里完成，数据完全不经过用户空间。流程缩短成：
+`sendfile` transfers data between two file descriptors entirely in the kernel, without sending it through user space. The path becomes:
 
-1. 应用进程调用 sendfile，**切到内核态**（第 1 次模式切换）。
-2. DMA 把数据从磁盘拷到内核读缓冲区（DMA 拷贝）。
-3. CPU 把内核读缓冲区的数据拷到 socket 缓冲区（CPU 拷贝）。
-4. DMA 把 socket 缓冲区的数据拷到网卡（DMA 拷贝），**切回用户态**（第 2 次模式切换），sendfile 返回。
+1. The application calls `sendfile` and enters kernel mode (first transition).
+2. DMA reads data from disk into the kernel read buffer (DMA copy).
+3. The CPU copies data from the kernel read buffer to the socket buffer (CPU copy).
+4. DMA sends it from the socket buffer to the network card (DMA copy), then execution returns to user mode (second transition) and `sendfile` returns.
 
-算账：**2 次模式切换，3 次数据拷贝（2 次 DMA + 1 次 CPU）**。
+That is **2 mode transitions and 3 data copies**: 2 DMA and 1 CPU.
 
-对比 mmap，sendfile 的核心优势是把文件到 socket 的转发收进一次系统调用里，通常少了一轮用户态/内核态来回；代价是数据全程在内核里走，用户态不能直接处理这份数据。如果传输前需要修改内容，sendfile 就不合适，应改用 mmap、普通 read/write 或其他会让数据进入用户态的处理方式。
+Compared with `mmap`, the main benefit is moving file-to-socket forwarding into one system call, usually reducing one user/kernel round trip. The data stays in the kernel, so user space cannot modify it directly. If the application must change the content before sending, use mmap, ordinary `read`/`write`, or another approach that exposes the data to user space.
 
-走到这里还剩一次 CPU 拷贝（内核读缓冲区到 socket 缓冲区）。能不能连这一次也干掉？
+One CPU copy remains—from the kernel read buffer to the socket buffer. Can that be removed too?
 
-## 路线三：sendfile + SG-DMA（真正的零拷贝）
+## Route 3: `sendfile` + SG-DMA (Zero CPU Payload Copies)
 
-Linux 2.4 给 sendfile 做了升级，关键是引入了 SG-DMA（scatter/gather DMA，分散/聚集 DMA）。这项硬件能力让 DMA 可以直接从内核读缓冲区把数据搬到网卡，不必先经过 socket 缓冲区。
+Linux 2.4 enhanced `sendfile` with SG-DMA (scatter/gather DMA), a hardware capability that lets DMA transfer data from the kernel read buffer directly to the network card without first copying it into the socket buffer.
 
-升级后的流程：
+The updated path is:
 
-1. 应用进程调用 sendfile，**切到内核态**（第 1 次模式切换）。
-2. DMA 把数据从磁盘拷到内核读缓冲区（DMA 拷贝）。
-3. CPU 不再拷贝数据本身，只把这份数据在内核缓冲区里的**描述信息**（内存地址 + 偏移量长度）写进 socket 缓冲区。
-4. SG-DMA 根据这些描述信息，直接把数据从内核读缓冲区搬到网卡（DMA 拷贝），**切回用户态**（第 2 次模式切换），sendfile 返回。
+1. The application calls `sendfile` and enters kernel mode (first transition).
+2. DMA reads data from disk into the kernel read buffer (DMA copy).
+3. Instead of copying payload, the CPU writes **descriptors** (memory address, offset, and length) for that data into the socket buffer.
+4. SG-DMA uses the descriptors to send the data directly from the kernel read buffer to the network card (DMA copy), then execution returns to user mode (second transition) and `sendfile` returns.
 
-![sendfile + SG-DMA 的数据拷贝路径：Socket 缓冲区只保存描述信息，网卡通过 SG-DMA 直接读取内核缓冲区](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-sendfile-sg-dma.png)
+![With sendfile and SG-DMA, the socket buffer holds descriptors and the network card reads the kernel buffer directly](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-sendfile-sg-dma.png)
 
-算账：**2 次模式切换，2 次数据拷贝，且两次都是 DMA 拷贝，payload 的 CPU 拷贝为 0**。
+That is **2 mode transitions and 2 data copies, both by DMA, with zero CPU payload copies**.
 
-这才是名副其实的零拷贝：全程没有任何一次靠 CPU 搬运 payload，磁盘到网卡完全由 DMA 完成。第 3 步 CPU 写的那点描述信息只是几个字节的元数据，不算数据拷贝。不过能不能真走到这条路径有前提：网卡得支持 scatter-gather、内核版本够、协议栈中途不需要碰数据。一旦开启用户态 TLS 加密、要做格式转换，内核就得真正读到 payload，这条 0 CPU 拷贝的路就走不通了。
+This is zero-copy in the strict sense used here: the CPU never moves payload; DMA handles the disk-to-network transfer. The CPU does write a few bytes of metadata in step 3, but that is not a payload copy. This path requires a network card that supports scatter-gather, a suitable kernel, and a protocol stack that does not need to inspect or change the payload. User-space TLS encryption or format conversion requires access to the payload and prevents this zero-CPU-copy path.
 
-## 路线四：splice
+## Route 4: `splice`
 
-sendfile 已经很好了，但它有个硬限制：in_fd 得是支持 mmap 式读取的对象（通常是普通文件），不能是 socket，out_fd 早期也只能是 socket。如果想在两个 socket 之间、或者更一般的两个描述符之间做零拷贝转发，sendfile 就不够用了。
-
-Linux 2.6.17 内核引入的 splice（由 Jens Axboe 提交，需要 glibc 2.5 支持）补上了这块。它的思路是借道**管道（pipe）**：
+`sendfile` has restrictions: `in_fd` must support mmap-like reading and usually be a regular file, not a socket; historically, `out_fd` also had to be a socket. To forward data between sockets or more general file descriptors without a user-space copy, Linux introduced `splice` in kernel 2.6.17. It was contributed by Jens Axboe and requires glibc 2.5 or later. The key is an intermediary **pipe**:
 
 ```c
 ssize_t splice(int fd_in, loff_t *off_in, int fd_out, loff_t *off_out,
                size_t len, unsigned int flags);
 ```
 
-splice 要求 fd_in 和 fd_out 中**至少有一个是管道**。它为什么要绑着管道？因为 Linux 的管道底层是一组**引用计数的页指针**：管道缓冲区里存的不是数据本身，而是指向内核内存页的指针，外加每页的引用计数。所谓“把数据从管道挪到另一端”，多数情况下只是复制指针、给对应的页引用计数加一，不真正搬动 payload。要提醒的是，`SPLICE_F_MOVE` 只是给内核的一个提示，并非硬保证——遇到某些文件系统、设备或缓冲区形态无法直接移动页时，内核仍可能退化成真正的复制。
+At least one of `fd_in` and `fd_out` must be a pipe. Linux pipes use reference-counted page references: the pipe buffer stores pointers to kernel memory pages and a reference count for each page, not another copy of the data. Moving data from a pipe to another endpoint often means copying references and incrementing page reference counts, not moving the payload. `SPLICE_F_MOVE` is only a hint, not a guarantee; if a filesystem, device, or buffer layout cannot move pages directly, the kernel may fall back to copying.
 
-用 splice 实现文件到 socket 的传输，得**两步走、两次系统调用**：
+Transferring a file to a socket with splice takes two calls:
 
 ```c
-splice(file_fd, NULL, pipe_w, NULL, len, SPLICE_F_MOVE);   // 文件 → 管道写端
-splice(pipe_r, NULL, socket_fd, NULL, len, SPLICE_F_MOVE); // 管道读端 → socket
+splice(file_fd, NULL, pipe_w, NULL, len, SPLICE_F_MOVE);   // File -> pipe write end
+splice(pipe_r, NULL, socket_fd, NULL, len, SPLICE_F_MOVE); // Pipe read end -> socket
 ```
 
-![splice 的数据转发路径：文件页先挂到管道缓冲区，再从管道转发到 Socket](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-splice-flow.png)
+![splice attaches file pages to a pipe buffer, then forwards them from the pipe to a socket](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-splice-flow.png)
 
-第一次把 Page Cache 里的页挂到管道缓冲区上，第二次把这些页指针当作网络包的分片发往 socket。数据全程不进用户空间，CPU 不搬运 payload。但要看清楚：这是**两次 `splice` 调用**，进出内核态各算一次，合计大约 4 次模式切换，并不是有些文章说的“和 sendfile 一样只有一次系统调用、两次切换”。实际工程里两个 fd 还得设非阻塞、配合 epoll，并处理短传输和 `EAGAIN`。
+The first call attaches Page Cache pages to the pipe buffer. The second passes references to those pages as network packet fragments to the socket. The data never enters user space, and the CPU does not copy the payload. However, this uses **two `splice` calls**, each entering and leaving the kernel, for about four mode transitions in total. It is not one system call and two transitions like some explanations claim. In practice, both fds may need to be nonblocking and used with epoll; handle short transfers and `EAGAIN` too.
 
-splice 和前面几位的区别可以这么理解：
+Compared with the other methods:
 
-- **比 sendfile 通用**：sendfile 更专注于内核内 fd 到 fd 的传输（典型是文件到 socket）；splice 借助管道，能在更广的描述符之间转发数据，包括 socket 到 socket。有些内核版本内部会复用相关实现，但两者是独立的系统调用，参数限制和演进各不相同，别简单理解成严格的父子继承关系。
-- **和 mmap 取向相反**：mmap 把数据映射到用户空间，让你能改；splice 的全部意义就在于数据压根不碰用户空间，你看不见也改不了。
+- **More general than `sendfile`:** `sendfile` focuses on in-kernel fd-to-fd transfer, typically file to socket. With a pipe intermediary, `splice` supports a wider set of transfers, including socket-to-socket. Some kernel versions reuse internal code, but these are separate system calls with different constraints and histories.
+- **Opposite to `mmap`:** mmap exposes the mapping to user space so the application can change data. `splice` keeps the data out of user space, so the application cannot inspect or modify it.
 
-补一个版本细节：在 Linux 2.6.30 及更早，fd_in 和 fd_out 必须恰好有一个是管道；从 2.6.31 开始，两端可以都是管道。
+Version detail: in Linux 2.6.30 and earlier, exactly one of `fd_in` and `fd_out` had to be a pipe. Starting with Linux 2.6.31, both endpoints may be pipes.
 
-## 四种方式横向对比
+## Comparing the Four Approaches
 
-把上面四条路线放一起看，账就一目了然了：
+| Method                            |        CPU payload copies | DMA copies | Mode transitions                                           | Typical calls                 |
+| --------------------------------- | ------------------------: | ---------: | ---------------------------------------------------------- | ----------------------------- |
+| Traditional `read` + `write`      |                         2 |          2 | 4                                                          | `read` + `write`              |
+| `mmap` + `write`                  |                         1 |          2 | Usually at least 2 after mapping; first access also faults | One `mmap` + repeated `write` |
+| `sendfile`                        | 0 or 1, depending on path |  Usually 2 | 2                                                          | `sendfile`                    |
+| `splice` (file -> pipe -> socket) |         Usually avoidable |  Usually 2 | 4                                                          | Two `splice` calls            |
 
-| 方式                       | CPU payload 拷贝         | DMA 拷贝 | 模式切换                               | 典型系统调用           |
-| -------------------------- | ------------------------ | -------- | -------------------------------------- | ---------------------- |
-| 传统 read + write          | 2                        | 2        | 4                                      | read + write           |
-| mmap + write               | 1                        | 2        | 映射后发送通常至少 2，首次访问另有缺页 | mmap 一次 + write 多次 |
-| sendfile                   | 0 或 1（取决于发送路径） | 通常 2   | 2                                      | sendfile               |
-| splice（文件→管道→socket） | 通常可避免               | 通常 2   | 4                                      | splice 两次            |
+![Copy counts and mode transitions for read/write, mmap/write, sendfile with SG-DMA, and splice](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-four-ways-comparison.png)
 
-![传统 read/write、mmap + write、sendfile + SG-DMA 和 splice 的拷贝次数与模式切换对比](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-four-ways-comparison.png)
+The mmap copy and transition counts vary with Page Cache hits and page-fault timing. With SG-DMA support, `sendfile` can reduce CPU payload copies to zero.
 
-（mmap 那行的拷贝/切换次数随 Page Cache 命中与缺页时机浮动，不宜钉成固定值；sendfile 在网卡支持 SG-DMA 时，CPU payload 拷贝降到 0。）
+Two takeaways:
 
-两个结论：
+**First, the cache-miss file-to-TCP model still has two DMA transfers.** They are disk to memory and memory to the network card. Zero-copy mainly reduces CPU payload copies and mode transitions. Do not reuse the same fixed counts for another I/O path.
 
-**第一，在本文的 cache miss 文件到 TCP 模型里，2 次 DMA 搬运仍然存在。** 它们分别对应“磁盘到内存”和“内存到网卡”。零拷贝主要减少的是 CPU payload 拷贝和模式切换；换一个 I/O 场景，不能继续照搬这个固定数字。
+**Second, choose based on whether the application needs to inspect or change the data.** Use mmap when content must be modified; use `sendfile` to forward a file unchanged, with zero CPU payload copies possible when SG-DMA is supported. Consider splice for forwarding between more general fds, such as socket to socket, when the pipe intermediary and two system calls are worthwhile.
 
-**第二，选哪条路，先看数据要不要被应用碰一下。** 传输前要改内容，用 mmap 更顺手；只是把文件原样发出去，sendfile 更合适，网卡支持 SG-DMA 时还能把 CPU payload 拷贝压到 0。splice 的位置更靠后：只有文件到 socket 之外的 fd 转发需求，比如 socket 到 socket，才值得把管道这层搬出来，同时也要接受两次系统调用的成本。
+Zero-copy is not always a win. TLS, compression, format conversion, filtering, watermarks, and rate limiting require processing payload. For small files or random access, the fixed costs of mappings, page faults, or pipes may be more noticeable.
 
-零拷贝也不是开关一拧就永远赚。开了 TLS、要压缩、要做格式转换，payload 迟早要进用户态处理；内容过滤、加水印、限速也是同一类问题。文件很小或者访问很随机时，映射、缺页、管道这些固定开销可能反而更显眼。
+With mmap, accessing an old mapping after a file has been truncated can raise `SIGBUS`. Very large zero-copy transfers can also evict useful Page Cache pages and increase reclaim work, reducing the benefit.
 
-mmap 还要小心文件被 truncate 后访问旧映射触发 SIGBUS；零拷贝发送量很大时，Page Cache 被挤占、内存回收变重，也会把收益吃掉一部分。
+## Using Zero-Copy in Java
 
-## Java 里怎么用零拷贝
+Java NIO exposes two related approaches: mmap and sendfile-like transfer.
 
-Java NIO 里能直接碰到的，主要就是 mmap 和 sendfile 这两条线。
-
-**MappedByteBuffer 对应 mmap。** 用 `FileChannel.map` 拿到 `MappedByteBuffer` 后，文件（或文件的一部分）会被映射到内存里。后面读写这段 buffer，操作的就是映射区，不再像普通 `read/write` 那样先把数据拷进 JVM 自己维护的缓冲区：
+**`MappedByteBuffer` uses mmap.** `FileChannel.map` returns a `MappedByteBuffer` that maps a file or part of one into memory. Accessing the buffer uses the mapping rather than first copying data into a separate JVM-managed buffer:
 
 ```java
 FileChannel channel = FileChannel.open(
         Paths.get("./data.bin"),
         StandardOpenOption.READ, StandardOpenOption.WRITE);
-// 把文件映射到内存，底层是 mmap
+// Map the file into memory; the underlying mechanism is mmap.
 MappedByteBuffer buffer = channel.map(
         FileChannel.MapMode.READ_WRITE, 0, channel.size());
 ```
 
-**FileChannel.transferTo / transferFrom 更接近 sendfile 这条线。** 但这里别把 Java API 和 `sendfile` 直接画等号：`transferTo` 只承诺把字节写到目标 Channel，底层怎么传，要看 JDK、操作系统和目标 Channel 类型。目标是已连接的 `SocketChannel`，并且平台支持时，JDK 才可能走内核里的零拷贝传输；换成普通文件或其他 Channel，就可能走别的实现，甚至退回用户态复制。所以下面这个示例把目标写成 `SocketChannel`：
+**`FileChannel.transferTo` and `transferFrom` are closer to the sendfile approach.** Do not equate the Java API directly with `sendfile`: `transferTo` promises to write bytes to the target channel, while the implementation depends on the JDK, operating system, and target channel type. With a connected `SocketChannel` on a supported platform, the JDK may use an in-kernel zero-copy path. With a regular file or another channel, it may use a different implementation or copy through user space. That is why the example uses a `SocketChannel` target:
 
 ```java
 FileChannel source = FileChannel.open(
         Paths.get("./in.dat"), StandardOpenOption.READ);
-// socketChannel 是一条已连接的 SocketChannel
-// 文件 → socket，JDK 在支持的平台上可能使用零拷贝优化（如 sendfile）
+// socketChannel is a connected SocketChannel.
+// On supported platforms, the JDK may use zero-copy such as sendfile.
 source.transferTo(0, source.size(), socketChannel);
 ```
 
-这里有个容易踩的坑：`transferTo` 不保证一次就传完，调用方必须根据返回值循环处理剩余数据。底层若走 Linux `sendfile`，单次上限是 `0x7ffff000`（约 2 GB）字节；但 Java 层暴露的具体上限、以及到底走没走零拷贝路径，都要结合 JDK 版本和目标平台验证——比如 Windows 上的行为就和 Linux 不完全一致。
+One pitfall: `transferTo` does not guarantee that one call transfers everything. Loop based on the return value to send the remaining bytes. If Linux `sendfile` is used, a single call is limited to `0x7ffff000` bytes (about 2 GB). The exact limit exposed by Java and whether the zero-copy path is used depend on the JDK and platform; Windows behavior differs from Linux.
 
-## Kafka 和 RocketMQ 各用了哪一种
+## Which Approach Do Kafka and RocketMQ Use?
 
-零拷贝最常被拿来解释 Kafka、RocketMQ 为什么快，但这两家选的路线其实不一样，背后是各自读写模式的差异。
+Zero-copy often comes up when explaining Kafka and RocketMQ, but they use different approaches because their read/write patterns differ.
 
-**Kafka 消费端用零拷贝发送。** 消费者来拉消息时，Kafka 要把日志段文件（log segment）从磁盘发到网络，这是典型的“只转发、不修改内容”，于是它用 `FileChannel.transferTo` 把日志直接从 Page Cache 送进 socket，数据不进 JVM 堆。再叠加生产端的顺序写和 Page Cache，高吞吐就是这么攒出来的。（顺带一提，Kafka 的索引文件用的是 mmap。）但零拷贝不是无条件生效：一旦需要做消息格式转换、解压重压缩，或开启了 TLS 要在用户态加密，payload 就得被读出来处理，这条路径会退化——能不能用零拷贝，要结合 Kafka、JDK 和操作系统版本判断。
+**Kafka uses zero-copy on the consumer send path.** When a consumer fetches messages, Kafka sends log-segment files from disk over the network. This is a “forward unchanged” case, so Kafka uses `FileChannel.transferTo` to send log data from Page Cache to the socket without putting it in the JVM heap. Combined with sequential writes and Page Cache on the producer side, this supports high throughput. Kafka also uses mmap for index files. The path is not always available: message-format conversion, decompression and recompression, or user-space TLS encryption can require reading and processing the payload. Whether zero-copy is used depends on Kafka, JDK, and operating-system versions.
 
-**RocketMQ 主要走 mmap。** RocketMQ 的 CommitLog 用 MappedByteBuffer 做内存映射来读写文件，这也是它把 CommitLog 设计成固定大小文件的原因之一，固定大小便于映射管理。选 mmap 而不是 sendfile，是因为它的读写模式需要更灵活地操作映射出来的这段内存，而不只是把文件原样转发出去。
+**RocketMQ mainly uses mmap.** It uses `MappedByteBuffer` to map its CommitLog for reads and writes, one reason the CommitLog uses fixed-size files that are easier to manage as mappings. It chooses mmap rather than sendfile because its read/write pattern needs flexible access to the mapped memory, not just unchanged file forwarding.
 
-一句话区分：**单纯转发选 sendfile，需要操作映射内存选 mmap**，这正好呼应前面那条“要不要改数据”的判断标准。
+In short: **use sendfile to forward data unchanged; use mmap when the application needs to operate on mapped data.**
 
-## 延伸：Rust 的 zerocopy crate 是另一回事
+## Related but Different: Rust's `zerocopy` Crate
 
-搜"zerocopy"很容易搜到 Google 维护的一个 Rust 库 [google/zerocopy](https://github.com/google/zerocopy)，由 Google 工程师持续维护，下载量很大、活跃度没问题。它的版本号更新很快（写作时已到 0.8.x 系列），这里就不钉死某个具体数字了，以 crates.io 和 GitHub Release 为准。
+Searching for “zerocopy” may lead to Google's Rust library [google/zerocopy](https://github.com/google/zerocopy), which is actively maintained. Its version changes quickly, so check crates.io or GitHub releases for the current version.
 
-但要提醒一句：**这个 crate 和本文讲的操作系统零拷贝不是一个概念**，别混淆。OS 层面的零拷贝说的是 I/O 过程中减少 CPU 在内核/用户缓冲区之间的数据搬运；而 Rust 的 zerocopy crate 解决的是**类型安全的内存转换**，在字节序列和结构体之间做安全转换（safe transmutation），不必拷贝、也不写 unsafe。两者都叫"zero copy"，一个在讲系统调用和 DMA，一个在讲语言层面的内存布局与类型安全，别在面试里混为一谈。
+This crate is **not the same concept as operating-system zero-copy**. OS zero-copy reduces payload movement between kernel and user buffers during I/O. Rust's `zerocopy` crate provides type-safe memory conversion between byte sequences and structures without copying or writing `unsafe` code. Both use the term “zero-copy,” but one concerns system calls and DMA, and the other concerns memory layout and type safety.
 
-## 面试里怎么答？
+## How to Explain Zero-Copy in an Interview
 
-面试里问“零拷贝是什么”，先把“零”说准：它不是没有任何拷贝，磁盘到内存、内存到网卡这两段 DMA 搬运通常还在；零拷贝主要省的是 CPU 在内核缓冲区和用户缓冲区之间搬 payload 的那几次，以及随之减少的模式切换。
+If asked what zero-copy means, define “zero” precisely: it does not eliminate every copy. DMA transfers from disk to memory and from memory to the network card usually remain. Zero-copy mainly saves CPU payload copies between kernel and user buffers and may reduce mode transitions.
 
-传统 `read + write` 可以按 4 次拷贝来讲：磁盘到内核缓冲区是 DMA，内核到用户缓冲区是 CPU，用户缓冲区到 Socket 缓冲区还是 CPU，Socket 缓冲区到网卡是 DMA。这里最浪费的是两次 CPU 拷贝，因为应用并没有改数据，只是让数据经过用户空间转了一圈。
+For traditional `read` + `write`, count four copies: disk to kernel buffer by DMA, kernel to user buffer by CPU, user buffer to socket buffer by CPU, and socket buffer to network card by DMA. The two CPU copies are wasteful when the application does not change the data and only passes it through user space.
 
-几种方案的回答顺序可以这么排：`mmap + write` 让用户空间和 Page Cache 映射同一批物理页，省掉“内核到用户”那次 CPU 拷贝，但还要 `write` 到 Socket 缓冲区；`sendfile` 把文件到 socket 的转发放进一次系统调用，数据不进用户态；配合 SG-DMA 时，Socket 缓冲区只放描述信息，payload 可以直接由 DMA 从内核缓冲区送到网卡；`splice` 则借助 pipe 传递页引用，更适合一般 fd 之间的转发，但通常要两次系统调用。
+Compare the alternatives in order: `mmap` + `write` maps Page Cache pages into user space and avoids the kernel-to-user CPU copy, but `write` still copies to the socket buffer. `sendfile` moves file-to-socket transfer into one system call without exposing the data to user space. With SG-DMA, the socket buffer holds descriptors and DMA can send payload directly from the kernel buffer to the network card. `splice` passes page references through a pipe, making it useful for forwarding between more general fds, but typically takes two system calls.
 
-如果面试官把话题拉到 Kafka、RocketMQ，答案也不要混。Kafka 消费端把日志段文件原样发给消费者，适合走 `FileChannel.transferTo` 这类 sendfile 路线；RocketMQ 的 CommitLog 需要更灵活地读写映射内存，所以更常和 mmap 绑定。再补一句边界：TLS、压缩、格式转换、内容过滤这些场景需要应用真正处理 payload，零拷贝路径就会退化。
+If the question turns to Kafka and RocketMQ, distinguish their use cases. Kafka's consumer path forwards log segments unchanged and can use `FileChannel.transferTo` and sendfile. RocketMQ's CommitLog needs flexible access to mapped memory and therefore commonly uses mmap. Add the boundary: TLS, compression, format conversion, and filtering require application processing and can prevent the zero-copy path.

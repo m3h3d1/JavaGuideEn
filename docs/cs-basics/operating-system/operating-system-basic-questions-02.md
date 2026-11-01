@@ -1,352 +1,352 @@
 ---
-title: 操作系统常见面试题总结（下）
-description: 最新操作系统高频面试题总结（下）：内存管理、VSZ/RSS/PSS、虚拟内存、TLB、Page Fault、页面置换、阻塞 I/O、I/O 多路复用、零拷贝、文件系统、Page Cache、fsync 和磁盘调度。
-category: 计算机基础
+title: Common Operating System Interview Questions (Part 2)
+description: Common operating system interview questions on memory management, VSZ/RSS/PSS, virtual memory, TLBs, page faults, page replacement, blocking I/O, I/O multiplexing, zero-copy, filesystems, Page Cache, fsync, and disk scheduling.
+category: Computer Science Fundamentals
 tag:
-  - 操作系统
+  - Operating Systems
 head:
   - - meta
     - name: keywords
-      content: 操作系统面试题,内存管理,VSZ,RSS,PSS,虚拟内存,进程地址空间,进程隔离,共享内存,分页 vs 分段,页面置换算法,内存碎片,伙伴系统,TLB,Page Fault,缺页异常,SIGSEGV,Swap,OOM,阻塞I/O,read系统调用,零拷贝,mmap,sendfile,splice,I/O多路复用,select,poll,epoll,文件系统,inode,VFS,Page Cache,fsync
+      content: operating system interview questions,memory management,VSZ,RSS,PSS,virtual memory,process address space,process isolation,shared memory,paging vs segmentation,page replacement algorithms,memory fragmentation,buddy system,TLB,Page Fault,SIGSEGV,Swap,OOM,blocking I/O,read system call,zero-copy,mmap,sendfile,splice,I/O multiplexing,select,poll,epoll,filesystem,inode,VFS,Page Cache,fsync
 ---
 
 <!-- @include: @article-header.snippet.md -->
 
-这篇《操作系统常见面试题总结（下）》承接上篇，重点放在 **内存管理、虚拟内存、分页分段、TLB、缺页异常、页面置换、I/O 多路复用、零拷贝、文件系统和磁盘调度**。
+This is the second part of the operating system interview guide. It focuses on **memory management, virtual memory, paging and segmentation, TLBs, page faults, page replacement, I/O multiplexing, zero-copy, filesystems, and disk scheduling**.
 
-如果说上篇更偏“进程、线程和并发控制”，这篇更偏“程序运行时到底怎么用内存、怎么做 I/O、怎么和文件系统交互”。这些内容看起来离业务代码比较远，但很多后端问题最终都会落到这里：为什么 mmap 能少一次拷贝？为什么 epoll 能撑住大量连接？为什么同一个虚拟地址在不同进程里互不影响？为什么频繁缺页会让系统变慢？
+Part 1 focused on processes, threads, and concurrency. This part looks at how programs use memory, perform I/O, and interact with filesystems. These topics may seem far removed from application code, but they help explain many backend questions: Why can `mmap` avoid a copy? Why can `epoll` handle many connections? Why can the same virtual address refer to different memory in different processes? Why do frequent page faults slow down a system?
 
-建议阅读时抓住一条主线：**操作系统通过虚拟内存管理地址和隔离，通过 I/O 机制管理数据流动，通过文件系统管理持久化数据**。把这条线串起来，很多零散概念就不再只是名词。
+Keep this main idea in mind: **the operating system uses virtual memory to manage addresses and isolation, I/O mechanisms to move data, and the filesystem to manage persistent data**. Connecting these ideas makes the individual concepts easier to understand.
 
-## 内存管理
+## Memory Management
 
-### 内存管理主要做了什么？
+### What Does Memory Management Do?
 
-![内存管理职责概览](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-management-responsibilities.webp)
+![Overview of memory management responsibilities](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-management-responsibilities.webp)
 
-面试里回答“内存管理做什么”，可以从 5 件事说起：
+In an interview, you can describe five main responsibilities of memory management:
 
-- **分配和回收内存**：用户态分配器会通过 `brk()`、`mmap()` 等接口向内核申请或释放虚拟地址区域；内核再管理物理页和内核对象。
-- **地址转换**：程序访问虚拟地址，CPU 中的 MMU 配合页表和 TLB，把虚拟地址翻译成物理地址。
-- **进程隔离和权限保护**：每个进程都有自己的地址空间，页表项还能记录读、写、执行、用户态/内核态等权限。
-- **页面回收和换页**：物理内存紧张时，内核会回收文件页或匿名页，必要时把匿名页写入 Swap。
-- **共享和映射**：动态库共享、共享内存 IPC、`mmap()` 文件映射、写时复制（COW）都依赖虚拟地址到物理页的映射能力。
+- **Allocation and reclamation**: User-space allocators request or release virtual address ranges through interfaces such as `brk()` and `mmap()`. The kernel manages physical pages and kernel objects.
+- **Address translation**: Programs use virtual addresses. The CPU's MMU, page tables, and TLB translate them into physical addresses.
+- **Process isolation and access protection**: Each process has its own address space. Page-table entries can record permissions such as read, write, execute, user mode, and kernel mode.
+- **Page reclamation and swapping**: When physical memory is low, the kernel can reclaim file-backed or anonymous pages and may write anonymous pages to Swap.
+- **Sharing and mapping**: Shared libraries, shared-memory IPC, file mappings with `mmap()`, and copy-on-write (COW) all rely on mappings from virtual addresses to physical pages.
 
-面试里可以抓住一条主线：内存管理把程序看到的地址和真实物理内存隔开，再用分配、映射、保护和回收把内存管起来。
+The key idea is that memory management separates the addresses a program sees from physical memory, then manages memory through allocation, mapping, protection, and reclamation.
 
-### VSZ、RSS 和 PSS 有什么区别？
+### What Are the Differences Between VSZ, RSS, and PSS?
 
-Linux 里看进程内存，最容易混的是 VSZ、RSS 和 PSS。
+When inspecting process memory on Linux, VSZ, RSS, and PSS are easy to confuse.
 
-- **VSZ**：进程已经映射的虚拟地址空间大小。它包含尚未真正驻留的匿名映射、文件映射、共享库和预留地址，不能直接当成物理内存占用。
-- **RSS**：当前已经驻留在 RAM 中、并映射给该进程的页面总量。共享库、共享内存和 Page Cache 中的共享页也会算进相关进程的 RSS。
-- **PSS**：按比例分摊共享页后的内存占用。一个物理页如果被 4 个进程共享，每个进程的 PSS 只算四分之一。
+- **VSZ**: The size of the virtual address space mapped by a process. It includes anonymous and file-backed mappings that may not be resident, shared libraries, and reserved address ranges, so it is not a measure of physical memory use.
+- **RSS**: The total size of pages currently resident in RAM and mapped by the process. Shared libraries, shared memory, and shared Page Cache pages are included in the RSS of each relevant process.
+- **PSS**: Memory use after shared pages are divided proportionally. If four processes share one physical page, one quarter of that page is counted in each process's PSS.
 
-所以，看单个进程常驻内存可以参考 RSS；要估算多个进程合计占用，PSS 更合适。直接把多个进程的 RSS 相加，通常会把共享页重复算进去。
+Use RSS to inspect a single process's resident memory. PSS is more useful for estimating memory use across multiple processes. Adding their RSS values directly usually counts shared pages more than once.
 
-常用命令：
+Common commands:
 
 ```bash
 grep -E 'VmSize|VmRSS|RssAnon|RssFile|RssShmem|VmSwap' /proc/<pid>/status
 cat /proc/<pid>/smaps_rollup
 ```
 
-### 什么是内存碎片？
+### What Is Memory Fragmentation?
 
-内存碎片是由内存的申请和释放产生的，通常分为下面两种：
+Memory fragmentation can result from allocating and freeing memory. It is usually divided into two types:
 
-- **内部内存碎片（Internal Memory Fragmentation，简称为内存碎片）**：已经分配给进程使用但未被使用的内存。导致内部内存碎片的主要原因是，当采用固定比例比如 2 的幂次方进行内存分配时，进程所分配的内存可能会比其实际所需要的大。举个例子，一个进程只需要 65 字节的内存，但为其分配了 128（2^7）大小的内存，那 63 字节的内存就成为了内部内存碎片。
-- **外部内存碎片（External Memory Fragmentation，简称为外部碎片）**：由于未分配的连续内存区域太小，以至于不能满足任意进程所需要的内存分配请求，这些小片段且不连续的内存空间被称为外部碎片。也就是说，外部内存碎片指的是那些并未分配给进程但又不能使用的内存。我们后面介绍的分段机制就会导致外部内存碎片。
+- **Internal memory fragmentation**: Memory allocated to a process but left unused. It often occurs when allocation uses fixed sizes, such as powers of two, and the allocated block is larger than the process needs. For example, if a process needs 65 bytes but receives 128 bytes (2^7), the remaining 63 bytes are internal fragmentation.
+- **External memory fragmentation**: Free memory is split into small, non-contiguous regions that cannot satisfy a larger allocation request. Segmentation, described below, can cause external fragmentation.
 
-![连续内存分配与碎片](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-fragmentation.webp)
+![Contiguous memory allocation and fragmentation](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-fragmentation.webp)
 
-内存碎片会导致内存利用率下降，如何减少内存碎片是内存管理要非常重视的一件事情。
+Memory fragmentation reduces memory utilization, so memory management aims to limit it.
 
-### 常见的内存管理方式有哪些？
+### What Are the Common Memory Management Approaches?
 
-内存管理方式可以简单分为下面两种：
+Memory management approaches can be divided into two broad categories:
 
-- **连续内存管理**：为一个用户程序分配一个连续的内存空间，内存利用率一般不高。
-- **非连续内存管理**：允许一个程序使用的内存分布在离散或者说不相邻的内存中，相对更加灵活一些。
+- **Contiguous memory management**: Allocates one contiguous region of memory to a user program. Memory utilization is often low.
+- **Non-contiguous memory management**: Allows a program's memory to be spread across separate, non-adjacent regions. This approach is more flexible.
 
-#### 连续内存管理
+#### Contiguous Memory Management
 
-**块式管理** 是早期计算机操作系统的一种连续内存管理方式，存在严重的内存碎片问题。块式管理会将内存分为几个固定大小的块，每个块中只包含一个进程。如果程序运行需要内存的话，操作系统就分配给它一块，如果程序运行只需要很小的空间的话，分配的这块内存很大一部分几乎被浪费了。这些在每个块中未被利用的空间，我们称之为内部内存碎片。除了内部内存碎片之外，由于两个内存块之间可能还会有外部内存碎片，这些不连续的外部内存碎片由于太小了无法再进行分配。
+**Fixed-partition allocation** was an early form of contiguous memory management and caused significant fragmentation. Memory was divided into fixed-size blocks, with one process per block. If a process needed only a small amount of memory, much of its block went unused; this is internal fragmentation. Gaps between blocks could also leave small, unusable regions, causing external fragmentation.
 
-在 Linux 系统中，连续内存管理采用了 **伙伴系统（Buddy System）算法** 来实现，这是一种经典的连续内存分配算法，可以有效解决外部内存碎片的问题。伙伴系统的主要思想是将内存按 2 的幂次划分（每一块内存大小都是 2 的幂次比如 2^6=64 KB），并将相邻的内存块组合成一对伙伴（注意：**必须是相邻的才是伙伴**）。
+Linux uses the **buddy system** for contiguous physical memory allocation. This classic algorithm helps manage external fragmentation. It divides memory into blocks whose sizes are powers of two (for example, 2^6 = 64 KB) and pairs adjacent blocks as buddies. **Only adjacent blocks are buddies.**
 
-当进行内存分配时，伙伴系统会尝试找到大小最合适的内存块。如果找到的内存块过大，就将其一分为二，分成两个大小相等的伙伴块。如果还是大的话，就继续切分，直到到达合适的大小为止。
+When allocating memory, the buddy system looks for a suitably sized block. If the available block is too large, it splits it into two equal buddy blocks, repeating until the block is the right size.
 
-假设两块相邻的内存块都被释放，系统会将这两个内存块合并，进而形成一个更大的内存块，以便后续的内存分配。这样就可以减少内存碎片的问题，提高内存利用率。
+When two adjacent buddy blocks are freed, the system can merge them into a larger block for future allocations. This helps reduce fragmentation and improve memory utilization.
 
-![伙伴系统（Buddy System）内存管理](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux-buddy-system.png)
+![Memory management with the buddy system](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux-buddy-system.png)
 
-虽然解决了外部内存碎片的问题，但伙伴系统仍然存在内存利用率不高的问题（内部内存碎片）。这主要是因为伙伴系统只能分配大小为 2^n 的内存块，因此当需要分配的内存大小不是 2^n 的整数倍时，会浪费一定的内存空间。举个例子：如果要分配 65 大小的内存块，依然需要分配 2^7=128 大小的内存块。
+Although the buddy system helps with external fragmentation, it can still waste memory through internal fragmentation. It allocates blocks sized as powers of two, so a request that does not match one of those sizes wastes space. For example, a 65-byte request requires a 128-byte block (2^7).
 
-![伙伴系统内存浪费问题](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/buddy-system-memory-waste.png)
+![Memory waste in the buddy system](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/buddy-system-memory-waste.png)
 
-对于小对象频繁分配带来的内部内存碎片和性能问题，Linux 还会使用 **SLAB/SLUB** 这类分配器优化。它们会把常用内核对象缓存起来，按对象类型复用已经初始化过的内存块，减少重复分配、初始化和释放的成本。由于这部分内容不是本篇文章的重点，这里点到为止。
+To reduce fragmentation and allocation overhead for frequently allocated small objects, Linux also uses allocators such as **SLAB/SLUB**. They cache common kernel objects and reuse initialized memory by object type, reducing repeated allocation, initialization, and freeing. This topic is outside the scope of this guide.
 
-#### 非连续内存管理
+#### Non-Contiguous Memory Management
 
-非连续内存管理存在下面 3 种方式：
+There are three common forms of non-contiguous memory management:
 
-- **段式管理**：以段（一段连续的物理内存）的形式管理/分配物理内存。应用程序的虚拟地址空间被分为大小不等的段，段是有实际意义的，每个段定义了一组逻辑信息，例如有主程序段 MAIN、子程序段 X、数据段 D 及栈段 S 等。
-- **页式管理**：把物理内存分为连续等长的物理页，应用程序的虚拟地址空间也被划分为连续等长的虚拟页，是现代操作系统广泛使用的一种内存管理方式。
-- **段页式管理机制**：结合了段式管理和页式管理。程序的地址空间先按逻辑分段，每个段再划分为固定大小的页，物理内存仍按页框分配。
+- **Segmentation**: Manages and allocates physical memory in segments, each occupying a contiguous region. A program's virtual address space is divided into variable-sized segments with logical meaning, such as a main program, subroutines, data, and stack.
+- **Paging**: Divides physical memory and a program's virtual address space into equal-sized pages. Modern operating systems widely use paging.
+- **Segmented paging**: Combines segmentation and paging. The program's address space is first divided into logical segments, and each segment is then divided into fixed-size pages. Physical memory is still allocated in page frames.
 
-### 虚拟内存
+### Virtual Memory
 
-#### 什么是虚拟内存？有什么用？
+#### What Is Virtual Memory, and What Is It For?
 
-**虚拟内存（Virtual Memory）** 是操作系统提供的一层内存抽象。程序看到的是连续、私有的虚拟地址空间，真正的数据放在物理内存的哪些位置，由操作系统和硬件共同决定。
+**Virtual memory** is an abstraction provided by the operating system. A program sees a continuous, private virtual address space, while the operating system and hardware determine where its data resides in physical memory.
 
-简单来说，虚拟内存把“程序使用的地址”和“内存条上的真实地址”隔开了。进程访问虚拟地址时，CPU 中的 MMU 会根据页表等映射关系，把虚拟地址转换成物理地址，再去访问真正的内存。
+In simple terms, virtual memory separates the addresses used by a program from the actual addresses in RAM. When a process accesses a virtual address, the CPU's MMU uses mappings such as page tables to translate it into a physical address before accessing memory.
 
-![虚拟内存作为进程访问主存的桥梁](https://oss.javaguide.cn/xingqiu/virtual-memory.png)
+![Virtual memory as the bridge between a process and physical memory](https://oss.javaguide.cn/xingqiu/virtual-memory.png)
 
-总结来说，虚拟内存主要提供了下面这些能力：
+Virtual memory provides several key capabilities:
 
-- **隔离进程**：每个进程都有自己的虚拟地址空间和页表。不同进程即使使用相同的虚拟地址，也可以映射到不同的物理页，彼此不会直接踩内存。
-- **提升物理内存利用率**：操作系统不需要把进程的全部代码和数据一次性装进物理内存，只把当前真正会用到的页加载进来。
-- **简化内存管理**：进程看到的是一片连续的虚拟地址空间，物理内存可以是离散的页帧，复杂的拼接工作交给页表和 MMU。
-- **多个进程共享物理内存**：进程在运行过程中会加载许多操作系统动态库，这些库对于多个进程而言可以共用同一份物理页；多个进程也可以通过共享内存 IPC 主动映射同一块物理内存，用于高效交换数据。
-- **提高内存使用安全性**：控制进程对物理内存的访问，隔离不同进程的访问权限，提高系统的安全性。
-- **提供更大的可使用内存空间**：当物理内存不够用时，可以把暂时不用的页换出到磁盘，需要时再换回来。这样程序感知到的可用内存空间可以超过实际物理内存，不过频繁换页会明显拖慢系统。
+- **Process isolation**: Each process has its own virtual address space and page tables. The same virtual address in different processes can map to different physical pages, preventing them from overwriting one another's memory directly.
+- **Better use of physical memory**: The operating system does not need to load all of a process's code and data at once; it can load only the pages currently needed.
+- **Simpler memory management**: A process sees one continuous virtual address space, while physical memory can be split across separate page frames. Page tables and the MMU handle the mapping.
+- **Physical memory sharing**: Multiple processes can share the same physical pages for dynamic libraries. They can also map the same physical memory through shared-memory IPC to exchange data efficiently.
+- **Safer memory access**: Access controls limit how a process can use memory and isolate the permissions of different processes.
+- **A larger apparent address space**: When physical memory is low, the operating system can move inactive pages to disk and bring them back when needed. A program can then use more memory than is physically available, although frequent swapping can slow the system significantly.
 
-#### 没有虚拟内存有什么问题？
+#### What Problems Would We Have Without Virtual Memory?
 
-如果没有虚拟内存的话，程序直接访问和操作的都是物理内存，看似少了一层中介，但多了很多问题。
+Without virtual memory, programs would access physical memory directly. This removes one layer of indirection but creates several problems.
 
-**具体有什么问题呢？** 这里举几个例子说明（参考虚拟内存提供的能力回答这个问题）：
+**What problems would this cause?** Here are some examples, based on the capabilities virtual memory provides:
 
-1. 用户程序可以访问任意物理内存，可能会不小心操作到系统运行必需的内存，进而造成操作系统崩溃，严重影响系统的安全。
-2. 同时运行多个程序容易崩溃。比如你想同时运行一个微信和一个 QQ 音乐，微信在运行的时候给内存地址 1xxx 赋值后，QQ 音乐也同样给内存地址 1xxx 赋值，那么 QQ 音乐对内存的赋值就会覆盖微信之前所赋的值，这就可能会造成微信这个程序会崩溃。
-3. 程序运行过程中使用的所有数据或指令都要载入物理内存，根据局部性原理，其中很大一部分可能都不会用到，白白占用了宝贵的物理内存资源。
+1. A user program could access any physical memory. It might overwrite memory required by the operating system, causing a crash and compromising system security.
+2. Running multiple programs could cause conflicts. For example, if two programs both write to physical address `1xxx`, the second write could overwrite the first program's data and cause it to crash.
+3. All data and instructions used by a program would have to be loaded into physical memory. Based on locality, much of that data might never be used, wasting valuable memory.
 4. ……
 
-#### 什么是虚拟地址和物理地址？
+#### What Are Virtual and Physical Addresses?
 
-**物理地址（Physical Address）** 是真正的物理内存中地址，更具体点来说是内存地址寄存器中的地址。程序中访问的内存地址不是物理地址，而是 **虚拟地址（Virtual Address）**。
+**A physical address** is an address in physical memory, more specifically the address held by the memory address register. Programs access **virtual addresses**, not physical addresses.
 
-也就是说，我们编程开发的时候实际就是在和虚拟地址打交道。比如在 C 语言中，指针里面存储的数值就可以理解成为内存里的一个地址，这个地址也就是我们说的虚拟地址。
+In other words, programmers work with virtual addresses. For example, a pointer in C stores a value that can be understood as a memory address; that address is virtual.
 
-操作系统一般通过 CPU 芯片中的一个重要组件 **MMU（Memory Management Unit，内存管理单元）** 将虚拟地址转换为物理地址，这个过程被称为 **地址翻译/地址转换（Address Translation）**。在现代系统里，这个转换通常依赖页表完成，TLB 会缓存最近使用过的地址转换结果，减少查页表的开销。
+The CPU's **memory management unit (MMU)** translates virtual addresses into physical addresses. This is called **address translation**. Modern systems generally use page tables for translation, while a TLB caches recent results to reduce page-table lookup overhead.
 
-![地址翻译过程](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/physical-virtual-address-translation.png)
+![Address translation](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/physical-virtual-address-translation.png)
 
-通过 MMU 将虚拟地址转换为物理地址后，CPU 再访问对应的物理内存位置，完成读写请求。也正是因为有这层转换，不同进程里数值相同的虚拟地址，最终可以落到完全不同的物理页上。
+After the MMU translates a virtual address, the CPU accesses the corresponding physical memory location to complete the read or write. This translation lets the same virtual address in different processes map to completely different physical pages.
 
-这也是进程隔离和进程间通信的基础：默认情况下，一个进程不能直接读写另一个进程的用户态地址空间；如果两个进程确实需要交换数据，就要借助管道、消息队列、共享内存、Socket 等 IPC 机制。关于 IPC 的系统总结可以看：[进程间通信（IPC）详解：管道、消息队列、共享内存、Socket 与 Binder](./ipc.md)。
+This is the basis for process isolation and interprocess communication. By default, one process cannot directly read or write another process's user-space address space. Processes that need to exchange data use IPC mechanisms such as pipes, message queues, shared memory, or sockets. See [Interprocess Communication (IPC): Pipes, Message Queues, Shared Memory, Sockets, and Binder](./ipc.md) for an overview.
 
-MMU 将虚拟地址翻译为物理地址的主要机制有两种：**分段机制** 和 **分页机制**。
+The main mechanisms for translating virtual addresses into physical addresses are **segmentation** and **paging**.
 
-#### 什么是虚拟地址空间和物理地址空间？
+#### What Are Virtual and Physical Address Spaces?
 
-- 虚拟地址空间是虚拟地址的集合，是虚拟内存的范围。每一个进程都有一个一致且私有的虚拟地址空间。
-- 物理地址空间是物理地址的集合，是物理内存的范围。
+- A **virtual address space** is the range of addresses available through virtual memory. Each process has its own private virtual address space.
+- A **physical address space** is the range of addresses in physical memory.
 
-#### 虚拟地址与物理内存地址是如何映射的？
+#### How Are Virtual Addresses Mapped to Physical Addresses?
 
-MMU 将虚拟地址翻译为物理地址的主要机制有 3 种：
+The MMU can translate virtual addresses to physical addresses using three mechanisms:
 
-1. 分段机制
-2. 分页机制
-3. 段页机制
+1. Segmentation
+2. Paging
+3. Segmented paging
 
-其中，现代操作系统广泛采用分页机制，需要重点关注！
+Modern operating systems widely use paging, so it deserves particular attention.
 
-### 分段机制
+### Segmentation
 
-**分段机制（Segmentation）** 按程序的逻辑结构来划分地址空间，比如代码段、数据段、堆、栈等。每个段的长度可以不同，段本身有明确的语义，也可以配合权限控制。
+**Segmentation** divides an address space according to a program's logical structure, such as code, data, heap, and stack. Segments can have different lengths and have clear meanings; they can also have different access permissions.
 
-#### 段表有什么用？地址翻译过程是怎样的？
+#### What Is a Segment Table, and How Does Address Translation Work?
 
-分段管理通过 **段表（Segment Table）** 映射虚拟地址和物理地址。段表项通常会记录段基址、段界限（段的长度）、访问权限等信息。
+Segmentation uses a **segment table** to map virtual addresses to physical addresses. A segment-table entry usually records the segment's base address, limit (length), and access permissions.
 
-分段机制下的虚拟地址由两部分组成：
+With segmentation, a virtual address has two parts:
 
-- **段号**：标识着该虚拟地址属于整个虚拟地址空间中的哪一个段。
-- **段内偏移量**：相对于该段起始地址的偏移量。
+- **Segment number**: Identifies which segment in the virtual address space the address belongs to.
+- **Segment offset**: The offset from the beginning of that segment.
 
-具体的地址翻译过程如下：
+Address translation works as follows:
 
-1. MMU 首先解析得到虚拟地址中的段号；
-2. 通过段号去该应用程序的段表中取出对应的段信息（找到对应的段表项）；
-3. 检查段内偏移量是否超过段界限，检查访问权限是否合法；
-4. 合法的话，用段基址加上段内偏移量得到最终的物理地址。
+1. The MMU extracts the segment number from the virtual address.
+2. It uses the segment number to find the corresponding entry in the program's segment table.
+3. It checks that the offset is within the segment limit and that the access permissions allow the operation.
+4. If the checks pass, it adds the offset to the segment base address to get the physical address.
 
-![分段地址转换示意图：虚拟地址由段号和段内偏移组成，通过段表查到基地址后计算物理地址](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-segmentation.png)
+![Segmentation address translation: a virtual address contains a segment number and offset; the segment table provides the base address used to calculate the physical address](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-segmentation.png)
 
-举个例子，要访问段 3、偏移量 500 的地址，如果段 3 的基地址是 7000，且偏移量没有越界，那么最终物理地址就是 7000 + 500 = 7500。
+For example, suppose an address refers to segment 3 with an offset of 500. If segment 3 has a base address of 7000 and the offset is within the segment limit, the physical address is 7000 + 500 = 7500.
 
-如果段选择子无效、段内偏移越界或访问权限不符合要求，CPU 会触发体系结构规定的异常。页面是否已经驻留物理内存则属于分页和 Page Fault 处理的问题，不应和纯分段模型混在一起。
+If the segment selector is invalid, the offset is outside the segment limit, or the access violates permissions, the CPU raises an architecture-defined exception. Whether a page is resident in physical memory is handled by paging and page-fault mechanisms; it should not be conflated with pure segmentation.
 
-#### 分段机制为什么会导致内存外部碎片？
+#### Why Can Segmentation Cause External Fragmentation?
 
-分段机制容易出现外部内存碎片，根本原因是**段的长度不固定，并且每个段通常需要一块连续的物理内存**。进程不断创建和释放段后，物理内存里会留下很多零散空洞；这些空洞总量可能够用，但单个空洞不够大，仍然无法分配给新的大段。
+Segmentation can cause external fragmentation because **segments have variable lengths and each segment usually needs a contiguous region of physical memory**. As processes create and free segments, scattered gaps form in physical memory. The total free space may be large enough, but no individual gap may be large enough for a new segment.
 
-举个例子：假设可用物理内存为 5G 的系统使用分段机制分配内存。现在有 4 个进程，每个进程的内存占用情况如下：
+For example, suppose a system with 5 GB of physical memory uses segmentation and has four processes with these memory ranges:
 
-- 进程 1：0~1G（第 1 段）
-- 进程 2：1~3G（第 2 段）
-- 进程 3：3~4.5G（第 3 段）
-- 进程 4：4.5~5G（第 4 段）
+- Process 1: 0–1 GB (segment 1)
+- Process 2: 1–3 GB (segment 2)
+- Process 3: 3–4.5 GB (segment 3)
+- Process 4: 4.5–5 GB (segment 4)
 
-此时，我们关闭了进程 1 和进程 4，则第 1 段和第 4 段的内存会被释放，空闲物理内存还有 1.5 GB。由于这 1.5 GB 物理内存并不是连续的，导致没办法将空闲的物理内存分配给一个需要 1.5 GB 连续物理内存的进程。
+If processes 1 and 4 are closed, their segments are freed, leaving 1.5 GB of free physical memory. Because this memory is not contiguous, it cannot be allocated to a process that needs one contiguous 1.5 GB region.
 
-![分段机制导致外部内存碎片](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/segment-external-memory-fragmentation.png)
+![External memory fragmentation caused by segmentation](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/segment-external-memory-fragmentation.png)
 
-外部碎片可以通过内存紧凑来缓解，也就是把还在使用的段搬到一起，腾出连续空间。但搬移大段很费时间，如果还伴随换出、换入磁盘，系统会明显变慢。
+Memory compaction can reduce external fragmentation by moving active segments together to create contiguous free space. Moving large segments takes time, and swapping them to and from disk can slow the system significantly.
 
-### 分页机制
+### Paging
 
-**分页机制（Paging）** 把虚拟地址空间和物理内存都切成固定大小的块。虚拟地址空间里的块叫虚拟页，物理内存里的块叫物理页或者页帧。Linux 下，一页通常是 4 KB。
+**Paging** divides the virtual address space and physical memory into fixed-size blocks. A block in virtual memory is a virtual page; a block in physical memory is a physical page or page frame. On Linux, a page is usually 4 KB.
 
-**注意：这里的页是连续等长的，不同于分段机制下不同长度的段。**
+**Note:** Pages are contiguous and equal in size, unlike the variable-sized segments used in segmentation.
 
-在分页机制下，应用程序虚拟地址空间中的任意虚拟页可以映射到物理内存中的任意物理页帧上，因此物理内存可以离散分配。分页按照固定页大小管理内存，基本消除了分段机制中的外部内存碎片；不过最后一页可能装不满，会产生少量内部碎片。
+With paging, any virtual page in an application's address space can map to any physical page frame, so physical memory can be allocated non-contiguously. Fixed-size pages largely eliminate the external fragmentation associated with segmentation, although the last page may not be full, causing some internal fragmentation.
 
-分页还有一个很重要的能力：支持按需调页。程序并不需要一启动就把所有页装进物理内存，只有真正访问到某个虚拟页时，操作系统才把对应数据加载进来。
+Paging also supports demand paging. A program does not need to load every page into physical memory at startup; the operating system loads a page when it is first accessed.
 
-#### 页表有什么用？地址翻译过程是怎样的？
+#### What Is a Page Table, and How Does Address Translation Work?
 
-分页管理通过 **页表（Page Table）** 映射虚拟地址和物理地址。页表项记录虚拟页号和物理页帧号的对应关系，还会记录访问位、脏位、权限位、存在位等状态信息。我这里画了一张基于单级页表进行地址翻译的示意图。
+Paging uses a **page table** to map virtual addresses to physical addresses. A page-table entry maps a virtual page number to a physical page-frame number and can also record status such as access, dirty, permission, and present bits. The diagram below illustrates translation with a single-level page table.
 
-![单级页表](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/page-table.png)
+![Single-level page table](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/page-table.png)
 
-在分页机制下，每个进程都会有自己的页表。正因为页表是进程私有的，不同进程相同的虚拟页号可以映射到不同的物理页帧，从而实现地址空间隔离。
+Each process has its own page tables. Because page tables are process-specific, the same virtual page number can map to different physical page frames in different processes, providing address-space isolation.
 
-分页机制下的虚拟地址由两部分组成：
+With paging, a virtual address has two parts:
 
-- **页号**：通过虚拟页号可以从页表中取出对应的物理页帧号；
-- **页内偏移量**：物理页帧起始地址 + 页内偏移量 = 物理内存地址。
+- **Page number**: The virtual page number is used to look up the corresponding physical page-frame number in the page table.
+- **Page offset**: Physical page-frame base address + page offset = physical address.
 
-具体的地址翻译过程如下：
+Address translation works as follows:
 
-1. MMU 首先解析得到虚拟地址中的虚拟页号；
-2. 通过虚拟页号去该进程的页表中取出对应的物理页帧号（找到对应的页表项）；
-3. 用物理页帧号对应的起始地址加上虚拟地址中的页内偏移量，得到最终的物理地址。
+1. The MMU extracts the virtual page number from the virtual address.
+2. It uses that number to look up the corresponding physical page-frame number in the process's page table.
+3. It adds the page offset to the physical page-frame base address to get the physical address.
 
-![分页地址转换示意图：虚拟地址拆成页号和页内偏移，页表把虚拟页映射到物理页帧](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-paging.png)
+![Paging address translation: the virtual address is split into a page number and offset, and the page table maps the virtual page to a physical page frame](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-paging.png)
 
-如果页表项不存在、页面当前不在物理内存中，或者访问权限不匹配，CPU 会触发 Page Fault。内核随后判断这次访问能否修复：可以修复就建立映射或调入页面，无法修复则通常向当前线程投递 `SIGSEGV`。
+If a page-table entry is missing, the page is not currently resident in physical memory, or the access violates permissions, the CPU raises a page fault. The kernel then determines whether it can resolve the fault by creating a mapping or loading the page. If it cannot, it typically sends `SIGSEGV` to the current thread.
 
-**通过虚拟页号一定能找到对应的物理页帧号吗？找到了物理页帧号得到最终的物理地址后，对应的物理页一定存在吗？**
+**Does a virtual page number always map to a physical page-frame number? If the frame number is found and a physical address is calculated, is the physical page guaranteed to be present?**
 
-不一定。页表项可能不存在，页面可能还没有驻留物理内存，访问方式也可能不符合页表项记录的权限。这些情况都会触发 Page Fault，具体处理过程会在后文介绍。
+No. The page-table entry may be missing, the page may not be resident in physical memory, or the access may violate the permissions in the entry. Any of these cases can trigger a page fault, which is covered below.
 
-#### 单级页表有什么问题？为什么需要多级页表？
+#### What Are the Problems with Single-Level Page Tables, and Why Use Multilevel Page Tables?
 
-以 32 位环境为例，虚拟地址空间范围共有 2^32（4 GB）。假设一页大小是 2^12（4 KB），那就需要 4 GB / 4 KB = 2^20 个页表项。每个页表项占用 4 字节，整张单级页表大约就是 4 MB。也就是说，一个进程即使只用了一小段虚拟地址空间，单级页表也要为整个 4 GB 地址空间预留页表项。
+Consider a 32-bit system with a virtual address space of 2^32 (4 GB). If each page is 2^12 (4 KB), the page table needs 4 GB / 4 KB = 2^20 entries. At 4 bytes per entry, a single-level page table takes about 4 MB. In other words, even if a process uses only a small part of its address space, a single-level page table needs entries for the full 4 GB range.
 
-系统运行的进程多起来后，这部分开销就很明显。更要命的是，绝大多数进程只会使用虚拟地址空间中的一小部分，单级页表里的大量页表项其实都是空的。
+This overhead becomes significant when many processes are running. Most processes use only a small portion of their virtual address space, so many entries in a single-level page table would be unused.
 
-为了解决这个问题，操作系统引入了 **多级页表**。多级页表的核心思路是：顶层页表覆盖整个虚拟地址空间，下级页表按需创建；某段虚拟地址完全没用到，就不需要为它创建下级页表。
+To address this, operating systems use **multilevel page tables**. The top-level table covers the entire virtual address space, while lower-level tables are created as needed. No lower-level table is needed for a range of virtual addresses that is never used.
 
-这里以二级页表为例进行介绍：一级页表共有 1024 个页表项，每个一级页表项可以指向一张二级页表；每张二级页表同样有 1024 个页表项。只有某个一级页表项覆盖的地址范围真的被使用时，才需要创建对应的二级页表。
+For example, a two-level page table might have 1024 entries in the first-level table, with each entry pointing to a second-level table that also has 1024 entries. A second-level table is created only when its corresponding address range is used.
 
-假设只需要 2 个二级页表，那两级页表的内存占用情况为：4 KB（一级页表占用） + 4 KB \* 2（二级页表占用） = 12 KB。
+If only two second-level tables are needed, the total memory use is 4 KB for the first-level table + 4 KB × 2 for the second-level tables = 12 KB.
 
-![多级页表示意图：PGD、PUD、PMD、PTE 分层索引，只为实际使用的地址范围创建下级页表](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-multi-level-page-table.png)
+![Multilevel page tables use PGD, PUD, PMD, and PTE indexes, creating lower-level tables only for address ranges in use](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-multi-level-page-table.png)
 
-多级页表是在省页表空间：多走几层索引，换来更小的页表内存占用。实际系统会配合 TLB 缓存常用页表项，所以多级页表的额外查表开销不会每次都完整发生。
+Multilevel page tables save memory: they add lookup levels in exchange for a smaller page-table footprint. Real systems use the TLB to cache commonly used translations, so the full cost of the extra lookups is not incurred on every access.
 
-#### TLB 有什么用？使用 TLB 之后的地址翻译流程是怎样的？
+#### What Is the TLB For, and How Does It Change Address Translation?
 
-为了提高虚拟地址到物理地址的转换速度，CPU/MMU 会使用 **转址旁路缓存（Translation Lookaside Buffer，TLB，也被称为快表）** 缓存近期的地址转换结果。
+To speed up virtual-to-physical address translation, the CPU/MMU uses a **Translation Lookaside Buffer (TLB)** to cache recent address translations.
 
-![加入 TLB 之后的地址翻译](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/physical-virtual-address-translation-mmu.png)
+![Address translation with a TLB](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/physical-virtual-address-translation-mmu.png)
 
-在主流的 AArch64 和 x86-64 体系结构下，TLB 是 MMU 使用的硬件缓存。可以把它理解为按虚拟页匹配物理页框的高速缓存，但不能把具体硬件结构等同于软件哈希表。操作系统负责维护页表；页表映射发生变化后，还要按体系结构要求使相关 TLB 项失效，避免 CPU 继续使用旧映射。
+On common AArch64 and x86-64 architectures, the TLB is a hardware cache used by the MMU. You can think of it as a fast cache that maps virtual pages to physical page frames, but its hardware design is not the same as a software hash table. The operating system maintains the page tables and, when a mapping changes, invalidates the relevant TLB entries as required by the architecture so the CPU does not use stale mappings.
 
-使用 TLB 之后的地址翻译流程是这样的：
+With a TLB, address translation works as follows:
 
-1. CPU 使用虚拟页号以及地址空间标识等信息匹配 TLB 项；
-2. 如果能查到对应的物理页的话，就不用再查询页表了，这种情况称为 TLB 命中（TLB hit）。
-3. 如果不能查到对应的物理页的话，还是需要去查询主存中的页表，同时将页表中的该映射表项添加到 TLB 中，这种情况称为 TLB 未命中（TLB miss）。
-4. 当 TLB 填满后，又要登记新页时，就按照一定的淘汰策略淘汰掉快表中的一个页。
+1. The CPU looks for a TLB entry using the virtual page number and address-space identifiers.
+2. If it finds the physical page frame, it can skip the page-table lookup. This is a **TLB hit**.
+3. If there is no matching entry, the CPU looks up the page table in memory and may add the resulting mapping to the TLB. This is a **TLB miss**.
+4. When the TLB is full and a new entry is needed, an existing entry is evicted according to a replacement policy.
 
-![TLB 缓存地址转换结果的流程：CPU 先查 TLB，命中直接访问内存，未命中再查多级页表并更新 TLB](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-tlb-cache.png)
+![TLB translation flow: the CPU checks the TLB first, accesses memory directly on a hit, and looks up the multilevel page table and updates the TLB on a miss](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-tlb-cache.png)
 
-由于页表也在主存中，因此在没有 TLB 之前，CPU 访问一个虚拟地址，往往要先访问内存查页表，再访问真正的数据；多级页表下查表次数还会更多。有了 TLB 之后，命中时可以跳过页表查询，直接拿到物理页帧号，地址转换会快很多。
+Page tables are stored in main memory. Without a TLB, the CPU may need to access memory to look up the page table and then access memory again to read or write the data; multilevel tables can require even more lookups. On a TLB hit, the CPU gets the physical page-frame number without looking up the page table, making translation much faster.
 
-TLB 的设计思想非常简单，但命中率往往很高，效果很好。这依赖的还是局部性原理：程序在一段时间内频繁访问的页通常只是少数几个。
+The TLB is simple in principle and often has a high hit rate because of locality: a program usually accesses only a small number of pages frequently during a given period.
 
-看完了之后你会发现快表和我们平时经常在开发系统中使用的缓存（比如 Redis）很像，的确是这样的，操作系统中的很多思想、很多经典的算法，你都可以在我们日常开发使用的各种工具或者框架中找到它们的影子。
+The TLB may remind you of caches used in application systems, such as Redis. Many operating system ideas and classic algorithms also appear in the tools and frameworks used in everyday development.
 
-#### 换页机制有什么用？
+#### What Is Swapping For?
 
-换页机制的思想是：当物理内存不够用时，操作系统选择一些暂时不常用的物理页，把它们换出到磁盘；等进程再次访问这些页时，再把它们换回物理内存。也就是说，换页机制利用磁盘这种更低成本的存储设备，从逻辑上扩展了可用内存。
+When physical memory is low, the operating system can move less-used pages to disk. If a process accesses one of those pages later, the operating system brings it back into physical memory. Swapping uses lower-cost disk storage to extend the amount of memory that appears available.
 
-这也就解释了一个日常使用电脑常见的问题：为什么操作系统中所有进程运行所需的物理内存即使比真实的物理内存要大一些，这些进程也是可以正常运行的，只是运行速度会变慢。
+This explains why processes can keep running even when their total memory demand exceeds the available physical memory, although performance may suffer.
 
-这同样是一种时间换空间的策略，用页的调入调出时间，换来更大的可用内存空间。问题也很直接：一旦频繁发生主缺页和磁盘换页，系统会明显变慢，严重时会出现抖动（Thrashing），CPU 大部分时间都耗在换页上。
+This trades time for space: the system spends time moving pages to and from disk to make more memory available. If major page faults and disk swapping happen frequently, the system slows down. In severe cases, it can thrash, with the CPU spending most of its time swapping pages.
 
-#### 什么是缺页异常（Page Fault）？
+#### What Is a Page Fault?
 
-Page Fault 是 CPU 在地址翻译或页级权限检查无法直接完成时触发的**同步异常**。它由当前访存指令引起，不是外设触发的硬件中断，也不代表程序一定出错。
+A **page fault** is a **synchronous exception** raised when the CPU cannot complete address translation or a page-level permission check. It is caused by the current memory-access instruction, not by a hardware interrupt from a peripheral, and does not necessarily mean the program has an error.
 
-内核接管后，会检查地址是否落在进程合法的虚拟内存区域（VMA）中，以及访问类型是否符合权限要求：
+The kernel checks whether the address belongs to a valid virtual memory area (VMA) for the process and whether the access type is permitted:
 
-- **可修复的 Page Fault**：例如匿名页第一次访问时才分配物理页、文件页或 Swap 页尚未驻留内存、写入 COW 页需要先复制。内核完成分配、调页或 COW，更新页表后，CPU 重新执行触发异常的指令。
-- **不可修复的 Page Fault**：例如地址不属于任何合法 VMA、写只读映射、执行不可执行页面。Linux 通常向当前线程投递 `SIGSEGV`，进程按默认动作终止。
+- **Recoverable page fault**: Examples include allocating a physical page on first access to an anonymous page, loading a file-backed or swapped page that is not resident, or copying a COW page before writing. The kernel allocates or loads the page, handles COW if needed, updates the page table, and the CPU retries the instruction that caused the fault.
+- **Unrecoverable page fault**: Examples include accessing an address outside any valid VMA, writing to a read-only mapping, or executing a non-executable page. Linux usually sends `SIGSEGV` to the current thread, and the process terminates by default.
 
-从性能统计角度，可修复的 Page Fault 常分为：
+For performance statistics, recoverable page faults are often divided into:
 
-- **主缺页（Major Page Fault）**：处理过程需要从文件或 Swap 读取页面，涉及实际 I/O，开销较大。
-- **次缺页（Minor Page Fault）**：不需要从存储设备读取页面，例如建立已有物理页的映射、分配零页或处理部分 COW 场景，开销通常更小。
+- **Major page fault**: Handling it requires reading a page from a file or Swap, which involves I/O and has higher overhead.
+- **Minor page fault**: No read from a storage device is needed. Examples include mapping an existing physical page, allocating a zero page, or handling some COW cases. These faults usually have lower overhead.
 
-C/C++ 越界访问也不保证立刻触发 `SIGSEGV`。如果越界地址仍落在已映射且权限允许的页面中，CPU 不会仅凭语言层面的数组边界识别错误，程序可能只是破坏了相邻数据。
+Out-of-bounds access in C or C++ does not always trigger `SIGSEGV` immediately. If the address is still within a mapped page with suitable permissions, the CPU cannot detect the violation of the language-level array bounds, and the program may simply corrupt adjacent data.
 
-![缺页异常处理流程：MMU 发现地址翻译或权限检查无法完成后进入内核，检查访问合法性、分配或置换页帧、更新页表并重试指令](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-page-fault.png)
+![Page-fault handling: after the MMU cannot complete address translation or a permission check, the kernel validates the access, allocates or evicts a page frame, updates the page table, and retries the instruction](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-page-fault.png)
 
-Page Fault 与系统调用、信号之间的关系可以看：[中断、异常与系统调用详解：从内核入口到缺页异常](./interrupt-exception-syscall.md)。
+For the relationship between page faults, system calls, and signals, see [Interrupts, Exceptions, and System Calls: From Kernel Entry to Page Faults](./interrupt-exception-syscall.md).
 
-#### 常见的页面置换算法有哪些？
+#### What Are the Common Page-Replacement Algorithms?
 
-当发生主缺页时，如果物理内存中没有空闲的物理页面可用，操作系统就必须将物理内存中的一个物理页淘汰出去，这样就可以腾出空间来加载新的页面。
+When a major page fault occurs and no physical page is free, the operating system must evict a page from physical memory to make room for the incoming page.
 
-用来选择淘汰哪一个物理页的规则叫做 **页面置换算法**，我们可以把页面置换算法看成是淘汰物理页的规则。
+The rule used to choose which physical page to evict is called a **page-replacement algorithm**.
 
-页缺失太频繁的发生会非常影响性能，一个好的页面置换算法应该是可以减少页缺失出现的次数。
+Frequent page faults can significantly hurt performance, so a good replacement algorithm aims to reduce their number.
 
-常见的页面置换算法有下面这 5 种（其他还有很多页面置换算法都是基于这些算法改进得来的）：
+Five common page-replacement algorithms are listed below. Many others are variations on these:
 
-![页面置换算法对比](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-page-replacement.webp)
+![Comparison of page-replacement algorithms](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-page-replacement.webp)
 
-1. **最佳页面置换算法（OPT，Optimal）**：优先淘汰未来最长时间不会再被访问的页面，理论上缺页率最低。但它需要预知未来，现实中无法实现，通常作为衡量其他算法的基准。
-2. **先进先出页面置换算法（FIFO，First In First Out）**：总是淘汰最早进入内存的页面，实现简单，但容易误伤热点页，并且可能出现 Belady 异常。
-3. **最近最久未使用页面置换算法（LRU，Least Recently Used）**：淘汰最久没有被访问的页面。它利用的是时间局部性，效果接近 OPT，但精确实现需要维护时间戳或链表，成本较高。
-4. **最少使用页面置换算法（LFU，Least Frequently Used）**：淘汰一段时间内访问次数最少的页面。它关注访问频率，但容易让早期频繁访问、后来不再使用的页面长期留在内存中，因此实际使用时常配合计数衰减。
-5. **时钟页面置换算法（Clock）**：也叫二次机会算法，是 LRU 的一种低成本近似实现。它给每个页面维护一个访问位，页面排成环形队列；访问位为 1 时先清零并跳过，访问位为 0 时才淘汰。
+1. **Optimal (OPT)**: Evicts the page that will not be used for the longest time. It has the lowest possible fault rate in theory, but requires knowing the future, so it is mainly used as a benchmark.
+2. **First In, First Out (FIFO)**: Evicts the page that has been in memory the longest. It is simple to implement but may evict frequently used pages and can exhibit Belady's anomaly.
+3. **Least Recently Used (LRU)**: Evicts the page that has not been accessed for the longest time. It uses temporal locality and can perform close to OPT, but an exact implementation requires costly timestamp or list maintenance.
+4. **Least Frequently Used (LFU)**: Evicts the page with the fewest accesses over a period. It considers access frequency, but may keep pages that were popular earlier and are no longer used. Implementations often reduce old counts over time.
+5. **Clock**: Also called the second-chance algorithm, it approximates LRU at lower cost. Each page has a reference bit and pages form a circular queue. A page with its bit set to 1 gets the bit cleared and another chance; a page with a bit of 0 is evicted.
 
-![CLOCK 页面置换算法示意图：页面按环形队列排列，指针根据访问位 R 判断给第二次机会还是淘汰页面](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-clock-algorithm.png)
+![Clock page-replacement algorithm: pages form a circular queue, and a pointer uses the reference bit R to give a page another chance or evict it](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-clock-algorithm.png)
 
-**FIFO 页面置换算法性能为何不好？**
+**Why can FIFO perform poorly?**
 
-主要原因有二：
+There are two main reasons:
 
-1. **经常访问或者需要长期存在的页面会被频繁调入调出**：较早调入的页往往是经常被访问或者需要长期存在的页，这些页会被反复调入和调出。
-2. **存在 Belady 现象**：被置换的页面并不是进程不会访问的，有时就会出现分配的页面数增多但缺页率反而提高的异常现象。出现该异常的原因是因为 FIFO 算法只考虑了页面进入内存的顺序，而没有考虑页面访问的频率和紧迫性。
+1. **Frequently used or long-lived pages may be repeatedly moved in and out**: Pages loaded early may be accessed often or needed for a long time, yet FIFO can evict them simply because they arrived first.
+2. **Belady's anomaly can occur**: Increasing the number of allocated frames can sometimes increase the page-fault rate. FIFO considers only when a page entered memory, not how often or how soon it will be used.
 
-**哪一种页面置换算法实际用的比较多？**
+**Which page-replacement algorithms are used in practice?**
 
-LRU 及其近似算法在实际系统中应用较多，因为它比较符合程序的局部性规律。不过，真实系统通常不会原样照搬教科书算法，而是做大量工程化改造。比如 Linux 内核不是简单地在 OPT/FIFO/LRU/CLOCK 里挑一个，而是使用活跃/非活跃 LRU、workingset、refault 检测等机制做近似回收；InnoDB Buffer Pool 也对传统 LRU 做了改进，避免预读和全表扫描把热点页挤出去。
+LRU and its approximations are common because they fit program locality. Real systems rarely use textbook algorithms without modification. For example, the Linux kernel does not simply choose OPT, FIFO, LRU, or Clock; it uses mechanisms such as active/inactive LRU lists, workingset tracking, and refault detection. The InnoDB Buffer Pool also modifies traditional LRU to keep preloaded pages and full-table scans from displacing hot pages.
 
-![Linux 页面回收思路](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-page-reclaim.webp)
+![Linux page-reclamation approach](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-page-reclaim.webp)
 
-### Swap、工作集和抖动分别是什么？
+### What Are Swap, the Working Set, and Thrashing?
 
-**Swap** 是磁盘上的后备空间。匿名页没有对应的文件来源，物理内存紧张时，如果内核要回收这类页面，就可能把它们写入 Swap；以后进程再次访问，再从 Swap 读回内存。
+**Swap** is backup space on disk. Anonymous pages have no backing file, so when physical memory is low, the kernel may write them to Swap before reclaiming their physical pages. If a process accesses them later, they are read back into memory.
 
-Swap 不是免费的内存扩容。磁盘比内存慢很多，Swap 活跃时，业务延迟通常会变差。
+Swap is not a free way to expand memory. Disk is much slower than RAM, so active swapping usually increases application latency.
 
-**工作集** 是进程在一段时间内真正频繁访问的页面集合。只要物理内存能放下主要进程的工作集，缺页就比较可控；如果放不下，页面会被频繁换出又换入。
+The **working set** is the collection of pages a process accesses frequently during a given period. If physical memory can hold the main working sets of running processes, page faults are manageable. If it cannot, pages are repeatedly swapped out and back in.
 
-这种状态叫 **抖动（Thrashing）**。抖动时，CPU 不一定忙在业务计算上，可能大量时间耗在缺页处理、页面回收和磁盘 I/O 上。
+This state is called **thrashing**. During thrashing, the CPU may spend much of its time handling page faults, reclaiming pages, and waiting for disk I/O instead of doing application work.
 
-排查时可以看这些指标：
+Useful metrics when troubleshooting include:
 
 ```bash
 free -h
@@ -355,188 +355,188 @@ grep -E 'pgfault|pgmajfault|pswpin|pswpout|pgscan|pgsteal' /proc/vmstat
 cat /proc/pressure/memory
 ```
 
-### Overcommit 和 OOM 是什么关系？
+### How Are Overcommit and OOM Related?
 
-Linux 允许进程申请的虚拟内存超过当前 RAM 和 Swap，这叫 **Overcommit**。它适合那些会预留很大地址空间、但不一定真正使用完的程序。
+Linux allows processes to request more virtual memory than the available RAM and Swap. This is called **overcommit** and is useful for programs that reserve a large address space without necessarily using all of it.
 
-因此，`malloc()` 或 `mmap()` 成功，通常只表示虚拟地址空间申请成功，并不代表所有物理页已经准备好。很多物理页要等到首次访问时才会真正分配。
+Therefore, a successful `malloc()` or `mmap()` usually means the virtual address range was reserved; it does not mean that all physical pages are ready. Many pages are allocated only on first access.
 
-当进程实际访问页面时，如果内核无法通过回收、写回或 Swap 获得足够内存，就可能触发 **OOM Killer**，选择一个或多个进程杀掉来释放内存。
+When a process accesses a page and the kernel cannot reclaim, write back, or swap enough memory, the **OOM Killer** may select one or more processes to terminate and free memory.
 
-在容器环境里，还要看 cgroup 限制。宿主机还有空闲内存，不代表容器还能继续用；容器达到 `memory.max` 后，也可能先触发 cgroup 范围内的 OOM。
+In containers, check the cgroup limits too. Free memory on the host does not mean a container can use more; reaching `memory.max` can trigger an OOM event within the cgroup.
 
-### mmap、COW 和共享内存有什么关系？
+### How Are `mmap`, COW, and Shared Memory Related?
 
-`mmap()` 会在进程虚拟地址空间里创建一段映射。它既可以映射文件，也可以创建匿名映射。映射建立时不一定马上读入数据，真正访问到某个页面时，才可能触发缺页异常。
+`mmap()` creates a mapping in a process's virtual address space. It can map a file or create an anonymous mapping. Data is not necessarily read when the mapping is created; accessing a page may trigger a page fault.
 
-多个进程映射同一个文件时，内核可以让它们共享 Page Cache 中的物理页。共享内存 IPC 也是类似思路：不同进程的虚拟地址映射到同一批物理页，进程之间读写数据不需要每次经过内核拷贝。
+When multiple processes map the same file, the kernel can let them share physical pages in the Page Cache. Shared-memory IPC works similarly: virtual addresses in different processes map to the same physical pages, so processes can exchange data without copying it through the kernel each time.
 
-**COW（Copy-On-Write，写时复制）** 常见于 `fork()`。父子进程刚创建时可以共享同一批物理页，页表先标成只读；谁先写，谁触发缺页异常，内核再复制一份页面给写入方。
+**Copy-on-write (COW)** is commonly used with `fork()`. The parent and child can initially share the same physical pages, with their page-table entries marked read-only. When either process writes, it triggers a page fault and the kernel copies the page for the writer.
 
-详细介绍：[操作系统内存管理详解：分页、分段、页面置换、Swap 与 OOM](./memory-management.md)
+For details, see [Operating System Memory Management: Paging, Segmentation, Page Replacement, Swap, and OOM](./memory-management.md).
 
-### 分页机制和分段机制有哪些共同点和区别？
+### How Are Paging and Segmentation Similar and Different?
 
-**共同点**：
+**Similarities:**
 
-- 都是非连续内存管理的方式。
-- 都采用了地址映射的方法，将虚拟地址映射到物理地址，以实现对内存的管理和保护。
+- Both are forms of non-contiguous memory management.
+- Both map virtual addresses to physical addresses to manage and protect memory.
 
-**区别**：
+**Differences:**
 
-- **划分依据不同**：分页按固定大小切分地址空间和物理内存，页是内存管理的物理粒度；分段按程序的逻辑结构切分，比如代码段、数据段、堆、栈，段是更贴近程序语义的逻辑单位。
-- **大小是否固定不同**：页大小固定，常见为 4 KB；段大小不固定，取决于程序中对应逻辑区域的大小。
-- **碎片问题不同**：分段容易产生外部碎片，因为每个段需要连续空间；分页基本消除了外部碎片，但最后一页可能装不满，会产生少量内部碎片。
-- **地址结构不同**：分页地址通常由页号和页内偏移组成，通过页表完成映射；分段地址由段号和段内偏移组成，通过段表完成映射。
-- **工程使用不同**：现代通用操作系统主要依赖分页管理内存。以 x86 为例，硬件历史上支持分段和分页，但 Linux 基本把段基址设为 0，让分段“弱化”为权限和兼容机制，实际内存管理主要靠分页完成。
+- **What is divided**: Paging splits the address space and physical memory into fixed-size pages, the basic physical unit of memory management. Segmentation divides a program according to its logical structure, such as code, data, heap, and stack.
+- **Whether the size is fixed**: Pages have a fixed size, commonly 4 KB. Segment sizes vary with the corresponding logical regions of a program.
+- **Fragmentation**: Segmentation can cause external fragmentation because each segment needs contiguous space. Paging largely eliminates external fragmentation but can cause some internal fragmentation in the last page.
+- **Address format**: A paged address typically contains a page number and offset and is translated through a page table. A segmented address contains a segment number and offset and is translated through a segment table.
+- **Use in modern systems**: General-purpose operating systems primarily use paging. For example, x86 hardware supports both segmentation and paging, but Linux generally sets segment bases to zero, leaving segmentation mainly for permissions and compatibility while paging handles memory management.
 
-### 段页机制
+### Segmented Paging
 
-结合了段式管理和页式管理的一种内存管理机制。程序视角中，内存被划分为多个逻辑段，每个逻辑段进一步被划分为固定大小的页。
+Segmented paging combines segmentation and paging. From a program's perspective, memory is divided into logical segments, each of which is further divided into fixed-size pages.
 
-在段页式机制下，地址翻译的过程分为两个步骤：
+Address translation in segmented paging has two steps:
 
-1. **段式地址映射（虚拟地址 -> 线性地址）**：
-   - 虚拟地址 = 段选择符（段号）+段内偏移。
-   - 根据段号查段表，找到段基址，加上段内偏移得到线性地址。
-2. **页式地址映射（线性地址 -> 物理地址）**：
-   - 线性地址 = 页号 + 页内偏移。
-   - 根据页号查页表，找到物理页框号，加上页内偏移得到物理地址。
+1. **Segment translation (virtual address -> linear address)**:
+   - Virtual address = segment selector (segment number) + segment offset.
+   - Look up the segment base in the segment table and add the offset to get the linear address.
+2. **Page translation (linear address -> physical address)**:
+   - Linear address = page number + page offset.
+   - Look up the physical page-frame number in the page table and add the offset to get the physical address.
 
-### 局部性原理
+### The Principle of Locality
 
-要想更好地理解虚拟内存技术，必须要知道计算机中著名的 **局部性原理（Locality Principle）**。另外，局部性原理既适用于程序结构，也适用于数据结构，是非常重要的一个概念。
+To understand virtual memory, it helps to know the well-known **principle of locality**. Locality applies to both program and data structures and is an important concept.
 
-局部性原理是指在程序执行过程中，数据和指令的访问存在一定的空间和时间上的局部性特点。其中，时间局部性是指一个数据项或指令在一段时间内被反复使用的特点，空间局部性是指一个数据项或指令在一段时间内与其相邻的数据项或指令被反复使用的特点。
+The principle of locality describes how programs access data and instructions in ways that have temporal and spatial locality. **Temporal locality** means that a data item or instruction is likely to be used repeatedly within a short period. **Spatial locality** means that nearby data items or instructions are likely to be used around the same time.
 
-在分页机制中，页表的作用是将虚拟地址转换为物理地址，从而完成内存访问。在这个过程中，局部性原理的作用体现在两个方面：
+In paging, the page table translates virtual addresses to physical addresses so that memory can be accessed. Locality is useful in two ways:
 
-- **时间局部性**：由于程序中存在一定的循环或者重复操作，因此会反复访问同一个页或一些特定的页，这就体现了时间局部性的特点。为了利用时间局部性，分页机制中通常采用缓存机制来提高页面的命中率，即将最近访问过的一些页放入缓存中，如果下一次访问的页已经在缓存中，就不需要再次访问内存，而是直接从缓存中读取。
-- **空间局部性**：由于程序中数据和指令的访问通常是具有一定的空间连续性的，因此当访问某个页时，往往会顺带访问其相邻的一些页。为了利用空间局部性，分页机制中通常采用预取技术来预先将相邻的一些页读入内存缓存中，以便在未来访问时能够直接使用，从而提高访问速度。
+- **Temporal locality**: Loops and repeated operations often access the same pages again. Caches take advantage of this by keeping recently used translations or pages readily available.
+- **Spatial locality**: Programs often access nearby data and instructions. Prefetching can take advantage of this by loading nearby pages into memory before they are requested.
 
-总之，局部性原理是计算机体系结构设计的重要原则之一，也是许多优化算法的基础。在分页机制中，利用时间局部性和空间局部性，采用缓存和预取技术，可以提高页面的命中率，从而提高内存访问效率。
+Locality is an important principle in computer architecture and underlies many optimization algorithms. In paging, caching and prefetching can use temporal and spatial locality to improve hit rates and memory access efficiency.
 
-### 虚拟内存是如何实现地址转换和进程隔离的？
+### How Does Virtual Memory Provide Address Translation and Process Isolation?
 
-面试里问虚拟内存，不要只背“隔离进程”。可以按这条线回答：**虚拟内存把进程看到的地址和真实物理地址隔开，再由 MMU、页表和 TLB 完成地址翻译**。
+When asked about virtual memory in an interview, explain more than process isolation. A useful summary is: **virtual memory separates the addresses seen by a process from physical addresses, and the MMU, page tables, and TLB perform the translation**.
 
-进程访问的是虚拟地址（VA），真正落到内存条上的是物理地址（PA）。每个进程都有自己的虚拟地址空间和页表，所以不同进程即使使用相同的虚拟地址，也可以映射到不同的物理页，从而实现进程隔离。
+Processes access virtual addresses (VAs), which are translated to physical addresses (PAs) in RAM. Each process has its own virtual address space and page tables, so the same virtual address in different processes can map to different physical pages, providing isolation.
 
-![虚拟地址到物理地址的映射过程：不同进程的相同虚拟地址通过 MMU 和页表映射到不同物理页](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-virtual-physical-mapping.png)
+![Virtual-to-physical address mapping: the same virtual address in different processes maps to different physical pages through the MMU and page tables](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/virtual-memory-virtual-physical-mapping.png)
 
-不过，隔离不代表进程之间完全不能共享数据。操作系统可以有控制地让多个进程映射同一批物理页，例如动态库共享、`mmap` 文件映射、共享内存 IPC。区别在于：默认隔离由页表权限保证，共享则必须由内核显式建立映射并配合权限控制；如果是共享内存 IPC，还需要额外处理同步问题。
+Isolation does not prevent processes from sharing data. The operating system can let multiple processes map the same physical pages, as with shared libraries, file mappings through `mmap`, and shared-memory IPC. By default, page-table permissions enforce isolation. Sharing requires the kernel to establish mappings explicitly and control permissions; shared-memory IPC also requires synchronization.
 
-分页机制把虚拟地址空间和物理内存都切成固定大小的页，通过页表记录“虚拟页号 -> 物理页帧”的映射。这样基本消除了分段容易产生的外部碎片，也让物理内存可以离散分配；页表本身会占空间，所以现代系统会用多级页表按需创建下级页表。
+Paging divides virtual address space and physical memory into fixed-size pages. Page tables map virtual page numbers to physical page frames. This largely avoids the external fragmentation associated with segmentation and allows non-contiguous physical allocation. Page tables themselves use memory, so modern systems create lower-level page tables on demand.
 
-TLB 可以理解为页表项缓存。CPU 先查 TLB，命中就直接拿到物理页帧号；未命中才去查多级页表，并把结果回填到 TLB。如果页表项显示页面不在内存，就会触发缺页异常，内核再判断访问是否合法，合法则分配页帧、必要时换出旧页、从文件或 Swap 调入页面，最后更新页表并重新执行那条指令。
+The TLB caches page-table entries. The CPU checks it first: on a hit, it gets the physical page-frame number directly; on a miss, it looks up the multilevel page table and may cache the result. If the page-table entry indicates that the page is not in memory, a page fault occurs. The kernel checks whether the access is valid, allocates a frame, evicts an old page if needed, loads the page from a file or Swap, updates the page table, and retries the instruction.
 
-页面置换算法可以抓住一句话：**换出去的页，最好是后面最晚再用到的页**。OPT 是理论最优但无法实现，LRU 接近 OPT 但实现成本高，CLOCK 用访问位近似 LRU，FIFO 简单但可能出现 Belady 异常。
+One way to summarize page replacement is: **ideally, evict the page that will be needed again farthest in the future**. OPT is theoretically optimal but impractical; LRU can approach it but is costly to implement; Clock approximates LRU with reference bits; and FIFO is simple but can exhibit Belady's anomaly.
 
-详细介绍：[虚拟内存详解：地址转换、TLB、缺页异常与页面置换](./virtual-memory.md)
+For details, see [Virtual Memory: Address Translation, TLBs, Page Faults, and Page Replacement](./virtual-memory.md).
 
 ## I/O
 
-### 一次阻塞 `read()` 经历了什么？
+### What Happens During a Blocking `read()`?
 
-以 `read(fd, buf, count)` 为例，用户程序通常先调用 glibc 包装函数。包装函数按 ABI 准备系统调用号和参数，执行 `syscall` 等指令进入内核。内核检查文件描述符、用户缓冲区和访问权限，再进入 VFS、文件系统、Socket 或设备驱动对应的读取路径。
+Consider `read(fd, buf, count)`. A user program usually calls a glibc wrapper first. The wrapper prepares the system call number and arguments according to the ABI, then executes an instruction such as `syscall` to enter the kernel. The kernel checks the file descriptor, user buffer, and access permissions before following the relevant read path through the VFS, filesystem, socket, or device driver.
 
-如果数据已经就绪，内核把数据复制到用户缓冲区并返回读取字节数；如果数据尚未就绪，阻塞 fd 会让当前线程进入等待状态，调度器可以运行其他可运行任务。磁盘 I/O 完成或网卡收到数据后，设备通过硬件中断通知内核，内核唤醒等待队列中的线程。该线程以后重新获得 CPU，才会继续完成 `read()` 并返回用户态。
+If the data is ready, the kernel copies it to the user buffer and returns the number of bytes read. If it is not ready, a blocking file descriptor puts the current thread to sleep, allowing the scheduler to run another task. When disk I/O completes or the network card receives data, the device notifies the kernel with a hardware interrupt. The kernel wakes the waiting thread, which completes `read()` and returns to user space when it next gets CPU time.
 
-这条路径可能同时出现系统调用、硬件中断和线程上下文切换，也可能只经历其中一部分。Page Cache 已经有数据时，`read()` 可以直接返回，不需要等待设备中断，也不需要切换到另一个线程。
+This path may involve a system call, a hardware interrupt, and a thread context switch, or only some of them. If the data is already in the Page Cache, `read()` can return without waiting for a device interrupt or switching to another thread.
 
-详细介绍：[中断、异常与系统调用详解：从内核入口到缺页异常](./interrupt-exception-syscall.md)。
+For details, see [Interrupts, Exceptions, and System Calls: From Kernel Entry to Page Faults](./interrupt-exception-syscall.md).
 
-### 什么是 I/O 多路复用？
+### What Is I/O Multiplexing?
 
-I/O 多路复用解决的不是“单次读写更快”，而是**一个线程如何同时等待多个文件描述符（fd）的就绪事件**。
+I/O multiplexing is not about making a single read or write faster. It is about **letting one thread wait for readiness events on multiple file descriptors (fds) at the same time**.
 
-一次网络读取通常分成两个阶段：先等数据从网卡到达并进入内核缓冲区，再把数据从内核缓冲区拷贝到用户缓冲区。阻塞 I/O 的问题在第一阶段：一个线程调用 `recv` 后，如果这个连接没数据，线程就只能卡在那里等。
+A network read usually has two stages: wait for data to arrive from the network card and enter a kernel buffer, then copy it from the kernel buffer to a user buffer. Blocking I/O can stall at the first stage: after a thread calls `recv`, it must wait if that connection has no data.
 
-![网络读取中的两个阶段：先等待网卡数据进入内核缓冲区，再通过 copy_to_user 拷贝到用户缓冲区](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/io-multiplexing-io-two-phases.png)
+![Two stages of a network read: wait for data from the network card to enter the kernel buffer, then copy it to the user buffer with copy_to_user](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/io-multiplexing-io-two-phases.png)
 
-I/O 多路复用把一批 fd 交给内核，让线程阻塞在 `select`、`poll` 或 `epoll` 这类系统调用上。只要其中任意 fd 就绪，调用就返回，应用再去处理对应的连接。这样一个线程就能管理成千上万个连接，特别适合大量连接空闲、少量连接活跃的场景，比如 Redis、Nginx、Netty 这类高性能网络程序。
+I/O multiplexing passes a set of fds to the kernel and lets a thread block in a system call such as `select`, `poll`, or `epoll`. The call returns when any fd is ready, and the application handles the corresponding connection. This lets one thread manage thousands of connections and works especially well when most connections are idle and only a few are active, as in high-performance network software such as Redis, Nginx, and Netty.
 
-需要注意：I/O 多路复用仍然属于**同步 I/O**。内核只是通知“可以读/可以写了”，真正的 `read`/`recv` 还得应用自己调用，数据从内核缓冲区拷到用户缓冲区这一步并没有被省掉。
+Note that I/O multiplexing is still **synchronous I/O**. The kernel only reports that an fd is ready to read or write; the application still calls `read` or `recv`, and the data still has to be copied from the kernel buffer to the user buffer.
 
-详细介绍：[I/O 多路复用详解：select、poll、epoll 原理与区别](./io-multiplexing.md)
+For details, see [I/O Multiplexing: How `select`, `poll`, and `epoll` Work](./io-multiplexing.md).
 
-### select、poll 和 epoll 有什么区别？
+### What Are the Differences Between `select`, `poll`, and `epoll`?
 
-结论：`select` 和 `poll` 每次等待都要把完整监听集合交给内核，并在返回后线性扫描；`epoll` 把监听集合长期维护在内核里，`epoll_wait` 主要返回已经就绪的事件，更适合“连接很多但活跃连接较少”的场景。
+In short, `select` and `poll` pass the full set of monitored fds to the kernel on every wait and scan the set after returning. `epoll` keeps the set in the kernel and `epoll_wait` mainly returns ready events, so it suits workloads with many connections but few active ones.
 
-`select` 使用固定大小的 `fd_set` 位图，Linux glibc 下通常受 `FD_SETSIZE` 限制，只能安全处理编号 0~1023 的 fd。每次调用前都要重新设置监听集合，返回后还要遍历位图找出哪些 fd 就绪。
+`select` uses a fixed-size `fd_set` bitmap. With Linux glibc, it is usually limited by `FD_SETSIZE` and can safely handle fds numbered 0–1023. The monitored set must be rebuilt before each call, and the bitmap must be scanned afterward to find ready fds.
 
-`poll` 把位图换成了 `pollfd` 数组，绕开了 `FD_SETSIZE` 的限制，但本质上还是每次把完整数组传入内核，返回后遍历整个数组检查 `revents`。所以连接数量很大、活跃比例很低时，扫描成本仍然明显。
+`poll` replaces the bitmap with a `pollfd` array, avoiding the `FD_SETSIZE` limit. However, it still passes the full array to the kernel on every call and scans the array for `revents` afterward. Scanning can remain costly when there are many connections but few active ones.
 
-`epoll` 通过 `epoll_ctl` 维护监听集合，通过 `epoll_wait` 获取就绪事件。内核会维护 interest list 和 ready list，fd 就绪后进入 ready list，应用等待时只取这批就绪事件。它还支持 LT（水平触发）和 ET（边缘触发）：LT 只要缓冲区还有数据就会反复通知；ET 只在状态变化时通知一次，必须配合非阻塞 fd，并循环读到 `EAGAIN`。
+`epoll` uses `epoll_ctl` to maintain the monitored set and `epoll_wait` to get ready events. The kernel maintains an interest list and a ready list; when an fd becomes ready, it enters the ready list, and the application retrieves ready events when it waits. `epoll` supports level-triggered (LT) and edge-triggered (ET) modes. LT repeatedly reports readiness while data remains in the buffer. ET reports a state change once, so it must be used with nonblocking fds and reads must continue until `EAGAIN`.
 
-![select、poll 和 epoll 对比：数据结构、fd 限制、每次等待传参、查找就绪 fd 的开销和触发模式](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/io-multiplexing-select-poll-epoll.png)
+![Comparison of select, poll, and epoll: data structures, fd limits, arguments passed on each wait, readiness lookup costs, and triggering modes](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/io-multiplexing-select-poll-epoll.png)
 
-不过，epoll 不是所有场景都更快。如果连接数量很少，或者所有连接都很活跃，`epoll_ctl`、回调、就绪链表等维护成本也要算进去。它的主场是海量长连接、大部分时间空闲的服务端程序。
+However, `epoll` is not faster in every situation. With few connections or when all connections are active, the maintenance costs of `epoll_ctl`, callbacks, and ready lists also matter. It is best suited to servers with many long-lived connections that are idle most of the time.
 
-详细介绍：[I/O 多路复用详解：select、poll、epoll 原理与区别](./io-multiplexing.md)
+For details, see [I/O Multiplexing: How `select`, `poll`, and `epoll` Work](./io-multiplexing.md).
 
-### 什么是零拷贝？
+### What Is Zero-Copy?
 
-零拷贝不是完全没有拷贝，而是**尽量避免 CPU 在内核缓冲区和用户缓冲区之间搬运数据**，从而减少 CPU 拷贝和用户态/内核态切换。
+Zero-copy does not mean that no copying happens at all. It **avoids, where possible, moving data between kernel and user buffers with the CPU**, reducing CPU copies and user/kernel mode switches.
 
-以传统 `read + write` 文件发送为例，数据通常要经历 4 次拷贝：磁盘到内核缓冲区是 DMA 拷贝，内核缓冲区到用户缓冲区是 CPU 拷贝，用户缓冲区到 Socket 缓冲区还是 CPU 拷贝，Socket 缓冲区到网卡是 DMA 拷贝。这里最浪费的是中间两次 CPU 拷贝，因为应用并没有修改数据，只是让数据到用户空间绕了一圈。
+With traditional `read + write` file transfer, data usually goes through four copies: DMA copies it from disk to a kernel buffer, the CPU copies it to a user buffer, the CPU copies it again to a socket buffer, and DMA copies it to the network card. The two CPU copies are wasteful when the application does not modify the data and merely sends it through user space.
 
-![传统 read/write 的数据拷贝路径：磁盘到内核缓冲区、内核到用户缓冲区、用户到 Socket 缓冲区、Socket 到网卡](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-traditional-read-write.png)
+![Traditional read/write data-copy path: disk to kernel buffer, kernel to user buffer, user to socket buffer, and socket to network card](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-traditional-read-write.png)
 
-零拷贝的思路就是让数据尽量留在内核路径里转发。比如 `sendfile` 可以把文件数据从 Page Cache 直接送到 Socket；如果网卡支持 SG-DMA，Socket 缓冲区里甚至可以只放描述信息，payload 由 DMA 从内核缓冲区直接送到网卡。
+Zero-copy aims to keep data in the kernel path as it is forwarded. For example, `sendfile` can send file data from the Page Cache to a socket. If the network card supports SG-DMA, the socket buffer may contain only descriptors while DMA sends the payload directly from the kernel buffer to the card.
 
-零拷贝很适合文件原样转发、大文件传输、消息队列日志发送这类场景。Kafka 消费端把日志段文件发送给消费者时，就很适合走 `FileChannel.transferTo` 这类 sendfile 路线。
+Zero-copy is useful for forwarding files unchanged, transferring large files, and sending message-queue logs. For example, Kafka can use a `sendfile`-based path such as `FileChannel.transferTo` to send log segment files to consumers.
 
-详细介绍：[零拷贝详解：mmap、sendfile 与 splice](./zero-copy.md)
+For details, see [Zero-Copy: `mmap`, `sendfile`, and `splice`](./zero-copy.md).
 
-### mmap、sendfile 和 splice 有什么区别？
+### What Are the Differences Between `mmap`, `sendfile`, and `splice`?
 
-结论：**要改数据，用 mmap；只是文件到 Socket 原样转发，用 sendfile；更一般的 fd 之间转发，再考虑 splice**。
+In short: **use `mmap` when you need to modify data, `sendfile` to forward a file unchanged to a socket, and `splice` for more general forwarding between file descriptors**.
 
-`mmap + write` 利用虚拟内存映射，把文件映射到进程地址空间。应用访问这段内存时，实际访问的是 Page Cache 对应的物理页，省掉了传统 `read` 中“内核缓冲区 -> 用户缓冲区”的那次 CPU 拷贝。不过后续 `write` 到 Socket 缓冲区通常还会有一次 CPU 拷贝。它适合需要在发送前读取、修改、解析数据的场景。
+`mmap + write` maps a file into the process's address space using virtual memory. When the application accesses the mapping, it accesses the physical pages associated with the Page Cache, avoiding the CPU copy from the kernel buffer to the user buffer that occurs with traditional `read`. A CPU copy to the socket buffer is usually still needed for the later `write`. This approach suits cases where data must be read, modified, or parsed before sending.
 
-`sendfile` 更适合“文件 -> Socket”的原样发送。数据不进入用户态，系统调用次数也更少；在支持 SG-DMA 的网卡上，还能把 CPU payload 拷贝降到 0。静态文件服务器、Kafka 日志段发送这类场景很典型。
+`sendfile` is better suited to sending a file unchanged to a socket. The data does not enter user space, and fewer system calls are needed. With a network card that supports SG-DMA, CPU payload copies can be eliminated. Static file servers and Kafka log-segment transfers are typical use cases.
 
-`splice` 借助 pipe 在内核中移动页引用，适合更一般的描述符之间转发，比如 socket 到 socket、文件到管道再到 socket。它的限制是路径里通常要有 pipe，而且文件到 socket 往往需要两次 `splice` 调用，代码复杂度和系统调用次数都要考虑。
+`splice` moves page references within the kernel using a pipe, and supports more general forwarding between descriptors, such as socket to socket or file to pipe to socket. It usually requires a pipe in the path, and forwarding from a file to a socket often takes two `splice` calls, so consider the added complexity and system calls.
 
-![传统 read/write、mmap + write、sendfile + SG-DMA 和 splice 的拷贝次数与模式切换对比](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-four-ways-comparison.png)
+![Comparison of copies and mode switches for traditional read/write, mmap + write, sendfile + SG-DMA, and splice](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/zero-copy-four-ways-comparison.png)
 
-零拷贝也有失效场景：TLS 加密、压缩、格式转换、内容过滤、水印处理等都需要应用真正处理 payload，数据就很难一直停留在内核路径里。小文件或随机访问下，映射、缺页、管道的固定成本也可能盖过收益。
+Zero-copy is less useful when the application must process the payload, such as for TLS encryption, compression, format conversion, content filtering, or watermarking. In those cases, data cannot remain entirely in the kernel path. For small files or random access, the fixed costs of mapping, page faults, or pipes may also outweigh the benefits.
 
-详细介绍：[零拷贝详解：mmap、sendfile 与 splice](./zero-copy.md)
+For details, see [Zero-Copy: `mmap`, `sendfile`, and `splice`](./zero-copy.md).
 
-## 文件系统
+## Filesystems
 
-### 文件系统主要做了什么？
+### What Does a Filesystem Do?
 
-文件系统负责把存储设备上的块组织成应用能理解的文件和目录。面试里可以从这 6 件事回答：
+A filesystem organizes blocks on a storage device into files and directories that applications can use. In an interview, you can describe six main responsibilities:
 
-![文件系统职责概览](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-system-responsibilities.webp)
+![Overview of filesystem responsibilities](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-system-responsibilities.webp)
 
-1. **命名**：用路径和文件名找到目标文件，例如 `/var/log/app.log`。
-2. **组织**：用目录树管理文件和目录，让不同文件有清晰层次。
-3. **定位**：把文件的第 N 个字节映射到底层数据块。
-4. **空间管理**：分配、释放和复用磁盘块，记录哪些块空闲、哪些块已使用。
-5. **权限保护**：记录所有者、权限、时间戳等元数据，并在访问时做检查。
-6. **缓存和恢复**：用 Page Cache 提升读写性能，用日志机制减少崩溃后的文件系统结构损坏。
+1. **Naming**: Find a file by its path and name, such as `/var/log/app.log`.
+2. **Organization**: Use a directory tree to organize files and directories.
+3. **Location**: Map the Nth byte of a file to the underlying data blocks.
+4. **Space management**: Allocate, release, and reuse disk blocks, tracking which are free and which are in use.
+5. **Access control**: Record metadata such as ownership, permissions, and timestamps, and check permissions when a file is accessed.
+6. **Caching and recovery**: Use the Page Cache to improve read and write performance and journaling to reduce filesystem damage after a crash.
 
-不是所有文件系统都对应本地磁盘。`tmpfs` 主要以内存作为后端，`procfs` 暴露内核运行状态，NFS 则把远端文件系统接入本地目录树。Linux 通过 VFS 给这些文件系统提供统一接口。
+Not every filesystem is backed by a local disk. `tmpfs` is backed mainly by memory, `procfs` exposes kernel state, and NFS connects a remote filesystem to the local directory tree. Linux provides a common interface to these filesystems through the VFS.
 
-### 文件、目录、inode、dentry 有什么关系？
+### How Are Files, Directories, Inodes, and Dentries Related?
 
-在 Linux/Unix 文件系统里，文件名通常不存放在 inode 中。
+In Linux and Unix filesystems, the filename is usually not stored in the inode.
 
-![文件名 dentry 和 inode 关系](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-inode-dentry-relation.webp)
+![Relationship between filenames, dentries, and inodes](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-inode-dentry-relation.webp)
 
-- **目录项**：保存文件名到 inode 号的映射。
-- **inode**：记录文件类型、权限、所有者、大小、时间戳、链接计数，以及数据块或 extent 的映射信息。
-- **dentry**：VFS 在内存里维护的目录项缓存，用来加速路径查找。它通常指向 inode，也可能缓存“不存在”的查找结果，也就是 negative dentry。
-- **数据块或 extent**：保存普通文件的实际内容。
+- **Directory entry**: Maps a filename to an inode number.
+- **Inode**: Records the file type, permissions, owner, size, timestamps, link count, and mapping information for data blocks or extents.
+- **Dentry**: An in-memory directory-entry cache maintained by the VFS to speed up path lookup. It usually points to an inode and can also cache a failed lookup as a negative dentry.
+- **Data blocks or extents**: Store the contents of a regular file.
 
-这也解释了为什么同一个文件可以有多个名字：多个目录项可以指向同一个 inode。`mv a.txt b.txt` 如果发生在同一个文件系统内，很多时候只是修改目录项，文件内容本身不用移动。
+This explains how one file can have multiple names: several directory entries can point to the same inode. When `mv a.txt b.txt` happens within the same filesystem, it often changes only the directory entry; the file contents do not need to move.
 
-可以用这些命令观察 inode 和元数据：
+Use these commands to inspect inodes and metadata:
 
 ```bash
 ls -li app.log
@@ -544,48 +544,48 @@ stat app.log
 df -i
 ```
 
-### open 一个文件时发生了什么？
+### What Happens When You Open a File?
 
-`open()` 不会把整个文件读进内存，它主要做路径解析和打开对象创建。
+`open()` does not read the entire file into memory. It mainly resolves the path and creates an open-file object.
 
-![路径到文件描述符](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-path-to-fd.webp)
+![From a file path to a file descriptor](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-path-to-fd.webp)
 
-大致流程是：
+The process is roughly as follows:
 
-1. 从根目录或当前目录开始解析路径，逐级查目录项和 dentry 缓存。
-2. 找到目标 inode 后，检查权限、打开标志和文件类型。
-3. 创建内核里的打开文件对象，记录当前文件偏移量、打开状态、读写标志等。
-4. 在当前进程的文件描述符表里分配一个最小可用的非负整数，也就是 fd。
+1. Resolve the path from the root or current directory, looking up directory entries and the dentry cache at each level.
+2. Find the target inode and check permissions, open flags, and file type.
+3. Create a kernel open-file object that records the current file offset, open status, and read/write flags.
+4. Allocate the lowest available non-negative integer in the current process's file descriptor table; this is the fd.
 
-fd 是进程文件描述符表里的索引，不是 inode。`dup()`、`fork()` 之后，多个 fd 可能引用同一个打开文件对象，所以它们共享文件偏移量；两个进程分别 `open()` 同一个文件，通常会得到不同的打开文件对象，各自维护偏移量。
+An fd is an index in a process's file descriptor table, not an inode. After `dup()` or `fork()`, multiple fds may refer to the same open-file object and share its file offset. Two processes that each call `open()` on the same file usually get separate open-file objects with independent offsets.
 
-### 文件在磁盘上怎么存放？
+### How Are Files Stored on Disk?
 
-文件系统会把一个分区或卷划分成很多块，再用元数据记录文件内容和块之间的关系。教材里常见三种分配方式：
+The filesystem divides a partition or volume into blocks and uses metadata to record how file contents relate to those blocks. Textbooks commonly describe three allocation methods:
 
-![文件数据块定位方式](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-block-allocation.webp)
+![File data block allocation methods](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-block-allocation.webp)
 
-- **连续分配**：文件占用一段连续块，顺序读写和随机访问都快；缺点是文件增长麻烦，容易产生外部碎片。
-- **链式分配**：每个块指向下一个块，不要求连续空间；缺点是随机访问差。
-- **索引分配**：把数据块地址集中放在索引块中，随机访问更方便；缺点是需要额外索引空间。
+- **Contiguous allocation**: A file occupies a sequence of contiguous blocks, making sequential and random access fast. File growth is difficult, and external fragmentation can occur.
+- **Linked allocation**: Each block points to the next, so the blocks need not be contiguous. Random access is slow.
+- **Indexed allocation**: Block addresses are stored in an index block, making random access easier but requiring extra space for the index.
 
-经典 ext2/ext3 使用直接块指针、一级间接、二级间接和三级间接块定位文件数据。ext4 通常使用 extent tree，一个 extent 记录一段连续物理块的逻辑起点、物理起点和长度；对连续大文件来说，它比“每个块记录一个地址”更省元数据。
+Classic ext2/ext3 use direct block pointers and single-, double-, and triple-indirect blocks to locate file data. ext4 usually uses an extent tree. Each extent records the logical start, physical start, and length of a range of contiguous physical blocks, which uses less metadata than recording an address for every block in a large contiguous file.
 
-### 硬链接和软链接有什么区别？
+### What Are the Differences Between Hard and Symbolic Links?
 
-硬链接和软链接都能让一个路径关联到另一个文件，但它们指向的对象不同。
+Both hard and symbolic links let a path refer to a file, but they point to different things.
 
-![硬链接和软链接对比](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-hardlink-symlink.webp)
+![Comparison of hard and symbolic links](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-hardlink-symlink.webp)
 
-| 对比项           | 硬链接                                               | 软链接                               |
-| ---------------- | ---------------------------------------------------- | ------------------------------------ |
-| 指向对象         | 同一个 inode                                         | 另一个路径                           |
-| 是否创建新 inode | 不创建新的目标文件 inode，只新增目录项并增加链接计数 | 软链接本身是独立文件，有自己的 inode |
-| 删除源文件后     | 只要还有硬链接，数据还在                             | 软链接可能变成悬空链接               |
-| 是否能跨文件系统 | 不能                                                 | 可以                                 |
-| 是否能链接目录   | Linux 不允许普通用户对目录创建硬链接                 | 可以                                 |
+| Comparison                         | Hard link                                                                                        | Symbolic link                                  |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| Points to                          | The same inode                                                                                   | Another path                                   |
+| Creates an inode?                  | Does not create a new inode for the target; adds a directory entry and increments the link count | The link is a separate file with its own inode |
+| After the original path is removed | The data remains as long as a hard link exists                                                   | The link may become dangling                   |
+| Can cross filesystems?             | No                                                                                               | Yes                                            |
+| Can link to a directory?           | Linux does not allow ordinary users to create hard links to directories                          | Yes                                            |
 
-可以用这几个命令做个小实验：
+Try this example:
 
 ```bash
 echo hello > a.txt
@@ -595,59 +595,59 @@ ln -s a.txt soft.txt
 ls -li a.txt hard.txt soft.txt
 ```
 
-`a.txt` 和 `hard.txt` 的 inode 号相同，`soft.txt` 的 inode 号不同。删除 `a.txt` 后，`hard.txt` 还能读到内容，`soft.txt` 会指向一个不存在的路径。
+`a.txt` and `hard.txt` have the same inode number, while `soft.txt` has a different one. After deleting `a.txt`, `hard.txt` can still access the contents, but `soft.txt` points to a path that no longer exists.
 
-### 硬链接为什么不能跨文件系统？
+### Why Can't Hard Links Cross Filesystems?
 
-硬链接指向的是 inode，而 inode 号只在当前文件系统内有意义。每个文件系统都有自己的 inode 表，另一个文件系统里的同一个 inode 号不代表同一个文件。
+A hard link points to an inode, and an inode number is meaningful only within its filesystem. Each filesystem has its own inode table, so the same inode number in another filesystem does not identify the same file.
 
-软链接保存的是路径字符串，解析时按路径重新查找目标文件，所以可以跨文件系统。
+A symbolic link stores a path string. The target is looked up by path, so the link can cross filesystems.
 
-### write 成功后数据一定落盘了吗？
+### Does a Successful `write()` Mean the Data Is on Disk?
 
-不一定。对于普通 buffered I/O，`write()` 成功通常只表示数据已经被内核接收，常见情况是进入 Page Cache 并被标记为脏页，不代表数据已经持久化到底层设备。
+No. With ordinary buffered I/O, a successful `write()` usually means only that the kernel accepted the data. It commonly enters the Page Cache and is marked as a dirty page; this does not mean the data has reached persistent storage.
 
-![文件写入到持久化路径](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-write-persistence.webp)
+![File write and persistence path](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/file-write-persistence.webp)
 
-如果应用需要更强持久性，要调用：
+For stronger durability guarantees, use:
 
-- `fsync()`：同步文件数据和关联元数据。
-- `fdatasync()`：同步文件数据，以及后续读取数据所必需的元数据，例如文件大小。
-- 带同步语义的打开标志，例如 `O_SYNC`、`O_DSYNC`。
+- `fsync()`: Synchronizes file data and associated metadata.
+- `fdatasync()`: Synchronizes file data and metadata needed to read it later, such as the file size.
+- Synchronous open flags such as `O_SYNC` and `O_DSYNC`.
 
-还要注意两个细节：
+Also keep two details in mind:
 
-1. `write()` 可能只写入部分字节，调用方要处理 partial write。
-2. 创建新文件、`rename()` 或 `unlink()` 后，如果要求掉电后目录项也可靠持久化，通常还需要对父目录 fd 调用 `fsync()`。
+1. `write()` may write only part of the data, so callers must handle partial writes.
+2. After creating a file, calling `rename()`, or calling `unlink()`, applications that need the directory entry to survive a crash usually also need to call `fsync()` on the parent directory fd.
 
-### 日志文件系统解决了什么问题？
+### What Problem Does a Journaling Filesystem Solve?
 
-文件系统一次操作常常要改多处元数据。比如创建文件时，要分配 inode、分配数据块、更新目录项、更新位图。机器在中途断电，文件系统可能停在不一致状态。
+A filesystem operation often updates several pieces of metadata. Creating a file, for example, may allocate an inode and data blocks, update a directory entry, and update a bitmap. If power fails partway through, the filesystem may be left inconsistent.
 
-日志文件系统会先把即将进行的元数据变更写入日志区域，再更新正式位置。系统恢复时扫描日志，已经完整提交但还没写回正式位置的事务可以重放，没有完整提交的事务会被丢弃。
+A journaling filesystem first records planned metadata changes in a journal, then updates their final locations. During recovery, it scans the journal and replays transactions that were fully committed but not yet written to their final locations. Incomplete transactions are discarded.
 
-以 ext4 为例，常见数据模式有三种：
+For ext4, there are three common data modes:
 
-| 模式             | 说明                                                   |
-| ---------------- | ------------------------------------------------------ |
-| `data=writeback` | 只保证元数据日志，不保证相关数据块先于元数据写入       |
-| `data=ordered`   | 默认模式，元数据进日志前，相关数据块会先写到主文件系统 |
-| `data=journal`   | 数据和元数据都先写日志，再写最终位置，写放大更明显     |
+| Mode             | Description                                                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `data=writeback` | Journals metadata only; does not ensure related data blocks are written before metadata.                              |
+| `data=ordered`   | The default mode. Related data blocks are written to the main filesystem before metadata is committed to the journal. |
+| `data=journal`   | Journals both data and metadata before writing them to their final locations, causing more write amplification.       |
 
-日志文件系统主要保证文件系统结构一致性，不等于帮应用保证所有业务数据都不丢。事务级持久性仍然要靠应用正确使用 `fsync()`、写入顺序和恢复逻辑。
+A journaling filesystem mainly protects filesystem structural consistency; it does not guarantee that an application will never lose business data. Transaction-level durability still depends on the application using `fsync()`, write ordering, and recovery logic correctly.
 
-### 提高文件系统性能的方式有哪些？
+### How Can Filesystem Performance Be Improved?
 
-可以从访问模式、缓存、元数据和硬件几方面答：
+Consider access patterns, caching, metadata, and hardware:
 
-- **尽量顺序读写**：顺序 I/O 更容易被预读、合并写和 extent 这类连续空间映射利用。
-- **利用 Page Cache**：普通文件读写会经过 Page Cache，命中时可以少访问磁盘；但缓存不是越大越好，还要看内存压力和回写压力。
-- **减少小文件和元数据操作**：大量小文件会放大 inode、目录项、权限检查、创建删除等元数据成本。
-- **控制刷盘频率**：频繁 `fsync()` 会降低吞吐，但完全不刷盘又会扩大掉电丢数据窗口，需要按业务持久性要求取舍。
-- **选择合适的文件系统和挂载参数**：ext4、XFS、Btrfs 等实现不同，日志模式、atime、barrier 等参数也会影响性能和可靠性。
-- **使用更合适的硬件**：SSD、NVMe、RAID、磁盘缓存策略都会影响读写延迟和吞吐。
+- **Prefer sequential reads and writes**: Sequential I/O benefits from read-ahead, write coalescing, and contiguous mappings such as extents.
+- **Use the Page Cache**: Ordinary file I/O passes through the Page Cache, and cache hits can reduce disk access. More cache is not always better; consider memory pressure and writeback load.
+- **Reduce small files and metadata operations**: Large numbers of small files increase the cost of inodes, directory entries, permission checks, creation, and deletion.
+- **Control flush frequency**: Frequent `fsync()` calls reduce throughput, but never flushing increases the amount of data at risk during a power failure. Balance this against the application's durability requirements.
+- **Choose a suitable filesystem and mount options**: ext4, XFS, and Btrfs differ, and options related to journaling, `atime`, and barriers can affect performance and reliability.
+- **Use suitable hardware**: SSDs, NVMe, RAID, and disk-cache policies all affect latency and throughput.
 
-排查时常看这些命令：
+Useful commands for troubleshooting include:
 
 ```bash
 df -h
@@ -656,39 +656,39 @@ lsof +L1
 iostat -x 1
 ```
 
-`df` 很满但 `du` 找不到大文件时，优先查被删除但仍被进程打开的文件；小文件特别多时，`df -i` 可能比 `df -h` 更早暴露问题。
+If `df` reports a full filesystem but `du` cannot find large files, check for deleted files that are still open by a process. If there are many small files, `df -i` may reveal the problem before `df -h` does.
 
-详细介绍：[操作系统文件系统详解：inode、VFS、Page Cache 与日志机制](./file-system.md)
+For details, see [Operating System Filesystems: Inodes, VFS, Page Cache, and Journaling](./file-system.md).
 
-### 常见的磁盘调度算法有哪些？
+### What Are the Common Disk-Scheduling Algorithms?
 
-下面介绍的 SCAN、SSTF、LOOK 等算法主要面向机械硬盘。机械硬盘的一次读写由寻道时间、旋转延迟和传输时间组成，调度器可以调整请求顺序，减少磁头移动和等待时间。
+The SCAN, SSTF, and LOOK algorithms described below are mainly for hard disk drives. An HDD operation involves seek time, rotational latency, and transfer time. A scheduler can reorder requests to reduce head movement and waiting time.
 
-常见的磁盘调度算法有下面这 6 种（其他还有很多磁盘调度算法都是基于这些算法改进得来的）：
+Six common disk-scheduling algorithms are listed below. Many others are variations on these:
 
-![常见的磁盘调度算法](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/disk-scheduling-algorithms.png)
+![Common disk-scheduling algorithms](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/disk-scheduling-algorithms.png)
 
-1. **先来先服务算法（First-Come First-Served，FCFS）**：按照请求到达磁盘调度器的顺序处理，实现简单，但没有考虑磁头移动的路径和方向，平均寻道时间可能较长。它不会把某个请求无限期跳过，因此通常没有算法意义上的饥饿问题，不过排在长请求后面的请求可能等待较久。
-2. **最短寻道时间优先算法（Shortest Seek Time First，SSTF）**：也被称为最佳服务优先（Shortest Service Time First，SSTF）算法，优先选择距离当前磁头位置最近的请求进行服务。SSTF 算法能够最小化磁头的寻道时间，但容易出现饥饿问题，即磁头附近的请求不断被服务，远离磁头的请求长时间得不到响应。实际应用中，需要优化一下该算法的实现，避免出现饥饿问题。
-3. **扫描算法（SCAN）**：也被称为电梯（Elevator）算法，基本思想和电梯非常类似。磁头沿着一个方向扫描磁盘，如果经过的磁道有请求就处理，直到到达磁盘的边界，然后改变移动方向，依此往复。SCAN 算法能够保证所有的请求得到服务，解决了饥饿问题。但是，如果磁头从一个方向刚扫描完，请求才到的话，这个请求就需要等到磁头从相反方向过来之后才能得到处理。
-4. **循环扫描算法（Circular Scan，C-SCAN）**：SCAN 算法的变体，只在磁盘的一侧进行扫描，并且只按照一个方向扫描，直到到达磁盘边界，然后回到磁盘起点，重新开始循环。
-5. **边扫描边观察算法（LOOK）**：SCAN 算法中磁头到了磁盘的边界才改变移动方向，这样可能会做很多无用功，因为磁头移动方向上可能已经没有请求需要处理了。LOOK 算法对 SCAN 算法进行了改进，如果磁头移动方向上已经没有别的请求，就可以立即改变磁头移动方向，依此往复。也就是边扫描边观察指定方向上还有无请求，因此叫 LOOK。
-6. **均衡循环扫描算法（C-LOOK）**：C-SCAN 只有到达磁盘边界时才能改变磁头移动方向，并且磁头返回时也需要返回到磁盘起点，这样可能会做很多无用功。C-LOOK 算法对 C-SCAN 算法进行了改进，如果磁头移动的方向上已经没有磁道访问请求了，就可以立即让磁头返回，并且磁头只需要返回到有磁道访问请求的位置即可。
+1. **First-Come, First-Served (FCFS)**: Processes requests in the order they arrive. It is simple but ignores the head's path and direction, so average seek time may be high. It does not indefinitely skip a request, so algorithmic starvation is generally not an issue, though requests behind a long queue may wait a while.
+2. **Shortest Seek Time First (SSTF)**: Selects the request closest to the current head position. It can reduce seek time but may starve requests far from the head if nearby requests keep arriving. Practical implementations need to guard against starvation.
+3. **SCAN**: Also called the elevator algorithm. The head moves in one direction, servicing requests along the way until it reaches the end of the disk, then reverses direction. It prevents starvation, but a request that arrives just after the head passes may wait until the next sweep.
+4. **Circular SCAN (C-SCAN)**: A variant of SCAN that services requests in only one direction. At the disk boundary, the head returns to the beginning and starts another sweep.
+5. **LOOK**: SCAN reverses direction at the disk boundary, which can waste movement if there are no requests that far out. LOOK reverses as soon as there are no more requests in the current direction.
+6. **Circular LOOK (C-LOOK)**: C-SCAN travels to the disk boundary before returning to the beginning. C-LOOK instead reverses as soon as there are no more requests in the current direction and returns only as far as the next pending request.
 
-举个简单例子：假设磁头当前在 50 号磁道，请求序列是 82、170、43、140、24。FCFS 会按请求到达顺序处理，磁头移动路径可能很长；SSTF 会先找离 50 最近的 43，再逐步选择最近请求，平均寻道距离通常更短，但远处请求可能一直被推迟；SCAN/LOOK 则会固定一个扫描方向，沿途处理请求，更像电梯上下运行，公平性更好。
+For example, suppose the head is currently at track 50 and the request sequence is 82, 170, 43, 140, and 24. FCFS serves requests in arrival order, which may require a long head movement. SSTF first serves 43, the closest request, and then repeatedly selects the nearest one; this usually shortens average seek distance but may keep delaying distant requests. SCAN and LOOK follow a fixed direction and service requests along the way, much like an elevator, providing better fairness.
 
-SSD 和 NVMe 设备没有机械寻道，不能直接套用上面的磁头调度模型。不过，现代 Linux 块层仍可能合并、排序请求，并通过 blk-mq 和 I/O 调度器处理吞吐、公平性和延迟目标；具体策略取决于设备、内核版本和所选调度器。
+SSDs and NVMe devices have no mechanical seek time, so the head-scheduling models above do not directly apply. However, the modern Linux block layer may still merge and reorder requests and use blk-mq and I/O schedulers to manage throughput, fairness, and latency. The exact behavior depends on the device, kernel version, and selected scheduler.
 
-## 参考
+## References
 
-- 《计算机操作系统—汤小丹》第四版
-- 《深入理解计算机系统》
-- 《重学操作系统》
-- 《现代操作系统原理与实现》
-- 王道考研操作系统知识点整理：<https://wizardforcel.gitbooks.io/wangdaokaoyan-os/content/13.html>
-- 内存管理之伙伴系统与 SLAB：<https://blog.csdn.net/qq_44272681/article/details/124199068>
-- 为什么 Linux 需要虚拟内存：<https://draveness.me/whys-the-design-os-virtual-memory/>
-- 程序员的自我修养（七）：内存缺页错误：<https://liam.page/2017/09/01/page-fault/>
-- 虚拟内存的那点事儿：<https://juejin.cn/post/6844903507594575886>
+- _Operating System Concepts_, 4th edition, by Tang Xiaodan
+- _Computer Systems: A Programmer's Perspective_
+- _Relearning Operating Systems_
+- _Principles and Implementation of Modern Operating Systems_
+- Wangdao operating systems study notes: <https://wizardforcel.gitbooks.io/wangdaokaoyan-os/content/13.html>
+- Buddy system and SLAB memory management: <https://blog.csdn.net/qq_44272681/article/details/124199068>
+- Why Linux needs virtual memory: <https://draveness.me/whys-the-design-os-virtual-memory/>
+- A Programmer's Self-Cultivation, Part 7: Page faults: <https://liam.page/2017/09/01/page-fault/>
+- Notes on virtual memory: <https://juejin.cn/post/6844903507594575886>
 
 <!-- @include: @article-footer.snippet.md -->

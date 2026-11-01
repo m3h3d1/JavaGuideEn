@@ -1,316 +1,271 @@
 ---
-title: Linux 基础知识总结
-description: 简单介绍一下 Java 程序员必知的 Linux 的一些概念以及常见命令。
-category: 计算机基础
+title: "Linux Fundamentals: History, Filesystems, Commands, and Environment Variables"
+description: A Linux introduction covering its history and distributions, filesystems and inodes, links, file types, directory tree, common commands, permissions, users and groups, system status, networking, and environment variables.
+category: Computer Science Fundamentals
 tag:
-  - 操作系统
+  - Operating Systems
   - Linux
 head:
   - - meta
     - name: keywords
-      content: Linux,基础命令,发行版,文件系统,权限,进程,网络
+      content: Linux,Linux commands,Linux filesystem,inode,hard link,symbolic link,Linux permissions,Linux directory tree,environment variables,operating system interview questions
 ---
 
-简单介绍一下 Java 程序员必知的 Linux 的一些概念以及常见命令。
+## A First Look at Linux
 
-## 初探 Linux
+Linux is a free and open-source operating system kernel first released by Linus Torvalds in 1991. It is used in servers, embedded systems, mobile devices, and desktop computers. Strictly speaking, Linux is the kernel; the complete operating system combines it with user-space tools, libraries, and applications.
 
-### Linux 简介
+![Linux's family tree](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/linux-father.png)
 
-通过以下三点可以概括 Linux 到底是什么：
+### The Origins of Linux
 
-- **类 Unix 系统**：Linux 是一种自由、开放源码的类似 Unix 的操作系统。
-- **Linux 本质是指 Linux 内核**：严格来讲，Linux 这个词本身只表示 Linux 内核，单独的 Linux 内核并不能成为一个可以正常工作的操作系统。所以，就有了各种 Linux 发行版。
-- **Linux 之父（林纳斯·本纳第克特·托瓦兹 Linus Benedict Torvalds）**：一个编程领域的传奇式人物，真大佬！我辈崇拜敬仰之楷模。他是 **Linux 内核** 的最早作者，随后发起了这个开源项目，担任 Linux 内核的首要架构师。他还发起了 Git 这个开源项目，并为主要的开发者。
+In 1989, Linus Torvalds began 11 months of compulsory military service in Finland, serving as a second lieutenant in the computer department and working on ballistic calculations. During this time, he bought a textbook by Andrew S. Tanenbaum along with MINIX source code and began studying operating systems. After leaving military service in 1990, he returned to university and began working with Unix.
 
-![Linux 创始人 Linus Torvalds](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/linux-father.png)
+> **MINIX** is a small Unix-like operating system created by Professor Tanenbaum for teaching. It uses a microkernel design and inspired the creation of the Linux kernel.
 
-### Linux 诞生
+In 1991, Torvalds released the Linux kernel as open source. Linux uses a friendly penguin as its mascot.
 
-1989 年，Linus Torvalds 进入芬兰陆军新地区旅，服 11 个月的国家义务兵役，军衔为少尉，主要服务于计算机部门，任务是弹道计算。服役期间，购买了安德鲁·斯图尔特·塔能鲍姆所著的教科书及 minix 源代码，开始研究操作系统。1990 年，他退伍后回到大学，开始接触 Unix。
+![Linux logo](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/Linux-Logo.png)
 
-> **Minix** 是一个迷你版本的类 Unix 操作系统，由塔能鲍姆教授为了教学之用而创作，采用微核心设计。它启发了 Linux 内核的创作。
+### Common Linux Distributions
 
-1991 年，Linus Torvalds 开源了 Linux 内核。Linux 以一只可爱的企鹅作为标志，象征着敢作敢为、热爱生活。
+![Linux desktop and command-line interfaces](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/linux.png)
 
-![Linux 操作系统 Logo](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/Linux-Logo.png)
+Torvalds released the Linux kernel, not a complete operating system. Organizations and vendors package the kernel with software, documentation, an installer, and tools for configuration and system management to create Linux distributions.
 
-### 常见的 Linux 发行版本
+> The kernel primarily manages memory, hardware devices, filesystems, and processes.
 
-![Linux 操作系统桌面与命令行界面](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/linux.png)
+Distributions are often grouped into two broad categories:
 
-Linus Torvalds 开源的只是 Linux 内核，我们上面也提到了操作系统内核的作用。一些组织或厂商将 Linux 内核与各种软件和文档包装起来，并提供系统安装界面和系统配置、设定与管理工具，就构成了 Linux 的发行版本。
+- **Vendor-maintained distributions:** For example, Red Hat Enterprise Linux (RHEL), maintained and supported by Red Hat.
+- **Community-maintained distributions:** For example, CentOS, based on RHEL, and Ubuntu, based on Debian.
 
-> 内核主要负责系统的内存管理，硬件设备的管理，文件系统的管理以及应用程序的管理。
+CentOS Linux 8 stopped receiving maintenance at the end of 2021, and CentOS Linux 7 reached end of life in June 2024. CentOS Stream is now a continuously delivered upstream branch of RHEL, with a different role from the former stable RHEL-compatible rebuild.
 
-Linux 的发行版本可以大体分为两类：
+For a new learning environment:
 
-- **商业公司维护的发行版本**：比如 Red Hat 公司维护支持的 Red Hat Enterprise Linux（RHEL）。
-- **社区组织维护的发行版本**：比如基于 Red Hat Enterprise Linux（RHEL）的 CentOS、基于 Debian 的 Ubuntu。
+- For enterprise server environments and the RHEL ecosystem, consider Rocky Linux or AlmaLinux.
+- For an accessible system with extensive learning resources and common desktop and server use, consider Ubuntu LTS.
+- For a stable, lightweight community distribution, consider Debian.
 
-对于初学者学习 Linux，不建议再无条件选择 CentOS。CentOS Linux 8 已在 2021 年底停止维护，CentOS Linux 7 也已在 2024 年 6 月结束生命周期；现在的 CentOS Stream 是 RHEL 的上游持续交付分支，定位和过去“稳定的 RHEL 兼容重构版”不一样。
+If your organization still uses CentOS, learn the version that matches its environment. For a new installation, choose a distribution that is still maintained.
 
-更稳妥的选择是：
+## The Linux Filesystem
 
-- 想学习企业服务器环境、RHEL 生态：优先选择 Rocky Linux 或 AlmaLinux。
-- 想快速上手、资料多、桌面和服务器都常见：选择 Ubuntu LTS。
-- 想要稳定、轻量、贴近社区发行版：选择 Debian。
+### Filesystem Overview
 
-如果你的公司环境仍在使用 CentOS，可以按实际环境学习对应版本；但新装学习环境时，更推荐选择仍在维护的发行版。
+Linux presents many resources as files, including network interfaces, disk drives, printers, I/O devices, ordinary files, and directories. This “everything is a file” idea comes from Unix, which abstracts resources as files so they can be managed through a common interface. For example, network interfaces and device files can be accessed through file-like operations.
 
-## Linux 文件系统
+This file-centered design gives Linux a flexible and extensible way to manage different resources.
 
-### Linux 文件系统简介
+### Inodes
 
-在 Linux 操作系统中，一切被操作系统管理的资源，如网络接口卡、磁盘驱动器、打印机、输入输出设备、普通文件或目录等，都被视为文件。这是 Linux 系统中一个重要的概念，即“一切都是文件”。
+An inode is fundamental to Linux/Unix filesystems. These points summarize what it does:
 
-这种概念源自 UNIX 哲学，即将所有资源都抽象为文件的方式来进行管理和访问。Linux 的文件系统也借鉴了 UNIX 文件系统的设计理念。这种设计使得 Linux 系统可以通过统一的文件接口来管理和操作不同类型的资源，从而实现了一种统一的文件操作方式。例如，可以使用类似于读写文件的方式来对待网络接口、磁盘驱动器、设备文件等，使得操作和管理这些资源更加统一和简便。
+1. A disk traditionally exposes sectors as its smallest physical storage units; operating systems and filesystems usually read and write blocks composed of multiple sectors. A common traditional sector size is 512 bytes, while modern disks may use 4 KB physical sectors (for example, 512e or 4Kn). Filesystem blocks are also commonly 4 KB, but sectors and blocks are not the same thing. File metadata such as permissions, size, modification time, and data-block or extent mappings is usually recorded in an inode. An inode number is unique only within its filesystem; multiple hard-link directory entries can refer to the same inode. SSDs do not have traditional mechanical-disk physical sectors, but still expose logical block interfaces.
+2. On filesystems such as ext2, ext3, and ext4, the on-disk inode table is sized when the filesystem is created. Other Linux filesystems may organize metadata differently.
+3. An inode can be found by its number without searching through every file's contents. A path still needs directory lookup; an inode number is not a globally stable file identifier.
+4. ext2/ext3/ext4 set the available inode count when the filesystem is created. If the inodes are exhausted, new files cannot be created even if data blocks remain. Not every Linux filesystem uses a fixed inode table, so consider the filesystem implementation when diagnosing this.
+5. Use `stat` to inspect an inode number, file type, permissions, owner, size, and modification time.
 
-这种文件为中心的设计理念为 Linux 系统带来了灵活性和可扩展性，使得 Linux 成为一种强大的操作系统。同时，这也是 Linux 系统的一大特点，深受广大用户和开发者的喜欢和推崇。
+In short, an inode records information such as the file's blocks, owner, creation time, permissions, and size.
 
-### inode 介绍
+The distinction between inode and block is:
 
-inode 是 Linux/Unix 文件系统的基础。那 inode 到底是什么？有什么作用呢？
+- **Inode:** Records file attributes and metadata; inspect it with `stat`.
+- **Block/extent:** Stores file content or describes a contiguous range of data blocks. Allocation and sharing depend on the filesystem; a block does not always belong to exactly one file.
 
-通过以下五点可以概括 inode 到底是什么：
+![Use stat to inspect file inode information](./images/文件inode信息.png)
 
-1. 硬盘以扇区（Sector）为最小物理存储单位，而操作系统和文件系统通常以块（Block）为单位进行读写，块由多个扇区组成。传统磁盘扇区常见大小是 512 字节，现代磁盘也常见 4 KB 物理扇区（例如 512e/4Kn 设备）；文件系统块大小也常见 4 KB，但两者不是一个概念。文件元信息（例如权限、大小、修改时间以及数据块或 extent 的映射）通常记录在 inode（索引节点）中。inode 号只保证在同一个文件系统内唯一，多个硬链接目录项可以指向同一个 inode。固态硬盘（SSD）虽然没有传统机械磁盘意义上的物理扇区，但仍然对外暴露逻辑块接口。
-2. 在 ext2/ext3/ext4 这类文件系统中，磁盘上的 inode 记录大小会在创建文件系统时确定；其他 Linux 文件系统的元数据布局可能不同。
-3. inode 的访问速度非常快，因为系统可以直接通过 inode 号码定位到文件的元数据信息，无需遍历整个文件系统。
-4. ext2/ext3/ext4 等文件系统会在创建文件系统时确定可用 inode 数量，inode 用完后，即使还有数据块空间也无法创建新文件。并非所有 Linux 文件系统都采用固定 inode 表，排查时要结合具体文件系统实现。
-5. 可以使用 `stat` 命令查看文件的 inode 信息，包括文件的 inode 号、文件类型、权限、所有者、文件大小、修改时间。
+Linux/Unix filesystems use inodes to identify filesystem objects. Renaming a file within the same filesystem usually changes a directory entry without changing its inode number. After the last hard link is removed and no process has the file open, the inode can be freed and its number reused later.
 
-简单来说：inode 就是用来维护某个文件被分成几块、每一块在的地址、文件拥有者、创建时间、权限、大小等信息。
+Because users and applications usually work with paths rather than inode numbers, inode details are accessed through filesystem interfaces and system commands.
 
-再总结一下 inode 和 block：
+### Hard Links and Symbolic Links
 
-- **inode**：记录文件的属性信息，可以使用 `stat` 命令查看 inode 信息。
-- **block/extent**：用于保存文件内容或描述连续的数据块范围。具体分配和共享方式取决于文件系统，不能概括成“一个块永远只属于一个文件”。
+Hard links and symbolic links work differently on Linux and Unix-like systems. A hard link is another directory entry pointing to the same inode. A symbolic link is a special file with its own inode that stores a target path.
 
-![stat 命令查看文件 inode 信息](./images/文件inode信息.png)
+**1. Hard links**
 
-Linux/Unix 文件系统使用 inode 标识文件系统对象。同一文件系统内重命名文件时，通常只是修改目录项，inode 号不会改变；删除最后一个硬链接后，如果也没有进程继续打开该文件，inode 会被释放，其编号以后可能被复用。通过路径访问文件时仍要先解析目录项，不能绕过路径查找直接把 inode 号当成稳定的全局文件标识。
+- A hard link has the same inode number as the original name; both names are equal from the filesystem's perspective.
+- Removing one name does not affect the other. File data is removed only after the original name and all hard links are deleted and no open references remain.
+- Ordinary hard links cannot be created for directories or nonexistent files, and they cannot cross filesystem boundaries.
+- Use `ln` to create a hard link.
 
-不过，使用 inode 号码也使得文件系统在用户和应用程序层面更加抽象和复杂，需要通过系统命令或文件系统接口来访问和管理文件的 inode 信息。
+**2. Symbolic links (symlinks)**
 
-### 硬链接和软链接
+- A symlink has its own inode and points to a path.
+- If the target is removed, the symlink remains but points to an invalid path.
+- A symlink is similar to a shortcut in Windows.
+- Symlinks can point to directories and nonexistent paths, and can cross filesystems.
+- Use `ln -s` to create a symlink.
 
-在 Linux/类 Unix 系统上，硬链接和符号链接的实现并不相同：硬链接是另一个指向同一 inode 的目录项，符号链接则是具有独立 inode 的特殊文件。
+**Why can't a hard link cross a filesystem boundary?** Each filesystem has its own inode namespace. A directory entry can refer only to an inode in its own filesystem, so it cannot directly point to an inode in another filesystem. This is not merely a risk of inode-number collisions.
 
-**1、硬链接（Hard Link）**
+### Linux File Types
 
-- 在 Linux/类 Unix 文件系统中，每个文件和目录都有一个唯一的索引节点（inode）号，用来标识该文件或目录。硬链接通过 inode 节点号建立连接，硬链接和源文件的 inode 节点号相同，两者对文件系统来说是完全平等的（可以看作是互为硬链接，源头是同一份文件），删除其中任何一个对另外一个没有影响，可以通过给文件设置硬链接文件来防止重要文件被误删。
-- 只有删除了源文件和所有对应的硬链接文件，该文件才会被真正删除。
-- 硬链接具有一些限制，不能对目录以及不存在的文件创建硬链接，并且，硬链接也不能跨越文件系统。
-- `ln` 命令用于创建硬链接。
+Important Linux file types include regular files, directories, links, device files, pipes, and sockets.
 
-**2、软链接（Symbolic Link 或 Symlink）**
+- **Regular file (`-`):** Stores data such as images, audio, PDFs, text, video, or source code. Users can view, change, or delete it according to permissions.
+- **Directory (`d`):** A file that organizes filenames and subdirectories. Opening a directory means opening its directory file.
+- **Symbolic link (`l`):** Stores a target path. The kernel resolves that path when the link is accessed.
+- **Character device (`c`):** Provides access to character devices such as a keyboard.
+- **Block device (`b`):** Provides access to block devices such as disks.
+- **Pipe (`p`):** A special file used for interprocess communication.
+- **Socket (`s`):** Used for network communication between processes and for local IPC.
 
-- 软链接和源文件的 inode 节点号不同，而是指向一个文件路径。
-- 源文件删除后，软链接依然存在，但是指向的是一个无效的文件路径。
-- 软链接类似于 Windows 系统中的快捷方式。
-- 不同于硬链接，可以对目录或者不存在的文件创建软链接，并且，软链接可以跨越文件系统。
-- `ln -s` 命令用于创建软链接。
-
-**硬链接为什么不能跨文件系统？**
-
-我们之前提到过，硬链接是通过 inode 节点号建立连接的，而硬链接和源文件共享相同的 inode 节点号。
-
-每个文件系统都有独立的 inode 命名空间，目录项只能引用本文件系统内的 inode，无法直接指向另一个文件系统中的 inode。因此，硬链接不能跨越文件系统边界，这不是简单的 inode 号冲突问题。
-
-### Linux 文件类型
-
-Linux 支持很多文件类型，其中非常重要的文件类型有：**普通文件**、**目录文件**、**链接文件**、**设备文件**、**管道文件**、**Socket 套接字文件** 等。
-
-- **普通文件（-）**：用于存储信息和数据，Linux 用户可以根据访问权限对普通文件进行查看、更改和删除。比如：图片、声音、PDF、text、视频、源代码等等。
-- **目录文件（d，directory file）**：目录也是文件的一种，用于表示和管理系统中的文件，目录文件中包含一些文件名和子目录名。打开目录事实上就是打开目录文件。
-- **符号链接文件（l，symbolic link）**：保存目标路径字符串。访问符号链接时，内核会按这个路径重新解析目标。
-- **字符设备（c，char）**：用来访问字符设备比如键盘。
-- **设备文件（b，block）**：用来访问块设备比如硬盘、软盘。
-- **管道文件（p，pipe）**：一种特殊类型的文件，用于进程之间的通信。
-- **套接字文件（s，socket）**：用于进程间的网络通信，也可以用于本机之间的非网络通信。
-
-每种文件类型都有不同的用途和属性，可以通过命令如 `ls`、`file` 等来查看文件的类型信息。
+Use commands such as `ls` and `file` to inspect file types:
 
 ```bash
-# 普通文件（-）
+# Regular file (-)
 -rw-r--r--  1 user  group  1024 Apr 14 10:00 file.txt
 
-# 目录文件（d，directory file）
+# Directory (d)
 drwxr-xr-x  2 user  group  4096 Apr 14 10:00 directory/
 
-# 套接字文件(s，socket)
-srwxrwxrwx  1 user  group    0 Apr 14 10:00 socket
+# Socket (s)
+srwxrwxrwx  1 user  group     0 Apr 14 10:00 socket
 ```
 
-### Linux 目录树
+### The Linux Directory Tree
 
-Linux 使用一种称为目录树的层次结构来组织文件和目录。目录树由根目录（/）作为起始点，向下延伸，形成一系列的目录和子目录。每个目录可以包含文件和其他子目录。结构层次鲜明，就像一棵倒立的树。
+Linux organizes files and directories in a hierarchy called the directory tree. It starts at the root directory `/` and branches into directories and subdirectories. A directory can contain files and more directories.
 
-![Linux的目录结构](./images/Linux目录树.png)
+![Linux directory tree](./images/Linux目录树.png)
 
-**常见目录说明：**
+Common directories include:
 
-- **/bin：** 存放二进制可执行文件（ls、cat、mkdir 等），常用命令一般都在这里。
-- **/etc：** 存放系统管理和配置文件。
-- **/home：** 存放所有用户文件的根目录，是用户主目录的基点，比如用户 user 的主目录就是 /home/user，可以用 ~user 表示。
-- **/usr：** 用于存放系统应用程序。
-- **/opt：** 额外安装的可选应用程序包所放置的位置。一般情况下，我们可以把 tomcat 等都安装到这里。
-- **/proc：** 虚拟文件系统目录，是系统内存的映射。可直接访问这个目录来获取系统信息。
-- **/root：** 超级用户（系统管理员）的主目录（特权阶级^o^）。
-- **/sbin：** 存放二进制可执行文件，只有 root 才能访问。这里存放的是系统管理员使用的系统级别的管理命令和程序。如 ifconfig 等。
-- **/dev：** 用于存放设备文件。
-- **/mnt：** 系统管理员安装临时文件系统的安装点，系统提供这个目录是让用户临时挂载其他的文件系统。
-- **/boot：** 存放用于系统引导时使用的各种文件。
-- **/lib 和 /lib64：** 存放着和系统运行相关的库文件。
-- **/tmp：** 用于存放各种临时文件，是公用的临时文件存储点。
-- **/var：** 用于存放运行时需要改变数据的文件，也是某些大文件的溢出区，比方说各种服务的日志文件（系统启动日志等）等。
-- **/lost+found：** 这个目录平时是空的，系统非正常关机而留下“无家可归”的文件（Windows 下叫什么 .chk）就在这里。
+- **`/bin`:** Essential executable commands such as `ls`, `cat`, and `mkdir`.
+- **`/etc`:** System administration and configuration files.
+- **`/home`:** Home directories for ordinary users. For example, user `user` may have `/home/user`, also addressable as `~user`.
+- **`/usr`:** User-space applications and related files.
+- **`/opt`:** Optional, separately installed application packages; for example, Tomcat may be installed here.
+- **`/proc`:** A virtual filesystem that exposes kernel and process information.
+- **`/root`:** The root administrator's home directory.
+- **`/sbin`:** System administration programs, traditionally intended mainly for root, such as `ifconfig`.
+- **`/dev`:** Device files.
+- **`/mnt`:** A conventional temporary mount point for filesystems.
+- **`/boot`:** Files used to boot the system.
+- **`/lib` and `/lib64`:** Libraries needed by system programs.
+- **`/tmp`:** Temporary files, commonly shared by users.
+- **`/var`:** Variable data such as service logs and other runtime files.
+- **`/lost+found`:** On some filesystems, recovered files found after an unclean shutdown.
 
-## Linux 常用命令
+## Common Linux Commands
 
-下面只是给出了一些比较常用的命令。
+This section lists commonly used commands.
 
-推荐一个 Linux 命令快查网站，非常不错，大家如果遗忘某些命令或者对某些命令不理解都可以在这里得到解决。Linux 命令在线速查手册：<https://wangchujiang.com/linux-command/>。
+For quick command lookup, see [Linux Command](https://wangchujiang.com/linux-command/).
 
-![Linux 命令快查](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/linux-command-search.png)
+![Linux command reference](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/linux-command-search.png)
 
-另外，[shell.how](https://www.shell.how/) 这个网站可以用来解释常见命令的意思，对你学习 Linux 基本命令以及其他常用命令（如 Git、NPM）。
+[shell.how](https://www.shell.how/) can explain common commands, including Linux commands, Git, and NPM.
 
-![shell.how 使用示例](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/shell-now.png)
+![Example of shell.how](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/shell-now.png)
 
-### 目录切换
+### Changing Directories
 
-- `cd usr`：切换到该目录下 usr 目录。
-- `cd ..（或 cd../）`：切换到上一层目录。
-- `cd /`：切换到系统根目录。
-- `cd ~`：切换到用户主目录。
-- **`cd -`：** 切换到上一个操作所在目录。
+- `cd usr`: Enter the `usr` directory under the current directory.
+- `cd ..` (or `cd ../`): Move to the parent directory.
+- `cd /`: Go to the filesystem root.
+- `cd ~`: Go to the current user's home directory.
+- `cd -`: Return to the previous working directory.
 
-### 目录操作
+### Directory Operations
 
-- `ls`：显示目录中的文件和子目录的列表。例如：`ls /home`，显示 `/home` 目录下的文件和子目录列表。
-- `ll`：`ll` 是 `ls -l` 的别名，ll 命令可以看到该目录下的所有目录和文件的详细信息。
-- `mkdir [选项] 目录名`：创建新目录（增）。例如：`mkdir -m 755 my_directory`，创建一个名为 `my_directory` 的新目录，并将其权限设置为 755，其中所有者拥有读、写、执行权限，所属组和其他用户只有读、执行权限，无法修改目录内容（如创建或删除文件）。如果希望所有用户（包括所属组和其他用户）对目录都拥有读、写、执行权限，则应设置权限为 `777`，即：`mkdir -m 777 my_directory`。
-- `find [路径] [表达式]`：在指定目录及其子目录中搜索文件或目录（查），非常强大灵活。例如：① 列出当前目录及子目录下所有文件和文件夹：`find .`；② 在 `/home` 目录下查找以 `.txt` 结尾的文件名：`find /home -name "*.txt"`，忽略大小写：`find /home -iname "*.txt"`；③ 当前目录及子目录下查找所有以 `.txt` 和 `.pdf` 结尾的文件：`find . \( -name "*.txt" -o -name "*.pdf" \)` 或 `find . -name "*.txt" -o -name "*.pdf"`。
-- `pwd`：显示当前工作目录的路径。
-- `rmdir [选项] 目录名`：删除空目录（删）。例如：`rmdir -p my_directory`，删除名为 `my_directory` 的空目录，并且会递归删除 `my_directory` 的空父目录，直到遇到非空目录或根目录。
-- `rm [选项] 文件或目录名`：删除文件/目录（删）。例如：`rm -r my_directory`，删除名为 `my_directory` 的目录，`-r`（recursive，递归）表示会递归删除指定目录及其所有子目录和文件。
-- `cp [选项] 源文件/目录 目标文件/目录`：复制文件或目录（移）。例如：`cp file.txt /home/file.txt`，将 `file.txt` 文件复制到 `/home` 目录下，并重命名为 `file.txt`。`cp -r source destination`，将 `source` 目录及其下的所有子目录和文件复制到 `destination` 目录下，并保留源文件的属性和目录结构。
-- `mv [选项] 源文件/目录 目标文件/目录`：移动文件或目录（移），也可以用于重命名文件或目录。例如：`mv file.txt /home/file.txt`，将 `file.txt` 文件移动到 `/home` 目录下，并重命名为 `file.txt`。`mv` 与 `cp` 的结果不同，`mv` 好像文件“搬家”，文件个数并未增加。而 `cp` 对文件进行复制，文件个数增加了。
+- `ls`: List files and subdirectories, for example `ls /home`.
+- `ll`: Common alias for `ls -l`; shows detailed information about files and directories.
+- `mkdir [options] directory`: Create a directory. For example, `mkdir -m 755 my_directory` creates a directory where the owner can read, write, and enter it, while the group and others can read and enter it but cannot create or delete entries. Use mode `777` if all users should have read, write, and execute permissions: `mkdir -m 777 my_directory`.
+- `find [path] [expression]`: Search a directory tree. Examples: `find .` lists entries; `find /home -name "*.txt"` finds names ending in `.txt`; `find /home -iname "*.txt"` ignores case; `find . \( -name "*.txt" -o -name "*.pdf" \)` searches for either extension.
+- `pwd`: Print the current working directory.
+- `rmdir [options] directory`: Remove an empty directory. `rmdir -p my_directory` also removes empty parent directories until it reaches a nonempty directory or the root.
+- `rm [options] file-or-directory`: Remove a file or directory. `rm -r my_directory` recursively removes the directory and its contents.
+- `cp [options] source destination`: Copy a file or directory. `cp file.txt /home/file.txt` copies a file; `cp -r source destination` recursively copies a directory tree.
+- `mv [options] source destination`: Move or rename a file or directory. Unlike `cp`, moving does not create another copy of the file.
 
-### 文件操作
+### File Operations
 
-像 `mv`、`cp`、`rm` 等文件和目录都适用的命令，这里就不重复列举了。
+Commands such as `mv`, `cp`, and `rm` apply to files and directories and are listed above.
 
-- `touch [选项] 文件名..`：创建新文件或更新已存在文件（增）。例如：`touch file1.txt file2.txt file3.txt`，创建 3 个文件。
-- `ln [选项] <源文件> <硬链接/软链接文件>`：创建硬链接/软链接。例如：`ln -s file.txt file_link`，创建名为 `file_link` 的软链接，指向 `file.txt` 文件。`-s` 选项代表的就是创建软链接，s 即 symbolic（软链接又名符号链接）。
-- `cat/more/less/tail 文件名`：文件的查看（查）。命令 `tail -f 文件` 可以对某个文件进行动态监控，例如 Tomcat 的日志文件，会随着程序的运行，日志会变化，可以使用 `tail -f catalina-2016-11-11.log` 监控文件的变化。
-- `vim 文件名`：修改文件的内容（改）。vim 编辑器是 Linux 中的强大组件，是 vi 编辑器的加强版，vim 编辑器的命令和快捷方式有很多，但此处不一一阐述，大家也无需研究的很透彻，使用 vim 编辑修改文件的方式基本会使用就可以了。在实际开发中，使用 vim 编辑器主要作用就是修改配置文件，下面是一般步骤：`vim 文件------>进入文件----->命令模式------>按 i 进入编辑模式----->编辑文件------->按 Esc 进入底行模式----->输入：wq/q!`（输入 wq 代表写入内容并退出，即保存；输入 q! 代表强制退出不保存）。
+- `touch [options] filename...`: Create files or update timestamps. `touch file1.txt file2.txt file3.txt` creates three files if they do not exist.
+- `ln [options] source link`: Create a hard or symbolic link. For example, `ln -s file.txt file_link` creates a symbolic link; `-s` means symbolic.
+- `cat`, `more`, `less`, `tail filename`: View file contents. `tail -f catalina-2016-11-11.log` follows a changing log file.
+- `vim filename`: Edit a file. A common workflow is: open the file, press `i` to enter insert mode, edit it, press `Esc`, then enter `:wq` to save and exit or `:q!` to exit without saving. Vim is often used to edit configuration files.
 
-### 文件压缩
+### Archive and Compress Files
 
-**1）打包并压缩文件：**
+**1. Create a compressed archive**
 
-Linux 中的打包文件一般是以 `.tar` 结尾的，压缩的命令一般是以 `.gz` 结尾的。而一般情况下打包和压缩是一起进行的，打包并压缩后的文件的后缀名一般 `.tar.gz`。
+Linux tar archives commonly use the `.tar` extension; gzip-compressed tar archives commonly use `.tar.gz`.
 
-命令：`tar -zcvf 打包压缩后的文件名 要打包压缩的文件`，其中：
+```bash
+tar -zcvf archive.tar.gz files-or-directories
+```
 
-- z：调用 gzip 压缩命令进行压缩。
-- c：打包文件。
-- v：显示运行过程。
-- f：指定文件名。
+Options: `z` uses gzip, `c` creates an archive, `v` displays progress, and `f` specifies the archive filename. For example, archive files in `test` with `tar -zcvf test.tar.gz aaa.txt bbb.txt ccc.txt`, or archive the directory with `tar -zcvf test.tar.gz /test/`.
 
-比如：假如 test 目录下有三个文件分别是：`aaa.txt`、`bbb.txt`、`ccc.txt`，如果我们要打包 `test` 目录并指定压缩后的压缩包名称为 `test.tar.gz` 可以使用命令：`tar -zcvf test.tar.gz aaa.txt bbb.txt ccc.txt` 或 `tar -zcvf test.tar.gz /test/`。
+**2. Extract an archive**
 
-**2）解压压缩包：**
+```bash
+tar -xvf archive.tar.gz
+tar -xvf archive.tar.gz -C /usr
+```
 
-命令：`tar [-xvf] 压缩文件`
+`x` extracts. The second command extracts into `/usr`; `-C` specifies the destination directory.
 
-其中 x 代表解压。
+### Transfer Files
 
-示例：
+- **`scp [options] source destination`:** Securely copies files over SSH. For example, `scp -r my_directory user@remote:/home/user` uploads a directory. To download, use `scp -r user@remote:/home/user/my_directory .`. An SSH connection and suitable authentication and permissions are required.
+- **`rsync [options] source destination`:** Efficiently copies files locally or remotely and can transfer only changes. For example, `rsync -r my_directory user@remote:/home/user` uploads a directory.
+- **`ftp`:** Connects to an FTP server for file transfers. After logging in, commands include `put` to upload, `get` to download, and `delete` to remove a remote file. FTP should be used with an understanding of its security limitations.
 
-- 将 `/test` 下的 `test.tar.gz` 解压到当前目录下可以使用命令：`tar -xvf test.tar.gz`。
-- 将 /test 下的 test.tar.gz 解压到根目录 /usr 下：`tar -xvf test.tar.gz -C /usr`（`-C` 代表指定解压的位置）。
+### File Permissions
 
-### 文件传输
+Files have permissions, an owner, and a group. Linux permissions generally grant read, write, and execute access separately to the owner, group, and other users.
 
-- `scp [选项] 源文件 远程文件`（scp 即 secure copy，安全复制）：用于通过 SSH 协议进行安全的文件传输，可以实现从本地到远程主机的上传和从远程主机到本地的下载。例如：`scp -r my_directory user@remote:/home/user`，将本地目录 `my_directory` 上传到远程服务器 `/home/user` 目录下。`scp -r user@remote:/home/user/my_directory`，将远程服务器的 `/home/user` 目录下的 `my_directory` 目录下载到本地。需要注意的是，`scp` 命令需要在本地和远程系统之间建立 SSH 连接进行文件传输，因此需要确保远程服务器已经配置了 SSH 服务，并且具有正确的权限和认证方式。
-- `rsync [选项] 源文件 远程文件`：可以在本地和远程系统之间高效地进行文件复制，并且能够智能地处理增量复制，节省带宽和时间。例如：`rsync -r my_directory user@remote:/home/user`，将本地目录 `my_directory` 上传到远程服务器 `/home/user` 目录下。
-- `ftp`（File Transfer Protocol）：提供了一种简单的方式来连接到远程 FTP 服务器并进行文件上传、下载、删除等操作。使用之前需要先连接登录远程 FTP 服务器，进入 FTP 命令行界面后，可以使用 `put` 命令将本地文件上传到远程主机，可以使用 `get` 命令将远程主机的文件下载到本地，可以使用 `delete` 命令删除远程主机的文件。这里就不进行演示了。
+Use `ls -l` to inspect permissions:
 
-### 文件权限
+![Example of Linux permission commands](./images/Linux权限命令.png)
 
-操作系统中每个文件都拥有特定的权限、所属用户和所属组。权限是操作系统用来限制资源访问的机制，在 Linux 中权限一般分为读（readable）、写（writable）和执行（executable），分为三组。分别对应文件的属主（owner）、属组（group）和其他用户（other），通过这样的机制来限制哪些用户、哪些组可以对特定的文件进行什么样的操作。
+![Explanation of Linux permission fields](./images/Linux权限解读.png)
 
-通过 **`ls -l`** 命令我们可以查看某个目录下的文件或目录的权限。
+The first column shows the file type and permissions:
 
-示例：在随意某个目录下 `ls -l`
+- `d`: Directory.
+- `-`: Regular file.
+- `l`: Symbolic link.
+- `r`: Read permission; numeric value 4.
+- `w`: Write permission; numeric value 2.
+- `x`: Execute permission; numeric value 1.
 
-![Linux 文件权限命令示例](./images/Linux权限命令.png)
+Read, write, and execute have different meanings for files and directories:
 
-第一列的内容的信息解释如下：
+| Permission | File                                  | Directory                                           |
+| ---------- | ------------------------------------- | --------------------------------------------------- |
+| `r`        | Read contents, for example with `cat` | List directory entries                              |
+| `w`        | Modify contents                       | Create or remove entries, subject to other controls |
+| `x`        | Execute as a program, if applicable   | Enter/search the directory                          |
 
-![Linux 文件权限字段解读](./images/Linux权限解读.png)
+Root commonly has capabilities that let it bypass ordinary discretionary access control (DAC) checks, but this does not bypass every restriction, such as capabilities, LSM policy, mount options, or immutable flags. Do not assume that root can always access or execute an object with mode `000`.
 
-> 下面将详细讲解文件的类型、Linux 中权限以及文件有所有者、所在组、其它组具体是什么？
+Every Linux user has a primary group, and files have an owner, group, and other-user permissions:
 
-**文件的类型：**
+- **Owner (`u`):** Usually the user who created the file. Use `ls -ahl` to inspect ownership and `chown user filename` to change it.
+- **Group (`g`):** The file's group, often the creator's primary group. Use `ls -ahl` to inspect it and `chgrp group filename` to change it.
+- **Others (`o`):** Users who are neither the owner nor members of the file's group.
 
-- d：代表目录。
-- -：代表文件。
-- l：代表软链接（可以认为是 window 中的快捷方式）。
+Use `chmod` to change permissions. For example, give the owner all permissions, the group read/write, and others read-only:
 
-**Linux 中权限分为以下几种：**
+```bash
+chmod u=rwx,g=rw,o=r aaa.txt
+chmod 764 aaa.txt
+```
 
-- r：代表权限是可读，r 也可以用数字 4 表示。
-- w：代表权限是可写，w 也可以用数字 2 表示。
-- x：代表权限是可执行，x 也可以用数字 1 表示。
+![Changing Linux file permissions with chmod](./images/修改文件权限.png)
 
-**文件和目录权限的区别：**
+### Managing Services at Startup
 
-对文件和目录而言，读写执行表示不同的意义。
-
-对于文件：
-
-| 权限名称 |                  可执行操作 |
-| :------- | --------------------------: |
-| r        | 可以使用 cat 查看文件的内容 |
-| w        |          可以修改文件的内容 |
-| x        |    可以将其运行为二进制文件 |
-
-对于目录：
-
-| 权限名称 |               可执行操作 |
-| :------- | -----------------------: |
-| r        |       可以查看目录下列表 |
-| w        | 可以创建和删除目录下文件 |
-| x        |     可以使用 cd 进入目录 |
-
-传统 root 通常拥有绕过普通文件自主访问控制（DAC）检查所需的 capability，但这不代表它能绕过 capabilities、LSM、挂载选项、immutable 标志等所有限制。权限为 `000` 的对象也不能简单概括成 root 一定可以执行或访问。
-
-**在 Linux 中的每个用户必须属于一个组，不能独立于组外。在 Linux 中每个文件有所有者、所在组、其它组的概念。**
-
-- **所有者（u）**：一般为文件的创建者，谁创建了该文件，就天然的成为该文件的所有者，用 `ls ‐ahl` 命令可以看到文件的所有者，也可以使用 chown 用户名 文件名来修改文件的所有者。
-- **文件所在组（g）**：当某个用户创建了一个文件后，这个文件的所在组就是该用户所在的组，用 `ls ‐ahl` 命令可以看到文件的所有组，也可以使用 chgrp 组名 文件名来修改文件所在的组。
-- **其它组（o）**：除开文件的所有者和所在组的用户外，系统的其它用户都是文件的其它组。
-
-> 我们再来看看如何修改文件/目录的权限。
-
-**修改文件/目录的权限的命令：`chmod`**
-
-示例：修改 /test 下的 aaa.txt 的权限为文件所有者有全部权限，文件所有者所在的组有读写权限，其他用户只有读的权限。
-
-**`chmod u=rwx,g=rw,o=r aaa.txt`** 或者 **`chmod 764 aaa.txt`**
-
-![chmod 修改 Linux 文件权限示例](./images/修改文件权限.png)
-
-**补充一个比较常用的东西：**
-
-假如我们装了一个 zookeeper，我们每次开机到要求其自动启动该怎么办？
-
-现在主流 Linux 发行版基本使用 systemd 管理服务，推荐做法是编写一个 `zookeeper.service` 单元文件，然后使用下面的命令设置开机自启：
+Most current Linux distributions use systemd to manage services. To configure a `zookeeper.service` unit to start at boot, use:
 
 ```bash
 sudo systemctl enable zookeeper
@@ -318,125 +273,115 @@ sudo systemctl start zookeeper
 sudo systemctl status zookeeper
 ```
 
-如果修改了 service 文件，需要先执行 `sudo systemctl daemon-reload` 让 systemd 重新加载配置。`chkconfig --add zookeeper`、`chkconfig --list` 属于 SysV init 时代的做法，只有在较老的发行版或兼容环境中才会用到。
+After editing a service file, run `sudo systemctl daemon-reload` so systemd reloads the configuration. `chkconfig --add zookeeper` and `chkconfig --list` are from the SysV init era and are mainly relevant to older or compatibility environments.
 
-### 用户管理
+### User Management
 
-Linux 系统是一个多用户多任务的分时操作系统，任何一个要使用系统资源的用户，都必须首先向系统管理员申请一个账号，然后以这个账号的身份进入系统。
+Linux is a multiuser, multitasking time-sharing system. Users generally need an account before using system resources. Accounts help administrators track users and control access, and provide users with organized files and protection.
 
-用户的账号一方面可以帮助系统管理员对使用系统的用户进行跟踪，并控制他们对系统资源的访问；另一方面也可以帮助用户组织文件，并为用户提供安全性保护。
+Common user commands:
 
-**Linux 用户管理相关命令：**
+- `useradd [options] username`: Create a user account; account details are stored in system databases such as `/etc/passwd`.
+- `userdel [options] username`: Delete an account.
+- `usermod [options] username`: Change account properties such as username, user ID, or home directory.
+- `passwd [options] username`: Set authentication information and password aging. `passwd -S username` shows password status; `passwd -d username` clears the password field, though whether empty-password login is allowed depends on PAM and the login service; `passwd -l username` locks password authentication but may leave other methods such as SSH keys available; `passwd username` changes the password.
+- `su [options] username`: Switch to another user identity.
 
-- `useradd [选项] 用户名`：创建用户账号。使用 `useradd` 指令所建立的帐号，实际上是保存在 `/etc/passwd` 文本文件中。
-- `userdel [选项] 用户名`：删除用户帐号。
-- `usermod [选项] 用户名`：修改用户账号的属性和配置比如用户名、用户 ID、家目录。
-- `passwd [选项] 用户名`：设置用户的认证信息，包括用户密码、密码过期时间等。例如：`passwd -S 用户名` 显示账号密码状态；`passwd -d 用户名` 会删除密码，使密码字段为空，是否允许空密码登录取决于 PAM 和登录服务配置；`passwd -l 用户名` 只锁定密码认证，SSH 密钥等其他认证方式仍可能可用；`passwd 用户名` 用于修改密码。
-- `su [选项] 用户名`（su 即 Switch User，切换用户）：在当前登录的用户和其他用户之间切换身份。
+### Group Management
 
-### 用户组管理
+Groups let administrators manage permissions for multiple users together. Group behavior varies by distribution; many systems create a same-named primary group when creating a user.
 
-每个用户都有一个用户组，系统可以对一个用户组中的所有用户进行集中管理。不同 Linux 系统对用户组的规定有所不同，如 Linux 下的用户属于与它同名的用户组，这个用户组在创建用户时同时创建。
+Group management updates the system's group database, commonly `/etc/group`:
 
-用户组的管理涉及用户组的添加、删除和修改。组的增加、删除和修改实际上就是对 `/etc/group` 文件的更新。
+- `groupadd [options] group`: Create a group.
+- `groupdel group`: Delete a group.
+- `groupmod [options] group`: Modify a group's properties.
 
-**Linux 系统用户组的管理相关命令：**
+### System Status
 
-- `groupadd [选项] 用户组`：增加一个新的用户组。
-- `groupdel 用户组`：要删除一个已有的用户组。
-- `groupmod [选项] 用户组`：修改用户组的属性。
+- `top [options]`: View CPU and memory use and process information in real time.
+- `htop [options]`: Interactive alternative to `top`, with color, scrolling, and mouse support.
+- `uptime [options]`: Show system uptime and load averages.
+- `vmstat [interval] [count]`: Report process, memory, I/O, and overall virtual-memory statistics.
+- `free [options]`: Show memory use, including used, available, buffer, and cache figures.
+- `df [options] [filesystem]`: Show filesystem capacity and usage. `df -a` includes all filesystems.
+- `du [options] [file]`: Show disk space used by files or directories.
+- `sar [options] [interval] [count]`: Collect and report performance statistics for CPU, memory, disk I/O, and networking. It can sample repeatedly and save data with relatively low overhead.
+- `ps [options]`: Show process IDs, states, and resource use. `ps -ef` and `ps aux` use different output formats. For example, `ps aux | grep redis` searches for Redis; `pgrep redis -a` is another option.
+- `systemctl [command] [unit]`: Inspect or manage services and systemd units.
+- `journalctl [options]`: Read systemd logs. For example, `journalctl -u nginx -f` follows an Nginx service log, and `journalctl -xe` shows recent error context.
 
-### 系统状态
+### Networking
 
-- `top [选项]`：用于实时查看系统的 CPU 使用率、内存使用率、进程信息等。
-- `htop [选项]`：类似于 `top`，但提供了更加交互式和友好的界面，可让用户交互式操作，支持颜色主题，可横向或纵向滚动浏览进程列表，并支持鼠标操作。
-- `uptime [选项]`：用于查看系统总共运行了多长时间、系统的平均负载等信息。
-- `vmstat [间隔时间] [重复次数]`：vmstat（Virtual Memory Statistics）的含义为显示虚拟内存状态，但是它可以报告关于进程、内存、I/O 等系统整体运行状态。
-- `free [选项]`：用于查看系统的内存使用情况，包括已用内存、可用内存、缓冲区和缓存等。
-- `df [选项] [文件系统]`：用于查看系统的磁盘空间使用情况，包括磁盘空间的总量、已使用量和可用量等，可以指定文件系统上。例如：`df -a`，查看全部文件系统。
-- `du [选项] [文件]`：用于查看指定目录或文件的磁盘空间使用情况，可以指定不同的选项来控制输出格式和单位。
-- `sar [选项] [时间间隔] [重复次数]`：用于收集、报告和分析系统的性能统计信息，包括系统的 CPU 使用、内存使用、磁盘 I/O、网络活动等详细信息。它的特点是可以连续对系统取样，获得大量的取样数据。取样数据和分析的结果都可以存入文件，使用它时消耗的系统资源很小。
-- `ps [选项]`：用于查看系统中的进程信息，包括进程的 ID、状态、资源使用情况等。`ps -ef`/`ps -aux`：这两个命令都是查看当前系统正在运行进程，两者的区别是展示格式不同。如果想要查看特定的进程可以使用这样的格式：`ps aux|grep redis`（查看包括 redis 字符串的进程），也可使用 `pgrep redis -a`。
-- `systemctl [命令] [服务名称]`：用于管理系统的服务和单元，可以查看系统服务的状态、启动、停止、重启等。
-- `journalctl [选项]`：用于查看 systemd 日志，排查服务启动失败、系统错误非常常用。例如：`journalctl -u nginx -f` 实时查看 nginx 服务日志，`journalctl -xe` 查看最近的系统错误上下文。
+- `ping [options] host`: Test network reachability.
+- `ifconfig` or `ip`: Inspect network interfaces, addresses, and state. `ip` is the modern general-purpose tool.
+- `netstat [options]`: Show connections and network statistics.
+- `ss [options]`: A faster, more detailed tool for inspecting sockets and connections; generally preferred over `netstat`.
+- `nload`: Display live network traffic in a terminal interface. `sar` can also monitor traffic and store historical samples; `nload` is more visual but does not save history and may need to be installed.
+- `sudo hostnamectl set-hostname new-name`: Set a persistent hostname. `sudo hostname new-name` changes it temporarily and the change may be lost on reboot.
 
-### 网络通信
+### Other Commands
 
-- `ping [选项] 目标主机`：测试与目标主机的网络连接。
-- `ifconfig` 或 `ip`：用于查看系统的网络接口信息，包括网络接口的 IP 地址、MAC 地址、状态等。
-- `netstat [选项]`：用于查看系统的网络连接状态和网络统计信息，可以查看当前的网络连接情况、监听端口、网络协议等。
-- `ss [选项]`：比 `netstat` 更好用，提供了更快速、更详细的网络连接信息。
-- `nload`：`sar` 和 `nload` 都可以监控网络流量，但 `sar` 的输出是文本形式的数据，不够直观。`nload` 则是一个专门用于实时监控网络流量的工具，提供图形化的终端界面，更加直观。不过，`nload` 不保存历史数据，所以它不适合用于长期趋势分析。并且，系统并没有默认安装它，需要手动安装。
-- `sudo hostnamectl set-hostname 新主机名`：更改主机名，并且重启后依然有效。`sudo hostname 新主机名` 也可以更改主机名。不过需要注意的是，使用 `hostname` 命令直接更改主机名只是临时生效，系统重启后会恢复为原来的主机名。
+- `sudo command`: Run a command with privileges granted by the sudo policy; this is not necessarily equivalent to unrestricted root access.
+- `grep [options] "pattern" path`: Search files or command output using a string or regular expression. For example, `grep -i "error" /var/log/syslog` searches case-insensitively, and `ps -ef | grep "java"` searches process output.
+- `kill -9 pid`: Forcefully terminate a process. Prefer a graceful signal first when possible; find the PID with tools such as `ps`.
+- `shutdown -h now`: Shut down now. `shutdown +5 "System will shutdown after 5 minutes"` schedules shutdown in five minutes and sends a warning to logged-in users.
+- `reboot`: Restart the system. `reboot -w` records a simulated reboot without actually restarting.
 
-### 其他
+## Linux Environment Variables
 
-- `sudo + 其他命令`：以系统管理者的身份执行指令，也就是说，经由 sudo 所执行的指令就好像是 root 亲自执行。
-- `grep [选项] "搜索内容" 文件路径`：非常强大且常用的文本搜索命令，它可以根据指定的字符串或正则表达式，在文件或命令输出中进行匹配查找，适用于日志分析、文本过滤、快速定位等多种场景。示例：忽略大小写搜索 syslog 中所有包含 error 的行：`grep -i "error" /var/log/syslog`，查找所有与 java 相关的进程：`ps -ef | grep "java"`。
-- `kill -9 进程的 pid`：杀死进程（-9 表示强制终止），先用 ps 查找进程，然后用 kill 杀掉。
-- `shutdown`：`shutdown -h now`：指定现在立即关机；`shutdown +5 "System will shutdown after 5 minutes"`：指定 5 分钟后关机，同时送出警告信息给登入用户。
-- `reboot`：`reboot`：重开机。`reboot -w`：做个重开机的模拟（只有纪录并不会真的重开机）。
+Environment variables define parts of the process environment, such as a user's home directory (`HOME`).
 
-## Linux 环境变量
+### Environment Variable Scope
 
-在 Linux 系统中，环境变量是用来定义系统运行环境的一些参数，比如每个用户不同的主目录（HOME）。
+By scope, environment configuration commonly includes:
 
-### 环境变量分类
+- User-level files such as `~/.bashrc` and `~/.bash_profile`.
+- System-level files such as `/etc/bashrc`, `/etc/environment`, `/etc/profile`, and `/etc/profile.d`.
 
-按照作用域来分，环境变量可以简单的分成：
+There is no single load order for every shell. It depends on whether the shell is a login shell, an interactive non-login shell, or a noninteractive shell. For Bash, a login shell usually reads `/etc/profile`, then the first existing readable file among `~/.bash_profile`, `~/.bash_login`, and `~/.profile`. An interactive non-login shell usually reads `~/.bashrc`. Many distributions load `~/.bashrc` from `~/.bash_profile`, so the effective chain depends on the default configuration.
 
-- 用户级别环境变量：`~/.bashrc`、`~/.bash_profile`。
-- 系统级别环境变量：`/etc/bashrc`、`/etc/environment`、`/etc/profile`、`/etc/profile.d`。
+Editing system-level environment files requires administrator write access. A common convention is to put user settings in `~/.bash_profile` and system settings in `/etc/profile.d`.
 
-环境变量配置文件的加载顺序不是固定一条线，取决于当前 shell 是登录 shell、非登录交互 shell，还是非交互 shell。以 Bash 为例，登录 shell 通常会读取 `/etc/profile`，再读取用户目录下第一个存在且可读的 `~/.bash_profile`、`~/.bash_login` 或 `~/.profile`；交互式非登录 shell 通常读取 `~/.bashrc`。很多发行版会在 `~/.bash_profile` 中手动加载 `~/.bashrc`，所以你实际看到的加载链路还会受发行版默认配置影响。
+By lifetime, variables can be:
 
-如果要修改系统级别环境变量文件，需要管理员具备对该文件的写入权限。
+- **Persistent:** Stored in a configuration file and loaded in future sessions.
+- **Temporary:** Exported in the current shell; they disappear when that shell exits.
 
-建议用户级别环境变量在 `~/.bash_profile` 中配置，系统级别环境变量在 `/etc/profile.d` 中配置。
+### Read Environment Variables
 
-按照生命周期来分，环境变量可以简单的分成：
-
-- 永久的：需要用户修改相关的配置文件，变量永久生效。
-- 临时的：用户利用 `export` 命令，在当前终端下声明环境变量，关闭 shell 终端失效。
-
-### 读取环境变量
-
-通过 `export` 命令可以输出当前系统定义的所有环境变量。
+Use `export -p` or `env` to list environment variables:
 
 ```bash
-# 列出当前的环境变量值
+# List environment variables
 export -p
 ```
 
-除了 `export` 命令之外，`env` 命令也可以列出所有环境变量。
-
-`echo` 命令可以输出指定环境变量的值。
+Use `echo` to print a particular value:
 
 ```bash
-# 输出当前的PATH环境变量的值
+# Print PATH
 echo $PATH
-# 输出当前的HOME环境变量的值
+# Print HOME
 echo $HOME
 ```
 
-### 环境变量修改
+### Change Environment Variables
 
-通过 `export` 命令可以修改指定的环境变量。不过，这种方式修改环境变量仅仅对当前 shell 终端生效，关闭 shell 终端就会失效。修改完成之后，立即生效。
+Use `export` to change a variable in the current shell. The change takes effect immediately but is not persistent after the shell exits:
 
 ```bash
 export JAVA_HOME="/path/to/jdk"
 export PATH="$JAVA_HOME/bin:$PATH"
 ```
 
-通过 `vim` 命令修改环境变量配置文件。这种方式修改环境变量永久有效。
+To make a change persistent, edit a configuration file. User-level settings affect the current user; system-level settings affect all users:
 
 ```bash
 vim ~/.bash_profile
 ```
 
-如果修改的是系统级别环境变量则对所有用户生效，如果修改的是用户级别环境变量则仅对当前用户生效。
-
-修改完成之后，需要 `source` 命令让其生效或者关闭 shell 终端重新登录。
+Reload the file with `source`, or log in again:
 
 ```bash
 source ~/.bash_profile

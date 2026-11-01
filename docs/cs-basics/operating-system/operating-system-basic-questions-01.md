@@ -1,473 +1,464 @@
 ---
-title: 操作系统常见面试题总结（上）
-description: 最新操作系统高频面试题总结（上）：用户态与内核态、中断、异常、系统调用、进程线程、上下文切换、CPU 调度算法、Linux CFS/EEVDF、系统负载和死锁等核心考点。
-category: 计算机基础
+title: "Common Operating System Interview Questions (Part 1)"
+description: A review of common operating system interview topics: user and kernel modes, interrupts, exceptions, system calls, processes, threads, IPC, scheduling, Linux CFS/EEVDF, load average, and deadlocks.
+category: Computer Science Fundamentals
 tag:
-  - 操作系统
+  - Operating Systems
 head:
   - - meta
     - name: keywords
-      content: 操作系统面试题,用户态 vs 内核态,中断,异常,系统调用,进程 vs 线程,进程状态,PCB,TCB,fork,exec,wait,进程间通信IPC,CPU调度算法,CFS,EEVDF,load average,上下文切换,死锁必要条件
+      content: operating system interview questions,user mode vs kernel mode,interrupts,exceptions,system calls,process vs thread,process states,PCB,TCB,fork,exec,wait,interprocess communication,CPU scheduling,CFS,EEVDF,load average,context switch,deadlock conditions
 ---
 
-<!-- markdownlint-disable MD033 -->
+Many readers find operating system topics broad and difficult to study, but they often come up in interviews. This guide starts with the basics and reviews common questions about **user and kernel modes, system calls, processes and threads, interprocess communication, CPU scheduling, and deadlocks**.
 
-很多读者抱怨计算操作系统的知识点比较繁杂，自己也没有多少耐心去看，但是面试的时候又经常会遇到。所以，我带着我整理好的操作系统的常见问题来啦！
+Use it as a quick interview checklist or as a starting point for review. Operating system ideas such as caching, scheduling, synchronization, memory mapping, zero-copy, and I/O multiplexing also appear in Redis, Kafka, Nginx, Netty, the JVM, and databases. Understanding the lower-level mechanisms makes higher-level frameworks and production performance issues easier to reason about.
 
-这篇《操作系统常见面试题总结（上）》会先从操作系统基础讲起，再重点梳理 **用户态/内核态、系统调用、进程和线程、进程间通信、进程调度、死锁** 这些高频考点。它适合用来快速建立面试问题清单，也适合作为复习时查漏补缺的入口。
+This is a quick review that connects core concepts. For deeper study, pair it with textbooks and topic-specific guides. Some material draws on _Modern Operating Systems_, 3rd edition.
 
-学习操作系统不只是为了背八股。缓存、调度、同步、内存映射、零拷贝、I/O 多路复用这些思想，在 Redis、Kafka、Nginx、Netty、JVM、数据库里都能看到影子。把底层机制想清楚，再理解上层框架和线上性能问题，会轻松很多。
+## Operating System Fundamentals
 
-本文偏“面试速查 + 核心概念串联”，深入学习还是建议搭配教材和专题文章一起看。文中部分内容参考了《现代操作系统》第三版，在此表示感谢。
+![Operating system fundamentals mind map](https://oss.javaguide.cn/2020-8/image-20200807161118901.png)
 
-## 操作系统基础
+### What Is an Operating System?
 
-![操作系统基础知识导图](https://oss.javaguide.cn/2020-8/image-20200807161118901.png)
+An operating system (OS) can be described in four points:
 
-### 什么是操作系统？
+1. It manages computer hardware and software resources and provides the foundation for applications.
+2. It is software running on a computer that lets applications use hardware resources such as memory and disks.
+3. It hides much of the complexity of the hardware and coordinates access to it.
+4. The kernel is the core of the operating system. It manages memory, devices, filesystems, and processes, and connects applications to hardware. Its design affects system performance and stability.
 
-通过以下四点可以概括操作系统到底是什么：
+The kernel and the central processing unit (CPU) are different:
 
-1. 操作系统（Operating System，简称 OS）是管理计算机硬件与软件资源的程序，是计算机的基石。
-2. 操作系统本质上是一个运行在计算机上的软件程序，主要用于管理计算机硬件和软件资源。举例：运行在你电脑上的所有应用程序都通过操作系统来调用系统内存以及磁盘等等硬件。
-3. 操作系统存在屏蔽了硬件层的复杂性。操作系统就像是硬件使用的负责人，统筹着各种相关事项。
-4. 操作系统的内核（Kernel）是操作系统的核心部分，它负责系统的内存管理，硬件设备的管理，文件系统的管理以及应用程序的管理。内核是连接应用程序和硬件的桥梁，决定着系统的性能和稳定性。
+1. The kernel is software in the operating system; the CPU is hardware.
+2. The CPU executes instructions and performs computations. The kernel manages system resources such as memory and mediates access to hardware.
 
-很多人容易把操作系统的内核（Kernel）和中央处理器（CPU，Central Processing Unit）弄混。你可以简单从下面两点来区别：
+The diagram shows the relationship between applications, the kernel, and the CPU.
 
-1. 操作系统的内核（Kernel）属于操作系统层面，而 CPU 属于硬件。
-2. CPU 主要提供运算，处理各种指令的能力。内核（Kernel）主要负责系统管理比如内存管理，它屏蔽了对硬件的操作。
+![Relationship between applications, the kernel, and the CPU](https://oss.javaguide.cn/2020-8/Kernel_Layout.png)
 
-下图清晰说明了应用程序、内核、CPU 这三者的关系。
+### What Are the Main Functions of an Operating System?
 
-![应用程序、内核和 CPU 的关系](https://oss.javaguide.cn/2020-8/Kernel_Layout.png)
+From a resource-management perspective, an operating system has six main responsibilities:
 
-### 操作系统主要有哪些功能？
+1. **Process and thread management:** Create, terminate, block, and wake processes, and support communication between them.
+2. **Memory management:** Allocate and reclaim memory, translate addresses, isolate processes, reclaim pages, and manage secondary storage.
+3. **Filesystem management:** Organize storage blocks as files and directories, and handle reads, writes, creation, deletion, permissions, and crash recovery.
+4. **Device management:** Manage requests to and releases of input/output and external storage devices, and start device operations.
+5. **Network management:** Configure and manage connections, communication, and security to provide reliable network services.
+6. **Security management:** Authenticate users and control access to files and other resources.
 
-从资源管理的角度来看，操作系统有 6 大功能：
+Memory management and filesystems are common interview follow-ups. They are covered in [Common Operating System Interview Questions (Part 2)](./operating-system-basic-questions-02.md).
 
-1. **进程和线程的管理**：进程的创建、撤销、阻塞、唤醒，进程间的通信等。
-2. **存储管理**：内存的分配与回收、地址转换、进程隔离、页面回收，以及外存空间管理等。
-3. **文件管理**：把底层存储块组织成文件和目录，负责文件读写、创建、删除、权限控制和崩溃恢复等。
-4. **设备管理**：完成设备（输入输出设备和外部存储设备等）的请求或释放，以及设备启动等功能。
-5. **网络管理**：操作系统负责管理计算机网络的使用。网络是计算机系统中连接不同计算机的方式，操作系统需要管理计算机网络的配置、连接、通信和安全等，以提供高效可靠的网络服务。
-6. **安全管理**：用户的身份认证、访问控制、文件加密等，以防止非法用户对系统资源的访问和操作。
-
-内存管理和文件系统是操作系统面试里最容易继续追问的两块，会在这篇单独展开：[操作系统常见面试题总结（下）](./operating-system-basic-questions-02.md)。
-
-### 常见的操作系统有哪些？
+### Common Operating Systems
 
 #### Windows
 
-目前最流行的个人桌面操作系统，不做多的介绍，大家都清楚。界面简单易操作，软件生态非常好。
+Windows is a widely used personal desktop operating system. It has a straightforward interface and a broad software ecosystem.
 
-_玩玩电脑游戏还是必须要有 Windows 的，所以我现在是一台 Windows 用于玩游戏，一台 Mac 用于平时日常开发和学习使用。_
+_Windows is useful for PC gaming, so I use one Windows machine for games and a Mac for development and study._
 
-![Windows 桌面操作系统界面](./images/windows.png)
+![Windows desktop](./images/windows.png)
 
 #### Unix
 
-Unix 是早期最具影响力的多用户、多任务操作系统之一，后来的 Linux、BSD 等类 Unix 系统都受到它的影响。传统商业 Unix 的市场份额已经明显下降，但 Unix 标准、认证系统及其设计思想仍在使用。
+Unix was one of the most influential early multiuser, multitasking operating systems. Linux, BSD, and other Unix-like systems were influenced by it. The market share of traditional commercial Unix systems has declined, but Unix standards, certified systems, and design ideas remain in use.
 
-![Unix 操作系统标识](./images/unix.png)
+![Unix logo](./images/unix.png)
 
 #### Linux
 
-**Linux 是一套免费使用、开源的类 Unix 操作系统。** Linux 存在着许多不同的发行版本，但它们都使用了 **Linux 内核**。
+**Linux is a free, open-source Unix-like operating system family.** Many distributions are available, and they all use the **Linux kernel**.
 
-> 严格来讲，Linux 这个词本身只表示 Linux 内核，在 GNU/Linux 系统中，Linux 实际就是 Linux 内核，而该系统的其余部分主要是由 GNU 工程编写和提供的程序组成。单独的 Linux 内核并不能成为一个可以正常工作的操作系统。
+> Strictly speaking, Linux refers to the kernel. In GNU/Linux systems, the rest of the operating system is mainly made up of programs written or provided by the GNU project. The kernel alone is not a complete, usable operating system.
 >
-> **很多人更倾向使用 "GNU/Linux" 一词来表达人们通常所说的 "Linux"。**
+> Some people prefer the term “GNU/Linux” for the systems commonly called “Linux.”
 
-![Linux 操作系统桌面与命令行界面](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/linux.png)
+![Linux desktop and command-line interfaces](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/linux/linux.png)
 
-#### Mac OS
+#### macOS
 
-苹果自家的操作系统，编程体验和 Linux 相当，但是界面、软件生态以及用户体验各方面都要比 Linux 操作系统更好。
+macOS is Apple's operating system. It offers a Unix-like development environment, polished interface, and broad software ecosystem.
 
-![macOS 桌面操作系统界面](./images/macos.png)
+![macOS desktop](./images/macos.png)
 
-### 用户态和内核态
+### User Mode and Kernel Mode
 
-#### 什么是用户态和内核态？
+#### What Are User Mode and Kernel Mode?
 
-用户态和内核态描述的是 CPU 执行代码时的特权级别。应用代码通常在用户态运行；需要访问受保护资源时，CPU 会按规定入口进入内核态，由内核代表当前线程完成操作。
+User mode and kernel mode describe CPU privilege levels. Application code normally runs in user mode. To access protected resources, the CPU enters kernel mode through a defined entry point, and the kernel performs the operation on the current thread's behalf.
 
-![用户态和内核态](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/usermode-and-kernelmode.png)
+![User mode and kernel mode](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/usermode-and-kernelmode.png)
 
-- **用户态（User Mode）**：权限较低，不能直接执行特权指令，也不能随意访问内核地址空间或操作硬件。应用读文件、收发网络数据时，需要通过系统调用请求内核服务。
-- **内核态（Kernel Mode）**：权限较高，可以执行管理页表、中断、设备等特权操作。系统调用、中断或同步异常进入内核后，运行的是内核代码，不是把整个用户进程变成了“内核进程”。
+- **User mode:** Has fewer privileges. Code cannot execute privileged instructions, freely access kernel address space, or operate hardware directly. To read a file or send network data, an application requests a kernel service through a system call.
+- **Kernel mode:** Has higher privileges and can perform operations such as managing page tables, interrupts, and devices. After a system call, interrupt, or synchronous exception enters the kernel, the CPU executes kernel code; the whole user process does not become a “kernel process.”
 
-用户态/内核态切换需要经过架构规定的入口、保存必要状态并执行权限和参数检查，因此比普通函数调用更重。但它不等于线程上下文切换：只有调度器换成另一个执行实体时，才会发生线程切换。
+A transition between modes uses an architecture-defined entry point, saves necessary state, and checks permissions and arguments, so it costs more than an ordinary function call. It is not the same as a thread context switch: that occurs only when the scheduler switches execution entities.
 
-#### 为什么要有用户态和内核态？只有一个内核态不行么？
+#### Why Have User and Kernel Modes?
 
-这样设计主要是为了**安全**和**稳定**。
+This design primarily provides **security** and **stability**:
 
-- **限制特权操作**：修改页表、控制中断、访问特定设备寄存器等操作会影响整个系统，只能由内核执行。
-- **隔离故障和权限**：如果应用都能以内核权限运行，一个越界写或恶意程序就可能破坏其他进程和内核数据，进程隔离也就失去了基础。
+- **Restrict privileged operations:** Changes to page tables, interrupt control, and device registers affect the whole system and are restricted to the kernel.
+- **Isolate faults and permissions:** If every application ran with kernel privileges, a single out-of-bounds write or malicious program could corrupt other processes or kernel data.
 
-这套特权级机制把普通应用限制在受控环境中，硬件和系统资源则统一交给内核管理。
+Hardware privilege levels keep ordinary applications in a controlled environment and let the kernel manage shared system resources.
 
-#### 用户态和内核态是如何切换的？
+#### How Does the CPU Switch Between Modes?
 
-![用户态切换到内核态的 3 种方式](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/the-way-switch-between-user-mode-and-kernel-mode.drawio.png)
+![Three ways to enter kernel mode](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/the-way-switch-between-user-mode-and-kernel-mode.drawio.png)
 
-让 CPU 从用户态进入内核态的事件主要有三类：
+Three main types of events can move the CPU from user mode to kernel mode:
 
-1. **系统调用（Trap）**：应用程序主动执行 `syscall`、`ecall` 等指令，请求内核完成 `read()`、`send()` 等操作。它由当前指令触发，属于同步事件。
-2. **硬件中断（Interrupt）**：由定时器、网卡、磁盘等外部硬件触发，与当前正在执行的指令没有直接关系，因此属于异步事件。
-3. **同步异常（Exception）**：由当前指令触发，例如除零、非法指令或 Page Fault。异常不一定代表程序出错，懒分配、COW 和从文件调页也会触发可恢复的 Page Fault。
+1. **System call (trap):** The application deliberately executes an instruction such as `syscall` or `ecall` to request a kernel operation such as `read()` or `send()`. It is synchronous because the current instruction triggers it.
+2. **Hardware interrupt:** An external device such as a timer, network card, or disk raises an interrupt. It is asynchronous and unrelated to the current instruction.
+3. **Synchronous exception:** The current instruction causes an event such as division by zero, an illegal instruction, or a Page Fault. An exception does not always mean the program has an error: lazy allocation, COW, and loading a file page can all cause a recoverable Page Fault.
 
-中断、异常和系统调用描述的是 CPU 为什么进入内核；信号则是内核通知进程或线程的一种软件机制。非法内存访问可能先触发 Page Fault，内核判断无法修复后，再向当前线程投递 `SIGSEGV`。
+Interrupts, exceptions, and system calls describe why the CPU enters the kernel. A signal is a software mechanism the kernel uses to notify a process or thread. An invalid memory access may first cause a Page Fault; if the kernel cannot fix it, the kernel can deliver `SIGSEGV` to the thread.
 
-不同体系结构的入口细节不完全相同，但都会根据事件类型转到对应的内核处理入口。完整的概念对比和处理路径可以看：[中断、异常与系统调用详解：从内核入口到缺页异常](./interrupt-exception-syscall.md)。
+Entry details vary by architecture, but each event is routed to an appropriate kernel handler. See [Interrupts, Exceptions, and System Calls: From Kernel Entry to Page Faults](./interrupt-exception-syscall.md) for a full comparison and walkthrough.
 
-### 系统调用
+### System Calls
 
-#### 什么是系统调用？
+#### What Is a System Call?
 
-系统调用是内核向用户程序提供的受控服务接口。应用不能直接操作磁盘、页表和网卡等受保护资源，需要通过系统调用让内核代为完成。
+A system call is a controlled service interface provided by the kernel. Applications cannot directly operate a disk, page table, or network card, so they ask the kernel to perform those operations.
 
-![用户程序通过系统调用请求内核服务](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/system-call.png)
+![A user program requests a kernel service through a system call](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/system-call.png)
 
-这些系统调用按功能大致可分为如下几类：
+System calls can be grouped by purpose:
 
-- 设备管理：完成设备（输入输出设备和外部存储设备等）的请求或释放，以及设备启动等功能。
-- 文件管理：完成文件的读、写、创建及删除等功能。
-- 进程管理：进程的创建、撤销、阻塞、唤醒，进程间的通信等功能。
-- 内存管理：完成内存的分配、回收以及获取作业占用内存区大小及地址等功能。
-- 网络通信：创建 Socket、建立连接、收发数据等。
+- **Device management:** Request, release, and start devices.
+- **File management:** Read, write, create, and delete files.
+- **Process management:** Create, terminate, block, and wake processes; support IPC.
+- **Memory management:** Allocate and reclaim memory and inspect memory regions.
+- **Network communication:** Create sockets, establish connections, and send or receive data.
 
-系统调用和库函数不是同一层概念。普通函数调用始终在用户态执行；glibc 等运行库提供的 `read()` 包装函数会按 ABI 准备系统调用号和参数，再执行特殊指令进入内核。也有很多库函数完全不需要系统调用。
+A system call and a library function are not the same thing. An ordinary function call runs in user mode. A runtime wrapper such as glibc's `read()` prepares a system call number and arguments according to the ABI, then executes a special instruction to enter the kernel. Many library functions do not need a system call at all.
 
-#### 系统调用的过程了解吗？
+#### What Happens During a System Call?
 
-以 Linux x86-64 下的 `read(fd, buf, count)` 为例，系统调用过程可以概括为：
+Consider `read(fd, buf, count)` on Linux x86-64:
 
-1. glibc 包装函数按照调用约定，把系统调用号和参数放入指定寄存器，执行 `syscall`。
-2. CPU 切换到内核特权级和对应入口。内核入口代码保存后续需要的寄存器状态，再根据系统调用号分发到 `read` 对应的处理逻辑。
-3. 内核检查文件描述符、用户缓冲区、访问权限和文件状态，然后进入 VFS、文件系统、网络协议栈或设备驱动等路径。
-4. 数据已经就绪时，内核完成读取并返回结果；数据未就绪时，当前线程可能进入等待状态，调度器转而运行其他可运行任务。
-5. 调用完成后，返回值通过寄存器交给用户态。出错时，glibc 通常把内核错误码转换成 `-1` 和 `errno`。
+1. The glibc wrapper places the system call number and arguments in designated registers, then executes `syscall`.
+2. The CPU enters kernel privilege level through the architecture's entry point. Kernel entry code saves the registers it needs, then dispatches to the `read` handler based on the system call number.
+3. The kernel checks the file descriptor, user buffer, permissions, and file state. It then follows the appropriate VFS, filesystem, network-stack, or device-driver path.
+4. If data is ready, the kernel completes the read and returns a result. If data is not ready, the current thread may wait while the scheduler runs another runnable task.
+5. On completion, the result is returned in a register. On error, glibc usually converts the kernel error code to `-1` and sets `errno`.
 
-![系统调用的过程](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/system-call-procedure.png)
+![System call flow](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/system-call-procedure.png)
 
-#### 系统调用一定会发生上下文切换吗？
+#### Does a System Call Always Cause a Context Switch?
 
-系统调用会让 CPU 进入内核态。如果内核很快处理完并返回原线程，整个过程只有用户态/内核态切换，没有切换线程。
+A system call moves the CPU into kernel mode. If the kernel handles it quickly and returns to the same thread, there is a user/kernel mode transition but no thread switch.
 
-当系统调用需要等待 I/O、锁或其他资源时，当前线程可能阻塞，调度器才会选择另一个可运行任务，此时会发生线程上下文切换。反过来，时钟中断进入内核后，如果调度器仍让原线程继续运行，也不会发生线程切换。
+If the system call must wait for I/O, a lock, or another resource, the current thread may block. The scheduler then chooses another runnable task, and a thread context switch occurs. Conversely, a clock interrupt enters the kernel but does not cause a thread switch if the scheduler lets the same thread continue.
 
-更完整的 `read()` 调用链、信号中断和系统调用重启可以看：[中断、异常与系统调用详解：从内核入口到缺页异常](./interrupt-exception-syscall.md)。
+For the complete `read()` path, signal interruption, and system-call restart behavior, see [Interrupts, Exceptions, and System Calls](./interrupt-exception-syscall.md).
 
-## 进程和线程
+## Processes and Threads
 
-进程和线程是操作系统面试里绕不开的一组概念。下面先给出高频问法的精简答案，想系统学习的话，可以继续阅读这些详细文章：
+Processes and threads are core operating system topics. These are short answers to common questions; see the guides below for a deeper introduction:
 
-- [进程与线程详解：区别、状态、通信、上下文切换与虚拟线程](./process-and-thread.md)，路径：`./process-and-thread.md`
-- [进程间通信（IPC）详解：管道、消息队列、共享内存、Socket 与 Binder](./ipc.md)，路径：`./ipc.md`
-- [CPU 调度与系统负载详解](./cpu-scheduling-and-load.md)，路径：`./cpu-scheduling-and-load.md`
+- [Processes and Threads: Differences, States, Context Switching, and Virtual Threads](./process-and-thread.md)
+- [Interprocess Communication (IPC): Pipes, Message Queues, Shared Memory, Sockets, and Binder](./ipc.md)
+- [CPU Scheduling and System Load](./cpu-scheduling-and-load.md)
 
-### 进程和线程的区别是什么？
+### How Do Processes and Threads Differ?
 
-进程和线程是操作系统中并发执行的两个核心概念，它们的关系可以理解为 **工厂和工人** 的关系。
+Processes and threads are two core concepts for concurrent execution. One analogy is a **factory and its workers**.
 
-![程序、进程和线程的关系](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/relationship-between-program-process-and-thread.png)
+![Relationship between programs, processes, and threads](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/relationship-between-program-process-and-thread.png)
 
-**进程（Process）就像一个工厂**。操作系统在分配资源时，是以进程为基本单位的。比如，当我启动一个微信，操作系统就为它建立了一个独立的工厂，分配给它专属的内存空间、文件句柄等资源。这个工厂与其他工厂（比如我打开的浏览器进程）是严格隔离的。
+A **process** is like a factory. The operating system allocates resources to a process, such as its own virtual address space and file descriptors. It is isolated from other processes, such as a browser.
 
-**线程（Thread）则像是工厂里的工人**。一个工厂里可以有很多工人，他们共享这个工厂的资源，但每个工人有自己的工具箱和任务清单，让他们可以独立地执行不同的任务。比如微信这个工厂里，可以有一个工人（线程）负责接收消息，一个工人负责渲染界面。
+A **thread** is like a worker in the factory. Several workers can share the factory's resources while each has its own tools and task list. In a messaging application, for example, one thread might receive messages and another render the interface.
 
-这是我用 AI 绘制的一张图片，可以说是非常形象了：
+Here is an illustration of the factory analogy:
 
-![用微信工厂类比进程和线程的区别](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/wechat-factory-process-thread.png)
+![A messaging-app factory analogy for processes and threads](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/wechat-factory-process-thread.png)
 
-下图是 Java 内存区域，我们从 JVM 的角度来说一下线程和进程之间的关系吧！
+The Java runtime data areas provide another view from the JVM perspective.
 
-![Java 运行时数据区域（JDK1.8 之后）](https://oss.javaguide.cn/github/javaguide/java/jvm/java-runtime-data-areas-jdk1.8.png)
+![Java runtime data areas after JDK 1.8](https://oss.javaguide.cn/github/javaguide/java/jvm/java-runtime-data-areas-jdk1.8.png)
 
-从上图可以看出：一个进程中可以有多个线程，多个线程共享进程的**堆**和**方法区（JDK1.8 之后的元空间）**资源，但是每个线程有自己的**程序计数器**、**虚拟机栈**和**本地方法栈**。
+One process can contain multiple threads. Threads share the process's **heap** and **method area (Metaspace since JDK 8)**, while each thread has its own **program counter**, **JVM stack**, and **native method stack**.
 
-![线程共享和私有的内容](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/thread-shared-and-private-content.png)
+![Resources shared by threads and their private state](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/thread-shared-and-private-content.png)
 
-可以从资源、调度、通信、开销和可靠性这 5 个角度总结：
+Compare them across five dimensions:
 
-| 维度          | 进程                                               | 线程                                                    |
-| ------------- | -------------------------------------------------- | ------------------------------------------------------- |
-| 基本定位      | 资源分配和隔离的基本单位                           | CPU 调度和执行的基本单位                                |
-| 地址空间      | 默认拥有独立虚拟地址空间                           | 同一进程内的线程共享进程地址空间                        |
-| 私有内容      | PID、地址空间、打开文件表、权限信息等进程级资源    | 线程 ID、栈、寄存器、程序计数器、线程本地存储等执行现场 |
-| 通信方式      | 需要 IPC，例如管道、消息队列、共享内存、Socket     | 可以直接读写共享内存，但必须处理同步和线程安全          |
-| 创建/切换成本 | 通常更高，进程切换可能涉及地址空间切换、TLB 失效等 | 通常更低，同进程线程切换一般不需要切换整套地址空间      |
-| 故障影响      | 隔离性更好，一个进程崩溃通常不影响其他进程         | 一个线程出错可能导致整个进程退出                        |
+| Dimension            | Process                                                                       | Thread                                                                                             |
+| -------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Main role            | Resource allocation and isolation                                             | CPU scheduling and execution                                                                       |
+| Address space        | Usually has its own virtual address space                                     | Threads in one process share its address space                                                     |
+| Private state        | PID, address space, open-file table, permissions, and other process resources | Thread ID, stack, registers, program counter, thread-local storage, and execution state            |
+| Communication        | IPC such as pipes, message queues, shared memory, or sockets                  | Can access shared memory directly, but must synchronize access                                     |
+| Creation/switch cost | Usually higher; switching may involve address-space and TLB costs             | Usually lower; a thread switch within one process does not normally switch the whole address space |
+| Failure impact       | Better isolation; one process crash usually does not crash others             | A thread failure can terminate the entire process                                                  |
 
-比较完整的面试回答可以这样组织：
+A complete interview answer can be organized like this:
 
-> 进程是程序运行时的资源容器，拥有独立虚拟地址空间和文件、权限等资源；线程是进程内的执行流，多个线程共享进程资源，但各自保存栈、寄存器、程序计数器等执行现场。进程间隔离更强，通信和切换成本更高；线程间协作更方便，创建和切换通常更轻，但共享内存带来线程安全问题。
+> A process is a resource container for a running program, with its own virtual address space and resources such as files and permissions. A thread is an execution flow within a process. Threads share process resources but each has its own stack, registers, and program counter. Processes provide stronger isolation but usually cost more to create, switch, and communicate between. Threads make cooperation easier and are usually lighter, but shared memory requires synchronization.
 
-### 有了进程为什么还需要线程？
+### Why Have Threads If We Already Have Processes?
 
-核心原因就是**为了在单个应用内实现低开销、高效率的并发**。
+Threads provide **low-overhead concurrency within an application**.
 
-如果一个服务端要同时处理网络读写、业务计算、日志刷盘，用多个进程当然也能做，但进程之间共享状态麻烦，通信要走 IPC，资源占用也更高。改成多个线程后，它们能直接共享堆内存和打开的连接，只要同步写对，协作成本低很多。
+A server can use multiple processes for network I/O, business computation, and log flushing, but sharing state between processes is harder: they need IPC and use more resources. Threads can share the heap and open connections directly, as long as synchronization is correct.
 
-线程也能提高资源利用率。单核 CPU 上，一个线程阻塞在磁盘或网络 I/O 时，其他线程可以继续运行；多核 CPU 上，多个线程有机会在不同核心上并行执行。不过，线程不是越多越好。线程过多会带来栈内存占用、调度开销、锁竞争和缓存失效等问题，CPU 密集型任务和 I/O 密集型任务的线程数配置也不一样。
+Threads can improve resource use. On one CPU core, another thread can run while one waits for disk or network I/O. On multiple cores, independent threads may run in parallel. More threads are not always better: they consume stack memory and add scheduling, lock-contention, and cache costs. CPU-bound and I/O-bound tasks also need different thread-pool sizing.
 
-### 多线程一定能提高性能吗？
+### Do Multiple Threads Always Improve Performance?
 
-多线程能否提速取决于任务类型、CPU 核数和共享资源竞争：
+It depends on the workload, core count, and contention for shared resources:
 
-- **I/O 密集型任务**：一个线程等待磁盘、网络或锁时，其他可运行线程可以继续使用 CPU，多线程能够隐藏一部分等待时间。
-- **CPU 密集型任务**：可拆分且相互独立的计算可以分配到多个 CPU 核心并行执行，但加速效果还会受到串行部分、数据依赖、缓存和调度开销影响。
-- **线程过多**：可运行线程远多于 CPU 核数后，运行队列会变长，上下文切换、缓存失效和锁竞争随之增加，吞吐量和延迟都可能变差。
+- **I/O-bound tasks:** While one thread waits for disk, network, or a lock, other runnable threads can use the CPU and hide some waiting time.
+- **CPU-bound tasks:** Independent computations can run on different CPU cores. Actual speedup is limited by serial work, data dependencies, caches, and scheduling overhead.
+- **Too many threads:** When runnable threads greatly outnumber cores, queues get longer and context switches, cache misses, and lock contention increase. Throughput and latency can both get worse.
 
-线程数量需要结合任务特征、CPU quota、阻塞比例和压测结果设置，不能只按宿主机物理核心数或并发请求数直接推算。
+Set thread counts based on task behavior, CPU quotas, blocking rates, and load tests. Do not derive them only from the host's physical core count or the number of concurrent requests.
 
-### 线程间的同步的方式有哪些？
+### What Are Common Ways to Synchronize Threads?
 
-线程同步是两个或多个共享关键资源的线程的并发执行。应该同步线程以避免关键的资源使用冲突。
+Thread synchronization coordinates concurrent access to shared resources and prevents conflicting updates. Common mechanisms include:
 
-下面是几种常见的线程同步的方式：
+1. **Mutex:** Only the thread holding the mutex can enter the protected critical section. Java `synchronized` and the `Lock` implementations use this general approach.
+2. **Read-write lock:** Allows multiple readers at once but only one writer.
+3. **Semaphore:** Allows multiple threads to use a resource while limiting the number of simultaneous users.
+4. **Barrier:** Makes threads wait at a point until all participants arrive, then lets them continue. Java's `CyclicBarrier` is an example.
+5. **Condition variable or event notification:** A thread waits while a condition is false; another thread notifies it after the state changes. It is usually paired with a mutex to avoid lost wakeups. Java `Object.wait()/notify()` and `Condition.await()/signal()` follow this pattern; Windows Event objects are another form of event notification.
 
-1. **互斥锁（Mutex）**：采用互斥对象机制，只有拥有互斥对象的线程才有访问公共资源的权限。因为互斥对象只有一个，所以可以保证公共资源不会被多个线程同时访问。比如 Java 中的 `synchronized` 关键词和各种 `Lock` 都是这种机制。
-2. **读写锁（Read-Write Lock）**：允许多个线程同时读取共享资源，但只有一个线程可以对共享资源进行写操作。
-3. **信号量（Semaphore）**：它允许同一时刻多个线程访问同一资源，但是需要控制同一时刻访问此资源的最大线程数量。
-4. **屏障（Barrier）**：屏障是一种同步原语，用于等待多个线程到达某个点再一起继续执行。当一个线程到达屏障时，它会停止执行并等待其他线程到达屏障，直到所有线程都到达屏障后，它们才会一起继续执行。比如 Java 中的 `CyclicBarrier` 是这种机制。
-5. **条件变量（Condition Variable）/事件通知**：线程在条件不满足时等待，其他线程在条件变更后通知等待线程继续执行。它通常需要和互斥锁配合使用，避免“通知先发生、等待后发生”导致的丢通知问题。Java 中的 `Object.wait()/notify()`、`Condition.await()/signal()` 都属于这类思路；Windows 中的 Event 对象也可以看作事件通知类同步原语的一种实现。
+### What Is a PCB? What Does It Contain?
 
-### PCB 是什么？包含哪些信息？
+A **PCB (Process Control Block)** is an operating system data structure for managing and tracking a process. Each process has a corresponding PCB, which can be thought of as its management record.
 
-**PCB（Process Control Block）** 即进程控制块，是操作系统中用来管理和跟踪进程的数据结构，每个进程都对应着一个独立的 PCB。你可以将 PCB 视为进程的大脑。
+When the operating system creates a process, it assigns a process ID and creates a PCB. As the process runs, the information in the PCB changes, and the operating system uses it to manage and schedule the process.
 
-当操作系统创建一个新进程时，会为该进程分配一个唯一的进程 ID，并且为该进程创建一个对应的进程控制块。当进程执行时，PCB 中的信息会不断变化，操作系统会根据这些信息来管理和调度进程。
+A PCB typically contains:
 
-- **标识信息**：PID、父进程 ID、用户 ID 等。
-- **进程状态和调度信息**：就绪、运行、阻塞、优先级、时间片、CPU 时间统计等。
-- **CPU 上下文**：程序计数器、栈指针、通用寄存器、程序状态字 PSW 等，用于上下文切换后恢复执行。
-- **内存管理信息**：虚拟地址空间、页表、内存映射等。
-- **资源信息**：打开文件、文件描述符、I/O 状态、工作目录、信号处理信息等。
-- ……
+- **Identification:** PID, parent PID, user ID, and related identifiers.
+- **State and scheduling data:** Ready/running/blocked state, priority, time-slice information, and CPU-time statistics.
+- **CPU context:** Program counter, stack pointer, general-purpose registers, and program status word (PSW), used to resume execution after a context switch.
+- **Memory-management data:** Virtual address space, page tables, and memory mappings.
+- **Resources:** Open files and fds, I/O state, working directory, signal handling, and related information.
 
-发生上下文切换时，操作系统会把当前进程的寄存器等现场保存到 PCB 中，再从下一个进程的 PCB 中恢复现场，让它能够从上次暂停的位置继续执行。
+During a context switch, the operating system saves registers and other state for the current task and restores the next task's state.
 
-### TCB 是什么？和 PCB 有什么关系？
+### What Is a TCB? How Does It Relate to a PCB?
 
-**TCB（Thread Control Block）** 即线程控制块，用来保存线程级别的控制信息，例如线程 ID、线程状态、寄存器现场、栈信息、调度优先级、线程本地存储等。
+A **TCB (Thread Control Block)** stores thread-level control information, such as thread ID, state, register context, stack, scheduling priority, and thread-local storage.
 
-在一些教材或系统实现里，PCB 和 TCB 是分开的：PCB 更偏进程级资源，TCB 更偏线程级执行现场。Linux 的实现比较特殊，它把进程和线程都看成 task，用 `task_struct` 描述调度实体，再通过资源结构是否共享来区分进程和线程。理解时不用纠结名字，关键是分清：**地址空间、文件表等属于资源边界；栈、寄存器、程序计数器等属于执行现场**。
+Some textbooks and systems separate PCB and TCB: the PCB describes process-level resources, and the TCB describes a thread's execution context. Linux has a different implementation: it represents both processes and threads as tasks using `task_struct`, and their relationship is reflected in which resource structures they share. The key distinction is between resource boundaries (address spaces and file tables) and execution state (stacks, registers, and program counters).
 
-### 进程有哪几种状态？
+### What States Can a Process Have?
 
-我们一般把进程大致分为 5 种状态，这一点和线程很像：
+Textbooks often use a five-state model, similar to the model for threads:
 
-- **创建状态（new）**：进程正在被创建，尚未到就绪状态。
-- **就绪状态（ready）**：进程已处于准备运行状态，即进程获得了除了处理器之外的一切所需资源，一旦得到处理器资源（处理器分配的时间片）即可运行。
-- **运行状态（running）**：进程正在处理器上运行（单核 CPU 下任意时刻只有一个进程处于运行状态）。
-- **阻塞状态（waiting）**：又称为等待状态，进程正在等待某一事件而暂停运行如等待某资源为可用或等待 IO 操作完成。即使处理器空闲，该进程也不能运行。
-- **结束状态（terminated）**：进程正在从系统中消失。可能是进程正常结束或其他原因中断退出运行。
+- **New:** The process is being created and has not entered the ready state.
+- **Ready:** It has the resources it needs except for a processor and can run when scheduled.
+- **Running:** It is executing on a processor. On a single-core CPU, only one process can be running at a time.
+- **Blocked/Waiting:** It is waiting for an event, such as a resource or I/O completion. It cannot run even if a processor is idle.
+- **Terminated:** The process has exited normally or been stopped and the system is cleaning up its resources.
 
-![进程状态图转换图](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/state-transition-of-process.png)
+![Process state transitions](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/state-transition-of-process.png)
 
-状态转换要重点看触发原因：就绪态拿到 CPU 后进入运行态；运行态时间片用完，可能回到就绪态；运行中发起阻塞 I/O、等待锁或等待事件，会进入阻塞态；阻塞等待的事件完成后，通常先回到就绪态，等待下一次被调度。
+Focus on what causes a transition: a ready task gets CPU time and runs; a running task may return to ready when its time slice expires; a blocking I/O request, lock wait, or event wait moves it to blocked; when the event completes, it usually returns to ready and waits to be scheduled.
 
-有些教材还会加入**挂起状态**。挂起强调进程暂时不在内存中，或者被用户/系统暂停；阻塞强调进程在等待某个事件。二者不是一回事：进程可以阻塞但仍在内存里，也可以被换出到外存后处于阻塞挂起。
+Some textbooks add **suspended states**. Suspension means a process is temporarily out of memory or has been paused by a user or system. Blocking means it is waiting for an event. A process can be blocked while still in memory or swapped out while blocked.
 
-### 进程间的通信方式有哪些？
+### What IPC Mechanisms Are Available?
 
-进程默认拥有独立虚拟地址空间，不能直接访问彼此的用户态内存，所以需要 **IPC（Inter-Process Communication，进程间通信）**。
+Processes usually have separate virtual address spaces and cannot access one another's user memory directly, so they use **IPC (Inter-Process Communication)**.
 
-面试里先按使用场景回答即可：
+For a quick interview answer, choose by scenario:
 
-- 父子进程传少量字节流：匿名管道。
-- 无亲缘关系进程做本机通信：命名管道、Unix Domain Socket。
-- 小型结构化消息：消息队列。
-- 本机大块数据交换：共享内存，但要配合信号量、互斥锁、`futex`、`eventfd` 等同步机制。
-- 异步事件通知：信号。
-- 跨机器通信：TCP/UDP Socket 或更上层的 RPC 框架。
+- A small byte stream between parent and child: anonymous pipe.
+- Local communication between unrelated processes: FIFO or Unix Domain Socket.
+- Small structured messages: message queue.
+- Large local data exchange: shared memory, paired with synchronization such as semaphores, mutexes, `futex`, or `eventfd`.
+- Asynchronous event notification: signal.
+- Communication across machines: TCP/UDP socket or a higher-level RPC framework.
 
-更系统的分类、边界和选型可以看：[进程间通信（IPC）详解：管道、消息队列、共享内存、Socket 与 Binder](./ipc.md)，路径：`./ipc.md`。
+For the full classification and tradeoffs, see [Interprocess Communication (IPC)](./ipc.md).
 
-### fork、exec、wait 分别做什么？
+### What Do `fork`, `exec`, and `wait` Do?
 
-在 Unix/Linux 编程里，进程创建和程序替换常绕不开 `fork()`、`exec()`、`wait()` 这三个动作。这里先记面试短答，更多文件描述符继承、写时复制和多线程 `fork` 的细节可以看：[进程与线程详解](./process-and-thread.md)，路径：`./process-and-thread.md`。
+Unix/Linux process creation and program replacement often involve `fork()`, `exec()`, and `wait()`. For file descriptor inheritance, copy-on-write, and `fork()` from multithreaded programs, see [Processes and Threads](./process-and-thread.md).
 
-![fork、exec、wait 的调用链路](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/fork-exec-wait-call-chain.png)
+![The fork, exec, and wait call sequence](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/fork-exec-wait-call-chain.png)
 
-- **`fork()`**：创建子进程。父子进程从同一个位置继续执行，但返回值不同。
-- **`exec()`**：在当前进程中装入另一个程序。它不会新建进程，而是替换当前进程的用户态代码和数据。
-- **`wait()`/`waitpid()`**：等待子进程状态变化，并回收子进程退出后留在内核里的状态信息。
+- **`fork()`:** Creates a child process. Parent and child continue from the same point but receive different return values.
+- **`exec()`:** Loads another program into the current process. It does not create a process; it replaces the current process's user-space program and data.
+- **`wait()`/`waitpid()`:** Waits for a child to change state and collects status left in the kernel after the child exits.
 
-Shell 启动外部命令时，常见链路就是：Shell 先 `fork()` 出子进程，子进程再 `exec()` 成目标程序，父进程用 `wait()` 或 `waitpid()` 等待并回收退出状态。如果父进程一直不回收已退出的子进程，就可能留下僵尸进程。
+When a Shell starts an external command, it commonly calls `fork()`, the child calls `exec()` to become the target program, and the parent uses `wait()` or `waitpid()` to collect its exit status. If the parent does not collect a child's exit status, the child can remain a zombie.
 
-### 什么是上下文切换？
+### What Is a Context Switch?
 
-上下文切换指 CPU 从一个执行实体切到另一个执行实体。操作系统需要保存当前执行实体的寄存器、程序计数器、栈指针等现场，再恢复下一个执行实体的现场。
+A context switch occurs when the CPU changes from one execution entity to another. The operating system saves the current entity's registers, program counter, stack pointer, and other state, then restores the next entity's state.
 
-![线程上下文切换和进程上下文切换的成本对比](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/context-switch-cost-comparison.png)
+![Comparison of thread and process context-switch costs](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/context-switch-cost-comparison.png)
 
-线程切换和进程切换都会有开销，但进程切换通常更重。原因是进程有独立地址空间，切换时可能涉及页表切换、TLB 失效、缓存局部性下降等成本；同一进程内的线程共享地址空间，切换时通常不需要换整套内存映射。
+Both thread and process switches have costs, but a process switch is usually heavier. Processes have separate address spaces, so a switch may change page tables, invalidate TLB entries, and reduce cache locality. Threads in one process share an address space, so their switch usually does not require changing the entire memory mapping.
 
-可以这样简化理解：同一进程内的线程切换，主要换线程自己的栈、寄存器、程序计数器等执行现场；跨进程切换除了换执行现场，还可能切换地址空间，并带来 TLB 和缓存局部性的影响。线上性能分析里，如果发现大量时间花在调度、锁等待、系统调用和上下文切换上，继续盲目加线程通常只会让情况更差。
+In simplified terms, a thread switch within one process mainly changes its stack, registers, and program counter. A process switch may also change address spaces and affect the TLB and caches. In production, if much of the time goes to scheduling, lock waits, system calls, and context switches, adding more threads without diagnosis can make things worse.
 
-还要区分**上下文切换**和**用户态/内核态切换**。系统调用、Page Fault、硬件中断都会进入内核，但只要内核处理后仍返回原线程，就没有发生线程上下文切换。
+Also distinguish a **context switch** from a **user/kernel mode transition**. System calls, Page Faults, and hardware interrupts enter the kernel, but if the kernel returns to the same thread, no thread context switch occurred.
 
-### 进程的调度算法有哪些？
+### What Process-Scheduling Algorithms Are There?
 
-![常见进程调度算法](https://oss.javaguide.cn/github/javaguide/cs-basics/network/scheduling-algorithms-of-process.png)
+![Common process-scheduling algorithms](https://oss.javaguide.cn/github/javaguide/cs-basics/network/scheduling-algorithms-of-process.png)
 
-教材里的进程调度算法用于说明：当可运行任务多于 CPU 核数时，应该让谁先运行。调度器通常需要在**吞吐量、周转时间、响应时间、公平性**和切换开销之间做权衡。
+Textbook scheduling algorithms explain how to choose which runnable task should run when there are more runnable tasks than CPU cores. A scheduler balances **throughput, turnaround time, response time, fairness,** and switching costs.
 
-这些算法可以分为**非抢占式**和**抢占式**两类。
+Algorithms can be grouped into **non-preemptive** and **preemptive** scheduling.
 
-**第一类：非抢占式调度（Non-Preemptive）**
+**Non-preemptive scheduling:** Once a task gets the CPU, it keeps running until it finishes or yields, for example while waiting for I/O.
 
-这种方式下，一旦 CPU 分配给一个进程，它就会一直运行下去，直到任务完成或主动放弃（比如等待 I/O）。
+1. **First Come, First Served (FCFS):** Run tasks in arrival order. It is simple, but a long task at the front can make short tasks wait (the convoy effect).
+2. **Shortest Job First (SJF):** Run the task with the shortest estimated execution time. It can reduce average wait time, but execution time is difficult to predict and long jobs may starve.
 
-1. **先到先服务（FCFS，First Come, First Served）**：按到达顺序运行，实现简单；长任务排在前面时，后面的短任务也要等待，会出现护航效应。
-2. **短作业优先（SJF，Shortest Job First）**：优先运行预计执行时间短的任务，可以降低平均等待时间；现实中很难准确预测任务长度，也可能让长任务长期得不到运行。
+**Preemptive scheduling:** The operating system can pause the current task and give the CPU to another runnable task. Modern general-purpose systems support preemption.
 
-**第二类：抢占式调度（Preemptive）**
+- **Round Robin (RR):** Give each task a time slice in turn. A very short slice increases context-switch overhead; a very long one approaches FCFS.
+- **Priority scheduling:** Run high-priority tasks first. This represents urgency but requires protection against starvation of lower-priority tasks.
 
-操作系统可以暂停当前任务，把 CPU 交给另一个更合适的可运行任务。现代通用操作系统通常支持抢占。
+**Multilevel Feedback Queue (MLFQ):** Uses several priority queues and adjusts task placement based on behavior. New tasks commonly start in a high-priority queue. CPU-bound tasks that consume full slices may be demoted, while interactive tasks that yield for I/O may remain at higher priority. Exact promotion, demotion, and starvation rules depend on the implementation.
 
-- **时间片轮转（RR，Round-Robin）**：每个任务轮流运行一个时间片。时间片太短会放大上下文切换开销，太长又会逐渐接近 FCFS。
-- **优先级调度（Priority）**：优先运行高优先级任务，能够表达任务的紧急程度，但需要处理低优先级任务饥饿问题。
+FCFS, SJF, RR, priority scheduling, and MLFQ are simplified textbook models. Real Linux schedules tasks or scheduling entities. Fair-class tasks have historically used CFS to allocate CPU according to weights and `vruntime`; Linux 6.6 began introducing EEVDF in the fair scheduling class, using lag and virtual deadlines to choose tasks. The actual implementation depends on kernel version and distribution patches.
 
-**多级反馈队列（MLFQ，Multi-Level Feedback Queue）** 设置多个优先级队列，并根据任务的运行行为调整位置。新任务通常先进入高优先级队列；经常用完整个时间片的 CPU 密集型任务会逐步降级，经常主动等待 I/O 的交互任务可保留较高优先级。具体的升降级和防饥饿规则取决于实现。
+See [CPU Scheduling and System Load](./cpu-scheduling-and-load.md) for more detail.
 
-FCFS、SJF、RR、优先级和 MLFQ 主要是教材中的简化模型。真实 Linux 调度的是 task 或调度实体，普通任务长期由 CFS 按权重和 `vruntime` 分配 CPU；Linux 6.6 开始在 fair 调度类中引入 EEVDF，用 lag 和虚拟截止时间改进任务选择。线上机器具体使用哪套实现，还要看内核版本和发行版补丁。
+### Who Schedules a Process?
 
-详细介绍：[CPU 调度与系统负载详解](./cpu-scheduling-and-load.md)。
+The **scheduler** in the operating system kernel selects the next task. Scheduling may happen when a task blocks, yields the CPU, exhausts its time slice or runtime quota, changes priority, or when a more suitable task wakes up.
 
-### 那究竟是谁来调度这个进程呢？
+Textbooks also use the term **dispatcher** for the work that applies the scheduling decision:
 
-负责调度的是操作系统内核中的**调度器（Scheduler）**。当前任务阻塞、主动让出 CPU、时间片或运行额度耗尽、优先级变化，或者更合适的任务被唤醒时，内核都可能触发调度。
+- The scheduler selects a task from the runnable queue.
+- The dispatcher performs the context switch:
+  - Save the current task's registers, program counter, and other state in its process/thread control structures.
+  - Load the next task's saved context.
+  - Transfer CPU control to the selected task.
 
-教材还会用**分派程序（Dispatcher）**描述把调度决定落到 CPU 上的过程：
+Modern Linux does not strictly separate these into two independent components. For interviews, understand the two responsibilities: choosing a task and switching execution to it.
 
-- 调度器从可运行队列中选出下一个任务。
-- 分派过程完成具体的上下文切换：
-  - 保存当前进程的上下文（CPU 寄存器状态、程序计数器等）到其进程控制块（PCB）中。
-  - 加载下一个被选中进程的上下文，从其 PCB 中读取状态，恢复到 CPU 寄存器。
-  - 将 CPU 的控制权正式移交给新进程，让它开始运行。
+### How Do Load Average and CPU Usage Differ?
 
-现代 Linux 内核的实现不会严格拆成两个独立组件，面试时理解“选择下一个任务”和“完成上下文切换”这两项职责即可。
+Load average represents the number of runnable tasks and uninterruptible-sleep tasks over time. On Linux, these are mainly tasks in R and D states. CPU usage describes where CPU time is spent: user mode, kernel mode, I/O wait, interrupts, idle time, or virtualization steal time.
 
-### load average 和 CPU 使用率有什么区别？
+A high load can mean runnable tasks are competing for CPU, or many tasks are waiting on block devices, network storage, filesystems, or Swap. In the latter case, CPU cores may still be idle. Interpret load against the number of logical CPUs: load 8 means something different on a 1-CPU machine than on a 64-CPU machine.
 
-load average 反映一段时间内系统中可运行任务和不可中断睡眠任务的数量，Linux 下主要对应 R 状态和 D 状态；CPU 使用率描述 CPU 时间具体花在用户态、内核态、I/O wait、中断、空闲或虚拟化 steal 等位置。
+Use `uptime` to see 1-, 5-, and 15-minute load trends, then check `top`, `vmstat 1`, `pidstat`, and `mpstat` to determine whether tasks are competing for CPU, waiting for I/O, or switching frequently. See [CPU Scheduling and System Load](./cpu-scheduling-and-load.md) for metrics and troubleshooting steps.
 
-load 高既可能是可运行任务在争抢 CPU，也可能是大量任务在等待块设备、网络存储、文件系统或 Swap，后一种情况下 CPU 仍可能有空闲。判断 load 还要结合逻辑 CPU 数：同样是 load 8，对 1 个逻辑 CPU 和 64 个逻辑 CPU 的压力完全不同。
+## Deadlocks
 
-排查时可以先用 `uptime` 看 1、5、15 分钟负载趋势，再结合 `top`、`vmstat 1`、`pidstat` 和 `mpstat` 判断任务是在争抢 CPU、等待 I/O，还是频繁发生上下文切换。更完整的指标解释和排查路径可以看：[CPU 调度与系统负载详解](./cpu-scheduling-and-load.md)。
+### What Is a Deadlock?
 
-## 死锁
+A **deadlock** occurs when a group of processes or threads waits for one another to release resources or perform actions. The wait relationships form a cycle, so none of the participants can continue on its own.
 
-### 什么是死锁？
+Deadlock is more than “waiting for a long time.” Ordinary blocking can resolve when a lock is released, I/O returns, or a transaction commits. In a deadlock, the wait chain forms a cycle that will not resolve without outside intervention.
 
-死锁（Deadlock）描述的是这样一种情况：一组进程/线程互相等待对方释放资源或完成动作，等待关系形成闭环，导致所有参与者都无法自行继续执行。
+See [Deadlocks: Four Necessary Conditions, Java Diagnosis, and Database Recovery](./dead-lock.md) for how deadlocks form, Java thread diagnosis, and database handling.
 
-更具体地说，死锁不是“等得久”这么简单。普通阻塞可能等锁释放、I/O 返回或事务提交后继续执行；死锁里的等待链绕成了环，如果没有外力介入，这个环不会自然解开。
+A classic example is **cross-locking** with two threads and two locks:
 
-关于死锁的形成过程、Java 线程死锁排查和数据库死锁处理，可以看这篇更完整的专题：[死锁详解：四个必要条件、Java 死锁排查与数据库死锁处理](./dead-lock.md)。
+- Thread 1 acquires lock A, then requests lock B.
+- At nearly the same time, thread 2 acquires lock B, then requests lock A.
 
-一个最经典的例子就是 **“交叉持锁”**。想象有两个线程和两个锁：
+Thread 1 waits for thread 2 to release B, while thread 2 waits for thread 1 to release A. They hold resources the other needs and form a wait cycle.
 
-- 线程 1 先拿到了锁 A，然后尝试去获取锁 B。
-- 几乎同时，线程 2 拿到了锁 B，然后尝试去获取锁 A。
+![Thread A holds resource 1 and waits for resource 2; thread B holds resource 2 and waits for resource 1](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/dead-lock-deadlock-scenario.png)
 
-这时，线程 1 等着线程 2 释放锁 B，线程 2 等着线程 1 释放锁 A，双方都持有对方需要的资源，并等待对方释放，就形成了一个等待环。
+### What Are the Four Necessary Conditions for Deadlock?
 
-![死锁场景示意图：线程 A 持有 resource1 并等待 resource2，线程 B 持有 resource2 并等待 resource1，等待链形成闭环](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/dead-lock-deadlock-scenario.png)
+All four of the following conditions must hold at the same time:
 
-### 产生死锁的四个必要条件是什么？
+1. **Mutual exclusion:** A resource is non-shareable; only one process can use it at a time. Another requester must wait until it is released.
+2. **Hold and wait:** A process holds at least one resource while waiting for another resource held by another process.
+3. **No preemption:** Resources cannot be forcibly taken away; the process holding a resource must release it.
+4. **Circular wait:** A set of processes `{P0, P1, ..., Pn}` forms a cycle: P0 waits for a resource held by P1, P1 waits for one held by P2, and so on, until Pn waits for a resource held by P0.
 
-死锁的发生并不是偶然的，它需要同时满足**四个必要条件**：
+![The four necessary conditions for deadlock: mutual exclusion, hold and wait, no preemption, and circular wait](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/dead-lock-four-conditions.png)
 
-1. **互斥**：资源必须处于非共享模式，即一次只有一个进程可以使用。如果另一进程申请该资源，那么必须等待直到该资源被释放为止。
-2. **占有并等待**：一个进程至少应该占有一个资源，并等待另一资源，而该资源被其他进程所占有。
-3. **非抢占**：资源不能被抢占。只能在持有资源的进程完成任务后，该资源才会被释放。
-4. **循环等待**：有一组等待进程 `{P0, P1, ..., Pn}`，`P0` 等待的资源被 `P1` 占有，`P1` 等待的资源被 `P2` 占有，...，`Pn-1` 等待的资源被 `Pn` 占有，`Pn` 等待的资源又被 `P0` 占有。
+These are necessary conditions, not a claim that any one condition causes deadlock. All four must hold together. Structurally preventing any one of them can prevent deadlock.
 
-![死锁四个必要条件示意图：互斥、请求与保持、非抢占、循环等待同时成立才会形成死锁](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/dead-lock-four-conditions.png)
+### Can You Write Code That Produces a Deadlock?
 
-**注意**：这四个条件是产生死锁的必要条件，必须同时成立。只满足其中一两个条件不一定会死锁；反过来，只要能稳定破坏其中任意一个条件，就可以从结构上预防死锁。
-
-### 能写一个模拟产生死锁的代码吗？
-
-下面通过一个实际的例子来复现上面的交叉持锁场景：
+This example reproduces the cross-locking scenario:
 
 ```java
 public class DeadLockDemo {
-    private static final Object resource1 = new Object(); // 资源 1
-    private static final Object resource2 = new Object(); // 资源 2
+    private static final Object resource1 = new Object(); // Resource 1
+    private static final Object resource2 = new Object(); // Resource 2
 
     public static void main(String[] args) {
         new Thread(() -> {
             synchronized (resource1) {
-                System.out.println(Thread.currentThread() + "get resource1");
+                System.out.println(Thread.currentThread() + " get resource1");
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-                System.out.println(Thread.currentThread() + "waiting get resource2");
+                System.out.println(Thread.currentThread() + " waiting to get resource2");
                 synchronized (resource2) {
-                    System.out.println(Thread.currentThread() + "get resource2");
+                    System.out.println(Thread.currentThread() + " get resource2");
                 }
             }
-        }, "线程 1").start();
+        }, "thread-1").start();
 
         new Thread(() -> {
             synchronized (resource2) {
-                System.out.println(Thread.currentThread() + "get resource2");
+                System.out.println(Thread.currentThread() + " get resource2");
                 try {
                     Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-                System.out.println(Thread.currentThread() + "waiting get resource1");
+                System.out.println(Thread.currentThread() + " waiting to get resource1");
                 synchronized (resource1) {
-                    System.out.println(Thread.currentThread() + "get resource1");
+                    System.out.println(Thread.currentThread() + " get resource1");
                 }
             }
-        }, "线程 2").start();
+        }, "thread-2").start();
     }
 }
 ```
 
-Output
+Output:
 
 ```text
-Thread[线程 1,5,main]get resource1
-Thread[线程 2,5,main]get resource2
-Thread[线程 1,5,main]waiting get resource2
-Thread[线程 2,5,main]waiting get resource1
+Thread[thread-1,5,main] get resource1
+Thread[thread-2,5,main] get resource2
+Thread[thread-1,5,main] waiting to get resource2
+Thread[thread-2,5,main] waiting to get resource1
 ```
 
-线程 1 通过 `synchronized (resource1)` 获得 `resource1` 的监视器锁，线程 2 通过 `synchronized (resource2)` 获得 `resource2` 的监视器锁。`Thread.sleep(1000)` 不是死锁的原因，它只是把两个线程交错执行的窗口拉大，让死锁更容易复现。休眠结束后，两个线程都开始申请对方持有的资源，于是陷入互相等待。
+Thread 1 acquires the monitor for `resource1`, and thread 2 acquires the monitor for `resource2`. `Thread.sleep(1000)` does not cause the deadlock; it widens the timing window so the threads are more likely to interleave. After sleeping, each requests the resource held by the other and waits.
 
-### 解决死锁的方法
+### How Can Deadlocks Be Handled?
 
-面试里回答到这个程度即可：解决死锁一般有 **预防、避免、检测和解除/恢复** 四类思路。
+Four general approaches are **prevention, avoidance, detection, and recovery**:
 
-- **预防**：提前破坏死锁四个必要条件之一。工程里最常见的是固定加锁顺序、缩小锁范围、避免持锁做慢操作。
-- **避免**：分配资源前判断系统是否仍处于安全状态，典型代表是银行家算法。这个方法更偏教材理解，普通业务系统很少直接实现。
-- **检测**：允许等待发生，再检查等待图或资源分配图里是否出现环。Java 里可以用 `jcmd <pid> Thread.print -l`、`jstack -l <pid>` 或 `ThreadMXBean.findDeadlockedThreads()` 辅助排查；数据库也会检测事务等待环。
-- **解除/恢复**：发现死锁后打破等待环，例如终止进程、回滚事务、抢占资源或让应用层重试。数据库事务天然支持回滚，因此更适合采用检测和恢复。
+- **Prevention:** Break one of the four necessary conditions in advance. Common engineering techniques include a fixed lock order, a smaller lock scope, and avoiding slow operations while holding a lock.
+- **Avoidance:** Check whether a resource allocation keeps the system in a safe state. The Banker's algorithm is the classic example. This is mainly a textbook technique and is uncommon in ordinary applications.
+- **Detection:** Allow waits and check for a cycle in a wait-for or resource-allocation graph. In Java, use `jcmd <pid> Thread.print -l`, `jstack -l <pid>`, or `ThreadMXBean.findDeadlockedThreads()` to help diagnose. Databases also detect transaction wait cycles.
+- **Recovery:** Break the cycle after detection, for example by terminating a process, rolling back a transaction, preempting a resource, or retrying at the application layer. Database transactions have rollback support, so detection and recovery are natural there.
 
-![死锁处理策略图：预防、避免、检测、恢复四类方法的作用位置和工程常见程度](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/dead-lock-strategies.png)
+![Deadlock prevention, avoidance, detection, and recovery strategies](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/dead-lock-strategies.png)
 
-这部分面试不必展开太细，抓住层次即可。想继续看资源分配图、等待图、Java 线程栈排查和数据库死锁重试，可以看：[死锁详解：四个必要条件、Java 死锁排查与数据库死锁处理](./dead-lock.md)。
+For more on resource-allocation graphs, wait-for graphs, Java thread dumps, and database retries, see [Deadlocks](./dead-lock.md).
 
-## 参考
+## References
 
-- 《计算机操作系统—汤小丹》第四版
-- 《深入理解计算机系统》
-- 《重学操作系统》
-- 操作系统为什么要分用户态和内核态：<https://blog.csdn.net/chen134225/article/details/81783980>
-- 从根上理解用户态与内核态：<https://juejin.cn/post/6923863670132850701>
-- 什么是僵尸进程与孤儿进程：<https://blog.csdn.net/a745233700/article/details/120715371>
+- _Computer Operating Systems_, 4th edition, Tang Xiaodan et al.
+- _Computer Systems: A Programmer's Perspective_
+- _Relearning Operating Systems_
+- [Why Do Operating Systems Have User and Kernel Modes?](https://blog.csdn.net/chen134225/article/details/81783980)
+- [Understanding User and Kernel Modes](https://juejin.cn/post/6923863670132850701)
+- [What Are Zombie and Orphan Processes?](https://blog.csdn.net/a745233700/article/details/120715371)
 
 <!-- @include: @article-footer.snippet.md -->

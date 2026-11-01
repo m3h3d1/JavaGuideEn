@@ -1,265 +1,300 @@
 ---
-title: 操作系统内存管理详解：分页、分段、页面置换、Swap 与 OOM
-description: 操作系统内存管理高频面试题总结，从 VSZ/RSS/PSS、连续分配与内存碎片讲起，讲清伙伴系统、分页分段、页表、TLB、缺页异常、页面置换、Swap、Overcommit、OOM、mmap、COW 和大页。
-category: 计算机基础
+title: "Operating System Memory Management: Paging, Segmentation, Page Replacement, Swap, and OOM"
+description: Common operating system memory management interview topics, from VSZ/RSS/PSS, contiguous allocation, and fragmentation to the buddy system, paging, segmentation, page tables, TLBs, page faults, reclaim, Swap, overcommit, OOM, mmap, COW, and huge pages.
+category: Computer Science Fundamentals
 tag:
-  - 操作系统
-  - 内存管理
+  - Operating Systems
+  - Memory Management
 head:
   - - meta
     - name: keywords
-      content: 操作系统内存管理,内存管理,内存管理面试题,Linux内存管理,虚拟内存,分页,分段,页表,TLB,缺页异常,页面置换,Swap,伙伴系统,Overcommit,OOM,mmap,COW,大页,操作系统面试题
+      content: operating system memory management,memory management interview questions,Linux memory management,virtual memory,paging,segmentation,page tables,TLB,page faults,page replacement,Swap,buddy system,overcommit,OOM,mmap,COW,huge pages,operating system interview questions
 ---
 
-打开一个普通进程的内存信息，你会看到很多看起来反直觉的数字：进程有自己的虚拟地址空间，地址范围可能很大；真正占用的物理内存又是另一回事；同一个动态库还可能被多个进程共享。
+Inspect the memory information for an ordinary process and you will see numbers that can seem counterintuitive. Each process has its own virtual address space, which may be large; its actual physical memory use is a different matter. The same shared library may also be used by multiple processes.
 
-程序写代码时只是在访问地址，操作系统看到的却是一堆更具体的问题：这块内存给谁？能不能让别的进程碰？物理内存不够时换谁出去？释放之后留下的空洞还能不能继续用？
+Programs simply access addresses, but the operating system has to answer more specific questions: Who owns this memory? Can another process access it? Which pages should be evicted when physical memory is low? Can a free space left behind still be reused?
 
-这就是内存管理要处理的事。小 G 建议不要一上来就背分页、分段、TLB 这些名词，先抓住一条线：**操作系统把程序看到的地址和真实物理内存隔开，再用分配、映射、保护和回收把内存管起来。**
+Memory management handles these questions. Rather than starting with terms such as paging, segmentation, and TLB, follow this idea: **the operating system separates the addresses a program sees from physical memory, then manages memory through allocation, mapping, protection, and reclaim.**
 
-## VSZ、RSS 和 PSS 分别代表什么？
+## What Do VSZ, RSS, and PSS Mean?
 
-Linux 里最容易看错的是进程内存数字。`ps` 里的 VSZ、`/proc/<pid>/status` 里的 `VmSize`，表示进程已经映射的虚拟地址空间大小。它可能包含尚未真正驻留的匿名映射、文件映射、共享库和预留地址，不能直接当成物理内存占用。
+Process memory figures on Linux are easy to misread. VSZ in `ps` and `VmSize` in `/proc/<pid>/status` show the size of a process's mapped virtual address space. This may include anonymous and file-backed mappings that are not resident, shared libraries, and reserved address ranges. It is not the same as physical memory use.
 
-RSS 表示当前驻留在 RAM 中、并映射给该进程的页面总量。共享库、共享内存、Page Cache 中的共享页也会算进每个相关进程的 RSS，所以把多个进程 RSS 直接相加容易重复计算。
+RSS is the total amount of RAM currently resident and mapped into the process. Shared libraries, shared memory, and shared Page Cache pages are counted in the RSS of every process that maps them, so adding the RSS values of several processes can double-count memory.
 
-PSS 更适合估算进程的实际分摊占用。一个物理页如果被 4 个进程共享，每个进程的 PSS 只算四分之一。需要看汇总时可以用：
+PSS is more useful for estimating a process's proportional share. If four processes share one physical page, each process's PSS includes one quarter of that page. To see a summary, use:
 
 ```bash
 grep -E 'VmSize|VmRSS|RssAnon|RssFile|RssShmem|VmSwap' /proc/<pid>/status
 cat /proc/<pid>/smaps_rollup
 ```
 
-`smaps_rollup` 会给出进程级汇总；要分析每段映射，再看 `/proc/<pid>/smaps`。不过完整 `smaps` 会遍历进程的 VMA 和页表，线上高频采集要谨慎。
+`smaps_rollup` gives a process-level summary. To inspect individual mappings, use `/proc/<pid>/smaps`. Reading the full file traverses the process's VMAs and page tables, so avoid collecting it too frequently in production.
 
-## 内存管理主要负责什么？
+## What Does Memory Management Do?
 
-从操作系统视角看，内存管理至少要做 5 件事。
+From the operating system's perspective, memory management has at least five responsibilities.
 
-![内存管理职责概览](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-management-responsibilities.webp)
+![Overview of memory management responsibilities](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-management-responsibilities.webp)
 
-**第一，分配和回收内存。** 用户态的 `malloc()`/`free()` 负责管理进程堆里的内存块。以 glibc 为例，分配器必要时会通过 `brk()`、`mmap()` 等接口扩展可用虚拟地址区域；虚拟区域建好后，物理页通常还要等首次访问时通过缺页路径建立。内核内部则通过页分配器和 SLAB/SLUB 这类对象分配器管理物理页与内核对象。
+**First, allocate and reclaim memory.** User-space `malloc()` and `free()` manage blocks in a process heap. For example, glibc may use interfaces such as `brk()` and `mmap()` to expand the available virtual address range. After the virtual range is created, physical pages are usually established on first access through the page-fault path. Inside the kernel, page allocators and object allocators such as SLAB/SLUB manage physical pages and kernel objects.
 
-**第二，完成地址转换。** 程序访问的是虚拟地址，真正落到内存条上的是物理地址。CPU 里的 MMU 会配合页表、TLB，把虚拟地址翻译成物理地址。
+**Second, translate addresses.** Programs use virtual addresses, while physical addresses identify locations in RAM. The CPU's MMU works with page tables and the TLB to translate virtual addresses to physical addresses.
 
-**第三，做进程隔离和权限控制。** 每个进程都有自己的地址空间。A 进程里的 `0x1000` 和 B 进程里的 `0x1000` 可以映射到完全不同的物理页；页表项还能标记可读、可写、可执行，越权访问会触发异常。
+**Third, isolate processes and enforce permissions.** Each process has its own address space. Address `0x1000` in process A can map to a different physical page than `0x1000` in process B. Page-table entries can also mark pages as readable, writable, or executable; an access that violates these permissions raises an exception.
 
-**第四，在物理内存紧张时回收页面。** 干净的文件页可以直接丢弃，需要时再从文件读取；脏文件页通常要先回写；匿名页如果要回收，通常需要写入 Swap。Linux 会结合页面冷热、refault、内存水位、cgroup 和 `swappiness` 等因素选择回收对象，不是固定先回收某一种页面。
+**Fourth, reclaim pages when physical memory is low.** Clean file-backed pages can be discarded and read from the file again when needed. Dirty file pages usually need to be written back first. Anonymous pages may need to be written to Swap before they can be reclaimed. Linux chooses pages using factors such as page activity, refaults, memory watermarks, cgroups, and `swappiness`; it does not always reclaim one fixed page type first.
 
-**第五，支持共享和映射。** 动态库共享、共享内存 IPC、`mmap()` 文件映射、写时复制（COW），都依赖“多个虚拟地址映射到同一批物理页”这个能力。
+**Fifth, support sharing and mappings.** Shared libraries, shared-memory IPC, file mappings with `mmap()`, and copy-on-write (COW) all rely on the ability to map multiple virtual addresses to the same physical pages.
 
-## 没有内存抽象会怎样？
+## What If There Were No Memory Abstraction?
 
-早期或很小的系统里，程序可以直接访问物理地址。单个程序运行时，这种方式还能凑合；一旦多个程序同时运行，问题马上出现。
+In early or very small systems, programs could access physical addresses directly. That can work with one program, but multiple programs quickly create problems.
 
-假设程序 A 往物理地址 1000 写数据，程序 B 也把自己的变量放在物理地址 1000。两个程序互相不知道对方存在，最后谁后写，谁就覆盖前者。更糟的是，普通用户程序也可能写到操作系统自己的内存，系统稳定性没法保证。
+Suppose program A writes data to physical address 1000, and program B also stores one of its variables at address 1000. Neither knows about the other, so whichever writes last overwrites the other's data. Worse, an ordinary user program could write into the operating system's own memory, making the system unstable.
 
-解决办法是引入**地址空间（Address Space）**。每个进程看到一套自己的地址，里面通常有代码段、数据段、堆、栈、内存映射区等。进程只和虚拟地址打交道，真实物理页由操作系统和硬件共同决定。
+The solution is an **address space**. Each process sees its own set of addresses, usually containing code, data, heap, stack, and memory-mapped regions. A process uses virtual addresses; the operating system and hardware decide which physical pages back them.
 
-这样一来，进程隔离、按需加载、共享内存、COW 才有落脚点。
+This provides a basis for process isolation, on-demand loading, shared memory, and COW.
 
-## 连续内存分配和碎片问题
+## Contiguous Allocation and Fragmentation
 
-最容易理解的内存分配方式是连续分配：一个进程需要多少内存，操作系统就找一整块连续物理内存给它。早期系统常用固定分区或动态分区管理。
+The simplest allocation model is contiguous allocation: the operating system finds one continuous region of physical memory large enough for a process. Early systems often used fixed or variable-sized partitions.
 
-连续分配的问题是碎片。
+The problem with contiguous allocation is fragmentation.
 
-![连续内存分配与碎片](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-fragmentation.webp)
+![Contiguous memory allocation and fragmentation](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-fragmentation.webp)
 
-**内部碎片**指已经分配出去、但实际没用上的空间。比如系统按 128 字节为单位分配，一个对象只需要 65 字节，剩下 63 字节就浪费在这个分配单元内部。
+**Internal fragmentation** is allocated space that is not actually used. For example, if memory is allocated in 128-byte units and an object needs only 65 bytes, the remaining 63 bytes in that unit are wasted.
 
-**外部碎片**指空闲空间总量够，但不连续，没法满足新的大块连续分配。比如内存里有两块空闲区，每块 128 MB，总共 256 MB；现在要申请一块连续 200 MB 空间，仍然失败。
+**External fragmentation** occurs when the total free space is large enough, but is split into noncontiguous pieces that cannot satisfy a large contiguous request. For example, two free regions of 128 MB provide 256 MB in total, but cannot satisfy a request for one contiguous 200 MB region.
 
-动态分区常见的分配策略有首次适应、最佳适应、最坏适应等。它们能改变碎片出现的位置和速度，但不能从根上消除外部碎片。内存紧凑会迁移可移动页面，把分散的空闲页聚合成更大的连续物理区域。它不等同于 Swap I/O，但同步紧凑可能占用 CPU、迁移大量页面并造成延迟尖峰。
+Common variable-partition strategies include first fit, best fit, and worst fit. They change where and how quickly fragmentation appears, but do not eliminate external fragmentation. Compaction moves movable pages to bring scattered free pages together into a larger contiguous physical region. It is different from Swap I/O, but synchronous compaction can use CPU, migrate many pages, and cause latency spikes.
 
-## Linux 的伙伴系统解决了什么？
+## What Does Linux's Buddy System Solve?
 
-Linux 管理物理页时使用**伙伴系统（Buddy System）**。它把空闲内存按 2 的幂次组织，比如 4 KB、8 KB、16 KB、32 KB……申请内存时，先找能满足请求的最小块；如果找到的块太大，就不断一分为二；释放时，如果相邻伙伴块也空闲，就合并成更大的块。
+Linux uses the **buddy system** to manage physical pages. It organizes free memory into blocks sized as powers of two, such as 4 KB, 8 KB, 16 KB, and 32 KB. To satisfy an allocation, it finds the smallest suitable block. If the block is too large, it repeatedly splits it in two. On free, adjacent free buddies can be merged into a larger block.
 
-这个设计的好处是分裂和合并规则很简单，能较快找到连续物理页，也能减少外部碎片。
+The split and merge rules are simple. The system can find contiguous physical pages quickly and reduce external fragmentation.
 
-不过它也会浪费一些空间：伙伴系统的分配单位是 `2^order` 个连续物理页。以 4 KB 基础页为例，如果内核调用方需要至少 65 KB 的连续物理内存，就可能申请 32 页，也就是 128 KB 的 order-5 块，从而产生内部浪费。这个例子描述的是内核连续物理页申请，不代表用户调用 `malloc(65KB)` 就一定直接占用一块 128 KB 的 buddy block。
+It can still waste space: the buddy system allocates `2^order` contiguous physical pages. With 4 KB base pages, a kernel caller that needs at least 65 KB of contiguous physical memory may request 32 pages, or a 128 KB order-5 block, wasting some of it. This example concerns a kernel request for contiguous physical pages; it does not mean that user-space `malloc(65KB)` directly receives a 128 KB buddy block.
 
-另外，伙伴系统主要按页管理物理内存。内核里还有大量比页小的对象，例如文件对象、inode、网络缓冲结构。如果每次都按页申请，会浪费太多。Linux 会在伙伴系统之上使用 SLAB/SLUB 这类分配器，按对象大小缓存和复用内存块，减少频繁分配、初始化和释放的成本。
+The buddy system manages physical memory in page-sized units. The kernel also needs many objects smaller than a page, such as file objects, inodes, and network buffer structures. Allocating a whole page for each would waste too much memory. Linux uses allocators such as SLAB/SLUB above the buddy system to cache and reuse objects by size, reducing the cost of frequent allocation, initialization, and freeing.
 
-## 分段、分页和段页式有什么区别？
+## How Do Segmentation, Paging, and Segmented Paging Differ?
 
-地址空间不一定只能按一种方式拆。操作系统教材里常见三种：分段、分页、段页式。
+An address space can be divided in several ways. Operating system textbooks commonly discuss segmentation, paging, and segmented paging.
 
-| 方式   | 划分依据                               | 地址结构                   | 优点                                               | 主要问题                           |
-| ------ | -------------------------------------- | -------------------------- | -------------------------------------------------- | ---------------------------------- |
-| 分段   | 按程序逻辑划分，如代码段、数据段、栈段 | 段号 + 段内偏移            | 贴近程序结构，便于共享和保护                       | 段长不固定，容易产生外部碎片       |
-| 分页   | 固定大小切分虚拟地址和物理内存         | 页号 + 页内偏移            | 物理内存可离散分配，减少进程连续分配导致的外部碎片 | 页表占空间，最后一页可能有内部碎片 |
-| 段页式 | 先按逻辑分段，再把段切成页             | 段号 + 段内页号 + 页内偏移 | 兼顾逻辑保护和离散分配                             | 地址转换更复杂                     |
+| Method           | How it divides memory                                             | Address format                                       | Benefit                                                                                                              | Main problem                                                          |
+| ---------------- | ----------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| Segmentation     | By logical program regions such as code, data, and stack          | Segment number + offset                              | Matches program structure; supports sharing and protection                                                           | Variable segment sizes can cause external fragmentation               |
+| Paging           | Virtual and physical memory are split into fixed-size units       | Page number + offset                                 | Physical memory can be allocated noncontiguously, reducing external fragmentation from contiguous process allocation | Page tables use memory; the last page may have internal fragmentation |
+| Segmented paging | Divide into logical segments, then divide each segment into pages | Segment number + page number within segment + offset | Combines logical protection with noncontiguous allocation                                                            | More complex address translation                                      |
 
-现代通用操作系统主要依赖分页管理内存。以 x86 为例，硬件历史上支持分段和分页；在 x86-64 长模式下，Linux 的普通用户地址空间主要依赖分页，传统代码段和数据段基本采用平坦模型。不过 FS/GS 仍然有实际用途，例如 FS 常用于用户态线程本地存储（TLS）。
+Modern general-purpose operating systems mainly use paging. x86 hardware historically supported both segmentation and paging. In x86-64 long mode, Linux's ordinary user address space mainly relies on paging, with traditional code and data segments mostly using a flat model. FS and GS still have practical uses; FS is often used for user-space thread-local storage (TLS).
 
-还要补一个容易被教材简化掉的点：分页减少的是进程地址空间连续分配带来的外部碎片，并没有让物理内存自身的碎片问题消失。DMA、大页和部分内核申请仍可能需要连续物理页，所以空闲内存总量够，高阶连续页申请也可能失败，内核还需要伙伴合并和内存紧凑。
+One point that textbooks may simplify: paging reduces external fragmentation caused by requiring a process's address space to be contiguous, but it does not eliminate fragmentation in physical memory. DMA, huge pages, and some kernel allocations may still require contiguous physical pages. The system can have enough free memory in total and still fail to find a high-order contiguous block, so the kernel also uses buddy merging and compaction.
 
-## 分页是怎么完成地址转换的？
+## How Does Paging Translate Addresses?
 
-分页把虚拟地址空间切成固定大小的虚拟页，把物理内存切成同样大小的页帧。常见 Linux x86-64 系统一页通常是 4 KB，但具体页大小和架构有关。
+Paging divides virtual address space into fixed-size virtual pages and physical memory into page frames of the same size. A page is commonly 4 KB on Linux x86-64, though page sizes depend on the architecture and configuration.
 
-一个虚拟地址可以拆成两部分：
+A virtual address has two parts:
 
-- **虚拟页号**：用来查页表，找到对应物理页帧。
-- **页内偏移**：页内的具体位置。
+- **Virtual page number:** Used to look up the corresponding physical page frame in the page table.
+- **Page offset:** Identifies a location within that page.
 
-地址转换大致是：CPU 发出虚拟地址，MMU 取出虚拟页号查页表，得到物理页帧号，再拼上页内偏移，得到物理地址。
+In broad terms, the CPU issues a virtual address, the MMU uses the virtual page number to look up a page-table entry, then combines the physical frame number with the page offset to form the physical address.
 
-![虚拟地址到物理地址转换](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-address-translation.webp)
+![Virtual-to-physical address translation](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-address-translation.webp)
 
-页表项不只保存物理页帧号，还会保存很多状态位，例如 present 位、读写权限、用户/内核权限、脏位、访问位等。present 位表示页面是否已经在物理内存里；权限位用于保护；访问位和脏位会参与页面回收判断。
+A page-table entry stores more than a physical frame number. It can include a present bit, read/write permissions, user/kernel permissions, a dirty bit, and an accessed bit. The present bit indicates whether the page is in physical memory; permission bits enforce protection; accessed and dirty bits can inform reclaim decisions.
 
-## 为什么需要多级页表？
+## Why Use Multilevel Page Tables?
 
-单级页表很好理解，但空间开销太大。
+A single-level page table is easy to understand, but uses too much memory.
 
-以 32 位地址空间、4 KB 页大小为例，一个进程有 4 GB 虚拟地址空间，需要 `4 GB / 4 KB = 2^20` 个页表项。如果每个页表项 4 字节，单个进程的页表就要约 4 MB。进程多起来后，这部分内存不能忽略。
+For a 32-bit address space with 4 KB pages, a process has 4 GB of virtual address space and needs `4 GB / 4 KB = 2^20` page-table entries. If each entry takes 4 bytes, its page table uses about 4 MB. With many processes, this memory adds up.
 
-更麻烦的是，大多数进程不会用满整个虚拟地址空间。单级页表却要为整片空间准备页表项，大量条目都是空的。
+Most processes do not use their entire virtual address space. A single-level page table still needs entries for the whole range, many of them empty.
 
-多级页表的做法是分层：顶层页表覆盖整片虚拟地址空间，下级页表按需创建。某段虚拟地址根本没用到，就不创建对应下级页表。Linux 的架构无关页表代码按照 5 层层级编写；如果具体架构或机器没有使用全部层级，多余层会被折叠。
+Multilevel page tables are hierarchical. The top level covers the whole virtual address space, and lower-level tables are created only when needed. If a virtual-address range is unused, the corresponding lower-level table need not exist. Linux's architecture-independent page-table code uses a five-level hierarchy; levels that are not supported by the architecture or machine are folded.
 
-![多级页表按需创建](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-multilevel-page-table.webp)
+![Multilevel page tables created on demand](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-multilevel-page-table.webp)
 
-在 x86-64 上，传统配置通常使用 4 级分页；CPU、内核和配置支持 LA57 后才会使用 5 级分页。Linux 文档说明，5 级分页可启用 56 位用户态虚拟地址空间，但为了兼容部分会使用指针高位的程序，内核默认不会主动在 47 位以上分配虚拟地址，除非应用通过高位 hint 地址显式请求。
+Traditional x86-64 configurations usually use four-level paging. Five-level paging is used only when the CPU, kernel, and configuration support LA57. Linux documentation says five-level paging can provide a 56-bit user-space virtual address range. To preserve compatibility with programs that use high pointer bits, the kernel does not normally allocate addresses above 47 bits unless an application explicitly requests a high address hint.
 
-## TLB 为什么重要？
+## Why Does the TLB Matter?
 
-多级页表省了空间，却让地址转换多走了几次内存访问。每次访问数据前都完整查多级页表，成本太高。
+Multilevel page tables save memory, but address translation may require several memory accesses. Looking up every level of the page table for every data access would be too expensive.
 
-TLB（Translation Lookaside Buffer，快表）就是页表项缓存，通常在 MMU 里。CPU 访问内存时先查 TLB：
+The TLB (Translation Lookaside Buffer) is a cache of page-table entries, usually in the MMU. The CPU checks it first:
 
-- 命中：直接得到物理页帧号。
-- 未命中：再去走多级页表，查到后把结果放回 TLB。
+- **Hit:** The physical page frame is available immediately.
+- **Miss:** The CPU walks the multilevel page table, then caches the result in the TLB.
 
-程序访问内存有局部性：刚访问过的页，接下来大概率还会访问；访问某个地址，附近地址也可能很快被访问。TLB 正是吃这份局部性红利。
+Programs have locality: they are likely to reuse recently accessed pages, and nearby addresses are often accessed soon after one another. The TLB benefits from this locality.
 
-这也是大页有价值的原因之一。普通 4 KB 页下，一个 TLB 项只能覆盖 4 KB；如果使用 2 MB 大页，一个 TLB 项能覆盖更大的地址范围，TLB miss 可能减少。不过大页也会带来更大的分配和回收成本，数据库、JVM 这类程序是否启用 THP 或 HugeTLB，要按延迟和吞吐目标验证。
+This is one reason huge pages can help. With 4 KB pages, one TLB entry covers 4 KB; with a 2 MB huge page, one entry covers a larger address range, which may reduce TLB misses. Huge pages also have higher allocation and reclaim costs. Whether a database or JVM should use THP or HugeTLB depends on its latency and throughput goals and should be measured.
 
-## 缺页异常（Page Fault）是怎么回事？
+## What Happens During a Page Fault?
 
-虚拟内存不是进程一启动就把所有页面装进物理内存。很多页面只有第一次访问时才真正加载，这叫按需调页。
+Virtual memory does not load every page into physical memory when a process starts. Many pages are loaded only on first access, a technique called demand paging.
 
-Page Fault 是当前指令同步触发的处理器异常，不是外部设备异步产生的硬件中断。
+A Page Fault is a synchronous processor exception caused by the current instruction, not an asynchronous hardware interrupt from an external device.
 
-当进程访问某个虚拟页，MMU 找不到有效翻译，就会触发缺页异常并进入内核处理。内核先判断访问是否落在合法 VMA 中，以及访问权限是否允许。非法地址或权限违规通常会转化为 `SIGSEGV`；合法缺页则根据映射类型处理：可能映射已有 Page Cache 页面、建立匿名零页、执行 COW、分配新页，或者从文件和 Swap 读取数据。处理完成后更新页表，再重新执行刚才那条指令。
+When a process accesses a virtual page and the MMU cannot find a valid translation, it raises a page fault and enters the kernel. The kernel first checks whether the address belongs to a valid VMA and whether the access is permitted. An invalid address or permission violation usually becomes `SIGSEGV`. A valid fault is handled according to the mapping: the kernel may map an existing Page Cache page, establish an anonymous zero page, perform COW, allocate a page, or read data from a file or Swap. It updates the page table and retries the instruction.
 
-Linux 的 `getrusage(2)` 把缺页统计分成两类：
+Linux's `getrusage(2)` reports two main categories:
 
-- **次缺页（minor fault）**：处理时不需要实际 I/O。例如页面已经在内存里，只是当前进程还没建立映射；COW 触发复制也常见于这类路径。
-- **主缺页（major fault）**：处理时需要 I/O，例如要从磁盘文件或 Swap 读入页面。
+- **Minor fault:** No actual I/O is required. For example, a page may already be in memory but lack a mapping in the current process; COW is also commonly counted as a minor fault.
+- **Major fault:** I/O is required, such as reading a page from a disk file or Swap.
 
-主缺页比次缺页慢得多。线上排查内存问题时，`majflt` 增长很快通常比 `minflt` 更值得警惕。
+Major faults are much slower than minor faults. In production, a fast increase in `majflt` is usually more concerning than `minflt`.
 
-## 页面置换：内存不够时换谁出去？
+## Page Replacement: Which Page Should Be Evicted?
 
-物理内存满了，还要装入新页，就必须先回收一批页。页面置换要解决的问题很直接：内存不够时，先把哪一页换出去，才能尽量少影响后面的访问。
+When physical memory is full and a new page must be loaded, the system needs to reclaim pages. Page replacement asks which page to evict to minimize the effect on future accesses.
 
-![页面置换算法对比](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-page-replacement.webp)
+![Comparison of page replacement algorithms](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-page-replacement.webp)
 
-最理想的是 OPT：直接换出未来最长时间不会再访问的页。它只能当理论上限，因为操作系统没法预知未来。FIFO 更容易实现，谁先进内存谁先出去，但它不关心页面是否还热，甚至会出现 Belady 异常：分配更多页框，缺页次数反而可能增加。
+The ideal algorithm is OPT: evict the page that will not be accessed for the longest time in the future. It is a theoretical bound because the operating system cannot know future accesses. FIFO is simpler: evict the page that entered memory first. It ignores whether a page is still hot and can exhibit Belady's anomaly, where adding more frames increases the number of faults.
 
-LRU 的直觉更接近真实程序：最近一直没访问的页，以后大概率也没那么快用到。问题在实现成本，精确维护每个页的访问顺序太贵。CLOCK 就是在这个背景下出现的折中方案，它用访问位和环形队列给页面一次“第二次机会”，用较低成本近似 LRU。LFU 走的是另一条路，按访问频率淘汰，但如果没有衰减机制，早期热点页可能长期占着位置，后面已经不用了也不容易被踢出去。
+LRU evicts the page that has gone the longest without an access. It relies on locality: a recently used page is likely to be used again soon. Exact LRU is expensive because the system must maintain access order, such as with timestamps or a list updated on every access. CLOCK approximates LRU at lower cost. It gives each page a reference bit and arranges the pages in a ring. When choosing a victim, it clears the bit and gives a recently used page a second chance; the first page it finds with a clear bit is evicted. LFU instead evicts the least frequently used page. Without aging, an old hot page can retain a high count long after it stops being useful.
 
-真实 Linux 不会照搬某个教科书算法。经典回收路径会使用文件页/匿名页、活跃/非活跃 LRU、workingset 和 refault 等机制近似识别冷热页面；较新的内核还可能启用 Multi-Gen LRU，用多个访问代际表示页面新旧程度。文件页、匿名页、cgroup、NUMA、内存水位都会影响回收路径，具体算法还取决于内核版本和配置。
+| Algorithm | Eviction rule                                 | Cost                      | Behavior             | Practical use                           |
+| --------- | --------------------------------------------- | ------------------------- | -------------------- | --------------------------------------- |
+| OPT       | Page whose next use is farthest in the future | Impossible to implement   | Theoretical optimum  | Benchmark only                          |
+| FIFO      | Page that entered memory earliest             | Very low                  | May evict a hot page | Implementable                           |
+| LRU       | Page least recently accessed                  | High (timestamps or list) | Close to OPT         | Exact software implementation is costly |
+| CLOCK     | Reference bit and circular scan               | Low                       | Approximates LRU     | Common approximation                    |
+| LFU       | Page with fewest accesses                     | Medium (needs counters)   | Workload-dependent   | Often combined with aging               |
 
-![Linux 页面回收思路](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/memory-page-reclaim.webp)
+These are textbook algorithms for understanding the tradeoffs. The Linux kernel does not simply pick one of OPT, FIFO, LRU, or CLOCK. It uses mechanisms such as active and inactive LRU lists, workingset detection, and refault tracking. Reclaim also differs for file and anonymous pages and is affected by NUMA, cgroups, and memory watermarks. Saying “Linux uses CLOCK” is not accurate.
 
-因此，把 Linux 页面回收简单说成某一个算法并不准确。它更像一组围绕工作集保护、冷热识别和内存水位控制组合起来的策略。
+## Swap, Working Sets, and Thrashing
 
-## Swap、工作集和抖动
+Swap is not “extra memory”; it is a slower backing area. Anonymous pages have no file from which to reload them, so when memory is tight, the kernel may write them to Swap before reclaiming them. If they are accessed again, the kernel reads them back.
 
-Swap 不是“多出来的内存”，更像一块低速后备区域。匿名页没有文件来源，内存紧张时如果要回收它，就可能写入 Swap；以后再访问，再从 Swap 读回。
+A process's actively used pages form its **working set**. If physical memory can hold the main working sets of the processes on the system, page faults remain manageable. If it cannot, pages may be swapped out and back in repeatedly, and the system can start thrashing.
 
-一个进程真正活跃使用的页面集合叫工作集。只要物理内存能容纳系统里主要进程的工作集，缺页就比较可控；如果容纳不下，页面会被频繁换出又换入，系统进入抖动状态。
-
-抖动时，CPU 看起来不一定忙在业务计算上，磁盘 I/O、主缺页、内存回收会变得很明显。排查时可以看这些指标：
+During thrashing, the CPU may not spend much time on application work. Disk I/O, major faults, and memory reclaim become prominent. Useful metrics include:
 
 ```bash
-# 系统整体
+# System-wide
 free -h
 vmstat 1
 cat /proc/meminfo
 cat /proc/pressure/memory
 grep -E 'pgfault|pgmajfault|pswpin|pswpout|pgscan|pgsteal' /proc/vmstat
 
-# 单个进程
+# Per process
 grep -E 'VmSize|VmRSS|RssAnon|RssFile|RssShmem|VmSwap' /proc/<pid>/status
 cat /proc/<pid>/smaps_rollup
 pmap -x <pid>
 perf stat -e page-faults,major-faults <command>
 
-# 容器 / cgroup v2
+# Container / cgroup v2
 cat /sys/fs/cgroup/memory.current
 cat /sys/fs/cgroup/memory.max
 cat /sys/fs/cgroup/memory.events
 cat /sys/fs/cgroup/memory.pressure
 ```
 
-读这些指标时，可以按来源拆开看：进程侧看 RSS/PSS 和 `smaps_rollup`，确认常驻内存落在匿名页、文件页还是共享内存；缺页侧看 `pgmajfault` 和 `major-faults`，确认慢在 I/O 还是只是在建映射；系统侧看 Swap、回收扫描和 PSI，确认内存压力有没有传到业务延迟上。
+Read these metrics by source. For a process, use RSS/PSS and `smaps_rollup` to see whether resident memory is anonymous, file-backed, or shared. For faults, check `pgmajfault` and `major-faults` to see whether I/O is involved or mappings are simply being established. For the system, check Swap, reclaim scans, and PSI to see whether memory pressure is affecting application latency.
 
-排查时不要只看 `free`。Linux 会尽量把空闲内存用于 Page Cache，低 `MemFree` 不一定表示压力很大；更应结合 `MemAvailable`、Swap 活跃度、主缺页、回收扫描和 PSI 判断。PSI 里的 `some` 表示至少有任务因内存压力停顿，`full` 表示所有非 idle 任务都同时因该资源停顿，通常更能反映内存压力对业务延迟的影响。
+Do not rely only on `free`. Linux uses otherwise free memory for Page Cache, so a low `MemFree` value does not necessarily mean the system is under heavy pressure. Consider `MemAvailable`, Swap activity, major faults, reclaim scans, and PSI. In PSI, `some` means at least one task is stalled by memory pressure; `full` means all non-idle tasks are stalled by that resource at the same time, which often reflects memory pressure's effect on latency more clearly.
 
-## Overcommit 和 OOM：申请成功不等于物理内存已经准备好
+## Overcommit and OOM: A Successful Allocation Does Not Reserve Physical Memory
 
-Linux 可以允许进程承诺的虚拟内存超过当前 RAM 和 Swap，这叫内存 overcommit。它适合那些会申请很大地址空间、但只实际使用其中一部分的程序。
+Linux can allow the virtual memory promised to processes to exceed the available RAM and Swap. This is called **memory overcommit** and is useful for programs that reserve a large address space but use only part of it.
 
-`vm.overcommit_memory` 常见有 3 种模式：
+`vm.overcommit_memory` commonly has three modes:
 
-- `0`：启发式判断，拒绝明显不合理的申请。
-- `1`：尽量允许申请，直到真正耗尽资源。
-- `2`：使用更严格的 commit 限制。
+- `0`: Use heuristic checks and reject obviously unreasonable requests.
+- `1`: Allow allocations as far as possible, until resources are actually exhausted.
+- `2`: Apply a stricter commit limit.
 
-因此，`malloc()` 或 `mmap()` 成功，通常只表示地址空间和 commit 检查通过，不代表对应物理页已经全部驻留。当页面实际被访问，内核又无法通过回收、写回或 Swap 获得足够内存时，可能触发 OOM Killer，选择进程终止以释放资源。
+Therefore, a successful `malloc()` or `mmap()` usually means the address-space and commit checks passed; it does not mean that all corresponding physical pages are resident. When pages are accessed, if the kernel cannot get enough memory through reclaim, writeback, or Swap, the OOM Killer may terminate a process to free resources.
 
-在容器里，还可能先触发 cgroup 范围内的 OOM。宿主机整体仍有可用内存，某个容器也可能因为 `memory.max` 达到上限而被限制；cgroup v2 的 `memory.events` 会记录 `high`、`max`、`oom`、`oom_kill` 等事件。
+In a container, an OOM event can happen at the cgroup level first. The host may still have available memory while a container hits its `memory.max` limit. In cgroup v2, `memory.events` records events such as `high`, `max`, `oom`, and `oom_kill`.
 
-## mmap、COW 和共享内存
+## `mmap`, COW, and Shared Memory
 
-`mmap()` 会在进程虚拟地址空间里创建一段映射。它可以映射文件，也可以创建匿名映射。映射建立时不一定马上读入数据，真正访问到某个还没驻留的页时，才可能触发缺页。
+`mmap()` creates a mapping in a process's virtual address space. It can map a file or create an anonymous mapping. Creating the mapping does not necessarily read data immediately; accessing a page that is not resident may trigger a page fault.
 
-文件映射适合随机访问、共享文件页，以及希望直接按内存地址访问文件内容的场景。它可以减少显式的用户态缓冲区拷贝和系统调用，但不保证一定比 `read()`/`write()` 更快；实际效果还取决于访问模式、缺页成本、预读、写回、异常处理和文件大小。
+File mappings are useful for random access, sharing file pages, and accessing file contents by memory address. They can reduce explicit copies through user-space buffers and system calls, but are not guaranteed to be faster than `read()`/`write()`. Results depend on access patterns, page-fault costs, readahead, writeback, exception handling, and file size.
 
-多个进程映射同一个文件时，内核可以让它们共享 Page Cache 中的物理页。`MAP_SHARED` 的修改可以对其他映射可见，并可写回底层文件；`MAP_PRIVATE` 创建的是私有 COW 映射，写入不会传播给其他进程，也不会写回原文件。共享内存 IPC 也是类似思路：不同进程的虚拟地址映射到同一批物理页，读写数据不需要每次经过内核拷贝。
+When several processes map the same file, the kernel can let them share physical pages in the Page Cache. Changes through `MAP_SHARED` can be visible to other mappings and written back to the file. `MAP_PRIVATE` creates a private COW mapping: writes are not propagated to other processes or written to the original file. Shared-memory IPC works similarly: different processes map the same physical pages at different virtual addresses, so they can exchange data without a kernel copy on every access.
 
-COW（Copy-On-Write，写时复制）也很常见。`fork()` 后父子进程最开始可以共享同一批物理页，页表标成只读；谁先写，谁触发缺页，内核再复制一份页面给写入方。这样避免了 `fork()` 时立刻复制整个地址空间。
+COW (Copy-On-Write) is also common after `fork()`. The parent and child can initially share physical pages, marked read-only in their page tables. The first process to write triggers a page fault, and the kernel copies that page for the writer. This avoids copying the entire address space when `fork()` runs.
 
-不过，COW 不是免费午餐。Redis 做 RDB 快照时会 `fork()` 子进程，父进程继续处理写请求；写请求越多，被复制的页越多，内存压力也越大。理解这点，才能看懂很多数据库、缓存系统里的 fork、mmap、Page Cache 和内存峰值问题。
+COW still has a cost. Redis creates a child process with `fork()` for an RDB snapshot while the parent continues handling writes. The more writes occur, the more pages are copied and the higher the memory pressure. This helps explain `fork()`, `mmap`, Page Cache, and memory peaks in databases and caches.
 
-## 内存管理和 Java 后端有什么关系？
+## How Does Memory Management Affect Java Backend Services?
 
-操作系统内存管理并不只停在教材里。Java 后端平时会遇到很多相关现象。
+Operating system memory management appears in everyday Java backend work.
 
-**JVM 堆是虚拟地址空间的一部分。** `-Xmx` 限的是 Java 堆最大值，但进程 RSS 还会包含元空间、线程栈、JIT 代码缓存、DirectBuffer、本地库、mmap 文件映射等。看到 RSS 大于 `-Xmx`，不能直接判断是堆泄漏。
+**The JVM heap is part of virtual address space.** `-Xmx` limits the maximum Java heap, but process RSS also includes metaspace, thread stacks, JIT code cache, DirectBuffers, native libraries, and memory-mapped files. RSS exceeding `-Xmx` does not by itself prove a heap leak.
 
-**线程栈也要占地址空间和物理页。** 平台线程很多时，线程栈、调度开销、TLB 和缓存失效都会变重。虚拟线程能降低大量阻塞任务对平台线程的依赖，但 CPU 密集型任务仍然受核心数限制。
+**Thread stacks use address space and physical pages too.** A large number of platform threads increases stack, scheduling, TLB, and cache costs. Virtual threads reduce the dependency on platform threads for many blocking tasks, but CPU-bound work is still limited by the number of cores.
 
-**DirectBuffer 和 mmap 不在 Java 堆里。** 它们由 JVM 或本地代码管理，最终还是落到进程地址空间和物理页上。排查时不能只看 GC 日志，也要结合 NMT、`pmap`、`smaps_rollup`、cgroup 指标一起看。
+**DirectBuffers and mmap are outside the Java heap.** They are managed by the JVM or native code, but still use the process address space and physical pages. Do not rely only on GC logs when investigating them; also check NMT, `pmap`, `smaps_rollup`, and cgroup metrics.
 
-HotSpot NMT 默认关闭，需要在 JVM 启动时加参数：
+HotSpot Native Memory Tracking (NMT) is disabled by default and must be enabled when the JVM starts:
 
 ```bash
 -XX:NativeMemoryTracking=summary
-# 或
+# or
 -XX:NativeMemoryTracking=detail
 
 jcmd <pid> VM.native_memory summary
 ```
 
-NMT 能按 JVM 子系统统计原生内存，例如 Java Heap、Class、Code、Thread 等；但它不是操作系统级的完整进程内存账本，也不能覆盖所有第三方 native library 分配。RSS/PSS、`smaps_rollup` 和容器内存限制仍然要一起看。
+NMT reports native memory by JVM subsystem, such as Java Heap, Class, Code, and Thread. It is not a complete operating-system ledger for the process and does not cover every allocation made by third-party native libraries. Check RSS/PSS, `smaps_rollup`, and container memory limits too.
 
-**大页不一定总是收益。** 大页能降低 TLB 压力，但 THP 的直接回收、内存紧凑、大页清零和 COW 都可能带来延迟波动。Redis 官方就明确提醒：RDB/AOF 后台任务依赖 `fork()` 和 COW，写密集时额外内存可能接近平时用量的一倍；THP 还可能放大 `fork()` 后的 COW 成本。JVM、数据库和缓存系统不能共用一套固定结论，应按产品文档和实际负载压测。
+**Huge pages are not always beneficial.** They can reduce TLB pressure, but THP compaction, direct reclaim, huge-page zeroing, and COW can introduce latency variation. Redis documentation warns that RDB/AOF background work uses `fork()` and COW; under a write-heavy workload, additional memory can approach the process's normal memory use. THP can increase COW costs after `fork()`. Do not apply one rule to JVMs, databases, and caches; verify against product documentation and representative load tests.
 
-## 面试里怎么回答？
+## Belady's Anomaly: Can More Memory Cause More Page Faults?
 
-如果被问“操作系统内存管理做什么”，别从分页、分段这些名词开始背。先讲主线：
+It seems that more physical page frames should mean fewer page faults. FIFO provides a counterexample: **in some cases, adding frames increases the number of page faults**. This is Belady's anomaly, identified by László Bélády in the 1960s.
 
-操作系统先给每个进程一套独立的虚拟地址空间，再通过页表、TLB 和 MMU 把虚拟地址翻译成物理地址。页表不只做地址翻译，还会记录权限、是否在内存、是否被修改、是否被访问过。等物理内存紧张时，内核再根据页面冷热、页面类型和系统水位回收文件页或匿名页，必要时才动用 Swap。
+The classic reference string `1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5` produces:
 
-追问分页和分段时，把差别落到“怎么切地址空间”上。分页按固定大小切，物理内存可以离散分配，基本消除了外部碎片；分段按代码、数据、栈这类逻辑区域切，表达程序结构更直观，但段长不固定，容易留下外部碎片。现代通用系统主要靠分页，分段更多用于理解历史设计和逻辑保护。
+- 9 page faults with 3 frames.
+- 10 page faults with 4 frames.
 
-缺页异常可以按处理过程讲：CPU 访问某个虚拟地址，页表项不存在、页面不在内存，或者权限不匹配，就会触发 page fault。内核先判断这次访问是否合法；非法访问通常变成 `SIGSEGV`，合法访问才会按映射类型建立页面，例如映射已有 Page Cache 页面、分配匿名页、处理 COW，或者从文件和 Swap 调页。`minor fault` 通常不需要 I/O，`major fault` 需要 I/O。
+Adding a frame increased the fault count by one.
 
-真要聊到线上排查，再补这个限制：教科书算法适合理解思路，但 Linux 的内存回收、THP、NUMA、cgroup 内存限制、内存压缩和数据库自己的缓存管理都会叠在一起。定位问题时，用一个“LRU”解释所有现象，通常不够。
+The reason is that FIFO does not have the **stack property**: the set of pages resident with `n` frames is not necessarily a subset of the pages resident with `n + 1` frames. Once that inclusion property fails, adding a frame can evict the wrong page.
+
+Algorithms with the stack property have replacement priorities independent of the number of frames. OPT and LRU have this property, so increasing the number of frames cannot increase their fault counts. FIFO does not. Whether LFU exhibits Belady's anomaly depends on how it counts frequencies and breaks ties; it is not automatically immune.
+
+Classic CLOCK approximates LRU but does not have LRU's strict stack property. In an extreme case, if all reference bits are set, it can behave like FIFO. Do not infer immunity to Belady's anomaly just because CLOCK approximates LRU. The safe summary is that FIFO has reference strings that trigger the anomaly, OPT and LRU do not, and the result for CLOCK or LFU depends on the exact definition.
+
+The key point is that Belady's anomaly can affect non-stack algorithms such as FIFO. If adding memory appears to make performance worse, investigate replacement behavior before assuming the memory hardware is faulty.
+
+## How Do These Concepts Apply in Practice?
+
+Virtual memory is not limited to textbooks; it appears throughout application engineering.
+
+**`mmap` and zero-copy:** `mmap()` maps a file into a process's virtual address space, so reading the file becomes memory access. Creating the mapping does not load the whole file; a page is loaded on demand when accessed. This can avoid one copy from a kernel buffer to a user buffer, which is why `mmap` appears in zero-copy approaches.
+
+**Redis memory and fragmentation:** Redis is an in-memory database, but its allocated memory ultimately occupies physical pages. Its allocator, jemalloc by default, uses size classes and may waste some space. This resembles page-level internal fragmentation in that allocation granularity exceeds actual use, but one occurs in a user-space allocator and the other in the operating system's paging layer. They are different kinds of fragmentation. Redis persistence also uses `fork()` and COW: parent and child initially share physical pages, and a page is copied when one of them writes.
+
+**The JVM heap:** A heap requested by the JVM is part of virtual address space. A large heap expands the range covered by page tables. Huge pages, such as 2 MB pages, can reduce the number of page-table entries and TLB pressure, potentially helping memory access during garbage collection. GC scanning can have poor locality, causing cache and TLB misses; it causes additional page faults only if the relevant pages are not resident, have been reclaimed, or the system is under memory pressure. This is one reason to consider TLB behavior when tuning a large heap.
+
+Virtual memory sits between hardware page tables and TLBs on one side and databases, JVMs, and zero-copy systems on the other. It is a low-level concept that often appears in performance investigations.
+
+## How to Explain Memory Management in an Interview
+
+If asked what operating system memory management does, start with the main idea rather than listing paging and segmentation terms:
+
+The operating system gives each process an independent virtual address space, then uses page tables, the TLB, and the MMU to translate virtual addresses to physical addresses. Page tables also record permissions and whether a page is resident, modified, or accessed. When physical memory is tight, the kernel reclaims file or anonymous pages according to factors such as page activity and memory watermarks, and may use Swap when needed.
+
+If asked to compare paging and segmentation, explain how they divide the address space. Segmentation divides it into logical regions such as code, data, and stack. Because segments have variable sizes, they can cause external fragmentation and are harder to compact. Paging divides virtual and physical memory into fixed-size pages and records virtual-page-to-physical-frame mappings in page tables. This largely removes external fragmentation from contiguous allocation, though the last page may contain unused space.
+
+For a page fault, describe the handling path: the CPU accesses a virtual address whose page-table entry is absent, whose page is not resident, or whose permissions do not allow the access. The kernel checks whether the access is valid. An invalid access usually becomes `SIGSEGV`; a valid one may map a Page Cache page, allocate an anonymous page, handle COW, or load a page from a file or Swap. A minor fault usually needs no I/O; a major fault does.
+
+For production troubleshooting, add that textbook algorithms are only a model. Linux reclaim, THP, NUMA, cgroup memory limits, memory compression, and database caches all affect behavior. “LRU” alone rarely explains a real incident.

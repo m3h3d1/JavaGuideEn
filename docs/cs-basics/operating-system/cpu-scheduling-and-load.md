@@ -1,176 +1,176 @@
 ---
-title: CPU 调度与系统负载详解
-description: CPU 调度和系统负载高频面试题总结，从进程线程为什么需要调度讲起，讲清抢占、时间片、优先级、上下文切换、经典调度算法、Linux CFS/EEVDF、load average、CPU 使用率、I/O wait 和常用排查命令。
-category: 计算机基础
+title: CPU Scheduling and System Load
+description: A guide to CPU scheduling and system load, covering preemption, time slices, priorities, context switches, classic algorithms, Linux CFS/EEVDF, load average, CPU usage, I/O wait, and troubleshooting commands.
+category: Computer Science Fundamentals
 tag:
-  - 操作系统
+  - Operating Systems
   - Linux
-  - CPU 调度
+  - CPU Scheduling
 head:
   - - meta
     - name: keywords
-      content: CPU 调度, 进程调度, 线程调度, 系统负载, load average, CPU 使用率, iowait, CFS, EEVDF, top, uptime, vmstat, pidstat, mpstat, perf top, 操作系统面试题
+      content: CPU scheduling,process scheduling,thread scheduling,system load,load average,CPU usage,iowait,CFS,EEVDF,top,uptime,vmstat,pidstat,mpstat,perf top,operating system interview questions
 ---
 
-CPU 调度不只是 FCFS、RR、CFS 这些算法名词。排查线上问题时，还要弄清线程为什么被换下去、上下文切换的成本在哪里，以及 load average 很高但 CPU 使用率不高意味着什么。
+CPU scheduling is about more than algorithm names such as FCFS, RR, and CFS. When troubleshooting production issues, you also need to understand why a thread was preempted, where context-switching costs come from, and what it means when load average is high but CPU usage is not.
 
-这些问题背后是同一组约束：CPU 核心有限，任务需要排队，调度器负责决定谁先运行；系统指标则帮助判断任务是在争抢 CPU、等待 I/O，还是卡在内核、中断或虚拟化层。
+These questions share the same constraints: CPU cores are limited, tasks must wait in queues, and the scheduler decides what runs next. System metrics help determine whether tasks are competing for CPU, waiting for I/O, or stalled in the kernel, interrupt handling, or virtualization layer.
 
-比如一台有 8 个逻辑 CPU 的机器，load average 已到 40，但 CPU 还有空闲，`%Cpu(s)` 里的 `wa` 长期偏高。此时直接去找 CPU 热点函数可能没有结果，机器上更可能堆了一批等待 I/O 的任务。CPU 使用率和 load average 需要分开判断。
+For example, a machine with 8 logical CPUs may have a load average of 40 while some CPU capacity remains idle and `%Cpu(s)` shows persistently high `wa`. Searching for CPU-hot functions may not help; the machine may instead have many tasks waiting for I/O. CPU usage and load average must be interpreted separately.
 
-## 为什么需要 CPU 调度
+## Why Is CPU Scheduling Needed?
 
-CPU 核心有限，可运行任务可能很多。
+The number of CPU cores is limited, while many tasks may be runnable.
 
-在一个 Java 服务中，业务线程、GC 线程、JIT 线程、Netty 事件循环线程都可能要跑；同机还可能有日志采集、监控 Agent、定时任务和数据库客户端。如果系统可用的是 8 个逻辑 CPU，同一时刻最多只能让大约 8 个可运行任务占用 CPU，其余任务只能排队、睡眠或等待 I/O。容器环境还要看 CPU quota，不能只看宿主机物理核心数。
+In a Java service, business, GC, JIT, and Netty event-loop threads may all need CPU time. The same machine may also run log collectors, monitoring agents, scheduled jobs, and database clients. With 8 logical CPUs, only about 8 runnable tasks can use a CPU at once; the rest must wait, sleep, or wait for I/O. In containers, check the CPU quota too; the host's physical core count is not enough.
 
-不同系统对调度对象的叫法不完全一样。后端排查时，可先把 Linux 的调度实体理解成能被内核单独安排到 CPU 上运行的执行单元。
+Different systems use different names for the objects they schedule. For backend troubleshooting, think of a Linux scheduling entity as an execution unit the kernel can schedule on a CPU.
 
-一个进程可包含多个线程。它们共享进程地址空间和文件描述符，但各自有栈、寄存器、程序计数器等执行现场。
+A process can contain multiple threads. They share the process's address space and file descriptors, but each has its own execution context, including a stack, registers, and program counter.
 
-![程序、进程和线程的关系](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/relationship-between-program-process-and-thread.png)
+![Relationship between programs, processes, and threads](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/relationship-between-program-process-and-thread.png)
 
-在 Linux 内核里，进程和线程都用 task 表示，调度器实际调度的是 task 或调度实体；用户态看到的一条线程，大多对应一个内核可调度任务。
+In the Linux kernel, both processes and threads are represented as tasks. The scheduler schedules tasks or scheduling entities; a thread visible in user space generally corresponds to a kernel-schedulable task.
 
-如果没有调度，单核机器上的一个死循环就能一直占着 CPU，其他程序没有机会响应。多核机器只是把同一时刻能运行的任务数从 1 个变成 N 个；任务数超过核心数后，仍然要排队和切换。
+Without scheduling, an infinite loop on a single-core machine could occupy the CPU indefinitely, leaving no time for other programs. Multiple cores increase the number of tasks that can run at once from one to N, but tasks still queue and switch when there are more runnable tasks than cores.
 
-调度器要兼顾交互响应、公平性、吞吐量、优先级、实时任务、功耗和缓存局部性。这些目标经常互相牵制：时间片长一些，切换会减少，但交互任务可能等更久；时间片短一些，响应会改善，切换开销又会上升。
+The scheduler must balance interactive response, fairness, throughput, priorities, real-time tasks, power use, and cache locality. These goals can conflict: longer time slices reduce context switches but may make interactive tasks wait longer; shorter slices improve responsiveness but increase switching overhead.
 
-![CPU 调度取舍关系图](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/scheduler-tradeoff-triangle.webp)
+![CPU scheduling tradeoffs](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/scheduler-tradeoff-triangle.webp)
 
-## 任务离开 CPU 的几种情况
+## Why Does a Task Leave the CPU?
 
-一个任务离开 CPU，大致有几类原因。时间片用完只是其中一种情况。
+There are several reasons a task may leave the CPU. Using up its time slice is only one of them.
 
-最常见的是任务主动让出 CPU。比如线程调用 `read()` 读取磁盘，数据还没有准备好，它就会进入等待；线程等待锁、条件变量、定时器时，也会从运行态离开。CPU 不应该陪着它空等，调度器会选择其他可运行任务。
+The most common reason is that a task yields the CPU. For example, a thread calling `read()` may have to wait for disk data. A thread also leaves the running state while waiting for a lock, condition variable, or timer. The CPU should not sit idle while it waits, so the scheduler chooses another runnable task.
 
-另一类是被抢占。通用操作系统通常选用抢占式调度，任务运行一段时间后，时钟中断会给内核一个检查机会；如果当前任务已经运行够了，或者有更合适的任务变为可运行，内核就可能把当前任务换下去。
+Another reason is preemption. General-purpose operating systems typically use preemptive scheduling. A clock interrupt gives the kernel a chance to check after a task has run for a while; if the task has used enough CPU time or a more suitable task becomes runnable, the kernel may switch it out.
 
-很多教材为了讲清楚抢占，常常把这个过程简化成：定时器周期性地产生时钟中断。
+Many textbooks simplify preemption as a timer that periodically generates clock interrupts.
 
-这个模型可以说明抢占的大致过程。不过，现代 Linux 支持 `NO_HZ` / tickless，会在空闲 CPU 或特定配置下减少调度时钟 tick。定时器和调度 tick 是内核获得抢占检查机会的重要机制，线上机器未必一直按固定频率打 tick。
+This model explains the general idea. Modern Linux supports `NO_HZ` (tickless) operation and can reduce scheduler ticks on idle CPUs or with certain configurations. Timers and scheduler ticks are important opportunities for the kernel to check for preemption, but production machines do not necessarily receive ticks at a fixed rate at all times.
 
-优先级也会影响调度。高优先级任务排得更靠前，低优先级任务就更容易等待。如果系统完全偏向高优先级任务，低优先级任务可能长期拿不到 CPU，这就是饥饿。教材算法常用动态优先级、老化或队列提升来缓解饥饿；真实系统的处理方式取决于调度类和具体实现。
+Priority also affects scheduling. Higher-priority tasks are scheduled sooner, so lower-priority tasks may wait. If the system always favors higher-priority tasks, lower-priority tasks may never get CPU time; this is starvation. Textbook algorithms use dynamic priorities, aging, or queue promotion to reduce starvation. Real systems vary by scheduling class and implementation.
 
-上下文切换发生在换任务的那一刻。内核要保存当前任务的寄存器、程序计数器、栈指针等现场，再恢复下一个任务。跨进程切换还可能带来页表、TLB、缓存局部性的额外成本。线程很多、锁竞争严重、任务频繁睡眠和唤醒时，业务代码没运行多少，CPU 时间可能先花在调度和同步上。
+A context switch occurs when the CPU changes tasks. The kernel saves the current task's registers, program counter, stack pointer, and other state, then restores the next task's state. Switching processes may also incur costs from page tables, the TLB, and cache locality. With many threads, heavy lock contention, and frequent sleeps and wakeups, the CPU may spend more time on scheduling and synchronization than on business code.
 
-线程数量需要结合任务类型和 CPU 核数设置。线程可掩盖 I/O 等待，也可利用多核；但线程数量远大于 CPU 核数时，运行队列、上下文切换、缓存失效、锁竞争都会随之上升。
+Choose the number of threads based on the workload and CPU count. Threads can overlap I/O waits and use multiple cores, but when thread count greatly exceeds the number of cores, run queues, context switches, cache misses, and lock contention all increase.
 
-## 经典调度算法
+## Classic Scheduling Algorithms
 
-面试里经常会问 FCFS、SJF、RR、优先级、多级反馈队列。
+Interviewers often ask about FCFS, SJF, RR, priority scheduling, and multilevel feedback queues.
 
-把这些算法放到短任务、长任务和交互任务如何排队的场景中，更容易看出差异。它们主要是教材中的简化模型；真实 Linux 的普通任务调度不会直接照搬某一个算法，还会涉及 CFS/EEVDF、实时调度类、cgroup、CPU affinity、NUMA 等机制。
+These algorithms are easier to compare when considering how short, long, and interactive tasks queue. They are mostly simplified textbook models. Linux does not directly use one of them for ordinary task scheduling; it also involves CFS/EEVDF, real-time scheduling classes, cgroups, CPU affinity, NUMA, and other mechanisms.
 
-| 算法         | 选择方式                           | 容易被追问的问题                             |
-| ------------ | ---------------------------------- | -------------------------------------------- |
-| FCFS         | 先到先服务                         | 长任务排在前面，短任务也要等待               |
-| SJF          | 预计运行时间短的先运行             | 很难提前知道任务还要运行多久，长任务可能饥饿 |
-| RR           | 每个任务轮流运行一个时间片         | 时间片太短会放大上下文切换，太长又接近 FCFS  |
-| 优先级调度   | 优先级高的先运行                   | 低优先级任务可能长期等不到 CPU               |
-| 多级反馈队列 | 多个优先级队列，按运行行为调整位置 | 规则和参数较多，实现更复杂                   |
+| Algorithm                 | How it selects tasks                                            | Common follow-up questions                                                |
+| ------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| FCFS                      | First come, first served                                        | Short tasks wait behind long tasks.                                       |
+| SJF                       | Run the task with the shortest estimated time first.            | Remaining run time is hard to know; long tasks may starve.                |
+| RR                        | Give each task a time slice in turn.                            | Very short slices increase switching overhead; long slices approach FCFS. |
+| Priority scheduling       | Run higher-priority tasks first.                                | Lower-priority tasks may wait indefinitely.                               |
+| Multilevel feedback queue | Adjust task placement across priority queues based on behavior. | More rules and parameters make implementation more complex.               |
 
-举个例子，线程池前面排了几个大文件压缩任务，后面很多只查缓存的请求也要跟着等待，平均响应时间会被长任务拖坏。SJF 可改善这场景，但前提很强：系统得知道每个任务还要运行多久。真实系统没有这种上帝视角，只能根据历史行为、I/O 等待、交互特性来猜。
+For example, if a thread pool has several large file-compression tasks ahead of many cache lookups, the short requests must wait and average response time suffers. SJF could improve this case, but only if the system knew how long each task would run. Real systems do not have that knowledge and can only estimate from past behavior, I/O waits, and interactive patterns.
 
-RR 更像分时系统的入门模型。每个任务运行一个时间片，运行完放回队列。用户敲命令、移动鼠标、发请求时，不必等长任务完全结束才有响应。上下文切换存在固定成本，因此时间片越短，切换开销占比越高；时间片拉长后，切换成本被摊薄，交互延迟又可能变大。
+RR is a basic model for time-sharing systems. Each task runs for one time slice and then returns to the queue. User input, mouse movement, and requests do not have to wait for a long task to finish. Context switches have a fixed cost, so shorter slices increase the share of time spent switching; longer slices amortize that cost but may increase interactive latency.
 
-多级反馈队列同时考虑短任务的响应时间和长任务的推进。新任务一般先进入高优先级队列；如果它总是用完整个时间片，更接近 CPU 密集型长任务，可逐步降级；如果它经常主动等待 I/O，更接近交互或 I/O 型任务，可保留较高优先级。队列数量、时间片和升降级规则都会影响调度效果，实际系统还会叠加更多机制。
+Multilevel feedback queues account for both short-task response time and long-task progress. New tasks usually enter a high-priority queue. If a task repeatedly uses its entire time slice, it is likely CPU-bound and may be moved to a lower-priority queue. If it often waits for I/O, it is more likely interactive or I/O-bound and may keep a higher priority. Queue count, time slices, and promotion/demotion rules all affect scheduling; real systems add other mechanisms too.
 
-## 从 CFS 到 EEVDF
+## From CFS to EEVDF
 
-Linux 普通任务调度长期使用 CFS，也就是 Completely Fair Scheduler。
+Linux has long used CFS (Completely Fair Scheduler) for ordinary task scheduling.
 
-理解 CFS 时，先看 `vruntime`。
+To understand CFS, start with `vruntime`.
 
-`vruntime` 记录任务在公平时间轴上已经运行了多少。任务真实运行一段时间后，内核会把这段时间折算进它的虚拟运行时间；nice 值不同，权重不同，折算速度也不同。调度器倾向于选择 `vruntime` 更小的任务，让各个任务长期按权重分到 CPU。
+`vruntime` tracks how much a task has run on a fair timeline. After a task runs for a while, the kernel accounts for that time as virtual runtime. Different nice values have different weights and therefore different accounting rates. The scheduler tends to choose the task with the smallest `vruntime`, so tasks receive CPU time according to their weights over time.
 
-CFS 没有旧调度器那种固定 timeslice 概念，它更接近在一段时间内按权重分配 CPU 份额。可运行任务少，每个任务可多运行一点；可运行任务多，每个任务分到的片段会变短。CFS 使用红黑树维护按虚拟运行时间排序的可运行任务，通常选择最左边，也就是在公平时间轴上相对获得 CPU 较少的任务。
+CFS does not use fixed time slices like older schedulers. Instead, it allocates CPU shares by weight over a period. With fewer runnable tasks, each can run longer; with more tasks, each receives a shorter interval. CFS uses a red-black tree to order runnable tasks by virtual runtime and usually selects the leftmost task, which has received relatively less CPU on the fair timeline.
 
-Linux 6.6 开始在普通任务调度中引入 EEVDF，也就是 Earliest Eligible Virtual Deadline First。
+Starting with Linux 6.6, ordinary task scheduling began adopting EEVDF (Earliest Eligible Virtual Deadline First).
 
-EEVDF 仍然围绕公平分配 CPU 展开，在选择任务时引入了 lag 和虚拟截止时间。lag 为正，表示任务还欠着 CPU 时间；符合条件的任务中，虚拟截止时间更早的任务优先运行。延迟敏感、请求较短时间片的任务，会更早获得调度机会。
+EEVDF still aims to allocate CPU fairly, but uses lag and virtual deadlines when selecting tasks. Positive lag means a task is owed CPU time. Among eligible tasks, the one with the earliest virtual deadline runs first. Latency-sensitive tasks requesting shorter slices can get an earlier scheduling opportunity.
 
-在 Linux 的代码和工具输出中，普通任务仍归到 fair 调度类。EEVDF 改变的是 fair class 中的任务选择逻辑，并不意味着所有调度概念都换了一套名字。
+In Linux code and tool output, ordinary tasks still belong to the fair scheduling class. EEVDF changes task selection within that class; it does not rename every scheduling concept.
 
-线上机器是否已经使用 EEVDF，要看实际内核版本，以及发行版是否回补或调整了相关补丁。生产排查时，不要默认所有机器都是同一套调度实现。
+Whether a production machine uses EEVDF depends on its kernel version and whether the distribution backported or modified the relevant patches. Do not assume every machine uses the same scheduler implementation.
 
-后端面试通常需要说明 CFS 的 `vruntime`、权重和公平份额，以及 EEVDF 的 lag、虚拟截止时间和延迟敏感任务。更细的内容会涉及内核实现。
+For backend interviews, explain CFS's `vruntime`, weights, and fair CPU shares, along with EEVDF's lag, virtual deadlines, and latency-sensitive tasks. More detail requires discussing the kernel implementation.
 
-![CFS 与 EEVDF 对比图](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/cfs-eevdf-comparison.webp)
+![CFS and EEVDF comparison](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/cfs-eevdf-comparison.webp)
 
-## load average 和 CPU 使用率不是一回事
+## Load Average Is Not CPU Usage
 
-`uptime` 里看到的三个 load average 数字，对应 1、5、15 分钟时间尺度上的平均负载。它们是指数衰减平均值，并不是最近 N 分钟采样值的简单算术平均。
+The three load-average values shown by `uptime` represent averages over 1-, 5-, and 15-minute time scales. They are exponentially damped averages, not simple arithmetic averages of samples from the last N minutes.
 
-load average 统计 R 状态的可运行任务，以及 D 状态的不可中断睡眠任务。D 状态经常与 I/O 有关，但排查时不能只盯本地磁盘，块设备、网络存储、文件系统、Swap 等不可中断等待路径都要考虑。
+Load average counts runnable tasks in state R and uninterruptible sleep tasks in state D. D state is often related to I/O, but troubleshooting should not focus only on local disks; consider block devices, network storage, filesystems, Swap, and other uninterruptible waits.
 
-因此，load 高不等于 CPU 被打满。它既可能来自可运行任务争抢 CPU，也可能是大量任务卡在不可中断等待中。
+So a high load does not necessarily mean the CPU is saturated. It may come from runnable tasks competing for CPU or many tasks stuck in uninterruptible waits.
 
-判断 load 必须结合逻辑 CPU 数。8 个逻辑 CPU 的机器 load 8 左右，可能只是 CPU 被排满；load 40 通常说明大量任务在排队或处于不可中断睡眠。1 个逻辑 CPU 的机器 load 8 已经很紧张，64 个逻辑 CPU 的机器 load 8 可能还较轻。
+Interpret load in relation to the number of logical CPUs. A load near 8 on a machine with 8 logical CPUs may mean the CPUs are fully occupied; a load of 40 usually means many tasks are queued or in uninterruptible sleep. A load of 8 is high on a 1-CPU machine but may be modest on a 64-CPU machine.
 
-`/proc/loadavg` 第四个字段形如 `3/1024`。斜杠前面是当前可运行的内核调度实体数量，后面是系统当前存在的调度实体总数。这个字段补充了采样时刻的任务数量，可与前三个平均负载值一起判断。
+The fourth field in `/proc/loadavg` looks like `3/1024`. The value before the slash is the current number of runnable kernel scheduling entities; the value after it is the total number of scheduling entities in the system. This adds a snapshot of task counts alongside the three load averages.
 
-CPU 使用率看的是 CPU 时间花到了哪里。`top` 里的 `%Cpu(s)` 常见字段可这样读：
+CPU usage shows where CPU time is spent. Common fields in `top`'s `%Cpu(s)` line mean:
 
-- `us`：未调整 nice 值的用户态时间。业务计算、JSON 序列化、正则、压缩、加解密常落在这里。
-- `ni`：调整过 nice 值的用户态时间。常见于被调低优先级的用户进程。
-- `sy`：内核态时间。系统调用、网络协议栈、文件系统、内核锁竞争会抬高它。
-- `wa`：I/O wait。它表示 CPU 空闲且系统有未完成 I/O 请求的时间，适合作为排查线索，不能单独用于精确归因。
-- `id`：空闲时间。CPU 没事做，或者任务堵在别的资源上。
-- `hi` / `si`：硬中断 / 软中断时间。网络包量大、网卡中断集中、协议栈处理压力大时要关注。
-- `st`：虚拟化环境里被宿主机拿走的 CPU 时间。云主机上这值高时，先不要急着改业务代码。
+- `us`: User-mode time for processes with an unadjusted nice value. Business computation, JSON serialization, regular expressions, compression, and cryptography often appear here.
+- `ni`: User-mode time for processes with an adjusted nice value, often lower-priority processes.
+- `sy`: Kernel-mode time. System calls, the network stack, filesystems, and kernel lock contention can raise it.
+- `wa`: I/O wait. This is time when the CPU is idle while the system has outstanding I/O requests. Treat it as a clue, not a precise attribution on its own.
+- `id`: Idle time, when the CPU has no work or tasks are blocked on other resources.
+- `hi` / `si`: Time spent on hardware and software interrupts. Watch these when packet volume is high, NIC interrupts are concentrated, or protocol-stack processing is under pressure.
+- `st`: CPU time taken by the hypervisor in a virtualized environment. If this is high on a cloud VM, investigate the host before changing application code.
 
-![load average 与 CPU 使用率对比图](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/load-average-vs-cpu-usage.webp)
+![Load average compared with CPU usage](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/load-average-vs-cpu-usage.webp)
 
-`wa` 尤其容易被误读。iowait 不是可靠的归因：CPU 不会真的等待 I/O 完成；在多核系统里，等待 I/O 的任务也不运行在某个 CPU 上。因此，`wa` 高只能说明系统存在 I/O 等待线索，不能直接说明 CPU 忙于 I/O。
+`wa` is especially easy to misread. I/O wait is not a reliable attribution: the CPU does not literally wait for I/O to finish, and on a multicore system an I/O-waiting task is not running on a CPU. High `wa` is a clue that I/O waits exist; it does not mean the CPU is busy doing I/O.
 
-下一步，应该看 `vmstat` 的 `b`、`bi/bo`、`si/so`，再用 `pidstat -d` 和 `iostat -x` 找具体进程和块设备。
+Next, inspect `b`, `bi/bo`, and `si/so` in `vmstat`, then use `pidstat -d` and `iostat -x` to identify processes and block devices.
 
-## 从 CPU 报警开始排查
+## Troubleshooting a CPU Alert
 
-排查时不要一上来就钻进 Java 栈。先把压力类型分出来，再下钻到进程、线程、CPU 核和热点函数。
+Do not start by diving into Java stack traces. First identify the type of pressure, then narrow it down to a process, thread, CPU core, or hot function.
 
-![CPU 报警排查分支图](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/load-cpu-alert-triage.webp)
+![CPU alert troubleshooting flow](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/load-cpu-alert-triage.webp)
 
-`uptime` 先看负载趋势。1 分钟高、5 分钟和 15 分钟不高，可能是短时尖刺；三个值都高，说明压力已持续了一段时间。再打开 `top`，看 `%Cpu(s)` 里是 `us`、`ni`、`sy`、`wa`、`si` 还是 `st` 抬头，同时看进程排序和任务状态。
+Start with `uptime` to check the load trend. A high 1-minute value with lower 5- and 15-minute values may indicate a brief spike; if all three are high, the pressure has lasted longer. Then open `top` and check whether `us`, `ni`, `sy`, `wa`, `si`, or `st` is elevated, along with process rankings and task states.
 
-如果 `us` 很高，先找业务热点。Java 进程可在 `top` 里按 `H` 切到线程视图，找到高 CPU 线程，把线程 ID 转成十六进制，再去 `jstack` 或 `jcmd Thread.print` 里找对应栈。单次 `jstack` 只是一瞬间，最好连续抓 2～3 次；如果同一个线程多次停在同一段业务栈，可信度会更高。也可以使用：
+If `us` is high, look for application hotspots. For a Java process, press `H` in `top` to switch to thread view. Find a high-CPU thread, convert its ID to hexadecimal, then locate the corresponding stack in `jstack` or `jcmd Thread.print`. A single `jstack` is only a snapshot, so capture two or three in succession. If the same thread remains in the same application stack, the finding is more reliable. You can also use:
 
 ```bash
 pidstat -u -t -p <pid> 1
 ```
 
-它可按线程查看 CPU 使用率。定位到线程后，再看它是在业务循环、序列化、正则、加解密，还是在 GC/JIT。`jstack` 适合看线程当下栈帧；要找 CPU 热点，`perf top`、async-profiler 这类采样工具更可靠。
+This reports CPU usage by thread. Once you find a thread, check whether it is in an application loop, serialization, regular expressions, cryptography, GC, or JIT compilation. `jstack` shows current stack frames; sampling tools such as `perf top` and async-profiler are better for finding CPU hotspots.
 
-如果 `sy` 或 `si` 很高，先不要只盯 Java 栈。大量短连接、网络收包、文件 I/O、系统调用、软中断都可能把 CPU 时间抬到内核态。可以使用：
+If `sy` or `si` is high, do not focus only on Java stacks. Many short-lived connections, incoming packets, file I/O, system calls, or software interrupts can raise kernel CPU time. Use:
 
 ```bash
 mpstat -P ALL 1
 sudo perf top
 ```
 
-`mpstat` 看是不是某几个 CPU 核特别忙，`perf top` 看热点符号落在用户态函数、内核网络栈、软中断，还是锁相关路径。某个核心 100%、其他核心很空时，要留意单线程瓶颈、软中断集中在单核、绑核配置或队列倾斜。
+Use `mpstat` to see whether a few cores are especially busy. Use `perf top` to determine whether hot symbols are in user functions, the kernel network stack, software interrupts, or lock-related paths. If one core is at 100% while others are idle, check for a single-thread bottleneck, software interrupts concentrated on one core, CPU affinity, or queue imbalance.
 
-如果 load 高、`wa` 也高，先跑：
+If load and `wa` are both high, start with:
 
 ```bash
 vmstat 1
 ```
 
-重点看 `r`、`b`、`wa`、`bi`、`bo`、`si`、`so`。`r` 是可运行任务数量，`b` 不是所有睡眠线程数量，而是阻塞等待 I/O 的任务数量；`bi/bo` 是块设备读写吞吐，单位通常是 KiB/s，不是 I/O 请求次数；`si/so` 是 Swap 换入换出。`wa` 高同时 `b`、`bi/bo` 高，继续查磁盘；`wa` 高同时 `si/so` 高，内存压力和 Swap 可能已经把服务拖慢。
+Focus on `r`, `b`, `wa`, `bi`, `bo`, `si`, and `so`. `r` is the number of runnable tasks. `b` is the number of tasks blocked waiting for I/O, not all sleeping threads. `bi/bo` are block-device read/write throughput, usually in KiB/s, not I/O request counts. `si/so` are Swap-in and Swap-out. If `wa`, `b`, and `bi/bo` are high, investigate disks. If `wa`, `si`, and `so` are high, memory pressure and Swap may be slowing the service.
 
-再用：
+Then use:
 
 ```bash
 pidstat -d -p ALL 1
 iostat -x 1
 ```
 
-看哪个进程在读写、哪个块设备延迟高。`iostat -x` 重点看 `await`、`aqu-sz`、读写吞吐和请求数，`%util` 对机械盘有参考价值；RAID、SSD、NVMe 能并行处理请求，不能只靠它判断打满。`iostat` 第一行通常是自启动以来的平均值，排查当前问题时更应该看后续采样；必要时可用 `iostat -x -y 1` 跳过第一行。
+Check which processes are reading or writing and which block device has high latency. In `iostat -x`, focus on `await`, `aqu-sz`, read/write throughput, and request counts. `%util` can be useful for spinning disks, but RAID, SSD, and NVMe devices can process requests in parallel, so do not use it alone to determine saturation. The first `iostat` row is usually an average since startup; use later samples for current issues, or run `iostat -x -y 1` to skip the first row.
 
-业务进程 I/O 不高但系统 `wa` 高，也要看日志压缩、备份、数据库、镜像拉取、同节点其他容器。
+If application processes show little I/O but system `wa` is high, also check log compression, backups, databases, image pulls, and other containers on the same node.
 
-如果系统支持 PSI，也可看：
+If the system supports PSI, inspect:
 
 ```bash
 cat /proc/pressure/cpu
@@ -178,11 +178,11 @@ cat /proc/pressure/io
 cat /proc/pressure/memory
 ```
 
-PSI 看的是任务因为 CPU、内存、I/O 压力停住了多久。`some` 表示至少有任务因为对应资源不足而停顿；对内存和 I/O，`full` 表示所有非 idle 任务同时停顿。系统级 `/proc/pressure/cpu` 的 `full` 没有诊断意义，排查 CPU 压力时主要看 `some`。PSI 能直接反映业务是否因资源压力而停顿，单看 CPU 使用率无法得到这个信息。
+PSI measures how long tasks are stalled by CPU, memory, or I/O pressure. `some` means at least one task is stalled because the resource is insufficient. For memory and I/O, `full` means all non-idle tasks are stalled at the same time. System-level `full` in `/proc/pressure/cpu` is not diagnostically useful; focus on `some` when investigating CPU pressure. PSI directly indicates whether work is being stalled by resource pressure, which CPU usage alone cannot show.
 
-容器环境里还要看 cgroup 限制。一个容器只分到 2 核 quota，即使宿主机有 64 核，容器内的任务也可能已经在排队。排查时要结合 `cpu.max`、`cpu.stat`、`cpu.pressure`、`memory.current`、`memory.events`、`memory.pressure`、`io.stat`、`io.pressure` 等 cgroup 指标，而不是只看宿主机总体 CPU。这里列的是 cgroup v2 常见文件名；如果系统还在使用 cgroup v1，路径和文件名会分散在不同 controller 目录下。
+In containers, check cgroup limits too. A container with a 2-CPU quota may have queued tasks even if the host has 64 cores. Use cgroup metrics such as `cpu.max`, `cpu.stat`, `cpu.pressure`, `memory.current`, `memory.events`, `memory.pressure`, `io.stat`, and `io.pressure`, rather than relying only on host-wide CPU. These are common cgroup v2 filenames; with cgroup v1, files are spread across different controller directories.
 
-如果 load 高、`wa` 不高，`vmstat 1` 里的 `r` 长期明显大于 CPU 核数，说明可运行任务在排队。接着看线程数、线程池、锁竞争和上下文切换：
+If load is high, `wa` is not, and `r` in `vmstat 1` stays well above the number of CPU cores, runnable tasks are queued. Next, check thread counts, thread pools, lock contention, and context switches:
 
 ```bash
 vmstat 1
@@ -190,52 +190,52 @@ pidstat -w -p ALL 1
 ps -eo pid,ppid,stat,ni,pri,psr,pcpu,comm --sort=-pcpu | head
 ```
 
-`vmstat` 的 `cs` 可看到系统上下文切换频率，`pidstat -w` 里重点看 `cswch/s` 和 `nvcswch/s`。前者是自愿上下文切换，常见于等待 I/O、锁、条件变量；后者是非自愿上下文切换，常见于时间片用完后被抢占。线程池太大时，`r`、`cs`、CPU 使用率一起上升，请求延迟反而变差，继续加线程只会更堵。
+`cs` in `vmstat` shows the system context-switch rate. In `pidstat -w`, focus on `cswch/s` and `nvcswch/s`. The first is voluntary context switching, often caused by waiting for I/O, locks, or condition variables. The second is involuntary context switching, often caused by preemption after a time slice expires. An oversized thread pool can raise `r`, `cs`, and CPU usage while worsening request latency; adding more threads may make the queue worse.
 
-`time` 命令适合看一个单次命令把时间花在哪里：
+The `time` command helps show where a single command spends its time:
 
 ```bash
 /usr/bin/time -p <command>
 ```
 
-`real` 是墙钟时间，`user` 是用户态 CPU 时间，`sys` 是内核态 CPU 时间。`real` 很长但 `user + sys` 不高，常见于等待 I/O、网络或锁；`user` 很高，说明计算本身消耗 CPU；`sys` 高，则要看系统调用和内核路径。
+`real` is wall-clock time, `user` is user-mode CPU time, and `sys` is kernel-mode CPU time. Long `real` with low `user + sys` often means waiting for I/O, network, or locks. High `user` indicates CPU-intensive computation; high `sys` suggests investigating system calls and kernel paths.
 
-## 常用排查命令
+## Common Troubleshooting Commands
 
-下面这些命令可以先把大多数 CPU/load 问题分出方向：
+These commands help identify the direction of most CPU and load issues:
 
-| 命令       | 常用写法                                            | 主要看什么                                         |
-| ---------- | --------------------------------------------------- | -------------------------------------------------- |
-| `uptime`   | `uptime`                                            | 1、5、15 分钟 load average                         |
-| `top`      | `top`，进入后按 `H`                                 | 总 CPU、进程/线程 CPU、任务状态、load              |
-| `vmstat`   | `vmstat 1`                                          | `r`、`b`、`us/sy/wa/id/st`、`cs`、`bi/bo`、`si/so` |
-| `pidstat`  | `pidstat -u -d -w -t -p <pid> 1`                    | 单进程/线程 CPU、I/O、上下文切换                   |
-| `iostat`   | `iostat -x 1`                                       | 块设备吞吐、队列长度、平均等待时间、设备利用率     |
-| `mpstat`   | `mpstat -P ALL 1`                                   | 每个 CPU 核的使用率、iowait、softirq、steal        |
-| `ps`       | `ps -eo pid,stat,ni,pri,psr,pcpu,comm --sort=-pcpu` | 进程状态、优先级、CPU 核、CPU 占用                 |
-| `perf top` | `sudo perf top`                                     | 实时 CPU 热点函数，区分用户态和内核态热点          |
-| `PSI`      | `cat /proc/pressure/{cpu,io,memory}`                | CPU、I/O、内存压力导致的任务停顿比例               |
+| Command    | Example                                             | What to check                                                     |
+| ---------- | --------------------------------------------------- | ----------------------------------------------------------------- |
+| `uptime`   | `uptime`                                            | 1-, 5-, and 15-minute load averages                               |
+| `top`      | `top`, then press `H`                               | Total CPU, process/thread CPU, task states, and load              |
+| `vmstat`   | `vmstat 1`                                          | `r`, `b`, `us/sy/wa/id/st`, `cs`, `bi/bo`, `si/so`                |
+| `pidstat`  | `pidstat -u -d -w -t -p <pid> 1`                    | Per-process/thread CPU, I/O, and context switches                 |
+| `iostat`   | `iostat -x 1`                                       | Block-device throughput, queue length, wait time, and utilization |
+| `mpstat`   | `mpstat -P ALL 1`                                   | Per-core usage, iowait, softirq, and steal                        |
+| `ps`       | `ps -eo pid,stat,ni,pri,psr,pcpu,comm --sort=-pcpu` | Process state, priority, CPU core, and CPU usage                  |
+| `perf top` | `sudo perf top`                                     | Live CPU hotspots in user and kernel space                        |
+| `PSI`      | `cat /proc/pressure/{cpu,io,memory}`                | Task stalls caused by CPU, I/O, and memory pressure               |
 
-`perf top` 的结果取决于 perf 权限以及内核符号、用户态符号和 JIT 符号能否解析；Java 场景下必要时还要结合 async-profiler。
+`perf top` depends on perf permissions and whether kernel, user-space, and JIT symbols can be resolved. For Java, combine it with async-profiler when needed.
 
-## 面试回答要点
+## Interview Notes
 
-回答 CPU 调度时，需要交代任务为什么排队、内核何时切换任务以及切换会产生哪些成本。这比只背算法名称更完整。
+When explaining CPU scheduling, describe why tasks queue, when the kernel switches tasks, and what costs switching introduces. This is more complete than listing algorithm names.
 
-### CPU 调度
+### CPU Scheduling
 
-> CPU 核心数有限，可运行的进程和线程可能很多。调度器从可运行队列里挑任务上 CPU；任务阻塞、时间片用完、优先级变化，或有更合适任务出现时，内核会调度和上下文切换。调度要在响应时间、吞吐量、公平性和切换开销之间做取舍，线程开太多反而可能把时间花在排队和切换上。
+> The number of CPU cores is limited, while many processes and threads may be runnable. The scheduler chooses tasks from the run queue. The kernel schedules and switches tasks when one blocks, uses up its time slice, changes priority, or a more suitable task appears. Scheduling balances response time, throughput, fairness, and switching overhead; too many threads can waste time in queues and context switches.
 
-### 经典调度算法怎么回答
+### How to Explain Classic Scheduling Algorithms
 
-> FCFS 简单，但长任务会拖住短任务；SJF 平均周转时间好，但很难知道任务长度，也可能让长任务饥饿；RR 借助时间片改善响应时间，时间片太短会放大切换开销；优先级调度能表达任务紧急程度，但要处理低优先级饥饿；多级反馈队列会根据任务运行行为调整队列位置，尽量照顾交互任务，同时让长任务继续推进。
+> FCFS is simple, but long tasks delay short ones. SJF can reduce average turnaround time, but task length is hard to know and long tasks may starve. RR uses time slices to improve responsiveness, though very short slices increase switching overhead. Priority scheduling expresses urgency but must address starvation among low-priority tasks. Multilevel feedback queues adjust task placement based on behavior to favor interactive tasks while still advancing long tasks.
 
-### Linux 调度
+### Linux Scheduling
 
-> Linux 普通任务调度不能直接套某个教材算法。CFS 用虚拟运行时间和权重分配 CPU，倾向选择已经获得 CPU 较少的任务；EEVDF 继续围绕公平份额做选择，用 lag 判断任务是否欠 CPU，再按虚拟截止时间选择任务。普通后端岗位讲到这层面即可。
+> You cannot directly map Linux ordinary-task scheduling to a textbook algorithm. CFS uses virtual runtime and weights to allocate CPU, favoring tasks that have received less CPU. EEVDF also aims for fair shares; it uses lag to determine whether a task is owed CPU, then selects tasks by virtual deadline. This level of detail is usually sufficient for backend interviews.
 
-### load average 和 CPU 使用率
+### Load Average and CPU Usage
 
-> load average 统计 R 状态的可运行任务和 D 状态的不可中断睡眠任务，要结合 CPU 核数看。CPU 使用率描述 CPU 时间去向，`us/ni/sy/wa/id/hi/si/st` 分别对应普通用户态、nice 用户态、内核态、I/O wait、空闲、中断、软中断和虚拟化 steal。load 高但 CPU 不高，常见原因是大量任务处于不可中断睡眠；CPU 高但 load 不夸张，可能是少数线程把 CPU 打满。
+> Load average counts runnable tasks in state R and uninterruptible sleep tasks in state D, so interpret it alongside the number of CPU cores. CPU usage describes where CPU time goes: `us/ni/sy/wa/id/hi/si/st` mean user mode, nice user mode, kernel mode, I/O wait, idle, hardware interrupts, software interrupts, and virtualization steal. High load with low CPU usage often means many tasks are in uninterruptible sleep; high CPU with a moderate load may mean a few threads are saturating the CPU.
 
-如果继续追问排查方法，可以回答：用 `uptime` 和 `top` 定位现象，用 `vmstat` 判断是运行队列、I/O 还是上下文切换问题，再用 `pidstat`、`mpstat` 定位到进程和 CPU 核，必要时通过 `perf top` 查找热点函数。
+If asked how to troubleshoot, use `uptime` and `top` to identify the symptom, `vmstat` to distinguish run-queue, I/O, and context-switch issues, then `pidstat` and `mpstat` to find the process and CPU core. Use `perf top` to find hot functions when needed.

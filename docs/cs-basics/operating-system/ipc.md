@@ -1,149 +1,149 @@
 ---
-title: 进程间通信（IPC）详解：管道、消息队列、共享内存、Socket 与 Binder
-description: 进程间通信高频知识点总结，从进程地址空间隔离讲起，讲清管道、消息队列、共享内存、信号量、信号、Socket、Android Binder 和微内核 IPC 的设计取舍。
-category: 计算机基础
+title: "Interprocess Communication (IPC): Pipes, Message Queues, Shared Memory, Sockets, and Binder"
+description: Common IPC topics, from process address-space isolation to pipes, message queues, shared memory, semaphores, signals, sockets, Android Binder, and microkernel IPC tradeoffs.
+category: Computer Science Fundamentals
 tag:
-  - 操作系统
+  - Operating Systems
   - Linux
   - IPC
 head:
   - - meta
     - name: keywords
-      content: 进程间通信,IPC,Linux IPC,管道,FIFO,消息队列,共享内存,信号量,信号,Socket,Unix Domain Socket,Android Binder,微内核 IPC,操作系统面试题
+      content: interprocess communication,IPC,Linux IPC,pipes,FIFO,message queues,shared memory,semaphores,signals,sockets,Unix Domain Socket,Android Binder,microkernel IPC,operating system interview questions
 ---
 
-两个进程想交换一段数据，最直觉的想法是：A 进程把数据写到自己的内存里，然后 B 进程直接去读就行了。
+Suppose two processes want to exchange data. The simplest idea is for process A to write the data to its memory and process B to read it directly.
 
-不过，这在操作系统里行不通。每个进程都有独立的虚拟地址空间，A 进程里的 `0x7f...` 地址和 B 进程里的 `0x7f...` 地址并不是同一块内存。用户态进程之间不能随便互相摸内存，否则权限隔离也没法谈。
+Operating systems do not work that way. Each process has its own virtual address space, so address `0x7f...` in process A is not the same memory as `0x7f...` in process B. User-mode processes cannot freely access one another's memory; doing so would defeat isolation.
 
-所以 **IPC（Inter-Process Communication，进程间通信）** 绕不开操作系统。
+That is why **IPC (Inter-Process Communication)** relies on mechanisms provided by the operating system.
 
-不要想得太复杂，我更习惯把 IPC 看成三件事：**怎么传数据、怎么同步控制流、怎么做命名和权限检查**。只记“管道、消息队列、共享内存”这些名字，很容易背完就忘。
+It helps to think of IPC in terms of three questions: **how data is transferred, how execution is synchronized, and how endpoints are named and access-controlled**. Memorizing names such as pipes, message queues, and shared memory without these roles makes the topic harder to remember.
 
-![进程地址空间隔离导致进程间通信需要借助内核提供的 IPC 机制](https://oss.javaguide.cn/github/javaguide/java/new-features/ipc-why-ipc.png)
+![Process address-space isolation means processes need operating-system IPC mechanisms to communicate](https://oss.javaguide.cn/github/javaguide/java/new-features/ipc-why-ipc.png)
 
-## IPC 到底在解决什么？
+## What Problems Does IPC Solve?
 
-![IPC 需要同时解决数据传递、同步控制、命名寻址和权限检查等问题](https://oss.javaguide.cn/github/javaguide/java/new-features/what-problem-does-ipc-solve.png)
+![IPC addresses data transfer, synchronization, naming, and permission checks](https://oss.javaguide.cn/github/javaguide/java/new-features/what-problem-does-ipc-solve.png)
 
-**IPC 先解决数据怎么过去。** 管道和字节流 Socket 传连续字节，消息边界由应用约定；消息队列、数据报 Socket、Binder 事务传一条条消息，天然有边界；共享内存让多个进程映射同一块物理内存，映射完成后读写共享区域不需要每次陷入内核。
+**First, IPC transfers data.** Pipes and byte-stream sockets carry a continuous sequence of bytes; the application defines message boundaries. Message queues, datagram sockets, and Binder transactions carry messages with boundaries. Shared memory maps the same physical memory into multiple processes, so once the mapping exists, each read or write does not need to enter the kernel.
 
-**它还要解决同步。** 共享内存只解决“看见同一份数据”，不解决“谁先写、谁后读”。多个进程同时改同一个环形队列，如果没有互斥锁、信号量、futex 或条件变量，数据很快就会乱。
+**IPC also needs synchronization.** Shared memory lets processes see the same data, but does not decide who writes first or when another process may read. If several processes modify a shared ring buffer without a mutex, semaphore, futex, or condition variable, the data can quickly become inconsistent.
 
-**命名和权限也不能少。** 匿名管道靠 `fork` 后继承文件描述符建立关系；FIFO 靠文件系统路径；System V IPC 靠 key 和内核对象 ID；Unix Domain Socket 可以绑定路径，也可以用 Linux 的 abstract namespace；Android Binder 借助 Service Manager 把服务名映射到 Binder 引用。
+**Naming and permissions matter too.** An anonymous pipe is usually set up by inheriting file descriptors after `fork`; a FIFO is named by a filesystem path; System V IPC uses a key and kernel object ID; Unix Domain Sockets can bind to a path or, on Linux, an abstract namespace; Android Binder uses the Service Manager to map service names to Binder references.
 
-## 管道：字节流，简单，但边界少
+## Pipes: Simple Byte Streams With Few Boundaries
 
-管道（pipe）是最容易遇到的 IPC。Shell 里的 `ps aux | grep java`，中间那个 `|` 就是把前一个进程的标准输出接到后一个进程的标准输入。
+A pipe is one of the most familiar IPC mechanisms. In a Shell command such as `ps aux | grep java`, the `|` connects the first process's standard output to the second process's standard input.
 
-Linux 里调用 `pipe()` 会得到两个文件描述符：一个读端，一个写端。父进程创建管道后再 `fork()`，子进程会继承这些文件描述符，于是父子进程就能靠同一条管道传数据。匿名管道没有名字，通常用于有亲缘关系的进程之间。
+On Linux, `pipe()` returns two file descriptors: a read end and a write end. If a parent creates a pipe and then calls `fork()`, the child inherits those descriptors, allowing the parent and child to communicate through the same pipe. An anonymous pipe has no name and is usually used between related processes.
 
-![管道通过内核缓冲区在父进程和子进程之间传递单向字节流](https://oss.javaguide.cn/github/javaguide/java/new-features/ipc-pipe-flow.png)
+![A pipe passes a one-way byte stream between parent and child through a kernel buffer](https://oss.javaguide.cn/github/javaguide/java/new-features/ipc-pipe-flow.png)
 
-管道是单向字节流。POSIX 只要求它单向，双向通信通常建两条管道；它不理解消息边界，写端写了 3 次，读端不一定也读 3 次；缓冲区在内核里，写满后阻塞写会睡眠，非阻塞写可能返回 `EAGAIN`；它也不是普通文件，不能用 `lseek()` 随机定位。
+A pipe is a one-way byte stream. POSIX requires only one-way communication; two-way communication usually uses two pipes. It does not preserve message boundaries: three writes by the sender do not guarantee three reads by the receiver. The buffer is in the kernel. A blocking write sleeps when the buffer is full, while a nonblocking write may return `EAGAIN`. A pipe is not a regular file, so `lseek()` cannot reposition within it.
 
-Linux 上还有一个容易被问到的数字：`PIPE_BUF` 是 4096 字节。对管道或 FIFO 来说，单次 `write()` 不超过 `PIPE_BUF` 时，内核保证这次写入不会和其他写者的数据交错；阻塞模式下可能等待缓冲区空间，非阻塞模式下如果空间不足会返回 `EAGAIN`。超过 `PIPE_BUF` 的写入可能被拆分，也可能和其他写者的数据交错。这个保证不代表管道有消息边界。
+One Linux detail that often comes up in interviews is `PIPE_BUF`, which is 4096 bytes. For a pipe or FIFO, a single `write()` of no more than `PIPE_BUF` bytes is guaranteed not to interleave with data from other writers. In blocking mode, the call may wait for buffer space; in nonblocking mode, insufficient space can result in `EAGAIN`. Larger writes may be split or interleaved with other writers. This guarantee does not give the pipe message boundaries.
 
-命名管道（FIFO）用 `mkfifo` 在文件系统里创建一个特殊文件，两个无亲缘关系的进程按路径打开它就能通信。FIFO 有路径名，但数据并不是写进磁盘；路径只是命名入口，真正的数据仍在内核缓冲区里。
+A named pipe (FIFO) is a special file created with `mkfifo`. Unrelated processes can open it by path and communicate. The FIFO has a pathname, but its data is not written to disk: the path names the endpoint, while data remains in a kernel buffer.
 
-管道适合命令行工具串联、父子进程传少量数据。它不适合复杂协议和大对象传输。真要在字节流上做长度前缀、校验和、序列号，很多场景下不如换 Socket 或消息队列。
+Pipes are useful for connecting command-line tools or passing a small amount of data between parent and child processes. They are less suitable for complex protocols or large objects. For framed messages with lengths, checksums, and sequence numbers, a Socket or message queue may be a better fit.
 
-## 消息队列：内核保存消息，应用少处理切包
+## Message Queues: The Kernel Stores Messages
 
-消息队列把数据拆成一条条消息存到内核对象里。发送方调用 `msgsnd()` 或 `mq_send()` 把消息放进队列，接收方调用 `msgrcv()` 或 `mq_receive()` 取出来。System V 消息队列和 POSIX 消息队列接口不同，但都属于“内核持有队列，进程按消息读写”的方案。
+A message queue stores data as separate messages in a kernel object. A sender uses `msgsnd()` or `mq_send()` to enqueue a message; a receiver uses `msgrcv()` or `mq_receive()` to retrieve one. System V and POSIX message queues have different APIs, but both let processes exchange messages through a queue managed by the kernel.
 
-和管道相比，消息队列最直接的好处是**消息有边界**。System V 消息队列支持按消息类型接收；POSIX 消息队列支持优先级，Linux 上 `sysconf(_SC_MQ_PRIO_MAX)` 常见返回值是 32768，而 POSIX 标准只要求至少支持 0 到 31 这个范围。
+The main advantage over pipes is that **message boundaries are preserved**. System V queues support receiving messages by type. POSIX queues support priorities; `sysconf(_SC_MQ_PRIO_MAX)` commonly returns 32768 on Linux, while POSIX requires support for at least priorities 0 through 31.
 
-代价也很直接：发送时，应用缓冲区的数据被拷进内核队列；接收时，再从内核队列拷回接收进程的用户缓冲区。队列本身也受内核参数限制，比如 POSIX 消息队列有 `/proc/sys/fs/mqueue/msg_max`、`msgsize_max` 等限制项。
+The tradeoff is copying: sending copies data from the application buffer into the kernel queue, and receiving copies it back to the receiver's user-space buffer. Queue size is also limited by kernel settings such as `/proc/sys/fs/mqueue/msg_max` and `msgsize_max` for POSIX queues.
 
-所以消息队列适合传结构化小消息，比如任务通知、状态事件、控制命令。它不适合传大块图片、音视频帧或超大的序列化对象。Linux IPC 里的消息队列也不是 Kafka、RocketMQ 那种消息中间件，没有持久化日志、消费组和跨机器复制。
+Message queues suit small structured messages such as task notifications, state events, and control commands. They are not ideal for large images, audio/video frames, or very large serialized objects. Linux IPC message queues are also different from Kafka or RocketMQ: they do not provide a persistent log, consumer groups, or cross-machine replication.
 
-## 共享内存：少拷贝，但同步要自己负责
+## Shared Memory: Fewer Copies, More Synchronization Work
 
-共享内存的思路很直接：让多个进程把同一块物理内存映射到各自的虚拟地址空间里。映射建立之后，A 进程写这块内存，B 进程就能读到更新。
+Shared memory maps the same physical memory into the virtual address spaces of multiple processes. Once the mapping is established, process A can write to the region and process B can see the update.
 
-Linux 上常见两类接口：System V 共享内存用 `shmget()`、`shmat()`、`shmdt()`、`shmctl()`；POSIX 共享内存用 `shm_open()` 创建对象，`ftruncate()` 设置大小，再用 `mmap()` 映射到进程地址空间。
+Linux commonly provides two interfaces. System V shared memory uses `shmget()`, `shmat()`, `shmdt()`, and `shmctl()`. POSIX shared memory uses `shm_open()` to create an object, `ftruncate()` to set its size, and `mmap()` to map it into each process.
 
-![共享内存让多个进程映射同一块物理内存，但仍需要信号量、futex 等同步机制配合](https://oss.javaguide.cn/github/javaguide/java/new-features/ipc-shared-memory.png)
+![Shared memory maps the same physical memory into several processes, but still needs semaphores, futexes, or other synchronization](https://oss.javaguide.cn/github/javaguide/java/new-features/ipc-shared-memory.png)
 
-共享内存快在数据路径短。管道、消息队列、Socket 这类方式通常要把数据先交给内核，再由内核交给另一个进程；共享内存完成映射后，进程读写的是同一片物理页，数据本身不用每次都在用户态和内核态之间搬来搬去。日志采集、音视频处理、数据库缓存这类本机大块数据交换场景，才比较适合把它拿出来用。
+Shared memory can be fast because its data path is short. Pipes, message queues, and sockets typically pass data to the kernel, which then passes it to another process. With shared memory, processes access the same physical pages after mapping, so the data does not need to be copied between user and kernel space for every exchange. It can suit large local data transfers such as log collection, audio/video processing, or database caches.
 
-不过，映射同一块内存只解决“能不能看见”的问题，不解决“什么时候能读”和“谁可以写”的问题。
+However, mapping the same memory only solves “can the processes see it?” It does not solve “when is it safe to read?” or “who can write?”
 
-以共享环形队列为例，生产者通常会写数据、更新 `tail`，消费者根据 `head` 和 `tail` 判断有没有新数据。如果生产者还没把一条记录写完整，就提前更新了 `tail`，消费者可能马上读到一条半成品。这个问题不能靠共享内存自己解决，需要把写入顺序、可见性和唤醒机制一起设计好：简单一点可以用进程间互斥锁、POSIX 信号量；追求性能时可能会用 `eventfd`、`futex`、原子变量和内存屏障。
+Consider a shared ring buffer. A producer writes data and updates `tail`; the consumer checks `head` and `tail` to see whether data is available. If the producer updates `tail` before a record is fully written, the consumer may read a partial record. Shared memory does not prevent this. The design must define write ordering, visibility, and wakeups. A simple implementation might use a process-shared mutex and POSIX semaphore; a performance-focused one might use `eventfd`, `futex`, atomic variables, and memory barriers.
 
-还有一个细节很容易踩坑：共享内存里别直接放进程内指针。同一块共享内存在 A 进程里可能映射到 `0x7000...`，在 B 进程里可能映射到 `0x5000...`，A 写进去的地址，B 拿到后大概率没有意义。工程里更常见的写法是保存偏移量、数组下标，或者一开始就约定好固定布局结构。
+Avoid storing process-local pointers in shared memory. The same region might map at `0x7000...` in process A and `0x5000...` in process B, so an address written by A is unlikely to be meaningful in B. Shared layouts more often use offsets, array indexes, or a fixed agreed-upon structure.
 
-所以共享内存不能只看拷贝次数。整体性能还会受缓存一致性、锁竞争、内存屏障、唤醒机制和数据布局影响。它适合数据量大、双方都在本机、并且愿意认真处理同步和内存布局的场景；如果只是传几个状态字段或一条控制命令，消息队列、管道、Unix Domain Socket 反而更省心。
+Do not judge shared memory only by the number of copies. Overall performance also depends on cache coherence, lock contention, memory barriers, wakeups, and data layout. It is a good fit for large local transfers when both sides can manage synchronization and memory layout carefully. For a few status fields or a control command, a message queue, pipe, or Unix Domain Socket is often simpler.
 
-## 信号量和信号有什么区别？
+## How Do Semaphores and Signals Differ?
 
-信号量（semaphore）经常和共享内存一起出现，但它不负责传业务数据。它更像一个计数器，用来控制有多少进程可以进入某段临界区，或者通知对方“现在有数据可读”。POSIX 信号量可以是命名的，也可以是未命名的；`sem_post()` 会把计数加一，`sem_wait()` 会尝试把计数减一，计数为 0 时调用方会阻塞等待。
+A semaphore often accompanies shared memory, but it does not carry application data. It acts like a counter that controls how many processes may enter a critical section or notifies another process that data is available. POSIX semaphores may be named or unnamed. `sem_post()` increments the count; `sem_wait()` attempts to decrement it and blocks when the count is zero.
 
-信号（signal）更像异步事件通知：`SIGINT` 表示终端中断，`SIGTERM` 表示请求进程退出，`SIGCHLD` 表示子进程状态变化。Linux 支持标准信号和实时信号。信号能携带的信息少，处理函数也受 async-signal-safe 限制，生产代码里常让 signal handler 只修改 `volatile sig_atomic_t` 标志位，或者通过 async-signal-safe 的 `write(2)` 往 self-pipe 写一个字节、往 eventfd 写一个 `uint64_t` 计数值，再由主循环统一处理。
+A **signal** is more like an asynchronous event notification. `SIGINT` represents a terminal interrupt, `SIGTERM` requests process termination, and `SIGCHLD` reports a child-process state change. Linux supports standard and real-time signals. Signals carry little information, and handlers are restricted to async-signal-safe operations. Production code often has a handler set a `volatile sig_atomic_t` flag, or use async-signal-safe `write(2)` to send a byte to a self-pipe or write a `uint64_t` value to an eventfd, then handle the event in the main loop.
 
-## Socket：本机和跨机器都能用
+## Sockets: For Local and Network Communication
 
-Socket 不只用于网络通信，也能做本机 IPC。
+Sockets are used for local IPC as well as network communication.
 
-如果两个进程在不同机器上，基本就得走 TCP/UDP 这类网络 Socket。如果两个进程在同一台机器上，可以用 Unix Domain Socket。它的地址族是 `AF_UNIX` 或 `AF_LOCAL`，支持 `SOCK_STREAM`、`SOCK_DGRAM`、`SOCK_SEQPACKET` 等类型。
+Processes on different machines generally use network sockets such as TCP or UDP. Processes on the same machine can use Unix Domain Sockets, with address family `AF_UNIX` or `AF_LOCAL` and types such as `SOCK_STREAM`, `SOCK_DGRAM`, or `SOCK_SEQPACKET`.
 
-Unix Domain Socket 的接口接近网络 Socket，支持无亲缘关系进程通信；Linux 下既可以绑定文件系统路径，也可以使用 abstract namespace。它还可以借助 `sendmsg()` 的辅助数据和 `SCM_RIGHTS` 传文件描述符。对端身份这块，连接型 Unix Socket 常用 `SO_PEERCRED` 获取 pid、uid、gid；数据报场景也可以结合 `SO_PASSCRED` 和 `SCM_CREDENTIALS` 让凭据随消息传过来。
+Unix Domain Sockets have an interface similar to network sockets and support communication between unrelated processes. On Linux, they can bind to a filesystem path or use an abstract namespace. They can also pass file descriptors with `sendmsg()` ancillary data and `SCM_RIGHTS`. For peer identity, connection-oriented Unix sockets can use `SO_PEERCRED` to get the peer's PID, UID, and GID. Datagram sockets can use `SO_PASSCRED` and `SCM_CREDENTIALS` to attach credentials to messages.
 
-如果问“管道和 Unix Domain Socket 怎么选”，可以这样答：父子进程之间的简单字节流，用管道就够；要双向通信、请求响应、传 fd、服务端监听，Unix Domain Socket 更合适；要跨机器，换 TCP/UDP 或更上层的 RPC 框架。
+If asked to choose between a pipe and a Unix Domain Socket: a pipe is enough for a simple byte stream between parent and child; a Unix Domain Socket is better for bidirectional request/response, fd passing, or a listening server; use TCP/UDP or a higher-level RPC framework for communication across machines.
 
-## Android Binder：把 IPC 做成系统服务调用
+## Android Binder: IPC as a System-Service Call
 
-![Android Binder 通过 AIDL、Parcel、Binder 驱动和 Service Manager 将 IPC 封装成系统服务调用](https://oss.javaguide.cn/github/javaguide/java/new-features/android-binder-turning-ipc-into-system-service-calls.png)
+![Android Binder uses AIDL, Parcel, the Binder driver, and Service Manager to expose IPC as system-service calls](https://oss.javaguide.cn/github/javaguide/java/new-features/android-binder-turning-ipc-into-system-service-calls.png)
 
-Android 里最典型的 IPC 是 Binder。应用调用系统服务、不同进程里的 Service 交互、AIDL 生成的远程接口，底层都离不开它。
+Binder is the primary IPC mechanism in Android. Applications use it to call system services, communicate with services in other processes, and invoke remote interfaces generated from AIDL.
 
-Binder 有几个设计点值得单独看。AIDL 让客户端和服务端约定接口，Android 工具链生成参数编解码和代理代码；客户端像在调本地方法，实际会把参数打包成 Parcel，交给 Binder 驱动完成跨进程事务。系统里的 Service Manager 会向 Binder 驱动注册为 context manager，负责维护服务名到 Binder 引用的映射。
+AIDL defines an interface shared by client and server, and Android's toolchain generates parameter-encoding and proxy code. A client appears to call a local method, but the arguments are packed into a Parcel and sent through the Binder driver as a cross-process transaction. The system's Service Manager registers as the Binder driver's context manager and maps service names to Binder references.
 
-Binder 事务里可以携带 Binder 对象、handle、fd 等特殊对象。fd 传递让 Binder 可以和共享内存配合：Binder 传控制消息和句柄，大块数据放到共享内存里。Android 官方 AIDL 文档也提醒过：远程调用会从平台维护的 Binder 线程池分发进服务进程，服务实现必须考虑线程安全。
+Binder transactions can carry special objects such as Binder objects, handles, and file descriptors. Passing an fd lets Binder work with shared memory: Binder carries control messages and handles, while shared memory carries large data. Android's AIDL documentation also notes that remote calls are dispatched to the service process through a platform-managed Binder thread pool, so service implementations must be thread-safe.
 
-Binder 也不是拿来塞大对象的通道。Android 的 `TransactionTooLargeException` 文档写得很明确：Binder transaction buffer 当前是 1 MB，并且由进程内正在进行的事务共享。这个异常本身也是启发式判断：客户端无法准确知道失败发生在请求发送阶段，还是响应返回阶段。更稳的做法是让 Binder 传小请求、分页结果、fd 或资源标识。
+Binder is not designed for large objects. Android's `TransactionTooLargeException` documentation states that the Binder transaction buffer is currently 1 MB and is shared among in-flight transactions in a process. The exception is heuristic: the client cannot know whether failure occurred while sending the request or receiving the response. Prefer small Binder requests, paginated results, fds, or resource identifiers. For large payloads, split the data or use shared memory.
 
-## 微内核为什么特别在意 IPC？
+## Why Does IPC Matter So Much in Microkernels?
 
-Linux 这种宏内核把文件系统、网络协议栈、驱动等大量能力放在内核里。微内核会把尽可能多的服务移到用户态进程，比如文件系统服务、驱动服务、网络服务。隔离性更好，但 IPC 会变得非常频繁。
+A monolithic kernel such as Linux keeps many services, including filesystems, network stacks, and drivers, in the kernel. A microkernel moves as many services as possible into user-space processes, such as filesystem, driver, and network services. This can improve isolation, but makes IPC frequent.
 
-应用读一个文件，在宏内核里可能主要是一次系统调用进内核；在微内核里，可能要和文件系统服务、块设备服务多次通信。IPC 慢一点，整个系统都跟着慢。
+Reading a file in a monolithic kernel may require mainly one system call into the kernel. In a microkernel, the request may need several exchanges with a filesystem service and a block-device service. If IPC is slow, the whole system slows down.
 
-所以微内核论文和系统实现里，IPC 优化一直是重点。
+That is why IPC optimization has long been a focus of microkernel papers and implementations.
 
-Mach 的代表设计是 port。port 可以理解成受内核保护的消息队列和能力句柄：任务持有某个 port right，才可以向对应对象发送或接收消息。L4 家族则尽量把常见 IPC 做短：短消息用寄存器传参，同步 IPC 采用 rendezvous 风格，直接进程切换（direct process switch）避免某些路径绕一圈调度器。LRPC（Lightweight Remote Procedure Call）也在做同一件事：减少同机跨保护域调用里的线程、缓冲和调度开销。
+Mach's representative design uses ports. A port can be viewed as a kernel-protected message queue and capability handle: a task needs the appropriate port right to send or receive messages. The L4 family tries to make common IPC paths short. Short messages can use registers, synchronous IPC uses rendezvous-style communication, and a direct process switch can avoid routing through parts of the scheduler. LRPC (Lightweight Remote Procedure Call) pursues the same goal: reducing thread, buffer, and scheduling overhead for calls across protection domains on the same machine.
 
-## 常见 IPC 怎么选？
+## How Should You Choose an IPC Mechanism?
 
-选型时别只问“哪个最快”。更好的问题是：数据有多大？需不需要消息边界？通信双方有没有亲缘关系？要不要双向请求响应？要不要跨机器？要不要权限校验和身份识别？
+Do not ask only “Which one is fastest?” Ask: How large is the data? Are message boundaries needed? Are the processes related? Is bidirectional request/response needed? Does communication cross machines? Are permission and identity checks required?
 
-| IPC 方式           | 数据形态               | 是否保留消息边界 | 是否适合大数据     | 是否跨机器       | 典型场景               |
-| ------------------ | ---------------------- | ---------------- | ------------------ | ---------------- | ---------------------- |
-| 匿名管道           | 字节流                 | 否               | 不适合             | 否               | 父子进程、Shell 管道   |
-| FIFO               | 字节流                 | 否               | 不适合             | 否               | 无亲缘关系进程简单通信 |
-| 消息队列           | 消息                   | 是               | 不适合             | 否               | 控制命令、状态事件     |
-| 共享内存           | 共享区域               | 由应用定义       | 适合               | 否               | 大块本机数据交换       |
-| Unix Domain Socket | 字节流、数据报、顺序包 | 取决于类型       | 中等               | 否               | 本机服务监听、传 fd    |
-| TCP/UDP Socket     | 字节流或数据报         | 取决于协议       | 取决于协议和实现   | 是               | 跨机器通信             |
-| Binder             | 事务、对象引用、fd     | 是               | 不适合直接传大对象 | 否，Android 本机 | Android 系统服务调用   |
+| IPC mechanism      | Data form                            | Preserves message boundaries? | Suitable for large data?               | Cross-machine?        | Typical use                                      |
+| ------------------ | ------------------------------------ | ----------------------------- | -------------------------------------- | --------------------- | ------------------------------------------------ |
+| Anonymous pipe     | Byte stream                          | No                            | No                                     | No                    | Parent/child processes, Shell pipelines          |
+| FIFO               | Byte stream                          | No                            | No                                     | No                    | Simple communication between unrelated processes |
+| Message queue      | Messages                             | Yes                           | No                                     | No                    | Control commands, state events                   |
+| Shared memory      | Shared region                        | Defined by the application    | Yes                                    | No                    | Large local data transfers                       |
+| Unix Domain Socket | Stream, datagram, sequenced packet   | Depends on type               | Moderate                               | No                    | Local services, fd passing                       |
+| TCP/UDP socket     | Stream or datagram                   | Depends on protocol           | Depends on protocol and implementation | Yes                   | Communication across machines                    |
+| Binder             | Transactions, object references, fds | Yes                           | Not for large objects directly         | No, Android local IPC | Android system-service calls                     |
 
-![常见 IPC 方式在数据形态、消息边界、大数据传输和跨机器能力上的横向对比](https://oss.javaguide.cn/github/javaguide/java/new-features/ipc-ipc-comparison.png)
+![Comparison of common IPC mechanisms by data form, message boundaries, large-data support, and network scope](https://oss.javaguide.cn/github/javaguide/java/new-features/ipc-ipc-comparison.png)
 
-父子进程之间传少量字节流，管道够用；无亲缘关系进程需要双向请求响应，Unix Domain Socket 更顺手；小型结构化事件可以用消息队列；大块数据优先考虑共享内存加同步通知；跨机器通信交给 TCP/UDP 或更上层的 RPC；Android 应用跨进程调用则通常走 Binder。
+For a small byte stream between parent and child, use a pipe. For bidirectional request/response between unrelated local processes, use a Unix Domain Socket. Message queues suit small structured events. For large data, consider shared memory plus a synchronization notification. Use TCP/UDP or higher-level RPC across machines. Android applications generally use Binder for cross-process service calls.
 
-![根据数据量、消息边界、跨机器和进程亲缘关系选择合适的 IPC 方式](https://oss.javaguide.cn/github/javaguide/java/new-features/ipc-ipc-selection.png)
+![Choose IPC based on data size, message boundaries, network scope, and process relationship](https://oss.javaguide.cn/github/javaguide/java/new-features/ipc-ipc-selection.png)
 
-## 面试里怎么答 IPC？
+## How to Explain IPC in an Interview
 
-可以这样回答：进程默认不能直接访问彼此的用户态地址空间，所以 IPC 要么让内核代收代发数据，要么让内核创建一份可共享的对象或内存映射。
+Processes normally cannot access one another's user-space address spaces, so IPC either has the kernel transfer data or asks the kernel to create a shared object or memory mapping.
 
-沿着这条线看，管道、FIFO、Socket 主要传字节流，消息边界通常要由应用协议处理；消息队列保留消息边界，适合较小的任务消息、状态变化和控制命令；共享内存把同一批物理页映射给多个进程，适合本机大块数据交换，但同步和内存布局要自己处理；信号偏事件通知，信号量、互斥锁、`futex` 这类机制更多是配合共享数据做同步。Android Binder 可以看作面向系统服务的本机 RPC/事务通道，常用于跨进程服务调用。
+Pipes, FIFOs, and stream sockets mainly carry bytes, so the application protocol usually defines message boundaries. Message queues preserve boundaries and suit smaller task messages, state changes, and control commands. Shared memory maps the same physical pages into several processes and works well for large local transfers, but the application must handle synchronization and memory layout. Signals are event notifications; semaphores, mutexes, and `futex` are more often used to synchronize access to shared data. Android Binder is a local RPC/transaction mechanism for cross-process service calls.
 
-真正做选择时，不是看名字熟不熟，而是看数据量、消息边界、通信范围、双方关系和权限校验。比如父子进程串联命令，管道就够；本机服务要双向请求响应，还想传 fd，Unix Domain Socket 更合适；跨机器通信再考虑 TCP/UDP 或上层 RPC。
+Choose based on data size, message boundaries, communication scope, process relationship, and permission checks. A pipe is enough to connect parent/child commands; a Unix Domain Socket suits local request/response and fd passing; TCP/UDP or higher-level RPC is appropriate across machines.
 
-如果继续追问“共享内存为什么还需要信号量”，可以这样答：共享内存只是让两个进程看到同一块数据，不保证访问顺序。谁先写、谁后读、写到一半能不能读，都要靠信号量、进程间互斥锁、`futex`、`eventfd` 这类机制约束。
+If asked why shared memory still needs a semaphore, explain that shared memory only lets two processes see the same data; it does not define access order. Semaphores, process-shared mutexes, `futex`, or `eventfd` can coordinate who writes, who reads, and when partially written data becomes visible.
 
-如果追问“Binder 为什么不适合传大对象”，可以补上 Android 官方文档里的 1 MB 事务缓冲限制，并说明这个缓冲由进程内进行中的事务共享。Binder 更适合传方法参数、返回值、对象引用和 fd；大块数据应该拆分、分页，或用共享内存传递。
+If asked why Binder is not suitable for large objects, mention Android's 1 MB transaction-buffer limit, shared by in-flight transactions in a process. Binder is better for method arguments, return values, object references, and fds. Split large data into pages or use shared memory.
 
-记 IPC 时不要把它背成一串名词，可以先问这几个问题：数据大不大？要不要保留消息边界？通信双方是不是都在本机？要不要双向请求响应？同步和权限谁来管？这些问题答完，方案基本也就出来了。
+Rather than memorizing a list, ask: Is the data large? Must message boundaries be preserved? Are the processes on the same machine? Is bidirectional request/response needed? Who handles synchronization and permissions? The answers usually point to the right IPC mechanism.

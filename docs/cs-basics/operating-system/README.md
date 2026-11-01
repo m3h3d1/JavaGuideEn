@@ -1,9 +1,9 @@
 ---
-title: 操作系统专题：进程线程、内存管理、文件系统、I/O 多路复用、Linux 与 Shell
-description: 操作系统面试与学习路线，涵盖进程线程、进程间通信、锁与同步机制、死锁、虚拟内存、零拷贝、I/O 多路复用、文件系统、Linux 基础、Shell 编程和常见操作系统面试题。
-category: 计算机基础
+title: "Operating Systems: Processes, Memory, Filesystems, I/O, Linux, and Shell"
+description: A study and interview guide to processes, threads, IPC, synchronization, deadlocks, virtual memory, zero-copy, I/O multiplexing, filesystems, Linux, and Shell.
+category: Computer Science Fundamentals
 tag:
-  - 操作系统
+  - Operating Systems
   - Linux
   - Shell
 sidebar: false
@@ -13,85 +13,85 @@ sitemap:
 head:
   - - meta
     - name: keywords
-      content: 操作系统,操作系统面试题,进程,线程,进程间通信,IPC,锁与同步,互斥锁,信号量,条件变量,futex,死锁,内存管理,虚拟内存,零拷贝,I/O多路复用,select,poll,epoll,文件系统,Linux,Shell,后端面试
+      content: operating systems,operating system interview questions,processes,threads,IPC,synchronization,mutex,semaphore,condition variable,futex,deadlock,memory management,virtual memory,zero-copy,I/O multiplexing,select,poll,epoll,filesystem,Linux,Shell,backend interviews
 ---
 
-这份 **操作系统专题** 面向后端学习和面试复习，整理操作系统基础、进程线程、进程间通信、锁与同步、内存管理、虚拟内存、零拷贝、I/O 多路复用、文件系统、Linux 和 Shell 相关内容。
+This **operating systems guide** is for backend developers studying the fundamentals or preparing for interviews. It covers processes and threads, IPC, synchronization, memory management, virtual memory, zero-copy, I/O multiplexing, filesystems, Linux, and Shell.
 
-## 适合谁看
+## Who This Guide Is For
 
-- 正在系统学习操作系统基础的后端开发者。
-- 准备校招、社招、中大厂操作系统面试题的同学。
-- 对进程线程、死锁、内存管理、Linux 命令只会零散背诵的读者。
-- 想为 Java 并发、JVM、数据库、网络编程打底的工程师。
+- Backend developers studying operating system fundamentals.
+- Candidates preparing for entry-level or experienced-hire interviews, including interviews at large technology companies.
+- Readers who know isolated facts about processes, threads, deadlocks, memory management, or Linux commands but want a coherent understanding.
+- Engineers building a foundation for Java concurrency, the JVM, databases, and network programming.
 
-## 学习重点
+## Key Topics
 
-- 操作系统负责管理 CPU、内存、文件、I/O 和进程，是理解上层软件运行机制的基础。
-- 进程、线程和进程间通信是并发编程、服务端性能和问题排查的基础概念。
-- 锁与同步、死锁、上下文切换、调度是面试高频点。
-- 内存管理、虚拟内存、分页、页面置换能帮助理解 JVM、数据库和缓存。
-- 零拷贝、I/O 多路复用能帮助理解 Kafka、RocketMQ、Redis、Nginx、Netty 等高性能组件。
-- Linux 和 Shell 是后端开发、部署、排障、自动化脚本的常用能力。
+- Operating systems manage the CPU, memory, files, I/O, and processes. These concepts help explain how higher-level software runs.
+- Processes, threads, and IPC are fundamental to concurrent programming, server performance, and troubleshooting.
+- Locks, synchronization, deadlocks, context switching, and scheduling are common interview topics.
+- Memory management, virtual memory, paging, and page replacement help explain the JVM, databases, and caches.
+- Zero-copy and I/O multiplexing help explain high-performance systems such as Kafka, RocketMQ, Redis, Nginx, and Netty.
+- Linux and Shell are useful for backend development, deployment, troubleshooting, and automation.
 
-## 建议阅读顺序
+## Recommended Reading Order
 
-1. [操作系统常见面试题总结（上）](./operating-system-basic-questions-01.md)：先建立操作系统基础、进程线程、死锁、内存管理的高频问题清单。
-2. [操作系统常见面试题总结（下）](./operating-system-basic-questions-02.md)：继续补齐文件系统、I/O、Linux 等问题。
-3. [进程与线程详解：区别、状态、通信、上下文切换与虚拟线程](./process-and-thread.md)：系统理解进程、线程、PCB/TCB、fork/exec/wait、线程模型和上下文切换。
-4. [中断、异常与系统调用详解：从内核入口到缺页异常](./interrupt-exception-syscall.md)：以 `read()` 为线索串起硬件中断、同步异常、系统调用、信号、缺页异常和线程切换。
-5. [CPU 调度与系统负载详解](./cpu-scheduling-and-load.md)：理解调度算法、CFS/EEVDF、load average、CPU 使用率及线上排查思路。
-6. [进程间通信（IPC）详解：管道、消息队列、共享内存、Socket 与 Binder](./ipc.md)：对比管道、消息队列、共享内存、信号量、Socket、Binder 等 IPC 方案。
-7. [操作系统锁与同步机制详解：mutex、semaphore、condition variable、spinlock 与 futex](./os-lock-and-sync.md)：理解临界区、互斥锁、信号量、条件变量、自旋锁和 futex 的职责边界。
-8. [死锁详解：四个必要条件、Java 死锁排查与数据库死锁处理](./dead-lock.md)：讲清死锁等待环、四个必要条件、Java 线程死锁排查和数据库事务重试。
-9. [操作系统内存管理详解：分页、分段、页面置换、Swap 与 OOM](./memory-management.md)：理解内存分配、碎片、页表、页面回收和 OOM。
-10. [虚拟内存详解：地址转换、TLB、缺页异常与页面置换](./virtual-memory.md)：把分页、页表、TLB、缺页异常和页面置换串起来。
-11. [操作系统文件系统详解：inode、VFS、Page Cache 与日志机制](./file-system.md)：理解文件、目录、inode、VFS、Page Cache 和日志恢复。
-12. [I/O 多路复用详解：select、poll、epoll 原理与区别](./io-multiplexing.md)：理解一个线程处理海量连接背后的内核机制。
-13. [零拷贝详解：mmap、sendfile 与 splice](./zero-copy.md)：搞清传统 I/O、mmap、sendfile、splice 的拷贝路径和适用场景。
-14. [Linux 基础知识总结](./linux-intro.md)：掌握目录结构、文件权限、常用命令和基础排障能力。
-15. [Shell 编程基础知识总结](./shell-intro.md)：学习变量、条件、循环、函数和常用脚本写法。
+1. [Common Operating System Interview Questions (Part 1)](./operating-system-basic-questions-01.md): Start with operating system fundamentals, processes and threads, deadlocks, and memory management.
+2. [Common Operating System Interview Questions (Part 2)](./operating-system-basic-questions-02.md): Continue with filesystems, I/O, Linux, and related topics.
+3. [Processes and Threads](./process-and-thread.md): Learn about processes, threads, PCB/TCB, `fork`/`exec`/`wait`, thread models, and context switching.
+4. [Interrupts, Exceptions, and System Calls](./interrupt-exception-syscall.md): Follow `read()` through hardware interrupts, synchronous exceptions, system calls, signals, page faults, and thread switching.
+5. [CPU Scheduling and System Load](./cpu-scheduling-and-load.md): Learn about scheduling algorithms, CFS/EEVDF, load average, CPU usage, and production troubleshooting.
+6. [Interprocess Communication (IPC)](./ipc.md): Compare pipes, message queues, shared memory, semaphores, sockets, and Binder.
+7. [Operating System Locks and Synchronization](./os-lock-and-sync.md): Understand critical sections, mutexes, semaphores, condition variables, spinlocks, and futexes.
+8. [Deadlocks](./dead-lock.md): Learn the four necessary conditions, Java thread deadlock troubleshooting, and database transaction retries.
+9. [Operating System Memory Management](./memory-management.md): Understand allocation, fragmentation, page tables, page reclaim, and OOM.
+10. [Virtual Memory](./virtual-memory.md): Connect paging, page tables, TLBs, page faults, and page replacement.
+11. [Operating System Filesystems](./file-system.md): Learn about files, directories, inodes, VFS, Page Cache, and journaling.
+12. [I/O Multiplexing](./io-multiplexing.md): Understand the kernel mechanisms behind handling many connections with one thread.
+13. [Zero-Copy](./zero-copy.md): Compare the copy paths and use cases of traditional I/O, `mmap`, `sendfile`, and `splice`.
+14. [Linux Fundamentals](./linux-intro.md): Learn about directory structure, file permissions, common commands, and basic troubleshooting.
+15. [Shell Scripting](./shell-intro.md): Learn about variables, conditions, loops, functions, and common script patterns.
 
-## 核心文章
+## Core Guides
 
-- [操作系统常见面试题总结（上）](./operating-system-basic-questions-01.md)：覆盖操作系统基础、进程线程、死锁、内存管理等高频问题。
-- [操作系统常见面试题总结（下）](./operating-system-basic-questions-02.md)：继续整理文件系统、I/O、多路复用、Linux 等知识点。
-- [进程与线程详解：区别、状态、通信、上下文切换与虚拟线程](./process-and-thread.md)：讲清进程和线程的资源边界、状态转换、Linux 创建机制和 Java 虚拟线程。
-- [中断、异常与系统调用详解：从内核入口到缺页异常](./interrupt-exception-syscall.md)：讲清硬件中断、同步异常、系统调用、信号和缺页异常之间的关系。
-- [CPU 调度与系统负载详解](./cpu-scheduling-and-load.md)：讲清任务调度、CFS/EEVDF、load average、CPU 使用率和常用排查命令。
-- [进程间通信（IPC）详解：管道、消息队列、共享内存、Socket 与 Binder](./ipc.md)：讲清常见 IPC 方式的原理、优缺点和选型思路。
-- [操作系统锁与同步机制详解：mutex、semaphore、condition variable、spinlock 与 futex](./os-lock-and-sync.md)：讲清临界区、互斥锁、信号量、条件变量、自旋锁、futex、内存顺序和内核锁上下文。
-- [死锁详解：四个必要条件、Java 死锁排查与数据库死锁处理](./dead-lock.md)：讲清死锁形成条件、资源分配图、Java 排查工具、数据库死锁检测和应用层重试策略。
-- [操作系统内存管理详解：分页、分段、页面置换、Swap 与 OOM](./memory-management.md)：讲清 VSZ/RSS/PSS、连续分配、内存碎片、伙伴系统、页表、TLB、缺页异常、页面回收和 OOM。
-- [虚拟内存详解：地址转换、TLB、缺页异常与页面置换](./virtual-memory.md)：讲清虚拟地址、物理地址、分页、多级页表、TLB、缺页异常和页面置换算法。
-- [操作系统文件系统详解：inode、VFS、Page Cache 与日志机制](./file-system.md)：讲清文件、目录、inode、dentry、文件描述符、VFS、Page Cache、fsync 和日志机制。
-- [I/O 多路复用详解：select、poll、epoll 原理与区别](./io-multiplexing.md)：讲清网络 I/O 的两个阶段、五种 I/O 模型，以及 select、poll、epoll 的区别。
-- [零拷贝详解：mmap、sendfile 与 splice](./zero-copy.md)：讲清零拷贝到底省掉了什么，以及 Java NIO、Kafka、RocketMQ 中的典型应用。
-- [Linux 基础知识总结](./linux-intro.md)：讲解 Linux 目录树、文件权限、常用命令、用户和进程管理。
-- [Shell 编程基础知识总结](./shell-intro.md)：讲解 Shell 变量、条件判断、循环、函数、文本处理和脚本实践。
+- [Common Operating System Interview Questions (Part 1)](./operating-system-basic-questions-01.md): Covers operating system fundamentals, processes and threads, deadlocks, and memory management.
+- [Common Operating System Interview Questions (Part 2)](./operating-system-basic-questions-02.md): Continues with filesystems, I/O, multiplexing, Linux, and related topics.
+- [Processes and Threads](./process-and-thread.md): Explains resource boundaries, state transitions, Linux process creation, and Java virtual threads.
+- [Interrupts, Exceptions, and System Calls](./interrupt-exception-syscall.md): Explains hardware interrupts, synchronous exceptions, system calls, signals, and page faults.
+- [CPU Scheduling and System Load](./cpu-scheduling-and-load.md): Covers scheduling, CFS/EEVDF, load average, CPU usage, and troubleshooting commands.
+- [Interprocess Communication (IPC)](./ipc.md): Explains common IPC mechanisms, their tradeoffs, and how to choose between them.
+- [Operating System Locks and Synchronization](./os-lock-and-sync.md): Covers critical sections, mutexes, semaphores, condition variables, spinlocks, futexes, memory ordering, and kernel locking.
+- [Deadlocks](./dead-lock.md): Covers deadlock conditions, resource-allocation graphs, Java troubleshooting, database detection, and retry strategies.
+- [Operating System Memory Management](./memory-management.md): Covers VSZ/RSS/PSS, contiguous allocation, fragmentation, the buddy system, page tables, TLBs, page faults, reclaim, and OOM.
+- [Virtual Memory](./virtual-memory.md): Covers virtual and physical addresses, paging, multilevel page tables, TLBs, page faults, and page replacement.
+- [Operating System Filesystems](./file-system.md): Covers files, directories, inodes, dentries, file descriptors, VFS, Page Cache, `fsync`, and journaling.
+- [I/O Multiplexing](./io-multiplexing.md): Covers the two stages of network I/O, five I/O models, and the differences between `select`, `poll`, and `epoll`.
+- [Zero-Copy](./zero-copy.md): Explains what zero-copy avoids and how Java NIO, Kafka, and RocketMQ use it.
+- [Linux Fundamentals](./linux-intro.md): Covers the Linux directory tree, file permissions, common commands, users, and process management.
+- [Shell Scripting](./shell-intro.md): Covers variables, conditions, loops, functions, text processing, and practical scripts.
 
-## 高频问题
+## Common Questions
 
-- 进程和线程有什么区别？线程之间共享哪些资源？
-- 进程间通信有哪些方式？各自适合什么场景？
-- 什么是上下文切换？频繁上下文切换有什么影响？
-- mutex、semaphore、condition variable、spinlock 和 futex 分别解决什么问题？
-- 死锁产生的必要条件是什么？Java 和数据库里如何排查死锁？
-- 虚拟内存是什么？分页和分段有什么区别？
-- TLB、缺页异常和页面置换分别解决什么问题？
-- 页面置换算法有哪些？缺页异常是怎么回事？
-- 零拷贝为什么快？mmap、sendfile、splice 有什么区别？
-- 文件系统 inode、硬链接、软链接分别是什么？
-- select、poll、epoll 有什么区别？
-- Linux 文件权限如何理解？常用排障命令有哪些？
-- Shell 脚本适合解决哪些自动化问题？
+- How do processes and threads differ? Which resources do threads share?
+- What IPC mechanisms are available, and when is each useful?
+- What is a context switch, and what is the impact of frequent context switching?
+- What problems do mutexes, semaphores, condition variables, spinlocks, and futexes solve?
+- What are the necessary conditions for deadlock? How do you troubleshoot deadlocks in Java and databases?
+- What is virtual memory? How do paging and segmentation differ?
+- What do TLBs, page faults, and page replacement solve?
+- What page-replacement algorithms are there, and what happens during a page fault?
+- Why is zero-copy faster? How do `mmap`, `sendfile`, and `splice` differ?
+- What are filesystem inodes, hard links, and symbolic links?
+- How do `select`, `poll`, and `epoll` differ?
+- How do Linux file permissions work, and which troubleshooting commands are useful?
+- What kinds of automation are suited to Shell scripts?
 
-## 相关专题
+## Related Guides
 
-- [计算机基础知识体系](../)
-- [计算机网络专题](../network/)
-- [数据结构专题](../data-structure/)
-- [Java 并发编程](../../java/concurrent/java-concurrent-questions-01.md)
-- [JVM 内存区域详解](../../java/jvm/memory-area.md)
+- [Computer Science Fundamentals](../)
+- [Computer Networks](../network/)
+- [Data Structures](../data-structure/)
+- [Java Concurrency](../../java/concurrent/java-concurrent-questions-01.md)
+- [JVM Memory Areas](../../java/jvm/memory-area.md)
 
 <!-- @include: @article-footer.snippet.md -->
