@@ -227,7 +227,7 @@ Multi Part AOF 不是重点，了解即可，详细介绍可以看看阿里开�
 
 关系型数据库（如 MySQL）通常都是执行命令之前记录日志（方便故障恢复），而 Redis AOF 持久化机制是在执行完命令之后再记录日志。
 
-![AOF 记录日志过程](https://oss.javaguide.cn/github/javaguide/database/redis/redis-aof-write-log-disc.png)
+![AOF 记录日志过程](../images/shared/redis-aof-write-log-disc.png)
 
 **为什么是在执行完命令之后记录日志呢？**
 

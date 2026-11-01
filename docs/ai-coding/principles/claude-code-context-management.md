@@ -43,7 +43,7 @@ Claude Code 执行 `/compact` 后，会用结构化摘要替换此前的会话�
 
 在 `Agent = Model + Harness` 这个公式里，模型提供推理能力，Harness 负责信息获取、工具调用和任务推进。上下文管理属于 Harness：它决定当前窗口保留哪些状态，清理哪些临时结果，以及哪些内容应写到窗口外。
 
-![Agent = Model + Harness](https://oss.javaguide.cn/github/javaguide/ai/harness/harness-agent-equals-model-harness-arch.png)
+![Agent = Model + Harness](../../ai/images/shared/harness-agent-equals-model-harness-arch.png)
 
 面试中问到这类问题，考察的通常是能否把 Agent 看作一个有状态系统。它和传统后端系统有一些相似之处（以下类比用于帮助理解，不是机制等价）：
 
@@ -60,7 +60,7 @@ Prompt Engineering 和 Context Engineering 的区别也在这里。前者关心�
 
 你把 System Prompt 写得再详细，也没办法搞定上下文管理。这反而会起到反作用，增加固定开销，让窗口更早进入高压区/危险区。
 
-![Context Engineering 和 Prompt Engineering 差别](https://oss.javaguide.cn/github/javaguide/ai/context-engineering/context-engineering-vs-context-engineering-dimension-comparison.png)
+![Context Engineering 和 Prompt Engineering 差别](../../ai/images/shared/context-engineering-vs-context-engineering-dimension-comparison.png)
 
 ## 窗口预算与信息加载
 
@@ -74,7 +74,7 @@ Prompt Engineering 和 Context Engineering 的区别也在这里。前者关心�
 
 窗口占用可以分为两部分：启动时就存在的 System Prompt、规则和工具注册，以及任务中不断追加的工具结果和对话历史。前者决定会话起步时的余量；读文件、跑命令和收集日志会不断推高后者。
 
-![上下文窗口（Context Window）= LLM 的工作记忆](https://oss.javaguide.cn/github/javaguide/ai/llm/llm-context-window.png)
+![上下文窗口（Context Window）= LLM 的工作记忆](../../ai/images/shared/llm-context-window.png)
 
 启动开销主要来自 System Prompt、`CLAUDE.md`、Skills 描述和部分工具信息。观察到的实现会尽量延迟加载一部分 MCP 工具定义：
 
@@ -94,7 +94,7 @@ Prompt Engineering 和 Context Engineering 的区别也在这里。前者关心�
 
 这就是我们常说的上下文腐化（Context Rot）问题。**上下文越长，信息越杂，模型利用上下文的稳定性就越可能变差。**
 
-![上下文腐化](https://oss.javaguide.cn/github/javaguide/ai/harness/context-rot-diagram.png)
+![上下文腐化](../../ai/images/shared/context-rot-diagram.png)
 
 Claude Code 每次调用 LLM 时，窗口里通常有这些内容：
 
@@ -223,7 +223,7 @@ Cursor 这类 AI IDE 会做 Codebase Indexing，用索引辅助低延迟补全�
 
 长任务里，窗口扩大后会同时装入更多约束、日志和旧判断，当前决策所需的材料因此更难被稳定取用。一些社区实践把 40% 左右当作清理或压缩的提醒线；模型、任务类型和上下文结构不同，出现波动的位置也会变化。
 
-![社区经验中的上下文利用率管理线](https://oss.javaguide.cn/github/javaguide/ai/harness/context-utilization-40-percent-threshold-phenomenon.svg)
+![社区经验中的上下文利用率管理线](../../ai/images/shared/context-utilization-40-percent-threshold-phenomenon.svg)
 
 第 3 轮写下“不要改数据库 schema”，到第 30 轮时，这条限制可能被搜索结果和测试日志夹在中间。这类开头与结尾更容易被注意、中间内容容易遗漏的现象，通常称为 **Lost in the Middle**。
 
@@ -416,7 +416,7 @@ Reset 的风险也清楚，交接材料是主要桥梁。它不一定只有一�
 
 分析几千行日志、跨文件定位或独立审查时，主会话通常不需要看到全部过程。Sub-agent 在独立窗口完成这些支线后，只回传摘要和必要证据；全文日志与中间试错留在子代理历史中。
 
-![Claude Code Sub-Agent：让主对话保持干净](https://oss.javaguide.cn/github/javaguide/ai/coding/claudecode-sub-agent.png)
+![Claude Code Sub-Agent：让主对话保持干净](../images/shared/claudecode-sub-agent.png)
 
 主会话只需根因和证据的日志任务适合拆出。任务小到几步就能完成、子任务频繁相互等待，或边界本身说不清时，调度和摘要反而会带来额外成本。
 
@@ -563,7 +563,7 @@ Carlini 后来在 [Building a C compiler with a team of parallel Claudes](https:
 
 有些 Agent 项目也会把 `AGENTS.md` 当索引用。
 
-![CLAUDE.md 和 AGENTS.md](https://oss.javaguide.cn/github/javaguide/ai/coding/claude-agents-md.png)
+![CLAUDE.md 和 AGENTS.md](../images/shared/claude-agents-md.png)
 
 可以参考 [Harness Engineering: Why Coding Agents Need Infrastructure](https://alexlavaee.me/blog/harness-engineering-why-coding-agents-need-infrastructure/ "Harness Engineering: Why Coding Agents Need Infrastructure")。这类文件负责告诉 Agent “资料在哪、什么时候读”，不是把所有资料提前塞进上下文。
 

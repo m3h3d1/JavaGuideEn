@@ -28,7 +28,7 @@ The diagram below illustrates a simple CPU cache model.
 
 > **🐛 Correction (see [issue #1848](https://github.com/Snailclimb/JavaGuide/issues/1848)):** The CPU cache diagram has been revised for accuracy.
 
-![CPU cache model](https://oss.javaguide.cn/github/javaguide/java/concurrent/cpu-cache.png)
+![CPU cache model](../../database/images/shared/cpu-cache.png)
 
 Modern CPUs usually have three cache levels: L1, L2, and L3. Some CPUs also have an L4 cache, which is uncommon and not covered here.
 

@@ -376,7 +376,7 @@ Bitmap 存储的是连续的二进制数字（0 和 1），通过 Bitmap，只�
 
 你可以将 Bitmap 看作是一个存储二进制数字（0 和 1）的数组，数组中每个元素的下标叫做 offset（偏移量）。
 
-![img](https://oss.javaguide.cn/github/javaguide/database/redis/image-20220720194154133.png)
+![img](../images/shared/image-20220720194154133.png)
 
 如果想要使用 Bitmap 统计活跃用户的话，可以使用日期（精确到天）作为 key，然后用户 ID 为 offset，如果当日活跃过就设置为 1。
 

@@ -481,7 +481,7 @@ LXC 技术主要是借助 Linux 内核中提供的 CGroup 功能和 namespace �
 
 另外，再给大家推荐一本质量非常高的开源书籍[《Docker 从入门到实践》](https://yeasy.gitbook.io/docker_practice/introduction/why) ，这本书的内容非常新，毕竟书籍的内容是开源的，可以随时改进。
 
-![《Docker 从入门到实践》网站首页](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-getting-started-practice-website-homepage.png)
+![《Docker 从入门到实践》网站首页](../../roadmap/images/shared/docker-getting-started-practice-website-homepage.png)
 
 ## 参考
 

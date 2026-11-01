@@ -60,7 +60,7 @@ CDN 把可缓存的内容放到离用户更近的边缘节点，减少跨地域�
 
 数据库变慢后，可以先看慢 SQL、执行计划、索引命中、锁等待、连接池和磁盘 I/O。单条查询还有优化空间时，直接分库分表只会把查询、事务和运维问题一起放大。读写分离和数据分片适合解决容量与吞吐问题，不能代替 SQL 和索引优化。
 
-![读写分离架构](https://oss.javaguide.cn/github/javaguide/high-performance/read-and-write-separation-and-library-subtable/read-and-write-separation.png)
+![读写分离架构](../roadmap/images/shared/read-and-write-separation.png)
 
 相关内容：
 

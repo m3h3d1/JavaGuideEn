@@ -12,13 +12,13 @@ head:
 
 不是不想测，前几天确实太忙了，想赶在秋招之前对 JavaGuide 进行一波优化，这是每一年都会做的事情。
 
-![读者留言希望实测 MiniMax M3](https://oss.javaguide.cn/github/javaguide/ai/coding/m3/image-20260604122811898.png)
+![读者留言希望实测 MiniMax M3](../images/shared/image-20260604122811898.png)
 
 根据 MiniMax 官方介绍，M3 是其首个同时提供 1M 上下文、原生多模态和前沿 Coding 能力的开放权重模型。这是厂商对产品的定位，是否适合具体代码库仍要靠任务验证。
 
 官方公布的基准结果包括：SWE-Bench Pro 59.0%、Terminal-Bench 2.1 66.0%、MCP Atlas 74.2%。这些数字对应指定评测集和评测配置，不是本文独立复测结果。
 
-![MiniMax M3 官方能力介绍：Coding Frontier/SOTA + 1M 上下文 + 原生多模态](https://oss.javaguide.cn/github/javaguide/ai/coding/m3/HJsWydIbIAAFAZL.jpeg)
+![MiniMax M3 官方能力介绍：Coding Frontier/SOTA + 1M 上下文 + 原生多模态](../images/shared/HJsWydIbIAAFAZL.jpeg)
 
 我更关心它进入真实工程后的表现。
 
@@ -36,49 +36,49 @@ head:
 
 小 G 日常使用 Claude Code 开发，通过 cc-switch 统一管理模型。以下为 MiniMax M3 的配置步骤。首先打开 cc-switch 点击加号添加模型配置：
 
-![cc-switch 点击加号添加模型配置](https://oss.javaguide.cn/github/javaguide/ai/coding/m3/cc-switch-add-model.png)
+![cc-switch 点击加号添加模型配置](../images/shared/cc-switch-add-model.png)
 
 选择 MiniMax M3，将自己的 key 填充到 api key 选项中：
 
-![选择 MiniMax M3 并填入 API Key](https://oss.javaguide.cn/github/javaguide/ai/coding/m3/cc-switch-select-minimax-m3.png)
+![选择 MiniMax M3 并填入 API Key](../images/shared/cc-switch-select-minimax-m3.png)
 
 最后点击获取模型列表，完成模型的配置，以我的为例，直接将主模型设置为 MiniMax M3：
 
-![获取模型列表并将主模型设置为 MiniMax M3](https://oss.javaguide.cn/github/javaguide/ai/coding/m3/cc-switch-set-main-model.png)
+![获取模型列表并将主模型设置为 MiniMax M3](../images/shared/cc-switch-set-main-model.png)
 
 配置完成后打开 Claude Code，通过对话面板验证当前模型是否生效：
 
-![在 Claude Code 中验证 MiniMax M3 模型已生效](https://oss.javaguide.cn/github/javaguide/ai/coding/m3/claude-code-verify-model.png)
+![在 Claude Code 中验证 MiniMax M3 模型已生效](../images/shared/claude-code-verify-model.png)
 
 ## 故障排查：围绕应用层 SCAN 循环验证性能问题
 
 第一个案例复刻自我过去经历过的一次线上故障。为降低理解负担，这里用一个经典的电商场景来还原：该场景是大促期间“超时订单自动取消”的异步任务在跑，同时大量用户正在浏览商品。某一刻，页面大面积超时——已售、库存、浏览、收藏，所有热点数据全加载不出来：
 
-![大促期间页面大面积超时，商品热点数据加载失败](https://oss.javaguide.cn/github/javaguide/ai/coding/m3/ecommerce-page-timeout.png)
+![大促期间页面大面积超时，商品热点数据加载失败](../images/shared/ecommerce-page-timeout.png)
 
 为了评测 MiniMax M3 对于这类复杂业务链路的排查能力，我将系统表象的截图（Claude Code 中可通过 Ctrl+V 粘贴截图，Win 系统为 Alt+V）和错误描述一并提交：
 
-![将故障表象截图和错误描述一并提交给 M3](https://oss.javaguide.cn/github/javaguide/ai/coding/m3/submit-error-to-m3.png)
+![将故障表象截图和错误描述一并提交给 M3](../images/shared/submit-error-to-m3.png)
 
 经过片刻分析，MiniMax M3 将问题定位到后台任务中的完整 `SCAN` 循环。它最初把原因概括成“SCAN 导致 Redis 服务端阻塞”，这个说法不够准确：`SCAN` 单次调用是增量迭代，设计目的正是避免 `KEYS` 一类长时间阻塞；真正需要检查的是循环次数、`COUNT`、Keyspace 大小、单次延迟，以及应用是否长期占用连接。
 
-![M3 定位到根因：SCAN 操作导致 Redis 阻塞，引发读写排队](https://oss.javaguide.cn/github/javaguide/ai/coding/m3/m3-root-cause-scan-blocking.png)
+![M3 定位到根因：SCAN 操作导致 Redis 阻塞，引发读写排队](../images/shared/m3-root-cause-scan-blocking.png)
 
 为进一步核对业务链路，我要求 MiniMax M3 用 ASCII 图画出故障过程。图里从超时订单任务进入 `SCAN` 循环，再到连接池可用连接下降和页面请求排队。这里应把“Keyspace 遍历阻塞主线程”理解为需要验证的假设，而不是 `SCAN` 的固定行为：
 
-![M3 绘制的故障流转链路 ASCII 图：从 SCAN 触发到页面超时的端到端因果链](https://oss.javaguide.cn/github/javaguide/ai/coding/m3/fault-chain-ascii-diagram.png)
+![M3 绘制的故障流转链路 ASCII 图：从 SCAN 触发到页面超时的端到端因果链](../images/shared/fault-chain-ascii-diagram.png)
 
 M3 随后给出数据结构调整、原子操作、降级和监控四类建议：
 
-![M3 从数据结构、原子性、降级、监控四个维度同时给出修复建议](https://oss.javaguide.cn/github/javaguide/ai/coding/m3/m3-four-dimension-fix.png)
+![M3 从数据结构、原子性、降级、监控四个维度同时给出修复建议](../images/shared/m3-four-dimension-fix.png)
 
 针对受影响的业务接口，M3 将串行 Redis 指令优化为一条原子操作，并附上降级策略，以控制极端情况下的影响面：
 
-![串行 Redis 指令优化为一条原子操作，并附上降级策略](https://oss.javaguide.cn/github/javaguide/ai/coding/m3/atomic-operation-optimization.png)
+![串行 Redis 指令优化为一条原子操作，并附上降级策略](../images/shared/atomic-operation-optimization.png)
 
 在工程侧，M3 还给出了监控埋点建议，并把 200 ms 作为示例告警值。这个数字不能用“人类感知停顿”来证明；Redis 后台任务的阈值应根据接口 SLO、连接池容量、任务频率和历史分位延迟确定：
 
-![监控埋点建议与告警阈值：SCAN 操作红线设为 200ms](https://oss.javaguide.cn/github/javaguide/ai/coding/m3/monitoring-alert-thresholds.png)
+![监控埋点建议与告警阈值：SCAN 操作红线设为 200ms](../images/shared/monitoring-alert-thresholds.png)
 
 以下是本次修改的 diff：
 

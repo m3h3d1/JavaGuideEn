@@ -234,7 +234,7 @@ MySQL 中没有专门的布尔类型，`BOOL` 和 `BOOLEAN` 是 `TINYINT(1)` 的
 
 下图是 MySQL 的一个简要架构图，从下图你可以很清晰的看到客户端的一条 SQL 语句在 MySQL 内部是如何执行的。
 
-![](https://oss.javaguide.cn/javaguide/13526879-3037b144ed09eb88.png)
+![](../images/shared/13526879-3037b144ed09eb88.png)
 
 从上图可以看出， MySQL 主要由下面几部分构成：
 
@@ -301,7 +301,7 @@ MySQL 存储引擎采用的是 **插件式架构** ，支持多种存储引擎�
 
 下图展示了具有可插拔存储引擎的 MySQL 架构：
 
-![MySQL architecture diagram showing connectors, interfaces, pluggable storage engines, the file system with files and logs.](https://oss.javaguide.cn/github/javaguide/mysql/mysql-architecture.png)
+![MySQL architecture diagram showing connectors, interfaces, pluggable storage engines, the file system with files and logs.](../images/shared/mysql-architecture.png)
 
 你还可以根据 MySQL 定义的存储引擎实现标准接口来编写一个属于自己的存储引擎。这些非官方提供的存储引擎可以称为第三方存储引擎，区别于官方存储引擎。像目前最常用的 InnoDB 其实刚开始就是一个第三方存储引擎，后面由于过于优秀，其被 Oracle 直接收购了。
 
@@ -597,7 +597,7 @@ MySQL 5.6 开始，查询缓存已默认禁用。MySQL 8.0 开始，已经不再
 
 上诉问题的答案可以在[《Java 面试指北》(付费，点击链接领取优惠卷)](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html) 的 **「技术面试题篇」** 中找到。
 
-![《Java 面试指北》技术面试题篇](https://oss.javaguide.cn/javamianshizhibei/technical-interview-questions.png)
+![《Java 面试指北》技术面试题篇](../../zhuanlan/images/shared/technical-interview-questions.png)
 
 文章地址：<https://www.yuque.com/snailclimb/mf2z3k/zr4kfk> （密码获取：<https://t.zsxq.com/avfM0>）。
 
@@ -623,7 +623,7 @@ MySQL 5.6 开始，查询缓存已默认禁用。MySQL 8.0 开始，已经不再
 
 事务会把这两个操作就可以看成逻辑上的一个整体，这个整体包含的操作要么都成功，要么都要失败。这样就不会出现小明余额减少而小红的余额却并没有增加的情况。
 
-![事务示意图](https://oss.javaguide.cn/github/javaguide/mysql/%E4%BA%8B%E5%8A%A1%E7%A4%BA%E6%84%8F%E5%9B%BE.png)
+![事务示意图](../../distributed-system/images/shared/-.png)
 
 ### 什么是数据库事务？
 
@@ -644,11 +644,11 @@ SQL1,SQL2...
 COMMIT;
 ```
 
-![数据库事务示意图](https://oss.javaguide.cn/github/javaguide/mysql/%E6%95%B0%E6%8D%AE%E5%BA%93%E4%BA%8B%E5%8A%A1%E7%A4%BA%E6%84%8F%E5%9B%BE.png)
+![数据库事务示意图](../../distributed-system/images/shared/--2.png)
 
 另外，关系型数据库（例如：`MySQL`、`SQL Server`、`Oracle` 等）事务都有 **ACID** 特性：
 
-![ACID](https://oss.javaguide.cn/github/javaguide/mysql/ACID.png)
+![ACID](../../distributed-system/images/shared/ACID.png)
 
 1. **原子性**（`Atomicity`）：事务是最小的执行单位，不允许分割。事务的原子性确保动作要么全部完成，要么完全不起作用；
 2. **一致性**（`Consistency`）：执行事务前后，数据保持一致，例如转账业务中，无论事务是否成功，转账者和收款人的总额应该是不变的；
@@ -657,7 +657,7 @@ COMMIT;
 
 🌈 这里要额外补充一点：**只有保证了事务的持久性、原子性、隔离性之后，一致性才能得到保障。也就是说 A、I、D 是手段，C 是目的！** 想必大家也和我一样，被 ACID 这个概念被误导了很久! 我也是看周志明老师的公开课[《周志明的软件架构课》](https://time.geekbang.org/opencourse/intro/100064201)才搞清楚的（多看好书！！！）。
 
-![AID->C](https://oss.javaguide.cn/github/javaguide/mysql/AID-%3EC.png)
+![AID->C](../../distributed-system/images/shared/AID--C.png)
 
 另外，DDIA 也就是 [《Designing Data-Intensive Application（数据密集型应用系统设计）》](https://book.douban.com/subject/30329536/) 的作者在他的这本书中如是说：
 
@@ -670,7 +670,7 @@ COMMIT;
 
 《Designing Data-Intensive Application（数据密集型应用系统设计）》这本书强推一波，值得读很多遍！豆瓣有接近 90% 的人看了这本书之后给了五星好评。另外，中文翻译版本已经在 GitHub 开源，地址：[https://github.com/Vonng/ddia](https://github.com/Vonng/ddia) 。
 
-![](https://oss.javaguide.cn/github/javaguide/books/ddia.png)
+![](../../books/images/shared/ddia.png)
 
 ### 并发事务带来了哪些问题?
 

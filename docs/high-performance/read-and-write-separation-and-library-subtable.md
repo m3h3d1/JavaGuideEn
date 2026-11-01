@@ -16,7 +16,7 @@ head:
 
 我简单画了一张图来帮助不太清楚读写分离的小伙伴理解。
 
-![读写分离示意图](https://oss.javaguide.cn/github/javaguide/high-performance/read-and-write-separation-and-library-subtable/read-and-write-separation.png)
+![读写分离示意图](../roadmap/images/shared/read-and-write-separation.png)
 
 一般情况下，我们都会选择一主多从，也就是一台主数据库负责写，其他的从数据库负责读。主库和从库之间会进行数据同步，以保证从库中数据的准确性。这样的架构实现起来比较简单，并且也符合系统的写少读多的特点。
 

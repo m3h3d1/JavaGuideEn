@@ -91,7 +91,7 @@ icon: "mdi:robot-outline"
 
 > **提示**：架构图采用 draw.io 绘制，导出为 SVG 格式，在 GitHub 深色模式下的显示效果会有问题。
 
-![系统架构图](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/interview-guide-architecture-diagram.png)
+![系统架构图](../zhuanlan/images/shared/interview-guide-architecture-diagram.png)
 
 ### AI 工作流编排系统
 

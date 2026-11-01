@@ -37,4 +37,4 @@ The roadmap is also available as a **55-page PDF**, with light and dark versions
 
 To get the PDF, follow the official **JavaGuide** WeChat account and reply with the Chinese keyword **“路线”**.
 
-![JavaGuide official WeChat account](https://oss.javaguide.cn/github/javaguide/gongzhonghaoxuanchuan.png)
+![JavaGuide official WeChat account](../javaguide/images/shared/gongzhonghaoxuanchuan.png)

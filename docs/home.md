@@ -206,7 +206,7 @@ Computer science fundamentals—computer networks, operating systems, data struc
 
 [Common Elasticsearch Interview Questions (paid)](./database/elasticsearch/elasticsearch-questions-01.md)
 
-![JavaGuide official WeChat account](https://oss.javaguide.cn/github/javaguide/gongzhonghaoxuanchuan.png)
+![JavaGuide official WeChat account](./javaguide/images/shared/gongzhonghaoxuanchuan.png)
 
 ## Developer tools
 
@@ -410,4 +410,4 @@ Deploy multiple instances of the same service to avoid a single point of failure
 
 To follow new articles and other updates, subscribe to the official **JavaGuide** WeChat account.
 
-![JavaGuide official WeChat account](https://oss.javaguide.cn/github/javaguide/gongzhonghaoxuanchuan.png)
+![JavaGuide official WeChat account](./javaguide/images/shared/gongzhonghaoxuanchuan.png)

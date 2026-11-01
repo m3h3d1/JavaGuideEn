@@ -4,13 +4,13 @@ Here's an open-source hands-on project built with Spring Boot 4.0, Java 21, Spri
 
 **System architecture:**
 
-![System architecture diagram](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/interview-guide-architecture-diagram.png)
+![System architecture diagram](../zhuanlan/images/shared/interview-guide-architecture-diagram.png)
 
 **Screenshots:**
 
-![Skill question generation and job description analysis](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-skill-jd-parse.png)
+![Skill question generation and job description analysis](../zhuanlan/images/shared/page-skill-jd-parse.png)
 
-![Resume analysis details](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-resume-analysis-detail.png)
+![Resume analysis details](../zhuanlan/images/shared/page-resume-analysis-detail.png)
 
 The full source code is free and open source, with no Pro or paid edition.
 
@@ -23,4 +23,4 @@ The detailed project introduction and learning tutorial are available to Knowled
 
 The tutorial is complete and contains more than **180,000 words**:
 
-![Tutorial contents overview](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/tutorial-overview.png)
+![Tutorial contents overview](../zhuanlan/images/shared/tutorial-overview.png)

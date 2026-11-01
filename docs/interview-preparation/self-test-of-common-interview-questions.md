@@ -13,10 +13,10 @@ Before an interview, I strongly recommend testing yourself with common interview
 
 In the **Technical Interview Self-Assessment** section of **[The Java Interview Guide](../zhuanlan/java-mian-shi-zhi-bei.md)**, I've collected common questions about the most important Java interview topics and presented them in the same way an interviewer might ask them.
 
-![Technical Interview Self-Assessment section of The Java Interview Guide](https://oss.javaguide.cn/javamianshizhibei/self-test.png)
+![Technical Interview Self-Assessment section of The Java Interview Guide](../zhuanlan/images/shared/self-test.png)
 
 Each question comes with **hints and an approach**, and ⭐ markers show its importance. The more stars a question has, the more often it tends to come up in interviews, so it's worth spending more time on.
 
-![](https://oss.javaguide.cn/javamianshizhibei/self-test-key-points.png)
+![](../zhuanlan/images/shared/self-test-key-points.png)
 
 <!-- @include: @planet.snippet.md -->

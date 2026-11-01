@@ -181,7 +181,7 @@ Here is an illustration of the factory analogy:
 
 The Java runtime data areas provide another view from the JVM perspective.
 
-![Java runtime data areas after JDK 1.8](https://oss.javaguide.cn/github/javaguide/java/jvm/java-runtime-data-areas-jdk1.8.png)
+![Java runtime data areas after JDK 1.8](../../java/images/shared/java-runtime-data-areas-jdk1.8.png)
 
 One process can contain multiple threads. Threads share the process's **heap** and **method area (Metaspace since JDK 8)**, while each thread has its own **program counter**, **JVM stack**, and **native method stack**.
 

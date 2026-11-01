@@ -204,7 +204,7 @@ Redis 是可以用来做延时任务的，基于 Redis 实现延时任务的功�
 
 这部分内容的详细介绍我放在了[《后端面试高频系统设计&场景题》](https://javaguide.cn/zhuanlan/back-end-interview-high-frequency-system-design-and-scenario-questions.html)中，有需要的同学可以进入星球后阅读学习。篇幅太多，这里就不重复分享了。
 
-![《后端面试高频系统设计&场景题》](https://oss.javaguide.cn/xingqiu/back-end-interview-high-frequency-system-design-and-scenario-questions-fengmian.png)
+![《后端面试高频系统设计&场景题》](../zhuanlan/images/shared/back-end-interview-high-frequency-system-design-and-scenario-questions-fengmian.png)
 
 ### MQ
 

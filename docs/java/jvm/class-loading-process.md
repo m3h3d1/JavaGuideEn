@@ -16,7 +16,7 @@ From the time a class is loaded into the JVM until it is unloaded, its lifecycle
 
 The seven stages are shown below:
 
-![The complete lifecycle of a class](https://oss.javaguide.cn/github/javaguide/java/jvm/lifecycle-of-a-class.png)
+![The complete lifecycle of a class](../images/shared/lifecycle-of-a-class.png)
 
 ## Class loading process
 
@@ -63,7 +63,7 @@ Verification consists of four main checks:
 3. Bytecode verification (program semantic checks)
 4. Symbolic reference verification (class correctness checks)
 
-![Verification stage diagram](https://oss.javaguide.cn/github/javaguide/java/jvm/class-loading-process-verification.png)
+![Verification stage diagram](../images/shared/class-loading-process-verification.png)
 
 File format verification checks the class's binary byte stream. Its main purpose is to ensure the stream can be parsed and stored in the method area and follows the format required to describe a Java type. The other three checks use the data structures in the method area rather than reading or operating on the byte stream directly.
 
@@ -90,7 +90,7 @@ The main purpose of symbolic reference verification is to ensure that resolution
 
 **Default values of primitive types** (image from section 7.3.3 of _Understanding the JVM_, 3rd edition):
 
-![Default values of primitive types](https://oss.javaguide.cn/github/javaguide/java/%E5%9F%BA%E6%9C%AC%E6%95%B0%E6%8D%AE%E7%B1%BB%E5%9E%8B%E7%9A%84%E9%9B%B6%E5%80%BC.png)
+![Default values of primitive types](../images/shared/basic-data-type-default-values.png)
 
 ### Resolution
 
@@ -98,7 +98,7 @@ The main purpose of symbolic reference verification is to ensure that resolution
 
 Section 7.3.4 of the third edition of _Understanding the JVM_ explains symbolic and direct references as follows:
 
-![Symbolic and direct references](https://oss.javaguide.cn/github/javaguide/java/jvm/symbol-reference-and-direct-reference.png)
+![Symbolic and direct references](../images/shared/symbol-reference-and-direct-reference.png)
 
 For example, when a program calls a method, the JVM uses the method's symbolic reference to determine which method to invoke. HotSpot and other JVMs may use method tables, entry points, or other internal structures to speed up calls. These are implementation details; the Java Virtual Machine Specification does not prescribe a single method-table offset format.
 

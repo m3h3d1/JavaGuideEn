@@ -87,7 +87,7 @@ head:
 
 服务独立演进通常要求数据归属也清晰。多个服务直接读写同一张表虽然省掉了接口调用，但任何一方修改表结构或数据语义，都可能影响其他服务，服务也很难真正独立发布。
 
-![订单服务与库存服务形成的分布式事务](https://oss.javaguide.cn/github/javaguide/distributed-system/distributed-transaction/distributed-transaction-with-two-services.png)
+![订单服务与库存服务形成的分布式事务](./images/shared/distributed-transaction-with-two-services.png)
 
 相关内容：
 

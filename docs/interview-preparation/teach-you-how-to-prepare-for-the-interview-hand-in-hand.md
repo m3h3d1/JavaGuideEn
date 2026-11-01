@@ -137,7 +137,7 @@ Do not assume that technical interview questions or fundamentals are unimportant
 
 I recommend the [Java Interview Guide](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html) and [JavaGuide](https://javaguide.cn/). The guide is updated each year based on interview trends, and both include original interview material and practical development advice. You can also find other good articles and videos online.
 
-![Java Interview Guide content overview](https://oss.javaguide.cn/javamianshizhibei/javamianshizhibei-content-overview.png)
+![Java Interview Guide content overview](../zhuanlan/images/shared/javamianshizhibei-content-overview.png)
 
 ## Practice coding interviews in advance
 
@@ -149,7 +149,7 @@ In experienced-hire interviews, algorithm problems often appear near the end of 
 
 The interview preparation section of the [Java Interview Guide](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html) has a detailed guide to preparing for algorithm interviews.
 
-![Java Interview Guide interview preparation section](https://oss.javaguide.cn/javamianshizhibei/preparation-for-interview.png)
+![Java Interview Guide interview preparation section](../zhuanlan/images/shared/preparation-for-interview.png)
 
 ## Prepare your introduction
 

@@ -288,8 +288,8 @@ Membership costs about one percent of a typical training program, while offering
 
 Here are some of the services included (click the image for details about Knowledge Planet):
 
-[![Knowledge Planet services](https://oss.javaguide.cn/xingqiu/xingqiufuwu.png)](../about-the-author/zhishixingqiu-two-years.md)
+[![Knowledge Planet services](../javaguide/images/shared/xingqiufuwu.png)](../about-the-author/zhishixingqiu-two-years.md)
 
 Here's a limited-time coupon:
 
-![¥30 Knowledge Planet coupon](https://oss.javaguide.cn/xingqiu/xingqiuyouhuijuan-30.jpg)
+![¥30 Knowledge Planet coupon](../zhuanlan/images/shared/xingqiuyouhuijuan-30.jpg)

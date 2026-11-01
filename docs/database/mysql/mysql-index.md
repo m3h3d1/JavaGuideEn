@@ -440,7 +440,7 @@ SELECT * FROM user WHERE zipcode = '431200' AND MONTH(birthdate) = 3;
 
 再来讲讲索引下推的具体原理，先看下面这张 MySQL 简要架构图。
 
-![](https://oss.javaguide.cn/javaguide/13526879-3037b144ed09eb88.png)
+![](../images/shared/13526879-3037b144ed09eb88.png)
 
 MySQL 可以简单分为 Server 层和存储引擎层这两层。Server 层处理查询解析、分析、优化、缓存以及与客户端的交互等操作，而存储引擎层负责数据的存储和读取，MySQL 支持 InnoDB、MyISAM、Memory 等多种存储引擎。
 

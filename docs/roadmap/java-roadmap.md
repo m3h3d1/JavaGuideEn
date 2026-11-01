@@ -30,11 +30,11 @@ This diagram shows the overall roadmap and the study order I recommend.
 
 Each topic in the diagram is explained below, with recommended resources.
 
-![Java backend roadmap overview](https://oss.javaguide.cn/github/javaguide/interview-preparation/java-learning-route/java-learning-route-2024.png)
+![Java backend roadmap overview](./images/shared/java-learning-route-2024.png)
 
 To get the original image and PDF, reply **学习路线** (“learning roadmap”) to the **JavaGuide** WeChat public account.
 
-![JavaGuide official WeChat public account](https://oss.javaguide.cn/github/javaguide/gongzhonghaoxuanchuan.png)
+![JavaGuide official WeChat public account](../javaguide/images/shared/gongzhonghaoxuanchuan.png)
 
 If you want to work at a smaller company, focus on Java fundamentals, databases, common frameworks, and development tools.
 
@@ -106,17 +106,17 @@ Self-assessment can help reinforce what you've studied.
 
 If you're new to programming, start with a video course. Good options include Shangguigu's [Java Fundamentals Series](https://www.bilibili.com/video/BV1PY411e7J6/) and Han Shunping's [Learn Java from Scratch in 30 Days](https://www.bilibili.com/video/BV1fh411y7R8).
 
-![](https://oss.javaguide.cn/github/javaguide/interview-preparation/java-learning-route/20210409143842888.png)
+![](./images/shared/20210409143842888.png)
 
 👉 I collected Shangguigu's latest Java backend video courses and materials. If you prefer learning from videos, [download the complete Java backend courses and projects](https://mp.weixin.qq.com/s/jkZthmOSDgTF1PrCeNus_A).
 
-![](https://oss.javaguide.cn/github/javaguide/books/88714e9becd0485aae247772b6ed9949.png)
+![](./images/shared/88714e9becd0485aae247772b6ed9949.png)
 
 A good book can complement video lessons. Here are three Java fundamentals books:
 
 **1. _Head First Java_**
 
-![Head First Java](https://oss.javaguide.cn/github/javaguide/books/image-20220424103035793.png)
+![Head First Java](../books/images/shared/image-20220424103035793.png)
 
 _Head First Java_ is approachable and engaging. It was one of the books that helped me get started with Java, and many of my friends used it when they were learning.
 
@@ -124,7 +124,7 @@ _Head First Java_ is approachable and engaging. It was one of the books that hel
 
 **2. _Core Java, Volumes I and II_**
 
-![Core Java, Volume I](https://oss.javaguide.cn/github/javaguide/books/image-20220424101217849.png)
+![Core Java, Volume I](../books/images/shared/image-20220424101217849.png)
 
 These books cover a lot of material and take time to read. They're useful as references. I recommend them once you have some Java experience; their coverage is detailed and broad.
 
@@ -132,7 +132,7 @@ These books cover a lot of material and take time to read. They're useful as ref
 
 This book goes deeper than a typical introductory text. It's suitable for beginners and for reviewing Java fundamentals. See [Java Fundamentals: Common Interview Questions](https://mp.weixin.qq.com/s/UceEYGWM9qq9WvntV7y-Aw) for reading suggestions.
 
-![The Logic of Java Programming](https://oss.javaguide.cn/github/javaguide/books/image-20230721153650488.png)
+![The Logic of Java Programming](../books/images/shared/image-20230721153650488.png)
 
 After studying the fundamentals, write a simple Java program or solve programming problems to apply what you've learned.
 
@@ -166,11 +166,11 @@ Concurrency and multithreading can be difficult to understand and practice. If y
 
 Recommended books include _Java High Concurrency Programming_, _Java Concurrency in Practice: Beauty of Programming_, and _The Principles of Java Concurrency: JDK Source Code Analysis_.
 
-![Java High Concurrency Programming](https://oss.javaguide.cn/github/javaguide/books/image-20220424112554830.png)
+![Java High Concurrency Programming](../books/images/shared/image-20220424112554830.png)
 
-![Java Concurrency in Practice: Beauty of Programming](https://oss.javaguide.cn/github/javaguide/books/image-20220424112413660.png)
+![Java Concurrency in Practice: Beauty of Programming](../books/images/shared/image-20220424112413660.png)
 
-![The Principles of Java Concurrency: JDK Source Code Analysis](https://oss.javaguide.cn/github/javaguide/books/0b1b046af81f4c94a03e292e66dd6f7d.png)
+![The Principles of Java Concurrency: JDK Source Code Analysis](../books/images/shared/0b1b046af81f4c94a03e292e66dd6f7d.png)
 
 Choose one book and study it carefully, or use several together. Look up other explanations when a topic is unclear.
 
@@ -178,7 +178,7 @@ For video lessons, see [Shangguigu's Java Concurrency Course](https://www.bilibi
 
 👉 I collected Shangguigu's latest Java backend video courses and materials. [Download the complete Java backend courses and projects](https://mp.weixin.qq.com/s/jkZthmOSDgTF1PrCeNus_A).
 
-![](https://oss.javaguide.cn/github/javaguide/books/88714e9becd0485aae247772b6ed9949.png)
+![](./images/shared/88714e9becd0485aae247772b6ed9949.png)
 
 Review these interview questions and key topics as you study:
 
@@ -194,19 +194,19 @@ If you have time, studying the JVM can deepen your understanding of Java. Even i
 
 Combine theory with hands-on practice. A recommended book is _Understanding the Java Virtual Machine_.
 
-![Understanding the Java Virtual Machine](https://oss.javaguide.cn/github/javaguide/books/20210710104655705.png)
+![Understanding the Java Virtual Machine](../books/images/shared/20210710104655705.png)
 
 This is a well-regarded Chinese book. The third edition has been available for some time and covers newer garbage collectors, including ZGC. Read it for interviews or to deepen your Java knowledge, and try the exercises as well. I hope more high-quality books like this are published! 💪
 
 Other options include _Practical Java Virtual Machine_ and _Design and Implementation of a Virtual Machine: A JVM Case Study_.
 
-![Practical Java Virtual Machine](https://oss.javaguide.cn/github/javaguide/books/image-20220424113158144.png)
+![Practical Java Virtual Machine](../books/images/shared/image-20220424113158144.png)
 
-![Design and Implementation of a Virtual Machine: A JVM Case Study](https://oss.javaguide.cn/github/javaguide/books/image-20220424113210153.png)
+![Design and Implementation of a Virtual Machine: A JVM Case Study](../books/images/shared/image-20220424113210153.png)
 
 If you'd like to build a simple JVM, see _Writing a Java Virtual Machine from Scratch_.
 
-![Writing a Java Virtual Machine from Scratch](https://oss.javaguide.cn/github/javaguide/books/image-20220424113445246.png)
+![Writing a Java Virtual Machine from Scratch](../books/images/shared/image-20220424113445246.png)
 
 The book's examples are written in Go. Once you understand the concepts, you can try implementing them in Java. There are also Java implementations online, such as [Zachaxy's JVM series](https://zachaxy.github.io/tags/JVM/).
 
@@ -220,11 +220,11 @@ The course has three parts:
 2. Bytecode and class loading
 3. Performance monitoring and tuning
 
-![](https://oss.javaguide.cn/github/javaguide/interview-preparation/java-learning-route/20210409181534319.png)
+![](./images/shared/20210409181534319.png)
 
 👉 I collected Shangguigu's latest Java backend video courses and materials. [Download the complete Java backend courses and projects](https://mp.weixin.qq.com/s/jkZthmOSDgTF1PrCeNus_A).
 
-![](https://oss.javaguide.cn/github/javaguide/books/88714e9becd0485aae247772b6ed9949.png)
+![](./images/shared/88714e9becd0485aae247772b6ed9949.png)
 
 Review these key topics and interview questions:
 
@@ -242,15 +242,15 @@ Database fundamentals are optional, especially if you studied them at university
 
 _Database System Concepts_ is a classic textbook that covers database systems in a structured way.
 
-![](https://oss.javaguide.cn/github/javaguide/booksimage-20220409150441742.png)
+![](./images/shared/booksimage-20220409150441742.png)
 
 If you prefer video lessons, try Beijing Normal University's [Database System Principles](https://www.icourse163.org/course/BNU-1002842007). It includes detailed lectures, related exercises, and labs.
 
-![](https://oss.javaguide.cn/github/javaguide/books/up-e113c726a41874ef5fb19f7ac14e38e16ce.png)
+![](./images/shared/up-e113c726a41874ef5fb19f7ac14e38e16ce.png)
 
 If you prefer hands-on learning, [Let's Build a Simple Database](https://cstack.github.io/db_tutorial/) walks you through writing a basic database.
 
-![](https://oss.javaguide.cn/github/javaguide/books/up-11de8cb239aa7201cc8d78fa28928b9ec7d.png)
+![](./images/shared/up-11de8cb239aa7201cc8d78fa28928b9ec7d.png)
 
 Put the concepts into practice as you study.
 
@@ -271,11 +271,11 @@ At first, focus on these topics:
 
 For internals and performance, see [High Performance MySQL](https://book.douban.com/subject/23008813/) and [MySQL Internals](https://book.douban.com/subject/24708143/).
 
-![](https://oss.javaguide.cn/github/javaguide/books/up-3d31e762933f9e50cc7170b2ebd8433917b.png)
+![](./images/shared/up-3d31e762933f9e50cc7170b2ebd8433917b.png)
 
 [How MySQL Works](https://book.douban.com/subject/35231266/) is another useful book, including for interview preparation.
 
-![](https://oss.javaguide.cn/github/javaguide/csdn/20210703120643370.png)
+![](./images/shared/20210703120643370.png)
 
 Pay particular attention to these topics:
 
@@ -297,7 +297,7 @@ Recommended reading:
 
 PostgreSQL is a free, open-source relational database with a broad feature set. Its slogan is “The world's most advanced open-source relational database.”
 
-![](https://oss.javaguide.cn/github/javaguide/books/image-20220702144954370.png)
+![](./images/shared/image-20220702144954370.png)
 
 PostgreSQL has strengths compared with MySQL, but MySQL is still more common in China, so PostgreSQL is optional. See the [PostgreSQL 14 documentation](http://www.postgres.cn/docs/14/index.html) and these [PostgreSQL book recommendations](https://javaguide.cn/books/database.html#postgresql).
 
@@ -309,7 +309,7 @@ For video lessons, see GeekHour's [Redis in One Hour](https://www.imooc.com/lear
 
 Recommended books include [Redis Design and Implementation](https://book.douban.com/subject/25900156/) and [Redis: Core Principles and Practice](https://book.douban.com/subject/26612779/), which uses source code to explain data structures and advanced features.
 
-![Redis books](https://oss.javaguide.cn/github/javaguide/books/redis-books.png)
+![Redis books](./images/shared/redis-books.png)
 
 For a paid course, see Geek Time's [Redis Core Technologies and Practice](https://time.geekbang.org/column/intro/100056701?utm_campaign=geektime_search&utm_content=geektime_search&utm_medium=geektime_search&utm_source=geektime_search&utm_term=geektime_search). It covers Redis broadly, though it may not include newer features.
 
@@ -354,7 +354,7 @@ I also created the [IDEA Efficiency Guide](https://idea.javaguide.cn/), which co
 - Refactoring tips
 - Reading source code in IDEA
 
-![IDEA Efficiency Guide homepage](https://oss.javaguide.cn/github/awesome-idea-tutorial/awesome-idea-tutorial-website-homepage%20%20%20%20%20%20.png)
+![IDEA Efficiency Guide homepage](./images/shared/awesome-idea-tutorial-website-homepage-.png)
 
 ### Maven
 
@@ -381,17 +381,17 @@ Git is an essential skill. Use it to manage your code while learning, and get fa
 
 [Learn Git Branching](https://learngitbranching.js.org/ "Learn Git Branching") teaches common Git operations interactively, using exercises and animations. Each level includes instructions, and you can use `reset` to start over.
 
-![](https://oss.javaguide.cn/github/javaguide/interview-preparation/java-learning-route/20210423182350378.png)
+![](./images/shared/20210423182350378.png)
 
 Use `show solution` to view an answer if needed.
 
-![](https://oss.javaguide.cn/github/javaguide/interview-preparation/java-learning-route/20210423181725451.png)
+![](./images/shared/20210423181725451.png)
 
 For a short introduction, see [Git in Brief](https://javaguide.cn/tools/git/git-intro.html). For more detail, read [Pro Git](https://www.progit.cn/ "Pro Git"), which is free and available in Chinese.
 
-![](https://oss.javaguide.cn/github/javaguide/interview-preparation/java-learning-route/20210423183640734.png)
+![](./images/shared/20210423183640734.png)
 
-![](https://oss.javaguide.cn/github/javaguide/interview-preparation/java-learning-route/20210423183749743.png)
+![](./images/shared/20210423183749743.png)
 
 Another online edition is available at <https://git-scm.com/book/zh/v2>.
 
@@ -411,11 +411,11 @@ Learn the basics in [Docker Concepts](https://javaguide.cn/tools/docker/docker-i
 
 The open-source book [Docker — From Beginner to Practitioner](https://yeasy.gitbook.io/docker_practice/introduction/why) is also regularly updated.
 
-![Docker — From Beginner to Practitioner homepage](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-getting-started-practice-website-homepage.png)
+![Docker — From Beginner to Practitioner homepage](./images/shared/docker-getting-started-practice-website-homepage.png)
 
 For video lessons, try the [One-Hour Docker Quickstart](https://www.bilibili.com/video/BV11L411g7U1/) and its [course materials](https://docker.easydoc.net/doc/81170005/cCewZWoN/lTKfePfP).
 
-![One-Hour Docker Quickstart](https://oss.javaguide.cn/github/javaguide/interview-preparation/java-learning-route/docker-1-hour-quick-start-guide.png)
+![One-Hour Docker Quickstart](./images/shared/docker-1-hour-quick-start-guide.png)
 
 After learning the common Docker commands, practice deploying a frontend-backend application. For example, deploy a resume project and add its live demo to your portfolio.
 
@@ -447,7 +447,7 @@ GeekHour's [Linux in 30 Minutes](https://www.bilibili.com/video/BV1cq421w72c) is
 
 For a more systematic reference, see the _Linux Command Line and Shell Scripting Bible_ series. It's extensive, so use it as a reference or study selected chapters.
 
-![](https://oss.javaguide.cn/github/javaguide/books/linux-private-kitchen-basic-learning.png)
+![](./images/shared/linux-private-kitchen-basic-learning.png)
 
 Learn Shell scripting as well. [Shell Scripting Fundamentals](https://javaguide.cn/cs-basics/operating-system/shell-intro.html) covers variables, operators, control flow, and functions.
 
@@ -461,7 +461,7 @@ HTML, CSS, and JavaScript remain useful fundamentals. Learn the basics with [W3S
 
 JavaScript takes more time to master and is a major topic in frontend interviews. The [MDN JavaScript Guide](https://developer.mozilla.org/zh-CN/docs/Web/JavaScript) is a comprehensive resource. You can also use the open-source tutorial [The Modern JavaScript Tutorial](https://javascript.info/), which is available in several languages.
 
-![](https://oss.javaguide.cn/github/javaguide/interview-preparation/java-learning-route/20210409151045407.png)
+![](./images/shared/20210409151045407.png)
 
 The tutorial has three parts:
 
@@ -500,7 +500,7 @@ Tomcat has two main responsibilities:
 
 For more detail, see Geek Time's [Tomcat and Jetty Internals](http://gk.link/a/10r1C), which also discusses system architecture and performance.
 
-![](https://oss.javaguide.cn/github/javaguide/interview-preparation/java-learning-route/20210512202540785.png)
+![](./images/shared/20210512202540785.png)
 
 Nginx is another useful tool. It's an HTTP server and reverse proxy often used for reverse proxying and load balancing.
 
@@ -524,17 +524,17 @@ Practice integrating Spring Boot with technologies such as MyBatis, Elasticsearc
 
 Frameworks change quickly, so some books become outdated. For hands-on practice, use Shangguigu's projects and the [Java Backend Courses and Projects](https://mp.weixin.qq.com/s/jkZthmOSDgTF1PrCeNus_A) collection.
 
-![](https://oss.javaguide.cn/github/javaguide/books/88714e9becd0485aae247772b6ed9949.png)
+![](./images/shared/88714e9becd0485aae247772b6ed9949.png)
 
 For Spring Boot internals, see [_Spring Boot Programming: Core Concepts_](https://book.douban.com/subject/33390560/). It's detailed but may not suit beginners.
 
-![Spring Boot Programming: Core Concepts](https://oss.javaguide.cn/github/javaguide/books/image-20220424113546513.png)
+![Spring Boot Programming: Core Concepts](../books/images/shared/image-20220424113546513.png)
 
 For video lessons, see Shangguigu's [Spring Boot 3 for Beginners (2023)](https://www.bilibili.com/video/BV1Es4y1q7Bf/).
 
 More open-source Spring Boot tutorials are listed in [Java Open-Source Technical Tutorials](https://javaguide.cn/open-source-project/tutorial.html#springboot).
 
-![](https://oss.javaguide.cn/github/javaguide/open-source-project/open-source-project-springboot-technical-course.png)
+![](./images/shared/open-source-project-springboot-technical-course.png)
 
 ### MyBatis
 
@@ -581,25 +581,25 @@ Recommended resources:
 
 - [Netty in Action](https://book.douban.com/subject/27038538/)
 
-![Netty in Action](https://oss.javaguide.cn/github/javaguide/books/image-20220424113715369.png)
+![Netty in Action](../books/images/shared/image-20220424113715369.png)
 
 This book introduces BIO and NIO before covering Netty's design and core concepts through practical examples.
 
 - [Netty: A Practical Guide](https://book.douban.com/subject/30381214/)
 
-![Netty: A Practical Guide](https://oss.javaguide.cn/github/javaguide/books/image-20220424113747345.png)
+![Netty: A Practical Guide](../books/images/shared/image-20220424113747345.png)
 
 This book focuses on practical topics such as memory leaks and is intended for readers who already know the basics.
 
 - [Learn Netty Through an Instant Messaging Project](https://book.douban.com/subject/35752082/)
 
-![](https://oss.javaguide.cn/github/javaguide/open-source-project/image-20220503085034268.png)
+![](../books/images/shared/image-20220503085034268.png)
 
 It covers a chat project and Netty internals.
 
 For videos, see [Black Horse's Netty Course](https://www.bilibili.com/video/BV1py4y1E7oA), which starts with NIO basics.
 
-![](https://oss.javaguide.cn/github/javaguide/open-source-project/image-20220503115418795.png)
+![](./images/shared/image-20220503115418795.png)
 
 ### Workflow Engines (Optional)
 
@@ -621,7 +621,7 @@ For video lessons, see Shangguigu's [Elasticsearch: From Beginner to Advanced](h
 
 The book _Elasticsearch Explained: Principles, Advanced Topics, and Engineering Practice_ is based on version 8.x and uses real project examples to explain core concepts.
 
-![](https://oss.javaguide.cn/github/javaguide/books/one-book-guide-to-elasticsearch.png)
+![](../books/images/shared/one-book-guide-to-elasticsearch.png)
 
 Further reading:
 
@@ -641,15 +641,15 @@ Books and articles are useful for studying distributed systems. If you prefer vi
 
 _Understanding Distributed Systems_ covers consensus algorithms and includes a Go implementation of Paxos.
 
-![](https://oss.javaguide.cn/github/javaguide/books/deep-understanding-of-distributed-system.png)
+![](./images/shared/deep-understanding-of-distributed-system.png)
 
 _Learning Architecture from Scratch_ covers distributed systems, microservices, concurrency, and availability. It's also available as a [Geek Time course](http://gk.link/a/10pKZ); choose either the book or course.
 
-![](https://oss.javaguide.cn/github/javaguide/books/20210412224443177.png)
+![](../books/images/shared/20210412224443177.png)
 
 Yu's [_Software Architecture Design: Bringing Large-Scale Website Technology and Business Architecture Together_](https://book.douban.com/subject/30443578/) covers similar topics.
 
-![img](https://oss.javaguide.cn/github/javaguide/books/20210412232441459.png)
+![img](../books/images/shared/20210412232441459.png)
 
 **Open course (theory):**
 
@@ -663,7 +663,7 @@ MIT 6.824: Distributed Systems is a well-known course. Each lecture studies a cl
 
 Watch Shangguigu's [2024 Spring Cloud course](https://www.bilibili.com/video/BV1gW421P7RD/). It covers the most widely used components in Spring Cloud and Spring Cloud Alibaba and prepares you to build microservice projects.
 
-![](https://oss.javaguide.cn/github/javaguide/interview-preparation/java-learning-route/shangguigu-springcloud.png)
+![](./images/shared/shangguigu-springcloud.png)
 
 ### Theory, Algorithms, and Protocols
 
@@ -816,13 +816,13 @@ Read/write separation routes database writes to a primary node and reads to one 
 
 It can improve read performance and is useful when a system has many concurrent reads.
 
-![Read/write separation diagram](https://oss.javaguide.cn/github/javaguide/high-performance/read-and-write-separation-and-library-subtable/read-and-write-separation.png)
+![Read/write separation diagram](./images/shared/read-and-write-separation.png)
 
 Database and table sharding addresses performance problems caused by large data volumes.
 
 Common tools include ShardingSphere-JDBC (formerly Sharding-JDBC), TSharding, MyCAT, and Cobar. ShardingSphere-JDBC is a lightweight Java framework delivered as a JAR and doesn't require a separate service to operate.
 
-![Database and table sharding](https://oss.javaguide.cn/java-guide-blog/662ea3bda90061d0b40177e3a46fefc3.jpg)
+![Database and table sharding](./images/shared/662ea3bda90061d0b40177e3a46fefc3.jpg)
 
 Some companies use distributed relational databases such as TiDB, which handle sharding internally. Learn the concepts and principles; extensive practice may not be necessary. See [Common Questions About Read/Write Separation and Sharding](https://javaguide.cn/high-performance/read-and-write-separation-and-library-subtable.html).
 
@@ -928,7 +928,7 @@ The job market is competitive, so finding a good role takes study and practice. 
 
 Roadmap updates are posted on the JavaGuide WeChat public account. Follow it to keep up with the latest changes.
 
-![JavaGuide official WeChat public account](https://oss.javaguide.cn/github/javaguide/gongzhonghaoxuanchuan.png)
+![JavaGuide official WeChat public account](../javaguide/images/shared/gongzhonghaoxuanchuan.png)
 
 ## Knowledge Planet
 
@@ -936,4 +936,4 @@ To help more people study Java and prepare for interviews, I created a [Java Int
 
 **If you're learning Java or preparing for interviews, join my [Knowledge Planet](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html). It has plenty of practical material and a supportive learning community. The price is low, and the content may be more useful than a boot camp that costs tens of thousands of yuan.**
 
-[![Knowledge Planet services](https://oss.javaguide.cn/xingqiu/xingqiufuwu.png)](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html)
+[![Knowledge Planet services](../javaguide/images/shared/xingqiufuwu.png)](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html)

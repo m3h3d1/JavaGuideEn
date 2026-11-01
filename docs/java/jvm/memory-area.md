@@ -32,11 +32,11 @@ The memory layout changed slightly in JDK 8. This section compares JDK 7 and JDK
 
 **JDK 1.7**：
 
-![Java runtime data areas (JDK 7)](https://oss.javaguide.cn/github/javaguide/java/jvm/java-runtime-data-areas-jdk1.7.png)
+![Java runtime data areas (JDK 7)](../images/shared/java-runtime-data-areas-jdk1.7.png)
 
 **JDK 1.8**：
 
-![Java runtime data areas (JDK 8)](https://oss.javaguide.cn/github/javaguide/java/jvm/java-runtime-data-areas-jdk1.8.png)
+![Java runtime data areas (JDK 8)](../images/shared/java-runtime-data-areas-jdk1.8.png)
 
 **Thread-private areas:**
 
@@ -150,17 +150,17 @@ Method call data is passed through the stack. Each method call pushes a correspo
 
 The stack consists of stack frames. Each frame contains a local variable table, operand stack, dynamic link, and method return address. Like the stack data structure, it is last-in, first-out and supports push and pop operations.
 
-![JVM stack](https://oss.javaguide.cn/github/javaguide/java/jvm/stack-area.png)
+![JVM stack](../images/shared/stack-area.png)
 
 The **local variable table** stores values of types known at compile time (`boolean`, `byte`, `char`, `short`, `int`, `float`, `long`, and `double`) and object references. A reference is not the object itself: it may be a pointer to the object's start, a handle to the object, or another location associated with it.
 
-![Local variable table](https://oss.javaguide.cn/github/javaguide/java/jvm/local-variables-table.png)
+![Local variable table](../images/shared/local-variables-table.png)
 
 The **operand stack** acts as an intermediary during method execution. It stores intermediate calculation results and temporary values.
 
 **Dynamic linking** is a function of a stack frame. Each frame holds a reference to the runtime constant pool of the type that owns the current method. It uses this reference to resolve symbolic references to methods and offsets for accessing variables in runtime storage. Resolving an unresolved symbol may also trigger class loading. Choosing a virtual method implementation based on the receiver's runtime type is dynamic dispatch, which is distinct from the dynamic linking described here.
 
-![Dynamic linking in a stack frame](https://oss.javaguide.cn/github/javaguide/jvmimage-20220331175738692.png)
+![Dynamic linking in a stack frame](../images/shared/jvmimage-20220331175738692.png)
 
 The stack is finite, but ordinary method calls usually do not cause problems. Infinite recursion can push too many frames onto the stack. If a thread's requested stack depth exceeds the maximum allowed by the JVM, it throws `StackOverflowError`.
 
@@ -178,7 +178,7 @@ In summary, the stack can cause two kinds of errors:
 - **`StackOverflowError`:** Thrown when a thread needs more stack space than the JVM allows.
 - **`OutOfMemoryError`:** If the stack can grow dynamically, thrown when the VM cannot allocate enough memory to expand it.
 
-![](https://oss.javaguide.cn/github/javaguide/java/jvm/%E3%80%8A%E6%B7%B1%E5%85%A5%E7%90%86%E8%A7%A3%E8%99%9A%E6%8B%9F%E6%9C%BA%E3%80%8B%E7%AC%AC%E4%B8%89%E7%89%88%E7%9A%84%E7%AC%AC2%E7%AB%A0-%E8%99%9A%E6%8B%9F%E6%9C%BA%E6%A0%88.png)
+![](../images/shared/-2---.png)
 
 ### Native Method Stack
 
@@ -292,7 +292,7 @@ In HotSpot, an object's memory layout has three parts: the object header, instan
 
 The age is stored in the mark word, which also holds other object information such as the hash code and lock state. The image below shows the mark word structure in an older version of HotSpot's `markOop.hpp`; the implementation and object header layout have changed in modern JDKs:
 
-![Mark word structure](https://oss.javaguide.cn/github/javaguide/java/jvm/hotspot-markOop.hpp..png)
+![Mark word structure](../images/shared/hotspot-markOop.hpp..png)
 
 As shown, the object age occupies 4 bits.
 
@@ -374,17 +374,17 @@ Note that the following data is logically related to classes but is not stored i
 - **String pool:** Since JDK 7, the string pool has also been **moved to the Java heap**.
 - **JIT code cache:** The JIT compiler translates hot methods into native machine code and stores it in a **separate memory area called the Code Cache**, not in the method area. This supports more efficient execution and memory management.
 
-![method-area-jdk1.7](https://oss.javaguide.cn/github/javaguide/java/jvm/method-area-jdk1.7.png)
+![method-area-jdk1.7](../images/shared/method-area-jdk1.7.png)
 
 **How are the method area, PermGen, and Metaspace related?** Think of the method area as an interface and PermGen and Metaspace as two implementations. They are HotSpot's implementations of the method area defined by the JVM specification. PermGen was used before JDK 8; Metaspace has been used since JDK 8.
 
-![Two HotSpot implementations of the method area](https://oss.javaguide.cn/github/javaguide/java/jvm/method-area-implementation.png)
+![Two HotSpot implementations of the method area](../images/shared/method-area-implementation.png)
 
 **Why was PermGen replaced by Metaspace?**
 
 The following diagram is from section 2.2.5 of the third edition of _Understanding the Java Virtual Machine_.
 
-![](https://oss.javaguide.cn/github/javaguide/java/jvm/20210425134508117.png)
+![](../images/shared/20210425134508117.png)
 
 1. PermGen's capacity was limited by `-XX:MaxPermSize`. Metaspace uses native memory and can be limited with `-XX:MaxMetaspaceSize`. Either can run out of space; the actual risk depends on the configuration and growth of class metadata.
 
@@ -457,7 +457,7 @@ Literals represent fixed values in source code. Their values can be understood d
 
 The third edition of _Understanding the Java Virtual Machine_ explains symbolic and direct references in section 7.34:
 
-![Symbolic references and direct references](https://oss.javaguide.cn/github/javaguide/java/jvm/symbol-reference-and-direct-reference.png)
+![Symbolic references and direct references](../images/shared/symbol-reference-and-direct-reference.png)
 
 After class loading, the constant pool table is stored in the method area's runtime constant pool.
 
@@ -516,9 +516,9 @@ The string pool implementation in HotSpot can be found in `src/hotspot/share/cla
 
 Before JDK 7, the string pool was stored in PermGen. JDK 7 moved the string pool and class static variables to the Java heap.
 
-![method-area-jdk1.6](https://oss.javaguide.cn/github/javaguide/java/jvm/method-area-jdk1.6.png)
+![method-area-jdk1.6](../images/shared/method-area-jdk1.6.png)
 
-![method-area-jdk1.7](https://oss.javaguide.cn/github/javaguide/java/jvm/method-area-jdk1.7.png)
+![method-area-jdk1.7](../images/shared/method-area-jdk1.7.png)
 
 **Why did JDK 7 move the string pool to the heap?**
 
@@ -686,13 +686,13 @@ Objects are created to be used. Java code uses references in stack frames to acc
 
 With handles, the Java heap contains a handle pool. A reference stores the address of an object's handle, which in turn contains the addresses of the object's instance data and type data.
 
-![Object access through a handle](https://oss.javaguide.cn/github/javaguide/java/jvm/access-location-of-object-handle.png)
+![Object access through a handle](../images/shared/access-location-of-object-handle.png)
 
 #### Direct Pointers
 
 With direct pointer access, the reference stores the object's address directly.
 
-![Object access through a direct pointer](https://oss.javaguide.cn/github/javaguide/java/jvm/access-location-of-object-handle-direct-pointer.png)
+![Object access through a direct pointer](../images/shared/access-location-of-object-handle-direct-pointer.png)
 
 Both approaches have advantages. With handles, a reference contains a stable handle address. When an object moves, only the instance data pointer in the handle changes; the reference itself does not. Direct pointer access is faster because it avoids one level of pointer indirection.
 

@@ -256,7 +256,7 @@ Multilevel page tables save memory: they add lookup levels in exchange for a sma
 
 To speed up virtual-to-physical address translation, the CPU/MMU uses a **Translation Lookaside Buffer (TLB)** to cache recent address translations.
 
-![Address translation with a TLB](https://oss.javaguide.cn/github/javaguide/cs-basics/operating-system/physical-virtual-address-translation-mmu.png)
+![Address translation with a TLB](../../database/images/shared/physical-virtual-address-translation-mmu.png)
 
 On common AArch64 and x86-64 architectures, the TLB is a hardware cache used by the MMU. You can think of it as a fast cache that maps virtual pages to physical page frames, but its hardware design is not the same as a software hash table. The operating system maintains the page tables and, when a mapping changes, invalidates the relevant TLB entries as required by the architecture so the CPU does not use stale mappings.
 

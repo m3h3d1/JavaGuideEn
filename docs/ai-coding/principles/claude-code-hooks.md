@@ -445,11 +445,11 @@ Skills 通过 `SKILL.md` 扩展 Coding Agent 的能力。Coding Agent 在执行�
 
 Skill 的正文只有在使用时才加载进上下文（渐进式加载），所以很适合沉淀长流程、检查清单、项目知识、脚本和参考资料。
 
-![Skill 渐进式披露](https://oss.javaguide.cn/github/javaguide/ai/skills/agent-skills-progressive-disclosure.webp)
+![Skill 渐进式披露](../../ai/images/shared/agent-skills-progressive-disclosure.webp)
 
 如果想系统理解 Skills 和 Prompt、MCP、Function Calling 的分工，可以看 [Agent Skills 是什么？和 Prompt、MCP 到底差在哪？](https://javaguide.cn/ai/agent/skills.html)。
 
-![Agent 执行链路](https://oss.javaguide.cn/github/javaguide/ai/skills/skill-agent-execution-link.webp)
+![Agent 执行链路](../../ai/images/shared/skill-agent-execution-link.webp)
 
 Hooks 在生命周期节点上自动执行动作，Skills 则把完成某类任务所需的说明、脚本和参考资料交给 Claude。两者可以按下表区分：
 

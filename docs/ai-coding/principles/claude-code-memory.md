@@ -21,7 +21,7 @@ head:
 
 本文和 [《AI Agent 记忆系统》](https://javaguide.cn/ai/agent/agent-memory.html) 这篇互为补充。那篇讲通用 Agent 记忆：短期记忆、长期记忆和记忆演化机制。放到 Claude Code 里，问题就更具体了：`CLAUDE.md` 到底放什么？Auto Memory 记下来的又是什么？`.claude/rules/` 和第三方的 `claude-mem`、`memsearch` 该怎么分工？
 
-![AI Agent 记忆系统架构](https://oss.javaguide.cn/github/javaguide/ai/agent/agent-memory-arch.png)
+![AI Agent 记忆系统架构](../../ai/images/shared/agent-memory-arch.png)
 
 ## LLM 自己不保存跨会话状态
 
@@ -54,7 +54,7 @@ Claude Code 的长期上下文可以先分成两类：**人写给 Claude 的规�
 
 `CLAUDE.md` 是第一类。它更像会话开始前的工作说明书：编码规范、常用命令、目录约束、团队流程、不要碰的区域，都应该写在这里。官方文档把它归到 instructions and rules。
 
-![CLAUDE.md 和 AGENTS.md](https://oss.javaguide.cn/github/javaguide/ai/coding/claude-agents-md.png)
+![CLAUDE.md 和 AGENTS.md](../images/shared/claude-agents-md.png)
 
 Auto Memory 是第二类。它记录的是 Claude 在项目里遇到的模式，比如 build 命令、调试经验、用户偏好、一些反复出现的坑。官方文档把它归到 learnings and patterns。
 
@@ -73,7 +73,7 @@ Auto Memory 是第二类。它记录的是 Claude 在项目里遇到的模式，
 
 官方文档里这些位置分散在不同段落里看，我更建议直接按五层来记：
 
-![CLAUDE.md 层级与优先级](https://oss.javaguide.cn/github/javaguide/ai/coding/claudecode/claude-md-best-practices-file-hierarchy.png)
+![CLAUDE.md 层级与优先级](../images/shared/claude-md-best-practices-file-hierarchy.png)
 
 | 位置     | 路径                                                                                                                                                  | 适合内容                                                    |
 | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
@@ -87,11 +87,11 @@ Auto Memory 是第二类。它记录的是 Claude 在项目里遇到的模式，
 
 每份 `CLAUDE.md` 最好控制在 200 行以内。文件一长，模型就容易只记住一部分。
 
-![Claude Code 官方文档对 CLAUDE.md 的建议](https://oss.javaguide.cn/github/javaguide/ai/coding/claudecode/claudemd-claude-docs.png)
+![Claude Code 官方文档对 CLAUDE.md 的建议](../images/shared/claudemd-claude-docs.png)
 
 这就是我们常说的上下文腐化（Context Rot）问题。**上下文越长，信息越杂，模型利用上下文的稳定性就越可能变差。**
 
-![上下文腐化](https://oss.javaguide.cn/github/javaguide/ai/harness/context-rot-diagram.png)
+![上下文腐化](../../ai/images/shared/context-rot-diagram.png)
 
 `CLAUDE.md` 很容易被误用，尤其是下面这几种情况。
 
@@ -115,7 +115,7 @@ Auto Memory 是第二类。它记录的是 Claude 在项目里遇到的模式，
 
 真正适合按需加载规则的，是 `.claude/rules/`。
 
-![CLAUDE.md 与其他规则文件怎么分工](https://oss.javaguide.cn/github/javaguide/ai/coding/claudecode/claude-md-best-practices-rule-files-relationship.png)
+![CLAUDE.md 与其他规则文件怎么分工](../images/shared/claude-md-best-practices-rule-files-relationship.png)
 
 ### `.claude/rules/`：放按文件触发的规则
 
@@ -193,7 +193,7 @@ CLAUDE_CODE_DISABLE_AUTO_MEMORY=1
 
 这个设计很像我前面写过的 Skill 渐进式披露：先让模型知道“有什么”，别一上来就把“全部内容”塞满上下文。
 
-![Skill 渐进式披露](https://oss.javaguide.cn/github/javaguide/ai/skills/agent-skills-progressive-disclosure.webp)
+![Skill 渐进式披露](../../ai/images/shared/agent-skills-progressive-disclosure.webp)
 
 官方文档没有要求 topic file 一定使用某个 schema，也没有公开承诺“记忆类型必须是 user / feedback / project / reference”。
 

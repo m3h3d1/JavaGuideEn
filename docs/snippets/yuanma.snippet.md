@@ -1,6 +1,6 @@
 Here's a preview of some of the [Essential Java Source Code Series](../zhuanlan/source-code-reading.md) content. Follow the link for details.
 
-![Essential Java Source Code Series](https://oss.javaguide.cn/xingqiu/image-20220621091832348.png)
+![Essential Java Source Code Series](../zhuanlan/images/shared/image-20220621091832348.png)
 
 I created a dedicated [Java Interview Knowledge Planet](../about-the-author/zhishixingqiu-two-years.md) to help more people prepare for Java interviews and learn Java. Membership costs about one percent of a typical bootcamp, while offering in-depth content and a wide range of services for Java learners and interview candidates.
 
@@ -8,7 +8,7 @@ I created a dedicated [Java Interview Knowledge Planet](../about-the-author/zhis
 
 Here are some of the services included (click the image for details about Knowledge Planet):
 
-[![Knowledge Planet services](https://oss.javaguide.cn/xingqiu/xingqiufuwu.png)](../about-the-author/zhishixingqiu-two-years.md)
+[![Knowledge Planet services](../javaguide/images/shared/xingqiufuwu.png)](../about-the-author/zhishixingqiu-two-years.md)
 
 **I don't use hard-sell tactics. I focus on making useful content and hope it helps.**
 
@@ -16,7 +16,7 @@ If you're interested, take about three minutes to read the [full introduction to
 
 Here's a limited **¥30** Knowledge Planet coupon. Prices are expected to increase. Existing members can renew at half price by scanning the WeChat QR code.
 
-![¥30 Knowledge Planet coupon](https://oss.javaguide.cn/xingqiu/xingqiuyouhuijuan-30.jpg)
+![¥30 Knowledge Planet coupon](../zhuanlan/images/shared/xingqiuyouhuijuan-30.jpg)
 
 After joining, remember to read the **[Knowledge Planet User Guide](https://t.zsxq.com/0d18KSarv)** and **[Curated Topics](https://t.zsxq.com/12uSKgTIm)**.
 

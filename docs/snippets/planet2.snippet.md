@@ -2,13 +2,13 @@
 
 [Knowledge Planet](../about-the-author/zhishixingqiu-two-years.md) offers several exclusive guides, including the **Java Interview Guide**, the **Essential Java Source Code Series** (currently covering the source code of Dubbo 2.6.x, Netty 4.x, and Spring Boot 2.1), a **Build an RPC Framework from Scratch** guide, and **Common Kafka Interview Questions and Topics**. It also offers reading groups, study check-ins, resume reviews, free Q&A, a large collection of Java interview resources, and occasional perks.
 
-![Overview of Knowledge Planet guides](https://oss.javaguide.cn/xingqiu/image-20220211231206733.png)
+![Overview of Knowledge Planet guides](../zhuanlan/images/shared/image-20220211231206733.png)
 
 ![Knowledge Planet PDF interview handbook](https://oss.javaguide.cn/xingqiu/image-20220723120918434.png)
 
 Here are some of the services included (click the image for details about Knowledge Planet):
 
-[![Knowledge Planet services](https://oss.javaguide.cn/xingqiu/xingqiufuwu.png)](../about-the-author/zhishixingqiu-two-years.md)
+[![Knowledge Planet services](../javaguide/images/shared/xingqiufuwu.png)](../about-the-author/zhishixingqiu-two-years.md)
 
 Here are some recent reviews from members. They are all genuine. Some training companies and agencies make up reviews to sell expensive services, which is unfortunately common in the industry.
 
@@ -22,7 +22,7 @@ The community has been maintained for **six years**, with new content added regu
 
 There's currently a special offer: for about the price of two books, you get access to services that training programs may charge over **¥10,000** for. Here's a **¥30** coupon. Prices are expected to increase; existing members can renew at half price by scanning the QR code.
 
-![¥30 Knowledge Planet coupon](https://oss.javaguide.cn/xingqiu/xingqiuyouhuijuan-30.jpg)
+![¥30 Knowledge Planet coupon](../zhuanlan/images/shared/xingqiuyouhuijuan-30.jpg)
 
 🚀 **After joining, start here**:
 

@@ -32,7 +32,7 @@ LLM Gateway 则面对的是大模型调用，它除了处理普通 API 问题，
 
 更准确地说，**LLM Gateway 是应用层和模型供应商之间的一层治理入口**。它不一定替代企业已有的 API 网关，但会把模型调用相关的路由、预算、审计和适配逻辑收口。
 
-![LLM 网关示意图](https://oss.javaguide.cn/github/javaguide/ai/llm/llm-gateway-overview.png)
+![LLM 网关示意图](../images/shared/llm-gateway-overview.png)
 
 业务代码不直接关心 OpenAI、Anthropic、Gemini、Qwen、DeepSeek、私有化模型分别怎么调，而是统一向 Gateway 发一个标准请求。Gateway 根据场景、预算、延迟、模型可用性和业务策略，决定调用哪个模型、走哪个供应商、是否需要重试、是否需要降级、怎么记录日志。
 
@@ -190,7 +190,7 @@ LLM Router 的任务，是给每个请求选一个合适模型。
 
 ## LLM Gateway 需要具备哪些能力？
 
-![LLM 网关示意图](https://oss.javaguide.cn/github/javaguide/ai/llm/llm-gateway-overview.png)
+![LLM 网关示意图](../images/shared/llm-gateway-overview.png)
 
 ### 多模型统一接入
 
@@ -373,7 +373,7 @@ Fallback 不是失败就换一个模型再试这么简单。
 
 流式调用还要单独处理用户取消、TTFT 超时、连接断开和客户端重连。Gateway 需要保存流式响应的状态、序号和终止原因，避免把断流请求记成成功，也不能在重连后重复返回已经发送的片段。
 
-![流式调用异常处理](https://oss.javaguide.cn/github/javaguide/ai/llm/llm-api-engineering-streaming-exceptions.webp)
+![流式调用异常处理](../images/shared/llm-api-engineering-streaming-exceptions.webp)
 
 一个 Fallback 链可以写成这样：
 
@@ -392,7 +392,7 @@ Fallback 不是失败就换一个模型再试这么简单。
 
 并发请求还需要原子占用。可以使用数据库唯一约束、条件更新或 Redis `SET NX` 创建 `running` 记录，只有抢到 claim 的请求可以调用模型；其他请求等待、返回冲突或复用 `completed` 结果。`failed`、超时 `running` 和租约接管也要定义清楚，不能用“先查、再写”实现幂等。日志与缓存还要遵守租户隔离、敏感数据和留存策略。
 
-![模型调用重试与幂等处理流程](https://oss.javaguide.cn/github/javaguide/ai/llm/llm-api-engineering-retry-idempotency.webp)
+![模型调用重试与幂等处理流程](../images/shared/llm-api-engineering-retry-idempotency.webp)
 
 ### 限流与配额
 

@@ -16,11 +16,11 @@ RAG 会在模型生成回答前先从知识库检索相关片段，再把这些�
 
 **RAG（Retrieval-Augmented Generation，检索增强生成）** 将信息检索与大语言模型生成结合在一起。系统先从数据库、文档集合或企业内部系统中检索出与当前问题相关的片段，再把这些片段和原始问题一起组装到 Prompt 中交给 LLM，让模型依据检索到的资料生成回答，而不单靠预训练参数中记住的知识。
 
-![RAG 示意图](https://oss.javaguide.cn/github/javaguide/ai/rag/rag-index-and-retrieval-explainer.webp)
+![RAG 示意图](../images/shared/rag-index-and-retrieval-explainer.webp)
 
 ## 为什么需要 RAG？
 
-![RAG（检索增强生成）如何解决 LLM 的核心挑战](https://oss.javaguide.cn/github/javaguide/ai/rag/rag-llm-challenges.png)
+![RAG（检索增强生成）如何解决 LLM 的核心挑战](../images/shared/rag-llm-challenges.png)
 
 直接调用预训练大模型做企业问答，通常会卡在三个问题上：
 
@@ -62,7 +62,7 @@ RAG 适合答案依赖外部资料、资料篇幅较长或更新频繁的场景�
 
 RAG 的工程链路分为离线索引和在线检索生成两个阶段。离线阶段把原始文档处理成可检索的数据结构；在线阶段在用户提问时完成查询理解、检索召回、上下文构建和答案生成。
 
-![索引和检索阶段的简化流程图](https://oss.javaguide.cn/github/javaguide/ai/rag/rag-rag-engineering-link.png)
+![索引和检索阶段的简化流程图](../images/shared/rag-rag-engineering-link.png)
 
 离线索引阶段主要包括以下步骤：
 
@@ -97,7 +97,7 @@ Embedding 是将文本映射到高维稠密向量空间的过程，目标是让�
 
 它们用词不同，但表达的意图相近。经过 Embedding 模型编码后，这三句话的向量会落在相近区域，即使文档里写的是“退货与退款办理指南”，向量检索也能跳过字面差异将其召回。
 
-![Embedding：把文本映射到语义空间](https://oss.javaguide.cn/github/javaguide/ai/rag/rag-2-embedding-map-text-to-semantic-space.png)
+![Embedding：把文本映射到语义空间](../images/shared/rag-2-embedding-map-text-to-semantic-space.png)
 
 常见 Embedding 维度有 768、1024、1536、3072 等。向量维度由模型结构决定，不能脱离具体模型得出“维度越高效果越好”的结论，而更高的维度会直接增加内存占用、索引构建时间和距离计算开销。以 OpenAI 为例，`text-embedding-3-small` 默认输出 1536 维，`text-embedding-3-large` 默认输出 3072 维，两者都支持通过 Matryoshka 表示学习（`dimensions` 参数）截断到更低维度使用。
 
@@ -124,7 +124,7 @@ Embedding 是将文本映射到高维稠密向量空间的过程，目标是让�
 
 ## RAG 与传统搜索引擎的区别是什么？
 
-![RAG 与传统搜索引擎的区别](https://oss.javaguide.cn/github/javaguide/ai/rag/rag-rag-vs-search-engine.png)
+![RAG 与传统搜索引擎的区别](../images/shared/rag-rag-vs-search-engine.png)
 
 传统搜索引擎和 RAG 都包含检索环节，但检索之后的交付物不同：传统搜索将候选文档按相关性排序后直接返回链接列表，由用户自行点开阅读和比对；RAG 则把召回的多个文档片段送入 LLM 上下文，做跨片段的信息提取与整合，直接生成带引用的答案。
 
@@ -168,7 +168,7 @@ Embedding 是将文本映射到高维稠密向量空间的过程，目标是让�
 
 业界通常将 RAG 的架构演进划分为三个阶段：
 
-![RAG 演进阶段](https://oss.javaguide.cn/github/javaguide/ai/rag/rag-2-evolution-stages.png)
+![RAG 演进阶段](../images/shared/rag-2-evolution-stages.png)
 
 | 阶段         | 典型链路                                                         | 特点                                         |
 | ------------ | ---------------------------------------------------------------- | -------------------------------------------- |

@@ -18,7 +18,7 @@ head:
 
 Embedding 的过程是：把一段文本交给 Embedding 模型，模型输出一个固定维度的稠密向量。可以粗略理解成“文本语义坐标”。两段文本语义越接近，它们在向量空间里的距离通常也越近。
 
-![Embedding 和向量检索是什么关系？](https://oss.javaguide.cn/github/javaguide/ai/rag/rag-embedding-vector-retrieval.png)
+![Embedding 和向量检索是什么关系？](../images/shared/rag-embedding-vector-retrieval.png)
 
 RAG 的向量检索链路可以简化成这样：
 
@@ -37,7 +37,7 @@ RAG 的向量检索链路可以简化成这样：
 
 传统关系型数据库可以存向量，也可以通过函数或 SQL 表达式计算相似度。但如果没有专门的向量索引，通常只能全表扫描，很难支撑生产级低延迟检索。当 Chunk 数量达到几十万、百万甚至更高时，就需要引入向量数据库、向量搜索引擎，或者 PostgreSQL + pgvector 这类带向量索引能力的数据库扩展。
 
-![RAG 场景为什么需要向量数据库？](https://oss.javaguide.cn/github/javaguide/ai/rag/rag-why-need-vector-store.png)
+![RAG 场景为什么需要向量数据库？](../images/shared/rag-why-need-vector-store.png)
 
 ### 高维向量相似度搜索
 

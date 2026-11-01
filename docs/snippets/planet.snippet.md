@@ -2,21 +2,21 @@ The [Java Interview Guide](../zhuanlan/java-mian-shi-zhi-bei.md) (for backend in
 
 **The numbers speak for themselves:** The guide has received more than **4.77 million** reads, **5,118** likes, and **1,657** comments so far. The comment section is also a place to ask questions. I take time to respond to nearly every question so readers can get the answers they need.
 
-![](https://oss.javaguide.cn/xingqiu/java-interview-guide-statistics-2025.png)
+![](../zhuanlan/images/shared/java-interview-guide-statistics-2025.png)
 
 Here's a preview of some of the [Java Interview Guide](../zhuanlan/java-mian-shi-zhi-bei.md) content. Think of it as a companion to [JavaGuide](https://javaguide.cn/#/); the two can be used together.
 
-![A preview of the Java Interview Guide](https://oss.javaguide.cn/javamianshizhibei/javamianshizhibei-content-overview.png)
+![A preview of the Java Interview Guide](../zhuanlan/images/shared/javamianshizhibei-content-overview.png)
 
 Here is some feedback from readers of the [Java Interview Guide](../zhuanlan/java-mian-shi-zhi-bei.md):
 
-![Reader feedback on the Java Interview Guide](https://oss.javaguide.cn/xingqiu/praise-that-the-mianshizhibei-received.png)
+![Reader feedback on the Java Interview Guide](../zhuanlan/images/shared/praise-that-the-mianshizhibei-received.png)
 
 If you'd like interview coaching, such as resume feedback, one-on-one mock interviews, or focused interview prep, take a look at my [Knowledge Planet](../about-the-author/zhishixingqiu-two-years.md). It has been running for six years, with new content added regularly. Membership costs **¥0.40 per day** and includes a range of resources and services.
 
 Here are some of the services included (click the image for details about Knowledge Planet):
 
-[![Knowledge Planet services](https://oss.javaguide.cn/xingqiu/xingqiufuwu.png)](../about-the-author/zhishixingqiu-two-years.md)
+[![Knowledge Planet services](../javaguide/images/shared/xingqiufuwu.png)](../about-the-author/zhishixingqiu-two-years.md)
 
 Here are some recent reviews from members. They are all genuine. Some training companies and agencies make up reviews to sell expensive services, which is unfortunately common in the industry.
 
@@ -26,7 +26,7 @@ Here are some recent reviews from members. They are all genuine. Some training c
 
 Here's a limited **¥30** coupon for Knowledge Planet. Prices are expected to increase. Existing members can renew at half price by scanning the WeChat QR code.
 
-![¥30 Knowledge Planet coupon](https://oss.javaguide.cn/xingqiu/xingqiuyouhuijuan-30.jpg)
+![¥30 Knowledge Planet coupon](../zhuanlan/images/shared/xingqiuyouhuijuan-30.jpg)
 
 🚀 **After joining, start here**:
 

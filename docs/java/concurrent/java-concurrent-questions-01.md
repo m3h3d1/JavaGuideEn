@@ -84,7 +84,7 @@ On mainstream operating systems such as Windows and Linux, HotSpot platform thre
 
 The diagram below shows the Java memory areas and the relationship between threads and processes from the JVM's perspective.
 
-![Java runtime data areas since JDK 8](https://oss.javaguide.cn/github/javaguide/java/jvm/java-runtime-data-areas-jdk1.8.png)
+![Java runtime data areas since JDK 8](../images/shared/java-runtime-data-areas-jdk1.8.png)
 
 As the diagram shows, a process can contain multiple threads. They share the process's **heap** and **method area (metaspace since JDK 8)**, while each thread has its own **program counter**, **JVM stack**, and **native method stack**.
 

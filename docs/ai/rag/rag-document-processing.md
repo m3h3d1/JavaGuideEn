@@ -16,7 +16,7 @@ RAG 检索前要先把 PDF、Word、Excel 或扫描件转换成可检索内容�
 
 文档从上传到进入向量库，中间至少要经过六个环节：
 
-![RAG 文档处理总链路：上传前半段决定了后半段效果上限](https://oss.javaguide.cn/github/javaguide/ai/rag/rag-document-processing-overall-link.png)
+![RAG 文档处理总链路：上传前半段决定了后半段效果上限](../images/shared/rag-document-processing-overall-link.png)
 
 质量校验不能留到入库之后才做。在解析和 Chunking 阶段加入分层抽样校验，可以提前拦截损坏文件、乱码和异常切分，避免低质量数据大批量写入向量库。
 
@@ -36,7 +36,7 @@ Embedding 模型和向量库只能处理输入给它们的文本。多栏 PDF �
 
 ## 如何选择合适的 Chunking 策略？
 
-![如何选择合适的切分策略？](https://oss.javaguide.cn/github/javaguide/ai/rag/rag-document-processing-chunking-strategy.png)
+![如何选择合适的切分策略？](../images/shared/rag-document-processing-chunking-strategy.png)
 
 ### 固定长度切分：建立评测基线
 
@@ -113,7 +113,7 @@ flowchart TB
 
 ## 什么是语义丢失，为什么会发生？
 
-![语义丢失：上下文依赖关系被切碎](https://oss.javaguide.cn/github/javaguide/ai/rag/rag-document-processing-semantic-loss.png)
+![语义丢失：上下文依赖关系被切碎](../images/shared/rag-document-processing-semantic-loss.png)
 
 语义丢失是指原始文档中的前置条件、指代对象或结构关系，在解析、清洗、切分过程中被削弱或剥离，导致单看切分后的 Chunk 无法还原原意。
 

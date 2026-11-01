@@ -313,7 +313,7 @@ private RefundResponse processPartialRefund(RefundApplyRequest request, Order or
 
 这里的单元测试报告显示分支覆盖率约为 80%。它能说明部分路径被执行过，但不能证明重构前后行为完全一致。金额、状态迁移、并发请求和外部依赖失败等关键路径，还需要特征测试、集成测试或新旧结果对照：
 
-![单元测试验收](https://oss.javaguide.cn/github/javaguide/ai/coding/qoder/idea-plugin/unit-test-verification.png)
+![单元测试验收](../images/shared/unit-test-verification.png)
 
 #### 功能迭代：一行指令，规则上线
 
@@ -325,7 +325,7 @@ private RefundResponse processPartialRefund(RefundApplyRequest request, Order or
 
 对应实现代码如下。可以看到，完成既有逻辑的梳理后，职责单一的校验框架和配套的单元测试已经就位，后续的增量迭代也变得容易处理和回归：
 
-![功能迭代实现](https://oss.javaguide.cn/github/javaguide/ai/coding/qoder/idea-plugin/feature-iteration-implementation.png)
+![功能迭代实现](../images/shared/feature-iteration-implementation.png)
 
 #### 记忆沉淀：越用越懂你的编程习惯
 
@@ -337,7 +337,7 @@ private RefundResponse processPartialRefund(RefundApplyRequest request, Order or
 
 在这次演示里，退款规则和编码约定被写入了记忆列表。后续使用时仍要审查召回内容，及时清理已经失效的规则：
 
-![记忆沉淀](https://oss.javaguide.cn/github/javaguide/ai/coding/qoder/idea-plugin/memory-accumulation.png)
+![记忆沉淀](../images/shared/memory-accumulation.png)
 
 ## 能力拆解：Qoder 在这个示例中做了什么
 

@@ -11,7 +11,7 @@ head:
 
 **设计模式** 相关的面试题已经整理到了 PDF 手册中，你可以在我的公众号“**JavaGuide**”后台回复“**PDF**” 获取。
 
-![JavaGuide 官方公众号](https://oss.javaguide.cn/github/javaguide/gongzhonghaoxuanchuan.png)
+![JavaGuide 官方公众号](../javaguide/images/shared/gongzhonghaoxuanchuan.png)
 
 **《设计模式》PDF 电子书内容概览**：
 

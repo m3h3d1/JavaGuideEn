@@ -26,7 +26,7 @@ head:
 5. **面试安排管理**：智能解析面试邀请，日历视图管理面试日程
 6. **多模型配置**：内置多家 OpenAI 兼容模型 Provider，支持运行时切换默认聊天与向量模型
 
-![效果展示](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-resume-history.png)
+![效果展示](./images/shared/page-resume-history.png)
 
 **项目地址** （欢迎 star 鼓励）：
 
@@ -42,7 +42,7 @@ head:
 1. **后端方向**：提供“架构与分布式能力侧重”、“AI 应用与响应式编程侧重”、“工程化与基础设施侧重”三个版本，无论你面试的是后端、大模型应用还是架构岗位，都能找到最合适的切入点。
 2. **测试/测开方向**：专门设计了“单元测试与 TDD”以及“功能/异常场景覆盖”两个版本，突出测试工程师在 AI 质量保障中的核心竞争力。
 
-![《SpringAI 智能面试平台+RAG知识库》简历写法](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/project-on-resume.png)
+![《SpringAI 智能面试平台+RAG知识库》简历写法](./images/shared/project-on-resume.png)
 
 每一条描述都紧扣项目真实逻辑，严格遵守项目介绍规范。不仅教你怎么写，更教你怎么补，例如针对本项目未涉及的“用户认证与鉴权”给出补充建议，教你如何基于 SpringSecurity/Sa-Token 包装主流的认证授权方案。
 
@@ -54,11 +54,11 @@ head:
 
 例如，RAG 面试题总结这篇，耗时一周终于完成了第一版，如今已经扩充到 **5 万字**，包含 **35 道高频 RAG 面试题**，光校对都进行了三次。而且，后续还会继续完善优化！
 
-![RAG 面试题](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/rag-interview-questions.png)
+![RAG 面试题](./images/shared/rag-interview-questions.png)
 
 这篇是对应的 RAG 知识库详细开发思路的介绍。
 
-![RAG 知识库详细开发思路](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/rag-knowledge-base-coding.png)
+![RAG 知识库详细开发思路](./images/shared/rag-knowledge-base-coding.png)
 
 不仅教你“如何写出代码”，更教你“为什么这么设计”以及“在企业真实场景中如何应对复杂挑战”。
 
@@ -72,7 +72,7 @@ head:
 
 **内容安排如下（已经更完，一共 20w+ 字）**：
 
-![配套教程内容概览](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/tutorial-overview.png)
+![配套教程内容概览](./images/shared/tutorial-overview.png)
 
 ### 项目介绍与环境搭建
 
@@ -142,7 +142,7 @@ head:
 
 目前星球正在做活动，两本书的价格，就能让你拥有上万培训班的服务！这里再提供一张 **30 元** 的优惠券（价格马上上调，老用户扫码续费半价）：
 
-![知识星球 30 元优惠券](https://oss.javaguide.cn/xingqiu/xingqiuyouhuijuan-30.jpg)
+![知识星球 30 元优惠券](./images/shared/xingqiuyouhuijuan-30.jpg)
 
 用心做内容，坚持本心，不割韭菜，其他交给时间！共勉！
 
@@ -152,7 +152,7 @@ head:
 
 系统采用前后端分离架构，整体分为三层：前端展示层、后端服务层、数据存储层。
 
-![系统架构图](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/interview-guide-architecture-diagram.png)
+![系统架构图](./images/shared/interview-guide-architecture-diagram.png)
 
 **后端层**：
 
@@ -473,53 +473,53 @@ String content = tika.parseToString(inputStream);  // 自动识别格式并提�
 
 面试中心：
 
-![](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-interview-hub.png)
+![](./images/shared/page-interview-hub.png)
 
 Skill 出题 + JD 解析：
 
-![](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-skill-jd-parse.png)
+![](./images/shared/page-skill-jd-parse.png)
 
 简历库：
 
-![](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-resume-history.png)
+![](./images/shared/page-resume-history.png)
 
 简历上传分析：
 
-![](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-resume-upload-analysis.png)
+![](./images/shared/page-resume-upload-analysis.png)
 
 简历分析详情：
 
-![](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-resume-analysis-detail.png)
+![](./images/shared/page-resume-analysis-detail.png)
 
 面试记录：
 
-![](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-interview-history.png)
+![](./images/shared/page-interview-history.png)
 
 面试详情：
 
-![](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-interview-detail.png)
+![](./images/shared/page-interview-detail.png)
 
 模拟面试：
 
-![](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-mock-interview.png)
+![](./images/shared/page-mock-interview.png)
 
 面试安排
 
-![](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-interview-schedule-list.png)
+![](./images/shared/page-interview-schedule-list.png)
 
 多模型切换 + 语音服务设置：
 
-![](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/llm-settings.png)
+![](./images/shared/llm-settings.png)
 
 ### 知识库
 
 知识库管理：
 
-![](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-knowledge-base-management.png)
+![](./images/shared/page-knowledge-base-management.png)
 
 问答助手：
 
-![page-qa-assistant](https://oss.javaguide.cn/xingqiu/pratical-project/interview-guide/page-qa-assistant.png)
+![page-qa-assistant](./images/shared/page-qa-assistant.png)
 
 ## 学习本项目你将获得什么？
 
@@ -625,6 +625,6 @@ Skill 出题 + JD 解析：
 
 目前星球正在做活动，两本书的价格，就能让你拥有上万培训班的服务！这里再提供一张 **30 元** 的优惠券（价格马上上调，老用户扫码续费半价）：
 
-![知识星球 30 元优惠券](https://oss.javaguide.cn/xingqiu/xingqiuyouhuijuan-30.jpg)
+![知识星球 30 元优惠券](./images/shared/xingqiuyouhuijuan-30.jpg)
 
 用心做内容，坚持本心，不割韭菜，其他交给时间！共勉！

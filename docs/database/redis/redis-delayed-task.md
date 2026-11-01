@@ -30,7 +30,7 @@ pub/sub 涉及发布者（publisher）和订阅者（subscriber，也叫消费�
 - 发布者通过 `PUBLISH` 投递消息给指定 channel。
 - 订阅者通过`SUBSCRIBE`订阅它关心的 channel。并且，订阅者可以订阅一个或者多个 channel。
 
-![Redis 发布订阅 (pub/sub) 功能](https://oss.javaguide.cn/github/javaguide/database/redis/redis-pub-sub.png)
+![Redis 发布订阅 (pub/sub) 功能](../images/shared/redis-pub-sub.png)
 
 在 pub/sub 模式下，生产者需要指定消息发送到哪个 channel 中，而消费者则订阅对应的 channel 以获取消息。
 

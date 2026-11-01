@@ -1006,7 +1006,7 @@ The result is a thread pool whose parameters can be changed at runtime:
 
 For more detail, see [High-Frequency Backend System Design and Scenario Questions](https://javaguide.cn/zhuanlan/back-end-interview-high-frequency-system-design-and-scenario-questions.html), which also covers designing a dynamic thread pool.
 
-![High-Frequency Backend System Design and Scenario Questions](https://oss.javaguide.cn/xingqiu/back-end-interview-high-frequency-system-design-and-scenario-questions-fengmian.png)
+![High-Frequency Backend System Design and Scenario Questions](../../zhuanlan/images/shared/back-end-interview-high-frequency-system-design-and-scenario-questions-fengmian.png)
 
 You can also use an existing open-source project:
 
