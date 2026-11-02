@@ -1,87 +1,87 @@
 ---
-title: 十大经典排序算法总结
-description: 系统梳理十大经典排序算法，附复杂度与稳定性对比，覆盖比较类与非比较类排序的核心原理与实现场景，帮助快速选型与优化。
-category: 计算机基础
+title: Ten Classic Sorting Algorithms
+description: Review ten classic sorting algorithms, compare their complexity and stability, and learn the principles and use cases of comparison and non-comparison sorts.
+category: Computer Science Basics
 tag:
-  - 算法
+  - Algorithms
 head:
   - - meta
     - name: keywords
-      content: 排序算法,快速排序,归并排序,堆排序,冒泡排序,选择排序,插入排序,希尔排序,桶排序,计数排序,基数排序,时间复杂度,空间复杂度,稳定性
+      content: sorting algorithms,quicksort,merge sort,heap sort,bubble sort,selection sort,insertion sort,Shell sort,bucket sort,counting sort,radix sort,time complexity,space complexity,stability
 ---
 
 <!-- markdownlint-disable MD024 -->
 
-## 引言
+## Introduction
 
-所谓排序，就是使一串记录，按照其中的某个或某些关键字的大小，递增或递减的排列起来的操作。排序算法，就是如何使得记录按照要求排列的方法。排序算法在很多领域得到相当地重视，尤其是在大量数据的处理方面。一个优秀的算法可以节省大量的资源。在各个领域中考虑到数据的各种限制和规范，要得到一个符合实际的优秀算法，得经过大量的推理和分析。
+Sorting arranges a sequence of records in ascending or descending order according to one or more keys. A sorting algorithm is a method for ordering records as required. Sorting matters in many fields, especially when processing large datasets. A good algorithm can save substantial resources. Choosing a practical algorithm requires considering data constraints and application requirements.
 
-## 简介
+## Overview
 
-### 排序算法总结
+### Sorting Algorithm Summary
 
-常见的内部排序算法有：**插入排序**、**希尔排序**、**选择排序**、**冒泡排序**、**归并排序**、**快速排序**、**堆排序**、**基数排序**等，本文只讲解内部排序算法。用一张表格概括：
+Common in-memory sorting algorithms include **insertion sort**, **Shell sort**, **selection sort**, **bubble sort**, **merge sort**, **quicksort**, **heap sort**, and **radix sort**. This article focuses on in-memory sorting. The table below summarizes ten algorithms:
 
-| 排序算法 | 时间复杂度（平均） | 时间复杂度（最差） | 时间复杂度（最好） | 空间复杂度              | 是否原地 | 稳定性         |
-| -------- | ------------------ | ------------------ | ------------------ | ----------------------- | -------- | -------------- |
-| 冒泡排序 | O(n^2)             | O(n^2)             | O(n)               | O(1)                    | 是       | 稳定           |
-| 选择排序 | O(n^2)             | O(n^2)             | O(n^2)             | O(1)                    | 是       | 不稳定         |
-| 插入排序 | O(n^2)             | O(n^2)             | O(n)               | O(1)                    | 是       | 稳定           |
-| 希尔排序 | 取决于增量序列     | O(n^2)             | O(nlogn)           | O(1)                    | 是       | 不稳定         |
-| 归并排序 | O(nlogn)           | O(nlogn)           | O(nlogn)           | O(n)                    | 否       | 稳定           |
-| 快速排序 | O(nlogn)           | O(n^2)             | O(nlogn)           | 平均 O(logn)，最坏 O(n) | 是       | 不稳定         |
-| 堆排序   | O(nlogn)           | O(nlogn)           | O(nlogn)           | O(1)                    | 是       | 不稳定         |
-| 计数排序 | O(n+k)             | O(n+k)             | O(n+k)             | O(n+k)                  | 否       | 稳定           |
-| 桶排序   | 和数据分布有关     | 取决于桶内排序     | O(n+k)             | O(n+k)                  | 否       | 取决于桶内排序 |
-| 基数排序 | O(d(n+r))          | O(d(n+r))          | O(d(n+r))          | O(n+r)                  | 否       | 稳定           |
+| Algorithm      | Average time            | Worst-case time        | Best-case time | Space                            | In-place | Stable                 |
+| -------------- | ----------------------- | ---------------------- | -------------- | -------------------------------- | -------- | ---------------------- |
+| Bubble sort    | `O(n^2)`                | `O(n^2)`               | `O(n)`         | `O(1)`                           | Yes      | Yes                    |
+| Selection sort | `O(n^2)`                | `O(n^2)`               | `O(n^2)`       | `O(1)`                           | Yes      | No                     |
+| Insertion sort | `O(n^2)`                | `O(n^2)`               | `O(n)`         | `O(1)`                           | Yes      | Yes                    |
+| Shell sort     | Depends on gap sequence | `O(n^2)`               | `O(n log n)`   | `O(1)`                           | Yes      | No                     |
+| Merge sort     | `O(n log n)`            | `O(n log n)`           | `O(n log n)`   | `O(n)`                           | No       | Yes                    |
+| Quicksort      | `O(n log n)`            | `O(n^2)`               | `O(n log n)`   | Average `O(log n)`, worst `O(n)` | Yes      | No                     |
+| Heap sort      | `O(n log n)`            | `O(n log n)`           | `O(n log n)`   | `O(1)`                           | Yes      | No                     |
+| Counting sort  | `O(n + k)`              | `O(n + k)`             | `O(n + k)`     | `O(n + k)`                       | No       | Yes                    |
+| Bucket sort    | Depends on distribution | Depends on bucket sort | `O(n + k)`     | `O(n + k)`                       | No       | Depends on bucket sort |
+| Radix sort     | `O(d(n + r))`           | `O(d(n + r))`          | `O(d(n + r))`  | `O(n + r)`                       | No       | Yes                    |
 
-**术语解释**：
+**Terms:**
 
-- **n**：数据规模，表示待排序的数据量大小。
-- **k**：计数范围大小或桶的数量，具体含义需要结合算法说明。
-- **d**：基数排序处理的最大位数。
-- **r**：基数排序使用的基数，例如十进制的 `r=10`。
-- **内部排序**：待排序数据可以全部装入内存，排序操作主要在内存中完成。本文代码都是内部排序实现。
-- **外部排序**：数据量大到无法全部装入内存时，借助磁盘等外部存储分批处理。同一种算法可以有内存实现，也可以被改造成外部排序方案，因此这不是算法固有的分类标签。
-- **稳定**：如果 A 原本在 B 前面，而 $A=B$，排序之后 A 仍然在 B 的前面。
-- **不稳定**：如果 A 原本在 B 的前面，而 $A=B$，排序之后 A 可能会出现在 B 的后面。
-- **时间复杂度**：定性描述一个算法执行所耗费的时间。
-- **空间复杂度**：定性描述一个算法执行所需内存的大小。
+- **n:** Input size, or the number of items to sort.
+- **k:** The counting range or number of buckets, depending on the algorithm.
+- **d:** The maximum number of digits processed by radix sort.
+- **r:** The radix used by radix sort, such as `r = 10` for decimal numbers.
+- **In-memory sorting:** All input data fits in memory, and sorting is performed there. The code in this article uses in-memory sorting.
+- **External sorting:** When the data does not fit in memory, it is processed in batches using external storage such as a disk. An algorithm can have both in-memory and external implementations, so this is not an inherent algorithm category.
+- **Stable:** If A appears before B and $A=B$, A remains before B after sorting.
+- **Unstable:** If A appears before B and $A=B$, A may appear after B after sorting.
+- **Time complexity:** A description of how an algorithm's running time grows.
+- **Space complexity:** A description of how an algorithm's memory use grows.
 
-### 排序算法分类
+### Sorting Algorithm Categories
 
-十种常见排序算法可以分类两大类别：**比较类排序**和**非比较类排序**。
+The ten sorting algorithms can be divided into two broad categories: **comparison sorts** and **non-comparison sorts**.
 
-![排序算法分类](../images/shared/sort2.png)
+![Sorting algorithm categories](../images/shared/sort2.png)
 
-常见的**快速排序**、**归并排序**、**堆排序**以及**冒泡排序**等都属于**比较类排序算法**。比较类排序通过比较决定元素间的相对次序。在比较模型中，通用排序在最坏情况下需要 `Ω(nlogn)` 次比较。冒泡排序需要多轮扫描，平均时间复杂度为 `O(n²)`；归并排序和快速排序利用分治把问题拆成更小的子问题，平均时间复杂度为 `O(nlogn)`。
+Common **comparison sorts** include **quicksort**, **merge sort**, **heap sort**, and **bubble sort**. They determine the relative order of elements by comparing them. In the comparison model, a general-purpose sort requires at least `Ω(n log n)` comparisons in the worst case. Bubble sort makes repeated passes and takes `O(n²)` time on average; merge sort and quicksort use divide and conquer and take `O(n log n)` time on average.
 
-比较类排序的优势是，适用于各种规模的数据，也不在乎数据的分布，都能进行排序。可以说，比较排序适用于一切需要排序的情况。
+Comparison sorts work with different input sizes and distributions. In principle, they can sort any values that can be compared.
 
-而**计数排序**、**基数排序**、**桶排序**则属于**非比较类排序算法**。它们利用键值范围、数据分布或数字位数等额外信息绕开比较排序的下界，但并非都能通过一次遍历以 `O(n)` 完成。计数排序通常是 `O(n+k)`，桶排序的效率取决于数据分布和桶内排序，基数排序通常是 `O(d(n+r))`。
+**Counting sort**, **radix sort**, and **bucket sort** are **non-comparison sorts**. They use additional information, such as key ranges, data distribution, or digit positions, to avoid the comparison-sort lower bound. They do not all run in `O(n)`: counting sort is usually `O(n + k)`, bucket sort depends on the distribution and the sort used within each bucket, and radix sort is usually `O(d(n + r))`.
 
-非比较排序时间复杂度低，但由于非比较排序需要占用空间来确定唯一位置。所以对数据规模和数据分布有一定的要求。
+Non-comparison sorts can be faster, but they use additional space to place values. They also require particular input sizes, value ranges, or distributions.
 
-## 冒泡排序（Bubble Sort）
+## Bubble Sort
 
-冒泡排序是一种简单的排序算法。它重复地遍历要排序的序列，依次比较两个元素，如果它们的顺序错误就把它们交换过来。遍历序列的工作是重复地进行直到没有再需要交换为止，此时说明该序列已经排序完成。这个算法的名字由来是因为越小的元素会经由交换慢慢 “浮” 到数列的顶端。
+Bubble sort repeatedly traverses a sequence and compares adjacent elements, swapping them when they are out of order. It continues until a pass requires no swaps. The name comes from smaller elements gradually “bubbling” to the top of the sequence.
 
-### 算法步骤
+### Steps
 
-1. 比较相邻的元素。如果第一个比第二个大，就交换它们两个；
-2. 对每一对相邻元素作同样的工作，从开始第一对到结尾的最后一对，这样在最后的元素应该会是最大的数；
-3. 针对所有的元素重复以上的步骤，除了最后一个；
-4. 重复步骤 1~3，直到排序完成。
+1. Compare adjacent elements. If the first is greater than the second, swap them.
+2. Repeat for each adjacent pair through the end of the sequence. The largest value will be at the end.
+3. Repeat for the remaining unsorted elements, excluding the last one.
+4. Continue until the sequence is sorted.
 
-### 图解算法
+### Visualization
 
-![冒泡排序](../images/shared/bubble_sort.gif)
+![Bubble sort](../images/shared/bubble_sort.gif)
 
-### 代码实现
+### Implementation
 
 ```java
 /**
- * 冒泡排序
+ * Bubble sort
  * @param arr
  * @return arr
  */
@@ -95,7 +95,7 @@ public static int[] bubbleSort(int[] arr) {
                 int tmp = arr[j];
                 arr[j] = arr[j + 1];
                 arr[j + 1] = tmp;
-       // Change flag
+                // Update the flag
                 flag = false;
             }
         }
@@ -107,34 +107,34 @@ public static int[] bubbleSort(int[] arr) {
 }
 ```
 
-**此处对代码做了一个小优化，加入了 `is_sorted` Flag，目的是将算法的最佳时间复杂度优化为 `O(n)`，即当原输入序列就是排序好的情况下，该算法的时间复杂度就是 `O(n)`。**
+**The `flag` is a small optimization: it reduces the best-case time complexity to `O(n)` when the input is already sorted.**
 
-### 算法分析
+### Analysis
 
-- **稳定性**：稳定
-- **时间复杂度**：最佳：$O(n)$，最差：$O(n^2)$，平均：$O(n^2)$
-- **空间复杂度**：$O(1)$
-- **排序方式**：In-place
+- **Stability:** Stable
+- **Time complexity:** Best: $O(n)$; worst: $O(n^2)$; average: $O(n^2)$
+- **Space complexity:** $O(1)$
+- **Sorting method:** In-place
 
-## 选择排序（Selection Sort）
+## Selection Sort
 
-选择排序是一种简单直观的排序算法，无论什么数据进去都是 $O(n^2)$ 的时间复杂度。所以用到它的时候，数据规模越小越好。唯一的好处可能就是不占用额外的内存空间了吧。它的工作原理：首先在未排序序列中找到最小（大）元素，存放到排序序列的起始位置，然后，再从剩余未排序元素中继续寻找最小（大）元素，然后放到已排序序列的末尾。以此类推，直到所有元素均排序完毕。
+Selection sort is simple and intuitive, but takes $O(n^2)$ time for any input, so it is best suited to small datasets. Its main advantage is that it uses no additional memory. It finds the smallest (or largest) value in the unsorted portion, places it at the start of that portion, then repeats for the remaining values until the entire sequence is sorted.
 
-### 算法步骤
+### Steps
 
-1. 首先在未排序序列中找到最小（大）元素，存放到排序序列的起始位置
-2. 再从剩余未排序元素中继续寻找最小（大）元素，然后放到已排序序列的末尾。
-3. 重复第 2 步，直到所有元素均排序完毕。
+1. Find the smallest (or largest) value in the unsorted portion and place it at the beginning of the sorted portion.
+2. Find the next smallest (or largest) value among the remaining unsorted elements and place it at the end of the sorted portion.
+3. Repeat until every element is sorted.
 
-### 图解算法
+### Visualization
 
-![选择排序每轮选择最小元素放到已排序区末尾](../images/shared/selection_sort.gif)
+![Selection sort places the smallest element at the end of the sorted portion in each pass](../images/shared/selection_sort.gif)
 
-### 代码实现
+### Implementation
 
 ```java
 /**
- * 选择排序
+ * Selection sort
  * @param arr
  * @return arr
  */
@@ -156,39 +156,39 @@ public static int[] selectionSort(int[] arr) {
 }
 ```
 
-### 算法分析
+### Analysis
 
-- **稳定性**：不稳定
-- **时间复杂度**：最佳：$O(n^2)$，最差：$O(n^2)$，平均：$O(n^2)$
-- **空间复杂度**：$O(1)$
-- **排序方式**：In-place
+- **Stability:** Unstable
+- **Time complexity:** Best: $O(n^2)$; worst: $O(n^2)$; average: $O(n^2)$
+- **Space complexity:** $O(1)$
+- **Sorting method:** In-place
 
-## 插入排序（Insertion Sort）
+## Insertion Sort
 
-插入排序是一种简单直观的排序算法。它的工作原理是通过构建有序序列，对于未排序数据，在已排序序列中从后向前扫描，找到相应位置并插入。插入排序在实现上，通常采用 in-place 排序（即只需用到 $O(1)$ 的额外空间的排序），因而在从后向前扫描过程中，需要反复把已排序元素逐步向后挪位，为最新元素提供插入空间。
+Insertion sort builds a sorted sequence one element at a time. For each unsorted value, it scans backward through the sorted portion, shifts larger values to the right, and inserts the value in the correct position. It is usually implemented in-place with $O(1)$ extra space.
 
-插入排序的代码实现虽然没有冒泡排序和选择排序那么简单粗暴，但它的原理应该是最容易理解的了，因为只要打过扑克牌的人都应该能够秒懂。插入排序是一种最简单直观的排序算法，它的工作原理是通过构建有序序列，对于未排序数据，在已排序序列中从后向前扫描，找到相应位置并插入。
+The idea is easy to understand: it is like sorting playing cards in your hand. Scan the sorted values from right to left, find the correct position for the next value, and insert it there.
 
-插入排序和冒泡排序一样，也有一种优化算法，叫做拆半插入。
+Like bubble sort, insertion sort has a variation called binary insertion sort.
 
-### 算法步骤
+### Steps
 
-1. 从第一个元素开始，该元素可以认为已经被排序；
-2. 取出下一个元素，在已经排序的元素序列中从后向前扫描；
-3. 如果该元素（已排序）大于新元素，将该元素移到下一位置；
-4. 重复步骤 3，直到找到已排序的元素小于或者等于新元素的位置；
-5. 将新元素插入到该位置后；
-6. 重复步骤 2~5。
+1. Treat the first element as already sorted.
+2. Take the next element and scan backward through the sorted portion.
+3. If a sorted element is greater than the new value, move it one position to the right.
+4. Repeat until reaching an element less than or equal to the new value.
+5. Insert the new value after that element.
+6. Repeat steps 2–5.
 
-### 图解算法
+### Visualization
 
-![插入排序过程演示](../images/shared/insertion_sort.gif)
+![Insertion sort](../images/shared/insertion_sort.gif)
 
-### 代码实现
+### Implementation
 
 ```java
 /**
- * 插入排序
+ * Insertion sort
  * @param arr
  * @return arr
  */
@@ -206,38 +206,38 @@ public static int[] insertionSort(int[] arr) {
 }
 ```
 
-### 算法分析
+### Analysis
 
-- **稳定性**：稳定
-- **时间复杂度**：最佳：$O(n)$，最差：$O(n^2)$，平均：$O(n^2)$
-- **空间复杂度**：$O(1)$
-- **排序方式**：In-place
+- **Stability:** Stable
+- **Time complexity:** Best: $O(n)$; worst: $O(n^2)$; average: $O(n^2)$
+- **Space complexity:** $O(1)$
+- **Sorting method:** In-place
 
-## 希尔排序（Shell Sort）
+## Shell Sort
 
-希尔排序是希尔（Donald Shell）于 1959 年提出的一种排序算法。希尔排序也是一种插入排序，它是简单插入排序经过改进之后的一个更高效的版本，也称为递减增量排序算法。它的性能高度依赖增量序列：一些后来设计的增量序列可以获得亚二次上界，但本文使用的 Shell 原始增量在最坏情况下仍为 $O(n^2)$。
+Shell sort was introduced by Donald Shell in 1959. It is a more efficient variation of insertion sort, also known as diminishing-increment sort. Its performance depends heavily on the gap sequence: later sequences achieve subquadratic upper bounds, while the original Shell sequence used here still has a worst-case complexity of $O(n^2)$.
 
-希尔排序的基本思想是：先将整个待排序的记录序列分割成为若干子序列分别进行直接插入排序，待整个序列中的记录 “基本有序” 时，再对全体记录进行依次直接插入排序。
+Shell sort divides the sequence into groups based on a gap and applies insertion sort to each group. As the sequence becomes “mostly sorted,” the gap shrinks until a final insertion sort processes the entire sequence.
 
-### 算法步骤
+### Steps
 
-我们来看下希尔排序的基本步骤，在此我们选择增量 $gap=length/2$，缩小增量继续以 $gap = gap/2$ 的方式，这种增量选择我们可以用一个序列来表示，$\lbrace \frac{n}{2}, \frac{(n/2)}{2}, \dots, 1 \rbrace$，称为**增量序列**。希尔排序的增量序列的选择与证明是个数学难题，我们选择的这个增量序列是比较常用的，也是希尔建议的增量，称为希尔增量，但其实这个增量序列不是最优的。此处我们做示例使用希尔增量。
+This example uses the gap sequence $gap = length/2$, halving the gap after each pass until it reaches 1. The sequence $\lbrace \frac{n}{2}, \frac{(n/2)}{2}, \dots, 1 \rbrace$ is called the **gap sequence**. Choosing and analyzing gap sequences is mathematically difficult. This common sequence was suggested by Shell, but it is not optimal.
 
-先将整个待排序的记录序列分割成为若干子序列分别进行直接插入排序，具体算法描述：
+The algorithm proceeds as follows:
 
-- 选择一个增量序列 $\lbrace t_1, t_2, \dots, t_k \rbrace$，其中 $t_i \gt t_j, i \lt j, t_k = 1$；
-- 按增量序列个数 k，对序列进行 k 趟排序；
-- 每趟排序，根据对应的增量 $t$，将待排序列分割成若干长度为 $m$ 的子序列，分别对各子表进行直接插入排序。仅增量因子为 1 时，整个序列作为一个表来处理，表长度即为整个序列的长度。
+- Choose a gap sequence $\lbrace t_1, t_2, \dots, t_k \rbrace$, where $t_i > t_j$ when $i < j$ and $t_k = 1$.
+- Perform k passes, one for each gap.
+- For each gap $t$, divide the sequence into subsequences and apply insertion sort to each one. When the gap is 1, process the entire sequence as a single list.
 
-### 图解算法
+### Visualization
 
-![希尔排序按增量分组并插入排序的过程](../images/shared/shell_sort.png)
+![Shell sort groups elements by gap and sorts each group](../images/shared/shell_sort.png)
 
-### 代码实现
+### Implementation
 
 ```java
 /**
- * 希尔排序
+ * Shell sort
  *
  * @param arr
  * @return arr
@@ -263,38 +263,38 @@ public static int[] shellSort(int[] arr) {
 }
 ```
 
-### 算法分析
+### Analysis
 
-- **稳定性**：不稳定
-- **时间复杂度**：最佳：$O(nlogn)$，最差：$O(n^2)$，平均复杂度取决于增量序列
-- **空间复杂度**：$O(1)$
+- **Stability:** Unstable
+- **Time complexity:** Best: $O(n log n)$; worst: $O(n^2)$; average depends on the gap sequence.
+- **Space complexity:** $O(1)$
 
-## 归并排序（Merge Sort）
+## Merge Sort
 
-归并排序是建立在归并操作上的一种有效的排序算法。该算法是采用分治法（Divide and Conquer）的一个非常典型的应用。归并排序是一种稳定的排序方法。将已有序的子序列合并，得到完全有序的序列；即先使每个子序列有序，再使子序列段间有序。若将两个有序表合并成一个有序表，称为 2 - 路归并。
+Merge sort is an efficient sorting algorithm based on the merge operation and is a classic application of divide and conquer. It is stable: first sort smaller subsequences, then merge them into a fully sorted sequence. Merging two sorted lists is called a two-way merge.
 
-和选择排序一样，归并排序的性能不受输入数据的影响，但表现比选择排序好的多，因为始终都是 $O(nlogn)$ 的时间复杂度。代价是需要额外的内存空间。
+Like selection sort, merge sort's performance does not depend on the input order. However, it is much faster because it always takes $O(n log n)$ time. The tradeoff is that it requires additional memory.
 
-### 算法步骤
+### Steps
 
-归并排序算法是一个递归过程，边界条件为当输入序列仅有一个元素时，直接返回，具体过程如下：
+Merge sort is recursive. If the input contains only one element, return it. Otherwise:
 
-1. 如果输入内只有一个元素，则直接返回，否则将长度为 $n$ 的输入序列分成两个长度为 $n/2$ 的子序列；
-2. 分别对这两个子序列进行归并排序，使子序列变为有序状态；
-3. 设定两个指针，分别指向两个已经排序子序列的起始位置；
-4. 比较两个指针所指向的元素，选择相对小的元素放入到合并空间（用于存放排序结果），并移动指针到下一位置；
-5. 重复步骤 3 ~ 4 直到某一指针达到序列尾；
-6. 将另一序列剩下的所有元素直接复制到合并序列尾。
+1. Split the input of length $n$ into two subsequences of about $n/2$ elements.
+2. Recursively sort both subsequences.
+3. Set a pointer to the start of each sorted subsequence.
+4. Compare the pointed-to elements, copy the smaller one into the output, and advance its pointer.
+5. Repeat until one subsequence is exhausted.
+6. Copy the remaining elements from the other subsequence to the end of the output.
 
-### 图解算法
+### Visualization
 
-![归并排序递归拆分数组并合并有序子数组](../images/shared/merge_sort.gif)
+![Merge sort recursively splits an array and merges sorted subarrays](../images/shared/merge_sort.gif)
 
-### 代码实现
+### Implementation
 
 ```java
 /**
- * 归并排序
+ * Merge sort
  *
  * @param arr
  * @return arr
@@ -346,36 +346,36 @@ public static int[] merge(int[] arr_1, int[] arr_2) {
 }
 ```
 
-### 算法分析
+### Analysis
 
-- **稳定性**：稳定
-- **时间复杂度**：最佳：$O(nlogn)$，最差：$O(nlogn)$，平均：$O(nlogn)$
-- **空间复杂度**：$O(n)$
+- **Stability:** Stable
+- **Time complexity:** Best, worst, and average: $O(n log n)$
+- **Space complexity:** $O(n)$
 
-## 快速排序（Quick Sort）
+## Quicksort
 
-快速排序用到了分治思想，同样的还有归并排序。乍看起来快速排序和归并排序非常相似，都是将问题变小，先排序子串，最后合并。不同的是快速排序在划分子问题的时候经过多一步处理，将划分的两组数据划分为一大一小，这样在最后合并的时候就不必像归并排序那样再进行比较。但也正因为如此，划分的不定性使得快速排序的时间复杂度并不稳定。
+Quicksort and merge sort both use divide and conquer: they break a problem into smaller parts and sort them. Unlike merge sort, quicksort partitions the data into smaller and larger groups before recursion, so no merge is needed afterward. This makes its complexity dependent on how balanced the partitions are.
 
-快速排序的基本思想：通过一趟排序将待排序列分隔成独立的两部分，其中一部分记录的元素均比另一部分的元素小，则可分别对这两部分子序列继续进行排序，以达到整个序列有序。
+Quicksort partitions the sequence into two parts so that values in one part are smaller than those in the other, then recursively sorts both parts.
 
-### 算法步骤
+### Steps
 
-快速排序使用[分治法](https://zh.wikipedia.org/wiki/分治法)（Divide and conquer）策略来把一个序列分为较小和较大的 2 个子序列，然后递归地排序两个子序列。具体算法描述如下：
+Quicksort uses [divide and conquer](https://en.wikipedia.org/wiki/Divide-and-conquer_algorithm) to split a sequence into smaller and larger subsequences, then recursively sorts them:
 
-1. **选择基准（Pivot）**：从数组中选一个元素作为基准。为了避免最坏情况，通常会随机选择。
-2. **分区（Partition）**：重新排列序列，将所有比基准值小的元素摆放在基准前面，所有比基准值大的摆在基准的后面（相同的数可以到任一边）。在这个操作结束之后，该基准就处于数列的中间位置。
-3. **递归（Recurse）**：递归地把小于基准值元素的子序列和大于基准值元素的子序列进行快速排序。
+1. **Choose a pivot:** Select an array element. Random selection can reduce the chance of worst-case behavior.
+2. **Partition:** Rearrange the sequence so values smaller than the pivot are before it and larger values are after it. Equal values may go on either side. The pivot ends up between the two groups.
+3. **Recurse:** Apply quicksort to the subsequences on either side of the pivot.
 
-**关于性能，这也是它与归并排序的关键区别：**
+**Performance is a key difference from merge sort:**
 
-- **平均和最佳情况：** 它的时间复杂度是 $O(nlogn)$。这种情况发生在每次分区都能把数组分成均等的两半。
-- **最坏情况：** 它的时间复杂度会退化到 $O(n^2)$。这发生在每次我们选的基准都是当前数组的最小值或最大值时，比如对一个已经排好序的数组，每次都选第一个元素做基准，这就会导致分区极其不均，算法退化成类似冒泡排序。这就是为什么**随机选择基准**非常重要。
+- **Average and best case:** $O(n log n)$, when each partition divides the array into roughly equal halves.
+- **Worst case:** $O(n^2)$, when each pivot is the smallest or largest value in the current array. For example, choosing the first element as the pivot in an already sorted array produces highly unbalanced partitions. This is why **random pivot selection** is useful.
 
-### 图解算法
+### Visualization
 
-![随机快速排序选择基准并递归划分子序列](../images/shared/random_quick_sort.gif)
+![Quicksort randomly chooses a pivot and recursively partitions the sequence](../images/shared/random_quick_sort.gif)
 
-### 代码实现
+### Implementation
 
 ```java
 import java.util.concurrent.ThreadLocalRandom;
@@ -386,47 +386,47 @@ class Solution {
         return a;
     }
 
-    // 快速排序的核心递归函数
+    // Core recursive quicksort function
     void quick(int[] a, int left, int right) {
-        if (left >= right) { // 递归终止条件：区间只有一个或没有元素
+        if (left >= right) { // Base case: the range has at most one element.
             return;
         }
-        int p = partition(a, left, right); // 分区操作，返回分区点索引
-        quick(a, left, p - 1); // 对左侧子数组递归排序
-        quick(a, p + 1, right); // 对右侧子数组递归排序
+        int p = partition(a, left, right); // Partition and return the pivot index.
+        quick(a, left, p - 1); // Recursively sort the left subarray.
+        quick(a, p + 1, right); // Recursively sort the right subarray.
     }
 
-    // 分区函数：将数组分为两部分，小于基准值的在左，大于基准值的在右
+    // Partition the array so smaller values are on the left and larger ones are on the right.
     int partition(int[] a, int left, int right) {
-        // 随机选择一个基准点，避免最坏情况（如数组接近有序）
+        // Choose a random pivot to reduce the chance of worst-case behavior on nearly sorted input.
         int idx = ThreadLocalRandom.current().nextInt(right - left + 1) + left;
-        swap(a, left, idx); // 将基准点放在数组的最左端
-        int pv = a[left]; // 基准值
-        int i = left + 1; // 左指针，指向当前需要检查的元素
-        int j = right; // 右指针，从右往左寻找比基准值小的元素
+        swap(a, left, idx); // Move the pivot to the left end of the array.
+        int pv = a[left]; // Pivot value.
+        int i = left + 1; // Left pointer; points to the next element to check.
+        int j = right; // Right pointer; scans for values smaller than the pivot.
 
         while (i <= j) {
-            // 左指针向右移动，直到找到一个大于等于基准值的元素
+            // Move the left pointer until it reaches a value greater than or equal to the pivot.
             while (i <= j && a[i] < pv) {
                 i++;
             }
-            // 右指针向左移动，直到找到一个小于等于基准值的元素
+            // Move the right pointer until it reaches a value less than or equal to the pivot.
             while (i <= j && a[j] > pv) {
                 j--;
             }
-            // 如果左指针尚未越过右指针，交换两个不符合位置的元素
+            // If the pointers have not crossed, swap the values that are on the wrong sides.
             if (i <= j) {
                 swap(a, i, j);
                 i++;
                 j--;
             }
         }
-        // 将基准值放到分区点位置，使得基准值左侧小于它，右侧大于它
+        // Place the pivot at the partition index.
         swap(a, j, left);
         return j;
     }
 
-    // 交换数组中两个元素的位置
+    // Swap two array elements.
     void swap(int[] a, int i, int j) {
         int t = a[i];
         a[i] = a[j];
@@ -435,27 +435,27 @@ class Solution {
 }
 ```
 
-### 算法分析
+### Analysis
 
-- **稳定性**：不稳定
-- **时间复杂度**：最佳：$O(nlogn)$，最差：$O(n^2)$，平均：$O(nlogn)$
-- **空间复杂度**：平均 $O(logn)$，最坏 $O(n)$（递归调用栈）
+- **Stability:** Unstable
+- **Time complexity:** Best: $O(n log n)$; worst: $O(n^2)$; average: $O(n log n)$
+- **Space complexity:** Average: $O(log n)$; worst: $O(n)$ due to the recursion stack.
 
-## 堆排序（Heap Sort）
+## Heap Sort
 
-堆排序是指利用堆这种数据结构所设计的一种排序算法。堆是一个近似完全二叉树的结构，并同时满足**堆的性质**：即**子结点的值总是小于（或者大于）它的父节点**。
+Heap sort uses a heap data structure. A heap has an almost-complete binary tree structure and satisfies the **heap property**: each child is always smaller (or larger) than its parent.
 
-### 算法步骤
+### Steps
 
-1. 将初始待排序列 $(R_1, R_2, \dots, R_n)$ 构建成大顶堆，此堆为初始的无序区；
-2. 将堆顶元素 $R_1$ 与最后一个元素 $R_n$ 交换，此时得到新的无序区 $(R_1, R_2, \dots, R_{n-1})$ 和新的有序区 $R_n$，且满足 $R_i \leqslant R_n (i \in 1, 2,\dots, n-1)$；
-3. 由于交换后新的堆顶 $R_1$ 可能违反堆的性质，因此需要对当前无序区 $(R_1, R_2, \dots, R_{n-1})$ 调整为新堆，然后再次将 $R_1$ 与无序区最后一个元素交换，得到新的无序区 $(R_1, R_2, \dots, R_{n-2})$ 和新的有序区 $(R_{n-1}, R_n)$。不断重复此过程直到有序区的元素个数为 $n-1$，则整个排序过程完成。
+1. Build a max-heap from the input sequence $(R_1, R_2, \dots, R_n)$. This is the initial unsorted region.
+2. Swap the root $R_1$ with the last element $R_n$. The new unsorted region is $(R_1, R_2, \dots, R_{n-1})$, and the sorted region contains $R_n$. For every $i$ from 1 to $n-1$, $R_i \leqslant R_n$.
+3. The new root $R_1$ may violate the heap property. Restore the heap in the unsorted region $(R_1, R_2, \dots, R_{n-1})$, then swap its root with the last unsorted element. The unsorted region becomes $(R_1, R_2, \dots, R_{n-2})$, and the sorted region contains $(R_{n-1}, R_n)$. Repeat until the sorted region contains all elements.
 
-### 图解算法
+### Visualization
 
-![堆排序构建大顶堆并依次取出堆顶元素](../images/shared/heap_sort.gif)
+![Heap sort builds a max-heap and repeatedly removes its root](../images/shared/heap_sort.gif)
 
-### 代码实现
+### Implementation
 
 ```java
 // Global variable that records the length of an array;
@@ -524,32 +524,32 @@ public static int[] heapSort(int[] arr) {
 }
 ```
 
-### 算法分析
+### Analysis
 
-- **稳定性**：不稳定
-- **时间复杂度**：最佳：$O(nlogn)$，最差：$O(nlogn)$，平均：$O(nlogn)$
-- **空间复杂度**：$O(1)$
+- **Stability:** Unstable
+- **Time complexity:** Best, worst, and average: $O(n log n)$
+- **Space complexity:** $O(1)$
 
-## 计数排序（Counting Sort）
+## Counting Sort
 
-计数排序的核心在于将输入的数据值转化为键存储在额外开辟的数组空间中。作为一种线性时间复杂度的排序，**计数排序要求输入的数据必须是有确定范围的整数**。
+Counting sort uses input values as keys in an additional array. As a linear-time sorting algorithm, **it requires integer input values within a known range**.
 
-计数排序（Counting sort）是一种稳定的排序算法。计数排序使用一个额外的数组 `C`，其中第 `i` 个元素是待排序数组 `A` 中值等于 `i` 的元素的个数。然后根据数组 `C` 来将 `A` 中的元素排到正确的位置。**它只能对整数进行排序**。
+Counting sort is stable. It uses an auxiliary array `C`, where the element at index `i` stores the number of times value `i` appears in input array `A`. The counts are then used to place values from `A` in their correct positions. **It sorts integers only.**
 
-### 算法步骤
+### Steps
 
-1. 找出数组中的最大值 `max`、最小值 `min`；
-2. 创建一个新数组 `C`，其长度是 `max-min+1`，其元素默认值都为 0；
-3. 遍历原数组 `A` 中的元素 `A[i]`，以 `A[i] - min` 作为 `C` 数组的索引，以 `A[i]` 的值在 `A` 中元素出现次数作为 `C[A[i] - min]` 的值；
-4. 对 `C` 数组变形，**新元素的值是该元素与前一个元素值的和**，即当 `i>1` 时 `C[i] = C[i] + C[i-1]`；
-5. 创建结果数组 `R`，长度和原始数组一样。
-6. **从后向前**遍历原始数组 `A` 中的元素 `A[i]`，使用 `A[i]` 减去最小值 `min` 作为索引，在计数数组 `C` 中找到对应的值 `C[A[i] - min]`，`C[A[i] - min] - 1` 就是 `A[i]` 在结果数组 `R` 中的位置，做完上述这些操作，将 `count[A[i] - min]` 减小 1。
+1. Find the maximum value `max` and minimum value `min` in the array.
+2. Create an array `C` of length `max - min + 1`, initialized to zero.
+3. For each value `A[i]` in the input array, use `A[i] - min` as the index in `C` and count how often that value appears.
+4. Convert `C` to prefix sums: **each entry becomes the sum of its value and the previous entry**, so `C[i] = C[i] + C[i - 1]` for `i > 0`.
+5. Create an output array `R` with the same length as the input.
+6. Iterate through `A` **from right to left**. Use `A[i] - min` to look up its count in `C`. The value `C[A[i] - min] - 1` is its index in `R`. Place it there, then decrement `C[A[i] - min]`.
 
-### 图解算法
+### Visualization
 
-![计数排序通过统计元素出现次数确定有序位置](../images/shared/counting_sort.gif)
+![Counting sort uses element frequencies to determine sorted positions](../images/shared/counting_sort.gif)
 
-### 代码实现
+### Implementation
 
 ```java
 /**
@@ -602,35 +602,35 @@ public static int[] countingSort(int[] arr) {
 }
 ```
 
-### 算法分析
+### Analysis
 
-当输入的元素是 `n` 个 `0` 到 `k` 之间的整数时，它的运行时间是 $O(n+k)$。计数排序不是比较排序，排序的速度快于任何比较排序算法。由于用来计数的数组 `C` 的长度取决于待排序数组中数据的范围（等于待排序数组的**最大值与最小值的差加上 1**），这使得计数排序对于数据范围很大的数组，需要大量额外内存空间。
+When the input contains n integers between `0` and `k`, counting sort takes $O(n + k)$ time. It is not a comparison sort and can be faster than comparison-based algorithms. The length of `C` depends on the input range (the **maximum value minus the minimum value plus 1**), so a large range can require substantial extra memory.
 
-- **稳定性**：稳定
-- **时间复杂度**：最佳：$O(n+k)$，最差：$O(n+k)$，平均：$O(n+k)$
-- **空间复杂度**：$O(n+k)$
+- **Stability:** Stable
+- **Time complexity:** Best, worst, and average: $O(n + k)$
+- **Space complexity:** $O(n + k)$
 
-## 桶排序（Bucket Sort）
+## Bucket Sort
 
-桶排序是计数排序的升级版。它利用了函数的映射关系，高效与否的关键就在于这个映射函数的确定。为了使桶排序更加高效，我们需要做到这两点：
+Bucket sort is a generalization of counting sort. It maps values to buckets, and its efficiency depends on choosing a good mapping function. To make bucket sort efficient:
 
-1. 在额外空间充足的情况下，尽量增大桶的数量
-2. 使用的映射函数能够将输入的 N 个数据均匀的分配到 K 个桶中
+1. Use more buckets when extra space is available.
+2. Choose a mapping function that distributes the N input values evenly across K buckets.
 
-桶排序的工作的原理：假设输入数据服从均匀分布，将数据分到有限数量的桶里，每个桶再分别排序（有可能再使用别的排序算法或是以递归方式继续使用桶排序进行。
+Bucket sort assumes that the input is uniformly distributed. It distributes values among a finite number of buckets, sorts each bucket (possibly with another sorting algorithm or recursively with bucket sort), then concatenates the buckets.
 
-### 算法步骤
+### Steps
 
-1. 设置一个 BucketSize，作为每个桶所能放置多少个不同数值；
-2. 遍历输入数据，并且把数据依次映射到对应的桶里去；
-3. 对每个非空的桶进行排序，可以使用其它排序方法，也可以递归使用桶排序；
-4. 从非空桶里把排好序的数据拼接起来。
+1. Choose `bucket_size`, the value range assigned to each bucket.
+2. Iterate over the input and map each value to a bucket.
+3. Sort each non-empty bucket with another sorting algorithm or recursively with bucket sort.
+4. Concatenate the sorted values from the non-empty buckets.
 
-### 图解算法
+### Visualization
 
-![桶排序将数据分配到多个桶后分别排序再合并](../images/shared/bucket_sort.gif)
+![Bucket sort distributes values into buckets, sorts each bucket, and combines them](../images/shared/bucket_sort.gif)
 
-### 代码实现
+### Implementation
 
 ```java
 /**
@@ -690,31 +690,31 @@ public static List<Integer> bucketSort(List<Integer> arr, int bucket_size) {
 }
 ```
 
-### 算法分析
+### Analysis
 
-- **稳定性**：取决于桶内排序。当前实现按原顺序入桶，并使用稳定的 `List.sort`，因此是稳定的
-- **时间复杂度**：当前实现最佳为 $O(n+k)$；数据均匀分布时，期望接近 $O(n+k)$；最坏为 $O(nlogn+k)$。如果桶内改用插入排序，最坏情况会退化到 $O(n^2)$
-- **空间复杂度**：$O(n+k)$
+- **Stability:** Depends on the sort used within each bucket. This implementation preserves insertion order when distributing values and uses stable `List.sort`, so it is stable.
+- **Time complexity:** Best case: $O(n + k)$. With a uniform distribution, expected time is close to $O(n + k)$. Worst case: $O(n log n + k)$. Using insertion sort within each bucket can make the worst case $O(n^2)$.
+- **Space complexity:** $O(n + k)$
 
-## 基数排序（Radix Sort）
+## Radix Sort
 
-基数排序也是非比较的排序算法，对元素中的每一位数字进行排序，从最低位开始排序。设数组长度为 $n$、最大位数为 $d$、基数为 $r$，复杂度为 $O(d(n+r))$。下面的十进制 LSD 实现仅支持非负整数。
+Radix sort is a non-comparison sort that processes each digit of a value, starting with the least significant digit. For an array of length $n$, with at most $d$ digits and radix $r$, its complexity is $O(d(n + r))$. The decimal LSD implementation below supports non-negative integers only.
 
-基数排序是按照低位先排序，然后收集；再按照高位排序，然后再收集；依次类推，直到最高位。有时候有些属性是有优先级顺序的，先按低优先级排序，再按高优先级排序。最后的次序就是高优先级高的在前，高优先级相同的低优先级高的在前。基数排序基于分别排序，分别收集，所以是稳定的。
+Radix sort first sorts by the least significant digit and collects the values, then sorts by the next digit and collects them again, continuing through the most significant digit. This is useful when keys have multiple priorities: sort by the lower-priority key first, then by the higher-priority key. Values with equal higher-priority keys retain their lower-priority ordering. Since each pass sorts and collects stably, radix sort is stable.
 
-### 算法步骤
+### Steps
 
-1. 取得数组中的最大数，并取得位数，即为迭代次数 $N$（例如：数组中最大数值为 1000，则 $N=4$）；
-2. `A` 为原始数组，从最低位开始取每个位组成 `radix` 数组；
-3. 对 `radix` 进行计数排序（利用计数排序适用于小范围数的特点）；
-4. 将 `radix` 依次赋值给原数组；
-5. 重复 2~4 步骤 $N$ 次
+1. Find the largest value and its number of digits, which determines the number of passes $N$. For example, if the largest value is 1000, then $N = 4$.
+2. Starting with the least significant digit, extract that digit from each value in array `A`.
+3. Use counting sort to sort by that digit, taking advantage of its small range.
+4. Copy the values back into the original array.
+5. Repeat steps 2–4 for all $N$ digits.
 
-### 图解算法
+### Visualization
 
-![基数排序按数字位从低到高依次排序并收集](../images/shared/radix_sort.gif)
+![Radix sort processes and collects values from the least significant digit upward](../images/shared/radix_sort.gif)
 
-### 代码实现
+### Implementation
 
 ```java
 /**
@@ -763,53 +763,53 @@ public static int[] radixSort(int[] arr) {
 }
 ```
 
-### 算法分析
+### Analysis
 
-- **稳定性**：稳定
-- **时间复杂度**：最佳、最差、平均均为 $O(d(n+r))$
-- **空间复杂度**：$O(n+r)$
+- **Stability:** Stable
+- **Time complexity:** Best, worst, and average: $O(d(n + r))$
+- **Space complexity:** $O(n + r)$
 
-**基数排序 vs 计数排序 vs 桶排序**
+**Radix Sort vs. Counting Sort vs. Bucket Sort**
 
-这三种排序算法都利用了桶的概念，但对桶的使用方法上有明显差异：
+All three algorithms use buckets, but in different ways:
 
-- 基数排序：根据键值的每位数字来分配桶
-- 计数排序：每个桶只存储单一键值
-- 桶排序：每个桶存储一定范围的数值
+- **Radix sort:** Assign buckets based on each digit of the key.
+- **Counting sort:** Each bucket stores one distinct key value.
+- **Bucket sort:** Each bucket stores values within a range.
 
-## 参考文章
+## References
 
-- [排序算法总结（本文主要参考来源）](https://www.cnblogs.com/guoyaohua/p/8600214.html)
+- [Sorting algorithm summary (primary source for this article)](https://www.cnblogs.com/guoyaohua/p/8600214.html)
 - <https://en.wikipedia.org/wiki/Sorting_algorithm>
 - <https://sort.hust.cc/>
 
-## 面试复盘重点
+## Interview Review
 
-排序算法面试一般不会要求你把 10 种排序全部手写，但复杂度、稳定性、原地排序和适用场景要能说清。
+Interviews rarely ask you to implement all ten sorting algorithms, but you should be able to explain their complexity, stability, in-place behavior, and use cases.
 
-| 排序算法 | 平均时间复杂度 | 最坏时间复杂度 | 空间复杂度                  | 稳定性         | 是否原地 |
-| -------- | -------------- | -------------- | --------------------------- | -------------- | -------- |
-| 冒泡排序 | `O(n^2)`       | `O(n^2)`       | `O(1)`                      | 稳定           | 是       |
-| 选择排序 | `O(n^2)`       | `O(n^2)`       | `O(1)`                      | 不稳定         | 是       |
-| 插入排序 | `O(n^2)`       | `O(n^2)`       | `O(1)`                      | 稳定           | 是       |
-| 归并排序 | `O(nlogn)`     | `O(nlogn)`     | `O(n)`                      | 稳定           | 否       |
-| 快速排序 | `O(nlogn)`     | `O(n^2)`       | 平均 `O(logn)`，最坏 `O(n)` | 不稳定         | 是       |
-| 堆排序   | `O(nlogn)`     | `O(nlogn)`     | `O(1)`                      | 不稳定         | 是       |
-| 计数排序 | `O(n+k)`       | `O(n+k)`       | `O(n+k)`                    | 稳定           | 否       |
-| 桶排序   | 和数据分布有关 | 取决于桶内排序 | `O(n+k)`                    | 取决于桶内排序 | 否       |
-| 基数排序 | `O(d(n+r))`    | `O(d(n+r))`    | `O(n+r)`                    | 稳定           | 否       |
+| Algorithm      | Average time            | Worst-case time        | Space                            | Stable                 | In-place |
+| -------------- | ----------------------- | ---------------------- | -------------------------------- | ---------------------- | -------- |
+| Bubble sort    | `O(n^2)`                | `O(n^2)`               | `O(1)`                           | Yes                    | Yes      |
+| Selection sort | `O(n^2)`                | `O(n^2)`               | `O(1)`                           | No                     | Yes      |
+| Insertion sort | `O(n^2)`                | `O(n^2)`               | `O(1)`                           | Yes                    | Yes      |
+| Merge sort     | `O(n log n)`            | `O(n log n)`           | `O(n)`                           | Yes                    | No       |
+| Quicksort      | `O(n log n)`            | `O(n^2)`               | Average `O(log n)`, worst `O(n)` | No                     | Yes      |
+| Heap sort      | `O(n log n)`            | `O(n log n)`           | `O(1)`                           | No                     | Yes      |
+| Counting sort  | `O(n + k)`              | `O(n + k)`             | `O(n + k)`                       | Yes                    | No       |
+| Bucket sort    | Depends on distribution | Depends on bucket sort | `O(n + k)`                       | Depends on bucket sort | No       |
+| Radix sort     | `O(d(n + r))`           | `O(d(n + r))`          | `O(n + r)`                       | Yes                    | No       |
 
-几个高频追问：
+Common follow-up questions:
 
-- 快排为什么最坏是 `O(n^2)`？如何降低退化概率？可以随机选 pivot 或三数取中。
-- 归并排序为什么稳定？因为合并时相等元素可以优先取左侧元素。
-- 堆排序为什么不稳定？因为堆调整和交换可能打乱相等元素原有顺序。
-- 插入排序什么时候表现好？数组基本有序且规模不大时。
-- 计数排序、桶排序、基数排序为什么不是通用排序？它们依赖数据范围、分布或位数。
+- Why is quicksort `O(n^2)` in the worst case, and how can that risk be reduced? Random pivots or median-of-three selection can help.
+- Why is merge sort stable? During merging, equal values can be taken from the left sequence first.
+- Why is heap sort unstable? Heap adjustments and swaps may change the original order of equal values.
+- When does insertion sort perform well? On small arrays that are already nearly sorted.
+- Why are counting sort, bucket sort, and radix sort not general-purpose? They depend on the value range, distribution, or number of digits.
 
-## Java 代码模板
+## Java Template
 
-排序面试最常手写的是快速排序和归并排序。快速排序要特别注意分区边界，下面是一个常见写法：
+Quicksort and merge sort are the sorting algorithms most often written by hand in interviews. Pay close attention to partition boundaries in quicksort. Here is a common implementation:
 
 ```java
 void quickSort(int[] nums, int left, int right) {
@@ -841,34 +841,34 @@ void swap(int[] nums, int i, int j) {
 }
 ```
 
-如果担心有序数组导致快排退化，可以在分区前随机选择 pivot，并把它交换到 `right` 位置。
+To reduce the chance of quicksort degrading on a sorted array, choose a random pivot before partitioning and swap it with the value at `right`.
 
 ```java
 int randomIndex = left + new Random().nextInt(right - left + 1);
 swap(nums, randomIndex, right);
 ```
 
-## 过程示意和边界样例
+## Walkthrough and Edge Cases
 
-快速排序的一次分区可以这样理解：
+One quicksort partition works as follows:
 
 ```text
-原数组区间：[left ... right]
-pivot：选择 nums[right]
-less：指向“小于等于 pivot 区域”的下一个位置
-i：从 left 扫到 right - 1
+Array range: [left ... right]
+pivot: choose nums[right]
+less: points to the next position in the region of values <= pivot
+i: scans from left to right - 1
 
-扫描结束后：
+After the scan:
 [left ... less - 1] <= pivot
 [less ... right - 1] > pivot
-把 pivot 换到 less，pivot 左右两边分别递归
+Swap the pivot into position less, then recurse on both sides.
 ```
 
-几个边界样例建议手写前先过一遍：
+Check these edge cases before coding:
 
-- 空数组或只有一个元素：直接返回。
-- 已经有序或逆序：固定选择首尾元素做 pivot 容易退化。
-- 大量重复元素：普通二路分区可能不够理想，可以了解三路快排。
-- 面试官问稳定性时，不要说快排稳定；普通快排交换元素会打乱相等元素顺序。
+- Empty array or one element: return immediately.
+- Sorted or reverse-sorted input: always choosing the first or last value as pivot can cause poor partitions.
+- Many duplicate values: a two-way partition may be inefficient; consider three-way quicksort.
+- If asked about stability, do not call quicksort stable. Standard quicksort swaps can change the order of equal values.
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,44 +1,44 @@
 ---
-title: DFS 与 BFS 面试题总结：树、图、矩阵搜索与最短路径模板
-description: DFS 与 BFS 面试题总结，讲解深度优先搜索、广度优先搜索、树遍历、图遍历、矩阵搜索、层序遍历、最短路径和 Java 模板。
-category: 计算机基础
+title: "DFS and BFS Interview Guide: Trees, Graphs, Grid Search, and Shortest Paths"
+description: An interview guide to depth-first search, breadth-first search, tree and graph traversal, grid search, level-order traversal, shortest paths, and Java templates.
+category: Computer Science Fundamentals
 tag:
-  - 算法
+  - Algorithms
 head:
   - - meta
     - name: keywords
-      content: DFS,BFS,深度优先搜索,广度优先搜索,树遍历,图遍历,矩阵搜索,层序遍历,最短路径,Java DFS,Java BFS,LeetCode
+      content: DFS,BFS,depth-first search,breadth-first search,tree traversal,graph traversal,grid search,level-order traversal,shortest path,Java DFS,Java BFS,LeetCode
 ---
 
-DFS 和 BFS 是树、图、矩阵题的基础。面试里不会只问“DFS 是什么”，更常见的是给你一个岛屿、课程依赖、最短步数或二叉树层序遍历，让你选搜索方式并写出边界处理。
+DFS and BFS are fundamental to tree, graph, and grid problems. Interviews rarely ask only “What is DFS?” More often, you are given an island, course prerequisites, a shortest-path problem, or a binary tree traversal and need to choose a search strategy and handle its edge cases.
 
-一个简单判断：需要一路走到底、枚举路径或处理连通块时，优先想 DFS；需要按层推进、求最短步数时，优先想 BFS。
+A useful rule of thumb: consider DFS when you need to follow a path to its end, enumerate paths, or explore connected components. Consider BFS when you need to process nodes by level or find the shortest number of steps.
 
-## 面试考察重点
+## What Interviewers Look For
 
-- 能写递归 DFS、队列 BFS。
-- 能说出树和图搜索的复杂度。
-- 能处理 `visited`，避免重复访问和死循环。
-- 能区分“遍历所有节点”和“求最短步数”。
-- 能把矩阵题转换成图搜索。
+- Write recursive DFS and queue-based BFS.
+- Explain the complexity of tree and graph searches.
+- Use `visited` to avoid revisiting nodes and getting stuck in cycles.
+- Distinguish traversing every node from finding the shortest path.
+- Model a grid problem as a graph search.
 
-## 怎么选择 DFS 还是 BFS？
+## Choosing Between DFS and BFS
 
-DFS 和 BFS 都能遍历节点，但它们的天然优势不同。
+Both DFS and BFS can traverse nodes, but each has different strengths.
 
-| 目标             | 更常用            | 原因                         |
-| ---------------- | ----------------- | ---------------------------- |
-| 遍历所有节点     | DFS 或 BFS 都可以 | 只要不重复访问即可           |
-| 找连通块面积     | DFS 更顺手        | 一路递归扩展，代码短         |
-| 求无权图最短步数 | BFS               | 按层推进，第一次到达就是最短 |
-| 枚举所有路径     | DFS               | 路径天然存在递归栈里         |
-| 二叉树层序遍历   | BFS               | 队列正好按层处理             |
+| Goal                                          | Common choice     | Why                                                           |
+| --------------------------------------------- | ----------------- | ------------------------------------------------------------- |
+| Visit every node                              | Either DFS or BFS | Just make sure each node is visited once.                     |
+| Find the area of a connected component        | DFS               | It naturally explores outward and often keeps the code short. |
+| Find the shortest path in an unweighted graph | BFS               | It expands by levels, so the first visit is the shortest.     |
+| Enumerate all paths                           | DFS               | The current path is naturally held on the call stack.         |
+| Traverse a binary tree by level               | BFS               | The queue processes nodes level by level.                     |
 
-如果题目里出现“最少几步”“最短路径”“扩散到所有位置”，先想 BFS。如果题目里出现“所有方案”“是否存在一条路径”“连通块大小”，先想 DFS。
+If a problem asks for the fewest steps, a shortest path, or spreading to every location, consider BFS first. If it asks for all possibilities, whether a path exists, or the size of a connected component, consider DFS first.
 
-## DFS 模板
+## DFS Template
 
-矩阵 DFS 常见写法：
+A common DFS implementation for a grid:
 
 ```java
 void dfs(char[][] grid, int i, int j) {
@@ -56,22 +56,22 @@ void dfs(char[][] grid, int i, int j) {
 }
 ```
 
-这里直接把访问过的陆地改成 `'2'`，相当于使用原数组做访问标记。如果题目不允许修改输入，就单独建 `boolean[][] visited`。
+This marks visited land by changing it to `'2'`, using the input array as the visited marker. If the problem doesn't allow modifying the input, create a separate `boolean[][] visited`.
 
-DFS 的递归函数要先定义清楚含义。上面这段代码可以解释为：从 `(i, j)` 出发，把和它连通的所有陆地都标记掉。
+Define the meaning of a DFS function before writing it. Here, `dfs(i, j)` marks every land cell connected to `(i, j)`.
 
-这个含义决定了代码顺序：
+That meaning determines the order of operations:
 
-1. 越界直接返回。
-2. 当前格子不是陆地直接返回。
-3. 标记当前格子，避免重复访问。
-4. 继续访问上下左右 4 个方向。
+1. Return if the coordinates are out of bounds.
+2. Return if the current cell isn't land.
+3. Mark the current cell to prevent revisiting it.
+4. Visit its four neighbors.
 
-很多 DFS bug 都来自第 3 步写晚了。如果先递归邻居，再标记当前节点，就可能在两个相邻格子之间来回递归。
+Many DFS bugs come from marking a node too late. If you visit its neighbors before marking it, two adjacent cells can recurse back and forth indefinitely.
 
-## BFS 模板
+## BFS Template
 
-BFS 适合层序遍历和最短步数。下面的模板约定输入是非空矩形矩阵，其中 `0` 表示可以通行，`1` 表示障碍物；函数返回起点到目标点的最短步数，坐标越界或目标不可达时返回 `-1`：
+BFS is useful for level-order traversal and shortest-path problems. This template assumes a non-empty rectangular grid where `0` is open and `1` is blocked. It returns the shortest number of steps from the start to the target, or `-1` if a coordinate is out of bounds or the target can't be reached:
 
 ```java
 int bfs(int[][] grid, int startX, int startY, int targetX, int targetY) {
@@ -115,94 +115,94 @@ int bfs(int[][] grid, int startX, int startY, int targetX, int targetY) {
 }
 ```
 
-这段代码在目标节点第一次出队时返回当前层数，而不是等队列清空。具体题目的可通行条件可能不是 `0` 和 `1`，需要按题意调整。
+The template returns the current level when the target is first removed from the queue. A particular problem may define traversable cells differently from `0` and `1`, so adjust the condition as needed.
 
-BFS 的关键是“按层处理”。队列里一开始是第 0 层节点，每轮取出当前队列大小 `size`，只处理这一层的节点；它们扩展出来的新节点属于下一层。
+BFS works level by level. At the start of each iteration, the queue contains the current level. Save its size, process exactly those nodes, and add their neighbors to the next level.
 
-为什么无权图 BFS 能求最短路径？因为每条边的代价相同。BFS 第一次到达某个节点时，一定是用了最少的边数。后面即使还能再次到达，也不会更短，所以可以直接标记访问。
+Why does BFS find the shortest path in an unweighted graph? Every edge has the same cost. The first time BFS reaches a node, it has used the fewest edges possible. Reaching it again later can't produce a shorter path, so mark it visited.
 
-多源 BFS 也很常见。比如“腐烂的橘子”里，所有烂橘子同时开始扩散。做法是先把所有初始烂橘子都入队，再按层扩散。
+Multi-source BFS is also common. For example, in Rotting Oranges, all rotten oranges spread at the same time. Add every initially rotten orange to the queue, then expand level by level.
 
-## 树搜索和图搜索的区别
+## Tree Search vs. Graph Search
 
-树没有环，很多时候不需要 `visited`。图可能有环，必须考虑重复访问。
+Trees have no cycles, so you often don't need `visited`. Graphs can contain cycles, so you need to account for repeat visits.
 
-| 场景           | 是否常用 `visited` | 说明                   |
-| -------------- | ------------------ | ---------------------- |
-| 二叉树递归遍历 | 通常不用           | 节点没有回到父节点的边 |
-| 无向图遍历     | 需要               | 否则两个节点会互相访问 |
-| 有向图遍历     | 通常需要           | 可能存在环             |
-| 矩阵搜索       | 需要               | 上下左右可能走回原点   |
+| Scenario                        | Is `visited` commonly needed? | Why                                                            |
+| ------------------------------- | ----------------------------- | -------------------------------------------------------------- |
+| Recursive binary tree traversal | Usually not                   | A child has no edge back to its parent.                        |
+| Undirected graph traversal      | Yes                           | Otherwise, two nodes can keep visiting each other.             |
+| Directed graph traversal        | Usually                       | The graph may contain cycles.                                  |
+| Grid search                     | Yes                           | Movement between neighboring cells can lead back to the start. |
 
-## 复杂度
+## Complexity
 
-图搜索常用 `V` 表示顶点数，`E` 表示边数。邻接表存储时，DFS 和 BFS 的时间复杂度通常是 `O(V + E)`，空间复杂度是 `O(V)`。
+For graph searches, `V` is the number of vertices and `E` is the number of edges. With an adjacency list, DFS and BFS usually take `O(V + E)` time and `O(V)` space.
 
-矩阵搜索如果矩阵大小是 `m * n`，每个格子最多访问一次，时间复杂度是 `O(mn)`，访问标记或队列空间最坏也是 `O(mn)`。
+For an `m` by `n` grid, each cell is visited at most once. The time complexity is `O(mn)`, and the visited markers or queue can use up to `O(mn)` space.
 
-## 矩阵题怎么转成图？
+## Turning a Grid Problem into a Graph
 
-矩阵中的每个格子都可以看成图里的一个节点。上下左右 4 个方向，就是这个节点连出去的边。
+Treat each cell in a grid as a graph node. Its edges lead to its neighbors, usually the four cells above, below, left, and right.
 
-常用方向数组：
+A common direction array is:
 
 ```java
 int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 ```
 
-遍历邻居时只需要做 3 件事：
+For each neighbor:
 
-1. 计算新坐标。
-2. 判断是否越界。
-3. 判断是否已经访问过，或是否符合题目要求。
+1. Calculate its coordinates.
+2. Check that they are in bounds.
+3. Check whether it has been visited and whether it meets the problem's conditions.
 
-如果题目允许斜向移动，把方向数组扩展成 8 个方向即可。不要在代码里手写 4 段几乎相同的递归调用，方向数组更不容易漏条件。
+If diagonal movement is allowed, add the four diagonal directions. A direction array is less error-prone than writing four nearly identical recursive calls.
 
-## 过程示意和边界样例
+## Walkthrough and Edge Cases
 
-以岛屿数量为例，遇到一个未访问过的陆地格子，就从它开始 DFS/BFS，把整座岛都标记掉。
+For Number of Islands, start a DFS or BFS whenever you find an unvisited land cell, then mark the entire island.
 
-| 步骤 | 操作                   | 目的                   |
-| ---- | ---------------------- | ---------------------- |
-| 1    | 扫描矩阵，找到一个 `1` | 发现一座新岛           |
-| 2    | 岛屿数量加 1           | 记录连通块             |
-| 3    | 从当前格子 DFS/BFS     | 把这座岛所有陆地标记掉 |
-| 4    | 继续扫描后续格子       | 避免重复统计同一座岛   |
+| Step | Action                     | Purpose                               |
+| ---- | -------------------------- | ------------------------------------- |
+| 1    | Scan the grid for a `1`    | Find a new island.                    |
+| 2    | Increment the island count | Record a connected component.         |
+| 3    | Run DFS/BFS from that cell | Mark all land in the island.          |
+| 4    | Continue scanning          | Avoid counting the same island again. |
 
-矩阵搜索建议检查这些边界：
+Check these grid edge cases:
 
-| 输入         | 重点                               |
-| ------------ | ---------------------------------- |
-| 空矩阵       | 是否先判断行列长度                 |
-| 全是水       | 结果应该是 0                       |
-| 全是陆地     | 只能统计成 1 个连通块              |
-| 只有斜向相邻 | 如果题目只允许上下左右，不能算连通 |
+| Input                          | What to check                                                    |
+| ------------------------------ | ---------------------------------------------------------------- |
+| Empty grid                     | Check the row and column counts first.                           |
+| All water                      | The answer should be `0`.                                        |
+| All land                       | The grid should count as one connected component.                |
+| Only diagonally adjacent cells | They aren't connected if movement is limited to four directions. |
 
-常见错误写法：
+A common mistake is marking a cell after recursing:
 
 ```java
 void dfs(char[][] grid, int i, int j) {
     dfs(grid, i + 1, j);
-    grid[i][j] = '2'; // 错：标记太晚，可能来回递归
+    grid[i][j] = '2'; // Wrong: marking this late can cause repeated recursion.
 }
 ```
 
-访问标记要在递归扩展邻居之前完成。图和矩阵里只要存在回边或相邻互访，标记太晚就可能重复访问甚至栈溢出。
+Mark a node before exploring its neighbors. If a graph or grid allows a path back to an adjacent node, marking it too late can cause repeated visits or a stack overflow.
 
-## 易错点
+## Common Mistakes
 
-- BFS 入队时就标记访问，避免同一个节点被重复入队。
-- DFS 递归深度过大可能栈溢出，面试中可以说明可改成显式栈。
-- 矩阵题先判断越界，再访问数组。
-- 无向图要注意从子节点走回父节点的问题。
-- 求最短步数时，BFS 的层数统计要和队列当前层大小绑定。
+- Mark nodes as visited when enqueuing them in BFS to avoid adding the same node repeatedly.
+- Deep DFS recursion can overflow the call stack; mention that it can be replaced with an explicit stack.
+- Check grid bounds before accessing an array element.
+- In an undirected graph, account for the edge back to the parent.
+- When counting shortest-path steps, track levels using the queue size at the start of each level.
 
-## 推荐练习题
+## Recommended Practice Problems
 
-- [102. 二叉树的层序遍历](https://leetcode.cn/problems/binary-tree-level-order-traversal/)
-- [200. 岛屿数量](https://leetcode.cn/problems/number-of-islands/)
-- [695. 岛屿的最大面积](https://leetcode.cn/problems/max-area-of-island/)
-- [994. 腐烂的橘子](https://leetcode.cn/problems/rotting-oranges/)
-- [207. 课程表](https://leetcode.cn/problems/course-schedule/)
+- [102. Binary Tree Level Order Traversal](https://leetcode.cn/problems/binary-tree-level-order-traversal/)
+- [200. Number of Islands](https://leetcode.cn/problems/number-of-islands/)
+- [695. Max Area of Island](https://leetcode.cn/problems/max-area-of-island/)
+- [994. Rotting Oranges](https://leetcode.cn/problems/rotting-oranges/)
+- [207. Course Schedule](https://leetcode.cn/problems/course-schedule/)
 
 <!-- @include: @article-footer.snippet.md -->

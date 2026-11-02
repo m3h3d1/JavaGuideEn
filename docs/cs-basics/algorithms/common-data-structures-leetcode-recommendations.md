@@ -1,107 +1,107 @@
 ---
-title: 常见数据结构经典 LeetCode 题目推荐
-description: 按数组、链表、栈、队列、哈希表、树、图、堆、Trie、并查集等结构整理 LeetCode 高频题，给出题型、模板、面试价值和复盘重点。
-category: 计算机基础
+title: Recommended LeetCode Problems for Common Data Structures
+description: A focused list of common LeetCode problems for arrays, linked lists, stacks, queues, hash tables, trees, graphs, heaps, tries, and union-find, with patterns, interview value, and review points.
+category: Computer Science Fundamentals
 tag:
-  - 算法
-  - 数据结构
+  - Algorithms
+  - Data Structures
   - LeetCode
 head:
   - - meta
     - name: keywords
-      content: LeetCode,数据结构,数组,链表,栈,队列,哈希表,二叉树,图,堆,Trie,并查集,题目推荐,刷题路线
+      content: LeetCode,data structures,arrays,linked lists,stacks,queues,hash tables,binary trees,graphs,heaps,tries,union-find,problem recommendations,study plan
 ---
 
-刷数据结构题，不建议只按难度从 Easy 刷到 Hard。更稳的方式是按结构建立题型：数组看下标和区间，链表看指针，栈队列看顺序约束，树图看遍历，堆看优先级，哈希表看快速定位。
+Don't work through data structure problems only by difficulty, from Easy to Hard. A steadier approach is to group them by structure: arrays involve indexes and ranges, linked lists involve pointers, stacks and queues enforce ordering, trees and graphs require traversal, heaps manage priority, and hash tables provide fast lookup.
 
-下面的题单控制在面试高频和模板代表题范围内。每类先做“必刷题”，再做“进阶题”。题目做完后，至少写下复杂度、边界样例和这题属于哪个模板。
+This list focuses on common interview problems and representative templates. Start with the core problems for each structure, then try the advanced ones. After each problem, record its complexity, edge cases, and pattern.
 
-## 怎么用这份题单
+## How to Use This List
 
-数据结构题不要只记结论。每刷一类题，先回到对应结构看一次“存储方式、核心操作、复杂度”，再动手写题。这样面试官追问 Java 集合、Redis、MySQL 索引或缓存场景时，答案不会只停在题解层面。
+Don't memorize answers in isolation. Before solving problems for a structure, review how it stores data, its core operations, and their complexity. This also helps with follow-up questions about Java collections, Redis, MySQL indexes, and caching.
 
-| 结构               | 先读什么                                                                                                                 | 刷题时重点看什么                       |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------- |
-| 数组、链表、栈队列 | [线性数据结构详解](../data-structure/linear-data-structure.md)、[双指针与滑动窗口](./two-pointers-and-sliding-window.md) | 下标、指针更新、入栈出栈时机           |
-| 哈希表             | [哈希表面试题总结](../data-structure/hash-table.md)                                                                      | key 的设计、计数时机、冲突和扩容       |
-| 树和图             | [树结构详解](../data-structure/tree.md)、[图详解](../data-structure/graph.md)、[DFS 与 BFS](./dfs-bfs.md)                | 递归返回值、访问标记、BFS 层数统计     |
-| 堆和 Top K         | [堆详解](../data-structure/heap.md)、[Top K 问题面试题总结](./top-k.md)                                                  | 堆大小、比较器、数据流场景             |
-| Trie 和并查集      | [Trie 前缀树面试题总结](../data-structure/trie.md)、[并查集面试题总结](../data-structure/union-find.md)                  | 节点结构、结束标记、路径压缩、连通判断 |
-| LRU                | [LRU 缓存面试题总结](../data-structure/lru-cache.md)                                                                     | 哈希表和双向链表如何保持 O(1)          |
+| Structure                                | Read first                                                                                                                                     | What to focus on                                                                 |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Arrays, linked lists, stacks, and queues | [Linear data structures](../data-structure/linear-data-structure.md), [two pointers and sliding windows](./two-pointers-and-sliding-window.md) | Indexes, pointer updates, and when to push or pop                                |
+| Hash tables                              | [Hash table interview questions](../data-structure/hash-table.md)                                                                              | Key design, counting, collisions, and resizing                                   |
+| Trees and graphs                         | [Trees](../data-structure/tree.md), [graphs](../data-structure/graph.md), [DFS and BFS](./dfs-bfs.md)                                          | Recursive return values, visited markers, and BFS level counts                   |
+| Heaps and Top K                          | [Heaps](../data-structure/heap.md), [Top K interview questions](./top-k.md)                                                                    | Heap size, comparators, and streaming data                                       |
+| Tries and union-find                     | [Trie interview questions](../data-structure/trie.md), [union-find interview questions](../data-structure/union-find.md)                       | Node structure, end markers, path compression, and connectivity                  |
+| LRU cache                                | [LRU cache interview questions](../data-structure/lru-cache.md)                                                                                | How a hash table and doubly linked list work together to provide O(1) operations |
 
-## 数组
+## Arrays
 
-| 题型     | 必刷题                                                                                          | 进阶题                                                                                                                                  | 面试价值         | 复盘重点                      |
-| -------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ----------------------------- |
-| 二分查找 | [704. 二分查找](https://leetcode.cn/problems/binary-search/)                                    | [34. 在排序数组中查找元素的第一个和最后一个位置](https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/) | 考循环条件和边界 | `left <= right`、左右边界更新 |
-| 原地修改 | [26. 删除有序数组中的重复项](https://leetcode.cn/problems/remove-duplicates-from-sorted-array/) | [80. 删除有序数组中的重复项 II](https://leetcode.cn/problems/remove-duplicates-from-sorted-array-ii/)                                   | 考双指针写法     | 慢指针含义、覆盖时机          |
-| 双指针   | [977. 有序数组的平方](https://leetcode.cn/problems/squares-of-a-sorted-array/)                  | [15. 三数之和](https://leetcode.cn/problems/3sum/)                                                                                      | 高频数组题       | 排序后去重、左右指针移动      |
-| 前缀和   | [303. 区域和检索 - 数组不可变](https://leetcode.cn/problems/range-sum-query-immutable/)         | [560. 和为 K 的子数组](https://leetcode.cn/problems/subarray-sum-equals-k/)                                                             | 子数组题入口     | 前缀和含义、哈希表计数        |
+| Pattern          | Core problems                                                                                                | Advanced problems                                                                                                                                    | Interview value                      | Review points                                 |
+| ---------------- | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | --------------------------------------------- |
+| Binary search    | [704. Binary Search](https://leetcode.cn/problems/binary-search/)                                            | [34. Find First and Last Position of Element in Sorted Array](https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/) | Tests loop conditions and boundaries | `left <= right`, boundary updates             |
+| In-place changes | [26. Remove Duplicates from Sorted Array](https://leetcode.cn/problems/remove-duplicates-from-sorted-array/) | [80. Remove Duplicates from Sorted Array II](https://leetcode.cn/problems/remove-duplicates-from-sorted-array-ii/)                                   | Tests two-pointer technique          | Slow pointer meaning, when to overwrite       |
+| Two pointers     | [977. Squares of a Sorted Array](https://leetcode.cn/problems/squares-of-a-sorted-array/)                    | [15. 3Sum](https://leetcode.cn/problems/3sum/)                                                                                                       | Common array problems                | Deduplication after sorting, pointer movement |
+| Prefix sums      | [303. Range Sum Query - Immutable](https://leetcode.cn/problems/range-sum-query-immutable/)                  | [560. Subarray Sum Equals K](https://leetcode.cn/problems/subarray-sum-equals-k/)                                                                    | A common subarray pattern            | Prefix sum meaning, hash table counts         |
 
-## 链表
+## Linked Lists
 
-| 题型     | 必刷题                                                                                          | 进阶题                                                                        | 面试价值         | 复盘重点                         |
-| -------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ---------------- | -------------------------------- |
-| 基础操作 | [707. 设计链表](https://leetcode.cn/problems/design-linked-list/)                               | [24. 两两交换链表中的节点](https://leetcode.cn/problems/swap-nodes-in-pairs/) | 考节点操作基本功 | 虚拟头节点、插入删除顺序         |
-| 链表反转 | [206. 反转链表](https://leetcode.cn/problems/reverse-linked-list/)                              | [92. 反转链表 II](https://leetcode.cn/problems/reverse-linked-list-ii/)       | 高频手写题       | `prev`、`cur`、`next` 的更新顺序 |
-| 快慢指针 | [141. 环形链表](https://leetcode.cn/problems/linked-list-cycle/)                                | [142. 环形链表 II](https://leetcode.cn/problems/linked-list-cycle-ii/)        | 常见追问题       | 相遇点和入环点推导               |
-| 删除节点 | [19. 删除链表的倒数第 N 个结点](https://leetcode.cn/problems/remove-nth-node-from-end-of-list/) | [61. 旋转链表](https://leetcode.cn/problems/rotate-list/)                     | 考边界处理       | 链表长度、头节点被删             |
+| Pattern                | Core problems                                                                                          | Advanced problems                                                                  | Interview value            | Review points                              |
+| ---------------------- | ------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------ |
+| Basic operations       | [707. Design Linked List](https://leetcode.cn/problems/design-linked-list/)                            | [24. Swap Nodes in Pairs](https://leetcode.cn/problems/swap-nodes-in-pairs/)       | Tests pointer manipulation | Dummy head, insertion and deletion order   |
+| Reversal               | [206. Reverse Linked List](https://leetcode.cn/problems/reverse-linked-list/)                          | [92. Reverse Linked List II](https://leetcode.cn/problems/reverse-linked-list-ii/) | Common live-coding problem | Update order for `prev`, `cur`, and `next` |
+| Fast and slow pointers | [141. Linked List Cycle](https://leetcode.cn/problems/linked-list-cycle/)                              | [142. Linked List Cycle II](https://leetcode.cn/problems/linked-list-cycle-ii/)    | Common follow-up problem   | Derive the meeting point and cycle entry   |
+| Deleting nodes         | [19. Remove Nth Node From End of List](https://leetcode.cn/problems/remove-nth-node-from-end-of-list/) | [61. Rotate List](https://leetcode.cn/problems/rotate-list/)                       | Tests edge-case handling   | List length, deleting the head             |
 
-## 栈与队列
+## Stacks and Queues
 
-| 题型     | 必刷题                                                                          | 进阶题                                                                                              | 面试价值        | 复盘重点                   |
-| -------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | --------------- | -------------------------- |
-| 结构模拟 | [232. 用栈实现队列](https://leetcode.cn/problems/implement-queue-using-stacks/) | [225. 用队列实现栈](https://leetcode.cn/problems/implement-stack-using-queues/)                     | 考结构理解      | 入队栈、出队栈职责         |
-| 括号匹配 | [20. 有效的括号](https://leetcode.cn/problems/valid-parentheses/)               | [394. 字符串解码](https://leetcode.cn/problems/decode-string/)                                      | 字符串栈题入口  | 什么时候入栈、什么时候弹栈 |
-| 单调栈   | [739. 每日温度](https://leetcode.cn/problems/daily-temperatures/)               | [84. 柱状图中最大的矩形](https://leetcode.cn/problems/largest-rectangle-in-histogram/)              | 中高频题型      | 栈中维护递增还是递减       |
-| 单调队列 | [239. 滑动窗口最大值](https://leetcode.cn/problems/sliding-window-maximum/)     | [862. 和至少为 K 的最短子数组](https://leetcode.cn/problems/shortest-subarray-with-sum-at-least-k/) | Hard 题常见模板 | 队首过期、队尾维护单调性   |
+| Pattern               | Core problems                                                                                   | Advanced problems                                                                                                 | Interview value                       | Review points                                                |
+| --------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------ |
+| Simulating structures | [232. Implement Queue using Stacks](https://leetcode.cn/problems/implement-queue-using-stacks/) | [225. Implement Stack using Queues](https://leetcode.cn/problems/implement-stack-using-queues/)                   | Tests understanding of the structures | Roles of the input and output stacks                         |
+| Matching parentheses  | [20. Valid Parentheses](https://leetcode.cn/problems/valid-parentheses/)                        | [394. Decode String](https://leetcode.cn/problems/decode-string/)                                                 | A common string-and-stack pattern     | When to push and pop                                         |
+| Monotonic stack       | [739. Daily Temperatures](https://leetcode.cn/problems/daily-temperatures/)                     | [84. Largest Rectangle in Histogram](https://leetcode.cn/problems/largest-rectangle-in-histogram/)                | Common medium and hard pattern        | Whether the stack is increasing or decreasing                |
+| Monotonic queue       | [239. Sliding Window Maximum](https://leetcode.cn/problems/sliding-window-maximum/)             | [862. Shortest Subarray with Sum at Least K](https://leetcode.cn/problems/shortest-subarray-with-sum-at-least-k/) | Common template for hard problems     | Expire items at the front; preserve monotonicity at the back |
 
-## 哈希表
+## Hash Tables
 
-| 题型          | 必刷题                                                                      | 进阶题                                                                                   | 面试价值     | 复盘重点                       |
-| ------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------ | ------------------------------ |
-| 快速查找      | [1. 两数之和](https://leetcode.cn/problems/two-sum/)                        | [49. 字母异位词分组](https://leetcode.cn/problems/group-anagrams/)                       | 哈希表入门   | key 的设计                     |
-| 计数          | [242. 有效的字母异位词](https://leetcode.cn/problems/valid-anagram/)        | [347. 前 K 个高频元素](https://leetcode.cn/problems/top-k-frequent-elements/)            | 高频统计题   | 数组计数和 Map 计数怎么选      |
-| 前缀和 + 哈希 | [560. 和为 K 的子数组](https://leetcode.cn/problems/subarray-sum-equals-k/) | [974. 和可被 K 整除的子数组](https://leetcode.cn/problems/subarray-sums-divisible-by-k/) | 子数组题常考 | 先查再加，避免把当前前缀算进去 |
-| 缓存结构      | [146. LRU 缓存](https://leetcode.cn/problems/lru-cache/)                    | [460. LFU 缓存](https://leetcode.cn/problems/lfu-cache/)                                 | 手写设计题   | 哈希表和双向链表协作           |
+| Pattern             | Core problems                                                                     | Advanced problems                                                                               | Interview value             | Review points                                           |
+| ------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------- | ------------------------------------------------------- |
+| Fast lookup         | [1. Two Sum](https://leetcode.cn/problems/two-sum/)                               | [49. Group Anagrams](https://leetcode.cn/problems/group-anagrams/)                              | Introduction to hash tables | Key design                                              |
+| Counting            | [242. Valid Anagram](https://leetcode.cn/problems/valid-anagram/)                 | [347. Top K Frequent Elements](https://leetcode.cn/problems/top-k-frequent-elements/)           | Common frequency counting   | When to use an array or a map                           |
+| Prefix sum and hash | [560. Subarray Sum Equals K](https://leetcode.cn/problems/subarray-sum-equals-k/) | [974. Subarray Sums Divisible by K](https://leetcode.cn/problems/subarray-sums-divisible-by-k/) | Common subarray question    | Look up before adding the current prefix                |
+| Cache design        | [146. LRU Cache](https://leetcode.cn/problems/lru-cache/)                         | [460. LFU Cache](https://leetcode.cn/problems/lfu-cache/)                                       | Common design exercise      | How the hash table and doubly linked list work together |
 
-## 二叉树
+## Binary Trees
 
-| 题型         | 必刷题                                                                                                                         | 进阶题                                                                                                                          | 面试价值   | 复盘重点                |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | ---------- | ----------------------- |
-| 遍历         | [144. 二叉树的前序遍历](https://leetcode.cn/problems/binary-tree-preorder-traversal/)                                          | [102. 二叉树的层序遍历](https://leetcode.cn/problems/binary-tree-level-order-traversal/)                                        | 树题基础   | 递归边界、队列层数      |
-| 路径问题     | [112. 路径总和](https://leetcode.cn/problems/path-sum/)                                                                        | [124. 二叉树中的最大路径和](https://leetcode.cn/problems/binary-tree-maximum-path-sum/)                                         | DFS 高频   | 返回值和全局答案分开    |
-| 构造树       | [105. 从前序与中序遍历序列构造二叉树](https://leetcode.cn/problems/construct-binary-tree-from-preorder-and-inorder-traversal/) | [106. 从中序与后序遍历序列构造二叉树](https://leetcode.cn/problems/construct-binary-tree-from-inorder-and-postorder-traversal/) | 考递归区间 | 下标范围别写乱          |
-| 最近公共祖先 | [236. 二叉树的最近公共祖先](https://leetcode.cn/problems/lowest-common-ancestor-of-a-binary-tree/)                             | [235. 二叉搜索树的最近公共祖先](https://leetcode.cn/problems/lowest-common-ancestor-of-a-binary-search-tree/)                   | 高频追问   | 普通树和 BST 的解法差异 |
+| Pattern                | Core problems                                                                                                                                             | Advanced problems                                                                                                                                           | Interview value        | Review points                                 |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | --------------------------------------------- |
+| Traversal              | [144. Binary Tree Preorder Traversal](https://leetcode.cn/problems/binary-tree-preorder-traversal/)                                                       | [102. Binary Tree Level Order Traversal](https://leetcode.cn/problems/binary-tree-level-order-traversal/)                                                   | Tree fundamentals      | Recursive base cases, queue levels            |
+| Path problems          | [112. Path Sum](https://leetcode.cn/problems/path-sum/)                                                                                                   | [124. Binary Tree Maximum Path Sum](https://leetcode.cn/problems/binary-tree-maximum-path-sum/)                                                             | Common DFS pattern     | Separate return values from the global answer |
+| Building a tree        | [105. Construct Binary Tree from Preorder and Inorder Traversal](https://leetcode.cn/problems/construct-binary-tree-from-preorder-and-inorder-traversal/) | [106. Construct Binary Tree from Inorder and Postorder Traversal](https://leetcode.cn/problems/construct-binary-tree-from-inorder-and-postorder-traversal/) | Tests recursive ranges | Keep index ranges correct                     |
+| Lowest common ancestor | [236. Lowest Common Ancestor of a Binary Tree](https://leetcode.cn/problems/lowest-common-ancestor-of-a-binary-tree/)                                     | [235. Lowest Common Ancestor of a Binary Search Tree](https://leetcode.cn/problems/lowest-common-ancestor-of-a-binary-search-tree/)                         | Common follow-up       | Differences between a general tree and a BST  |
 
-## 图
+## Graphs
 
-| 题型         | 必刷题                                                             | 进阶题                                                                  | 面试价值     | 复盘重点               |
-| ------------ | ------------------------------------------------------------------ | ----------------------------------------------------------------------- | ------------ | ---------------------- |
-| 网格 DFS/BFS | [200. 岛屿数量](https://leetcode.cn/problems/number-of-islands/)   | [695. 岛屿的最大面积](https://leetcode.cn/problems/max-area-of-island/) | 图搜索入门   | 越界、访问标记         |
-| 拓扑排序     | [207. 课程表](https://leetcode.cn/problems/course-schedule/)       | [210. 课程表 II](https://leetcode.cn/problems/course-schedule-ii/)      | 依赖关系题   | 入度数组、队列         |
-| 最短路径     | [994. 腐烂的橘子](https://leetcode.cn/problems/rotting-oranges/)   | [127. 单词接龙](https://leetcode.cn/problems/word-ladder/)              | BFS 层序应用 | 每层步数统计           |
-| 连通性       | [547. 省份数量](https://leetcode.cn/problems/number-of-provinces/) | [684. 冗余连接](https://leetcode.cn/problems/redundant-connection/)     | 并查集入口   | `find` 和 `union` 模板 |
+| Pattern          | Core problems                                                                 | Advanced problems                                                               | Interview value              | Review points                |
+| ---------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------- | ---------------------------- |
+| Grid DFS/BFS     | [200. Number of Islands](https://leetcode.cn/problems/number-of-islands/)     | [695. Max Area of Island](https://leetcode.cn/problems/max-area-of-island/)     | Introduction to graph search | Boundaries, visited markers  |
+| Topological sort | [207. Course Schedule](https://leetcode.cn/problems/course-schedule/)         | [210. Course Schedule II](https://leetcode.cn/problems/course-schedule-ii/)     | Dependency problems          | Indegree array, queue        |
+| Shortest path    | [994. Rotting Oranges](https://leetcode.cn/problems/rotting-oranges/)         | [127. Word Ladder](https://leetcode.cn/problems/word-ladder/)                   | BFS by levels                | Count steps per level        |
+| Connectivity     | [547. Number of Provinces](https://leetcode.cn/problems/number-of-provinces/) | [684. Redundant Connection](https://leetcode.cn/problems/redundant-connection/) | Introduction to union-find   | `find` and `union` templates |
 
-## 堆
+## Heaps
 
-| 题型     | 必刷题                                                                                        | 进阶题                                                                                      | 面试价值    | 复盘重点           |
-| -------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ----------- | ------------------ |
-| 第 K 大  | [215. 数组中的第 K 个最大元素](https://leetcode.cn/problems/kth-largest-element-in-an-array/) | [703. 数据流中的第 K 大元素](https://leetcode.cn/problems/kth-largest-element-in-a-stream/) | Top K 高频  | 小顶堆大小保持为 K |
-| 频率统计 | [347. 前 K 个高频元素](https://leetcode.cn/problems/top-k-frequent-elements/)                 | [692. 前 K 个高频单词](https://leetcode.cn/problems/top-k-frequent-words/)                  | 哈希表 + 堆 | 比较器写法         |
-| 双堆     | [295. 数据流的中位数](https://leetcode.cn/problems/find-median-from-data-stream/)             | [480. 滑动窗口中位数](https://leetcode.cn/problems/sliding-window-median/)                  | 进阶设计题  | 大顶堆和小顶堆平衡 |
+| Pattern          | Core problems                                                                                         | Advanced problems                                                                                     | Interview value         | Review points                     |
+| ---------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------- | --------------------------------- |
+| Kth largest      | [215. Kth Largest Element in an Array](https://leetcode.cn/problems/kth-largest-element-in-an-array/) | [703. Kth Largest Element in a Stream](https://leetcode.cn/problems/kth-largest-element-in-a-stream/) | Common Top K pattern    | Keep the min-heap size at K       |
+| Frequency counts | [347. Top K Frequent Elements](https://leetcode.cn/problems/top-k-frequent-elements/)                 | [692. Top K Frequent Words](https://leetcode.cn/problems/top-k-frequent-words/)                       | Hash table and heap     | Comparator implementation         |
+| Two heaps        | [295. Find Median from Data Stream](https://leetcode.cn/problems/find-median-from-data-stream/)       | [480. Sliding Window Median](https://leetcode.cn/problems/sliding-window-median/)                     | Advanced design problem | Balance the max-heap and min-heap |
 
-## Trie 与并查集
+## Tries and Union-Find
 
-| 结构       | 必刷题                                                                     | 进阶题                                                                                                   | 面试价值     | 复盘重点               |
-| ---------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ------------ | ---------------------- |
-| Trie       | [208. 实现 Trie](https://leetcode.cn/problems/implement-trie-prefix-tree/) | [211. 添加与搜索单词](https://leetcode.cn/problems/design-add-and-search-words-data-structure/)          | 字符串集合题 | 节点结构、结束标记     |
-| Trie + DFS | [212. 单词搜索 II](https://leetcode.cn/problems/word-search-ii/)           | [648. 单词替换](https://leetcode.cn/problems/replace-words/)                                             | 中高频题     | 前缀剪枝               |
-| 并查集     | [547. 省份数量](https://leetcode.cn/problems/number-of-provinces/)         | [1319. 连通网络的操作次数](https://leetcode.cn/problems/number-of-operations-to-make-network-connected/) | 连通性模板   | 路径压缩               |
-| 并查集判环 | [684. 冗余连接](https://leetcode.cn/problems/redundant-connection/)        | [990. 等式方程的可满足性](https://leetcode.cn/problems/satisfiability-of-equality-equations/)            | 图题常见变体 | 先合并等式，再检查冲突 |
+| Structure                  | Core problems                                                                                 | Advanced problems                                                                                                                    | Interview value                | Review points                                    |
+| -------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------ | ------------------------------------------------ |
+| Trie                       | [208. Implement Trie (Prefix Tree)](https://leetcode.cn/problems/implement-trie-prefix-tree/) | [211. Design Add and Search Words Data Structure](https://leetcode.cn/problems/design-add-and-search-words-data-structure/)          | String set problems            | Node structure, end marker                       |
+| Trie and DFS               | [212. Word Search II](https://leetcode.cn/problems/word-search-ii/)                           | [648. Replace Words](https://leetcode.cn/problems/replace-words/)                                                                    | Common medium and hard pattern | Prune by prefix                                  |
+| Union-find                 | [547. Number of Provinces](https://leetcode.cn/problems/number-of-provinces/)                 | [1319. Number of Operations to Make Network Connected](https://leetcode.cn/problems/number-of-operations-to-make-network-connected/) | Connectivity template          | Path compression                                 |
+| Union-find cycle detection | [684. Redundant Connection](https://leetcode.cn/problems/redundant-connection/)               | [990. Satisfiability of Equality Equations](https://leetcode.cn/problems/satisfiability-of-equality-equations/)                      | Common graph variation         | Merge equalities first, then check for conflicts |
 
-## 复习路线入口
+## Review Roadmap
 
-这篇文章只保留数据结构相关题单。7 天复习路线和 30 天复习路线统一维护在[数据结构复习总览](../data-structure/README.md)，避免题单文章和总览页重复维护同一套计划。
+This page contains only data structure problems. The [data structure review guide](../data-structure/README.md) contains the 7-day and 30-day study plans, so the same plan doesn't need to be maintained in multiple problem lists.
 
 <!-- @include: @article-footer.snippet.md -->

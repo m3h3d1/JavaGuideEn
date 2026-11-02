@@ -1,141 +1,141 @@
 ---
-title: 哈希表面试题总结：哈希冲突、扩容与 Java HashMap
-description: 哈希表面试题总结，讲解哈希函数、哈希冲突、拉链法、开放寻址法、负载因子、扩容、Java HashMap 和 LeetCode 高频题。
-category: 计算机基础
+title: "Hash Table Interview Questions: Collisions, Resizing, and Java HashMap"
+description: Review hash functions, collisions, chaining, open addressing, load factors, resizing, Java HashMap, and common LeetCode problems.
+category: Computer Science Basics
 tag:
-  - 数据结构
+  - Data Structures
 head:
   - - meta
     - name: keywords
-      content: 哈希表,HashMap,哈希函数,哈希冲突,拉链法,开放寻址法,负载因子,扩容,Java集合,数据结构面试题
+      content: hash tables,HashMap,hash functions,hash collisions,chaining,open addressing,load factor,resizing,Java collections,data structure interview questions
 ---
 
-哈希表（Hash Table，也叫散列表）的面试价值很高，因为它一头连着算法题里的快速查找和计数，另一头连着 Java `HashMap`、缓存、去重和分布式系统里的分片路由。
+Hash tables are common in interviews because they connect fast lookup and counting in algorithm problems with practical uses such as Java `HashMap`, caching, deduplication, and sharding in distributed systems.
 
-这个问题问的是：如何把一个 key 快速映射到数组下标，并在冲突、扩容和极端数据下仍然保持可接受的查询效率。
+The key question is how to map a key to an array index quickly while maintaining acceptable lookup performance despite collisions, resizing, and pathological inputs.
 
-文章内容概览：
+This article covers:
 
-1. 什么是哈希表？
-2. 哈希表怎么从 key 定位到数组下标？
-3. 哈希冲突、负载因子和扩容分别解决什么问题？
-4. Java `HashMap` 和普通哈希表有什么关系？
-5. 哈希表在算法题和工程场景中怎么用？
+1. What is a hash table?
+2. How does a hash table map a key to an array index?
+3. What problems do collisions, load factors, and resizing address?
+4. How is Java `HashMap` related to a general hash table?
+5. How are hash tables used in algorithms and production systems?
 
-![哈希表通过哈希函数把键映射到数组位置的结构示意图](../images/shared/hash-table.png)
+![A hash function maps a key to an array position](../images/shared/hash-table.png)
 
-## 什么是哈希表？
+## What Is a Hash Table?
 
-哈希表是一种用来存储 key-value 映射关系的数据结构。我们平时说的 Map、Dictionary、Associative Array，本质上都可以用哈希表来实现。
+A hash table stores key-value mappings. Maps, dictionaries, and associative arrays can all be implemented using hash tables.
 
-如果 key 是连续整数，比如学生编号刚好是 `0` 到 `999`，直接用数组就能做到 `students[id]` 这种 `O(1)` 访问。但真实业务里的 key 通常不是这么规整：可能是字符串、用户 ID、订单号、URL，也可能是自定义对象。哈希表要做的事情，就是先把这些不同类型、不同长度的 key 通过哈希函数转换成一个整数，再把这个整数映射到数组下标。
+If keys are consecutive integers, such as student IDs from `0` to `999`, an array provides `O(1)` access through `students[id]`. Real-world keys are less regular: they may be strings, user IDs, order numbers, URLs, or custom objects. A hash table uses a hash function to convert each key into an integer, then maps that integer to an array index.
 
-可以把哈希表拆成三层来看：
+You can think of a hash table as having three parts:
 
-1. **数组**：真正存放数据的位置，也常被称为桶（bucket）。
-2. **哈希函数**：负责把 key 转换成哈希值。
-3. **冲突解决策略**：当多个 key 落到同一个桶时，决定这些 key 怎么继续存。
+1. **Array:** Stores the data and is often described as a set of buckets.
+2. **Hash function:** Converts a key into a hash value.
+3. **Collision-resolution strategy:** Determines how to store keys that map to the same bucket.
 
-所以，哈希表不是“完全没有查找过程”，而是通过哈希函数把查找范围大幅缩小：理想情况下，一次定位就能找到目标桶；发生冲突时，再在桶内部做少量比较。
+A hash table does not eliminate searching entirely. The hash function narrows the search: ideally, the target bucket is found immediately; if collisions occur, only a few comparisons are needed within that bucket.
 
-## 为什么需要哈希表？
+## Why Use a Hash Table?
 
-假设要判断一个 URL 是否已经爬取过，最直接的方式是把爬过的 URL 放到列表里，每来一个新 URL 就从头扫一遍。数据量很小时问题不大，但如果已经爬了几百万个 URL，每次都线性扫描，性能很快就扛不住。
+Suppose you need to check whether a URL has already been crawled. A simple approach stores crawled URLs in a list and scans it for each new URL. This works for small datasets, but scanning millions of URLs each time quickly becomes too slow.
 
-哈希表的思路是用空间换时间：多开一块数组空间，把 URL 通过哈希函数分散到不同桶里。查询时不再从头遍历所有 URL，而是先计算哈希值，直接跳到对应桶附近查找。
+Hash tables trade space for time: they use an array to distribute URLs across buckets. Instead of scanning every URL, a lookup computes a hash and jumps to the relevant bucket.
 
-这也是哈希表适合做查找、计数、去重、缓存索引的原因。它不关心元素之间的大小关系，也不保证有序；它关心的是“给定 key，能不能尽快找到对应的 value”。
+This makes hash tables useful for lookup, counting, deduplication, and cache indexes. They do not order elements or preserve their relative values; their goal is to find a value quickly given a key.
 
-## 哈希函数要解决什么问题？
+## What Should a Hash Function Do?
 
-哈希函数的目标不是把 key 变得神秘，而是尽量把 key 均匀地分散到数组里。一个好的哈希函数通常要满足三个要求：
+The goal of a hash function is to distribute keys evenly across the array. A good hash function should generally meet three requirements:
 
-| 要求       | 含义                                             |
-| ---------- | ------------------------------------------------ |
-| 稳定       | 同一个 key 多次计算得到的哈希值应该一致          |
-| 计算快     | 哈希函数本身不能太慢，否则会抵消哈希表的性能优势 |
-| 分布尽量散 | 不同 key 尽量落到不同位置，减少哈希冲突          |
+| Requirement      | Meaning                                                                                 |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| Stable           | The same key should produce the same hash value each time.                              |
+| Fast             | The hash function should not be so slow that it erases the table's performance benefit. |
+| Well distributed | Different keys should spread across the array to reduce collisions.                     |
 
-需要注意的是，普通哈希表里的哈希函数和密码学哈希不是一回事。哈希表更关注速度和分布质量；密码学哈希更关注抗碰撞、抗篡改等安全性质。
+Note that hash functions for hash tables differ from cryptographic hash functions. Hash tables prioritize speed and distribution; cryptographic hashes prioritize security properties such as collision and tamper resistance.
 
-在 Java 里，自定义对象作为 `HashMap` 的 key 时，`hashCode()` 和 `equals()` 必须配合好：如果两个对象通过 `equals()` 判断相等，它们的 `hashCode()` 也必须相同；但两个对象的 `hashCode()` 相同，不代表它们一定相等。这一点正是哈希冲突会存在的根源之一。
+In Java, custom objects used as `HashMap` keys must implement `hashCode()` and `equals()` consistently: if two objects are equal according to `equals()`, they must have the same hash code. The reverse is not required, which is one reason hash collisions occur.
 
-## 面试考察重点
+## Interview Topics
 
-- 哈希函数负责把 key 映射成数组下标。
-- 哈希冲突无法完全避免，只能设计策略处理。
-- 哈希表平均查询、插入、删除是 `O(1)`，最坏情况可能退化。
-- Java `HashMap` 使用数组 + 链表 + 红黑树，JDK 8 后链表过长会树化。
-- 哈希表常用于快速查找、计数、去重、缓存索引。
+- A hash function maps a key to an array index.
+- Collisions cannot be completely avoided, so hash tables need a strategy to handle them.
+- Lookup, insertion, and deletion take `O(1)` on average, but can degrade in the worst case.
+- Java `HashMap` uses an array, linked lists, and red-black trees; since JDK 8, long chains may be converted to trees.
+- Hash tables are commonly used for fast lookup, counting, deduplication, and cache indexes.
 
-## 哈希表怎么工作？
+## How Does a Hash Table Work?
 
-以插入一个 key-value 为例，哈希表通常会做这几步：
+When inserting a key-value pair, a hash table generally does the following:
 
-1. 对 key 计算哈希值。
-2. 根据数组长度把哈希值映射成下标。
-3. 如果该位置为空，直接放入。
-4. 如果发生冲突，按冲突解决策略继续处理。
+1. Compute the key's hash value.
+2. Map the hash value to an index based on the array length.
+3. Insert the pair if that position is empty.
+4. If there is a collision, apply the collision-resolution strategy.
 
 ```java
 int index = hash(key) & (table.length - 1);
 ```
 
-`HashMap` 的容量是 2 的幂时，可以用位运算替代取模。位运算更快，也方便扩容后重新分布。
+When `HashMap` has a capacity that is a power of two, it can use a bitwise operation instead of modulo. This is faster and also makes redistribution during resizing easier.
 
-这里的 `hash(key)` 通常不是直接使用对象原始的 `hashCode()`，还会做一次扰动，让高位信息也参与到低位下标计算中。原因也很好理解：当数组长度是 2 的幂时，`length - 1` 的二进制低位全是 1，直接 `&` 会更依赖哈希值低位。如果低位分布不好，冲突就会更集中。
+Here, `hash(key)` usually does not use the object's raw `hashCode()` directly. It applies a bit-spreading step so that high-order bits also affect the lower bits used to calculate the index. When the array length is a power of two, the lower bits of `length - 1` are all 1s, so a direct `&` relies heavily on the hash value's lower bits. Poor distribution in those bits can concentrate collisions.
 
-## 哈希冲突怎么解决？
+## How Are Hash Collisions Handled?
 
-| 方法       | 思路                     | 典型应用         | 注意点                   |
-| ---------- | ------------------------ | ---------------- | ------------------------ |
-| 拉链法     | 数组位置上挂链表或树     | Java `HashMap`   | 链表过长会影响查询       |
-| 开放寻址法 | 冲突后继续探测下一个位置 | 一些高性能哈希表 | 删除和负载因子处理更复杂 |
-| 再哈希     | 冲突后换一个哈希函数     | 理论方案较常见   | 实现成本更高             |
+| Method          | Approach                                       | Typical use                       | Tradeoff                                             |
+| --------------- | ---------------------------------------------- | --------------------------------- | ---------------------------------------------------- |
+| Chaining        | Store a list or tree at each array position    | Java `HashMap`                    | Long lists can slow lookups                          |
+| Open addressing | Probe another array position after a collision | Some high-performance hash tables | Deletion and load-factor management are more complex |
+| Rehashing       | Use another hash function after a collision    | Common in theoretical discussions | More complex to implement                            |
 
-Java `HashMap` 主要使用拉链法。JDK 8 开始，当链表长度达到阈值并且数组容量足够大时，会把链表转换成红黑树，降低极端冲突下的查询成本。
+Java `HashMap` primarily uses chaining. Since JDK 8, when a list reaches a threshold and the array is large enough, it may be converted to a red-black tree to reduce lookup cost under heavy collisions.
 
-拉链法的优点是实现直观，删除也比较容易。数组中的每个桶不只放一个元素，而是挂一条链表，冲突的元素追加到这条链上。查询时先通过哈希定位桶，再在桶里的链表或树中比较 key。
+Chaining is straightforward to implement and makes deletion relatively easy. Each bucket can hold a linked list, with colliding elements added to that list. A lookup first finds the bucket by hash, then compares keys in its list or tree.
 
-开放寻址法则不额外挂链表，所有元素都放在数组内部。发生冲突后，它会按照某种探测规则继续找下一个可用位置，比如线性探测、二次探测、双重哈希。它的好处是内存局部性通常更好，但删除元素、控制负载因子和处理连续聚集会更麻烦。
+Open addressing stores every element directly in the array instead of using linked lists. After a collision, it probes for another available position using a rule such as linear probing, quadratic probing, or double hashing. It often has better memory locality, but deletion, load-factor management, and clustering are more complicated.
 
-## 负载因子和扩容
+## Load Factor and Resizing
 
-负载因子表示哈希表使用程度：
+The load factor measures how full a hash table is:
 
 ```text
-负载因子 = 元素数量 / 数组容量
+Load factor = number of elements / array capacity
 ```
 
-`HashMap` 默认负载因子是 `0.75`。当元素数量超过 `capacity * loadFactor` 时触发扩容，容量通常变为原来的 2 倍。
+`HashMap` has a default load factor of `0.75`. When the number of elements exceeds `capacity * loadFactor`, it resizes, usually doubling its capacity.
 
-扩容会带来一次 rehash 成本。面试里可以这样回答：哈希表单次插入平均是 `O(1)`，但触发扩容的那次会搬迁元素；从摊还角度看，多次插入仍然可以看作平均 `O(1)`。
+Resizing incurs a rehashing cost. In an interview, explain that insertion is `O(1)` on average, although an insertion that triggers resizing must move elements. Amortized across many insertions, the average cost remains `O(1)`.
 
-负载因子不能只看“空间利用率”。负载因子越高，数组越满，空间越省，但冲突概率也会上升；负载因子越低，冲突少一些，但会浪费更多桶位。`0.75` 是 Java `HashMap` 在时间和空间之间做的一个经验折中。
+The load factor is not just about space utilization. A higher load factor saves space but increases the chance of collisions; a lower one reduces collisions but leaves more buckets unused. `0.75` is Java `HashMap`'s practical balance between time and space.
 
-## 哈希表为什么平均是 O(1)？
+## Why Is Hash Table Access O(1) on Average?
 
-哈希表的 `O(1)` 说的是平均情况或者期望情况，不是所有输入下的绝对保证。
+The `O(1)` complexity describes average or expected performance, not a guarantee for every possible input.
 
-在哈希函数分布比较均匀、负载因子控制得当时，元素会比较分散，每个桶里的元素数量很少。因此查询时的主要成本就是：计算哈希值、定位数组下标、在桶里做少量比较，这些操作可以看作常数级。
+With a well-distributed hash function and a controlled load factor, elements are spread across buckets, leaving only a few values in each one. Lookup mainly computes a hash, finds an array index, and performs a small number of comparisons, which is treated as constant time.
 
-但如果大量 key 落到同一个桶，哈希表就会退化。使用拉链法时，桶内链表太长，查询会接近 `O(n)`；JDK 8 之后的 `HashMap` 会在满足条件时树化，把极端冲突下的桶内查询成本降到 `O(logn)` 级别，但这不代表哈希表永远不会受冲突影响。
+If many keys map to the same bucket, performance degrades. With chaining, a long list can make lookup approach `O(n)`. Since JDK 8, `HashMap` can convert a bucket to a tree under certain conditions, reducing lookup in that bucket to about `O(log n)`. Collisions can still affect performance.
 
-## 和 Java HashMap 的关系
+## Hash Tables and Java HashMap
 
-`HashMap` 常见追问：
+Common follow-up questions about `HashMap` include:
 
-- 初始容量为什么建议设置成 2 的幂？
-- 默认负载因子为什么是 `0.75`？
-- JDK 8 为什么引入红黑树？
-- `HashMap` 为什么线程不安全？
-- `HashMap` 和 `ConcurrentHashMap` 有什么区别？
+- Why is the initial capacity usually set to a power of two?
+- Why is the default load factor `0.75`?
+- Why did JDK 8 introduce red-black trees?
+- Why is `HashMap` not thread-safe?
+- How do `HashMap` and `ConcurrentHashMap` differ?
 
-这些问题已经超出纯数据结构，但底层仍然是哈希表：数组负责定位，链表或红黑树负责处理冲突，扩容负责控制负载。
+These questions go beyond data structure basics, but the underlying structure is still a hash table: the array locates entries, lists or red-black trees handle collisions, and resizing controls the load.
 
-## 常见算法题模板
+## Common Algorithm Pattern
 
-两数之和：
+Two Sum:
 
 ```java
 int[] twoSum(int[] nums, int target) {
@@ -151,19 +151,19 @@ int[] twoSum(int[] nums, int target) {
 }
 ```
 
-这段代码体现了哈希表最常见的用法：用空间换时间，把一次查找从 `O(n)` 降到平均 `O(1)`。
+This code shows a common use for hash tables: trading space for time to reduce a lookup from `O(n)` to `O(1)` on average.
 
-## 代表题精讲：和为 K 的子数组
+## Example: Subarray Sum Equals K
 
-[560. 和为 K 的子数组](https://leetcode.cn/problems/subarray-sum-equals-k/) 很适合用来理解“前缀和 + 哈希表”。题目要求统计连续子数组和等于 `k` 的个数。
+[560. Subarray Sum Equals K](https://leetcode.cn/problems/subarray-sum-equals-k/) is a good example of using prefix sums with a hash table. The task is to count contiguous subarrays whose sum is `k`.
 
-如果只枚举左右端点，复杂度是 `O(n^2)`。换个角度看，假设当前前缀和是 `sum`，想找到一个之前的前缀和 `prev`，使得：
+Enumerating every pair of endpoints takes `O(n^2)`. Instead, let `sum` be the current prefix sum and look for an earlier prefix sum `prev` such that:
 
 ```text
 sum - prev = k
 ```
 
-也就是 `prev = sum - k`。所以只要用哈希表记录每个前缀和出现过几次，就能在遍历到当前位置时立刻知道有多少个子数组以当前位置结尾、和为 `k`。
+That gives `prev = sum - k`. Store the frequency of each prefix sum in a hash table; at each position, this tells us how many subarrays ending there sum to `k`.
 
 ```java
 int subarraySum(int[] nums, int k) {
@@ -181,55 +181,55 @@ int subarraySum(int[] nums, int k) {
 }
 ```
 
-这里 `count.put(0, 1)` 很重要，它表示空前缀出现过一次。这样当从数组开头到当前位置的和刚好等于 `k` 时，也能被统计到。
+The `count.put(0, 1)` initialization is important: it records the empty prefix once. This lets the algorithm count a subarray from the start of the array when its sum equals `k`.
 
-另一个易错点是“先查再加”。如果先把当前 `sum` 加进哈希表，再查 `sum - k`，在 `k = 0` 时可能把当前前缀自己算进去，导致答案偏大。
+Another common pitfall is the order of operations: look up first, then increment the count. If the current `sum` is added to the map before checking `sum - k`, then when `k = 0` the current prefix may be paired with itself, producing an incorrect count.
 
-比如 `nums = [1]`、`k = 0`。正确的“先查再加”不会找到和为 0 的非空子数组；如果先把当前前缀和 `1` 加进去，再查 `sum - k = 1`，就会把当前前缀和自己配对，错误地多算 1 次。
+For example, with `nums = [1]` and `k = 0`, the correct lookup-before-increment order finds no non-empty subarray with sum 0. If the current prefix sum `1` is added first, then looking up `sum - k = 1` pairs the prefix with itself and incorrectly counts one subarray.
 
-## Java HashMap 面试追问
+## Java HashMap Follow-Up Questions
 
-哈希表文章只讲概念还不够，Java 后端面试里经常会继续追问 `HashMap`。可以按下面的层次准备：
+Concepts alone may not be enough in a Java backend interview; candidates are often asked follow-up questions about `HashMap`. Prepare along these lines:
 
-| 追问                          | 回答重点                                                              |
-| ----------------------------- | --------------------------------------------------------------------- |
-| 为什么容量通常是 2 的幂？     | 方便用 `hash & (length - 1)` 定位，同时扩容后元素迁移更容易           |
-| 为什么默认负载因子是 `0.75`？ | 在空间利用率和冲突概率之间取折中，太小浪费空间，太大冲突增多          |
-| 为什么 JDK 8 引入红黑树？     | 极端冲突时链表查询会退化，树化后能把查询成本从链表长度级别降下来      |
-| 为什么 `HashMap` 线程不安全？ | 多线程并发修改会破坏结构一致性，读写也没有可见性和互斥保证            |
-| 自定义 key 要注意什么？       | `equals()` 和 `hashCode()` 要一致，参与计算的字段不要在放入后再被修改 |
+| Question                                | Key point                                                                                                         |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Why is capacity usually a power of two? | It enables index calculation with `hash & (length - 1)` and simplifies redistribution during resizing.            |
+| Why is the default load factor `0.75`?  | It balances space use and collision probability; too low wastes space, while too high increases collisions.       |
+| Why did JDK 8 add red-black trees?      | Tree bins reduce lookup cost when collisions make a linked list too long.                                         |
+| Why is `HashMap` not thread-safe?       | Concurrent modifications can corrupt its structure; it also provides no synchronization or visibility guarantees. |
+| What should custom keys account for?    | `equals()` and `hashCode()` must be consistent, and fields used by them should not change after insertion.        |
 
-面试里不用把源码细节全部背下来，但要讲清楚一条主线：数组定位、冲突处理、扩容迁移、极端冲突优化，这四件事共同决定了 `HashMap` 的性能表现。
+You do not need to memorize every source-code detail. Explain the main ideas: array indexing, collision handling, redistribution during resizing, and optimization for severe collisions. Together, these determine `HashMap` performance.
 
-## 易错点
+## Common Pitfalls
 
-- 哈希表平均 `O(1)` 不等于任何情况下都是 `O(1)`。
-- 自定义对象作为 key 时，要正确重写 `equals()` 和 `hashCode()`。
-- 可变对象不适合直接作为哈希表 key。
-- 统计频率时，数组计数比 `HashMap` 更适合字符集很小的场景。
-- 哈希表能加速查找，但会带来额外空间。
+- Average `O(1)` does not mean `O(1)` for every operation in every case.
+- Override `equals()` and `hashCode()` consistently when using custom objects as keys.
+- Mutable objects are usually poor hash table keys.
+- For frequency counts over a small, fixed character set, an array may be more suitable than `HashMap`.
+- Hash tables speed up lookup but require additional space.
 
-## 高频问题自测
+## Review Questions
 
-- 哈希表为什么平均查询是 `O(1)`？什么情况下会退化？
-- 拉链法和开放寻址法有什么区别？
-- `HashMap` 为什么需要扩容？扩容成本怎么理解？
-- 为什么自定义对象作为 key 时要同时重写 `equals()` 和 `hashCode()`？
-- 前缀和 + 哈希表为什么要“先查再加”？
+- Why is hash table lookup `O(1)` on average, and when can it degrade?
+- How do chaining and open addressing differ?
+- Why does `HashMap` resize, and how should you understand its cost?
+- Why should custom key classes implement both `equals()` and `hashCode()`?
+- Why should the prefix-sum algorithm look up before incrementing the count?
 
-## 推荐练习题
+## Practice Problems
 
-- [1. 两数之和](https://leetcode.cn/problems/two-sum/)
-- [242. 有效的字母异位词](https://leetcode.cn/problems/valid-anagram/)
-- [49. 字母异位词分组](https://leetcode.cn/problems/group-anagrams/)
-- [560. 和为 K 的子数组](https://leetcode.cn/problems/subarray-sum-equals-k/)
-- [146. LRU 缓存](https://leetcode.cn/problems/lru-cache/)
+- [1. Two Sum](https://leetcode.cn/problems/two-sum/)
+- [242. Valid Anagram](https://leetcode.cn/problems/valid-anagram/)
+- [49. Group Anagrams](https://leetcode.cn/problems/group-anagrams/)
+- [560. Subarray Sum Equals K](https://leetcode.cn/problems/subarray-sum-equals-k/)
+- [146. LRU Cache](https://leetcode.cn/problems/lru-cache/)
 
-## 参考资料
+## References
 
-- [Algorithms, 4th Edition：Hash Tables](https://algs4.cs.princeton.edu/34hash/)
-- [Java SE 21 API：HashMap](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/HashMap.html)
-- [OpenJDK：HashMap 源码](https://github.com/openjdk/jdk/blob/master/src/java.base/share/classes/java/util/HashMap.java)
-- [Java SE 21 API：Object#hashCode](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#hashCode%28%29)
+- [Algorithms, 4th Edition: Hash Tables](https://algs4.cs.princeton.edu/34hash/)
+- [Java SE 21 API: HashMap](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/HashMap.html)
+- [OpenJDK: HashMap source](https://github.com/openjdk/jdk/blob/master/src/java.base/share/classes/java/util/HashMap.java)
+- [Java SE 21 API: Object#hashCode](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html#hashCode%28%29)
 
 <!-- @include: @article-footer.snippet.md -->

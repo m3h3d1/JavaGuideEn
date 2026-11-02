@@ -1,189 +1,189 @@
 ---
-title: 图详解（DFS、BFS、最短路径）
-description: 介绍图的基本概念与常用表示，结合 DFS/BFS 等核心算法与应用场景，掌握图论入门必备知识。
-category: 计算机基础
+title: "Graphs: DFS, BFS, and Shortest Paths"
+description: Learn graph fundamentals and common representations, then explore core algorithms such as DFS and BFS and their practical applications.
+category: Computer Science Basics
 tag:
-  - 数据结构
+  - Data Structures
 head:
   - - meta
     - name: keywords
-      content: 图,邻接表,邻接矩阵,DFS,BFS,度,有向图,无向图,连通性
+      content: graphs,adjacency lists,adjacency matrices,DFS,BFS,degree,directed graphs,undirected graphs,connectivity
 ---
 
-# 图
+# Graphs
 
-图是一种较为复杂的非线性结构。**为啥说其较为复杂呢？**
+Graphs are a relatively complex non-linear data structure. **What makes them complex?**
 
-根据前面的内容，我们知道：
+As discussed earlier:
 
-- 线性数据结构的元素满足唯一的线性关系，每个元素（除第一个和最后一个外）只有一个直接前趋和一个直接后继。
-- 树形数据结构的元素之间有着明显的层次关系。
+- Elements in a linear data structure follow a single linear relationship. Each element, except the first and last, has one immediate predecessor and one immediate successor.
+- Elements in a tree have a clear hierarchical relationship.
 
-但是，图形结构的元素之间的关系是任意的。
+In a graph, however, elements can have arbitrary relationships.
 
-**何为图呢？** 简单来说，图就是由顶点的有穷非空集合和顶点之间的边组成的集合。通常表示为：**G(V,E)**，其中，G 表示一个图，V 表示顶点的集合，E 表示边的集合。
+**What is a graph?** A graph consists of a finite, non-empty set of vertices and a set of edges between them. It is usually written as **G(V, E)**, where G is the graph, V is the set of vertices, and E is the set of edges.
 
-下图所展示的就是图这种数据结构，并且还是一张有向图。
+The diagram below shows a graph data structure, specifically a directed graph.
 
-![有向图](../images/shared/directed-graph.png)
+![Directed graph](../images/shared/directed-graph.png)
 
-图在我们日常生活中的例子很多！比如我们在社交软件上好友关系就可以用图来表示。
+Graphs have many real-world uses. For example, a social network can represent friendships as a graph.
 
-## 图的基本概念
+## Graph Fundamentals
 
-### 顶点
+### Vertices
 
-图中的数据元素，我们称之为顶点，图至少有一个顶点（非空有穷集合）。
+The data elements in a graph are called vertices. A graph has at least one vertex, so its vertex set is finite and non-empty.
 
-对应到好友关系图，每一个用户就代表一个顶点。
+In a friendship graph, each user is a vertex.
 
-### 边
+### Edges
 
-顶点之间的关系用边表示。
+Edges represent relationships between vertices.
 
-对应到好友关系图，两个用户是好友的话，那两者之间就存在一条边。
+In a friendship graph, an edge connects two users who are friends.
 
-### 度
+### Degree
 
-度表示一个顶点包含多少条边，在有向图中，还分为出度和入度，出度表示从该顶点出去的边的条数，入度表示进入该顶点的边的条数。
+The degree of a vertex is the number of edges connected to it. In a directed graph, this is split into **out-degree**, the number of edges leaving the vertex, and **in-degree**, the number entering it.
 
-对应到好友关系图，度就代表了某个人的好友数量。
+In a friendship graph, a user's degree represents the number of their friends.
 
-### 无向图和有向图
+### Undirected and Directed Graphs
 
-边表示的是顶点之间的关系，有的关系是双向的，比如同学关系，A 是 B 的同学，那么 B 也肯定是 A 的同学，那么在表示 A 和 B 的关系时，就不用关注方向，用不带箭头的边表示，这样的图就是无向图。
+Some relationships are bidirectional. For example, if A is B's classmate, then B is also A's classmate. The relationship has no direction, so an edge without an arrow represents it. A graph with such edges is an **undirected graph**.
 
-有的关系是有方向的，比如父子关系，师生关系，微博的关注关系，A 是 B 的爸爸，但 B 肯定不是 A 的爸爸，A 关注 B，B 不一定关注 A。在这种情况下，我们就用带箭头的边表示二者的关系，这样的图就是有向图。
+Other relationships have a direction, such as parent-child relationships, teacher-student relationships, or following someone on social media. A may be B's parent without B being A's parent; A may follow B without B following A. In these cases, arrows show the direction, and the graph is a **directed graph**.
 
-### 无权图和带权图
+### Unweighted and Weighted Graphs
 
-对于一个关系，如果我们只关心关系的有无，而不关心关系有多强，那么就可以用无权图表示二者的关系。
+If we care only whether a relationship exists, not how strong it is, we can represent it with an **unweighted graph**.
 
-对于一个关系，如果我们既关心关系的有无，也关心关系的强度，比如描述地图上两个城市的关系，需要用到距离，那么就用带权图来表示，带权图中的每一条边用一个数值表示权值，代表关系的强度。
+If we care both whether a relationship exists and how strong it is—for example, the distance between two cities on a map—we can use a **weighted graph**. Each edge has a numeric weight representing the relationship's strength or cost.
 
-下图就是一个带权有向图。
+The diagram below is a weighted directed graph.
 
-![带权有向图](../images/shared/weighted-directed-graph.png)
+![Weighted directed graph](../images/shared/weighted-directed-graph.png)
 
-## 图的存储
+## Graph Representations
 
-### 邻接矩阵存储
+### Adjacency Matrix
 
-邻接矩阵将图用二维矩阵存储，是一种较为直观的表示方式。
+An adjacency matrix stores a graph in a two-dimensional matrix. It is a straightforward representation.
 
-如果第 i 个顶点和第 j 个顶点之间有关系，且关系权值为 n，则 `A[i][j]=n`。
+If there is an edge from vertex i to vertex j with weight n, then `A[i][j] = n`.
 
-在无向图中，我们只关心关系的有无，所以当顶点 i 和顶点 j 有关系时，`A[i][j]`=1，当顶点 i 和顶点 j 没有关系时，`A[i][j]`=0。如下图所示：
+For an unweighted graph, set `A[i][j] = 1` when vertices i and j are connected, and `A[i][j] = 0` otherwise. The diagram below shows an example:
 
-![无向图的邻接矩阵存储](../images/shared/adjacency-matrix-representation-of-undirected-graph.png)
+![Adjacency matrix representation of an undirected graph](../images/shared/adjacency-matrix-representation-of-undirected-graph.png)
 
-值得注意的是：**无向图的邻接矩阵是一个对称矩阵，因为在无向图中，顶点 i 和顶点 j 有关系，则顶点 j 和顶点 i 必有关系。**
+Note that **the adjacency matrix of an undirected graph is symmetric**: if vertex i is connected to vertex j, then vertex j is also connected to vertex i.
 
-![有向图的邻接矩阵存储](../images/shared/adjacency-matrix-representation-of-directed-graph.png)
+![Adjacency matrix representation of a directed graph](../images/shared/adjacency-matrix-representation-of-directed-graph.png)
 
-邻接矩阵存储的方式优点是简单直接（直接使用一个二维数组即可），并且，在获取两个顶点之间的关系的时候也非常高效（直接获取指定位置的数组元素的值即可）。但是，这种存储方式的缺点也比较明显，那就是比较浪费空间。
+An adjacency matrix is simple to implement with a two-dimensional array, and checking whether two vertices are connected takes constant time. Its main drawback is that it can waste space, especially for sparse graphs.
 
-### 邻接表存储
+### Adjacency List
 
-针对上面邻接矩阵比较浪费内存空间的问题，诞生了图的另外一种存储方法——**邻接表**。
+An **adjacency list** is another representation that avoids the space overhead of an adjacency matrix for sparse graphs.
 
-邻接链表使用一个链表来存储某个顶点的所有后继相邻顶点。对于图中每个顶点 Vi，把所有邻接于 Vi 的顶点 Vj 链成一个单链表，这个单链表称为顶点 Vi 的 **邻接表**。如下图所示：
+An adjacency list stores the neighbors of each vertex in a list. For every vertex Vi, the vertices Vj adjacent to it are linked in a list called Vi's **adjacency list**. The diagrams below show examples:
 
-![无向图的邻接表存储](../images/shared/adjacency-list-representation-of-undirected-graph.png)
+![Adjacency list representation of an undirected graph](../images/shared/adjacency-list-representation-of-undirected-graph.png)
 
-![有向图的邻接表存储](../images/shared/adjacency-list-representation-of-directed-graph.png)
+![Adjacency list representation of a directed graph](../images/shared/adjacency-list-representation-of-directed-graph.png)
 
-大家可以数一数邻接表中所存储的元素的个数以及图中边的条数，你会发现：
+Count the entries in the adjacency lists and compare them with the number of edges:
 
-- 在无向图中，邻接表元素个数等于边的条数的两倍，如左图所示的无向图中，边的条数为 7，邻接表存储的元素个数为 14。
-- 在有向图中，邻接表元素个数等于边的条数，如右图所示的有向图中，边的条数为 8，邻接表存储的元素个数为 8。
+- In an undirected graph, each edge appears in two lists, so the total number of entries is twice the number of edges. In the left diagram, 7 edges produce 14 entries.
+- In a directed graph, each edge appears once, so the number of entries equals the number of edges. In the right diagram, 8 edges produce 8 entries.
 
-## 图的搜索
+## Graph Traversal
 
-### 广度优先搜索
+### Breadth-First Search
 
-广度优先搜索就像水面上的波纹一样一层一层向外扩展，如下图所示：
+Breadth-first search expands outward one layer at a time, like ripples on water:
 
-![广度优先搜索图示](../images/shared/breadth-first-search.png)
+![Breadth-first search](../images/shared/breadth-first-search.png)
 
-**广度优先搜索的具体实现方式用到了之前所学过的线性数据结构——队列**。具体过程如下图所示：
+**Breadth-first search is implemented with a queue**, a linear data structure introduced earlier. The steps are shown below:
 
-**第 1 步：**
+**Step 1:**
 
-![广度优先搜索1](../images/shared/breadth-first-search1.png)
+![Breadth-first search, step 1](../images/shared/breadth-first-search1.png)
 
-**第 2 步：**
+**Step 2:**
 
-![广度优先搜索2](../images/shared/breadth-first-search2.png)
+![Breadth-first search, step 2](../images/shared/breadth-first-search2.png)
 
-**第 3 步：**
+**Step 3:**
 
-![广度优先搜索3](../images/shared/breadth-first-search3.png)
+![Breadth-first search, step 3](../images/shared/breadth-first-search3.png)
 
-**第 4 步：**
+**Step 4:**
 
-![广度优先搜索4](../images/shared/breadth-first-search4.png)
+![Breadth-first search, step 4](../images/shared/breadth-first-search4.png)
 
-**第 5 步：**
+**Step 5:**
 
-![广度优先搜索5](../images/shared/breadth-first-search5.png)
+![Breadth-first search, step 5](../images/shared/breadth-first-search5.png)
 
-**第 6 步：**
+**Step 6:**
 
-![广度优先搜索6](../images/shared/breadth-first-search6.png)
+![Breadth-first search, step 6](../images/shared/breadth-first-search6.png)
 
-### 深度优先搜索
+### Depth-First Search
 
-深度优先搜索就是“一条路走到黑”，从源顶点开始，一直走到没有后继节点，才回溯到上一顶点，然后继续“一条路走到黑”，如下图所示：
+Depth-first search follows one path as far as it can. Starting from a source vertex, it continues until there are no unvisited neighbors, then backtracks and explores another path:
 
-![深度优先搜索图示](../images/shared/depth-first-search.png)
+![Depth-first search](../images/shared/depth-first-search.png)
 
-**和广度优先搜索类似，深度优先搜索的具体实现用到了另一种线性数据结构——栈**。具体过程如下图所示：
+**Like breadth-first search, depth-first search uses a linear data structure—in this case, a stack.** The steps are shown below:
 
-**第 1 步：**
+**Step 1:**
 
-![深度优先搜索1](../images/shared/depth-first-search1.png)
+![Depth-first search, step 1](../images/shared/depth-first-search1.png)
 
-**第 2 步：**
+**Step 2:**
 
-![深度优先搜索2](../images/shared/depth-first-search2.png)
+![Depth-first search, step 2](../images/shared/depth-first-search2.png)
 
-**第 3 步：**
+**Step 3:**
 
-![深度优先搜索3](../images/shared/depth-first-search3.png)
+![Depth-first search, step 3](../images/shared/depth-first-search3.png)
 
-**第 4 步：**
+**Step 4:**
 
-![深度优先搜索4](../images/shared/depth-first-search4.png)
+![Depth-first search, step 4](../images/shared/depth-first-search4.png)
 
-**第 5 步：**
+**Step 5:**
 
-![深度优先搜索5](../images/shared/depth-first-search5.png)
+![Depth-first search, step 5](../images/shared/depth-first-search5.png)
 
-**第 6 步：**
+**Step 6:**
 
-![深度优先搜索6](../images/shared/depth-first-search6.png)
+![Depth-first search, step 6](../images/shared/depth-first-search6.png)
 
-## 面试复盘重点
+## Interview Review
 
-图题先选存储方式，再选遍历方式。面试里最常见的 4 类图题是：连通块、最短步数、依赖关系和判环。
+For graph problems, choose a representation first, then a traversal strategy. Four common interview problem types are connected components, shortest paths by number of edges, dependencies, and cycle detection.
 
-| 存储方式 | 空间复杂度 | 判断两点是否相邻 | 遍历某点邻居 | 适合场景           |
-| -------- | ---------- | ---------------- | ------------ | ------------------ |
-| 邻接矩阵 | `O(V^2)`   | `O(1)`           | `O(V)`       | 稠密图、节点数较少 |
-| 邻接表   | `O(V + E)` | 取决于邻接表结构 | 和度数有关   | 稀疏图、算法题常用 |
+| Representation   | Space complexity | Check whether two vertices are adjacent | Traverse a vertex's neighbors | Suitable for                                |
+| ---------------- | ---------------- | --------------------------------------- | ----------------------------- | ------------------------------------------- |
+| Adjacency matrix | `O(V^2)`         | `O(1)`                                  | `O(V)`                        | Dense graphs with relatively few vertices   |
+| Adjacency list   | `O(V + E)`       | Depends on the list structure           | Proportional to the degree    | Sparse graphs; common in algorithm problems |
 
-DFS/BFS 模板可以参考 [DFS 与 BFS 面试题总结](../algorithms/dfs-bfs.md)。这里再补几个面试回答点：
+For DFS and BFS templates, see [DFS and BFS Interview Questions](../algorithms/dfs-bfs.md). A few additional points to mention in an interview:
 
-- 邻接表下，DFS 和 BFS 的时间复杂度通常是 `O(V + E)`。
-- 无权图求最短步数，优先考虑 BFS。
-- 有向图依赖关系常用拓扑排序，典型题是课程表。
-- 无向图连通性和判环可以用 DFS/BFS，也可以用并查集。
-- 带权最短路径不是普通 BFS，常见算法有 Dijkstra、Bellman-Ford、Floyd，面试中按题目范围选择。
+- With an adjacency list, DFS and BFS usually run in `O(V + E)` time.
+- For the shortest path in an unweighted graph, consider BFS first.
+- Topological sorting is commonly used for dependencies in directed graphs; Course Schedule is a typical example.
+- DFS, BFS, or union-find can be used to check connectivity and detect cycles in undirected graphs.
+- Ordinary BFS does not solve weighted shortest-path problems. Common algorithms include Dijkstra, Bellman-Ford, and Floyd-Warshall; choose based on the problem's constraints.
 
-## Java 代码模板
+## Java Templates
 
-算法题中最常用的是邻接表。节点编号通常是 `0` 到 `n - 1`，可以用 `List<Integer>[]` 表示。
+An adjacency list is the most common representation in algorithm problems. Vertices are usually numbered from `0` to `n - 1`, and can be stored as `List<Integer>[]`.
 
 ```java
 List<Integer>[] buildGraph(int n, int[][] edges) {
@@ -195,14 +195,14 @@ List<Integer>[] buildGraph(int n, int[][] edges) {
         int from = edge[0];
         int to = edge[1];
         graph[from].add(to);
-        // 无向图需要再加一条反向边：
+        // Add the reverse edge for an undirected graph:
         // graph[to].add(from);
     }
     return graph;
 }
 ```
 
-BFS 适合求无权图最短步数：
+BFS is useful for finding the shortest path length in an unweighted graph:
 
 ```java
 int bfs(List<Integer>[] graph, int start, int target) {
@@ -231,31 +231,31 @@ int bfs(List<Integer>[] graph, int start, int target) {
 }
 ```
 
-## 过程示意和边界样例
+## Walkthrough and Edge Cases
 
-以无权图最短路径为例，BFS 的层序扩散过程可以这样理解：
+For a shortest-path search in an unweighted graph, BFS expands by layers:
 
 ```text
-第 0 层：start
-第 1 层：start 的所有未访问邻居
-第 2 层：第 1 层节点的所有未访问邻居
+Layer 0: start
+Layer 1: all unvisited neighbors of start
+Layer 2: all unvisited neighbors of the vertices in layer 1
 ...
-第一次遇到 target 时，当前层数就是最短步数
+When target is first reached, the current layer is the shortest path length.
 ```
 
-几个边界样例建议先过一遍：
+Check these edge cases:
 
-- `start == target`，答案应该是 `0`。
-- 图不连通，目标点不可达，答案应该是 `-1`。
-- 无向图建图时忘记加反向边，会把连通图误判成不连通。
-- 有环图如果不标记 `visited`，BFS/DFS 会重复访问甚至死循环。
+- If `start == target`, the answer should be `0`.
+- If the graph is disconnected and the target is unreachable, the answer should be `-1`.
+- Forgetting to add the reverse edge when building an undirected graph can make a connected graph appear disconnected.
+- Without a `visited` check, BFS or DFS can revisit vertices in a cyclic graph indefinitely.
 
-## 推荐练习题
+## Practice Problems
 
-- [200. 岛屿数量](https://leetcode.cn/problems/number-of-islands/)
-- [695. 岛屿的最大面积](https://leetcode.cn/problems/max-area-of-island/)
-- [994. 腐烂的橘子](https://leetcode.cn/problems/rotting-oranges/)
-- [207. 课程表](https://leetcode.cn/problems/course-schedule/)
-- [547. 省份数量](https://leetcode.cn/problems/number-of-provinces/)
+- [200. Number of Islands](https://leetcode.cn/problems/number-of-islands/)
+- [695. Max Area of Island](https://leetcode.cn/problems/max-area-of-island/)
+- [994. Rotting Oranges](https://leetcode.cn/problems/rotting-oranges/)
+- [207. Course Schedule](https://leetcode.cn/problems/course-schedule/)
+- [547. Number of Provinces](https://leetcode.cn/problems/number-of-provinces/)
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,262 +1,262 @@
 ---
-title: TCP 如何保证可靠传输？重传、滑动窗口与拥塞控制详解
-description: 系统梳理 TCP 的可靠性保障机制，覆盖重传/选择确认、流量与拥塞控制，明确端到端可靠传输的实现要点。
-category: 计算机基础
+title: "How TCP Provides Reliable Delivery: Retransmission, Sliding Windows, and Congestion Control"
+description: An overview of TCP reliability, including retransmission, selective acknowledgment, flow control, congestion control, and end-to-end delivery.
+category: Computer Science Basics
 tag:
-  - 计算机网络
+  - Computer Networking
 head:
   - - meta
     - name: keywords
-      content: TCP,可靠性,重传,SACK,D-SACK,流量控制,拥塞控制,滑动窗口,校验和,CUBIC,BBR
+      content: TCP,reliability,retransmission,SACK,D-SACK,flow control,congestion control,sliding window,checksum,CUBIC,BBR
 ---
 
-TCP 常被说成可靠传输协议，但“可靠”不是一句抽象承诺，而是一组具体机制共同配合出来的结果。
+TCP is often called a reliable transport protocol, but reliability is not an abstract promise. It comes from several mechanisms working together.
 
-丢包要重传，乱序要重排，接收方处理不过来要流量控制，网络拥塞时要主动降速。把这些机制串起来，才能真正理解 TCP 为什么能在不可靠的 IP 网络之上提供可靠传输。
+Lost data must be retransmitted, out-of-order data reordered, and the sender slowed when the receiver or network cannot keep up. Together, these mechanisms let TCP provide reliable delivery over an unreliable IP network.
 
-这篇文章主要回答几个问题：
+This article answers four questions:
 
-1. TCP 通过哪些机制保证数据可靠到达？
-2. 超时重传、快速重传、SACK、D-SACK 分别解决什么问题？
-3. TCP 如何通过滑动窗口实现流量控制？
-4. 拥塞控制中的慢开始、拥塞避免、快速重传、快恢复分别怎么理解？
+1. Which mechanisms does TCP use for reliable delivery?
+2. What problems do timeout retransmission, fast retransmit, SACK, and D-SACK solve?
+3. How does TCP use sliding windows for flow control?
+4. How do slow start, congestion avoidance, fast retransmit, and fast recovery work?
 
-先澄清一个容易误解的点：TCP 可靠的是**字节流**，不是应用层的一条条“消息”。TCP 不会保留 HTTP、RPC 或业务协议里的消息边界，它做的是给字节流编号，并尽量把这些字节按序、无重复地交付给应用层。至于“一个请求从哪里开始、到哪里结束”，要靠上层协议自己定义，比如长度字段、分隔符、HTTP 报文格式等。
+One point is easy to misunderstand: TCP reliably delivers a **byte stream**, not individual application-layer “messages.” It does not preserve message boundaries in HTTP, RPC, or other protocols. TCP numbers bytes and tries to deliver them in order without duplicates. The application protocol must define where a request starts and ends, for example with a length field, delimiter, or HTTP message format.
 
-![TCP 粘包 / 拆包为什么会出现？](../images/shared/tcp-udp-byte-stream-tcp-sticky-split-causes.png)
+![Why TCP message boundaries can be combined or split](../images/shared/tcp-udp-byte-stream-tcp-sticky-split-causes.png)
 
-## TCP 如何保证传输的可靠性？
+## How Does TCP Provide Reliable Delivery?
 
-1. **基于数据块传输**：应用数据被分割成 TCP 认为最适合发送的数据块，再传输给网络层，数据块被称为报文段或段。
-2. **对失序数据重新排序以及去重**：TCP 不能阻止网络丢包，它能做的是给字节流编号，并通过 ACK、重传、排序、去重等机制，让应用层看到的是有序、无重复的数据流。TCP 的序列号本质上是字节序号，不是按报文段逐个编号。一个 TCP 段携带一段连续字节，接收端根据这些序号区间完成重排和去重。
-3. **校验和**：TCP 会对 TCP 首部、数据以及 IP 伪首部计算校验和。这是一个端到端的校验和，目的是检测数据在传输过程中的变化。如果收到的报文段校验和有差错，TCP 会丢弃这个报文段，并且不会确认收到它。不过，TCP 校验和只是 16 位的一补和校验，主要用于发现常见的传输错误，并不是强完整性校验，也不能防止恶意篡改。实际系统里的数据完整性通常还会依赖链路层 CRC、TLS AEAD 或应用层 hash 等机制。
-4. **重传机制**：在 TCP 段丢失或延迟的情况下，重新发送数据，直到收到对方的确认应答（ACK）。TCP 重传机制主要有：基于计时器的重传（也就是超时重传）、快速重传（基于接收端的反馈信息来引发重传）、SACK（选择确认，在 ACK 选项中携带已经收到的非连续数据块范围，这样发送方就知道哪些数据段已经到达接收方了）、D-SACK（重复 SACK，在 SACK 的基础上，额外告知发送方有哪些数据段被重复接收）。D-SACK 的价值在于帮助发送方判断一次重传是否可能是“误重传”：比如原始数据其实已经到达接收方，只是 ACK 丢失、网络乱序或重传定时器过早触发，导致发送方误以为丢包并触发重传。接收方通过 D-SACK 告诉发送方“这段数据我重复收到了”，发送方就能推断这次重传可能只是误判，而不一定是真正发生了拥塞。不过，D-SACK 只能提供线索，不能单独证明某一种具体原因。
-5. **流量控制**：TCP 连接的每一方都有一定大小的缓冲空间。接收端通过接收窗口（rwnd）告诉发送端自己还能接收多少数据，发送端据此控制发送速率，避免接收端处理不过来而丢包。
-6. **拥塞控制**：当网络拥塞时，减少数据的发送。TCP 在发送数据的时候，需要考虑两个因素：一是接收端当前可用接收缓冲区能力，二是网络的拥塞程度。接收方的接收能力由接收窗口（rwnd）表示，网络的拥塞程度由拥塞窗口（cwnd）表示。发送方允许保持在网络中的未确认数据量，通常受 `min(rwnd, cwnd)` 约束，这样既不会超过接收方的处理能力，也不会给网络注入过多数据。
+1. **Data segmentation:** TCP divides application data into segments that it considers suitable for transmission to the network layer.
+2. **Reordering and deduplication:** TCP cannot prevent packet loss. It numbers bytes and uses ACKs, retransmission, reordering, and duplicate detection so the application receives an ordered byte stream without duplicates. Sequence numbers identify bytes, not segments. Each segment carries a contiguous byte range.
+3. **Checksum:** TCP checksums its header, data, and the IP pseudo-header to detect transmission errors. A segment with an invalid checksum is discarded and not acknowledged. The 16-bit one's-complement checksum detects common errors, but is not a strong integrity check and does not prevent malicious modification. Systems may also rely on link-layer CRC, TLS AEAD, or application-level hashes.
+4. **Retransmission:** TCP resends data when a segment appears lost or delayed. Mechanisms include timeout-based retransmission, fast retransmit based on receiver feedback, SACK (which reports ranges of data received out of order), and D-SACK (which reports duplicate data). D-SACK can help identify a possible spurious retransmission—for example, when the original data arrived but its ACK was lost, packets were reordered, or the timer fired too early. It provides a clue, not proof of a particular cause.
+5. **Flow control:** Each side has buffers. The receiver advertises its receive window (`rwnd`) to tell the sender how much more data it can accept, limiting the sending rate so the receiver is not overwhelmed.
+6. **Congestion control:** TCP reduces sending when the network is congested. The sender considers both the receiver's capacity (`rwnd`) and the network's congestion level (`cwnd`). The amount of unacknowledged data in flight is generally limited by `min(rwnd, cwnd)`.
 
-## 先用 ARQ 理解 TCP 重传
+## Understand TCP Retransmission Through ARQ
 
-上面几个机制里，最能体现“可靠传输”的是重传。为了不让超时重传、快速重传、SACK 这些概念显得凭空出现，我们先看 ARQ 这个抽象模型。
+Retransmission is central to reliable delivery. To understand timeout retransmission, fast retransmit, and SACK, start with the abstract ARQ model.
 
-**自动重传请求**（Automatic Repeat-reQuest，ARQ）是 OSI 模型中数据链路层和传输层的错误纠正协议之一。它通过使用确认和超时这两个机制，在不可靠服务的基础上实现可靠的信息传输。如果发送方在发送后一段时间之内没有收到确认应答（Acknowledgments，ACK），它通常会重新发送，直到收到确认或者重试超过一定的次数。
+**Automatic Repeat reQuest (ARQ)** is an error-control method used at the data link and transport layers. It combines acknowledgments and timeouts to provide reliable delivery over an unreliable service. If the sender does not receive an acknowledgment (ACK) in time, it retransmits, usually until it receives an ACK or reaches a retry limit.
 
-TCP 可以用 ARQ 思想来理解，但它不是教材里的某一种简单 ARQ。现代 TCP 同时结合了累积 ACK、RTO、快速重传、SACK、拥塞控制和流量控制，重传策略会受到这些机制共同影响。
+ARQ is a useful way to understand TCP, but modern TCP is not one simple textbook ARQ variant. Its retransmission behavior combines cumulative ACKs, RTO, fast retransmit, SACK, congestion control, and flow control.
 
-- 默认 ACK 是**累积确认**：ACK 表示“这个序号之前的数据我都已经收到了”。
-- 开启 SACK 后，接收方还能额外告诉发送方“我已经乱序收到了哪些区间”，发送方可以只重传缺失的数据段。
+- By default, ACKs are **cumulative**: an ACK says that all data before the acknowledged sequence number has arrived.
+- With SACK enabled, the receiver can also report which out-of-order ranges have arrived, allowing the sender to retransmit only missing data.
 
-因此，停止等待 ARQ 和 Go-Back-N 更适合理解可靠传输的基础思想，而现代 TCP 在 SACK 的帮助下更接近选择重传。
+Stop-and-wait ARQ and Go-Back-N illustrate the basic ideas of reliable delivery. With SACK, modern TCP is closer to selective repeat.
 
-![ARQ 与 TCP 重传机制的关系](../images/shared/tcp-reliability-guarantee-arq-retransmission-model.png)
+![How ARQ relates to TCP retransmission](../images/shared/tcp-reliability-guarantee-arq-retransmission-model.png)
 
-ARQ 包括停止等待 ARQ 协议和连续 ARQ 协议。
+ARQ includes stop-and-wait and continuous ARQ protocols.
 
-### 停止等待 ARQ 协议
+### Stop-and-Wait ARQ
 
-停止等待协议是为了实现可靠传输的，它的基本原理就是每发完一个分组就停止发送，等待对方确认（回复 ACK）。如果过了一段时间（超时时间后），还是没有收到 ACK 确认，说明没有发送成功，需要重新发送，直到收到确认后再发下一个分组。
+Stop-and-wait provides reliable delivery by making the sender wait for an ACK after each packet. If no ACK arrives before the timeout, the sender retransmits the packet and waits again before sending the next one.
 
-在停止等待协议中，若接收方收到重复分组，就丢弃该分组，但同时还要发送确认。
+If the receiver gets a duplicate packet, it discards it and sends another ACK.
 
-**1）无差错情况：**
+**1) No errors:**
 
-发送方发送分组，接收方在规定时间内收到，并且回复确认。发送方再次发送。
+The sender transmits a packet. The receiver gets it within the timeout and sends an ACK. The sender then transmits the next packet.
 
-**2）出现差错情况（超时重传）：**
+**2) Error and timeout retransmission:**
 
-停止等待协议中超时重传是指只要超过一段时间仍然没有收到确认，就重传前面发送过的分组（认为刚才发送过的分组丢失了）。因此每发送完一个分组需要设置一个超时计时器，其重传时间应比数据在分组传输的平均往返时间更长一些。这种自动重传方式常称为**自动重传请求（ARQ）**。另外在停止等待协议中若收到重复分组，就丢弃该分组，但同时还要发送确认。
+If an ACK does not arrive within a specified time, the sender assumes the packet may have been lost and retransmits it. A timer is set after each packet; its timeout should be longer than the expected round-trip time. This is an **ARQ** mechanism. The receiver discards duplicate packets but still acknowledges them.
 
-**3）确认丢失和确认迟到**
+**3) Lost and delayed acknowledgments**
 
-- **确认丢失**：确认消息在传输过程丢失。当 A 发送 M1 消息，B 收到后，B 向 A 发送了一个 M1 确认消息，但却在传输过程中丢失。而 A 并不知道，在超时计时过后，A 重传 M1 消息，B 再次收到该消息后采取以下两点措施：1. 丢弃这个重复的 M1 消息，不向上层交付。2. 向 A 发送确认消息。（不会认为已经发送过了，就不再发送。A 能重传，就证明 B 的确认消息丢失）。
-- **确认迟到**：确认消息在传输过程中迟到。A 发送 M1 消息，B 收到并发送确认。在超时时间内没有收到确认消息，A 重传 M1 消息，B 仍然收到并继续发送确认消息（B 收到了 2 份 M1）。此时 A 收到了 B 第二次发送的确认消息。接着发送其他数据。过了一会，A 收到了 B 第一次发送的对 M1 的确认消息（A 也收到了 2 份确认消息）。处理如下：1. A 收到重复的确认后，直接丢弃。2. B 收到重复的 M1 后，也直接丢弃重复的 M1。
+- **Lost ACK:** A sends message M1 and B receives it, but B's ACK is lost. A does not know this, so it retransmits M1 after the timeout. B discards the duplicate instead of delivering it again, then sends another ACK. A retransmitting is evidence that the earlier ACK did not arrive.
+- **Delayed ACK:** A sends M1 and B acknowledges it, but the ACK arrives after A's timeout. A retransmits M1, so B receives a duplicate and sends another ACK. A may receive the newer ACK first and the earlier one later. A discards the duplicate ACK, and B discards the duplicate M1.
 
-### 连续 ARQ 协议
+### Continuous ARQ
 
-连续 ARQ 是一类滑动窗口式重传思想，典型形式包括 Go-Back-N 和选择重传。它可以提高信道利用率：发送方维持一个发送窗口，凡位于发送窗口内的分组可以连续发送出去，而不需要等待对方确认。接收方一般采用累计确认，对按序到达的最后一个分组发送确认，表明到这个分组为止的所有分组都已经正确收到了。
+Continuous ARQ uses a sliding window to improve channel utilization. Common forms include Go-Back-N and selective repeat. The sender can transmit multiple packets within its window without waiting for each ACK. The receiver often uses cumulative acknowledgments to confirm all packets received in order up to a given point.
 
-- **优点**：信道利用率高，容易实现，即使确认丢失，也不必重传。
-- **缺点**：如果采用 Go-Back-N，不能向发送方反映出接收方已经正确收到的所有分组的信息。比如：发送方发送了 5 条消息，中间第三条丢失（3 号）。在 Go-Back-N 中，即使 4、5 号分组已经到达，接收方也会因为它们失序而丢弃，只重复确认最后一个按序收到的 2 号分组。发送方最终需要从 3 号开始回退重传。SACK 的作用，正是让 TCP 接收方能告诉发送方这些非连续但已经收到的数据区间，避免大量不必要的回退重传。
+- **Advantage:** High channel utilization. A lost ACK does not always require retransmission.
+- **Disadvantage:** Go-Back-N does not tell the sender which out-of-order packets the receiver already has. For example, if packet 3 is lost but packets 4 and 5 arrive, the receiver discards them and repeats its ACK for packet 2. The sender must retransmit starting from packet 3. SACK lets TCP report received ranges and avoid unnecessary retransmissions.
 
-有了 ARQ 这条线，再看 TCP 的具体重传机制就顺了。
+With this ARQ background, TCP's retransmission mechanisms are easier to follow.
 
-## TCP 重传机制速查
+## TCP Retransmission at a Glance
 
-TCP 的重传不是只有一种触发方式。最基础的是**超时重传**：发送方等 ACK 等太久，就认为这段数据可能丢了，于是重传。后来又有**快速重传**：接收方连续 ACK 同一个旧序号，说明中间可能缺了一段，发送方就不用傻等超时。SACK 和 D-SACK 则是在 ACK 里带更多信息，让发送方知道“哪些段已经到了、哪些重传可能是误判”。
+TCP retransmission has several triggers. The basic mechanism is **timeout retransmission**: if the sender waits too long for an ACK, it assumes the data may be lost and retransmits it. **Fast retransmit** uses repeated ACKs for the same old sequence number to detect a possible gap before the timeout. SACK and D-SACK carry additional information about received segments and possible spurious retransmissions.
 
-所以下面这张表不是新知识点，而是一张地图：先把几种重传相关机制摆在一起，后面再从最基础、也最兜底的 **RTO 超时重传** 开始展开。
+The table below summarizes these mechanisms. The next section starts with the basic fallback, **RTO timeout retransmission**.
 
-| 机制            | 触发条件                                               | 解决什么问题                                 |
-| --------------- | ------------------------------------------------------ | -------------------------------------------- |
-| 超时重传（RTO） | 超过 RTO 仍未收到 ACK                                  | 兜底处理丢包                                 |
-| 快速重传        | 收到 3 个 duplicate ACK，即连续确认同一个旧累计 ACK 号 | 不等超时，尽快重传疑似丢失的数据段           |
-| SACK            | ACK 中携带已收到的数据区间                             | 告诉发送方哪些段已收到，只重传真正缺失的部分 |
-| D-SACK          | SACK 中报告重复收到的数据段                            | 帮助识别误重传、ACK 丢失或网络乱序           |
+| Mechanism                    | Trigger                                                 | Purpose                                                                 |
+| ---------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Timeout retransmission (RTO) | No ACK arrives before the RTO expires                   | Fallback for lost data                                                  |
+| Fast retransmit              | Three duplicate ACKs for the same cumulative ACK number | Retransmit likely lost data without waiting for the timeout             |
+| SACK                         | ACK includes received data ranges                       | Show which data arrived so only missing data needs retransmission       |
+| D-SACK                       | SACK reports duplicate data                             | Help identify spurious retransmissions, lost ACKs, or packet reordering |
 
-## 超时重传如何实现？超时重传时间怎么确定？
+## How Does Timeout Retransmission Work, and How Is the RTO Chosen?
 
-先看表里的第一行：**超时重传（RTO）**。它是 TCP 重传机制的兜底方案。无论有没有 SACK、有没有触发快速重传，只要某段数据发出去以后迟迟没有等到 ACK，最终都要靠 RTO 来判断“不能再等了，该重传了”。
+Start with the first row: **timeout retransmission (RTO)**. It is TCP's fallback. Regardless of whether SACK is enabled or fast retransmit has run, the RTO determines when to stop waiting for an ACK and retransmit the data.
 
-当发送方发送数据之后，它会启动一个定时器，等待目的端确认收到这个报文段。接收端对已成功收到的 TCP 段发回相应的 ACK。如果发送端在合理的往返时延（RTT）内未收到确认，那么对应的数据段就会被认为可能已经丢失，并进行重传。
+After sending data, the sender starts a timer and waits for the receiver's ACK. If the ACK does not arrive within the expected round-trip time (RTT), the segment may be considered lost and retransmitted.
 
-- **RTT（Round Trip Time）**：往返时间，也就是 TCP 段从发出去到收到对应 ACK 的时间。
-- **RTO（Retransmission Time Out）**：重传超时时间，即从数据发送时刻算起，超过这个时间便执行重传。
+- **RTT (Round-Trip Time):** The time from sending a TCP segment to receiving its ACK.
+- **RTO (Retransmission Timeout):** The timeout after which the sender retransmits data if no ACK has arrived.
 
-![RTO 超时时间的计算流程](../images/shared/tcp-reliability-guarantee-rto-calculation-flow.png)
+![How the RTO is calculated](../images/shared/tcp-reliability-guarantee-rto-calculation-flow.png)
 
-RTO 的确定是一个关键问题，因为它直接影响到 TCP 的性能和效率。如果 RTO 设置得太小，会导致不必要的重传，增加网络负担；如果 RTO 设置得太大，会导致数据传输的延迟，降低吞吐量。因此，RTO 应该根据网络的实际状况，动态地进行调整。
+Choosing the RTO matters because it affects TCP performance. If it is too short, unnecessary retransmissions add load; if it is too long, recovery is delayed and throughput may drop. The RTO should adapt to network conditions.
 
-RTT 的值会随着网络的波动而变化，所以 TCP 不能直接使用某一次 RTT 样本作为 RTO。现代 TCP 的 RTO 计算应以 RFC 6298 为主线：根据 RTT 样本维护平滑后的往返时间 SRTT 和往返时间波动 RTTVAR，再计算 RTO；发生超时后还会做指数退避。
+RTT varies with network conditions, so TCP cannot use a single sample directly as the RTO. RFC 6298 describes maintaining a smoothed RTT (SRTT) and RTT variation (RTTVAR), then calculating the RTO. After a timeout, TCP also applies exponential backoff.
 
-Karn 算法的核心点是：对已经重传过的报文段，其 ACK 不用于 RTT 采样，避免“这个 ACK 到底对应原始发送还是重传”的样本歧义。
+Karn's algorithm avoids ambiguous samples by excluding ACKs for retransmitted segments from RTT calculations. The ACK might correspond to the original transmission or the retransmission.
 
-简单理解就是：RTO 不是 RTT，而是“平滑 RTT + 抖动余量”。如果一条连接的 RTT 样本大约是 100 ms，但抖动很大，RTO 就必须留出更大的安全余量；如果仍然超时，下一次 RTO 还会继续退避，避免在拥塞时把重传压力继续打到网络里。
+In short, RTO is not the same as RTT; it is based on a smoothed RTT plus a margin for variation. If RTT is around 100 ms but varies widely, the RTO needs a larger margin. If a timeout still occurs, the next RTO backs off to avoid adding retransmission load during congestion.
 
-## 快速重传是如何工作的？
+## How Does Fast Retransmit Work?
 
-超时重传可靠但偏慢，因为发送方必须等到 RTO 过期以后才会重传。快速重传（Fast Retransmit）解决的就是这个等待问题：它不依赖计时器，而是依赖接收方连续发回的重复 ACK 来更早发现疑似丢包。
+Timeout retransmission is reliable but can be slow because the sender waits for the RTO to expire. Fast retransmit avoids that wait by using duplicate ACKs from the receiver to detect a likely loss earlier.
 
-TCP 使用累积确认。假设接收方已经按序收到了 `[0, 1000)` 这段字节，接下来期望收到从 1000 开始的数据。如果它先收到了 `[2000, 3000)`，说明中间 `[1000, 2000)` 这段还没到。接收方不会把 ACK 推进到 3000，而是继续回复 ACK = 1000，表示“我仍然在等 1000 之后的数据”。这种再次确认同一个旧 ACK 号的报文，就是 duplicate ACK。
+TCP uses cumulative acknowledgments. Suppose the receiver has received bytes `[0, 1000)` in order and expects data starting at 1000. If it receives `[2000, 3000)` first, then `[1000, 2000)` is still missing. The receiver keeps sending `ACK = 1000` instead of advancing the ACK to 3000. Repeated ACKs for the same sequence number are called duplicate ACKs.
 
-发送方如果连续收到 3 个 duplicate ACK，通常会认为 ACK 指向的那段数据大概率已经丢失，于是不等 RTO 超时，直接重传缺失的数据段。之所以不是收到 1 个 duplicate ACK 就重传，是因为网络里可能出现短暂乱序：后发出的包先到，不一定代表前面的包真的丢了。3 个 duplicate ACK 是在“尽快恢复”和“避免误判乱序”之间做的折中。
+After three duplicate ACKs, the sender usually assumes that the data at the acknowledged sequence number was lost and retransmits it without waiting for the RTO. One duplicate ACK is not enough because packets can be temporarily reordered: a later packet arriving first does not prove that an earlier one was lost. Three duplicate ACKs balance faster recovery against false alarms from reordering.
 
-快速重传只能更快定位“最早的缺口”。如果一个发送窗口里同时丢了多段数据，仅靠累积 ACK 仍然很难告诉发送方哪些区间已经到了、哪些区间还缺着，这就需要 SACK。
+Fast retransmit helps locate the earliest gap. If multiple segments in a send window are lost, cumulative ACKs alone do not show which later ranges arrived. SACK provides that information.
 
-## SACK 是如何提升重传效率的？
+## How Does SACK Improve Retransmission Efficiency?
 
-SACK（Selective Acknowledgment，选择性确认）用来补足累积 ACK 的信息盲区。普通 ACK 只能表达“某个序号之前的数据都收到了”，但无法表达“后面的某些区间虽然乱序，也已经收到了”。SACK 会在 ACK 的 TCP 选项里携带已经收到的非连续字节区间，帮助发送方只重传真正缺失的部分。
+SACK (Selective Acknowledgment) provides information that cumulative ACKs cannot. A regular ACK says that all data before a sequence number has arrived, but cannot report later ranges that arrived out of order. SACK carries those non-contiguous byte ranges in TCP options so the sender can retransmit only missing data.
 
-SACK 需要在三次握手时通过 SACK-Permitted 选项协商。启用后，ACK 号本身仍然遵循累积确认规则，SACK 选项额外携带一个或多个 SACK block。每个 SACK block 由 Left Edge 和 Right Edge 组成，表示接收方已经收到的字节区间 `[Left Edge, Right Edge)`。
+SACK is negotiated during the three-way handshake with the SACK-Permitted option. The ACK number remains cumulative; SACK options add one or more SACK blocks. Each block has a left and right edge and represents a received byte range `[Left Edge, Right Edge)`.
 
-举个例子：发送方连续发送 `[0, 1000)`、`[1000, 2000)`、`[2000, 3000)`、`[3000, 4000)`，其中 `[1000, 2000)` 丢失，但后面两段已经到达。接收方的累计 ACK 仍然只能停在 ACK = 1000，但它可以在 SACK 里报告已经收到 `[2000, 4000)`。发送方据此就知道 `[1000, 2000)` 需要重传，而 `[2000, 4000)` 不必重复发送。
+For example, the sender transmits `[0, 1000)`, `[1000, 2000)`, `[2000, 3000)`, and `[3000, 4000)`. If `[1000, 2000)` is lost but the later ranges arrive, the cumulative ACK remains at 1000. The receiver can use SACK to report `[2000, 4000)`, so the sender knows that only `[1000, 2000)` is missing.
 
-TCP 选项长度有限。SACK 选项本身需要 2 字节，每个 SACK block 需要 8 字节，所以一个 TCP 段最多能携带 4 个 SACK block；如果同时携带时间戳等其他 TCP 选项，可用空间还会更少。也就是说，SACK 不能无限记录所有乱序区间，但它已经足以显著减少多段丢包时的无效重传。
+TCP options have limited space. The SACK option uses 2 bytes and each SACK block uses 8 bytes, so a segment can carry at most four blocks; fewer fit when other options such as timestamps are present. SACK cannot record every out-of-order range, but it can substantially reduce unnecessary retransmissions when several segments are lost.
 
-## D-SACK 有什么作用？
+## What Is D-SACK For?
 
-D-SACK（Duplicate SACK，重复选择性确认）是对 SACK 的扩展，定义在 RFC 2883 中。SACK 主要告诉发送方“哪些非连续区间已经收到”，D-SACK 则进一步告诉发送方“哪些区间被重复收到了”。
+D-SACK (Duplicate SACK), defined in RFC 2883, extends SACK. SACK reports received non-contiguous ranges; D-SACK also reports ranges received more than once.
 
-D-SACK 不引入新的 TCP 选项，而是复用 SACK block。它约定：如果第一个 SACK block 描述的是一段已经被累计 ACK 覆盖的数据，或者描述的是一段已经出现在后续 SACK block 中的数据，那么这个 block 就是在报告重复数据。
+D-SACK does not introduce a new TCP option; it reuses SACK blocks. The first SACK block reports duplicate data when it describes a range already covered by the cumulative ACK or a range also described by a later SACK block.
 
-为什么重复数据有价值？因为一次重传不一定代表原始数据真的丢了。常见情况包括：
+Duplicate data is useful evidence because a retransmission does not always mean the original data was lost. Common causes include:
 
-- 原始数据已经到达接收方，但 ACK 在返回途中丢失，发送方等到 RTO 后误以为数据丢了，于是重传。
-- 原始数据在网络中严重乱序或延迟，发送方先触发了快速重传，随后原始数据和重传数据都到达接收方。
+- The original data arrived, but its ACK was lost. The sender retransmitted after the RTO because it assumed the data was lost.
+- The original data was delayed or heavily reordered. The sender triggered fast retransmit, then both the original and retransmitted data arrived.
 
-收到 D-SACK 后，发送方可以推断这次重传可能是误重传，并进一步判断网络中是否存在 ACK 丢失、严重乱序或 RTO 设置过小等问题。它不能单独证明某一种具体原因，但能为拥塞控制和排查重传异常提供重要线索。
+After receiving D-SACK, the sender can infer that a retransmission may have been spurious and investigate lost ACKs, severe reordering, or an RTO that is too short. D-SACK cannot prove a specific cause, but it provides useful evidence for congestion control and troubleshooting.
 
-## TCP 如何实现流量控制？
+## How Does TCP Implement Flow Control?
 
-**TCP 利用滑动窗口实现流量控制。流量控制是为了控制发送方发送速率，保证接收方来得及接收。** 滑动窗口是 TCP 的核心机制之一，它既用于追踪“哪些数据已经发送但还没被 ACK”，也用于承载流量控制。接收方会在 ACK 报文中通过窗口字段通告自己的接收窗口（rwnd），发送方据此调整发送窗口。将窗口字段设置为 0，就表示接收方暂时没有可用缓冲区，发送方不能继续发送普通新数据。
+**TCP uses a sliding window for flow control, limiting the sender's rate so the receiver can keep up.** The sliding window tracks data that has been sent but not yet acknowledged and carries the flow-control state. The receiver advertises its receive window (`rwnd`) in ACKs, and the sender adjusts its send window accordingly. A window of 0 means the receiver has no buffer space available, so the sender must pause ordinary new data.
 
-TCP 首部里的窗口字段本身是 16 位，最大只能表示 65,535 字节。如果需要更大的接收窗口，还要依赖 TCP Window Scale 选项对窗口大小进行扩展。实际排查时，可以在三次握手的 SYN/SYN-ACK 报文里看到双方是否协商了 Window Scale。
+The TCP window field is 16 bits and can represent at most 65,535 bytes. The TCP Window Scale option extends the advertised window. You can check whether the peers negotiated it in the SYN and SYN-ACK packets of the three-way handshake.
 
-**零窗口怎么恢复？** 当接收方通告 `rwnd = 0` 时，发送方会暂停发送新数据。但如果接收方后来腾出了缓冲区，并发送了新的窗口通告，而这个 ACK 在网络中丢失，双方就可能陷入互相等待：发送方等窗口打开，接收方等新数据到来。
+**How does a zero window recover?** When the receiver advertises `rwnd = 0`, the sender pauses new data. If the receiver later frees buffer space and sends a window update, but that ACK is lost, both sides may wait: the sender waits for the window to open, and the receiver waits for new data.
 
-![TCP 零窗口探测机制](../images/shared/tcp-reliability-guarantee-zero-window-probe.png)
+![TCP zero-window probing](../images/shared/tcp-reliability-guarantee-zero-window-probe.png)
 
-为了解决这个问题，TCP 引入了**零窗口探测（Zero Window Probe）**。发送方在窗口为 0 时，依赖持续计时器（persist timer）定期发送很小的探测报文，迫使接收方回复当前窗口大小。这样即使之前的窗口更新 ACK 丢失，发送方也能重新得知窗口是否已经打开。
+TCP uses **zero-window probes** to avoid this deadlock. While the window is 0, the sender's persist timer periodically sends a small probe that prompts the receiver to report its current window. The sender can then learn whether the window has reopened, even if an earlier window update was lost.
 
-零窗口探测只负责打破“窗口更新 ACK 丢失”造成的僵持，不等于业务层连接健康检查。如果接收端应用长期不读取 socket，连接可能长期停留在小窗口或零窗口状态，仍然会占用双方资源。实际工程中通常还需要应用层读写超时、空闲连接回收等机制兜底。
+Zero-window probing only prevents a deadlock caused by a lost window update; it is not an application health check. If the receiving application does not read from its socket for a long time, the connection may remain at a small or zero window while consuming resources on both ends. Production systems also need application read/write timeouts and idle-connection cleanup.
 
-**为什么需要流量控制？** 这是因为双方在通信的时候，发送方的速率与接收方的速率不一定相等。如果发送方的发送速率太快，会导致接收方处理不过来。如果接收方处理不过来，就只能把数据先放到 **接收缓冲区（receive buffer）** 里（失序的数据段也会被存放在缓冲区里）。正常情况下，接收方会通过缩小 `rwnd`，甚至通告零窗口，让发送方停止发送新数据。只有在窗口控制来不及生效、对端实现异常、缓冲耗尽或网络队列溢出时，才可能出现丢弃。因此，我们需要控制发送方的发送速率，让接收方与发送方处于一种动态平衡。
+**Why is flow control needed?** The sender and receiver may process data at different rates. If the sender is faster, the receiver may not keep up, so data is buffered in the **receive buffer**, including out-of-order segments. Normally, the receiver reduces `rwnd` or advertises a zero window to stop new data. Data is more likely to be dropped if window updates arrive too late, an endpoint behaves incorrectly, buffers are exhausted, or network queues overflow. Flow control helps balance the sender and receiver.
 
-这里需要注意的是（常见误区）：
+Keep in mind:
 
-- 发送端不等同于客户端
-- 接收端不等同于服务端
+- The sender is not necessarily the client.
+- The receiver is not necessarily the server.
 
-TCP 为全双工（Full-Duplex，FDX）通信，双方可以进行双向通信，客户端和服务端既可能是发送端，也可能是接收端。因此，两端各有一个发送缓冲区与接收缓冲区，两端都各自维护一个发送窗口和一个接收窗口。接收窗口大小取决于应用、系统、硬件的限制（TCP 传输速率不能大于应用的数据处理速率）。通信双方维护窗口的逻辑是类似的。
+TCP is full-duplex, so both peers can send and receive data. The client and server can each act as either sender or receiver. Each endpoint has a send buffer and receive buffer, and maintains its own send and receive windows. The receive window depends on application, system, and hardware limits; the TCP data rate cannot exceed the application's processing rate. Both peers manage their windows in a similar way.
 
-**TCP 发送窗口可以划分成四个部分**：
+**The TCP send window can be divided into four regions:**
 
-1. 已经发送并且确认的 TCP 段（已经发送并确认）；
-2. 已经发送但是没有确认的 TCP 段（已经发送未确认）；
-3. 未发送但是接收方准备接收的 TCP 段（可以发送）；
-4. 未发送并且接收方也暂时不能接收的 TCP 段（不可发送）。
+1. TCP segments that have been sent and acknowledged.
+2. Segments that have been sent but not acknowledged.
+3. Unsent segments that the receiver is ready to accept.
+4. Unsent segments that the receiver cannot currently accept.
 
-**TCP 发送窗口结构图示**：
+**TCP send window:**
 
-![TCP发送窗口结构](../images/shared/tcp-send-window.png)
+![TCP send window](../images/shared/tcp-send-window.png)
 
-- **SND.WND**：发送窗口。
-- **SND.UNA**：Send Unacknowledged，表示最早尚未被确认的序号，也就是发送窗口左边界。
-- **SND.NXT**：Send Next 指针，指向可用窗口的第一个字节。
+- **SND.WND:** The send window.
+- **SND.UNA (Send Unacknowledged):** The earliest unacknowledged sequence number and the left edge of the send window.
+- **SND.NXT (Send Next):** Points to the first byte available to send.
 
-只看接收窗口约束时，**可用发送窗口大小** 约为 `SND.UNA + SND.WND - SND.NXT`。真实发送还要再受 `cwnd`、MSS、发送缓冲区等限制。
+Considering only the receiver's window, the **available send window** is approximately `SND.UNA + SND.WND - SND.NXT`. Actual sending is also limited by `cwnd`, MSS, and the send buffer.
 
-**TCP 接收窗口可以划分成三个部分**：
+**The TCP receive window can be divided into three regions:**
 
-1. 已经接收并且已经确认的 TCP 段（已经接收并确认）；
-2. 等待接收且允许发送方发送 TCP 段（可以接收未确认）；
-3. 不可接收且不允许发送方发送 TCP 段（不可接收）。
+1. TCP segments that have been received and acknowledged.
+2. Data that may be received but has not arrived yet.
+3. Data beyond the receive window that cannot currently be accepted.
 
-**TCP 接收窗口结构图示**：
+**TCP receive window:**
 
-![TCP接收窗口结构](../images/shared/tcp-receive-window.png)
+![TCP receive window](../images/shared/tcp-receive-window.png)
 
-**接收窗口的大小是动态调整的。** 它通常会受应用读取速度、接收缓冲区占用、系统 socket buffer 配置和自动调优策略影响。
+**The receive window changes dynamically.** It is affected by the application's read rate, receive-buffer usage, socket-buffer settings, and automatic tuning.
 
-另外，这里的滑动窗口大小只是为了演示使用，实际窗口大小通常会远远大于这个值。
+The sliding-window size in the diagram is illustrative; real windows are usually much larger.
 
-**糊涂窗口综合征（Silly Window Syndrome，SWS）** 指的是发送方或接收方不断以很小的粒度发送数据、通告窗口，导致网络中充满“头部很大、载荷很小”的小包，传输效率很差。
+**Silly Window Syndrome (SWS)** occurs when the sender or receiver repeatedly sends data or advertises windows in very small increments. This can fill the network with packets that have large headers and tiny payloads, reducing efficiency.
 
-![SWS、Nagle 算法与延迟 ACK 的关系](../images/shared/tcp-reliability-guarantee-sws-nagle-delayed-ack.png)
+![How SWS relates to Nagle's algorithm and delayed ACKs](../images/shared/tcp-reliability-guarantee-sws-nagle-delayed-ack.png)
 
-常见优化有几类：
+Common mitigations include:
 
-- **接收方侧 SWS 避免**：不要每释放一点点缓冲区就立刻通告新窗口，而是等到可用空间达到一定阈值后再更新窗口。
-- **发送方侧 Nagle 算法**：如果还有未确认的小包在网络中，新的小数据先缓存起来，等收到 ACK 或凑够 MSS 后再发送。
-- **延迟 ACK**：接收方不一定每收到一个段就马上 ACK，可以稍等一小段时间，看能否和反向数据一起发送，或对多个段合并确认。它本身是 ACK 生成策略，不是专门为 SWS 设计的机制，但会和小包发送策略发生交互。
+- **Receiver-side SWS avoidance:** Wait until enough buffer space is available before advertising a larger window, instead of updating it after every small read.
+- **Sender-side Nagle algorithm:** Buffer new small writes while earlier small packets remain unacknowledged, then send when an ACK arrives or enough data accumulates to fill an MSS.
+- **Delayed ACK:** The receiver may wait briefly before acknowledging a segment, so it can combine the ACK with outgoing data or acknowledge multiple segments together. Delayed ACK is not specifically designed for SWS, but interacts with small-packet strategies.
 
-需要注意，Nagle 算法和延迟 ACK 在某些小包交互场景下可能相互等待，带来几十毫秒级的额外延迟。对延迟敏感的交互式应用，常见做法是通过 `TCP_NODELAY` 关闭 Nagle。代价是小包数量可能增加，包头开销和系统中断压力也会升高。批量响应或文件发送更适合聚合写入；在 Linux 上还可以结合 `TCP_CORK` 这类平台相关选项控制“攒包”时机。
+Nagle's algorithm and delayed ACKs can wait on each other in some small-packet interactions, adding tens of milliseconds of latency. Latency-sensitive applications often disable Nagle with `TCP_NODELAY`, at the cost of sending more small packets and increasing header and interrupt overhead. For bulk responses or file transfers, batching writes is often preferable. Linux also provides platform-specific options such as `TCP_CORK` to control packet aggregation.
 
-## TCP 的拥塞控制是怎么实现的？
+## How Does TCP Implement Congestion Control?
 
-在某段时间，若对网络中某一资源的需求超过了该资源所能提供的可用部分，网络性能就会下降，表现为排队变长、延迟升高、丢包增加。这种情况就叫拥塞。拥塞控制就是为了防止过多的数据注入到网络中，这样就可以使网络中的路由器或链路不致过载。拥塞控制所要做的都有一个前提，就是网络能够承受现有的网络负荷。拥塞控制是一个全局性的过程，涉及到所有的主机、路由器，以及与降低网络传输性能有关的所有因素。相反，流量控制往往是点对点通信量的控制，是个端到端的问题。流量控制所要做到的就是抑制发送端发送数据的速率，以便使接收端来得及接收。
+Congestion occurs when demand for a network resource exceeds its capacity. Queues grow, latency increases, and packets may be lost. Congestion control prevents too much data from entering the network and overloading routers or links. It is a network-wide process involving hosts, routers, and other factors that affect performance. Flow control, by contrast, is end-to-end: it limits the sender so the receiver can keep up.
 
-![TCP的拥塞控制](../images/shared/tcp-congestion-control.png)
+![TCP congestion control](../images/shared/tcp-congestion-control.png)
 
-为了进行拥塞控制，TCP 发送方要维持一个 **拥塞窗口（cwnd）** 的状态变量。拥塞窗口的大小取决于网络的拥塞程度，并且动态变化。发送方让自己的发送窗口取为拥塞窗口和接收方的接收窗口中较小的一个。
+For congestion control, the TCP sender maintains a **congestion window (`cwnd`)** that changes with network conditions. The effective send window is limited by the smaller of `cwnd` and the receiver's advertised window.
 
-按 RFC 5681 / Reno 系的基础框架，TCP 拥塞控制常拆成四个机制来讲，即 **慢开始**、**拥塞避免**、**快速重传（Fast Retransmit）** 和 **快恢复**。现代系统里的 CUBIC、BBR、DCTCP 会在这个基础上有不同实现和状态机。在网络层也可以使路由器采用适当的分组丢弃策略（如主动队列管理 AQM），以减少网络拥塞的发生。
+In the RFC 5681/Reno framework, TCP congestion control is often explained using four mechanisms: **slow start**, **congestion avoidance**, **fast retransmit**, and **fast recovery**. Modern algorithms such as CUBIC, BBR, and DCTCP use different implementations and state machines. Routers can also use packet-management strategies such as Active Queue Management (AQM) to reduce congestion.
 
-- **慢开始**：慢开始算法的思路是当主机开始发送数据时，如果立即把大量数据字节注入到网络，可能会引起网络阻塞，因为现在还不知道网络的负荷情况。较好的方法是先探测一下，即由小到大逐渐增大发送窗口，也就是由小到大逐渐增大拥塞窗口。慢开始并不意味着一开始只能发送 1 个 MSS。RFC 6928 提议并实验性允许把初始窗口从 2～4 个段提高到最多 10 个段（IW10），很多现代实现采用了类似 IW10 的默认值，但仍要以具体系统配置为准。以常见 MSS 1460 字节计算，10 个 MSS 在首个 RTT 内大约可以发送 14 KB 数据，这对 HTTP 短连接和页面首屏加载很重要。慢开始阶段的关键是：根据 ACK 反馈快速增大窗口，通常表现为每经过一个 RTT，`cwnd` 近似翻倍。
-- **拥塞避免**：拥塞避免算法的思路是让拥塞窗口 `cwnd` 缓慢增大。简化理解是每个 RTT 大约增加 1 个 MSS；实现上通常通过每个 ACK 小幅增加 `cwnd` 来近似线性增长。慢开始会在 `cwnd` 达到慢开始门限（ssthresh）后进入拥塞避免。`ssthresh` 初始值通常设得比较大，第一次有效调整往往发生在检测到丢包之后。
-- **快速重传**：发送方收到 3 个 duplicate ACK，也就是连续 3 个 ACK 都在确认同一个旧的累计确认号时，通常认为后面某个段丢失，于是不等 RTO 超时就重传缺失的数据段。
-- **快恢复**：下面是 Reno 语境下的经典快恢复流程。收到第 3 个 duplicate ACK 时，将 `ssthresh` 设置为当前拥塞窗口的一半；重传丢失的数据段，并将 `cwnd` 设置为 `ssthresh + 3 × MSS`；后续每多收到一个 duplicate ACK，`cwnd` 再增加 1 个 MSS；当收到新的 ACK，说明重传的数据已经被确认，将 `cwnd` 降回 `ssthresh`，进入拥塞避免阶段。快恢复不直接回到慢开始，是因为重复 ACK 说明后续数据仍然能到达接收方，网络并没有完全不可用。现代 TCP 如果启用了 SACK、NewReno、CUBIC 或 RACK/TLP，丢包恢复过程会更复杂，但理解 Reno 仍然是入门基础。
+- **Slow start:** A sender does not know the network's capacity when it begins. It probes by gradually increasing the send window and `cwnd` instead of injecting a large volume of data at once. Slow start does not mean the initial window must be one MSS. RFC 6928 proposed an initial window of up to 10 segments (IW10); many modern implementations use a similar default, but check the system configuration. With a common MSS of 1,460 bytes, 10 MSS is about 14 KB in the first RTT, which can matter for short HTTP connections and initial page loading. ACK feedback usually causes `cwnd` to roughly double each RTT during slow start.
+- **Congestion avoidance:** The sender increases `cwnd` more slowly, approximately one MSS per RTT. Implementations usually achieve this through small increases per ACK. TCP enters congestion avoidance when `cwnd` reaches the slow-start threshold (`ssthresh`). The initial threshold is often large and is typically adjusted after loss is detected.
+- **Fast retransmit:** After three duplicate ACKs for the same cumulative acknowledgment number, the sender usually assumes a segment was lost and retransmits it without waiting for the RTO.
+- **Fast recovery:** In classic Reno, after the third duplicate ACK, set `ssthresh` to half the current congestion window, retransmit the lost segment, and set `cwnd` to `ssthresh + 3 × MSS`. Each additional duplicate ACK increases `cwnd` by one MSS. When a new ACK arrives, set `cwnd` back to `ssthresh` and enter congestion avoidance. Reno does not return directly to slow start because duplicate ACKs show that later data is still reaching the receiver. SACK, NewReno, CUBIC, and RACK/TLP use more complex recovery behavior, but Reno is a useful starting point.
 
-快速重传对单个报文段丢失很有效，但如果一个窗口内有多个报文段同时丢失，仅靠重复 ACK 很难一次性告诉发送方所有“洞”在哪里。这也是 SACK 出现的重要原因：接收方可以显式告诉发送方哪些数据段已经收到，发送方只重传缺失的部分。
+Fast retransmit works well when one segment is lost. If multiple segments in a window are lost, duplicate ACKs alone may not show every gap. SACK lets the receiver explicitly report which segments arrived, so the sender can retransmit only missing data.
 
-需要注意的是，上面讲的慢开始、拥塞避免、快速重传、快恢复，是理解 TCP 拥塞控制的经典基础框架。现代操作系统通常还会在此基础上使用更复杂的拥塞控制算法：
+Slow start, congestion avoidance, fast retransmit, and fast recovery are the classic foundation for understanding TCP congestion control. Modern operating systems may use more advanced algorithms:
 
-- **CUBIC**：已经由 RFC 9438 更新为标准轨 TCP 拥塞控制算法，并取代旧版 CUBIC 规范。CUBIC 用三次函数调整拥塞窗口，在高带宽、长 RTT 链路上比 Reno 的线性增长更友好，目前已被 Linux、Windows、Apple 等主流协议栈采用为默认拥塞控制算法之一。
-- **BBR**：Google 提出的基于模型（model-based）的拥塞控制算法，通过估计瓶颈带宽和最小 RTT 来控制发送速率，目标是高吞吐和低排队延迟。在 bufferbloat 明显的链路上可能表现更好。但 BBR 的具体效果受版本、队列管理、竞争流类型、RTT 公平性和部署环境影响，不能简单理解成“无脑替代 CUBIC”。
-- **DCTCP**：主要用于受控数据中心网络，依赖 ECN 标记估算拥塞程度，目标是在浅缓冲交换机场景下降低排队延迟。它不适合直接拿到公网环境里泛用。
+- **CUBIC:** RFC 9438 is the current standards-track specification, replacing the earlier CUBIC specification. CUBIC uses a cubic function to adjust the congestion window and is designed for high-bandwidth, high-RTT paths. It is a default algorithm in several major operating-system stacks, including Linux, Windows, and Apple platforms.
+- **BBR:** Google's model-based congestion-control algorithm estimates bottleneck bandwidth and minimum RTT to control the sending rate. It aims for high throughput and low queueing delay and may perform well on links with bufferbloat. Results vary with version, queue management, competing traffic, RTT fairness, and deployment, so BBR is not a universal replacement for CUBIC.
+- **DCTCP:** Primarily used in controlled data-center networks. It uses ECN marks to estimate congestion and reduce queueing delay on shallow-buffer switches; it is not intended as a general-purpose Internet algorithm.
 
-不过，慢开始、拥塞避免、快速重传、快恢复依然是理解这些现代算法的基础。
+Slow start, congestion avoidance, fast retransmit, and fast recovery remain useful foundations for understanding these algorithms.
 
-还有一个工程上很重要的边界：丢包不一定等于拥塞。传统 Reno/CUBIC 主要把丢包视为拥塞信号，但无线链路误码、路径切换、设备队列溢出也可能导致丢包；ECN 则可以在不丢包的情况下反馈拥塞。对比拥塞算法时，也不要只看平均吞吐量，还要看 P95/P99 RTT、丢包率、重传率、队列长度、与 CUBIC/Reno 共存表现，以及具体内核版本和参数配置。
+One practical point: packet loss does not always mean congestion. Reno and CUBIC mainly treat loss as a congestion signal, but wireless errors, route changes, and queue overflows can also cause loss. ECN can signal congestion without dropping packets. When comparing algorithms, consider P95/P99 RTT, loss and retransmission rates, queue length, coexistence with CUBIC/Reno, and the kernel version and configuration—not just average throughput.
 
-## 总结
+## Summary
 
-TCP 的可靠性不是“保证网络不丢包”，而是在不可靠的 IP 网络之上，通过一组机制让应用层看到的是**有序、无重复、尽量完整的字节流**。它的核心可以概括为四点：
+TCP reliability does not mean that the network never loses packets. TCP uses several mechanisms on top of unreliable IP so the application sees an **ordered byte stream without duplicates, delivered as completely as possible**. The core ideas are:
 
-1. **用序列号和 ACK 确认数据状态**：TCP 给字节流编号，接收方通过 ACK 告诉发送方哪些数据已经收到，发送方据此判断哪些数据还在路上、哪些数据需要继续等待。
-2. **用重传机制补齐丢失数据**：超时重传负责兜底，快速重传用于更快发现单段丢失，SACK/D-SACK 则让发送方更精确地知道哪些数据已经到达、哪些重传可能是误判。
-3. **用滑动窗口做流量控制**：接收方通过 `rwnd` 告诉发送方自己还能接收多少数据，发送方根据接收窗口控制在途数据量，避免把接收缓冲区打爆。
-4. **用拥塞控制保护网络**：发送方通过 `cwnd` 估计网络承载能力，在慢开始、拥塞避免、快速重传、快恢复以及 CUBIC、BBR 等算法的配合下，尽量避免把过多数据注入网络。
+1. **Sequence numbers and ACKs track data:** TCP numbers bytes, and the receiver acknowledges data it has received. The sender uses ACKs to track what is outstanding.
+2. **Retransmission recovers lost data:** RTO provides a fallback; fast retransmit detects some losses sooner; SACK/D-SACK report received ranges and possible spurious retransmissions.
+3. **Sliding windows provide flow control:** The receiver advertises `rwnd`, and the sender limits in-flight data so the receive buffer is not overwhelmed.
+4. **Congestion control protects the network:** The sender uses `cwnd` to estimate network capacity and avoid injecting too much data, using mechanisms such as slow start, congestion avoidance, fast retransmit, fast recovery, CUBIC, and BBR.
 
-一句话总结：TCP 不是让网络变得可靠，而是通过**编号、确认、重传、排序去重、流量控制和拥塞控制**，在不可靠网络之上“拼”出一个对应用层相对可靠的字节流通道。
+In short, TCP does not make the network reliable. It combines **sequencing, acknowledgments, retransmission, reordering, deduplication, flow control, and congestion control** to provide applications with a relatively reliable byte stream over an unreliable network.
 
-## 参考
+## References
 
-1. 《计算机网络（第 7 版）》
-2. 《图解 HTTP》
+1. _Computer Networking_, 7th edition
+2. _Illustrated HTTP_
 3. TCP and UDP Tutorial：<https://www.9tut.com/tcp-and-udp-tutorial>
 4. Computer Network：<https://github.com/wolverinn/Waking-Up/blob/master/Computer%20Network.md>
 5. TCP Flow Control：<https://www.brianstorti.com/tcp-flow-control/>
-6. TCP 流量控制（Flow Control）：<https://notfalse.net/24/tcp-flow-control>
-7. TCP 之滑动窗口原理：<https://cloud.tencent.com/developer/article/1857363>
+6. TCP Flow Control: <https://notfalse.net/24/tcp-flow-control>
+7. TCP Sliding Window Explained: <https://cloud.tencent.com/developer/article/1857363>
 8. RFC 9293 - Transmission Control Protocol：<https://www.rfc-editor.org/rfc/rfc9293>
 9. RFC 6928 - Increasing TCP's Initial Window：<https://www.rfc-editor.org/rfc/rfc6928>
 10. RFC 5681 - TCP Congestion Control：<https://datatracker.ietf.org/doc/html/rfc5681>

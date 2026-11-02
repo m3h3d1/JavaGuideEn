@@ -1,160 +1,160 @@
 ---
-title: 一台主机上只能保持最多 65535 个 TCP 连接吗？
-description: 从 TCP 四元组、临时端口、文件描述符、内存、TIME_WAIT 与 NAT 等角度，解释一台主机能保持多少 TCP 连接。
-category: 计算机基础
+title: Is a Host Limited to 65,535 TCP Connections?
+description: Learn how TCP four-tuples, ephemeral ports, file descriptors, memory, TIME_WAIT, and NAT affect the number of connections a host can maintain.
+category: Computer Science Basics
 tag:
-  - 计算机网络
+  - Computer Networking
 head:
   - - meta
     - name: keywords
-      content: TCP连接数,65535,TCP四元组,TIME_WAIT,临时端口,文件描述符,NAT
+      content: TCP connections,65535,TCP four-tuple,TIME_WAIT,ephemeral ports,file descriptors,NAT
 ---
 
-一台主机最多只能保持 65535 个 TCP 连接吗？小 G 先给结论：**不是**。
+Is a host limited to 65,535 TCP connections? The short answer is **no**.
 
-`65535` 这个数字来自端口号范围。TCP 首部里的源端口和目的端口字段都是 16 位，可以表示 `0~65535`，一共 2^16 = 65536 个取值。**65535 是最大端口号，不是连接数上限。**
+The number `65,535` comes from the port-number range. The source and destination port fields in a TCP header are both 16 bits, so each can represent values from `0` to `65,535`—a total of 2^16 = 65,536 values. **65,535 is the highest port number, not the maximum number of connections.**
 
-但 TCP 连接数和端口号数不是一回事。要搞清楚这个问题，得从 TCP 连接是怎么被标识的开始讲。
+The number of TCP connections is not the same as the number of port numbers. To understand why, start with how TCP identifies a connection.
 
-## TCP 连接靠四元组来区分
+## TCP Connections Are Identified by a Four-Tuple
 
-TCP 连接不是靠“本地端口”唯一标识，而是靠四元组标识：
+TCP connections are identified by a four-tuple, not by the local port alone:
 
 ```text
-源 IP、源端口、目的 IP、目的端口
+Source IP, source port, destination IP, destination port
 ```
 
-只要四元组不同，内核就可以把它们识别为不同连接。
+As long as the four-tuples differ, the kernel can identify them as separate connections.
 
-为了避免混淆，下面统一用**客户端发起连接时的视角**来写四元组：`（客户端 IP, 客户端端口, 服务端 IP, 服务端端口）`。
+To avoid confusion, the examples below use the **client's perspective when it initiates the connection**: `(client IP, client port, server IP, server port)`.
 
-假设服务器 IP 是 `192.168.1.100`，监听端口 `8080`：
+Suppose a server at `192.168.1.100` listens on port `8080`:
 
-![TCP 连接靠四元组区分和真正的限制](../images/shared/maximum-number-of-tcp-connections-per-host-tcp-four-tuple-and-server-connection.png)
+![TCP connections are distinguished by four-tuples, with limits determined by system resources](../images/shared/maximum-number-of-tcp-connections-per-host-tcp-four-tuple-and-server-connection.png)
 
-- 客户端 A（`10.0.0.1:50000`）连过来 → 四元组 `(10.0.0.1, 50000, 192.168.1.100, 8080)`
-- 客户端 A（`10.0.0.1:50001`）再连过来 → 四元组 `(10.0.0.1, 50001, 192.168.1.100, 8080)`
-- 客户端 B（`10.0.0.2:50000`）连过来 → 四元组 `(10.0.0.2, 50000, 192.168.1.100, 8080)`
+- Client A (`10.0.0.1:50000`) connects → `(10.0.0.1, 50000, 192.168.1.100, 8080)`
+- Client A (`10.0.0.1:50001`) opens another connection → `(10.0.0.1, 50001, 192.168.1.100, 8080)`
+- Client B (`10.0.0.2:50000`) connects → `(10.0.0.2, 50000, 192.168.1.100, 8080)`
 
-三条连接，服务端的 IP 和端口都没变，但因为客户端 IP 或端口不同，四元组各不相同，所以是三条独立的连接。
+These are three separate connections. The server IP and port are the same, but each four-tuple differs because the client IP or port differs.
 
-这里有个容易混淆的点：服务端 `8080` 端口只有**一个监听 socket**，但每 `accept()` 一次，内核就会生成一个新的**已连接 socket**，用四元组来区分。所以多个连接共享同一个服务端端口，完全不冲突。
+One detail can be confusing: the server has **one listening socket** on port `8080`, but each call to `accept()` returns a new **connected socket**, identified by its four-tuple. Many connections can therefore share the same server port without conflicting.
 
-## 为什么服务端可以超过 65535？
+## Why Can a Server Have More Than 65,535 Connections?
 
-假设 Web 服务监听 `192.168.1.100:443`，服务端 IP 和端口固定，但客户端 IP 和端口会变化。比如 `(10.0.0.1, 50001, 192.168.1.100, 443)` 和 `(10.0.0.2, 50001, 192.168.1.100, 443)` 的服务端端口都是 443，但四元组不同，所以是两条不同 TCP 连接。
+Suppose a web server listens on `192.168.1.100:443`. The server IP and port stay fixed, but client IPs and ports can vary. For example, `(10.0.0.1, 50001, 192.168.1.100, 443)` and `(10.0.0.2, 50001, 192.168.1.100, 443)` are different TCP connections because their four-tuples differ, even though both use server port `443`.
 
-纯从 IPv4 四元组组合看，固定服务端 IP 和端口后，客户端 IP 理论上有 `2^32` 种可能，客户端端口有 `2^16` 种可能，理论组合数非常大。
+Considering IPv4 four-tuples alone, once the server IP and port are fixed, there are theoretically `2^32` possible client IPs and `2^16` client ports. That makes for a very large number of possible combinations.
 
-真实上限来自资源和配置。
+In practice, resource limits and system configuration set the limit.
 
-## 真正的限制是什么？
+## What Actually Limits the Connection Count?
 
-**1、文件描述符（File Descriptor，FD）和内存。**
+**1. File descriptors (FDs) and memory**
 
-在 Linux 里，socket 也是文件。对应用进程来说，`accept()` 后的每条已建立连接通常对应一个 socket FD；**监听 socket 本身也占一个 FD**。还没被 `accept()` 的连接会先停留在内核队列里，不应简单都算成应用已持有的 FD。
+On Linux, a socket is also a file. Each established connection returned by `accept()` usually has a socket FD in the application process; **the listening socket also uses an FD**. Connections that have not yet been accepted remain in kernel queues, so they should not all be counted as FDs already held by the application.
 
-进程可打开文件数不够时，常见报错是 `Too many open files`。
+When a process reaches its open-file limit, a common error is `Too many open files`.
 
-每条 TCP 连接都需要内核维护 socket、TCP 控制块、发送缓冲区、接收缓冲区等数据。连接空闲时开销较小，一旦有数据收发，缓冲区和应用对象也会继续占内存。
+For every TCP connection, the kernel maintains a socket, TCP control block, send and receive buffers, and other state. Idle connections use less memory; active connections and their application objects and buffers use more.
 
-不建议死记“一个连接占多少 KB”。这个值会受内核版本、socket 选项、缓冲区大小和业务收发情况影响。
+There is no useful fixed number of kilobytes per connection to memorize. Memory use depends on the kernel version, socket options, buffer sizes, and traffic patterns.
 
-**2、握手队列和 accept 速度。**
+**2. Handshake queues and accept rate**
 
-Linux 实际上维护两个队列：
+Linux maintains two relevant queues:
 
-- **SYN 队列（半连接队列）**：收到 SYN、发出 SYN-ACK、尚未完成三次握手的连接，受 `tcp_max_syn_backlog` 限制，实际大小还会结合 `somaxconn` 和 `listen()` backlog 计算。
-- **accept 队列（全连接队列）**：已完成握手、等待应用 `accept()` 的连接，上限为 `min(listen(fd, backlog), net.core.somaxconn)`。
+- **SYN queue (half-open queue)**: Connections that have received a SYN and sent a SYN-ACK but have not completed the handshake. The queue is limited by `tcp_max_syn_backlog`; its effective size also depends on `somaxconn` and the `listen()` backlog.
+- **Accept queue (completed-connection queue)**: Connections that completed the handshake and are waiting for the application to call `accept()`. Its limit is `min(listen(fd, backlog), net.core.somaxconn)`.
 
-它们影响的是**连接建立阶段的排队和丢弃**，不是 ESTABLISHED 连接总数的简单上限。
+These queues affect **queuing and drops while connections are being established**. They are not simple limits on the total number of `ESTABLISHED` connections.
 
-半连接队列溢出时，Linux 可以启用 SYN Cookie 机制：服务端把必要信息编码进 SYN-ACK 的序列号，不在本地保留完整的半连接状态，收到合法 ACK 后再重建连接信息。SYN Cookie 是防护手段，不是扩容手段。
+When the SYN queue overflows, Linux can use SYN cookies. The server encodes the necessary information in the SYN-ACK sequence number instead of storing full half-open state, then reconstructs the connection information after receiving a valid ACK. SYN cookies are a defense mechanism, not a way to increase capacity.
 
-全连接队列溢出时，行为取决于 `tcp_abort_on_overflow`：默认值 `0` 时，服务端会丢弃客户端发来的 ACK，让客户端重传，服务端有机会重传 SYN-ACK；设为 `1` 时，直接回复 RST，快速失败。生产环境通常保持默认值 `0`，避免误拒正常连接。排查全连接队列溢出可以用 `ss -ltn`：如果 Recv-Q 长时间接近 Send-Q，说明 accept 不够及时，要检查应用线程池是否卡住或 backlog 配置是否过小。
+When the accept queue overflows, behavior depends on `tcp_abort_on_overflow`. At the default value `0`, the server drops the client's ACK, prompting a retry and giving the server a chance to retransmit its SYN-ACK. At `1`, it replies with an RST and fails immediately. Production systems usually keep the default to avoid rejecting valid connections too readily. Use `ss -ltn` to investigate: if `Recv-Q` stays close to `Send-Q`, the application may not be accepting connections quickly enough. Check whether its thread pool is blocked or the backlog is too small.
 
-**3、CPU、网卡和业务处理能力。**
+**3. CPU, network interfaces, and application capacity**
 
-空闲长连接主要考验内存、FD 上限、内核连接表和连接保活策略；活跃连接还会带来系统调用、加解密、协议解析、线程调度和网卡中断等压力。
+Idle persistent connections mainly use memory, file descriptors, kernel connection-table space, and keepalive resources. Active connections also add system calls, encryption and decryption, protocol parsing, thread scheduling, and network interrupt load.
 
-## 客户端为什么更容易撞到端口限制？
+## Why Do Clients Hit Port Limits More Easily?
 
-![客户端直连和 NAT 网关瓶颈](../images/shared/maximum-number-of-tcp-connections-per-host-client-and-nat-port-restriction.png)
+![Client-side and NAT gateway port limits](../images/shared/maximum-number-of-tcp-connections-per-host-client-and-nat-port-restriction.png)
 
-服务端不是 65535 上限，但客户端访问同一个目标时，临时端口可能先耗尽。
+Servers are not limited to 65,535 connections, but a client's ephemeral ports may run out when it connects repeatedly to the same destination.
 
-例如客户端固定为 `192.168.1.10`，不断连接 `10.0.0.1:443`。这时目的 IP、目的端口、源 IP 都固定，只剩源端口可变。源端口用完后，就无法再创建新四元组。
+Suppose a client at `192.168.1.10` repeatedly connects to `10.0.0.1:443`. The destination IP, destination port, and source IP are fixed, leaving only the source port to vary. Once the available source ports are used, the client cannot create new four-tuples for that destination.
 
-Linux 自动分配临时端口范围可以这样看：
+On Linux, check the range used for automatically assigned ephemeral ports with:
 
 ```bash
 sysctl net.ipv4.ip_local_port_range
 ```
 
-Mac 下可以这样查看：
+On macOS, use:
 
-![Mac 下自动分配临时端口范围查看](../images/shared/check-automatic-temporary-port-range-mac.jpg)
+![Checking the automatic ephemeral port range on macOS](../images/shared/check-automatic-temporary-port-range-mac.jpg)
 
-很多 Linux 环境默认临时端口范围是 `32768 60999`，大约 2.8 万个端口；实际值以 `sysctl net.ipv4.ip_local_port_range` 输出为准，且不是全部 `0~65535` 都会自动拿来做临时端口。
+Many Linux systems default to the ephemeral port range `32768 60999`, about 28,000 ports. Check the output of `sysctl net.ipv4.ip_local_port_range` for the actual range; the entire `0–65535` range is not automatically used for ephemeral ports.
 
-看到 `Cannot assign requested address` / `EADDRNOTAVAIL`、大量 `connect` 失败，且目标 `IP:Port` 很集中时，要怀疑临时端口耗尽或 `TIME_WAIT` 堆积。
+If you see `Cannot assign requested address` / `EADDRNOTAVAIL` or many failed `connect` calls while traffic is concentrated on one destination `IP:Port`, check for ephemeral port exhaustion or a buildup of `TIME_WAIT` sockets.
 
-## NAT 网关这层也可能先顶不住
+## The NAT Gateway May Become the Bottleneck
 
-还有一种情况容易被忽略：很多内网机器并不是直接访问公网，而是先经过 NAT 网关。
+One often-overlooked case is that many private network hosts reach the public internet through a NAT gateway.
 
-NAT 做的事情是把内网地址转换成公网地址。比如内网机器 `192.168.1.10:50000` 访问外部服务时，NAT 可能会改成 `203.0.113.1:40000`，并在本地记录这条映射。响应包回来后，再根据映射关系转发回原来的内网机器。
+NAT translates private addresses to public ones. For example, when `192.168.1.10:50000` accesses an external service, the NAT gateway may translate it to `203.0.113.1:40000` and store the mapping. When a response arrives, the gateway uses that mapping to forward it to the original host.
 
-如果大量内网机器共享同一个公网 IP，并集中访问**同一个外部 `IP:Port`**，NAT 侧可用的公网源端口数量就会成为限制因素。如果目标分散，端口复用空间会更大。端口不够只是其中一类问题，NAT 设备的连接跟踪表、CPU、内存也可能先到瓶颈。
+If many private hosts share one public IP and connect to **the same external `IP:Port`**, the NAT gateway's available public source ports can become a limit. Connections to different destinations allow more port reuse. Port exhaustion is only one possible issue; the NAT device's connection-tracking table, CPU, or memory may become a bottleneck first.
 
-所以排查连接数问题时，不要只盯着客户端和服务端，链路中间的 NAT 网关也要看。
+When investigating connection limits, check the NAT gateway between the client and server as well.
 
-常见的 NAT 侧排查指标包括：NAT 连接跟踪表使用率、SNAT 端口使用率、单公网 IP 到单目标的连接数，以及 NAT 设备的 CPU、内存、丢包和连接创建速率。如果 NAT 确实成了瓶颈，可以考虑增加公网 IP、拆分出口或做连接复用。
+Useful NAT metrics include connection-tracking table usage, SNAT port usage, connections from one public IP to one destination, and the device's CPU, memory, packet loss, and connection creation rate. If NAT is the bottleneck, consider adding public IPs, splitting outbound traffic across gateways, or reusing connections.
 
-## TIME_WAIT 会怎样影响连接数？
+## How Does TIME_WAIT Affect the Connection Count?
 
-![TIME_WAIT 状态占用本地端口并影响可建立连接数](../images/shared/how-time-wait-affects-number-of-connections.png)
+![TIME_WAIT uses local ports and can limit new connections](../images/shared/how-time-wait-affects-number-of-connections.png)
 
-典型情况下，**主动关闭连接的一方会进入 `TIME_WAIT`**——因为它需要在发送最后一个 ACK 后等待一段时间，防止最后 ACK 丢失以及旧报文影响后续连接。（同时关闭场景下，双方都会进入 TIME_WAIT，不过日常碰到的绝大多数是前者。）
+Typically, **the side that actively closes the connection enters `TIME_WAIT`**. It waits after sending the final ACK to handle a lost ACK and prevent old packets from affecting a later connection. (If both sides close simultaneously, both can enter `TIME_WAIT`, but the active-close case is more common.)
 
-问题在于，`TIME_WAIT` 会让对应连接在一段时间内不能被随意复用。对客户端高频短连接同一目标来说，可用临时端口会被大量 `TIME_WAIT` 消耗，从而更容易撞到端口上限。
+While a connection is in `TIME_WAIT`, it cannot be freely reused. For a client making frequent short-lived connections to the same destination, many sockets in `TIME_WAIT` consume ephemeral ports and make port exhaustion more likely.
 
-这也是为什么高并发调用**优先建议使用连接池和 HTTP keep-alive**，从源头减少短连接创建。
+That is why high-concurrency clients should **prefer connection pools and HTTP keep-alive** to reduce short-lived connections at the source.
 
-说到连接复用，很多人分不清 TCP Keepalive 和 HTTP Keep-Alive，其实它们解决的问题完全不同。
+Connection reuse is also where TCP keepalive and HTTP Keep-Alive are often confused, even though they solve different problems.
 
-简单说：HTTP Keep-Alive 管的是“一条连接最多用多久、服务多少次请求”，TCP Keepalive 管的是“如果长时间没数据，检查一下对方是不是已经消失了”。两者互不干扰，也不能互相替代。详细介绍可以看这篇文章：[TCP Keepalive 和 HTTP Keep-Alive 有什么区别？](./tcp-keepalive-vs-http-keepalive.md)。
+In short, HTTP Keep-Alive controls how long a connection stays open and how many requests it serves. TCP keepalive checks whether a peer has disappeared after a long idle period. They do not interfere with each other and cannot replace one another. See [TCP Keepalive vs. HTTP Keep-Alive](./tcp-keepalive-vs-http-keepalive.md) for details.
 
-至于内核参数，别一看到 `TIME_WAIT` 多就急着改。
+Do not rush to change kernel settings just because you see many `TIME_WAIT` sockets.
 
-`tcp_tw_reuse` 要结合内核版本、业务场景和真实的端口耗尽证据来看，不适合当成万能优化项。`tcp_tw_recycle` 更不用碰了，Linux 4.12 之后已经被移除。
+Consider `tcp_tw_reuse` only in light of the kernel version, workload, and evidence of port exhaustion; it is not a universal optimization. Do not use `tcp_tw_recycle`, which was removed in Linux 4.12.
 
-也别想着清理 TIME_WAIT。它不是脏东西，而是 TCP 协议里的正常机制。
+Do not try to clear `TIME_WAIT` sockets. They are a normal part of TCP, not junk.
 
-看到 `TIME_WAIT` 数量很多，第一反应应该是回到业务链路看问题：是不是一直在创建短连接？连接池有没有生效？HTTP keep-alive 有没有打开？客户端是不是每次请求完都主动断开？
+If there are many `TIME_WAIT` sockets, first inspect the application: Is it continually creating short-lived connections? Is the connection pool working? Is HTTP keep-alive enabled? Does the client close the connection after every request?
 
-生产环境里很常见的一个坑，就是**连接池没配好，最后把临时端口耗光了**。
+One common production problem is **a misconfigured connection pool that eventually exhausts ephemeral ports**.
 
-比如：
+For example:
 
-- HTTP 客户端没开 keep-alive，也没用连接池，每次请求都新建连接，请求完就关，`TIME_WAIT` 很快堆起来。
-- 连接池最大连接数、每个目标地址的连接数配置太小，导致连接一直被创建和销毁。
-- DNS 最后解析到单个 IP，请求目标太集中，四元组里主要只剩源端口在变，更容易把端口打满。
+- The HTTP client has no keep-alive or connection pool, so it opens and closes a connection for every request. `TIME_WAIT` sockets quickly accumulate.
+- The pool's maximum connection count or per-destination limit is too low, causing connections to be created and closed repeatedly.
+- DNS resolves the service to a single IP, concentrating requests on one destination. The source port is then the main changing part of the four-tuple, making port exhaustion more likely.
 
-排查这类问题，优先修连接复用。确认连接池、keep-alive、超时和关闭策略都没问题之后，再考虑扩大临时端口范围，或者增加源 IP。不要一上来就改内核参数。
+For this problem, fix connection reuse first. After checking the pool, keep-alive, timeouts, and close behavior, consider expanding the ephemeral port range or adding source IPs. Do not start by changing kernel settings.
 
-![TIME_WAIT 与 CLOSE_WAIT 问题的排查流程](../images/shared/tcp-time-wait-close-wait-troubleshooting-flowchart.png)
+![Troubleshooting TIME_WAIT and CLOSE_WAIT](../images/shared/tcp-time-wait-close-wait-troubleshooting-flowchart.png)
 
-排查时可以用 `ss -ant` 统计各 TCP 状态数量，`ss -ant state time-wait | awk 'NR>1 {print $5}' | sort | uniq -c | sort -nr | head` 查看 TIME_WAIT 集中在哪些目标，`ss -ltn` 查看监听 socket 的 accept queue 堆积情况。看到 TIME_WAIT 集中在某个远端服务，检查短连接和连接池；看到 CLOSE_WAIT 集中在某个本地进程，优先查应用代码有没有正确关闭连接。
+Use `ss -ant` to count sockets by TCP state. Run `ss -ant state time-wait | awk 'NR>1 {print $5}' | sort | uniq -c | sort -nr | head` to see which destinations have the most `TIME_WAIT` sockets, and `ss -ltn` to inspect accept queues. If `TIME_WAIT` sockets cluster around one remote service, check short-lived connections and the pool. If `CLOSE_WAIT` sockets cluster in one local process, check whether the application closes connections correctly.
 
-## 回到问题
+## The Short Answer
 
-一台主机最多只能保持 65535 个 TCP 连接吗？
+Is a host limited to 65,535 TCP connections?
 
-答案是：不能这么理解。
+No. That is not what the number means.
 
-`65535` 对应的是端口号范围，不是 TCP 连接数上限。TCP 连接靠四元组区分：源 IP、源端口、目的 IP、目的端口。服务端监听同一个端口时，只要客户端 IP 或客户端端口不同，连接就可以继续增加。
+`65,535` is the maximum port number, not a limit on TCP connections. TCP connections are distinguished by a four-tuple: source IP, source port, destination IP, and destination port. A server can accept more connections on the same listening port as long as the client IP or port differs.
 
-不过，理论上能区分出来，不代表机器一定扛得住。实际连接数通常会被文件描述符、内存、CPU、网卡、应用处理能力、握手队列等资源限制住。客户端如果频繁短连接访问同一个目标，还会碰到临时端口和 `TIME_WAIT` 的压力；如果中间经过 NAT，还要看 NAT 网关能不能撑住。
+However, being able to distinguish connections does not mean a machine can handle them all. File descriptors, memory, CPU, network interfaces, application capacity, and handshake queues can all limit the count. A client making frequent short-lived connections to one destination may also run into ephemeral-port and `TIME_WAIT` limits. If traffic passes through NAT, the gateway's capacity matters too.
 
-小 G 这里再压缩成一句话：**服务端连接数主要看机器资源，客户端连同一个目标主要看临时端口，中间有 NAT 时还要看 NAT 网关。`65535` 只是端口号上限，不是所有 TCP 连接的上限。**
+In short: **Server connection counts mainly depend on machine resources; a client connecting to one destination is mainly limited by ephemeral ports; and traffic through NAT is also limited by the gateway. `65,535` is the maximum port number, not the maximum number of TCP connections.**

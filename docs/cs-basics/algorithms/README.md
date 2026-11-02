@@ -1,11 +1,11 @@
 ---
-title: 算法专题：面试刷题路线、核心模板与 LeetCode 高频题
-description: 算法面试复习路线，涵盖复杂度分析、二分、双指针、滑动窗口、DFS/BFS、回溯、动态规划、贪心、Top K、字符串、链表、排序和 LeetCode 高频题。
-category: 计算机基础
+title: "Algorithms: Interview Roadmap, Core Patterns, and Common LeetCode Problems"
+description: An algorithm interview roadmap covering complexity, binary search, two pointers, sliding windows, DFS/BFS, backtracking, dynamic programming, greedy algorithms, Top K, strings, linked lists, sorting, and common LeetCode problems.
+category: Computer Science Basics
 tag:
-  - 算法
+  - Algorithms
   - LeetCode
-  - 面试
+  - Interview Preparation
 sidebar: false
 sitemap:
   changefreq: weekly
@@ -13,103 +13,103 @@ sitemap:
 head:
   - - meta
     - name: keywords
-      content: 算法,算法面试题,LeetCode,刷题路线,二分查找,双指针,滑动窗口,DFS,BFS,回溯,动态规划,贪心,TopK,排序算法,字符串算法,链表算法,后端面试
+      content: algorithms,algorithm interview questions,LeetCode,problem-solving roadmap,binary search,two pointers,sliding window,DFS,BFS,backtracking,dynamic programming,greedy,Top K,sorting,string algorithms,linked list algorithms,backend interviews
 ---
 
-这份 **算法专题** 不是按教材顺序堆知识点，而是按面试刷题的真实路径整理：先搞清复杂度，再掌握二分、双指针、滑动窗口、DFS/BFS、回溯、动态规划、贪心、Top K 这些高频模板，最后用字符串、链表、排序和 LeetCode 题单做复盘。
+This **algorithms guide** follows a practical interview-preparation path rather than the order of a textbook. Start with complexity, then learn common patterns such as binary search, two pointers, sliding windows, DFS/BFS, backtracking, dynamic programming, greedy algorithms, and Top K. Finish with focused reviews of strings, linked lists, sorting, and LeetCode problem sets.
 
-算法题准备到后面，很容易陷入一个状态：题刷了不少，但换个条件就卡住。原因通常不是题量不够，而是没有把题目归到模板里。面试时真正有用的是：看到题目后能判断它像哪类问题，先写出可工作的版本，再解释复杂度和边界处理。
+It is easy to solve many problems but get stuck when one condition changes. Usually, the issue is not a lack of practice; it is failing to recognize the underlying pattern. In an interview, it helps to identify the problem type, write a working solution, then explain its complexity and edge cases.
 
-## 适合谁看
+## Who Should Read This?
 
-- 正在准备校招、社招算法题，希望按题型系统刷 LeetCode 的同学。
-- 已经刷过一些题，但复盘时说不清“这题为什么这么做”的读者。
-- 数据结构基础还可以，但缺少算法模板和边界处理经验的后端开发者。
-- 面试前只有 7 到 30 天，需要快速找回手感的工程师。
+- Candidates preparing for internship, new-graduate, or experienced-hire interviews who want a structured LeetCode plan.
+- Developers who have solved problems but struggle to explain why a solution works.
+- Backend developers with a data structures foundation who want more practice with algorithm patterns and edge cases.
+- Engineers with 7 to 30 days before an interview who want to refresh their problem-solving skills.
 
-## 算法面试考什么
+## What Do Algorithm Interviews Test?
 
-算法面试一般不只是看你能不能 AC 一道题，更多是在看 4 件事：
+Algorithm interviews are about more than whether you can get one problem accepted. They usually assess four things:
 
-| 考察点     | 面试里的具体表现                     | 复习时要做什么                 |
-| ---------- | ------------------------------------ | ------------------------------ |
-| 题型识别   | 这题是二分、滑动窗口、回溯还是 DP    | 按题型刷，不要完全随机刷       |
-| 代码稳定性 | 边界、空指针、下标、循环条件是否可靠 | 每个模板准备 2 到 3 个边界样例 |
-| 复杂度表达 | 能否说清时间复杂度和空间复杂度       | 每做完一题都写复杂度           |
-| 迁移能力   | 条件变化后能否改模板                 | 一类题至少刷基础题和变体题     |
+| Skill               | What it looks like in an interview                                                    | How to prepare                                                 |
+| ------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Pattern recognition | Can you identify binary search, sliding window, backtracking, or dynamic programming? | Practice by pattern instead of picking problems at random.     |
+| Reliable code       | Are edge cases, nulls, indexes, and loop conditions handled correctly?                | Prepare two or three edge cases for each template.             |
+| Complexity analysis | Can you explain time and space complexity?                                            | Write down the complexity after solving each problem.          |
+| Adaptability        | Can you adjust the pattern when the conditions change?                                | Solve both introductory and variant problems for each pattern. |
 
-如果只能记一句话：**先按题型建模板，再用代表题练迁移。**
+If you remember one thing: **learn patterns first, then use representative problems to practice adapting them.**
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [时间复杂度和空间复杂度面试指南](./complexity-analysis.md)：先把 Big O、递归复杂度和常见误判讲清楚。
-2. [二分查找面试题总结](./binary-search.md)：练基础二分、左右边界和答案二分。
-3. [双指针与滑动窗口面试题总结](./two-pointers-and-sliding-window.md)：解决数组、字符串、链表里的高频题。
-4. [DFS 与 BFS 面试题总结](./dfs-bfs.md)：掌握树、图、矩阵搜索和层序遍历。
-5. [回溯算法面试题总结](./backtracking.md)：集中处理组合、排列、子集和棋盘问题。
-6. [动态规划面试题总结](./dynamic-programming.md)：从状态定义和转移方程入手，不靠背题。
-7. [贪心算法面试题总结](./greedy.md) 和 [Top K 问题面试题总结](./top-k.md)：补齐排序贪心、堆、快排分区和桶计数。
-8. [几道常见的字符串算法题](./string-algorithm-problems.md)、[几道常见的链表算法题](./linkedlist-algorithm-problems.md)、[十大经典排序算法总结](./10-classical-sorting-algorithms.md)：按专题做面试前复盘。
+1. [Time and Space Complexity Interview Guide](./complexity-analysis.md): Review Big O, recursive complexity, and common mistakes.
+2. [Binary Search Interview Questions](./binary-search.md): Practice basic binary search, boundary searches, and binary search on the answer.
+3. [Two Pointers and Sliding Window Interview Questions](./two-pointers-and-sliding-window.md): Solve common array, string, and linked list problems.
+4. [DFS and BFS Interview Questions](./dfs-bfs.md): Learn tree and graph traversal, matrix search, and level-order traversal.
+5. [Backtracking Interview Questions](./backtracking.md): Practice combinations, permutations, subsets, and board problems.
+6. [Dynamic Programming Interview Questions](./dynamic-programming.md): Start with state definitions and transitions instead of memorizing solutions.
+7. [Greedy Algorithm Interview Questions](./greedy.md) and [Top K Interview Questions](./top-k.md): Review sorting-based greedy approaches, heaps, quicksort partitioning, and bucket counting.
+8. [Common String Algorithm Problems](./string-algorithm-problems.md), [Common Linked List Algorithm Problems](./linkedlist-algorithm-problems.md), and [Ten Classic Sorting Algorithms](./10-classical-sorting-algorithms.md): Review each topic before an interview.
 
-## 核心模板
+## Core Patterns
 
-| 模板     | 识别信号                                   | 重点文章                                                           |
-| -------- | ------------------------------------------ | ------------------------------------------------------------------ |
-| 二分查找 | 有序、单调、最小可行值、最大可行值         | [二分查找面试题总结](./binary-search.md)                           |
-| 双指针   | 原地修改、两端收缩、快慢追赶、链表定位     | [双指针与滑动窗口面试题总结](./two-pointers-and-sliding-window.md) |
-| 滑动窗口 | 连续子数组、连续子串、最长/最短窗口        | [双指针与滑动窗口面试题总结](./two-pointers-and-sliding-window.md) |
-| DFS/BFS  | 树遍历、图遍历、矩阵连通块、层序最短步数   | [DFS 与 BFS 面试题总结](./dfs-bfs.md)                              |
-| 回溯     | 枚举所有方案、路径选择、组合排列、棋盘约束 | [回溯算法面试题总结](./backtracking.md)                            |
-| 动态规划 | 最优值、计数、能否到达、子序列、背包       | [动态规划面试题总结](./dynamic-programming.md)                     |
-| 贪心     | 每一步选择当前最合适的对象，常和排序搭配   | [贪心算法面试题总结](./greedy.md)                                  |
-| Top K    | 第 K 大、前 K 高频、数据流、优先级         | [Top K 问题面试题总结](./top-k.md)                                 |
+| Pattern             | Clues                                                                                 | Guide                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Binary search       | Sorted or monotonic data; minimum or maximum feasible value                           | [Binary Search Interview Questions](./binary-search.md)                                     |
+| Two pointers        | In-place updates, narrowing from both ends, fast/slow pointers, linked list positions | [Two Pointers and Sliding Window Interview Questions](./two-pointers-and-sliding-window.md) |
+| Sliding window      | Contiguous subarrays or substrings; longest or shortest window                        | [Two Pointers and Sliding Window Interview Questions](./two-pointers-and-sliding-window.md) |
+| DFS/BFS             | Tree or graph traversal, matrix components, shortest path by levels                   | [DFS and BFS Interview Questions](./dfs-bfs.md)                                             |
+| Backtracking        | Enumerate solutions, choose paths, combinations, permutations, or board constraints   | [Backtracking Interview Questions](./backtracking.md)                                       |
+| Dynamic programming | Optimization, counting, reachability, subsequences, or knapsack                       | [Dynamic Programming Interview Questions](./dynamic-programming.md)                         |
+| Greedy              | Choose the locally best option at each step, often combined with sorting              | [Greedy Algorithm Interview Questions](./greedy.md)                                         |
+| Top K               | Kth largest, K most frequent, streams, or priorities                                  | [Top K Interview Questions](./top-k.md)                                                     |
 
-## 7 天速刷路线
+## 7-Day Review Plan
 
-时间很紧时，不建议从难题开始。7 天路线的目标是恢复模板和手写稳定性：
+When time is short, start with core patterns instead of difficult problems. This 7-day plan focuses on refreshing templates and writing them reliably:
 
-| 天数    | 重点              | 建议动作                                       |
-| ------- | ----------------- | ---------------------------------------------- |
-| 第 1 天 | 复杂度 + 排序     | 复盘 Big O、快排、归并、堆排序和稳定性         |
-| 第 2 天 | 二分 + 双指针     | 写左右边界模板、两数之和、三数之和、删除重复项 |
-| 第 3 天 | 滑动窗口 + 字符串 | 写最长无重复子串、最小覆盖子串、回文相关题     |
-| 第 4 天 | 链表              | 写反转链表、环形链表、删除倒数第 N 个节点      |
-| 第 5 天 | 树和 BFS          | 写前中后序遍历、层序遍历、最近公共祖先         |
-| 第 6 天 | 回溯 + DP         | 写子集、组合、零钱兑换、最长递增子序列         |
-| 第 7 天 | Top K + 复盘      | 写第 K 大、前 K 高频，整理错题和边界样例       |
+| Day | Focus                                | Suggested practice                                                                                          |
+| --- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| 1   | Complexity and sorting               | Review Big O, quicksort, mergesort, heapsort, and stability.                                                |
+| 2   | Binary search and two pointers       | Write boundary-search templates; solve Two Sum, 3Sum, and Remove Duplicates.                                |
+| 3   | Sliding windows and strings          | Practice Longest Substring Without Repeating Characters, Minimum Window Substring, and palindrome problems. |
+| 4   | Linked lists                         | Practice list reversal, cycle detection, and removing the Nth node from the end.                            |
+| 5   | Trees and BFS                        | Practice preorder, inorder, postorder, level-order traversal, and lowest common ancestor.                   |
+| 6   | Backtracking and dynamic programming | Practice subsets, combinations, Coin Change, and Longest Increasing Subsequence.                            |
+| 7   | Top K and review                     | Practice Kth Largest and Top K Frequent Elements; review mistakes and edge cases.                           |
 
-## 30 天系统路线
+## 30-Day Study Plan
 
-30 天路线不用追求每天刷很多题。更靠谱的节奏是：每天 1 到 3 道代表题，题后写 5 行复盘。
+You do not need to solve many problems every day. A more sustainable pace is one to three representative problems, followed by a brief review of each.
 
-| 阶段     | 时间           | 目标                                             |
-| -------- | -------------- | ------------------------------------------------ |
-| 第一阶段 | 第 1 到 5 天   | 复杂度、数组、链表、栈、队列，保证基础模板能手写 |
-| 第二阶段 | 第 6 到 12 天  | 二分、双指针、滑动窗口、字符串，重点练边界       |
-| 第三阶段 | 第 13 到 18 天 | 树、图、DFS/BFS、并查集，建立搜索题框架          |
-| 第四阶段 | 第 19 到 24 天 | 回溯、动态规划、贪心，重点练状态定义和剪枝       |
-| 第五阶段 | 第 25 到 30 天 | Top K、排序、综合题和错题复盘，准备面试讲解      |
+| Phase   | Days       | Goal                                                                                         |
+| ------- | ---------- | -------------------------------------------------------------------------------------------- |
+| Phase 1 | Days 1–5   | Complexity, arrays, linked lists, stacks, and queues; write the basic templates from memory. |
+| Phase 2 | Days 6–12  | Binary search, two pointers, sliding windows, and strings; focus on edge cases.              |
+| Phase 3 | Days 13–18 | Trees, graphs, DFS/BFS, and union-find; build a framework for search problems.               |
+| Phase 4 | Days 19–24 | Backtracking, dynamic programming, and greedy algorithms; focus on states and pruning.       |
+| Phase 5 | Days 25–30 | Top K, sorting, mixed problems, and review; practice explaining solutions.                   |
 
-## 高频问题自测
+## Review Questions
 
-- 时间复杂度为什么要看最高阶？递归复杂度怎么算？
-- 二分查找的 `left < right` 和 `left <= right` 怎么选？
-- 双指针和滑动窗口有什么区别？
-- DFS 和 BFS 分别适合什么问题？什么时候需要 `visited`？
-- 回溯和 DFS 是什么关系？剪枝应该放在哪里？
-- 动态规划为什么难？状态定义和遍历顺序怎么确定？
-- 贪心为什么需要证明？面试中答到什么程度够用？
-- Top K 用堆、快排分区还是桶计数，怎么选？
-- 排序算法的稳定性、原地排序、最好/最坏复杂度分别是什么？
+- Why does time complexity focus on the highest-order term, and how is recursive complexity calculated?
+- When should binary search use `left < right` versus `left <= right`?
+- How do two pointers differ from a sliding window?
+- Which problems suit DFS or BFS, and when is a `visited` set needed?
+- How are backtracking and DFS related, and where should pruning happen?
+- Why is dynamic programming difficult, and how do you define states and traversal order?
+- Why does a greedy algorithm need a proof, and how much should you explain in an interview?
+- When should Top K use a heap, quicksort partitioning, or bucket counting?
+- How do sorting algorithms compare in stability, in-place behavior, and best- and worst-case complexity?
 
-## 相关专题
+## Related Topics
 
-- [计算机基础知识体系](../)
-- [数据结构专题](../data-structure/)
-- [常见数据结构经典 LeetCode 题目推荐](./common-data-structures-leetcode-recommendations.md)
-- [经典算法思想总结](./classical-algorithm-problems-recommendations.md)
-- [Java 集合](../../java/collection/java-collection-questions-01.md)
-- [面试准备](../../interview-preparation/)
-- [计算机基础书籍推荐](../../books/cs-basics.md)
+- [Computer Science Fundamentals](../)
+- [Data Structures](../data-structure/)
+- [Recommended LeetCode Problems for Common Data Structures](./common-data-structures-leetcode-recommendations.md)
+- [Classic Algorithmic Techniques](./classical-algorithm-problems-recommendations.md)
+- [Java Collections](../../java/collection/java-collection-questions-01.md)
+- [Interview Preparation](../../interview-preparation/)
+- [Recommended Computer Science Books](../../books/cs-basics.md)
 
 <!-- @include: @article-footer.snippet.md -->

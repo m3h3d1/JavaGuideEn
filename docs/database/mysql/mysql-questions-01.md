@@ -1,267 +1,267 @@
 ---
-title: MySQL常见面试题总结
-description: MySQL高频面试题精讲：基础架构、InnoDB引擎、索引原理、B+树、事务ACID、MVCC、redo/undo/binlog日志、行锁/表锁、慢查询优化，一文速通大厂必考点！
-category: 数据库
+title: "MySQL Interview Questions: Core Concepts"
+description: Key MySQL interview topics, including architecture, InnoDB, indexes, B+Trees, ACID transactions, MVCC, logs, locking, and query optimization.
+category: Database
 tag:
   - MySQL
-  - 大厂面试
+  - Backend Interviews
 head:
   - - meta
     - name: keywords
-      content: MySQL面试题,MySQL基础架构,InnoDB存储引擎,MySQL索引,B+树索引,事务隔离级别,redo log,undo log,binlog,MVCC,行级锁,慢查询优化
+      content: MySQL interview questions, MySQL architecture, InnoDB storage engine, MySQL indexes, B+Tree indexes, transaction isolation, redo log, undo log, binlog, MVCC, row locks, slow query optimization
 ---
 
-## MySQL 基础
+## MySQL Fundamentals
 
-### 什么是关系型数据库？
+### What Is a Relational Database?
 
-顾名思义，关系型数据库（RDB，Relational Database）就是一种建立在关系模型的基础上的数据库。关系模型表明了数据库中所存储的数据之间的联系（一对一、一对多、多对多）。
+A relational database (RDB) is built on the relational model, which describes relationships between stored data, such as one-to-one, one-to-many, and many-to-many relationships.
 
-关系型数据库中，我们的数据都被存放在了各种表中（比如用户表），表中的每一行就存放着一条数据（比如一个用户的信息）。
+Data in a relational database is stored in tables, such as a user table. Each row stores one record, such as information about a user.
 
-![关系型数据库表关系](../images/shared/5e3c1a71724a38245aa43b02_99bf70d46cc247be878de9d3a88f0c44.png)
+![Relationships between tables in a relational database](../images/shared/5e3c1a71724a38245aa43b02_99bf70d46cc247be878de9d3a88f0c44.png)
 
-大部分关系型数据库都使用 SQL 来操作数据库中的数据。并且，大部分关系型数据库都支持事务的四大特性(ACID)。
+Most relational databases use SQL to work with data and support the four ACID properties of transactions.
 
-**有哪些常见的关系型数据库呢？**
+**What are some common relational databases?**
 
-MySQL、PostgreSQL、Oracle、SQL Server、SQLite（微信本地的聊天记录的存储就是用的 SQLite） ……。
+MySQL, PostgreSQL, Oracle, SQL Server, and SQLite. For example, WeChat uses SQLite to store local chat history.
 
-### 什么是 SQL？
+### What Is SQL?
 
-SQL 是一种结构化查询语言(Structured Query Language)，专门用来与数据库打交道，目的是提供一种从数据库中读写数据的简单有效的方法。
+SQL (Structured Query Language) is a language for working with databases. It provides a simple and effective way to read and write data.
 
-几乎所有的主流关系数据库都支持 SQL ，适用性非常强。并且，一些非关系型数据库也兼容 SQL 或者使用的是类似于 SQL 的查询语言。
+Nearly all major relational databases support SQL, making it widely applicable. Some non-relational databases also support SQL or similar query languages.
 
-SQL 可以帮助我们：
+SQL can be used to:
 
-- 新建数据库、数据表、字段；
-- 在数据库中增加，删除，修改，查询数据；
-- 新建视图、函数、存储过程；
-- 对数据库中的数据进行简单的数据分析；
-- 搭配 Hive，Spark SQL 做大数据；
-- 搭配 SQLFlow 做机器学习；
-- ……
+- Create databases, tables, and columns.
+- Insert, delete, update, and query data.
+- Create views, functions, and stored procedures.
+- Perform basic data analysis.
+- Work with big data tools such as Hive and Spark SQL.
+- Work with machine learning tools such as SQLFlow.
+- And more.
 
-### 什么是 MySQL？
+### What Is MySQL?
 
 ![](../images/shared/20210327143351823.png)
 
-**MySQL 是一种关系型数据库，主要用于持久化存储我们的系统中的一些数据比如用户信息。**
+**MySQL is a relational database commonly used to persist application data, such as user information.**
 
-由于 MySQL 是开源免费并且比较成熟的数据库，因此，MySQL 被大量使用在各种系统中。任何人都可以在 GPL(General Public License) 的许可下下载并根据个性化的需要对其进行修改。MySQL 的默认端口号是**3306**。
+MySQL is mature, open-source, and widely used. It can be downloaded and modified under the GPL (General Public License). MySQL's default port is **3306**.
 
-### ⭐️MySQL 有什么优点？
+### ⭐️What Are the Advantages of MySQL?
 
-这个问题本质上是在问 MySQL 如此流行的原因。
+This question is really asking why MySQL is so popular.
 
-MySQL 成功可以归功于在**生态、功能和运维**这三个层面上的综合优势。
+MySQL's success comes from its strengths in **ecosystem, features, and operations**.
 
-**第一，从生态和成本角度看，它的护城河非常深。**
+**First, its ecosystem and low cost have helped it become widely adopted.**
 
-- **开源免费：** 这是它得以广泛普及的基石。任何公司和个人都可以免费使用，极大地降低了技术门槛和初期成本。
-- **社区庞大，生态完善：** 经过几十年的发展，MySQL 拥有极其活跃的社区和丰富的生态系统。这意味着无论你遇到什么问题，几乎都能在网上找到解决方案；同时，市面上所有的主流编程语言、框架、ORM 工具、监控系统都对 MySQL 有完美的支持。它的文档也非常丰富，学习资源唾手可得。
+- **Open source and free**: This has been central to MySQL's adoption. Companies and individuals can use it at no cost, lowering the technical and initial financial barriers.
+- **Large community and mature ecosystem**: After decades of development, MySQL has an active community and a rich ecosystem. Solutions to common problems are easy to find, and mainstream programming languages, frameworks, ORM tools, and monitoring systems support it well. Documentation and learning resources are also widely available.
 
-**第二，从核心技术功能上看，它非常强大且均衡。**
+**Second, its core technical features are capable and well balanced.**
 
-- **强大的事务支持：** 这是它作为关系型数据库的立身之本。值得一提的是，InnoDB 默认的可重复读（REPEATABLE-READ）隔离级别，通过 MVCC 和 Next-Key Lock 机制，很大程度上避免了幻读问题，这在很多其他数据库中都需要更高的隔离级别才能做到，兼顾了性能和一致性。详细介绍可以阅读笔者写的这篇文章：[MySQL 事务隔离级别详解](https://javaguide.cn/database/mysql/transaction-isolation-level.html)。
-- **优秀的性能和可扩展性：** MySQL 本身经过了海量互联网业务的严酷考验，单机性能非常出色。更重要的是，它围绕着水平扩展，形成了一套非常成熟的架构方案，比如主从复制、读写分离、以及通过中间件实现的分库分表。这让它能够支撑从初创公司到大型互联网平台的各种规模的业务。
+- **Strong transaction support**: This is a core feature of a relational database. InnoDB's default `REPEATABLE READ` isolation level uses MVCC and next-key locks to prevent most phantom reads, balancing performance and consistency. For details, see [MySQL Transaction Isolation Levels](https://javaguide.cn/database/mysql/transaction-isolation-level.html).
+- **Performance and scalability**: MySQL has been tested by large-scale internet workloads and offers strong single-instance performance. It also has mature horizontal scaling architectures, including replication, read/write splitting, and sharding through middleware, supporting systems from startups to large platforms.
 
-**第三，从运维和使用角度看，它非常‘亲民’。**
+**Third, it is accessible to use and operate.**
 
-- **开箱即用，上手简单：** 相比于 Oracle 等大型商业数据库，MySQL 的安装、配置和日常使用都非常简单直观，学习曲线平缓，对于开发者和初级 DBA 非常友好。
-- **维护成本低：** 由于其简单性和庞大的社区，找到相关的运维人才和解决方案都相对容易，整体的维护成本也更低。
+- **Easy to get started**: Compared with large commercial databases such as Oracle, MySQL is straightforward to install, configure, and use. Its learning curve is gradual, making it accessible to developers and junior DBAs.
+- **Low maintenance cost**: Its simplicity and large community make it relatively easy to find operations staff and solutions, reducing overall maintenance costs.
 
-值得一提的是最近几年，PostgreSQL 的势头很猛，甚至压过了 MySQL。网上出现了很多抨击诋毁 MySQL 的文章，笔者认为任何无脑抨击其中一方或者吹捧另外一方的行为都是不可取的。
+In recent years, PostgreSQL has grown rapidly and in some areas has overtaken MySQL. Some online articles attack MySQL or praise PostgreSQL without nuance. Neither approach is useful.
 
-笔者也写过一篇文章分享对这两个关系型数据库代表的看法，感兴趣的可以看看：[MySQL 被干成老二了？](https://mp.weixin.qq.com/s/APWD-PzTcTqGUuibAw7GGw)。
+For a comparison of these two prominent relational databases, see [Has MySQL Fallen to Second Place?](https://mp.weixin.qq.com/s/APWD-PzTcTqGUuibAw7GGw).
 
-## MySQL 字段类型
+## MySQL Data Types
 
-MySQL 字段类型可以简单分为三大类：
+MySQL data types can be divided into three broad categories:
 
-- **数值类型**：整型（TINYINT、SMALLINT、MEDIUMINT、INT 和 BIGINT）、浮点型（FLOAT 和 DOUBLE）、定点型（DECIMAL）、位字段数据类型(BIT)
-- **字符串类型**：CHAR、VARCHAR、TINYTEXT、TEXT、MEDIUMTEXT、LONGTEXT、BINARY、TINYBLOB、BLOB、MEDIUMBLOB 和 LONGBLOB 等，最常用的是 CHAR 和 VARCHAR。
-- **日期时间类型**：YEAR、TIME、DATE、DATETIME 和 TIMESTAMP 等。
+- **Numeric**: Integer types (`TINYINT`, `SMALLINT`, `MEDIUMINT`, `INT`, and `BIGINT`), floating-point types (`FLOAT` and `DOUBLE`), fixed-point type (`DECIMAL`), and bit-field type (`BIT`).
+- **String and binary**: `CHAR`, `VARCHAR`, `TINYTEXT`, `TEXT`, `MEDIUMTEXT`, `LONGTEXT`, `BINARY`, `TINYBLOB`, `BLOB`, `MEDIUMBLOB`, and `LONGBLOB`. `CHAR` and `VARCHAR` are most commonly used.
+- **Date and time**: `YEAR`, `TIME`, `DATE`, `DATETIME`, and `TIMESTAMP`.
 
-下面这张图不是我画的，忘记是从哪里保存下来的了，总结的还蛮不错的。
+The following diagram is not my work, and I no longer remember where I found it, but it provides a useful summary.
 
-![MySQL 常见字段类型总结](../images/shared/summary-of-mysql-field-types.png)
+![Summary of common MySQL data types](../images/shared/summary-of-mysql-field-types.png)
 
-MySQL 字段类型比较多，我这里会挑选一些日常开发使用很频繁且面试常问的字段类型，以面试问题的形式来详细介绍。如无特殊说明，针对的都是 InnoDB 存储引擎。
+MySQL has many data types. This article focuses on types commonly used in development and often discussed in interviews. Unless stated otherwise, the discussion applies to the InnoDB storage engine.
 
-另外，推荐阅读一下《高性能 MySQL(第三版)》的第四章，有详细介绍 MySQL 字段类型优化。
+For more on optimizing MySQL data types, see Chapter 4 of _High Performance MySQL, 3rd Edition_.
 
-### ⭐️整数类型的 UNSIGNED 属性有什么用？
+### ⭐️What Does the UNSIGNED Attribute Do for Integer Types?
 
-MySQL 中的整数类型可以使用可选的 UNSIGNED 属性来表示不允许负值的无符号整数。使用 UNSIGNED 属性可以将正整数的上限提高一倍，因为它不需要存储负数值。
+MySQL integer types can use the optional `UNSIGNED` attribute to disallow negative values. This doubles the maximum positive value because the type does not need to represent negative numbers.
 
-例如， TINYINT UNSIGNED 类型的取值范围是 0 ~ 255，而普通的 TINYINT 类型的值范围是 -128 ~ 127。INT UNSIGNED 类型的取值范围是 0 ~ 4,294,967,295，而普通的 INT 类型的值范围是 -2,147,483,648 ~ 2,147,483,647。
+For example, `TINYINT UNSIGNED` ranges from 0 to 255, while a regular `TINYINT` ranges from -128 to 127. `INT UNSIGNED` ranges from 0 to 4,294,967,295, while a regular `INT` ranges from -2,147,483,648 to 2,147,483,647.
 
-对于从 0 开始递增的 ID 列，使用 UNSIGNED 属性可以非常适合，因为不允许负值并且可以拥有更大的上限范围，提供了更多的 ID 值可用。
+`UNSIGNED` can be suitable for an ID column that increases from zero because it disallows negative values and provides a larger positive range.
 
-### CHAR 和 VARCHAR 的区别是什么？
+### What Is the Difference Between CHAR and VARCHAR?
 
-CHAR 和 VARCHAR 是最常用到的字符串类型，两者的主要区别在于：**CHAR 是定长字符串，VARCHAR 是变长字符串。**
+`CHAR` and `VARCHAR` are common string types. The main difference is that **`CHAR` has a fixed length, while `VARCHAR` has a variable length.**
 
-CHAR 在存储时会在右边填充空格以达到指定的长度，检索时会去掉空格；VARCHAR 在存储时需要使用 1 或 2 个额外字节记录字符串的长度，检索时不需要处理。
+When storing a `CHAR` value, MySQL pads it with spaces on the right to the specified length and removes them when retrieving it. `VARCHAR` uses one or two extra bytes to store the string length and requires no such padding.
 
-CHAR 更适合存储长度较短或者长度都差不多的字符串，例如 Bcrypt 算法、MD5 算法加密后的密码、身份证号码。VARCHAR 类型适合存储长度不确定或者差异较大的字符串，例如用户昵称、文章标题等。
+`CHAR` is better suited to short strings of similar length, such as Bcrypt or MD5 password hashes and ID numbers. `VARCHAR` is better for strings of varying lengths, such as usernames and article titles.
 
-CHAR(M) 和 VARCHAR(M) 的 M 都代表能够保存的字符数的最大值，无论是字母、数字还是中文，每个都只占用一个字符。
+For both `CHAR(M)` and `VARCHAR(M)`, `M` is the maximum number of characters, whether letters, digits, or Chinese characters.
 
-### VARCHAR(100)和 VARCHAR(10)的区别是什么？
+### What Is the Difference Between VARCHAR(100) and VARCHAR(10)?
 
-VARCHAR(100)和 VARCHAR(10)都是变长类型，表示能存储最多 100 个字符和 10 个字符。因此，VARCHAR (100) 可以满足更大范围的字符存储需求，有更好的业务拓展性。而 VARCHAR(10)存储超过 10 个字符时，就需要修改表结构才可以。
+Both `VARCHAR(100)` and `VARCHAR(10)` are variable-length types, with maximum lengths of 100 and 10 characters. `VARCHAR(100)` supports longer values and may be more flexible as requirements change. Values longer than 10 characters require a schema change if the column is `VARCHAR(10)`.
 
-虽说 VARCHAR(100)和 VARCHAR(10)能存储的字符范围不同，但二者存储相同的字符串，所占用磁盘的存储空间其实是一样的，这也是很多人容易误解的一点。
+Although their maximum lengths differ, `VARCHAR(100)` and `VARCHAR(10)` use the same disk space when storing the same string. This is a common misconception.
 
-不过，VARCHAR(100) 会消耗更多的内存。这是因为 VARCHAR 类型在内存中操作时，通常会分配固定大小的内存块来保存值，即使用字符类型中定义的长度。例如在进行排序的时候，VARCHAR(100)是按照 100 这个长度来进行的，也就会消耗更多内存。
+However, `VARCHAR(100)` may use more memory. Operations on `VARCHAR` values often allocate fixed-size memory blocks based on the declared length. For example, sorting may use the full length of 100 characters.
 
-### DECIMAL 和 FLOAT/DOUBLE 的区别是什么？
+### What Is the Difference Between DECIMAL and FLOAT/DOUBLE?
 
-DECIMAL 和 FLOAT 的区别是：**DECIMAL 是定点数，FLOAT/DOUBLE 是浮点数。DECIMAL 可以存储精确的小数值，FLOAT/DOUBLE 只能存储近似的小数值。**
+**`DECIMAL` is a fixed-point type, while `FLOAT` and `DOUBLE` are floating-point types. `DECIMAL` stores exact decimal values; `FLOAT` and `DOUBLE` store approximate values.**
 
-DECIMAL 用于存储具有精度要求的小数，例如与货币相关的数据，可以避免浮点数带来的精度损失。
+Use `DECIMAL` for values that require decimal precision, such as currency, to avoid floating-point precision loss.
 
-在 Java 中，MySQL 的 DECIMAL 类型对应的是 Java 类 `java.math.BigDecimal`。
+In Java, MySQL's `DECIMAL` type corresponds to `java.math.BigDecimal`.
 
-### 为什么不推荐使用 TEXT 和 BLOB？
+### Why Are TEXT and BLOB Usually Not Recommended?
 
-TEXT 类型类似于 CHAR（0-255 字节）和 VARCHAR（0-65,535 字节），但可以存储更长的字符串，即长文本数据，例如博客内容。
+`TEXT` is similar to `CHAR` (0–255 bytes) and `VARCHAR` (0–65,535 bytes), but it can store longer strings, such as blog content.
 
-| 类型       | 可存储大小           | 用途           |
-| ---------- | -------------------- | -------------- |
-| TINYTEXT   | 0-255 字节           | 一般文本字符串 |
-| TEXT       | 0-65,535 字节        | 长文本字符串   |
-| MEDIUMTEXT | 0-16,772,150 字节    | 较大文本数据   |
-| LONGTEXT   | 0-4,294,967,295 字节 | 极大文本数据   |
+| Type       | Maximum size          | Use             |
+| ---------- | --------------------- | --------------- |
+| TINYTEXT   | 0–255 bytes           | Short text      |
+| TEXT       | 0–65,535 bytes        | Long text       |
+| MEDIUMTEXT | 0–16,772,150 bytes    | Larger text     |
+| LONGTEXT   | 0–4,294,967,295 bytes | Very large text |
 
-BLOB 类型主要用于存储二进制大对象，例如图片、音视频等文件。
+`BLOB` types are mainly used to store binary large objects, such as images, audio, and video files.
 
-| 类型       | 可存储大小 | 用途                     |
-| ---------- | ---------- | ------------------------ |
-| TINYBLOB   | 0-255 字节 | 短文本二进制字符串       |
-| BLOB       | 0-65KB     | 二进制字符串             |
-| MEDIUMBLOB | 0-16MB     | 二进制形式的长文本数据   |
-| LONGBLOB   | 0-4GB      | 二进制形式的极大文本数据 |
+| Type       | Maximum size | Use                    |
+| ---------- | ------------ | ---------------------- |
+| TINYBLOB   | 0–255 bytes  | Small binary data      |
+| BLOB       | 0–65 KB      | Binary data            |
+| MEDIUMBLOB | 0–16 MB      | Larger binary data     |
+| LONGBLOB   | 0–4 GB       | Very large binary data |
 
-在日常开发中，很少使用 TEXT 类型，但偶尔会用到，而 BLOB 类型则基本不常用。如果预期长度范围可以通过 VARCHAR 来满足，建议避免使用 TEXT。
+In everyday development, `TEXT` is used occasionally and `BLOB` is rarely used. If `VARCHAR` can accommodate the expected values, avoid `TEXT`.
 
-数据库规范通常不推荐使用 BLOB 和 TEXT 类型，这两种类型具有一些缺点和限制，例如：
+Database guidelines often discourage `BLOB` and `TEXT` because of limitations such as:
 
-- 不能有默认值。
-- 在使用临时表时无法使用内存临时表，只能在磁盘上创建临时表（《高性能 MySQL》书中有提到）。
-- 检索效率较低。
-- 不能直接创建索引，需要指定前缀长度。
-- 可能会消耗大量的网络和 IO 带宽。
-- 可能导致表上的 DML 操作变慢。
-- ……
+- They cannot have default values.
+- Temporary tables that use them cannot be stored in memory and must be created on disk (as noted in _High Performance MySQL_).
+- Retrieval may be less efficient.
+- Indexes require a specified prefix length.
+- They may consume substantial network and I/O bandwidth.
+- They may slow DML operations on the table.
+- And more.
 
-### ⭐️DATETIME 和 TIMESTAMP 的区别是什么？如何选择？
+### ⭐️What Is the Difference Between DATETIME and TIMESTAMP, and Which Should You Choose?
 
-DATETIME 类型没有时区信息，TIMESTAMP 和时区有关。
+`DATETIME` values do not include time zone information; `TIMESTAMP` values are time-zone-aware.
 
-TIMESTAMP 只需要使用 4 个字节的存储空间，但是 DATETIME 需要耗费 8 个字节的存储空间。但是，这样同样造成了一个问题，Timestamp 表示的时间范围更小。
+`TIMESTAMP` uses 4 bytes of storage, while `DATETIME` uses 8 bytes. As a result, `TIMESTAMP` supports a smaller time range:
 
-- DATETIME：'1000-01-01 00:00:00.000000' 到 '9999-12-31 23:59:59.999999'
-- Timestamp：'1970-01-01 00:00:01.000000' UTC 到 '2038-01-19 03:14:07.999999' UTC
+- `DATETIME`: '1000-01-01 00:00:00.000000' to '9999-12-31 23:59:59.999999'
+- `TIMESTAMP`: '1970-01-01 00:00:01.000000' UTC to '2038-01-19 03:14:07.999999' UTC
 
-`TIMESTAMP` 的核心优势在于其内建的时区处理能力。数据库负责 UTC 存储和基于会话时区的自动转换，简化了需要处理多时区应用的开发。如果应用需要处理多时区，或者希望数据库能自动管理时区转换，`TIMESTAMP` 是自然的选择（注意其时间范围限制，也就是 2038 年问题）。
+The main advantage of `TIMESTAMP` is its built-in time zone handling. The database stores values in UTC and converts them automatically based on the session time zone, simplifying applications that handle multiple time zones. Choose `TIMESTAMP` when this behavior is useful, while keeping its range limitation—the year 2038 problem—in mind.
 
-如果应用场景不涉及时区转换，或者希望应用程序完全控制时区逻辑，并且需要表示 2038 年之后的时间，`DATETIME` 是更稳妥的选择。
+Choose `DATETIME` when the application does not need automatic time zone conversion, needs full control of time zone handling, or must represent dates after 2038.
 
-关于两者的详细对比以及日期存储类型选择建议，请参考我写的这篇文章： [MySQL 时间类型数据存储建议](./some-thoughts-on-database-storage-time.md)。
+For a detailed comparison and guidance on choosing a date/time type, see [Choosing MySQL Date and Time Types](./some-thoughts-on-database-storage-time.md).
 
-### NULL 和 '' 的区别是什么？
+### What Is the Difference Between NULL and ''?
 
-`NULL` 和 `''` (空字符串) 是两个完全不同的值，它们分别表示不同的含义，并在数据库中有着不同的行为。`NULL` 代表缺失或未知的数据，而 `''` 表示一个已知存在的空字符串。它们的主要区别如下：
+`NULL` and `''` (the empty string) are different values with different meanings and behavior. `NULL` represents missing or unknown data, while `''` is a known empty string. Their main differences are:
 
-1. **含义**:
-   - `NULL` 代表一个不确定的值，它不等于任何值，包括它自身。因此，`SELECT NULL = NULL` 的结果是 `NULL`，而不是 `true` 或 `false`。 `NULL` 意味着缺失或未知的信息。虽然 `NULL` 不等于任何值，但在某些操作中，数据库系统会将 `NULL` 值视为相同的类别进行处理，例如：`DISTINCT`,`GROUP BY`,`ORDER BY`。需要注意的是，这些操作将 `NULL` 值视为相同的类别进行处理，并不意味着 `NULL` 值之间是相等的。 它们只是在特定操作中被特殊处理，以保证结果的正确性和一致性。 这种处理方式是为了方便数据操作，而不是改变了 `NULL` 的语义。
-   - `''` 表示一个空字符串，它是一个已知的值。
-2. **存储空间**:
-   - `NULL` 的存储空间占用取决于数据库的实现，通常需要一些空间来标记该值为空。
-   - `''` 的存储空间占用通常较小，因为它只存储一个空字符串的标志，不需要存储实际的字符。
-3. **比较运算**:
-   - 任何值与 `NULL` 进行比较（例如 `=`, `!=`, `>`, `<` 等）的结果都是 `NULL`，表示结果不确定。要判断一个值是否为 `NULL`，必须使用 `IS NULL` 或 `IS NOT NULL`。
-   - `''` 可以像其他字符串一样进行比较运算。例如，`'' = ''` 的结果是 `true`。
-4. **聚合函数**:
-   - 大多数聚合函数（例如 `SUM`, `AVG`, `MIN`, `MAX`）会忽略 `NULL` 值。
-   - `COUNT(*)` 会统计所有行数，包括包含 `NULL` 值的行。`COUNT(列名)` 会统计指定列中非 `NULL` 值的行数。
-   - 空字符串 `''` 会被聚合函数计算在内。例如，`SUM` 会将其视为 0，`MIN` 和 `MAX` 会将其视为一个空字符串。
+1. **Meaning**:
+   - `NULL` represents an unknown value and is not equal to any value, including itself. Therefore, `SELECT NULL = NULL` returns `NULL`, not `true` or `false`. Some operations, such as `DISTINCT`, `GROUP BY`, and `ORDER BY`, treat `NULL` values as belonging to the same group. This does not make them equal; it is special handling for those operations.
+   - `''` is an empty string and is a known value.
+2. **Storage**:
+   - The storage required for `NULL` depends on the database implementation; some space is usually needed to mark a value as null.
+   - `''` usually takes little space because it stores no actual characters.
+3. **Comparisons**:
+   - Comparisons between any value and `NULL` (such as `=`, `!=`, `>`, and `<`) return `NULL`, meaning the result is unknown. Use `IS NULL` or `IS NOT NULL` to test for `NULL`.
+   - `''` can be compared like any other string. For example, `'' = ''` returns `true`.
+4. **Aggregate functions**:
+   - Most aggregate functions, such as `SUM`, `AVG`, `MIN`, and `MAX`, ignore `NULL` values.
+   - `COUNT(*)` counts all rows, including rows containing `NULL`. `COUNT(column)` counts non-`NULL` values in that column.
+   - The empty string `''` is included in aggregation. For example, `SUM` treats it as 0, while `MIN` and `MAX` treat it as an empty string.
 
-看了上面的介绍之后，相信你对另外一个高频面试题：“为什么 MySQL 不建议使用 `NULL` 作为列默认值？”也有了答案。
+This also helps answer another common interview question: “Why does MySQL discourage using `NULL` as a column's default value?”
 
-### ⭐️Boolean 类型如何表示？
+### ⭐️How Are Boolean Values Represented?
 
-MySQL 中没有专门的布尔类型，`BOOL` 和 `BOOLEAN` 是 `TINYINT(1)` 的同义词，通常用 0 表示 false、非 0 表示 true。`BIT(1)` 是位字段类型，也可以存储 0 或 1，但它并不是 `BOOL`/`BOOLEAN` 的实际映射。
+MySQL has no dedicated Boolean type. `BOOL` and `BOOLEAN` are synonyms for `TINYINT(1)`. Typically, 0 represents false and any nonzero value represents true. `BIT(1)` can also store 0 or 1, but it is not the underlying type for `BOOL` or `BOOLEAN`.
 
-### ⭐️手机号存储用 INT 还是 VARCHAR？
+### ⭐️Should Phone Numbers Be Stored as INT or VARCHAR?
 
-存储手机号，**强烈推荐使用 VARCHAR 类型**，而不是 INT 或 BIGINT。主要原因如下：
+**Use `VARCHAR` to store phone numbers**, not `INT` or `BIGINT,` for these reasons:
 
-1. **格式兼容性与完整性：**
-   - 手机号可能包含前导零（如某些地区的固话区号）、国家代码前缀（'+'），甚至可能带有分隔符（'-' 或空格）。INT 或 BIGINT 这种数字类型会自动丢失这些重要的格式信息（比如前导零会被去掉，'+' 和 '-' 无法存储）。
-   - VARCHAR 可以原样存储各种格式的号码，无论是国内的 11 位手机号，还是带有国家代码的国际号码，都能完美兼容。
-2. **非算术性：** 手机号虽然看起来是数字，但我们从不对它进行数学运算（比如求和、平均值）。它本质上是一个标识符，更像是一个字符串。用 VARCHAR 更符合其数据性质。
-3. **查询灵活性：**
-   - 业务中常常需要根据号段（前缀）进行查询，例如查找所有 "138" 开头的用户。使用 VARCHAR 类型配合 `LIKE '138%'` 这样的 SQL 查询既直观又高效。
-   - 如果使用数字类型，进行类似的前缀匹配通常需要复杂的函数转换（如 CAST 或 SUBSTRING），或者使用范围查询（如 `WHERE phone >= 13800000000 AND phone < 13900000000`），这不仅写法繁琐，而且可能无法有效利用索引，导致性能下降。
-4. **加密存储的要求（非常关键）：**
-   - 出于数据安全和隐私合规的要求，手机号这类敏感个人信息通常必须加密存储在数据库中。
-   - 加密后的数据（密文）是一长串字符串（通常由字母、数字、符号组成，或经过 Base64/Hex 编码），INT 或 BIGINT 类型根本无法存储这种密文。只有 VARCHAR、TEXT 或 BLOB 等类型可以。
+1. **Format compatibility**:
+   - Phone numbers may contain leading zeros, country-code prefixes such as `+`, or separators such as hyphens and spaces. Numeric types lose formatting information: leading zeros disappear, and `+` and `-` cannot be stored.
+   - `VARCHAR` preserves different formats, including local numbers and international numbers with country codes.
+2. **Not arithmetic data**: Phone numbers look numeric, but they are identifiers and are not used in calculations such as sums or averages. `VARCHAR` better reflects their purpose.
+3. **Flexible queries**:
+   - Applications often search by prefix, such as finding users whose number starts with `138`. A query using `VARCHAR` and `LIKE '138%'` is straightforward and efficient.
+   - With a numeric type, prefix searches require functions such as `CAST` or `SUBSTRING`, or range conditions such as `WHERE phone >= 13800000000 AND phone < 13900000000`. These are more cumbersome and may not use indexes effectively.
+4. **Encrypted storage**:
+   - Security and privacy requirements may require sensitive personal information such as phone numbers to be encrypted in the database.
+   - Ciphertext is a string, often containing letters, digits, and symbols or encoded with Base64 or hexadecimal. `INT` and `BIGINT` cannot store it; use `VARCHAR`, `TEXT`, or `BLOB`.
 
-**关于 VARCHAR 长度的选择：**
+**Choosing a `VARCHAR` length:**
 
-- **如果不加密存储（强烈不推荐！）：** 考虑到国际号码和可能的格式符，VARCHAR(20) 到 VARCHAR(32) 通常是一个比较安全的范围，足以覆盖全球绝大多数手机号格式。VARCHAR(15) 可能对某些带国家码和格式符的号码来说不够用。
-- **如果进行加密存储（推荐的标准做法）：** 长度必须根据所选加密算法产生的密文最大长度，以及可能的编码方式（如 Base64 会使长度增加约 1/3）来精确计算和设定。通常会需要更长的 VARCHAR 长度，例如 VARCHAR(128), VARCHAR(256) 甚至更长。
+- **If storing the number without encryption (strongly discouraged)**: `VARCHAR(20)` to `VARCHAR(32)` is generally a safe range for international numbers and formatting characters. `VARCHAR(15)` may be too short for some numbers with country codes and separators.
+- **If storing it encrypted (the recommended practice)**: Choose the length based on the maximum ciphertext length produced by the selected encryption algorithm and any encoding. For example, Base64 adds about one-third to the length. A longer column such as `VARCHAR(128)` or `VARCHAR(256)` may be needed.
 
-最后，来一张表格总结一下：
+The table below summarizes the comparison:
 
-| 对比维度         | VARCHAR 类型（推荐）              | INT/BIGINT 类型（不推荐）    | 说明/备注                                                                   |
-| ---------------- | --------------------------------- | ---------------------------- | --------------------------------------------------------------------------- |
-| **格式兼容性**   | ✔ 能存前导零、"+"、"-"、空格等   | ✘ 自动丢失前导零，不能存符号 | VARCHAR 能原样存储各种手机号格式，INT/BIGINT 只支持单纯数字，且前导零会消失 |
-| **完整性**       | ✔ 不丢失任何格式信息             | ✘ 丢失格式信息               | 例如 "013800012345" 存进 INT 会变成 13800012345，"+" 也无法存储             |
-| **非算术性**     | ✔ 适合存储“标识符”               | ✘ 只适合做数值运算           | 手机号本质是字符串标识符，不做数学运算，VARCHAR 更贴合实际用途              |
-| **查询灵活性**   | ✔ 支持 `LIKE '138%'` 等          | ✘ 查询前缀不方便或性能差     | 使用 VARCHAR 可高效按号段/前缀查询，数字类型需转为字符串或其他复杂处理      |
-| **加密存储支持** | ✔ 可存储加密密文（字母、符号等） | ✘ 无法存储密文               | 加密手机号后密文是字符串/二进制，只有 VARCHAR、TEXT、BLOB 等能兼容          |
-| **长度设置建议** | 15~20（未加密），加密视情况而定   | 无意义                       | 不加密时 VARCHAR(15~20) 通用，加密后长度取决于算法和编码方式                |
+| Comparison               | `VARCHAR` (recommended)                                     | `INT`/`BIGINT` (not recommended)               | Notes                                                                                |
+| ------------------------ | ----------------------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------ |
+| **Format compatibility** | ✔ Preserves leading zeros, `+`, `-`, spaces, and more      | ✘ Leading zeros and symbols are lost           | `VARCHAR` preserves formatting; numeric types store digits only.                     |
+| **Data integrity**       | ✔ Preserves formatting                                     | ✘ Formatting is lost                           | For example, `013800012345` becomes `13800012345` as an `INT`; `+` cannot be stored. |
+| **Not arithmetic data**  | ✔ Suitable for identifiers                                 | ✘ Intended for numeric operations              | Phone numbers are string identifiers, not values used in arithmetic.                 |
+| **Query flexibility**    | ✔ Supports `LIKE '138%'`                                   | ✘ Prefix queries are cumbersome or inefficient | Numeric types may require conversion or other complex conditions.                    |
+| **Encrypted storage**    | ✔ Can store ciphertext                                     | ✘ Cannot store ciphertext                      | Encrypted numbers are strings or binary data; use `VARCHAR`, `TEXT`, or `BLOB`.      |
+| **Suggested length**     | 15–20 when unencrypted; determine separately when encrypted | Not applicable                                 | For encrypted values, length depends on the algorithm and encoding.                  |
 
-## MySQL 基础架构
+## MySQL Architecture
 
-> 建议配合 [SQL 语句在 MySQL 中的执行过程](./how-sql-executed-in-mysql.md) 这篇文章来理解 MySQL 基础架构。另外，“一个 SQL 语句在 MySQL 中的执行流程”也是面试中比较常问的一个问题。
+> For more context on MySQL architecture, see [How MySQL Executes SQL Statements](./how-sql-executed-in-mysql.md). The execution flow of an SQL statement is also a common interview question.
 
-下图是 MySQL 的一个简要架构图，从下图你可以很清晰的看到客户端的一条 SQL 语句在 MySQL 内部是如何执行的。
+The following diagram outlines MySQL's architecture and shows how a client SQL statement is executed internally.
 
 ![](../images/shared/13526879-3037b144ed09eb88.png)
 
-从上图可以看出， MySQL 主要由下面几部分构成：
+As shown in the diagram, MySQL consists of these main components:
 
-- **连接器：** 身份认证和权限相关(登录 MySQL 的时候)。
-- **查询缓存：** 执行查询语句的时候，会先查询缓存（MySQL 8.0 版本后移除，因为这个功能不太实用）。
-- **分析器：** 没有命中缓存的话，SQL 语句就会经过分析器，分析器说白了就是要先看你的 SQL 语句要干嘛，再检查你的 SQL 语句语法是否正确。
-- **优化器：** 按照 MySQL 认为最优的方案去执行。
-- **执行器：** 执行语句，然后从存储引擎返回数据。 执行语句之前会先判断是否有权限，如果没有权限的话，就会报错。
-- **插件式存储引擎**：主要负责数据的存储和读取，采用的是插件式架构，支持 InnoDB、MyISAM、Memory 等多种存储引擎。InnoDB 是 MySQL 的默认存储引擎，绝大部分场景使用 InnoDB 就是最好的选择。
+- **Connection handler**: Handles authentication and permissions when a client connects to MySQL.
+- **Query Cache**: Checks for cached results before executing a query. It was removed in MySQL 8.0 because it was not useful enough.
+- **Parser**: If there is no cache hit, the parser determines what the SQL statement does and checks its syntax.
+- **Optimizer**: Chooses a plan that MySQL estimates to be optimal.
+- **Executor**: Runs the statement and returns data from the storage engine. It checks permissions before execution and reports an error if the client lacks permission.
+- **Pluggable storage engines**: Store and retrieve data. The pluggable architecture supports engines such as InnoDB, MyISAM, and Memory. InnoDB is the default engine and is the right choice for most use cases.
 
-## MySQL 存储引擎
+## MySQL Storage Engines
 
-MySQL 核心在于存储引擎，想要深入学习 MySQL，必定要深入研究 MySQL 存储引擎。
+Storage engines are central to MySQL. To study MySQL in depth, you need to understand its storage engines.
 
-### MySQL 支持哪些存储引擎？默认使用哪个？
+### Which Storage Engines Does MySQL Support? Which Is the Default?
 
-MySQL 支持多种存储引擎，你可以通过 `SHOW ENGINES` 命令来查看 MySQL 支持的所有存储引擎。
+MySQL supports several storage engines. Use `SHOW ENGINES` to list them.
 
-![查看 MySQL 提供的所有存储引擎](../images/shared/image-20220510105408703.png)
+![List of storage engines supported by MySQL](../images/shared/image-20220510105408703.png)
 
-从上图我们可以查看出， MySQL 当前默认的存储引擎是 InnoDB。并且，所有的存储引擎中只有 InnoDB 是事务性存储引擎，也就是说只有 InnoDB 支持事务。
+The diagram shows that InnoDB is the current default storage engine. Among the listed engines, only InnoDB is transactional and supports transactions.
 
-我这里使用的 MySQL 版本是 8.x，不同的 MySQL 版本之间可能会有差别。
+This article uses MySQL 8.x. Details may differ between MySQL versions.
 
-MySQL 5.5.5 之前，MyISAM 是 MySQL 的默认存储引擎。5.5.5 版本之后，InnoDB 是 MySQL 的默认存储引擎。
+Before MySQL 5.5.5, MyISAM was the default storage engine. InnoDB has been the default since MySQL 5.5.5.
 
-你可以通过 `SELECT VERSION()` 命令查看你的 MySQL 版本。
+Use `SELECT VERSION()` to check your MySQL version.
 
 ```bash
 mysql> SELECT VERSION();
@@ -273,7 +273,7 @@ mysql> SELECT VERSION();
 1 row in set (0.00 sec)
 ```
 
-你也可以通过 `SHOW VARIABLES LIKE '%storage_engine%'` 命令直接查看 MySQL 当前默认的存储引擎。
+Use `SHOW VARIABLES LIKE '%storage_engine%'` to check the current default storage engine.
 
 ```bash
 mysql> SHOW VARIABLES  LIKE '%storage_engine%';
@@ -288,220 +288,220 @@ mysql> SHOW VARIABLES  LIKE '%storage_engine%';
 4 rows in set (0.00 sec)
 ```
 
-如果你想要深入了解每个存储引擎以及它们之间的区别，推荐你去阅读以下 MySQL 官方文档对应的介绍(面试不会问这么细，了解即可)：
+For more details about each storage engine and their differences, see the corresponding MySQL documentation. Interviews rarely go into this level of detail, so a basic understanding is enough:
 
-- InnoDB 存储引擎详细介绍：<https://dev.mysql.com/doc/refman/8.0/en/innodb-storage-engine.html> 。
-- 其他存储引擎详细介绍：<https://dev.mysql.com/doc/refman/8.0/en/storage-engines.html> 。
+- InnoDB storage engine: <https://dev.mysql.com/doc/refman/8.0/en/innodb-storage-engine.html>
+- Other storage engines: <https://dev.mysql.com/doc/refman/8.0/en/storage-engines.html>
 
 ![](../images/shared/image-20220510155143458.png)
 
-### MySQL 存储引擎架构了解吗？
+### What Is the MySQL Storage Engine Architecture?
 
-MySQL 存储引擎采用的是 **插件式架构** ，支持多种存储引擎，我们甚至可以为不同的数据库表设置不同的存储引擎以适应不同场景的需要。**存储引擎是基于表的，而不是数据库。**
+MySQL storage engines use a **pluggable architecture**. Different tables can use different engines to suit different needs. **Storage engines are configured per table, not per database.**
 
-下图展示了具有可插拔存储引擎的 MySQL 架构：
+The diagram shows MySQL's architecture with pluggable storage engines:
 
 ![MySQL architecture diagram showing connectors, interfaces, pluggable storage engines, the file system with files and logs.](../images/shared/mysql-architecture.png)
 
-你还可以根据 MySQL 定义的存储引擎实现标准接口来编写一个属于自己的存储引擎。这些非官方提供的存储引擎可以称为第三方存储引擎，区别于官方存储引擎。像目前最常用的 InnoDB 其实刚开始就是一个第三方存储引擎，后面由于过于优秀，其被 Oracle 直接收购了。
+You can also implement MySQL's storage engine interface to create a custom engine. Engines not provided by Oracle are often called third-party storage engines. InnoDB, now the most widely used engine, originally began as a third-party engine before Oracle acquired it.
 
-MySQL 官方文档也有介绍到如何编写一个自定义存储引擎，地址：<https://dev.mysql.com/doc/internals/en/custom-engine.html> 。
+The MySQL documentation explains how to write a custom storage engine: <https://dev.mysql.com/doc/internals/en/custom-engine.html>.
 
-### ⭐️MyISAM 和 InnoDB 有什么区别？
+### ⭐️What Is the Difference Between MyISAM and InnoDB?
 
-MySQL 5.5 之前，MyISAM 引擎是 MySQL 的默认存储引擎，可谓是风光一时。
+Before MySQL 5.5, MyISAM was the default storage engine.
 
-虽然，MyISAM 的性能还行，各种特性也还不错（比如全文索引、压缩、空间函数等）。但是，MyISAM 不支持事务和行级锁，而且最大的缺陷就是崩溃后无法安全恢复。
+MyISAM offers reasonable performance and features such as full-text indexes, compression, and spatial functions. However, it does not support transactions or row-level locks, and it cannot recover safely from a crash.
 
-MySQL 5.5 版本之后，InnoDB 是 MySQL 的默认存储引擎。
+InnoDB has been the default storage engine since MySQL 5.5.
 
-言归正传！咱们下面还是来简单对比一下两者：
+Here is a brief comparison:
 
-**1、是否支持行级锁**
+**1. Row-level locking**
 
-MyISAM 只有表级锁(table-level locking)，而 InnoDB 支持行级锁(row-level locking)和表级锁,默认为行级锁。
+MyISAM supports only table-level locks. InnoDB supports both row-level and table-level locks, and uses row-level locks by default.
 
-也就说，MyISAM 一锁就是锁住了整张表，这在并发写的情况下是多么滴憨憨啊！这也是为什么 InnoDB 在并发写的时候，性能更牛皮了！
+With MyISAM, a lock applies to the entire table, which can be inefficient for concurrent writes. InnoDB therefore performs better when writes run concurrently.
 
-**2、是否支持事务**
+**2. Transaction support**
 
-MyISAM 不提供事务支持。
+MyISAM does not support transactions.
 
-InnoDB 提供事务支持，实现了 SQL 标准定义了四个隔离级别，具有提交(commit)和回滚(rollback)事务的能力。并且，InnoDB 默认使用的 REPEATABLE-READ（可重读）隔离级别是可以解决幻读问题发生的（基于 MVCC 和 Next-Key Lock）。
+InnoDB supports transactions and the four isolation levels defined by the SQL standard. It can commit and roll back transactions. Its default `REPEATABLE READ` isolation level prevents phantom reads through MVCC and next-key locks.
 
-关于 MySQL 事务的详细介绍，可以看看我写的这篇文章：[MySQL 事务隔离级别详解](./transaction-isolation-level.md)。
+For details about MySQL transactions, see [MySQL Transaction Isolation Levels](./transaction-isolation-level.md).
 
-**3、是否支持外键**
+**3. Foreign key support**
 
-MyISAM 不支持，而 InnoDB 支持。
+MyISAM does not support foreign keys; InnoDB does.
 
-外键对于维护数据一致性非常有帮助，但是对性能有一定的损耗。因此，通常情况下，我们是不建议在实际生产项目中使用外键的，在业务代码中进行约束即可！
+Foreign keys help maintain data consistency but can affect performance. They are often avoided in production systems, with constraints enforced in application code instead.
 
-阿里的《Java 开发手册》也是明确规定禁止使用外键的。
+Alibaba's _Java Development Manual_ also explicitly prohibits foreign keys.
 
 ![](../images/shared/image-20220510090309427.png)
 
-不过，在代码中进行约束的话，对程序员的能力要求更高，具体是否要采用外键还是要根据你的项目实际情况而定。
+Enforcing constraints in application code places more responsibility on developers. Whether to use foreign keys depends on the project.
 
-总结：一般我们也是不建议在数据库层面使用外键的，应用层面可以解决。不过，这样会对数据的一致性造成威胁。具体要不要使用外键还是要根据你的项目来决定。
+In general, foreign keys are often avoided in favor of application-level checks, but this can threaten data consistency. Decide based on your project's requirements.
 
-**4、是否支持数据库异常崩溃后的安全恢复**
+**4. Crash recovery**
 
-MyISAM 不支持，而 InnoDB 支持。
+MyISAM does not support safe crash recovery; InnoDB does.
 
-使用 InnoDB 的数据库在异常崩溃后，数据库重新启动的时候会保证数据库恢复到崩溃前的状态。这个恢复的过程依赖于 `redo log` 。
+After a crash, an InnoDB database uses the `redo log` during restart to recover its state.
 
-**5、是否支持 MVCC**
+**5. MVCC support**
 
-MyISAM 不支持，而 InnoDB 支持。
+MyISAM does not support MVCC; InnoDB does.
 
-讲真，这个对比有点废话，毕竟 MyISAM 连行级锁都不支持。MVCC 可以看作是行级锁的一个升级，可以有效减少加锁操作，提高性能。
+This comparison is somewhat obvious because MyISAM does not even support row-level locking. MVCC can be viewed as an improvement over locking that reduces lock operations and improves performance.
 
-**6、索引实现不一样。**
+**6. Different index implementations**
 
-虽然 MyISAM 引擎和 InnoDB 引擎都是使用 B+Tree 作为索引结构，但是两者的实现方式不太一样。
+Both MyISAM and InnoDB use B+Trees for indexes, but their implementations differ.
 
-InnoDB 引擎中，其数据文件本身就是索引文件。相比 MyISAM，索引文件和数据文件是分离的，其表数据文件本身就是按 B+Tree 组织的一个索引结构，树的叶节点 data 域保存了完整的数据记录。
+In InnoDB, the data file is itself an index file. Unlike MyISAM, which stores indexes and data separately, InnoDB organizes the table data as a B+Tree whose leaf nodes contain complete rows.
 
-详细区别，推荐你看看我写的这篇文章：[MySQL 索引详解](./mysql-index.md)。
+For details, see [MySQL Indexes Explained](./mysql-index.md).
 
-**7、性能有差别。**
+**7. Performance**
 
-InnoDB 的性能比 MyISAM 更强大，不管是在读写混合模式下还是只读模式下，随着 CPU 核数的增加，InnoDB 的读写能力呈线性增长。MyISAM 因为读写不能并发，它的处理能力跟核数没关系。
+InnoDB generally performs better than MyISAM. In mixed read/write and read-only workloads, its throughput can scale linearly as CPU cores are added. MyISAM cannot run reads and writes concurrently, so its processing capacity does not scale with core count in the same way.
 
-![InnoDB 和 MyISAM 性能对比](../images/shared/innodb-myisam-performance-comparison.png)
+![InnoDB and MyISAM performance comparison](../images/shared/innodb-myisam-performance-comparison.png)
 
-**8、数据缓存策略和机制实现不同。**
+**8. Different caching mechanisms**
 
-InnoDB 使用缓冲池（Buffer Pool）缓存数据页和索引页，MyISAM 使用键缓存（Key Cache）仅缓存索引页而不缓存数据页。
+InnoDB uses the Buffer Pool to cache data and index pages. MyISAM's Key Cache stores index pages only, not data pages.
 
-**总结**：
+**Summary:**
 
-- InnoDB 支持行级别的锁粒度，MyISAM 不支持，只支持表级别的锁粒度。
-- MyISAM 不提供事务支持。InnoDB 提供事务支持，实现了 SQL 标准定义了四个隔离级别。
-- MyISAM 不支持外键，而 InnoDB 支持。
-- MyISAM 不支持 MVCC，而 InnoDB 支持。
-- 虽然 MyISAM 引擎和 InnoDB 引擎都是使用 B+Tree 作为索引结构，但是两者的实现方式不太一样。
-- MyISAM 不支持数据库异常崩溃后的安全恢复，而 InnoDB 支持。
-- InnoDB 的性能比 MyISAM 更强大。
+- InnoDB supports row-level locks; MyISAM supports only table-level locks.
+- MyISAM does not support transactions; InnoDB supports the four isolation levels defined by the SQL standard.
+- MyISAM does not support foreign keys; InnoDB does.
+- MyISAM does not support MVCC; InnoDB does.
+- Both engines use B+Trees, but their implementations differ.
+- MyISAM does not support safe crash recovery; InnoDB does.
+- InnoDB generally offers better performance.
 
-最后，再分享一张图片给你，这张图片详细对比了常见的几种 MySQL 存储引擎。
+The following image compares several common MySQL storage engines.
 
-![常见的几种 MySQL 存储引擎对比](../images/shared/comparison-of-common-mysql-storage-engines.png)
+![Comparison of common MySQL storage engines](../images/shared/comparison-of-common-mysql-storage-engines.png)
 
-### MyISAM 和 InnoDB 如何选择？
+### How Should You Choose Between MyISAM and InnoDB?
 
-大多数时候我们使用的都是 InnoDB 存储引擎，在某些读密集的情况下，使用 MyISAM 也是合适的。不过，前提是你的项目不介意 MyISAM 不支持事务、崩溃恢复等缺点（可是~我们一般都会介意啊）。
+InnoDB is the right choice for most use cases. MyISAM may be suitable for some read-heavy workloads, provided the project can tolerate its lack of transaction support and crash recovery—which most projects cannot.
 
-《MySQL 高性能》上面有一句话这样写到:
+_High Performance MySQL_ makes the following point:
 
-> 不要轻易相信“MyISAM 比 InnoDB 快”之类的经验之谈，这个结论往往不是绝对的。在很多我们已知场景中，InnoDB 的速度都可以让 MyISAM 望尘莫及，尤其是用到了聚簇索引，或者需要访问的数据都可以放入内存的应用。
+> Do not accept rules of thumb such as “MyISAM is faster than InnoDB” without question. The claim is rarely universally true. In many scenarios, InnoDB can significantly outperform MyISAM, especially when clustered indexes are used or the data being accessed fits in memory.
 
-因此，对于咱们日常开发的业务系统来说，你几乎找不到什么理由使用 MyISAM 了，老老实实用默认的 InnoDB 就可以了！
+For most business systems, there is little reason to choose MyISAM; using the default InnoDB engine is usually the right choice.
 
-## ⭐️MySQL 索引
+## ⭐️MySQL Indexes
 
-MySQL 索引相关的问题比较多，也非常重要，更详细的介绍可以阅读笔者写的这篇文章：[MySQL 索引详解](./mysql-index.md) 。
+MySQL indexes are a common and important interview topic. For details, see [MySQL Indexes Explained](./mysql-index.md).
 
-### 索引是什么？
+### What Is an Index?
 
-**索引是一种用于快速查询和检索数据的数据结构，其本质可以看成是一种排序好的数据结构。**
+**An index is a data structure that speeds up data searches and retrieval. It can be thought of as an ordered data structure.**
 
-索引的作用就相当于书的目录。打个比方：我们在查字典的时候，如果没有目录，那我们就只能一页一页地去找我们需要查的那个字，速度很慢；如果有目录了，我们只需要先去目录里查找字的位置，然后直接翻到那一页就行了。
+An index works like a book's table of contents. Without one, you would have to search every page of a dictionary for a word. With one, you can find the page number first and turn directly to it.
 
-索引底层数据结构存在很多种类型，常见的索引结构有：B 树、 B+ 树 和 Hash、红黑树。在 MySQL 中，无论是 Innodb 还是 MyISAM，都使用了 B+ 树作为索引结构。
+Indexes can use different underlying data structures, including B-Trees, B+Trees, hash tables, and red-black trees. MySQL's InnoDB and MyISAM engines both use B+Trees for indexes.
 
-**索引的优点：**
+**Advantages:**
 
-1. **查询速度起飞 (主要目的)**：通过索引，数据库可以**大幅减少需要扫描的数据量**，直接定位到符合条件的记录，从而显著加快数据检索速度，减少磁盘 I/O 次数。
-2. **保证数据唯一性**：通过创建**唯一索引 (Unique Index)**,可以确保表中的某一列（或几列组合）的值是独一无二的，比如用户 ID、邮箱等。主键本身就是一种唯一索引。
-3. **加速排序和分组**：如果查询中的 ORDER BY 或 GROUP BY 子句涉及的列建有索引，数据库往往可以直接利用索引已经排好序的特性，避免额外的排序操作，从而提升性能。
+1. **Faster queries (the main purpose)**: An index can **greatly reduce the amount of data to scan**, locate matching records directly, and reduce disk I/O.
+2. **Enforce uniqueness**: A **unique index** ensures that values in one or more columns are unique, such as user IDs or email addresses. A primary key is also a unique index.
+3. **Faster sorting and grouping**: If an `ORDER BY` or `GROUP BY` clause uses indexed columns, the database may use the index's ordering to avoid an extra sort.
 
-**索引的缺点：**
+**Disadvantages:**
 
-1. **创建和维护耗时**：创建索引本身需要时间，特别是对大表操作时。更重要的是，当对表中的数据进行**增、删、改 (DML 操作)** 时，不仅要操作数据本身，相关的索引也必须动态更新和维护，这会**降低这些 DML 操作的执行效率**。
-2. **占用存储空间**：索引本质上也是一种数据结构，需要以物理文件（或内存结构）的形式存储，因此会**额外占用一定的磁盘空间**。索引越多、越大，占用的空间也就越多。
-3. **可能被误用或失效**：如果索引设计不当，或者查询语句写得不好，数据库优化器可能不会选择使用索引（或者选错索引），反而导致性能下降。
+1. **Creation and maintenance costs**: Creating an index takes time, especially for large tables. Inserts, deletes, and updates (DML operations) must also maintain relevant indexes, which can reduce write performance.
+2. **Storage use**: Indexes require storage, so more or larger indexes use more disk space.
+3. **Poor index use**: With a poorly designed index or query, the optimizer may skip the index or choose the wrong one, reducing performance.
 
-**那么，用了索引就一定能提高查询性能吗？**
+**Does using an index always improve query performance?**
 
-**不一定。** 大多数情况下，合理使用索引确实比全表扫描快得多。但也有例外：
+**No.** A well-chosen index is usually much faster than a full table scan, but there are exceptions:
 
-- **数据量太小**：如果表里的数据非常少（比如就几百条），全表扫描可能比通过索引查找更快，因为走索引本身也有开销。
-- **查询结果集占比过大**：如果要查询的数据占了整张表的大部分（比如超过 20%-30%），优化器可能会认为全表扫描更划算，因为通过索引多次回表（随机 I/O）的成本可能高于一次顺序的全表扫描。
-- **索引维护不当或统计信息过时**：导致优化器做出错误判断。
+- **Small tables**: A full table scan may be faster for a table with only a few hundred rows because using an index also has a cost.
+- **Large result sets**: If a query returns a large share of the table (for example, more than 20–30%), the optimizer may prefer a full table scan to repeated lookups from the index, which involve random I/O.
+- **Stale statistics or poor index maintenance**: These can lead the optimizer to choose a poor plan.
 
-### 索引为什么快？
+### Why Are Indexes Fast?
 
-索引之所以快，核心原因是它**大大减少了磁盘 I/O 的次数**。
+Indexes are fast mainly because they **greatly reduce the number of disk I/O operations**.
 
-它的本质是一种**排好序的数据结构**，就像书的目录，让我们不用一页一页地翻（全表扫描）。
+An index is essentially an **ordered data structure**, like a book's table of contents, so the database does not need to scan every row.
 
-在 MySQL 中，这个数据结构是**B+树**。B+树结构主要从两方面做了优化：
+MySQL uses **B+Trees**, which improve performance in two main ways:
 
-1. B+树的特点是“矮胖”，一个千万数据的表，索引树的高度可能只有 3-4 层。这意味着，最多只需要**3-4 次磁盘 I/O**，就能精确定位到我想要的数据，而全表扫描可能需要成千上万次，所以速度极快。
-2. B+树的叶子节点是**用链表连起来的**。找到开头后，就能顺着链表**顺序读**下去，这对磁盘非常友好，还能触发预读。
+1. B+Trees are “short and wide.” An index on a table with tens of millions of rows may be only three or four levels deep, requiring at most **three or four disk I/O operations** to locate a value. A full table scan may require thousands.
+2. B+Tree leaf nodes are **linked together**. Once the first matching leaf is found, the database can **read sequentially** through the linked leaves, which works well with disks and can trigger read-ahead.
 
-### MySQL 索引底层数据结构是什么？
+### What Data Structure Does MySQL Use for Indexes?
 
-在 MySQL 中，MyISAM 引擎和 InnoDB 引擎都是使用 B+Tree 作为索引结构，详细介绍可以参考笔者写的这篇文章：[MySQL 索引详解](https://javaguide.cn/database/mysql/mysql-index.html)。
+Both MyISAM and InnoDB use B+Trees for indexes. For details, see [MySQL Indexes Explained](./mysql-index.md).
 
-### 为什么 InnoDB 没有使用哈希作为索引的数据结构？
+### Why Doesn't InnoDB Use Hashes as Its Index Structure?
 
-> 我发现很多求职者甚至是面试官对这个问题都有误解，他们想当然的认为 MySQL 底层并没有使用哈希或者 B 树作为索引的数据结构。
+> Many candidates and even interviewers misunderstand this question and assume that MySQL does not use hash tables or B-Trees internally for indexes.
 >
-> 实际上，不论是提问还是回答这个问题都要区分好存储引擎。像 MEMORY 引擎就同时支持哈希和 B 树。
+> In fact, distinguish between storage engines when asking or answering this question. For example, the Memory engine supports both hash and B-Tree indexes.
 
-哈希索引的底层是哈希表。它的优点是，在进行**精确的等值查询**时，理论上时间复杂度是 **O(1)** ，速度极快。比如 `WHERE id = 123`。
+Hash indexes use a hash table. Their advantage is that **exact equality lookups** have a theoretical time complexity of **O(1)**, as in `WHERE id = 123`.
 
-但是，它有几个对于通用数据库来说是致命的缺点：
+However, they have several serious limitations for a general-purpose database:
 
-1. **不支持范围查询:** 这是最主要的原因。哈希函数的一个特点是它会把相邻的输入值（比如 `id=100` 和 `id=101`）映射到哈希表中完全不相邻的位置。这种顺序的破坏，使得我们无法处理像 `WHERE age > 30` 或 `BETWEEN 100 AND 200`这样的范围查询。要完成这种查询，哈希索引只能退化为全表扫描。
-2. **不支持排序:** 同理，因为哈希值是无序的，所以我们无法利用哈希索引来优化 `ORDER BY` 子句。
-3. **不支持部分索引键查询:** 对于联合索引，比如`(col1, col2)`，哈希索引必须使用所有索引列进行查询，它无法单独利用 `col1` 来加速查询。
-4. **哈希冲突问题:** 当不同的键产生相同的哈希值时，需要额外的链表或开放寻址来解决，这会降低性能。
+1. **No range queries**: A hash function may map adjacent input values, such as `id=100` and `id=101`, to unrelated positions. This destroys ordering and prevents range queries such as `WHERE age > 30` or `BETWEEN 100 AND 200`. A hash index must fall back to a full table scan for such queries.
+2. **No sorting**: Hash values are unordered, so a hash index cannot optimize an `ORDER BY` clause.
+3. **No lookup by a partial index key**: A hash index on `(col1, col2)` requires both columns; it cannot use only `col1` to speed up a query.
+4. **Hash collisions**: Different keys may produce the same hash value. Resolving collisions with linked lists or open addressing can reduce performance.
 
-鉴于数据库查询中范围查询和排序是极其常见的操作，一个不支持这些功能的索引结构，显然不能作为默认的、通用的索引类型。
+Because range queries and sorting are common database operations, a structure that does not support them is not suitable as the default general-purpose index.
 
-### 为什么 InnoDB 没有使用 B 树作为索引的数据结构？
+### Why Does InnoDB Use B+Trees Instead of B-Trees?
 
-B 树和 B+树都是优秀的多路平衡搜索树，非常适合磁盘存储，因为它们都很“矮胖”，能最大化地利用每一次磁盘 I/O。
+Both B-Trees and B+Trees are balanced multiway search trees well suited to disk storage. Their shallow, wide structure makes efficient use of each disk I/O operation.
 
-但 B+树是 B 树的一个增强版，它针对数据库场景做了几个关键优化：
+However, B+Trees extend B-Trees with several optimizations for database workloads:
 
-1. **I/O 效率更高:** 在 B+树中，只有叶子节点才存储数据（或数据指针），而非叶子节点只存储索引键。因为非叶子节点不存数据，所以它们可以容纳更多的索引键。这意味着 B+树的“扇出”更大，在同样的数据量下，B+树通常会比 B 树更矮，也就意味着查找数据所需的磁盘 I/O 次数更少。
-2. **查询性能更稳定:** 在 B+树中，任何一次查询都必须从根节点走到叶子节点才能找到数据，所以查询路径的长度是固定的。而在 B 树中，如果运气好，可能在非叶子节点就找到了数据，但运气不好也得走到叶子，这导致查询性能不稳定。
-3. **对范围查询极其友好:** 这是 B+树最核心的优势。它的所有叶子节点之间通过一个双向链表连接。当我们执行一个范围查询（比如 `WHERE id > 100`）时，只需要通过树形结构找到 `id=100` 的叶子节点，然后就可以沿着链表向后顺序扫描，而无需再回溯到上层节点。这使得范围查询的效率大大提高。
+1. **Higher I/O efficiency**: In a B+Tree, only leaf nodes store data (or pointers to data); internal nodes store keys only. Internal nodes can therefore hold more keys, increasing the tree's fan-out. For the same amount of data, a B+Tree is usually shorter than a B-Tree and requires fewer disk I/O operations to find a value.
+2. **More consistent lookup performance**: Every B+Tree lookup reaches a leaf, so the path length is consistent. A B-Tree lookup may finish at an internal node or continue to a leaf, making its path length less predictable.
+3. **Efficient range queries**: B+Tree leaf nodes are linked in both directions. For a range query such as `WHERE id > 100`, the database finds the leaf containing `id=100` and scans forward through the linked leaves without returning to upper levels.
 
-### 什么是覆盖索引？
+### What Is a Covering Index?
 
-如果一个索引包含（或者说覆盖）所有需要查询的字段的值，我们就称之为 **覆盖索引（Covering Index）**。
+An index that contains all column values required by a query is called a **covering index**.
 
-在 InnoDB 存储引擎中，非主键索引的叶子节点包含的是主键的值。这意味着，当使用非主键索引进行查询时，数据库会先找到对应的主键值，然后再通过主键索引来定位和检索完整的行数据。这个过程被称为“回表”。
+In InnoDB, secondary index leaves contain primary key values. When a query uses a secondary index, the database first finds the primary key, then uses the primary key index to retrieve the full row. This is called a **table lookup**.
 
-**覆盖索引即需要查询的字段正好是索引的字段，那么直接根据该索引，就可以查到数据了，而无需回表查询。**
+**If an index contains all columns needed by a query, MySQL can return the result directly from the index without looking up the row.**
 
-### 请解释一下 MySQL 的联合索引及其最左前缀原则
+### Explain Composite Indexes and the Leftmost Prefix Rule
 
-使用表中的多个字段创建索引，就是 **联合索引**，也叫 **组合索引** 或 **复合索引**。
+An index created on multiple columns is called a **composite index**.
 
-以 `score` 和 `name` 两个字段建立联合索引：
+Create a composite index on `score` and `name`:
 
 ```sql
 ALTER TABLE `cus_order` ADD INDEX id_score_name(score, name);
 ```
 
-最左前缀匹配原则指的是在使用联合索引时，MySQL 会根据索引中的字段顺序，从左到右依次匹配查询条件中的字段。如果查询条件与索引中的最左侧字段相匹配，那么 MySQL 就会使用索引来过滤数据，这样可以提高查询效率。
+When using a composite index, MySQL matches query conditions to indexed columns from left to right. If a condition matches the leftmost column, MySQL can use the index to filter rows.
 
-最左匹配原则会一直向右匹配，直到遇到范围查询（如 >、<）为止。对于 >=、<=、BETWEEN 以及前缀匹配 LIKE 的范围查询，不会停止匹配（相关阅读：[联合索引的最左匹配原则全网都在说的一个错误结论](https://mp.weixin.qq.com/s/8qemhRg5MgXs1So5YCv0fQ)）。
+Matching continues to the right until MySQL encounters a range condition such as `>` or `<`. Conditions using `>=`, `<=`, `BETWEEN`, or a prefix `LIKE` do not stop matching. For more, see [A Common Misconception About the Leftmost Prefix Rule for Composite Indexes](https://mp.weixin.qq.com/s/8qemhRg5MgXs1So5YCv0fQ).
 
-假设有一个联合索引 `(column1, column2, column3)`，其从左到右的所有前缀为 `(column1)`、`(column1, column2)`、`(column1, column2, column3)`（创建 1 个联合索引相当于创建了 3 个索引），包含这些列的所有查询都会走索引而不会全表扫描。
+Suppose a composite index covers `(column1, column2, column3)`. Its leftmost prefixes are `(column1)`, `(column1, column2)`, and `(column1, column2, column3)`. Queries using these prefixes can use the index instead of a full table scan.
 
-我们在使用联合索引时，可以将区分度高的字段放在最左边，这也可以过滤更多数据。
+When creating a composite index, consider placing the column with higher cardinality first, since it can filter out more rows.
 
-我们这里简单演示一下最左前缀匹配的效果。
+The following example demonstrates the leftmost prefix rule.
 
-1、创建一个名为 `student` 的表，这张表只有 `id`、`name`、`class` 这 3 个字段。
+1. Create a table named `student` with three columns: `id`, `name`, and `class`.
 
 ```sql
 CREATE TABLE `student` (
@@ -513,252 +513,252 @@ CREATE TABLE `student` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
-2、下面我们分别测试三条不同的 SQL 语句。
+2. Test these three SQL statements:
 
 ![](../images/shared/leftmost-prefix-matching-rule.png)
 
 ```sql
-# 可以命中索引
+# Uses the index
 SELECT * FROM student WHERE name = 'Anne Henry';
 EXPLAIN SELECT * FROM student WHERE name = 'Anne Henry' AND class = 'lIrm08RYVk';
-# 无法命中索引
+# Cannot use the index
 SELECT * FROM student WHERE class = 'lIrm08RYVk';
 ```
 
-再来看一个常见的面试题：如果有索引 `联合索引（a，b，c）`，查询 `a=1 AND c=1` 会走索引么？`c=1` 呢？`b=1 AND c=1` 呢？ `b = 1 AND a = 1 AND c = 1` 呢？
+Consider a common interview question. Given a composite index `(a, b, c)`, can these queries use it: `a=1 AND c=1`, `c=1`, `b=1 AND c=1`, and `b=1 AND a=1 AND c=1`?
 
-先不要往下看答案，给自己 3 分钟时间想一想。
+Try to answer before reading on.
 
-1. 查询 `a=1 AND c=1`：根据最左前缀匹配原则，查询可以使用索引的前缀部分。因此，该查询仅在 `a=1` 上使用索引，然后对结果进行 `c=1` 的过滤。
-2. 查询 `c=1`：由于查询中不包含最左列 `a`，根据最左前缀匹配原则，整个索引都无法被使用。
-3. 查询 `b=1 AND c=1`：和第二种一样的情况，整个索引都不会使用。
-4. 查询 `b=1 AND a=1 AND c=1`：这个查询是可以用到索引的。查询优化器分析 SQL 语句时，对于联合索引，会对查询条件进行重排序，以便用到索引。会将 `b=1` 和 `a=1` 的条件进行重排序，变成 `a=1 AND b=1 AND c=1`。
+1. `a=1 AND c=1`: The query can use the index prefix on `a`, then filter the results by `c=1`.
+2. `c=1`: The query does not include the leftmost column `a`, so it cannot use the index.
+3. `b=1 AND c=1`: As in the previous case, the query cannot use the index.
+4. `b=1 AND a=1 AND c=1`: The optimizer can reorder conditions for a composite index, so this query can use the index as if the conditions were `a=1 AND b=1 AND c=1`.
 
-MySQL 8.0.13 版本引入了索引跳跃扫描（Index Skip Scan，简称 ISS），它可以在某些索引查询场景下提高查询效率。在没有 ISS 之前，不满足最左前缀匹配原则的联合索引查询中会执行全表扫描。而 ISS 允许 MySQL 在某些情况下避免全表扫描，即使查询条件不符合最左前缀。不过，这个功能比较鸡肋， 和 Oracle 中的没法比，MySQL 8.0.31 还报告了一个 bug：[Bug #109145 Using index for skip scan cause incorrect result](https://bugs.mysql.com/bug.php?id=109145)（后续版本已经修复）。个人建议知道有这个东西就好，不需要深究，实际项目也不一定能用上。
+MySQL 8.0.13 introduced **Index Skip Scan (ISS)**, which can improve some index queries. Before ISS, a query that did not follow the leftmost prefix rule required a full table scan. ISS can avoid that scan in some cases. Its capabilities are limited compared with Oracle's, and MySQL 8.0.31 had a bug that caused incorrect results; it was fixed in later versions. See [Bug #109145](https://bugs.mysql.com/bug.php?id=109145). It is useful to know that ISS exists, but you may not encounter it in practice.
 
-### SELECT \* 会导致索引失效吗？
+### Does SELECT \* Prevent Index Use?
 
-`SELECT *` 不会直接导致索引失效（如果不走索引大概率是因为 where 查询范围过大导致的），但它可能会带来一些其他的性能问题比如造成网络传输和数据处理的浪费、无法使用索引覆盖。
+`SELECT *` does not directly prevent index use. If MySQL does not use an index, the `WHERE` clause may match too many rows. However, `SELECT *` can waste network bandwidth and processing resources and may prevent the use of a covering index.
 
-### 哪些字段适合创建索引？
+### Which Columns Are Good Candidates for Indexes?
 
-- **不为 NULL 的字段**：索引字段的数据应该尽量不为 NULL，因为对于数据为 NULL 的字段，数据库较难优化。如果字段频繁被查询，但又避免不了为 NULL，建议使用 0,1,true,false 这样语义较为清晰的短值或短字符作为替代。
-- **被频繁查询的字段**：我们创建索引的字段应该是查询操作非常频繁的字段。
-- **被作为条件查询的字段**：被作为 WHERE 条件查询的字段，应该被考虑建立索引。
-- **频繁需要排序的字段**：索引已经排序，这样查询可以利用索引的排序，加快排序查询时间。
-- **被经常频繁用于连接的字段**：经常用于连接的字段可能是一些外键列，对于外键列并不一定要建立外键，只是说该列涉及到表与表的关系。对于频繁被连接查询的字段，可以考虑建立索引，提高多表连接查询的效率。
+- **Columns that are not `NULL`**: Prefer non-`NULL` values because they can be easier to optimize. If a frequently queried column must allow `NULL`, consider clear short values such as `0`, `1`, `true`, or `false` where appropriate.
+- **Frequently queried columns**: Consider indexing columns used often in queries.
+- **Filter columns**: Consider indexing columns used in `WHERE` conditions.
+- **Sort columns**: An index may speed up sorting when a query can use its order.
+- **Join columns**: Consider indexing columns frequently used in joins, including columns that represent relationships between tables. A foreign key constraint is not required for a column to be used in a join.
 
-### 索引失效的原因有哪些？
+### What Can Prevent MySQL from Using an Index?
 
-1. 创建了组合索引，但查询条件未遵守最左匹配原则;
-2. 在索引列上进行计算、函数、类型转换等操作;
-3. 以 % 开头的 LIKE 查询比如 `LIKE '%abc';`;
-4. 查询条件中使用 OR，且 OR 的前后条件中有一个列没有索引，涉及的索引都不会被使用到;
-5. IN 的取值范围较大时会导致索引失效，走全表扫描(NOT IN 和 IN 的失效场景相同);
-6. 发生[隐式转换](https://javaguide.cn/database/mysql/index-invalidation-caused-by-implicit-conversion.html "隐式转换");
+1. A composite index is used with conditions that do not follow the leftmost prefix rule.
+2. The indexed column is used in a calculation, function, or type conversion.
+3. A `LIKE` pattern begins with `%`, such as `LIKE '%abc'`.
+4. An `OR` condition includes a column without an index, preventing the involved indexes from being used.
+5. A large `IN` list may lead the optimizer to choose a full table scan. `NOT IN` can have similar index-use issues.
+6. An [implicit type conversion](https://javaguide.cn/database/mysql/index-invalidation-caused-by-implicit-conversion.html) occurs.
 
-## MySQL 查询缓存
+## MySQL Query Cache
 
-MySQL 查询缓存是查询结果缓存。执行查询语句的时候，会先查询缓存，如果缓存中有对应的查询结果，就会直接返回。
+The MySQL Query Cache stores query results. When a query runs, MySQL checks the cache first and returns the result directly if it finds a match.
 
-`my.cnf` 加入以下配置，重启 MySQL 开启查询缓存
+Add the following settings to `my.cnf` and restart MySQL to enable the Query Cache:
 
 ```properties
 query_cache_type=1
 query_cache_size=600000
 ```
 
-MySQL 执行以下命令也可以开启查询缓存
+You can also enable it with these commands:
 
 ```properties
 set global  query_cache_type=1;
 set global  query_cache_size=600000;
 ```
 
-查询缓存会在同样的查询条件和数据情况下，直接返回缓存中的结果。但需要注意的是，查询缓存的匹配条件非常严格，任何细微的差异都会导致缓存无法命中。这里的查询条件包括查询语句本身、当前使用的数据库、以及其他可能影响结果的因素，如客户端协议版本号等。
+The Query Cache returns a cached result when the query and data are unchanged. Matching is strict: even a small difference can prevent a cache hit. Matching factors include the query text, the current database, and other details that may affect the result, such as the client protocol version.
 
-**查询缓存不命中的情况：**
+**The Query Cache misses when:**
 
-1. 任何两个查询在任何字符上的不同都会导致缓存不命中。
-2. 如果查询中包含任何用户自定义函数、存储函数、用户变量、临时表、MySQL 库中的系统表，其查询结果也不会被缓存。
-3. 缓存建立之后，MySQL 的查询缓存系统会跟踪查询中涉及的每张表，如果这些表（数据或结构）发生变化，那么和这张表相关的所有缓存数据都将失效。
+1. Two queries differ by even one character.
+2. The query contains a user-defined or stored function, user variable, temporary table, or system table from the `mysql` database.
+3. A table referenced by the query changes, either in its data or structure. MySQL tracks referenced tables and invalidates all related cached results when one changes.
 
-**缓存虽然能够提升数据库的查询性能，但是缓存同时也带来了额外的开销，每次查询后都要做一次缓存操作，失效后还要销毁。** 因此，开启查询缓存要谨慎，尤其对于写密集的应用来说更是如此。如果开启，要注意合理控制缓存空间大小，一般来说其大小设置为几十 MB 比较合适。此外，还可以通过 `sql_cache` 和 `sql_no_cache` 来控制某个查询语句是否需要缓存：
+**The cache can speed up queries, but it also adds overhead: MySQL must check and update the cache after each query and remove invalidated entries.** Enable it cautiously, especially in write-heavy applications. If enabled, control its size; a few dozen MB is often sufficient. The `sql_cache` and `sql_no_cache` hints can also control caching for an individual query:
 
 ```sql
 SELECT sql_no_cache COUNT(*) FROM usr;
 ```
 
-MySQL 5.6 开始，查询缓存已默认禁用。MySQL 8.0 开始，已经不再支持查询缓存了（具体可以参考这篇文章：[MySQL 8.0: Retiring Support for the Query Cache](https://dev.mysql.com/blog-archive/mysql-8-0-retiring-support-for-the-query-cache/)）。
+The Query Cache has been disabled by default since MySQL 5.6 and was removed in MySQL 8.0. See [MySQL 8.0: Retiring Support for the Query Cache](https://dev.mysql.com/blog-archive/mysql-8-0-retiring-support-for-the-query-cache/).
 
 ![MySQL 8.0: Retiring Support for the Query Cache](../images/shared/mysql8.0-retiring-support-for-the-query-cache.png)
 
-## ⭐️MySQL 日志
+## ⭐️MySQL Logs
 
-上诉问题的答案可以在[《Java 面试指北》(付费，点击链接领取优惠卷)](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html) 的 **「技术面试题篇」** 中找到。
+Answers to the questions in this section are available in the **Technical Interview Questions** section of [Java Interview Guide (paid; use the link for a discount)](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html).
 
-![《Java 面试指北》技术面试题篇](../../zhuanlan/images/shared/technical-interview-questions.png)
+![Technical Interview Questions section of Java Interview Guide](../../zhuanlan/images/shared/technical-interview-questions.png)
 
-文章地址：<https://www.yuque.com/snailclimb/mf2z3k/zr4kfk> （密码获取：<https://t.zsxq.com/avfM0>）。
+Article: <https://www.yuque.com/snailclimb/mf2z3k/zr4kfk> (get the password at <https://t.zsxq.com/avfM0>).
 
-## ⭐️MySQL 事务
+## ⭐️MySQL Transactions
 
-### 什么是事务？
+### What Is a Transaction?
 
-我们设想一个场景，这个场景中我们需要插入多条相关联的数据到数据库，不幸的是，这个过程可能会遇到下面这些问题：
+Suppose we need to insert several related records into a database. The process can encounter problems such as:
 
-- 数据库中途突然因为某些原因挂掉了。
-- 客户端突然因为网络原因连接不上数据库了。
-- 并发访问数据库时，多个线程同时写入数据库，覆盖了彼此的更改。
-- ……
+- The database crashes partway through.
+- A network issue prevents the client from connecting to the database.
+- Concurrent threads overwrite each other's changes.
+- And so on.
 
-上面的任何一个问题都可能会导致数据的不一致性。为了保证数据的一致性，系统必须能够处理这些问题。事务就是我们抽象出来简化这些问题的首选机制。事务的概念起源于数据库，目前，已经成为一个比较广泛的概念。
+Any of these problems can lead to inconsistent data. A system needs a way to handle them, and transactions provide a standard mechanism. Transactions originated in databases, but the concept is now widely used.
 
-**何为事务？** 一言蔽之，**事务是逻辑上的一组操作，要么都执行，要么都不执行。**
+**What is a transaction?** In short, **a transaction is a logical group of operations that either all succeed or all fail.**
 
-事务最经典也经常被拿出来说例子就是转账了。假如小明要给小红转账 1000 元，这个转账会涉及到两个关键操作，这两个操作必须都成功或者都失败。
+The classic example is a bank transfer. Suppose Alex transfers 1,000 units of currency to Sam. The transfer has two operations, and both must succeed or both must fail:
 
-1. 将小明的余额减少 1000 元
-2. 将小红的余额增加 1000 元。
+1. Subtract 1,000 from Alex's balance.
+2. Add 1,000 to Sam's balance.
 
-事务会把这两个操作就可以看成逻辑上的一个整体，这个整体包含的操作要么都成功，要么都要失败。这样就不会出现小明余额减少而小红的余额却并没有增加的情况。
+A transaction treats these operations as one logical unit. They either both succeed or both fail, preventing Alex's balance from decreasing without Sam's balance increasing.
 
-![事务示意图](../../distributed-system/images/shared/-.png)
+![Transaction diagram](../../distributed-system/images/shared/-.png)
 
-### 什么是数据库事务？
+### What Is a Database Transaction?
 
-大多数情况下，我们在谈论事务的时候，如果没有特指**分布式事务**，往往指的就是**数据库事务**。
+Unless a **distributed transaction** is specified, “transaction” usually refers to a **database transaction**.
 
-数据库事务在我们日常开发中接触的最多了。如果你的项目属于单体架构的话，你接触到的往往就是数据库事务了。
+Database transactions are common in everyday development, especially in monolithic applications.
 
-**那数据库事务有什么作用呢？**
+**What does a database transaction do?**
 
-简单来说，数据库事务可以保证多个对数据库的操作（也就是 SQL 语句）构成一个逻辑上的整体。构成这个逻辑上的整体的这些数据库操作遵循：**要么全部执行成功,要么全部不执行** 。
+A database transaction groups multiple database operations (SQL statements) into one logical unit. The operations **either all succeed or none are applied**.
 
 ```sql
-# 开启一个事务
+# Start a transaction
 START TRANSACTION;
-# 多条 SQL 语句
+# Multiple SQL statements
 SQL1,SQL2...
-## 提交事务
+## Commit the transaction
 COMMIT;
 ```
 
-![数据库事务示意图](../../distributed-system/images/shared/--2.png)
+![Database transaction diagram](../../distributed-system/images/shared/--2.png)
 
-另外，关系型数据库（例如：`MySQL`、`SQL Server`、`Oracle` 等）事务都有 **ACID** 特性：
+Transactions in relational databases such as `MySQL`, `SQL Server`, and `Oracle` have the **ACID** properties:
 
 ![ACID](../../distributed-system/images/shared/ACID.png)
 
-1. **原子性**（`Atomicity`）：事务是最小的执行单位，不允许分割。事务的原子性确保动作要么全部完成，要么完全不起作用；
-2. **一致性**（`Consistency`）：执行事务前后，数据保持一致，例如转账业务中，无论事务是否成功，转账者和收款人的总额应该是不变的；
-3. **隔离性**（`Isolation`）：并发访问数据库时，一个用户的事务不被其他事务所干扰，各并发事务之间数据库是独立的；
-4. **持久性**（`Durability`）：一个事务被提交之后。它对数据库中数据的改变是持久的，即使数据库发生故障也不应该对其有任何影响。
+1. **Atomicity**: A transaction is indivisible. Either all its operations complete or none take effect.
+2. **Consistency**: Data remains consistent before and after a transaction. For example, a transfer should preserve the combined balance of the sender and recipient whether it succeeds or fails.
+3. **Isolation**: Concurrent transactions do not interfere with one another; each behaves as though it were independent.
+4. **Durability**: Once committed, a transaction's changes persist, even if the database fails.
 
-🌈 这里要额外补充一点：**只有保证了事务的持久性、原子性、隔离性之后，一致性才能得到保障。也就是说 A、I、D 是手段，C 是目的！** 想必大家也和我一样，被 ACID 这个概念被误导了很久! 我也是看周志明老师的公开课[《周志明的软件架构课》](https://time.geekbang.org/opencourse/intro/100064201)才搞清楚的（多看好书！！！）。
+🌈 One clarification: **Consistency depends on durability, atomicity, and isolation. In other words, A, I, and D are the means; C is the goal.** I found this distinction clarifying in Zhou Zhiming's open course, [Software Architecture](https://time.geekbang.org/opencourse/intro/100064201).
 
 ![AID->C](../../distributed-system/images/shared/AID--C.png)
 
-另外，DDIA 也就是 [《Designing Data-Intensive Application（数据密集型应用系统设计）》](https://book.douban.com/subject/30329536/) 的作者在他的这本书中如是说：
+The author of [_Designing Data-Intensive Applications_ (DDIA)](https://book.douban.com/subject/30329536/) also writes:
 
 > Atomicity, isolation, and durability are properties of the database, whereas consis‐
 > tency (in the ACID sense) is a property of the application. The application may rely
 > on the database’s atomicity and isolation properties in order to achieve consistency,
 > but it’s not up to the database alone.
 >
-> 翻译过来的意思是：原子性，隔离性和持久性是数据库的属性，而一致性（在 ACID 意义上）是应用程序的属性。应用可能依赖数据库的原子性和隔离属性来实现一致性，但这并不仅取决于数据库。因此，字母 C 不属于 ACID 。
+> In other words, atomicity, isolation, and durability are properties of the database, while consistency (in the ACID sense) is a property of the application. An application may rely on database atomicity and isolation to achieve consistency, but consistency does not depend on the database alone. Therefore, C is not a database property in ACID.
 
-《Designing Data-Intensive Application（数据密集型应用系统设计）》这本书强推一波，值得读很多遍！豆瓣有接近 90% 的人看了这本书之后给了五星好评。另外，中文翻译版本已经在 GitHub 开源，地址：[https://github.com/Vonng/ddia](https://github.com/Vonng/ddia) 。
+_Designing Data-Intensive Applications_ is well worth reading, and many readers return to it more than once. A Chinese translation is available on GitHub: [https://github.com/Vonng/ddia](https://github.com/Vonng/ddia).
 
 ![](../../books/images/shared/ddia.png)
 
-### 并发事务带来了哪些问题?
+### What Problems Can Concurrent Transactions Cause?
 
-在典型的应用程序中，多个事务并发运行，经常会操作相同的数据来完成各自的任务（多个用户对同一数据进行操作）。并发虽然是必须的，但可能会导致以下的问题。
+In a typical application, multiple transactions run concurrently and may operate on the same data. Concurrency is necessary, but it can cause the following problems.
 
-#### 脏读（Dirty read）
+#### Dirty Read
 
-一个事务读取数据并且对数据进行了修改，这个修改对其他事务来说是可见的，即使当前事务没有提交。这时另外一个事务读取了这个还未提交的数据，但第一个事务突然回滚，导致数据并没有被提交到数据库，那第二个事务读取到的就是脏数据，这也就是脏读的由来。
+A transaction modifies data, and that uncommitted change becomes visible to other transactions. If another transaction reads it and the first transaction later rolls back, the second transaction has read data that was never committed. This is a dirty read.
 
-例如：事务 1 读取某表中的数据 A=20，事务 1 修改 A=A-1，事务 2 读取到 A = 19,事务 1 回滚导致对 A 的修改并未提交到数据库， A 的值还是 20。
+For example, Transaction 1 reads `A=20` and changes it to `A=A-1`. Transaction 2 reads `A=19`. Transaction 1 then rolls back, so the change was never committed and `A` remains 20.
 
-![脏读](../images/shared/concurrency-consistency-issues-dirty-reading.png)
+![Dirty read](../images/shared/concurrency-consistency-issues-dirty-reading.png)
 
-#### 丢失修改（Lost to modify）
+#### Lost Update
 
-在一个事务读取一个数据时，另外一个事务也访问了该数据，那么在第一个事务中修改了这个数据后，第二个事务也修改了这个数据。这样第一个事务内的修改结果就被丢失，因此称为丢失修改。
+When one transaction reads data and another transaction also accesses it, both may later modify it. If the second write overwrites the first, the first transaction's update is lost. This is called a lost update.
 
-例如：事务 1 读取某表中的数据 A=20，事务 2 也读取 A=20，事务 1 先修改 A=A-1，事务 2 后来也修改 A=A-1，最终结果 A=19，事务 1 的修改被丢失。
+For example, Transaction 1 and Transaction 2 both read `A=20`. Transaction 1 changes it to `A=A-1`, then Transaction 2 does the same. The final value is `A=19`, so Transaction 1's update is lost.
 
-![丢失修改](../images/shared/concurrency-consistency-issues-missing-modifications.png)
+![Lost update](../images/shared/concurrency-consistency-issues-missing-modifications.png)
 
-#### 不可重复读（Unrepeatable read）
+#### Non-Repeatable Read
 
-指在一个事务内多次读同一数据。在这个事务还没有结束时，另一个事务也访问该数据。那么，在第一个事务中的两次读数据之间，由于第二个事务的修改导致第一个事务两次读取的数据可能不太一样。这就发生了在一个事务内两次读到的数据是不一样的情况，因此称为不可重复读。
+This occurs when a transaction reads the same data more than once, while another transaction modifies it before the first transaction ends. The first transaction may then get different values from its reads.
 
-例如：事务 1 读取某表中的数据 A=20，事务 2 也读取 A=20，事务 1 修改 A=A-1，事务 2 再次读取 A =19，此时读取的结果和第一次读取的结果不同。
+For example, Transaction 1 reads `A=20`. Transaction 2 also reads `A=20`, then Transaction 1 changes `A` to `19`. When Transaction 2 reads again, it gets `A=19`, which differs from its first read.
 
-![不可重复读](../images/shared/concurrency-consistency-issues-unrepeatable-read.png)
+![Non-repeatable read](../images/shared/concurrency-consistency-issues-unrepeatable-read.png)
 
-#### 幻读（Phantom read）
+#### Phantom Read
 
-幻读与不可重复读类似。它发生在一个事务读取了几行数据，接着另一个并发事务插入了一些数据时。在随后的查询中，第一个事务就会发现多了一些原本不存在的记录，就好像发生了幻觉一样，所以称为幻读。
+Phantom reads are similar to non-repeatable reads. They occur when a transaction reads a range of rows and another concurrent transaction inserts rows into that range. A later query by the first transaction returns rows that were not there before, as if they had appeared like phantoms.
 
-例如：事务 2 读取某个范围的数据，事务 1 在这个范围插入了新的数据，事务 2 再次读取这个范围的数据发现相比于第一次读取的结果多了新的数据。
+For example, Transaction 2 reads a range of data. Transaction 1 inserts a row in that range. When Transaction 2 reads the range again, it finds an additional row.
 
-![幻读](../images/shared/concurrency-consistency-issues-phantom-read.png)
+![Phantom read](../images/shared/concurrency-consistency-issues-phantom-read.png)
 
-### 不可重复读和幻读有什么区别？
+### What Is the Difference Between Non-Repeatable Reads and Phantom Reads?
 
-- 不可重复读：同一事务内，同一条记录被其他事务修改或删除，导致再次读取时记录内容或存在性发生变化。
-- 幻读：同一事务内，同一个范围条件查询多次执行时，符合条件的记录集合发生变化，出现新增或消失的记录。
+- **Non-repeatable read**: Another transaction updates or deletes a row, so a repeated read in the same transaction returns different contents or finds that the row no longer exists.
+- **Phantom read**: Repeating a range query in the same transaction returns a different set of rows because matching rows have appeared or disappeared.
 
-幻读其实可以看作是不可重复读的一种特殊情况，单独把幻读区分出来的原因主要是解决幻读和不可重复读的方案不一样。
+Phantom reads can be viewed as a special case of non-repeatable reads. They are treated separately because the solutions differ.
 
-举个例子：执行 `delete` 和 `update` 操作的时候，可以直接对记录加锁，保证事务安全。而执行 `insert` 操作的时候，由于记录锁（Record Lock）只能锁住已经存在的记录，为了避免插入新记录，需要依赖间隙锁（Gap Lock）。也就是说执行 `insert` 操作的时候需要依赖 Next-Key Lock（Record Lock+Gap Lock） 进行加锁来保证不出现幻读。
+For example, `DELETE` and `UPDATE` can lock existing records to protect a transaction. A record lock cannot lock a row that does not yet exist, so preventing an `INSERT` requires a gap lock. In other words, InnoDB uses next-key locks (record lock + gap lock) to prevent phantom reads during inserts.
 
-### 并发事务的控制方式有哪些？
+### How Does MySQL Control Concurrent Transactions?
 
-MySQL 中并发事务的控制方式无非就两种：**锁** 和 **MVCC**。锁可以看作是悲观控制的模式，多版本并发控制（MVCC，Multiversion concurrency control）可以看作是乐观控制的模式。
+MySQL controls concurrent transactions mainly through **locks** and **MVCC**. Locks are a form of pessimistic control; multiversion concurrency control (MVCC) can be viewed as optimistic control.
 
-**锁** 控制方式下会通过锁来显式控制共享资源而不是通过调度手段，MySQL 中主要是通过 **读写锁** 来实现并发控制。
+With **locks**, MySQL explicitly controls access to shared resources. It mainly uses **read/write locks** for concurrency control.
 
-- **共享锁（S 锁）**：又称读锁，事务在读取记录的时候获取共享锁，允许多个事务同时获取（锁兼容）。
-- **排他锁（X 锁）**：又称写锁/独占锁，事务在修改记录的时候获取排他锁，不允许多个事务同时获取。如果一个记录已经被加了排他锁，那其他事务不能再对这条记录加任何类型的锁（锁不兼容）。
+- **Shared lock (S lock)**: Also called a read lock. A transaction acquires it when reading a record. Multiple transactions can hold shared locks at the same time.
+- **Exclusive lock (X lock)**: Also called a write lock. A transaction acquires it when modifying a record. Only one transaction can hold an exclusive lock on a record, and no other lock can be acquired on that record while it is held.
 
-读写锁可以做到读读并行，但是无法做到写读、写写并行。另外，根据根据锁粒度的不同，又被分为 **表级锁(table-level locking)** 和 **行级锁(row-level locking)** 。InnoDB 不光支持表级锁，还支持行级锁，默认为行级锁。行级锁的粒度更小，仅对相关的记录上锁即可（对一行或者多行记录加锁），所以对于并发写入操作来说， InnoDB 的性能更高。不论是表级锁还是行级锁，都存在共享锁（Share Lock，S 锁）和排他锁（Exclusive Lock，X 锁）这两类。
+Read/write locks allow concurrent reads but not concurrent reads and writes or concurrent writes on the same locked resource. Locks are also classified by granularity as **table-level locks** and **row-level locks**. InnoDB supports both and defaults to row-level locks. Because row locks cover only the relevant records, they generally allow better write concurrency. Both table-level and row-level locks can be shared (S) or exclusive (X).
 
-**MVCC** 是多版本并发控制方法，即对一份数据会存储多个版本，通过事务的可见性来保证事务能看到自己应该看到的版本。通常会有一个全局的版本分配器来为每一行数据设置版本号，版本号是唯一的。
+**MVCC** stores multiple versions of data and uses transaction visibility rules to determine which version each transaction can see. A version allocator typically assigns a unique version number to each row version.
 
-MVCC 在 MySQL 中实现所依赖的手段主要是: **隐藏字段、read view、undo log**。
+MySQL implements MVCC using **hidden columns, read views, and undo logs**.
 
-- undo log : undo log 用于记录某行数据的多个版本的数据。
-- read view 和 隐藏字段 : 用来判断当前版本数据的可见性。
+- **Undo log**: Records previous versions of a row.
+- **Read view and hidden columns**: Determine whether a row version is visible to the transaction.
 
-关于 InnoDB 对 MVCC 的具体实现可以看这篇文章：[InnoDB 存储引擎对 MVCC 的实现](./innodb-implementation-of-mvcc.md) 。
+For details about InnoDB's MVCC implementation, see [How InnoDB Implements MVCC](./innodb-implementation-of-mvcc.md).
 
-### SQL 标准定义了哪些事务隔离级别?
+### Which Transaction Isolation Levels Does the SQL Standard Define?
 
-SQL 标准定义了四种事务隔离级别，用来平衡事务的隔离性（Isolation）和并发性能。级别越高，数据一致性越好，但并发性能可能越低。这四个级别是：
+The SQL standard defines four transaction isolation levels to balance isolation and concurrency. Higher isolation can improve consistency but may reduce concurrency:
 
-- **READ-UNCOMMITTED(读取未提交)** ：最低的隔离级别，允许读取尚未提交的数据变更，可能会导致脏读、幻读或不可重复读。这种级别在实际应用中很少使用，因为它对数据一致性的保证太弱。
-- **READ-COMMITTED(读取已提交)** ：允许读取并发事务已经提交的数据，可以阻止脏读，但是幻读或不可重复读仍有可能发生。这是大多数数据库（如 Oracle, SQL Server）的默认隔离级别。
-- **REPEATABLE-READ(可重复读)** ：对同一字段的多次读取结果都是一致的，除非数据是被本身事务自己所修改，可以阻止脏读和不可重复读，但幻读仍有可能发生。MySQL InnoDB 存储引擎的默认隔离级别正是 REPEATABLE READ。并且，InnoDB 在此级别下通过 MVCC（多版本并发控制） 和 Next-Key Locks（间隙锁+行锁） 机制，在很大程度上解决了幻读问题。
-- **SERIALIZABLE(可串行化)** ：最高的隔离级别，完全服从 ACID 的隔离级别。所有的事务依次逐个执行，这样事务之间就完全不可能产生干扰，也就是说，该级别可以防止脏读、不可重复读以及幻读。
+- **READ UNCOMMITTED**: The lowest level. It allows reads of uncommitted changes, which may cause dirty reads, phantom reads, and non-repeatable reads. It is rarely used because it provides weak consistency guarantees.
+- **READ COMMITTED**: Allows reads of changes committed by concurrent transactions. It prevents dirty reads, but phantom and non-repeatable reads may still occur. This is the default isolation level in many databases, including Oracle and SQL Server.
+- **REPEATABLE READ**: Repeated reads of the same row return the same result unless the transaction itself changed the data. It prevents dirty and non-repeatable reads, though phantom reads may still occur. This is InnoDB's default isolation level. InnoDB also uses MVCC and next-key locks to prevent most phantom reads at this level.
+- **SERIALIZABLE**: The highest isolation level. Transactions execute as if they were serialized, preventing dirty reads, non-repeatable reads, and phantom reads.
 
-| 隔离级别         | 脏读 (Dirty Read) | 不可重复读 (Non-Repeatable Read) | 幻读 (Phantom Read)    |
-| ---------------- | ----------------- | -------------------------------- | ---------------------- |
-| READ UNCOMMITTED | √                 | √                                | √                      |
-| READ COMMITTED   | ×                 | √                                | √                      |
-| REPEATABLE READ  | ×                 | ×                                | √ (标准) / ≈× (InnoDB) |
-| SERIALIZABLE     | ×                 | ×                                | ×                      |
+| Isolation level  | Dirty read | Non-repeatable read | Phantom read               |
+| ---------------- | ---------- | ------------------- | -------------------------- |
+| READ UNCOMMITTED | √          | √                   | √                          |
+| READ COMMITTED   | ×          | √                   | √                          |
+| REPEATABLE READ  | ×          | ×                   | √ (standard) / ≈× (InnoDB) |
+| SERIALIZABLE     | ×          | ×                   | ×                          |
 
-### MySQL 的默认隔离级别是什么?
+### What Is MySQL's Default Isolation Level?
 
-MySQL InnoDB 存储引擎的默认隔离级别是 **REPEATABLE READ**。可以通过以下命令查看：
+InnoDB's default isolation level is **REPEATABLE READ**. Check it with:
 
-- MySQL 8.0 之前：`SELECT @@tx_isolation;`
-- MySQL 8.0 及之后：`SELECT @@transaction_isolation;`
+- Before MySQL 8.0: `SELECT @@tx_isolation;`
+- MySQL 8.0 and later: `SELECT @@transaction_isolation;`
 
 ```sql
 mysql> SELECT @@tx_isolation;
@@ -769,145 +769,145 @@ mysql> SELECT @@tx_isolation;
 +-----------------+
 ```
 
-关于 MySQL 事务隔离级别的详细介绍，可以看看我写的这篇文章：[MySQL 事务隔离级别详解](./transaction-isolation-level.md)。
+For details, see [MySQL Transaction Isolation Levels](./transaction-isolation-level.md).
 
-### MySQL 的隔离级别是基于锁实现的吗？
+### Are MySQL Isolation Levels Implemented with Locks?
 
-MySQL 的隔离级别基于锁和 MVCC 机制共同实现的。
+MySQL isolation levels are implemented using both locks and MVCC.
 
-SERIALIZABLE 隔离级别是通过锁来实现的，READ-COMMITTED 和 REPEATABLE-READ 隔离级别是基于 MVCC 实现的。不过， SERIALIZABLE 之外的其他隔离级别可能也需要用到锁机制，就比如 REPEATABLE-READ 在当前读情况下需要使用加锁读来保证不会出现幻读。
+`SERIALIZABLE` uses locks. `READ COMMITTED` and `REPEATABLE READ` rely on MVCC, but other levels may also use locks. For example, `REPEATABLE READ` uses locking reads for current reads to prevent phantom reads.
 
-## MySQL 锁
+## MySQL Locks
 
-锁是一种常见的并发事务的控制方式。
+Locks are a common way to control concurrent transactions.
 
-### 表级锁和行级锁了解吗？有什么区别？
+### What Is the Difference Between Table-Level and Row-Level Locks?
 
-MyISAM 仅仅支持表级锁(table-level locking)，一锁就锁整张表，这在并发写的情况下性非常差。InnoDB 不光支持表级锁(table-level locking)，还支持行级锁(row-level locking)，默认为行级锁。
+MyISAM supports only table-level locks, which lock the entire table and perform poorly with concurrent writes. InnoDB supports both table-level and row-level locks and defaults to row-level locks.
 
-行级锁的粒度更小，仅对相关的记录上锁即可（对一行或者多行记录加锁），所以对于并发写入操作来说， InnoDB 的性能更高。
+Row-level locks have finer granularity and lock only the relevant rows, allowing InnoDB to handle concurrent writes more effectively.
 
-**表级锁和行级锁对比**：
+**Comparison:**
 
-- **表级锁：** MySQL 中锁定粒度最大的一种锁（全局锁除外），是针对非索引字段加的锁，对当前操作的整张表加锁，实现简单，资源消耗也比较少，加锁快，不会出现死锁。不过，触发锁冲突的概率最高，高并发下效率极低。表级锁和存储引擎无关，MyISAM 和 InnoDB 引擎都支持表级锁。
-- **行级锁：** MySQL 中锁定粒度最小的一种锁，是 **针对索引字段加的锁** ，只针对当前操作的行记录进行加锁。 行级锁能大大减少数据库操作的冲突。其加锁粒度最小，并发度高，但加锁的开销也最大，加锁慢，会出现死锁。行级锁和存储引擎有关，是在存储引擎层面实现的。
+- **Table-level lock**: The coarsest lock in MySQL other than a global lock. It locks the whole table, is simple and inexpensive to acquire, and cannot deadlock. However, conflicts are common and performance can be poor under high concurrency. Both MyISAM and InnoDB support table locks.
+- **Row-level lock**: The finest-grained MySQL lock. It **locks index records** relevant to the current operation. This reduces conflicts and allows more concurrency, but has greater overhead, takes longer to acquire, and can deadlock. Row-level locks are implemented by the storage engine.
 
-### 行级锁的使用有什么注意事项？
+### What Should You Know When Using Row-Level Locks?
 
-InnoDB 的行锁是针对索引字段加的锁，表级锁是针对非索引字段加的锁。当我们执行 `UPDATE`、`DELETE` 语句时，如果 `WHERE`条件中字段没有命中唯一索引或者索引失效的话，就会导致扫描全表对表中的所有行记录进行加锁。这个在我们日常工作开发中经常会遇到，一定要多多注意！！！
+InnoDB row locks apply to index records, while table-level locks apply to non-indexed columns. When running `UPDATE` or `DELETE`, if the `WHERE` condition does not use a unique index or the index cannot be used, MySQL may scan the entire table and lock all rows. Watch for this in application code.
 
-不过，很多时候即使用了索引也有可能会走全表扫描，这是因为 MySQL 优化器的原因。
+Even when an index exists, the optimizer may still choose a full table scan.
 
-### InnoDB 有哪几类行锁？
+### What Types of Row Locks Does InnoDB Support?
 
-InnoDB 行锁是通过对索引数据页上的记录加锁实现的，MySQL InnoDB 支持三种行锁定方式：
+InnoDB row locks are implemented by locking records on index pages. InnoDB supports three types:
 
-- **记录锁（Record Lock）**：属于单个行记录上的锁。
-- **间隙锁（Gap Lock）**：锁定一个范围，不包括记录本身。
-- **临键锁（Next-Key Lock）**：Record Lock+Gap Lock，锁定一个范围，包含记录本身，主要目的是为了解决幻读问题（MySQL 事务部分提到过）。记录锁只能锁住已经存在的记录，为了避免插入新记录，需要依赖间隙锁。
+- **Record lock**: Locks an individual row record.
+- **Gap lock**: Locks a range between records, excluding the records themselves.
+- **Next-key lock**: Combines a record lock and a gap lock. It locks a range including the record and is mainly used to prevent phantom reads. A record lock protects only existing records; a gap lock prevents new records from being inserted into the range.
 
-**在 InnoDB 默认的隔离级别 REPEATABLE-READ 下，行锁默认使用的是 Next-Key Lock。但是，如果操作的索引是唯一索引或主键，InnoDB 会对 Next-Key Lock 进行优化，将其降级为 Record Lock，即仅锁住索引本身，而不是范围。**
+**At InnoDB's default `REPEATABLE READ` isolation level, row locks use next-key locks by default. When the operation uses a primary key or unique index, InnoDB may optimize a next-key lock into a record lock, locking only the index record rather than the range.**
 
-### 共享锁和排他锁呢？
+### What Are Shared and Exclusive Locks?
 
-不论是表级锁还是行级锁，都存在共享锁（Share Lock，S 锁）和排他锁（Exclusive Lock，X 锁）这两类：
+Both table-level and row-level locks can be shared (S) or exclusive (X):
 
-- **共享锁（S 锁）**：又称读锁，事务在读取记录的时候获取共享锁，允许多个事务同时获取（锁兼容）。
-- **排他锁（X 锁）**：又称写锁/独占锁，事务在修改记录的时候获取排他锁，不允许多个事务同时获取。如果一个记录已经被加了排他锁，那其他事务不能再对这条事务加任何类型的锁（锁不兼容）。
+- **Shared lock (S lock)**: Also called a read lock. Multiple transactions can hold it on the same record at once.
+- **Exclusive lock (X lock)**: Also called a write lock. Only one transaction can hold it on a record, and no other lock is compatible with it.
 
-排他锁与任何的锁都不兼容，共享锁仅和共享锁兼容。
+An exclusive lock is incompatible with all other locks. A shared lock is compatible only with another shared lock.
 
-|      | S 锁   | X 锁 |
-| :--- | :----- | :--- |
-| S 锁 | 不冲突 | 冲突 |
-| X 锁 | 冲突   | 冲突 |
+|        | S lock     | X lock   |
+| :----- | :--------- | :------- |
+| S lock | Compatible | Conflict |
+| X lock | Conflict   | Conflict |
 
-由于 MVCC 的存在，对于一般的 `SELECT` 语句，InnoDB 不会加任何锁。不过， 你可以通过以下语句显式加共享锁或排他锁。
+Because of MVCC, InnoDB does not lock rows for an ordinary `SELECT`. Use these statements to acquire shared or exclusive locks explicitly:
 
 ```sql
-# 共享锁 可以在 MySQL 5.7 和 MySQL 8.0 中使用
+# Shared lock; supported in MySQL 5.7 and MySQL 8.0
 SELECT ... LOCK IN SHARE MODE;
-# 共享锁 可以在 MySQL 8.0 中使用
+# Shared lock; supported in MySQL 8.0
 SELECT ... FOR SHARE;
-# 排他锁
+# Exclusive lock
 SELECT ... FOR UPDATE;
 ```
 
-### 意向锁有什么作用？
+### What Are Intention Locks Used For?
 
-如果需要用到表锁的话，如何判断表中的记录没有行锁呢，一行一行遍历肯定是不行，性能太差。我们需要用到一个叫做意向锁的东东来快速判断是否可以对某个表使用表锁。
+When acquiring a table lock, MySQL needs to know whether rows in the table already have row locks. Checking every row would be too slow, so it uses intention locks to determine quickly whether a table lock can be acquired.
 
-意向锁是表级锁，共有两种：
+Intention locks are table-level locks. There are two types:
 
-- **意向共享锁（Intention Shared Lock，IS 锁）**：事务有意向对表中的某些记录加共享锁（S 锁），加共享锁前必须先取得该表的 IS 锁。
-- **意向排他锁（Intention Exclusive Lock，IX 锁）**：事务有意向对表中的某些记录加排他锁（X 锁），加排他锁之前必须先取得该表的 IX 锁。
+- **Intention shared lock (IS lock)**: A transaction intends to acquire shared locks (S locks) on some rows. It must first acquire an IS lock on the table.
+- **Intention exclusive lock (IX lock)**: A transaction intends to acquire exclusive locks (X locks) on some rows. It must first acquire an IX lock on the table.
 
-**意向锁是由数据引擎自己维护的，用户无法手动操作意向锁，在为数据行加共享/排他锁之前，InnoDB 会先获取该数据行所在在数据表的对应意向锁。**
+**The storage engine manages intention locks; users cannot acquire them directly. Before locking a row, InnoDB first acquires the corresponding intention lock on the table.**
 
-意向锁之间是互相兼容的。
+Intention locks are compatible with one another.
 
-|       | IS 锁 | IX 锁 |
-| ----- | ----- | ----- |
-| IS 锁 | 兼容  | 兼容  |
-| IX 锁 | 兼容  | 兼容  |
+|         | IS lock    | IX lock    |
+| ------- | ---------- | ---------- |
+| IS lock | Compatible | Compatible |
+| IX lock | Compatible | Compatible |
 
-意向锁和共享锁和排它锁互斥（这里指的是表级别的共享锁和排他锁，意向锁不会与行级的共享锁和排他锁互斥）。
+Intention locks conflict with table-level shared and exclusive locks, but do not conflict with row-level shared or exclusive locks.
 
-|      | IS 锁 | IX 锁 |
-| ---- | ----- | ----- |
-| S 锁 | 兼容  | 互斥  |
-| X 锁 | 互斥  | 互斥  |
+|        | IS lock    | IX lock  |
+| ------ | ---------- | -------- |
+| S lock | Compatible | Conflict |
+| X lock | Conflict   | Conflict |
 
-《MySQL 技术内幕 InnoDB 存储引擎》这本书对应的描述应该是笔误了。
+The corresponding description in _MySQL Technology: InnoDB Storage Engine_ appears to contain a typo.
 
 ![](../images/shared/image-20220511171419081.png)
 
-### 当前读和快照读有什么区别？
+### What Is the Difference Between Current Reads and Snapshot Reads?
 
-**快照读**（一致性非锁定读）就是单纯的 `SELECT` 语句，但不包括下面这两类 `SELECT` 语句：
+**A snapshot read** (a consistent nonlocking read) is a regular `SELECT`, excluding these locking reads:
 
 ```sql
-# 排他锁，可以在 MySQL 5.7 和 MySQL 8.0 中使用
+# Exclusive lock; supported in MySQL 5.7 and MySQL 8.0
 SELECT ... FOR UPDATE
-# 共享锁，可以在 MySQL 5.7 和 MySQL 8.0 中使用
+# Shared lock; supported in MySQL 5.7 and MySQL 8.0
 SELECT ... LOCK IN SHARE MODE;
-# 共享锁，可以在 MySQL 8.0 中使用
+# Shared lock; supported in MySQL 8.0
 SELECT ... FOR SHARE;
 ```
 
-快照即记录的历史版本，每行记录可能存在多个历史版本（多版本技术）。
+A snapshot is a historical version of a record. A row may have multiple historical versions through multiversioning.
 
-快照读的情况下，如果读取的记录正在执行 UPDATE/DELETE 操作，读取操作不会因此去等待记录上 X 锁的释放，而是会去读取行的一个快照。
+For a snapshot read, if the row is being updated or deleted, the read does not wait for its X lock to be released. It reads a snapshot of the row instead.
 
-只有在事务隔离级别 RC(读取已提交) 和 RR（可重读）下，InnoDB 才会使用一致性非锁定读：
+InnoDB uses consistent nonlocking reads only at the `READ COMMITTED` (RC) and `REPEATABLE READ` (RR) isolation levels:
 
-- 在 RC 级别下，对于快照数据，一致性非锁定读总是读取被锁定行的最新一份快照数据。
-- 在 RR 级别下，对于快照数据，一致性非锁定读总是读取本事务开始时的行数据版本。
+- At `READ COMMITTED`, a consistent nonlocking read returns the latest snapshot of a locked row.
+- At `REPEATABLE READ`, it returns the row version from the start of the transaction.
 
-快照读比较适合对于数据一致性要求不是特别高且追求极致性能的业务场景。
+Snapshot reads suit workloads that prioritize performance and do not require the latest committed version for every read.
 
-**当前读** （一致性锁定读）就是给行记录加 X 锁或 S 锁。
+**A current read** (a consistent locking read) acquires an X or S lock on the row.
 
-当前读的一些常见 SQL 语句类型如下：
+Common current-read statements include:
 
 ```sql
-# 对读的记录加一个X锁
+# Acquire an X lock on the row being read
 SELECT...FOR UPDATE
-# 对读的记录加一个S锁
+# Acquire an S lock on the row being read
 SELECT...LOCK IN SHARE MODE
-# 对读的记录加一个S锁
+# Acquire an S lock on the row being read
 SELECT...FOR SHARE
-# 对修改的记录加一个X锁
+# Acquire an X lock on the row being modified
 INSERT...
 UPDATE...
 DELETE...
 ```
 
-### 自增锁有了解吗？
+### What Is the AUTO-INC Lock?
 
-> 不太重要的一个知识点，简单了解即可。
+> This is a lower-priority topic; a basic understanding is enough.
 
-关系型数据库设计表的时候，通常会有一列作为自增主键。InnoDB 中的自增主键会涉及一种比较特殊的表级锁— **自增锁（AUTO-INC Locks）** 。
+Relational database tables often have an auto-incrementing primary key. InnoDB uses a special table-level lock for auto-increment columns called the **AUTO-INC lock**.
 
 ```sql
 CREATE TABLE `sequence_id` (
@@ -918,70 +918,70 @@ CREATE TABLE `sequence_id` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
-更准确点来说，不仅仅是自增主键，`AUTO_INCREMENT`的列都会涉及到自增锁，毕竟非主键也可以设置自增长。
+More precisely, any `AUTO_INCREMENT` column may involve this lock, not just a primary key; non-primary-key columns can also auto-increment.
 
-如果一个事务正在插入数据到有自增列的表时，会先获取自增锁，拿不到就可能会被阻塞住。这里的阻塞行为只是自增锁行为的其中一种，可以理解为自增锁就是一个接口，其具体的实现有多种。具体的配置项为 `innodb_autoinc_lock_mode` （MySQL 5.1.22 引入），可以选择的值如下：
+When a transaction inserts data into a table with an auto-increment column, it may first acquire an AUTO-INC lock and block if the lock is unavailable. This is one possible behavior; the lock's implementation varies by mode. Set `innodb_autoinc_lock_mode` (introduced in MySQL 5.1.22) to one of these values:
 
-| innodb_autoinc_lock_mode | 介绍                           |
-| :----------------------- | :----------------------------- |
-| 0                        | 传统模式                       |
-| 1                        | 连续模式（MySQL 8.0 之前默认） |
-| 2                        | 交错模式(MySQL 8.0 之后默认)   |
+| innodb_autoinc_lock_mode | Description                                 |
+| :----------------------- | :------------------------------------------ |
+| 0                        | Traditional mode                            |
+| 1                        | Consecutive mode (default before MySQL 8.0) |
+| 2                        | Interleaved mode (default since MySQL 8.0)  |
 
-交错模式下，所有的“INSERT-LIKE”语句（所有的插入语句，包括：`INSERT`、`REPLACE`、`INSERT…SELECT`、`REPLACE…SELECT`、`LOAD DATA`等）都不使用表级锁，使用的是轻量级互斥锁实现，多条插入语句可以并发执行，速度更快，扩展性也更好。
+In interleaved mode, “INSERT-like” statements (`INSERT`, `REPLACE`, `INSERT…SELECT`, `REPLACE…SELECT`, and `LOAD DATA`) do not use a table-level lock. They use a lightweight mutex instead, allowing multiple insert statements to run concurrently with better speed and scalability.
 
-不过，如果你的 MySQL 数据库有主从同步需求并且 Binlog 存储格式为 Statement 的话，不要将 InnoDB 自增锁模式设置为交叉模式，不然会有数据不一致性问题。这是因为并发情况下插入语句的执行顺序就无法得到保障。
+However, if MySQL replication uses the `STATEMENT` binlog format, do not use interleaved mode. Concurrent insert statements may execute in an order that cannot be preserved during replication, causing inconsistent data.
 
-> 如果 MySQL 采用的格式为 Statement ，那么 MySQL 的主从同步实际上同步的就是一条一条的 SQL 语句。
+> With the `STATEMENT` binlog format, MySQL replication synchronizes the SQL statements themselves.
 
-最后，再推荐一篇文章：[为什么 MySQL 的自增主键不单调也不连续](https://draveness.me/whys-the-design-mysql-auto-increment/) 。
+For more, see [Why MySQL Auto-Increment Primary Keys Are Not Monotonic or Continuous](https://draveness.me/whys-the-design-mysql-auto-increment/).
 
-## ⭐️MySQL 性能优化
+## ⭐️MySQL Performance Tuning
 
-关于 MySQL 性能优化的建议总结，请看这篇文章：[MySQL 高性能优化规范建议总结](./mysql-high-performance-optimization-specification-recommendations.md) 。
+For MySQL performance tuning guidelines, see [MySQL Performance Tuning Recommendations](./mysql-high-performance-optimization-specification-recommendations.md).
 
-### 能用 MySQL 直接存储文件（比如图片）吗？
+### Can MySQL Store Files Directly, Such as Images?
 
-可以是可以，直接存储文件对应的二进制数据即可。不过，还是建议不要在数据库中存储文件，会严重影响数据库性能，消耗过多存储空间。
+Yes. You can store a file's binary data directly, but this is generally not recommended because it can hurt database performance and consume substantial storage.
 
-可以选择使用云服务厂商提供的开箱即用的文件存储服务，成熟稳定，价格也比较低。
+Consider a managed file storage service from a cloud provider. These services are mature, reliable, and relatively inexpensive.
 
 ![](../images/shared/oss-search.png)
 
-也可以选择自建文件存储服务，实现起来也不难，基于 FastDFS、MinIO（推荐） 等开源项目就可以实现分布式文件服务。
+You can also host your own file storage service with open-source projects such as FastDFS or MinIO (recommended) to provide distributed file storage.
 
-**数据库只存储文件地址信息，文件由文件存储服务负责存储。**
+**Store only file references in the database; let a file storage service store the files.**
 
-### MySQL 如何存储 IP 地址？
+### How Can MySQL Store IP Addresses?
 
-可以将 IP 地址转换成整形数据存储，性能更好，占用空间也更小。
+Convert IP addresses to integers before storing them to improve performance and reduce storage use.
 
-MySQL 提供了两个方法来处理 ip 地址
+MySQL provides two functions for handling IP addresses:
 
-- `INET_ATON()`：把 ip 转为无符号整型 (4-8 位)
-- `INET_NTOA()` :把整型的 ip 转为地址
+- `INET_ATON()`: Converts an IP address to an unsigned integer (4–8 bytes).
+- `INET_NTOA()`: Converts an integer to an IP address.
 
-插入数据前，先用 `INET_ATON()` 把 ip 地址转为整型，显示数据时，使用 `INET_NTOA()` 把整型的 ip 地址转为地址显示即可。
+Before inserting a record, use `INET_ATON()` to convert the IP address to an integer. When displaying the value, use `INET_NTOA()` to convert it back to an address.
 
-### 有哪些常见的 SQL 优化手段？
+### What Are Common SQL Optimization Techniques?
 
-[《Java 面试指北》(付费)](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html) 的 **「技术面试题篇」** 有一篇文章详细介绍了常见的 SQL 优化手段，非常全面，清晰易懂！
+The **Technical Interview Questions** section of [Java Interview Guide (paid)](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html) has a detailed, clear overview of common SQL optimization techniques.
 
-![常见的 SQL 优化手段](../images/shared/javamianshizhibei-sql-optimization.png)
+![Common SQL optimization techniques](../images/shared/javamianshizhibei-sql-optimization.png)
 
-文章地址：https://www.yuque.com/snailclimb/mf2z3k/abc2sv （密码获取：<https://t.zsxq.com/avfM0>）。
+Article: <https://www.yuque.com/snailclimb/mf2z3k/abc2sv> (get the password at <https://t.zsxq.com/avfM0>).
 
-### 如何分析 SQL 的性能？
+### How Do You Analyze SQL Performance?
 
-我们可以使用 `EXPLAIN` 命令来分析 SQL 的 **执行计划** 。执行计划是指一条 SQL 语句在经过 MySQL 查询优化器的优化会后，具体的执行方式。
+Use `EXPLAIN` to analyze a query's **execution plan**, which describes how MySQL runs a statement after optimizing it.
 
-`EXPLAIN` 并不会真的去执行相关的语句，而是通过 **查询优化器** 对语句进行分析，找出最优的查询方案，并显示对应的信息。
+`EXPLAIN` does not execute the statement. It uses the **query optimizer** to analyze the statement, choose a plan, and display information about it.
 
-`EXPLAIN` 适用于 `SELECT`, `DELETE`, `INSERT`, `REPLACE`, 和 `UPDATE`语句，我们一般分析 `SELECT` 查询较多。
+`EXPLAIN` supports `SELECT`, `DELETE`, `INSERT`, `REPLACE`, and `UPDATE` statements, but it is most commonly used to analyze `SELECT` queries.
 
-我们这里简单来演示一下 `EXPLAIN` 的使用。
+Here is a brief example of using `EXPLAIN`.
 
-`EXPLAIN` 的输出格式如下：
+An `EXPLAIN` result looks like this:
 
 ```sql
 mysql> EXPLAIN SELECT `score`,`name` FROM `cus_order` ORDER BY `score` DESC;
@@ -993,102 +993,102 @@ mysql> EXPLAIN SELECT `score`,`name` FROM `cus_order` ORDER BY `score` DESC;
 1 row in set, 1 warning (0.00 sec)
 ```
 
-各个字段的含义如下：
+The columns mean:
 
-| **列名**      | **含义**                                     |
-| ------------- | -------------------------------------------- |
-| id            | SELECT 查询的序列标识符                      |
-| select_type   | SELECT 关键字对应的查询类型                  |
-| table         | 用到的表名                                   |
-| partitions    | 匹配的分区，对于未分区的表，值为 NULL        |
-| type          | 表的访问方法                                 |
-| possible_keys | 可能用到的索引                               |
-| key           | 实际用到的索引                               |
-| key_len       | 所选索引的长度                               |
-| ref           | 当使用索引等值查询时，与索引作比较的列或常量 |
-| rows          | 预计要读取的行数                             |
-| filtered      | 按表条件过滤后，留存的记录数的百分比         |
-| Extra         | 附加信息                                     |
+| **Column**    | **Meaning**                                                       |
+| ------------- | ----------------------------------------------------------------- |
+| id            | Identifier for the `SELECT` query sequence                        |
+| select_type   | Type of `SELECT` query                                            |
+| table         | Table used                                                        |
+| partitions    | Matching partitions; `NULL` for unpartitioned tables              |
+| type          | Table access method                                               |
+| possible_keys | Indexes that might be used                                        |
+| key           | Index actually used                                               |
+| key_len       | Length of the selected index                                      |
+| ref           | Column or constant compared with the index for an equality lookup |
+| rows          | Estimated number of rows to read                                  |
+| filtered      | Estimated percentage of rows remaining after filtering            |
+| Extra         | Additional information                                            |
 
-篇幅问题，我这里只是简单介绍了一下 MySQL 执行计划，详细介绍请看：[SQL 的执行计划](./mysql-query-execution-plan.md)这篇文章。
+This is a brief introduction to MySQL execution plans. For details, see [MySQL Execution Plan Analysis](./mysql-query-execution-plan.md).
 
-### 读写分离和分库分表了解吗？
+### What Are Read/Write Splitting and Database/Table Sharding?
 
-读写分离和分库分表相关的问题比较多，于是，我单独写了一篇文章来介绍：[读写分离和分库分表详解](../../high-performance/read-and-write-separation-and-library-subtable.md)。
+Read/write splitting and database/table sharding are common interview topics. See [Read/Write Splitting and Database/Table Sharding](../../high-performance/read-and-write-separation-and-library-subtable.md).
 
-### 深度分页如何优化？
+### How Can Deep Pagination Be Optimized?
 
-[深度分页介绍及优化建议](../../high-performance/deep-pagination-optimization.md)
+[Deep Pagination: Overview and Optimization](../../high-performance/deep-pagination-optimization.md)
 
-### 数据冷热分离如何做？
+### How Can Hot and Cold Data Be Separated?
 
-[数据冷热分离详解](../../high-performance/data-cold-hot-separation.md)
+[Hot and Cold Data Separation](../../high-performance/data-cold-hot-separation.md)
 
-### MySQL 性能怎么优化？
+### How Do You Optimize MySQL Performance?
 
-MySQL 性能优化是一个系统性工程，涉及多个方面，在面试中不可能面面俱到。因此，建议按照“点-线-面”的思路展开，从核心问题入手，再逐步扩展，展示出你对问题的思考深度和解决能力。
+MySQL performance tuning is a broad discipline. In an interview, you cannot cover every aspect, so start with the core problem and expand from there to show how you analyze and solve it.
 
-**1. 抓住核心：慢 SQL 定位与分析**
+**1. Start with the core: identify and analyze slow SQL**
 
-性能优化的第一步永远是找到瓶颈。面试时，建议先从 **慢 SQL 定位和分析** 入手，这不仅能展示你解决问题的思路，还能体现你对数据库性能监控的熟练掌握：
+The first step in performance tuning is to find the bottleneck. In an interview, start with **identifying and analyzing slow SQL** to show both your problem-solving approach and familiarity with database monitoring:
 
-- **监控工具：** 介绍常用的慢 SQL 监控工具，如 **MySQL 慢查询日志**、**Performance Schema** 等，说明你对这些工具的熟悉程度以及如何通过它们定位问题。
-- **EXPLAIN 命令：** 详细说明 `EXPLAIN` 命令的使用，分析查询计划、索引使用情况，可以结合实际案例展示如何解读分析结果，比如执行顺序、索引使用情况、全表扫描等。
+- **Monitoring tools**: Describe tools such as the **MySQL slow query log** and **Performance Schema**, and explain how you use them to locate problems.
+- **`EXPLAIN`**: Explain how you inspect query plans and index usage. Use an example to show how you interpret execution order, index selection, and full table scans.
 
-**2. 由点及面：索引、表结构和 SQL 优化**
+**2. Expand the analysis: indexes, schema, and SQL**
 
-定位到慢 SQL 后，接下来就要针对具体问题进行优化。 这里可以重点介绍索引、表结构和 SQL 编写规范等方面的优化技巧：
+After identifying a slow query, optimize the specific causes. Discuss techniques for indexes, table design, and SQL style:
 
-- **索引优化：** 这是 MySQL 性能优化的重点，可以介绍索引的创建原则、覆盖索引、最左前缀匹配原则等。如果能结合你项目的实际应用来说明如何选择合适的索引，会更加分一些。
-- **表结构优化：** 优化表结构设计，包括选择合适的字段类型、避免冗余字段、合理使用范式和反范式设计等等。
-- **SQL 优化：** 避免使用 `SELECT *`、尽量使用具体字段、使用连接查询代替子查询、合理使用分页查询、批量操作等，都是 SQL 编写过程中需要注意的细节。
+- **Index tuning**: Explain index design, covering indexes, and the leftmost prefix rule. Use examples from your project to show how you chose suitable indexes.
+- **Schema design**: Choose suitable column types, avoid redundant columns, and use normalization or denormalization where appropriate.
+- **SQL tuning**: Avoid `SELECT *`, select only required columns, consider joins instead of subqueries, optimize pagination, and batch operations where suitable.
 
-**3. 进阶方案：架构优化**
+**3. Advanced options: architecture changes**
 
-当面试官对基础优化知识比较满意时，可能会深入探讨一些架构层面的优化方案。以下是一些常见的架构优化策略：
+If the interviewer wants to discuss architecture-level tuning, you can cover strategies such as:
 
-- **读写分离：** 将读操作和写操作分离到不同的数据库实例，提升数据库的并发处理能力。
-- **分库分表：** 将数据分散到多个数据库实例或数据表中，降低单表数据量，提升查询效率。但要权衡其带来的复杂性和维护成本，谨慎使用。
-- **数据冷热分离**：根据数据的访问频率和业务重要性，将数据分为冷数据和热数据，冷数据一般存储在低成本、低性能的介质中，热数据存储在高性能存储介质中。
-- **缓存机制：** 使用 Redis 等缓存中间件，将热点数据缓存到内存中，减轻数据库压力。这个非常常用，提升效果非常明显，性价比极高！
+- **Read/write splitting**: Route reads and writes to different database instances to increase concurrency.
+- **Database/table sharding**: Distribute data across database instances or tables to reduce table size and improve queries. Use it carefully because it adds complexity and maintenance costs.
+- **Hot/cold data separation**: Store infrequently accessed or less important data on lower-cost, lower-performance storage, and frequently accessed data on faster storage.
+- **Caching**: Cache frequently accessed data in memory with middleware such as Redis to reduce database load. This is common and can be highly cost-effective.
 
-**4. 其他优化手段**
+**4. Other tuning techniques**
 
-除了慢 SQL 定位、索引优化和架构优化，还可以提及一些其他优化手段，展示你对 MySQL 性能调优的全面理解：
+You can also mention other techniques to show a broader understanding of MySQL performance tuning:
 
-- **连接池配置：** 配置合理的数据库连接池（如 **连接池大小**、**超时时间** 等），能够有效提升数据库连接的效率，避免频繁的连接开销。
-- **硬件配置：** 提升硬件性能也是优化的重要手段之一。使用高性能服务器、增加内存、使用 **SSD** 硬盘等硬件升级，都可以有效提升数据库的整体性能。
+- **Connection pool configuration**: Set appropriate values for connection pool size and timeouts to avoid unnecessary connection overhead.
+- **Hardware**: Higher-performance servers, more memory, and **SSD** storage can improve overall database performance.
 
-**5.总结**
+**5. Summary**
 
-在面试中，建议按优先级依次介绍慢 SQL 定位、[索引优化](./mysql-index.md)、表结构设计和 [SQL 优化](../../high-performance/sql-optimization.md)等内容。架构层面的优化，如[读写分离和分库分表](../../high-performance/read-and-write-separation-and-library-subtable.md)、[数据冷热分离](../../high-performance/data-cold-hot-separation.md) 应作为最后的手段，除非在特定场景下有明显的性能瓶颈，否则不应轻易使用，因其引入的复杂性会带来额外的维护成本。
+In an interview, cover slow-query analysis, [index tuning](./mysql-index.md), schema design, and [SQL optimization](../../high-performance/sql-optimization.md) in that order. Treat architecture changes such as [read/write splitting and sharding](../../high-performance/read-and-write-separation-and-library-subtable.md) and [hot/cold data separation](../../high-performance/data-cold-hot-separation.md) as later options. Use them only when a clear bottleneck justifies their added complexity and maintenance cost.
 
-## MySQL 学习资料推荐
+## Recommended MySQL Study Resources
 
-[**书籍推荐**](../../books/database.md#mysql) 。
+[**Recommended books**](../../books/database.md#mysql)
 
-**文章推荐** :
+**Recommended articles:**
 
-- [一树一溪的 MySQL 系列教程](https://mp.weixin.qq.com/mp/appmsgalbum?__biz=Mzg3NTc3NjM4Nw==&action=getalbum&album_id=2372043523518300162&scene=173&from_msgid=2247484308&from_itemidx=1&count=3&nolastread=1#wechat_redirect)
-- [Yes 的 MySQL 系列教程](https://mp.weixin.qq.com/mp/appmsgalbum?__biz=MzkxNTE3NjQ3MA==&action=getalbum&album_id=1903249596194095112&scene=173&from_msgid=2247490365&from_itemidx=1&count=3&nolastread=1#wechat_redirect)
-- [写完这篇 我的 SQL 优化能力直接进入新层次 - 变成派大星 - 2022](https://juejin.cn/post/7161964571853815822)
-- [两万字详解！InnoDB 锁专题！ - 捡田螺的小男孩 - 2022](https://juejin.cn/post/7094049650428084232)
-- [MySQL 的自增主键一定是连续的吗？ - 飞天小牛肉 - 2022](https://mp.weixin.qq.com/s/qci10h9rJx_COZbHV3aygQ)
-- [深入理解 MySQL 索引底层原理 - 腾讯技术工程 - 2020](https://zhuanlan.zhihu.com/p/113917726)
+- [Yishuyixi's MySQL tutorial series](https://mp.weixin.qq.com/mp/appmsgalbum?__biz=Mzg3NTc3NjM4Nw==&action=getalbum&album_id=2372043523518300162&scene=173&from_msgid=2247484308&from_itemidx=1&count=3&nolastread=1#wechat_redirect)
+- [Yes's MySQL tutorial series](https://mp.weixin.qq.com/mp/appmsgalbum?__biz=MzkxNTE3NjQ3MA==&action=getalbum&album_id=1903249596194095112&scene=173&from_msgid=2247490365&from_itemidx=1&count=3&nolastread=1#wechat_redirect)
+- [How This Article Improved My SQL Tuning Skills](https://juejin.cn/post/7161964571853815822) — Biancheng Paixing, 2022
+- [InnoDB Locks Explained in Depth](https://juejin.cn/post/7094049650428084232) — Jianti luo de xiao nan hai, 2022
+- [Are MySQL Auto-Increment Primary Keys Always Continuous?](https://mp.weixin.qq.com/s/qci10h9rJx_COZbHV3aygQ) — Feitian xiao niurou
+- [Understanding the Internals of MySQL Indexes](https://zhuanlan.zhihu.com/p/113917726) — Tencent Technology Engineering, 2020
 
-## 参考
+## References
 
-- 《高性能 MySQL》第 7 章 MySQL 高级特性
-- 《MySQL 技术内幕 InnoDB 存储引擎》第 6 章 锁
+- _High Performance MySQL_, Chapter 7: Advanced MySQL Features
+- _MySQL Technology: InnoDB Storage Engine_, Chapter 6: Locks
 - Relational Database：<https://www.omnisci.com/technical-glossary/relational-database>
-- 一篇文章看懂 mysql 中 varchar 能存多少汉字、数字，以及 varchar(100)和 varchar(10)的区别：<https://www.cnblogs.com/zhuyeshen/p/11642211.html>
-- 技术分享 | 隔离级别：正确理解幻读：<https://opensource.actionsky.com/20210818-mysql/>
+- [How Many Characters Can MySQL VARCHAR Store?](https://www.cnblogs.com/zhuyeshen/p/11642211.html)
+- [Understanding Phantom Reads and Isolation Levels](https://opensource.actionsky.com/20210818-mysql/)
 - MySQL Server Logs - MySQL 5.7 Reference Manual：<https://dev.mysql.com/doc/refman/5.7/en/server-logs.html>
 - Redo Log - MySQL 5.7 Reference Manual：<https://dev.mysql.com/doc/refman/5.7/en/innodb-redo-log.html>
 - Locking Reads - MySQL 5.7 Reference Manual：<https://dev.mysql.com/doc/refman/5.7/en/innodb-locking-reads.html>
-- 深入理解数据库行锁与表锁 <https://zhuanlan.zhihu.com/p/52678870>
-- 详解 MySQL InnoDB 中意向锁的作用：<https://juejin.cn/post/6844903666332368909>
-- 深入剖析 MySQL 自增锁：<https://juejin.cn/post/6968420054287253540>
-- 在数据库中不可重复读和幻读到底应该怎么分？：<https://www.zhihu.com/question/392569386>
+- [Understanding Row and Table Locks](https://zhuanlan.zhihu.com/p/52678870)
+- [The Role of Intention Locks in MySQL InnoDB](https://juejin.cn/post/6844903666332368909)
+- [MySQL AUTO-INC Locks Explained](https://juejin.cn/post/6968420054287253540)
+- [How Should Non-Repeatable Reads and Phantom Reads Be Distinguished?](https://www.zhihu.com/question/392569386)
 
 <!-- @include: @article-footer.snippet.md -->

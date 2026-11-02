@@ -1,9 +1,9 @@
 ---
-title: 计算机网络专题：分层模型、HTTP、HTTPS、DNS、TCP、UDP、ARP 与 NAT
-description: 计算机网络面试与学习路线，涵盖 OSI/TCP-IP 分层模型、HTTP、HTTPS、DNS、TCP、UDP、ARP、NAT、网络安全和常见面试题。
-category: 计算机基础
+title: "Computer Networking: Layered Models, HTTP, HTTPS, DNS, TCP, UDP, ARP, and NAT"
+description: A computer networking study and interview guide covering the OSI and TCP/IP models, HTTP, HTTPS, DNS, TCP, UDP, ARP, NAT, network security, and common interview questions.
+category: Computer Science Fundamentals
 tag:
-  - 计算机网络
+  - Computer Networking
   - TCP/IP
   - HTTP
 sidebar: false
@@ -13,81 +13,81 @@ sitemap:
 head:
   - - meta
     - name: keywords
-      content: 计算机网络,计算机网络面试题,OSI七层模型,TCP/IP,HTTP,HTTPS,DNS,TCP,UDP,ARP,NAT,后端面试
+      content: computer networking, networking interview questions, OSI model, TCP/IP, HTTP, HTTPS, DNS, TCP, UDP, ARP, NAT, backend interviews
 ---
 
-这份 **计算机网络专题** 面向后端学习和面试复习，按“分层模型 -> 应用层 -> 传输层 -> 网络层 -> 安全”的顺序整理本站网络相关文章。
+This **computer networking guide** is for backend developers learning networking and preparing for interviews. It organizes the articles on this site in this order: network models, the application layer, the transport layer, the network layer, and security.
 
-## 适合谁看
+## Who Should Read This
 
-- 正在系统学习计算机网络的后端开发者。
-- 准备校招、社招、中大厂网络面试题的同学。
-- 对 HTTP、HTTPS、TCP、DNS、Socket 等知识点只会零散背诵的读者。
-- 想把网络知识和 RPC、网关、负载均衡、系统设计联系起来的工程师。
+- Backend developers studying computer networking systematically.
+- Candidates preparing for networking interviews for internships, new graduate roles, or experienced positions.
+- Readers who know HTTP, HTTPS, TCP, DNS, or sockets only as disconnected facts.
+- Engineers who want to connect networking concepts to RPC, gateways, load balancing, and system design.
 
-## 学习重点
+## Key Topics
 
-- 网络分层的核心价值是拆分复杂通信问题，每一层只解决自己的职责。
-- HTTP、HTTPS、DNS 是后端开发最常用的应用层知识。
-- TCP 高频考点集中在连接管理、可靠传输、拥塞控制、TIME_WAIT 和 Keepalive。
-- ARP、NAT 等网络层知识能帮助理解局域网通信、内外网访问和排障。
-- 面试中要能结合一次完整请求，把协议、连接、加密、解析和传输串起来。
+- Network layers divide complex communication into responsibilities handled by separate layers.
+- HTTP, HTTPS, and DNS are application-layer protocols backend developers use frequently.
+- Common TCP topics include connection management, reliable delivery, congestion control, TIME_WAIT, and keepalive.
+- ARP and NAT help explain local network communication, access between private and public networks, and troubleshooting.
+- In interviews, be ready to trace a request through its protocols, connections, encryption, name resolution, and data transfer.
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [计算机网络常见面试题总结（上）](./other-network-questions.md) 和 [计算机网络常见面试题总结（下）](./other-network-questions2.md)：先建立高频问题清单。
-2. [OSI 七层模型与 TCP/IP 四层模型详解](./osi-and-tcp-ip-model.md)：理解网络分层和各层职责。
-3. [从输入 URL 到页面展示到底发生了什么？](./the-whole-process-of-accessing-web-pages.md)：用完整链路串联 DNS、TCP、HTTP 和浏览器处理。
-4. [HTTP vs HTTPS](./http-vs-https.md)、[HTTPS 握手里的 RSA 和 ECDHE](./https-rsa-vs-ecdhe.md)、[HTTP 常见状态码总结](./http-status-codes.md)：补齐应用层高频问题。
-5. [TCP 三次握手和四次挥手](./tcp-connection-and-disconnection.md)、[TCP 传输可靠性保障](./tcp-reliability-guarantee.md)、[TCP TIME_WAIT 详解](./tcp-time-wait.md)：重点攻克 TCP。
+1. [Common Computer Networking Interview Questions, Part 1](./other-network-questions.md) and [Part 2](./other-network-questions2.md): Start with a list of frequently asked questions.
+2. [The OSI Seven-Layer Model and the TCP/IP Four-Layer Model](./osi-and-tcp-ip-model.md): Learn how network layers work and what each one does.
+3. [What Happens Between Entering a URL and Seeing a Web Page?](./the-whole-process-of-accessing-web-pages.md): Follow a request through DNS, TCP, HTTP, and browser processing.
+4. [HTTP vs. HTTPS](./http-vs-https.md), [RSA and ECDHE in the HTTPS Handshake](./https-rsa-vs-ecdhe.md), and [Common HTTP Status Codes](./http-status-codes.md): Cover key application-layer topics.
+5. [TCP's Three-Way Handshake and Four-Way Teardown](./tcp-connection-and-disconnection.md), [How TCP Provides Reliable Delivery](./tcp-reliability-guarantee.md), and [TCP TIME_WAIT Explained](./tcp-time-wait.md): Focus on TCP.
 
-## 核心文章
+## Core Articles
 
-### 总览与基础
+### Overview and Fundamentals
 
-- [计算机网络常见面试题总结（上）](./other-network-questions.md)：覆盖网络模型、HTTP、HTTPS、DNS 等基础问题。
-- [计算机网络常见面试题总结（下）](./other-network-questions2.md)：继续整理 TCP、UDP、Socket、网络安全等高频问题。
-- [OSI 七层模型与 TCP/IP 四层模型详解](./osi-and-tcp-ip-model.md)：理解网络模型、协议分层和数据封装过程。
-- [从输入 URL 到页面展示到底发生了什么？](./the-whole-process-of-accessing-web-pages.md)：用一次请求串联常见网络知识点。
+- [Common Computer Networking Interview Questions, Part 1](./other-network-questions.md): Network models, HTTP, HTTPS, DNS, and other fundamentals.
+- [Common Computer Networking Interview Questions, Part 2](./other-network-questions2.md): TCP, UDP, sockets, network security, and related topics.
+- [The OSI Seven-Layer Model and the TCP/IP Four-Layer Model](./osi-and-tcp-ip-model.md): Network models, protocol layers, and encapsulation.
+- [What Happens Between Entering a URL and Seeing a Web Page?](./the-whole-process-of-accessing-web-pages.md): Networking concepts along a complete request path.
 
-### 应用层
+### Application Layer
 
-- [常见应用层协议总结](./application-layer-protocol.md)：梳理 HTTP、WebSocket、SMTP、FTP、SSH、DNS 等协议。
-- [HTTP vs HTTPS](./http-vs-https.md)：理解 HTTPS 加密、证书、身份认证和完整性保护。
-- [HTTPS 握手里的 RSA 和 ECDHE](./https-rsa-vs-ecdhe.md)：区分不同密钥交换方式和前向安全性。
-- [HTTP 1.0 vs HTTP 1.1](./http1.0-vs-http1.1.md)：理解长连接、缓存、Host 头等差异。
-- [HTTP 常见状态码总结](./http-status-codes.md)：掌握 1xx 到 5xx 状态码语义和使用场景。
-- [DNS 域名系统详解](./dns.md)：理解域名解析、递归查询、迭代查询和缓存。
-- [有了 HTTP，为什么还要 RPC？](./http-vs-rpc.md)：厘清 HTTP 和 RPC 的层次关系。
+- [Common Application-Layer Protocols](./application-layer-protocol.md): HTTP, WebSocket, SMTP, FTP, SSH, DNS, and more.
+- [HTTP vs. HTTPS](./http-vs-https.md): HTTPS encryption, certificates, authentication, and integrity.
+- [RSA and ECDHE in the HTTPS Handshake](./https-rsa-vs-ecdhe.md): Key exchange and forward secrecy.
+- [HTTP/1.0 vs. HTTP/1.1](./http1.0-vs-http1.1.md): Persistent connections, caching, the Host header, and other differences.
+- [Common HTTP Status Codes](./http-status-codes.md): The meaning and use of status codes from 1xx through 5xx.
+- [DNS Explained](./dns.md): Name resolution, recursive and iterative queries, and caching.
+- [Why Use RPC When We Have HTTP?](./http-vs-rpc.md): How HTTP and RPC relate and differ.
 
-### 传输层、网络层与安全
+### Transport Layer, Network Layer, and Security
 
-- [TCP 三次握手和四次挥手](./tcp-connection-and-disconnection.md)：掌握连接建立、断开和关键状态。
-- [TCP 传输可靠性保障](./tcp-reliability-guarantee.md)：理解序列号、确认应答、重传、流量控制和拥塞控制。
-- [TCP TIME_WAIT 详解](./tcp-time-wait.md)：理解 TIME_WAIT 的作用、影响和优化边界。
-- [TCP Keepalive 和 HTTP Keep-Alive 有什么区别？](./tcp-keepalive-vs-http-keepalive.md)：区分传输层保活和应用层长连接。
-- [为什么 TCP 是面向字节流，UDP 是面向报文？](./tcp-byte-stream-udp-datagram.md)：理解 TCP/UDP 数据边界差异。
-- [ARP 协议详解](./arp.md)、[NAT 协议详解](./nat.md)、[网络攻击常见手段总结](./network-attack-means.md)：补齐网络层和安全常识。
+- [TCP's Three-Way Handshake and Four-Way Teardown](./tcp-connection-and-disconnection.md): Connection setup, teardown, and key states.
+- [How TCP Provides Reliable Delivery](./tcp-reliability-guarantee.md): Sequence numbers, acknowledgments, retransmission, flow control, and congestion control.
+- [TCP TIME_WAIT Explained](./tcp-time-wait.md): Why TIME_WAIT exists, its effects, and when tuning may be appropriate.
+- [TCP Keepalive vs. HTTP Keep-Alive](./tcp-keepalive-vs-http-keepalive.md): Transport-layer keepalive and application-layer persistent connections.
+- [Why TCP Is a Byte Stream While UDP Is Message-Oriented](./tcp-byte-stream-udp-datagram.md): Data boundaries in TCP and UDP.
+- [ARP](./arp.md), [NAT](./nat.md), and [Common Network Attacks](./network-attack-means.md): Network-layer and security fundamentals.
 
-## 高频问题
+## Common Questions
 
-- OSI 七层模型和 TCP/IP 四层模型有什么区别？
-- 从输入 URL 到页面展示，网络部分发生了什么？
-- HTTP 和 HTTPS 有什么区别？HTTPS 握手过程是怎样的？
-- HTTP 1.0、1.1、2.0 的核心差异是什么？
-- 常见 HTTP 状态码分别表示什么？
-- TCP 三次握手、四次挥手为什么不能少？
-- TCP 如何保证可靠传输？拥塞控制和流量控制有什么区别？
-- TIME_WAIT 为什么存在？大量 TIME_WAIT 如何排查？
-- TCP Keepalive 和 HTTP Keep-Alive 有什么区别？
-- DNS、ARP、NAT 分别解决什么问题？
+- How do the OSI seven-layer model and the TCP/IP four-layer model differ?
+- What happens at the network layer between entering a URL and seeing a web page?
+- How do HTTP and HTTPS differ, and how does the HTTPS handshake work?
+- What are the main differences between HTTP/1.0, HTTP/1.1, and HTTP/2?
+- What do common HTTP status codes mean?
+- Why does TCP use a three-way handshake and a four-way teardown?
+- How does TCP provide reliable delivery? How do flow control and congestion control differ?
+- Why does TIME_WAIT exist, and how do you investigate a large number of TIME_WAIT connections?
+- How do TCP Keepalive and HTTP Keep-Alive differ?
+- What problems do DNS, ARP, and NAT solve?
 
-## 相关专题
+## Related Guides
 
-- [计算机基础知识体系](../)
-- [操作系统专题](../operating-system/)
-- [分布式系统知识体系](../../distributed-system/)
-- [RPC 专题](../../distributed-system/rpc/)
-- [高性能系统知识体系](../../high-performance/)
+- [Computer Science Fundamentals](../)
+- [Operating Systems](../operating-system/)
+- [Distributed Systems](../../distributed-system/)
+- [RPC](../../distributed-system/rpc/)
+- [High-Performance Systems](../../high-performance/)
 
 <!-- @include: @article-footer.snippet.md -->

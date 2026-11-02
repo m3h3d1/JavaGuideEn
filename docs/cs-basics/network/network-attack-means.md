@@ -1,480 +1,469 @@
 ---
-title: 网络攻击常见手段总结（安全）
-description: 总结常见 TCP/IP 攻击与防护思路，覆盖 DDoS、IP/ARP 欺骗、中间人等手段，强调工程防护实践。
-category: 计算机基础
+title: Common Network Attacks and Defenses
+description: An overview of common TCP/IP attacks and defenses, including DDoS, IP and ARP spoofing, and man-in-the-middle attacks.
+category: Computer Science Basics
 tag:
-  - 计算机网络
+  - Computer Networking
 head:
   - - meta
     - name: keywords
-      content: 网络攻击,DDoS,IP 欺骗,ARP 欺骗,中间人攻击,扫描,防护
+      content: network attacks,DDoS,IP spoofing,ARP spoofing,man-in-the-middle attack,scanning,defense
 ---
 
-> 本文整理完善自[TCP/IP 常见攻击手段 - 暖蓝笔记 - 2021](https://mp.weixin.qq.com/s/AZwWrOlLxRSSi-ywBgZ0fA)这篇文章。
+> This article is adapted and expanded from [Common TCP/IP Attacks - Nuanlan Notes (2021)](https://mp.weixin.qq.com/s/AZwWrOlLxRSSi-ywBgZ0fA).
 
-TCP/IP 协议栈追求互联互通，但很多机制在设计之初并没有把今天的攻击规模和对抗强度都考虑进去。
+The TCP/IP suite was designed to enable interoperability, but many of its mechanisms predate today's scale and intensity of attacks.
 
-IP 欺骗、SYN Flood、DDoS、ARP 欺骗、DNS 劫持这些攻击，表面上各不相同，本质上都在利用网络协议里的信任假设、资源消耗点或解析链路。
+IP spoofing, SYN floods, DDoS, ARP spoofing, and DNS hijacking look different, but each exploits assumptions of trust, resource limits, or name-resolution paths in network protocols.
 
-这篇文章主要回答几个问题：
+This article covers four questions:
 
-1. TCP/IP 常见攻击手段分别利用了什么机制？
-2. IP 欺骗、SYN Flood、DDoS 等攻击大致是怎么发生的？
-3. 常见网络攻击会造成哪些影响？
-4. 面对这些攻击，通常有哪些基础防御思路？
+1. Which mechanisms do common TCP/IP attacks exploit?
+2. How do attacks such as IP spoofing, SYN floods, and DDoS work?
+3. What impact can common network attacks have?
+4. What basic defenses can help?
 
-## IP 欺骗
+## IP Spoofing
 
-### IP 是什么？
+### What Is an IP Address?
 
-在网络中，所有的设备都会分配一个地址。这个地址就仿佛小蓝的家地址「**多少号多少室**」，这个号就是分配给整个子网的，「**室**」对应的号码即分配给子网中计算机的，这就是网络中的地址。「号」对应的号码为网络号，「**室**」对应的号码为主机号，这个地址的整体就是 **IP 地址**。
+An IP address can be compared to a street address: the network portion identifies the network, and the host portion identifies an interface on that network. Together, they form an **IP address**.
 
-### 通过 IP 地址我们能知道什么？
+### What Can an IP Address Tell Us?
 
-通过 IP 地址，我们就可以判断访问对象服务器的位置，从而将消息发送到服务器。一般发送者发出的消息首先经过子网的集线器，转发到最近的路由器，然后根据路由位置访问下一个路由器的位置，直到终点。
+IP addresses help routers forward packets toward their destination. A packet typically passes through routers along a route until it reaches the destination network. An IP address does not necessarily reveal a server's precise physical location.
 
-**IP 头部格式**：
+**IP packet header:**
 
-![IP 数据包头部字段格式](../images/shared/843fd07074874ee0b695eca659411b42-tplv-k3u1fbpfcp-zoom-1.png)
+![IP packet header fields](../images/shared/843fd07074874ee0b695eca659411b42-tplv-k3u1fbpfcp-zoom-1.png)
 
-### IP 欺骗技术是什么？
+### What Is IP Spoofing?
 
-骗呗，拐骗，诱骗！
+IP spoofing forges the source IP address in a packet, making it appear to come from another host. The attacker may try to impersonate a host that is trusted by the target or has special access.
 
-IP 欺骗技术就是伪造某台主机的 IP 地址的技术。通过 IP 地址的伪装使得某台主机能够伪装另外的一台主机，而这台主机往往具有某种特权或者被另外的主机所信任。
+Suppose a legitimate user at **1.1.1.1** has established a TCP connection with a server. An attacker might try to interrupt it by forging an RST segment with source IP **1.1.1.1**. Spoofing the source IP alone is not enough: the segment must match the connection's four-tuple and pass the receiver's sequence-number checks. An on-path attacker can observe sequence numbers; an off-path attacker must guess an acceptable one. Modern TCP implementations may also use Challenge ACKs to mitigate blind RST attacks.
 
-假设合法用户 **(1.1.1.1)** 已经和服务器建立了 TCP 连接，攻击者可以尝试伪造源 IP 为 **1.1.1.1** 的 RST 报文来中断连接。不过，仅伪造源 IP 还不够：报文还必须命中连接四元组，并通过接收方对 RST 序列号的检查。路径内攻击者可以观察连接序列号；无法观察流量的攻击者则需要猜测可接受的序列号，现代 TCP 实现还可能通过 Challenge ACK 缓解盲 RST 攻击。
+If a forged RST passes validation, the server closes the connection, and the legitimate user must establish a new one to continue. Because the attacker must also obtain or guess the connection parameters, simply spoofing many source IP addresses and sending arbitrary RST segments is not guaranteed to work.
 
-如果伪造的 RST 通过校验，服务器会关闭对应连接，合法用户后续发送的数据也无法再沿用这条连接，只能重新建立连接。正因为攻击者还需要获得或猜中连接参数，这类攻击并不是伪造大量源 IP 后发送任意 RST 就一定成功。
+![An attacker forges the source IP in an RST segment to interrupt a legitimate connection](../images/shared/7547a145adf9404aa3a05f01f5ca2e32-tplv-k3u1fbpfcp-zoom-1.png)
 
-![攻击者伪造源 IP 发送 RST 数据段中断合法连接](../images/shared/7547a145adf9404aa3a05f01f5ca2e32-tplv-k3u1fbpfcp-zoom-1.png)
+### How Can IP Spoofing Be Mitigated?
 
-### 如何缓解 IP 欺骗？
+IP spoofing cannot be prevented everywhere, but networks can filter forged packets. **Ingress filtering**, described in BCP 38, is commonly applied at [network edges](https://www.cloudflare.com/learning/serverless/glossary/what-is-edge-computing/). It checks whether an incoming packet's source address is plausible for the network it arrived from and drops suspicious packets. Some networks also use egress filtering to check source addresses on outgoing packets and reduce spoofing from inside the network.
 
-虽然无法预防 IP 欺骗，但可以采取措施来阻止伪造数据包渗透网络。**入口过滤** 是防范欺骗的一种极为常见的防御措施，如 BCP38（通用最佳实践文档）所示。入口过滤是一种数据包过滤形式，通常在[网络边缘](https://www.cloudflare.com/learning/serverless/glossary/what-is-edge-computing/)设备上实施，用于检查传入的 IP 数据包并确定其源标头。如果这些数据包的源标头与其来源不匹配或者看上去很可疑，则拒绝这些数据包。一些网络还实施出口过滤，检查退出网络的 IP 数据包，确保这些数据包具有合法源标头，以防止网络内部用户使用 IP 欺骗技术发起出站恶意攻击。
+## SYN Flood
 
-## SYN Flood（洪水）
+### What Is a SYN Flood?
 
-### SYN Flood 是什么？
+A SYN flood is a classic denial-of-service attack that aims to exhaust server resources and prevent the server from handling legitimate traffic.
 
-SYN Flood 是互联网上最原始、最经典的 DDoS（Distributed Denial of Service，分布式拒绝服务）攻击之一，旨在耗尽可用服务器资源，致使服务器无法传输合法流量。
+It exploits TCP's three-way handshake. Attackers may send a large number of SYN segments, sometimes from spoofed addresses or compromised devices. The server responds with SYN-ACK and retains state for connections that have not completed the handshake. If resources are exhausted, the server may be unable to serve legitimate clients. Adding capacity alone may not be enough; defenses aim to limit the cost of incomplete handshakes while allowing legitimate connections.
 
-SYN Flood 利用了 TCP 协议的三次握手机制，攻击者通常利用工具或者控制僵尸主机向服务器发送海量的变源 IP 地址或变源端口的 TCP SYN 报文，服务器响应了这些报文后就会生成大量的半连接，当系统资源被耗尽后，服务器将无法提供正常的服务。
-增加服务器性能、提供更多的连接能力对于 SYN Flood 的海量报文来说杯水车薪。防御 SYN Flood 的关键在于判断哪些连接请求来自于真实源，屏蔽非真实源的请求以保障正常的业务请求能得到服务。
+![A SYN flood exhausts server resources with many half-open connections](../images/shared/2b3d2d4dc8f24890b5957df1c7d6feb8-tplv-k3u1fbpfcp-zoom-1.png)
 
-![SYN Flood 攻击通过大量半连接耗尽服务器资源](../images/shared/2b3d2d4dc8f24890b5957df1c7d6feb8-tplv-k3u1fbpfcp-zoom-1.png)
+### How Does a TCP SYN Flood Work?
 
-### TCP SYN Flood 攻击原理是什么？
+A TCP SYN flood exploits the **TCP three-way handshake** (**SYN → SYN/ACK → ACK**). Assume A initiates a connection and B listens for connections on a port, as shown below.
 
-**TCP SYN Flood** 攻击利用的是 **TCP** 的三次握手（**SYN -> SYN/ACK -> ACK**），假设连接发起方是 A，连接接受方是 B，即 B 在某个端口（**Port**）上监听 A 发出的连接请求，过程如下图所示，左边是 A，右边是 B。
+![Normal TCP three-way handshake](../images/shared/a39355a1ea404323a11ca6644e009183-tplv-k3u1fbpfcp-zoom-1.png)
 
-![TCP 三次握手建立连接的正常流程](../images/shared/a39355a1ea404323a11ca6644e009183-tplv-k3u1fbpfcp-zoom-1.png)
+A first sends a **SYN** segment to B. B responds with **SYN-ACK**, which serves two purposes:
 
-A 首先发送 **SYN**（Synchronization）消息给 B，要求 B 做好接收数据的准备；B 收到后反馈 **SYN-ACK**（Synchronization-Acknowledgement）消息给 A，这个消息的目的有两个：
+- It acknowledges A's SYN and indicates that B is ready to receive data.
+- It also sends B's initial sequence number and asks A to acknowledge it. B then waits for A's ACK, leaving the connection **half-open**. A sends the final **ACK**, completing the handshake and establishing the connection.
 
-- 向 A 确认已做好接收数据的准备，
-- 同时要求 A 也做好接收数据的准备，此时 B 已向 A 确认好接收状态，并等待 A 的确认，连接处于**半开状态（Half-Open）**，顾名思义只开了一半；A 收到后再次发送 **ACK**（Acknowledgement）消息给 B，向 B 确认也做好了接收数据的准备，至此三次握手完成，「**连接**」就建立了，
+The handshake lets both sides confirm that they are ready to communicate and exchange initial sequence numbers. TCP uses sequence numbers to deliver bytes in order to the receiving application.
 
-大家注意到没有，最关键的一点在于双方是否都按对方的要求进入了**可以接收消息**的状态。而这个状态的确认主要是双方将要使用的**消息序号（**SequenceNum），**TCP** 为保证消息按发送顺序抵达接收方的上层应用，需要用**消息序号**来标记消息的发送先后顺序的。
+TCP is **full-duplex**, so both sides can send data. The SYN and SYN-ACK exchange communicates A's initial sequence number to B; SYN-ACK and ACK communicate B's initial sequence number to A.
 
-**TCP**是「**双工**」（Duplex）连接，同时支持双向通信，也就是双方同时可向对方发送消息，其中 **SYN** 和 **SYN-ACK** 消息开启了 A→B 的单向通信通道（B 获知了 A 的消息序号）；**SYN-ACK** 和 **ACK** 消息开启了 B→A 单向通信通道（A 获知了 B 的消息序号）。
+This describes a normal handshake between cooperative peers.
 
-上面讨论的是双方在诚实守信，正常情况下的通信。
+In practice, packets can be lost, or a peer may deliberately delay or omit the final handshake message.
 
-但实际情况是，网络可能不稳定会丢包，使握手消息不能抵达对方，也可能是对方故意不按规矩来，故意延迟或不发送握手确认消息。
+When B receives A's SYN, it responds with SYN-ACK and enters the **half-open state**. Since B cannot know whether SYN-ACK or A's ACK was lost, it keeps state and starts a timer. If the ACK does not arrive, B may retransmit SYN-ACK and eventually abandon the connection after a retry limit.
 
-假设 B 通过某 **TCP** 端口提供服务，B 在收到 A 的 **SYN** 消息时，积极的反馈了 **SYN-ACK** 消息，使连接进入**半开状态**，因为 B 不确定自己发给 A 的 **SYN-ACK** 消息或 A 反馈的 ACK 消息是否会丢在半路，所以会给每个待完成的半开连接都设一个**Timer**，如果超过时间还没有收到 A 的 **ACK** 消息，则重新发送一次 **SYN-ACK** 消息给 A，直到重试超过一定次数时才会放弃。
+![Many half-open connections consume server resources during a SYN flood](../images/shared/7ff1daddcec44d61994f254e664987b4-tplv-k3u1fbpfcp-zoom-1.png)
 
-![SYN Flood 中大量半开连接占用服务器资源](../images/shared/7ff1daddcec44d61994f254e664987b4-tplv-k3u1fbpfcp-zoom-1.png)
+B allocates kernel resources to maintain half-open connections. An attacker can use compromised devices to send many SYNs without completing the handshake, or spoof source IP addresses so B's SYN-ACK responses never reach a real client. The server can then accumulate incomplete connections and run out of resources.
 
-B 为帮助 A 能顺利连接，需要**分配内核资源**维护半开连接，那么当 B 面临海量的连接 A 时，如上图所示，**SYN Flood** 攻击就形成了。攻击方 A 可以控制肉鸡向 B 发送大量 SYN 消息但不响应 ACK 消息，或者干脆伪造 SYN 消息中的 **Source IP**，使 B 反馈的 **SYN-ACK** 消息石沉大海，导致 B 被大量注定不能完成的半开连接占据，直到资源耗尽，停止响应正常的连接请求。
+### What Are Common Types of SYN Floods?
 
-### SYN Flood 的常见形式有哪些？
+SYN floods are commonly categorized as:
 
-恶意用户可通过三种不同方式发起 SYN Flood 攻击：
+1. **Direct attack:** The attacker uses a real source IP and prevents the source from responding to SYN-ACK, leaving connections half-open. Since the source is visible, it may be easier to block, although attacks can also come from botnets such as [Mirai](https://www.cloudflare.com/learning/ddos/glossary/mirai-botnet/).
+2. **Spoofed-source attack:** The attacker forges the source IP in SYN packets, making attribution and source-based filtering harder. Tracing spoofed traffic is difficult, but upstream providers may help.
+3. **Distributed attack (DDoS):** A botnet can generate traffic from many devices, making mitigation and attribution more difficult. Attackers may also spoof the source addresses.
 
-1. **直接攻击：** 不伪造 IP 地址的 SYN 洪水攻击称为直接攻击。在此类攻击中，攻击者完全不屏蔽其 IP 地址。由于攻击者使用具有真实 IP 地址的单一源设备发起攻击，因此很容易发现并清理攻击者。为使目标机器呈现半开状态，黑客将阻止个人机器对服务器的 SYN-ACK 数据包做出响应。为此，通常采用以下两种方式实现：部署防火墙规则，阻止除 SYN 数据包以外的各类传出数据包；或者，对传入的所有 SYN-ACK 数据包进行过滤，防止其到达恶意用户机器。实际上，这种方法很少使用（即便使用过也不多见），因为此类攻击相当容易缓解 – 只需阻止每个恶意系统的 IP 地址。哪怕攻击者使用僵尸网络（如 [Mirai 僵尸网络](https://www.cloudflare.com/learning/ddos/glossary/mirai-botnet/)），通常也不会刻意屏蔽受感染设备的 IP。
-2. **欺骗攻击：** 恶意用户还可以伪造其发送的各个 SYN 数据包的 IP 地址，以便阻止缓解措施并加大身份暴露难度。虽然数据包可能经过伪装，但还是可以通过这些数据包追根溯源。此类检测工作很难开展，但并非不可实现；特别是，如果 Internet 服务提供商（ISP）愿意提供帮助，则更容易实现。
-3. **分布式攻击（DDoS）：** 如果使用僵尸网络发起攻击，则追溯攻击源头的可能性很低。随着混淆级别的攀升，攻击者可能还会命令每台分布式设备伪造其发送数据包的 IP 地址。哪怕攻击者使用僵尸网络（如 Mirai 僵尸网络），通常也不会刻意屏蔽受感染设备的 IP。
+### How Can SYN Floods Be Mitigated?
 
-### 如何缓解 SYN Flood？
+#### Increase the Backlog Queue
 
-#### 扩展积压工作队列
+Operating systems limit the number of half-open connections. One option is to increase that limit, but doing so requires additional memory. If the system cannot support the larger queue, performance may suffer; even so, it may be preferable to refusing all connections.
 
-目标设备安装的每个操作系统都允许具有一定数量的半开连接。若要响应大量 SYN 数据包，一种方法是增加操作系统允许的最大半开连接数目。为成功扩展最大积压工作，系统必须额外预留内存资源以处理各类新请求。如果系统没有足够的内存，无法应对增加的积压工作队列规模，将对系统性能产生负面影响，但仍然好过拒绝服务。
+#### Reclaim Older Half-Open Connections
 
-#### 回收最先创建的 TCP 半开连接
+Another strategy is to replace older half-open connections when the backlog fills. This works only if legitimate connections complete faster than the attacker fills the queue; it may fail under heavier attacks or when the queue is too small.
 
-另一种缓解策略是在填充积压工作后覆盖最先创建的半开连接。这项策略要求完全建立合法连接的时间低于恶意 SYN 数据包填充积压工作的时间。当攻击量增加或积压工作规模小于实际需求时，这项特定的防御措施将不奏效。
+#### SYN Cookies
 
-#### SYN Cookie
+With SYN cookies, the server encodes connection state in its SYN-ACK instead of storing it in the backlog. It can discard the original SYN state and reconstruct it when a valid ACK arrives, subject to implementation limits. Some connection information may be lost, but this can help preserve resources for legitimate clients.
 
-此策略要求服务器创建 Cookie。为避免在填充积压工作时断开连接，服务器使用 SYN-ACK 数据包响应每一项连接请求，而后从积压工作中删除 SYN 请求，同时从内存中删除请求，保证端口保持打开状态并做好重新建立连接的准备。如果连接是合法请求并且已将最后一个 ACK 数据包从客户端机器发回服务器，服务器将重建（存在一些限制）SYN 积压工作队列条目。虽然这项缓解措施势必会丢失一些 TCP 连接信息，但好过因此导致对合法用户发起拒绝服务攻击。
+## UDP Flood
 
-## UDP Flood（洪水）
+### What Is a UDP Flood?
 
-### UDP Flood 是什么？
+A **UDP flood** is a denial-of-service attack that sends a large volume of UDP packets to overwhelm a server's ability to process and respond. Firewalls protecting the server can also be exhausted, preventing legitimate traffic from getting through.
 
-**UDP Flood** 也是一种拒绝服务攻击，将大量的用户数据报协议（**UDP**）数据包发送到目标服务器，目的是压倒该设备的处理和响应能力。防火墙保护目标服务器也可能因 **UDP** 泛滥而耗尽，从而导致对合法流量的拒绝服务。
+### How Does a UDP Flood Work?
 
-### UDP Flood 攻击原理是什么？
+A UDP flood exploits the work a server may perform when it receives packets on a UDP port. Under normal conditions:
 
-**UDP Flood** 主要通过利用服务器响应发送到其中一个端口的 **UDP** 数据包所采取的步骤。在正常情况下，当服务器在特定端口接收到 **UDP** 数据包时，会经过两个步骤：
+- The server checks whether an application is listening on the destination port.
+- If not, the IPv4 stack usually returns **ICMP Destination Unreachable** (type 3, code 3: **Port Unreachable**). This is not the ICMP Echo message used by ping, and firewalls may drop or rate-limit these errors.
 
-- 服务器首先检查是否正在运行正在侦听指定端口的请求的程序。
-- 如果没有程序在该端口接收数据包，IPv4 协议栈通常会返回 **ICMP Destination Unreachable**，其中 Type 为 3、Code 为 3，即 **Port Unreachable**。它不是 Ping 使用的 ICMP Echo 报文；实际网络中，这类 ICMP 错误也可能被防火墙丢弃或被协议栈限速。
+Imagine a hotel receptionist who checks whether a guest is available before transferring each call. If all phone lines ring at once, the receptionist can quickly become overwhelmed.
 
-举个例子。假设今天要联系酒店的小蓝，酒店客服接到电话后先查看房间的列表来确保小蓝在客房内，随后转接给小蓝。
+The server uses resources to process each UDP packet. Attackers may spoof the source IP address to hide the source and cause response traffic to be sent elsewhere.
 
-首先，接待员接收到呼叫者要求连接到特定房间的电话。接待员然后需要查看所有房间的清单，以确保客人在房间中可用，并愿意接听电话。碰巧的是，此时如果突然间所有的电话线同时亮起来，那么他们就会很快就变得不堪重负了。
+If the target must process and respond to a large volume of UDP packets, its resources may be exhausted and legitimate traffic may be denied.
 
-当服务器接收到每个新的 **UDP** 数据包时，它将通过步骤来处理请求，并利用该过程中的服务器资源。发送 **UDP** 报文时，每个报文将包含源设备的 **IP** 地址。在这种类型的 **DDoS** 攻击期间，攻击者通常不会使用自己的真实 **IP** 地址，而是会欺骗 **UDP** 数据包的源 **IP** 地址，从而阻止攻击者的真实位置被暴露并潜在地饱和来自目标的响应数据包服务器。
+![A UDP flood consumes server resources with a large volume of packets](../images/shared/23dbbc8243a84ed181e088e38bffb37a-tplv-k3u1fbpfcp-zoom-1.png)
 
-由于目标服务器利用资源检查并响应每个接收到的 **UDP** 数据包的结果，当接收到大量 **UDP** 数据包时，目标的资源可能会迅速耗尽，导致对正常流量的拒绝服务。
+### How Can UDP Floods Be Mitigated?
 
-![UDP Flood 通过大量 UDP 数据包消耗服务器资源](../images/shared/23dbbc8243a84ed181e088e38bffb37a-tplv-k3u1fbpfcp-zoom-1.png)
+Many operating systems rate-limit ICMP responses, which can reduce attacks that depend on those responses. However, legitimate packets may also be affected. If a UDP flood saturates an upstream link or firewall state table, mitigation on the server alone may not be enough.
 
-### 如何缓解 UDP Flood？
+## HTTP Flood
 
-大多数操作系统部分限制了 **ICMP** 报文的响应速率，以中断需要 ICMP 响应的 **DDoS** 攻击。这种缓解的一个缺点是在攻击过程中，合法的数据包也可能被过滤。如果 **UDP Flood** 的容量足够高以使目标服务器的防火墙的状态表饱和，则在服务器级别发生的任何缓解都将不足以应对目标设备上游的瓶颈。
+### What Is an HTTP Flood?
 
-## HTTP Flood（洪水）
+An HTTP flood is a denial-of-service attack that overwhelms a server with HTTP requests. If the server cannot handle legitimate traffic because it is saturated, users experience a denial of service.
 
-### HTTP Flood 是什么？
+![An HTTP flood overwhelms a server with application-layer requests](../images/shared/aa64869551d94c8d89fa80eaf4395bfa-tplv-k3u1fbpfcp-zoom-1.png)
 
-HTTP Flood 是一种大规模的 DDoS（Distributed Denial of Service，分布式拒绝服务）攻击，旨在利用 HTTP 请求使目标服务器不堪重负。目标因请求而达到饱和，且无法响应正常流量后，将出现拒绝服务，拒绝来自实际用户的其他请求。
+### How Does an HTTP Flood Work?
 
-![HTTP Flood 通过大量应用层请求压垮目标服务器](../images/shared/aa64869551d94c8d89fa80eaf4395bfa-tplv-k3u1fbpfcp-zoom-1.png)
+An HTTP flood is a Layer 7 DDoS attack. Layer 7 is the application layer of the OSI model, which includes protocols such as HTTP. HTTP is used for browser requests, including loading pages and submitting forms. Application-layer attacks can be difficult to mitigate because malicious requests may resemble legitimate traffic.
 
-### HTTP Flood 的攻击原理是什么？
+Attackers may use a botnet of malware-infected devices to generate a high volume of traffic.
 
-HTTP 洪水攻击是“第 7 层”DDoS 攻击的一种。第 7 层是 OSI 模型的应用程序层，指的是 HTTP 等互联网协议。HTTP 是基于浏览器的互联网请求的基础，通常用于加载网页或通过互联网发送表单内容。缓解应用程序层攻击特别复杂，因为恶意流量和正常流量很难区分。
+Two common forms are:
 
-为了获得最大效率，恶意行为者通常会利用或创建僵尸网络，以最大程度地扩大攻击的影响。通过利用感染了恶意软件的多台设备，攻击者可以发起大量攻击流量来进行攻击。
+- **HTTP GET flood:** Multiple devices coordinate requests for images, files, or other resources. The volume of requests and responses can prevent the server from handling legitimate users.
+- **HTTP POST flood:** Form submissions may require significant application and database work. Attackers send many POST requests to consume those resources and saturate the server.
 
-HTTP 洪水攻击有两种：
+### How Can HTTP Floods Be Mitigated?
 
-- **HTTP GET 攻击**：在这种攻击形式下，多台计算机或其他设备相互协调，向目标服务器发送对图像、文件或其他资产的多个请求。当目标被传入的请求和响应所淹没时，来自正常流量源的其他请求将被拒绝服务。
-- **HTTP POST 攻击**：一般而言，在网站上提交表单时，服务器必须处理传入的请求并将数据推送到持久层（通常是数据库）。与发送 POST 请求所需的处理能力和带宽相比，处理表单数据和运行必要数据库命令的过程相对密集。这种攻击利用相对资源消耗的差异，直接向目标服务器发送许多 POST 请求，直到目标服务器的容量饱和并拒绝服务为止。
+Layer 7 attacks often require several defenses. One approach is to challenge request sources to determine whether they are automated, for example with CAPTCHA or JavaScript challenges.
 
-### 如何防护 HTTP Flood？
+Other defenses include a Web Application Firewall (WAF), IP reputation data to identify and selectively block malicious traffic, and real-time analysis by security engineers. Large providers can analyze traffic from many sources and update WAF rules and other protections to mitigate application-layer DDoS traffic.
 
-如前所述，缓解第 7 层攻击非常复杂，而且通常要从多方面进行。一种方法是对发出请求的设备实施质询，以测试它是否是机器人，这与在线创建帐户时常用的 CAPTCHA 测试非常相似。通过提出 JavaScript 计算挑战之类的要求，可以缓解许多攻击。
+## DNS Flood
 
-其他阻止 HTTP 洪水攻击的途径包括使用 Web 应用程序防火墙（WAF）、管理 IP 信誉数据库以跟踪和有选择地阻止恶意流量，以及由工程师进行动态分析。Cloudflare 具有超过 2000 万个互联网设备的规模优势，能够分析来自各种来源的流量并通过快速更新的 WAF 规则和其他防护策略来缓解潜在的攻击，从而消除应用程序层 DDoS 流量。
+### What Is a DNS Flood?
 
-## DNS Flood（洪水）
+DNS servers act like an Internet directory, helping devices find the addresses for web servers. A DNS flood is a DDoS attack that sends enough traffic to overwhelm a domain's DNS servers and disrupt name resolution. Websites, APIs, and web applications may then be unreachable to legitimate users. DNS floods can be difficult to distinguish from legitimate high traffic because requests may come from many addresses and ask for real records.
 
-### DNS Flood 是什么？
+### How Does a DNS Flood Work?
 
-域名系统（DNS）服务器是互联网的“电话簿”；互联网设备通过这些服务器来查找特定 Web 服务器以便访问互联网内容。DNS Flood 攻击是一种分布式拒绝服务（DDoS）攻击，攻击者用大量流量淹没某个域的 DNS 服务器，以尝试中断该域的 DNS 解析。如果用户无法找到电话簿，就无法查找到用于调用特定资源的地址。通过中断 DNS 解析，DNS Flood 攻击将破坏网站、API 或 Web 应用程序响应合法流量的能力。很难将 DNS Flood 攻击与正常的大流量区分开来，因为这些大规模流量往往来自多个唯一地址，查询该域的真实记录，模仿合法流量。
+![A DNS flood overwhelms DNS servers with a large volume of queries](../images/shared/97ea11a212924900b10d159226783887-tplv-k3u1fbpfcp-zoom-1.png)
 
-### DNS Flood 的攻击原理是什么？
+DNS maps readable names such as `example.com` to server addresses such as `192.168.0.1`. An attack on DNS infrastructure can therefore make many services unreachable. High-bandwidth [Internet of Things (IoT)](https://www.cloudflare.com/learning/ddos/glossary/internet-of-things-iot/) [botnets](https://www.cloudflare.com/learning/ddos/what-is-a-ddos-botnet/), such as [Mirai](https://www.cloudflare.com/learning/ddos/glossary/mirai-botnet/), can use compromised cameras, DVRs, and other devices to send large numbers of requests directly to DNS providers, preventing legitimate users from reaching their resolvers.
 
-![DNS Flood 使用大量 DNS 查询淹没 DNS 服务器](../images/shared/97ea11a212924900b10d159226783887-tplv-k3u1fbpfcp-zoom-1.png)
+A DNS flood differs from a [DNS amplification attack](https://www.cloudflare.com/learning/ddos/dns-amplification-ddos-attack/). Amplification attacks reflect traffic through misconfigured DNS servers to hide the source and increase the volume of traffic sent to a victim. Attackers send small requests for large DNS records with a spoofed source address, causing the servers to send larger responses to the target.
 
-域名系统的功能是将易于记忆的名称（例如 example.com）转换成难以记住的网站服务器地址（例如 192.168.0.1），因此成功攻击 DNS 基础设施将导致大多数人无法使用互联网。DNS Flood 攻击是一种相对较新的基于 DNS 的攻击，这种攻击是在高带宽[物联网（IoT）](https://www.cloudflare.com/learning/ddos/glossary/internet-of-things-iot/)[僵尸网络](https://www.cloudflare.com/learning/ddos/what-is-a-ddos-botnet/)（如 [Mirai](https://www.cloudflare.com/learning/ddos/glossary/mirai-botnet/)）兴起后激增的。DNS Flood 攻击使用 IP 摄像头、DVR 盒和其他 IoT 设备的高带宽连接直接淹没主要提供商的 DNS 服务器。来自 IoT 设备的大量请求淹没 DNS 提供商的服务，阻止合法用户访问提供商的 DNS 服务器。
+### How Can DNS Floods Be Mitigated?
 
-DNS Flood 攻击不同于 [DNS 放大攻击](https://www.cloudflare.com/zh-cn/learning/ddos/dns-amplification-ddos-attack/)。与 DNS Flood 攻击不同，DNS 放大攻击反射并放大不安全 DNS 服务器的流量，以便隐藏攻击的源头并提高攻击的有效性。DNS 放大攻击使用连接带宽较小的设备向不安全的 DNS 服务器发送无数请求。这些设备对非常大的 DNS 记录发出小型请求，但在发出请求时，攻击者伪造返回地址为目标受害者。这种放大效果让攻击者能借助有限的攻击资源来破坏较大的目标。
+High-bandwidth botnets can target even large organizations. Mitigation often relies on a large, distributed DNS service that can monitor, absorb, and filter attack traffic. Infected IoT devices should also be updated or replaced.
 
-### 如何防护 DNS Flood？
+## TCP Reset Attack
 
-DNS Flood 对传统上基于放大的攻击方法做出了改变。借助轻易获得的高带宽僵尸网络，攻击者现能针对大型组织发动攻击。除非被破坏的 IoT 设备得以更新或替换，否则抵御这些攻击的唯一方法是使用一个超大型、高度分布式的 DNS 系统，以便实时监测、吸收和阻止攻击流量。
+In a **TCP reset attack**, an attacker sends forged RST segments to one or both endpoints, attempting to make them close a connection early. Whether an endpoint accepts an RST depends on the connection state and fields such as the sequence and acknowledgment numbers. For an established connection, the receiver closes it only if the RST passes sequence-number validation. RSTs outside the receive window are discarded; endpoints implementing RFC 5961 also send a challenge ACK for an in-window RST that does not match exactly.
 
-## TCP 重置攻击
+The attack attempts to exploit this behavior by sending a forged reset segment. If accepted, the receiver closes the TCP connection and further data cannot be exchanged on it. The client and server can establish a new connection, although that connection may also be targeted. Because crafting and sending a valid segment takes time, long-lived connections are generally more exposed than short-lived ones.
 
-在 **TCP** 重置攻击中，攻击者通过向通信的一方或双方发送伪造的 RST 报文，尝试让接收方提前关闭连接。TCP 是否发送或接受 RST，取决于当前连接状态以及报文的序列号、确认号等字段。对于已建立连接，接收方只会在 RST 通过序列号校验后关闭连接；窗口外的 RST 会被丢弃，实现 RFC 5961 防护的端点还会对窗口内但不精确匹配的 RST 发送 Challenge ACK。
+TCP does not cryptographically authenticate its headers, so TLS does not protect TCP-layer RST segments. IPsec or TCP-AO can authenticate traffic at a lower layer, but require support from both endpoints and the network environment.
 
-**TCP** 重置攻击利用这一机制，通过向通信方发送伪造的重置报文段，欺骗通信双方提前关闭 TCP 连接。如果伪造的重置报文段完全逼真，接收者就会认为它有效，并关闭 **TCP** 连接，防止连接被用来进一步交换信息。服务端可以创建一个新的 **TCP** 连接来恢复通信，但仍然可能会被攻击者重置连接。万幸的是，攻击者需要一定的时间来组装和发送伪造的报文，所以一般情况下这种攻击只对长连接有杀伤力，对于短连接而言，你还没攻击呢，人家已经完成了信息交换。
+## Demonstration in a Controlled Environment
 
-普通 TCP 不会对 TCP 头部进行密码学认证，因此 TLS 无法保护 TCP 层的 RST。需要在更低层验证报文时，可以使用 IPsec 或 TCP-AO 等机制，但它们需要通信双方和网络环境提供相应支持。
+> The original experiment was performed on macOS. Behavior may differ on other systems. Run network security experiments only on systems and connections you own or are authorized to test.
 
-## 模拟攻击
+At a high level, a forged **TCP** reset requires:
 
-> 以下实验是在 `OSX` 系统中完成的，其他系统请自行测试。
+- Observe traffic between the endpoints.
+- Identify a segment with the `ACK` flag set and inspect its acknowledgment number.
+- Construct an RST segment with a sequence number that may pass the receiver's checks. The exact conditions depend on the TCP implementation and connection state.
+- Send it to one or both endpoints, potentially interrupting the connection.
 
-现在来总结一下伪造一个 **TCP** 重置报文要做哪些事情：
+For a controlled demonstration, use a local TCP connection between processes on the same computer. The experiment involves:
 
-- 嗅探通信双方的交换信息。
-- 截获一个 `ACK` 标志位置位 1 的报文段，并读取其 `ACK` 号。
-- 伪造一个 TCP 重置报文段（`RST` 标志位置为 1），其序列号等于上面截获的报文的 `ACK` 号。这只是理想情况下的方案，假设信息交换的速度不是很快。大多数情况下为了增加成功率，可以连续发送序列号不同的重置报文。
-- 将伪造的重置报文发送给通信的一方或双方，使其中断连接。
+- Establishing a TCP connection between two terminal windows.
+- Observing packets exchanged over the local interface.
+- Studying how a reset segment can interrupt the connection.
 
-为了实验简单，我们可以使用本地计算机通过 `localhost` 与自己通信，然后对自己进行 TCP 重置攻击。需要以下几个步骤：
+The following commands create a local TCP connection for the demonstration.
 
-- 在两个终端之间建立一个 TCP 连接。
-- 编写一个能嗅探通信双方数据的攻击程序。
-- 修改攻击程序，伪造并发送重置报文。
+> Establish a TCP connection
 
-下面正式开始实验。
-
-> 建立 TCP 连接
-
-可以使用 netcat 工具来建立 TCP 连接，这个工具很多操作系统都预装了。打开第一个终端窗口，运行以下命令：
+Use `netcat`, which is preinstalled on many systems. In the first terminal, run:
 
 ```bash
 nc -nvl 8000
 ```
 
-这个命令会启动一个 TCP 服务，监听端口为 `8000`。接着再打开第二个终端窗口，运行以下命令：
+This starts a TCP server listening on port `8000`. In a second terminal, run:
 
 ```bash
 nc 127.0.0.1 8000
 ```
 
-该命令会尝试与上面的服务建立连接，在其中一个窗口输入一些字符，就会通过 TCP 连接发送给另一个窗口并打印出来。
+This connects to the server. Text entered in either window is sent over the TCP connection and displayed in the other window.
 
-![使用 nc 建立本地 TCP 连接并传输数据](../images/shared/df0508cbf26446708cf98f8ad514dbea-tplv-k3u1fbpfcp-zoom-1.gif)
+![Use nc to create a local TCP connection and exchange data](../images/shared/df0508cbf26446708cf98f8ad514dbea-tplv-k3u1fbpfcp-zoom-1.gif)
 
-> 嗅探流量
+> Observe traffic
 
-编写一个攻击程序，使用 Python 网络库 `scapy` 来读取两个终端窗口之间交换的数据，并将其打印到终端上。代码比较长，下面为一部份，完整代码后台回复 TCP 攻击，代码的核心是调用 `scapy` 的嗅探方法：
+The original demonstration uses the Python networking library `scapy` to observe packets exchanged by the two terminal windows. The following image shows part of the code, which uses Scapy's packet-sniffing function:
 
-![使用 Scapy 嗅探本地 TCP 连接数据包的代码](../images/shared/27feb834aa9d4b629fd938611ac9972e-tplv-k3u1fbpfcp-zoom-1.png)
+![Scapy code for observing packets on a local TCP connection](../images/shared/27feb834aa9d4b629fd938611ac9972e-tplv-k3u1fbpfcp-zoom-1.png)
 
-这段代码告诉 `scapy` 在 `lo0` 网络接口上嗅探数据包，并记录所有 TCP 连接的详细信息。
+This code tells `scapy` to observe packets on the `lo0` loopback interface and record details about TCP connections.
 
-- **iface**：告诉 scapy 在 `lo0`（localhost）网络接口上进行监听。
-- **lfilter**：这是个过滤器，告诉 scapy 忽略所有不属于指定的 TCP 连接（通信双方皆为 `localhost`，且端口号为 `8000`）的数据包。
-- **prn**：scapy 通过这个函数来操作所有符合 `lfilter` 规则的数据包。上面的例子只是将数据包打印到终端，下文将会修改函数来伪造重置报文。
-- **count**：scapy 函数返回之前需要嗅探的数据包数量。
+- **iface:** The network interface on which to observe packets, here `lo0` (localhost).
+- **lfilter:** A filter that ignores packets outside the specified TCP connection between localhost and port `8000`.
+- **prn:** A function that processes packets matching `lfilter`. In this example it prints them to the terminal.
+- **count:** The number of packets to observe before Scapy returns.
 
-> 发送伪造的重置报文
+> About forged reset segments
 
-下面开始修改程序，发送伪造的 TCP 重置报文来进行 TCP 重置攻击。根据上面的解读，只需要修改 prn 函数就行了，让其检查数据包，提取必要参数，并利用这些参数来伪造 TCP 重置报文并发送。
+The original experiment then modifies the packet-processing function to construct and send a forged TCP reset. This demonstrates why TCP sequence validation matters; do not run such code against systems or connections without authorization.
 
-例如，假设该程序截获了一个从（`src_ip`, `src_port`）发往（`dst_ip`, `dst_port`）的报文段，该报文段的 ACK 标志位已置为 1，ACK 号为 `100,000`。攻击程序接下来要做的是：
+For an observed segment from (`src_ip`, `src_port`) to (`dst_ip`, `dst_port`) with the ACK flag set and acknowledgment number `100,000`, the demonstration would:
 
-- 由于伪造的数据包是对截获的数据包的响应，所以伪造数据包的源 `IP/Port` 应该是截获数据包的目的 `IP/Port`，反之亦然。
-- 将伪造数据包的 `RST` 标志位置为 1，以表示这是一个重置报文。
-- 将伪造数据包的序列号设置为截获数据包的 ACK 号，因为这是发送方期望收到的下一个序列号。
-- 调用 `scapy` 的 `send` 方法，将伪造的数据包发送给截获数据包的发送方。
+- Reverse the source and destination addresses and ports.
+- Set the `RST` flag.
+- Use the observed acknowledgment number as the candidate sequence number.
+- Send the segment to one endpoint using Scapy.
 
-对于我的程序而言，只需将这一行取消注释，并注释这一行的上面一行，就可以全面攻击了。按照步骤 1 的方法设置 TCP 连接，打开第三个窗口运行攻击程序，然后在 TCP 连接的其中一个终端输入一些字符串，你会发现 TCP 连接被中断了！
+In the original program, enabling the send call and running it alongside the local test connection interrupts that connection. This behavior is specific to the test setup and TCP implementation.
 
-> 进一步实验
+> Further observations
 
-1. 可以继续使用攻击程序进行实验，将伪造数据包的序列号加减 1 看看会发生什么，是不是确实需要和截获数据包的 `ACK` 号完全相同。
-2. 打开 `Wireshark`，监听 lo0 网络接口，并使用过滤器 `ip.src == 127.0.0.1 && ip.dst == 127.0.0.1 && tcp.port == 8000` 来过滤无关数据。你可以看到 TCP 连接的所有细节。
-3. 在连接上更快速地发送数据流，使攻击更难执行。
+1. In an isolated lab, observe how changing the candidate sequence number affects whether the endpoint accepts a reset.
+2. Use `Wireshark` on the loopback interface with the filter `ip.src == 127.0.0.1 && ip.dst == 127.0.0.1 && tcp.port == 8000` to inspect the test connection.
+3. Observe how the timing and rate of data exchange affect the demonstration.
 
-## 中间人攻击
+## Man-in-the-Middle Attacks
 
-猪八戒要向小蓝表白，于是写了一封信给小蓝，结果第三者小黑拦截到了这封信，把这封信进行了篡改，于是乎在他们之间进行搞破坏行动。这个马文才就是中间人，实施的就是中间人攻击。好我们继续聊聊什么是中间人攻击。
+Imagine that an attacker intercepts and alters a letter sent between two people. In network communication, this is the basic idea behind a man-in-the-middle attack.
 
-### 什么是中间人？
+### What Is a Man-in-the-Middle Attack?
 
-中间人攻击英文名叫 Man-in-the-Middle Attack，简称「MITM 攻击」。指攻击者与通讯的两端分别创建独立的联系，并交换其所收到的数据，使通讯的两端认为他们正在通过一个私密的连接与对方直接对话，但事实上整个会话都被攻击者完全控制。我们画一张图：
+In a **man-in-the-middle (MITM) attack**, an attacker creates separate connections with both parties and relays data between them. Each party may think it is communicating directly over a private connection, while the attacker can observe or alter the traffic.
 
-![中间人攻击拦截并篡改通信双方消息](../images/shared/d69b74e63981472b852797f2fa08976f-tplv-k3u1fbpfcp-zoom-1.png)
+![A man-in-the-middle intercepts and alters messages between two parties](../images/shared/d69b74e63981472b852797f2fa08976f-tplv-k3u1fbpfcp-zoom-1.png)
 
-从这张图可以看到，中间人其实就是攻击者。通过这种原理，有很多实现的用途，比如说，你在手机上浏览不健康网站的时候，手机就会提示你，此网站可能含有病毒，是否继续访问还是做其他的操作等等。
+The attacker is the “middle” party. A network security product may also inspect traffic and warn users about unsafe sites, but that alone does not mean a MITM attack is taking place.
 
-### 中间人攻击的原理是什么？
+### How Does a MITM Attack Work?
 
-举个例子，我和公司签了一个一份劳动合同，一人一份合同。不晓得哪个可能改了合同内容，不知道真假了，怎么搞？只好找专业的机构来鉴定，自然就要花钱。
+Suppose two parties sign copies of a contract, but later cannot tell whether one copy was altered. They need a way to verify that the document is authentic.
 
-在安全领域有句话：**我们没有办法杜绝网络犯罪，只好想办法提高网络犯罪的成本**。既然没法杜绝这种情况，那我们就想办法提高作案的成本，今天我们就简单了解下基本的网络安全知识，也是面试中的高频面试题了。
+Security controls cannot eliminate every attack, but they can raise the cost of carrying one out. The following sections introduce the cryptographic mechanisms used to protect authenticity and privacy.
 
-为了避免双方说话不算数的情况，双方引入第三家机构，将合同原文给可信任的第三方机构，只要这个机构不监守自盗，合同就相对安全。
+The parties might ask a trusted third party to store the original contract. This helps as long as that party remains trustworthy.
 
-**如果第三方机构内部不严格或容易出现纰漏？**
+**What if the third party is not sufficiently secure?**
 
-虽然我们将合同原文给第三方机构了，为了防止内部人员的更改，需要采取什么措施呢？
+The parties also need a way to detect changes made by someone with access to the stored contract.
 
-一种可行的办法是引入 **摘要算法**。哈希函数把任意长度的数据映射为固定长度的摘要。哈希不是加密，不提供可逆解密能力；不同输入也可能产生相同摘要，因此不能把摘要称为绝对唯一值。对于安全的密码学哈希函数，输入发生变化时，摘要通常也会随之变化。
+One approach is to use a **hash function**. It maps data of any length to a fixed-size digest. Hashing is not encryption and cannot be reversed; different inputs can produce the same digest, so a digest is not an absolutely unique identifier. A secure cryptographic hash is designed so that even a small input change is likely to change the digest.
 
-#### 有哪些常用的摘要算法呢？
+#### What Are Common Hash Algorithms?
 
-目前比较常用的加密算法有消息摘要算法和安全散列算法（**SHA**）。**MD5** 是将任意长度的文章转化为一个 128 位的散列值，可是在 2004 年，**MD5** 被证实了容易发生碰撞，即两篇原文产生相同的摘要。这样的话相当于直接给黑客一个后门，轻松伪造摘要。
+Common hash families include Message Digest algorithms and the Secure Hash Algorithm (**SHA**). **MD5** produces a 128-bit digest, but practical collision attacks have made it unsuitable for security-sensitive uses. A collision means two different inputs produce the same digest.
 
-所以在大部分的情况下都会选择 **SHA 算法**。
+For new security-sensitive systems, use an appropriate modern hash from the SHA-2 or SHA-3 family.
 
-**出现内鬼了怎么办？**
+**What if an insider can change both the contract and its digest?**
 
-看似很安全的场面了，理论上来说杜绝了篡改合同的做法。主要某个员工同时具有修改合同和摘要的权利，那搞事儿就是时间的问题了，毕竟没哪个系统可以完全的杜绝员工接触敏感信息，除非敏感信息都不存在。所以能不能考虑将合同和摘要分开存储呢？
+Storing a digest beside the contract is not enough if the same person can modify both. Separating them can make tampering harder, but does not completely solve the trust problem.
 
-**那如何确保员工不会修改合同呢？**
+**How can the parties limit an employee's ability to change the contract?**
 
-这确实蛮难的，不过办法总比困难多。我们将合同放在双方手中，摘要放在第三方机构，篡改难度进一步加大。
+One option is for both parties to keep a copy of the contract while a third party stores the digest. This makes undetected changes more difficult.
 
-**那么员工万一和某个用户串通好了呢？**
+**What if an employee colludes with one of the parties?**
 
-看来放在第三方的机构还是不好使，同样存在不小风险。所以还需要寻找新的方案，这就出现了**数字签名和证书**。
+Trusting a third party still has risks. **Digital signatures and certificates** provide a stronger way to establish authenticity.
 
-#### 数字证书和签名有什么用？
+#### What Are Digital Signatures and Certificates For?
 
-同样举个例子。Sum 和 Mike 两个人签合同。Sum 使用签名算法和自己的私钥对合同生成数字签名，再把合同、签名和用于验证的公钥交给 Mike。
+Suppose Sum and Mike sign a contract. Sum uses a signature algorithm and a private key to create a digital signature, then gives Mike the contract, signature, and corresponding public key.
 
-![数字签名生成与公钥验签示意图](../images/shared/e4b7d6fca78b45c8840c12411b717f2f-tplv-k3u1fbpfcp-zoom-1.png)
+![Creating a digital signature and verifying it with a public key](../images/shared/e4b7d6fca78b45c8840c12411b717f2f-tplv-k3u1fbpfcp-zoom-1.png)
 
-Mike 收到后，使用 Sum 的公钥验证签名。验证成功说明签名与该公钥以及当前合同内容相匹配，可以检测合同是否被篡改，并确认签名由持有 Sum 私钥的一方生成。
+Mike uses Sum's public key to verify the signature. If verification succeeds, the signature matches the public key and the current contract contents, which helps detect changes and shows that it was produced by someone holding Sum's private key.
 
-Mike 如果修改合同内容，原签名将无法通过验证；没有 Sum 的私钥，也无法为修改后的合同生成有效签名。私钥必须由 Sum 妥善保管，公钥则可以提供给验证者。
+If Mike changes the contract, the original signature will fail verification. Without Sum's private key, he cannot create a valid replacement signature. Sum must protect the private key; the public key can be shared with verifiers.
 
-数字签名应理解为“私钥签名、公钥验证”，而不是普遍意义上的“私钥加密、公钥解密”。RSA、ECDSA、EdDSA 等签名算法的数学过程不同，都以签名和验证来描述更准确。
+Digital signatures are best described as **signing with a private key and verifying with a public key**, not as “private-key encryption and public-key decryption.” RSA, ECDSA, and EdDSA use different mathematical processes, but signing and verification are the accurate terms.
 
-隐私保护？不是吓唬大家，信息是透明的兄 die，不过尽量去维护个人的隐私吧，今天学习对称加密和非对称加密。
+Signatures provide authenticity and integrity, not confidentiality. To keep message contents private, use encryption. The next sections introduce symmetric and asymmetric encryption.
 
-大家先读读这个字“钥”,是读"yao"，我以前也是，其实读"yue"
+#### What Is Symmetric Encryption?
 
-#### 什么是对称加密？
+With symmetric encryption, the sender and receiver use the same secret key. The sender encrypts the message with an encryption algorithm, and the receiver uses the same key to decrypt it.
 
-对称加密，顾名思义，加密方与解密方使用同一钥匙（秘钥）。具体一些就是，发送方通过使用相应的加密算法和秘钥，对将要发送的信息进行加密；对于接收方而言，使用解密算法和相同的秘钥解锁信息，从而有能力阅读信息。
+![Both parties use the same key for symmetric encryption and decryption](../images/shared/ef81cb5e2f0a4d3d9ac5a44ecf97e3cc-tplv-k3u1fbpfcp-zoom-1.png)
 
-![对称加密中通信双方使用同一密钥加解密](../images/shared/ef81cb5e2f0a4d3d9ac5a44ecf97e3cc-tplv-k3u1fbpfcp-zoom-1.png)
-
-#### 常见的对称加密算法有哪些？
+#### What Are Common Symmetric Encryption Algorithms?
 
 **DES**
 
-DES 使用的密钥表面上是 64 位的，然而只有其中的 56 位被实际用于算法，其余 8 位可以被用于奇偶校验，并在算法中被丢弃。因此，**DES** 的有效密钥长度为 56 位，通常称 **DES** 的密钥长度为 56 位。假设秘钥为 56 位，采用暴力破 Jie 的方式，其秘钥个数为 2 的 56 次方，那么每纳秒执行一次解密所需要的时间差不多 1 年的样子。当然，没人这么干。**DES** 现在已经不是一种安全的加密方法，主要因为它使用的 56 位密钥过短。
+DES uses a 64-bit key format, but only 56 bits contribute to encryption; the remaining bits were used for parity. A 56-bit key is too short to be secure against brute-force search, so **DES is no longer considered secure**.
 
-![DES 对称加密算法示意图](../images/shared/9eb3a2bf6cf14132a890bc3447480eeb-tplv-k3u1fbpfcp-zoom-1.jpg)
+![DES symmetric encryption](../images/shared/9eb3a2bf6cf14132a890bc3447480eeb-tplv-k3u1fbpfcp-zoom-1.jpg)
 
 **IDEA**
 
-国际数据加密算法（International Data Encryption Algorithm）。秘钥长度 128 位，优点没有专利的限制。
+The International Data Encryption Algorithm (IDEA) uses a 128-bit key and is not restricted by patents.
 
 **AES**
 
-当 DES 被破解以后，没过多久推出了 **AES** 算法，提供了三种长度供选择，128 位、192 位和 256 位，为了保证性能不受太大的影响，选择 128 即可。
+The **Advanced Encryption Standard (AES)** replaced DES and supports 128-, 192-, and 256-bit keys. Choose a key size based on the application's security requirements and implementation guidance.
 
-**SM1 和 SM4**
+**SM1 and SM4**
 
-之前几种都是国外的，我们国内自行研究了国密 **SM1** 和 **SM4**。其中 S 都属于国家标准，算法公开。优点就是国家的大力支持和认可。
+**SM1 and SM4** are Chinese cryptographic standards. SM1's details are not public; SM4 is publicly specified.
 
-**总结**：
+**Summary:**
 
-![常见对称加密算法对比总结](../images/shared/578961e3175540e081e1432c409b075a-tplv-k3u1fbpfcp-zoom-1.png)
+![Comparison of common symmetric encryption algorithms](../images/shared/578961e3175540e081e1432c409b075a-tplv-k3u1fbpfcp-zoom-1.png)
 
-#### 常见的非对称加密算法有哪些？
+#### What Are Common Asymmetric Cryptographic Algorithms?
 
-在对称加密中，发送方与接收方使用相同的秘钥。那么在非对称加密中则是发送方与接收方使用的不同的秘钥。其主要解决的问题是防止在秘钥协商的过程中发生泄漏。比如在对称加密中，小蓝将需要发送的消息加密，然后告诉你密码是 123balala,ok,对于其他人而言，很容易就能劫持到密码是 123balala。那么在非对称的情况下，小蓝告诉所有人密码是 123balala,对于中间人而言，拿到也没用，因为没有私钥。所以，非对称密钥其实主要解决了密钥分发的难题。如下图
+Symmetric encryption uses the same key at both ends. Asymmetric cryptography uses a public/private key pair and can help establish or protect keys without sending the private key over the network. The public key can be shared; the private key must remain secret. Asymmetric cryptography is commonly used for key establishment and signatures, while symmetric algorithms are generally used to encrypt bulk data.
 
-![非对称加密使用公钥和私钥完成加解密](../images/shared/153cf04a0ecc43c38003f3a1ab198cc0-tplv-k3u1fbpfcp-zoom-1.png)
+![Asymmetric cryptography uses public and private keys](../images/shared/153cf04a0ecc43c38003f3a1ab198cc0-tplv-k3u1fbpfcp-zoom-1.png)
 
-其实我们经常都在使用非对称加密，比如使用多台服务器搭建大数据平台 Hadoop，为了方便多台机器设置免密登录，是不是就会涉及到秘钥分发。再比如搭建 Docker 集群也会使用相关非对称加密算法。
+Asymmetric cryptography is used in systems such as SSH, where public keys can be distributed to allow secure login across multiple servers. It is also used in secure cluster communication.
 
-常见的非对称加密算法：
+Common asymmetric algorithms include:
 
-- RSA（RSA 加密算法，RSA Algorithm）：安全性基于大整数分解的计算难度，应用广泛，兼容性好。缺点是性能相对较慢，且密钥越长（如 2048/4096 位）安全性越高，但运算开销也随之增大。
-- ECC：基于椭圆曲线提出，是目前加密强度最高的非对称加密算法。
-- SM2：同样基于椭圆曲线问题设计，最大优势就是国家认可和大力支持。
+- **RSA (Rivest–Shamir–Adleman):** Its security relies on the difficulty of factoring large integers. It is widely supported, but operations are relatively slow and computational cost increases with key size, such as 2048 or 4096 bits.
+- ECC: A family of public-key cryptographic systems based on elliptic curves. Security and performance depend on the specific curve and algorithm.
+- SM2: A Chinese public-key cryptographic standard based on elliptic-curve cryptography.
 
-总结：
+Summary:
 
-![常见非对称加密算法对比总结](../images/shared/28b96fb797904d4b818ee237cdc7614c-tplv-k3u1fbpfcp-zoom-1.png)
+![Comparison of common asymmetric cryptographic algorithms](../images/shared/28b96fb797904d4b818ee237cdc7614c-tplv-k3u1fbpfcp-zoom-1.png)
 
-#### 常见的散列算法有哪些？
+#### What Are Common Hash Algorithms?
 
-散列算法常用于完整性校验、内容寻址等场景，但不同场景的安全要求并不相同。密码验证值不能按普通文件摘要处理：服务端应为每个密码生成独立的盐，并使用带成本参数、适合密码存储的哈希方案；同时保存盐、算法标识和成本参数，以便后续提高计算成本或迁移算法。
+Hash functions are commonly used for integrity checks and content addressing, but security requirements vary by use case. Password verifiers must not be treated like ordinary file digests: the server should generate a unique salt for each password and use a password-hashing scheme with a configurable cost. Store the salt, algorithm identifier, and cost parameters so the scheme can be strengthened or migrated later.
 
-**MD5**（不推荐）
+**MD5 (not recommended)**
 
-MD5 可以生成 128 位消息摘要，但已经不具备可靠的抗碰撞能力，不应再用于数字签名、证书、安全完整性校验或密码存储。若只是检测非对抗环境中的偶然传输错误，也要明确它只是校验和，不提供安全保证。MD5、SHA-1 以及一次普通 SHA-256 都不适合直接存储密码。
+MD5 produces a 128-bit digest, but no longer provides reliable collision resistance. Do not use it for digital signatures, certificates, security-sensitive integrity checks, or password storage. For detecting accidental errors in a non-adversarial setting, it is only a checksum and provides no security guarantee. MD5, SHA-1, and a single unkeyed SHA-256 hash are all unsuitable for direct password storage.
 
 **SHA**
 
-安全散列算法。**SHA** 包括 **SHA-1**、**SHA-2** 和 **SHA-3** 等系列。它把输入数据映射为固定长度的散列值（或消息摘要），这个过程不可逆，但散列值不是密文，也不等同于消息认证码。SHA-1 已不再适合需要抗碰撞能力的安全场景，新的系统通常选择 SHA-2 或 SHA-3 系列中的具体算法。
+The Secure Hash Algorithm family includes **SHA-1**, **SHA-2**, and **SHA-3**. These algorithms map input data to a fixed-length digest. Hashing is not reversible, but a digest is neither ciphertext nor a message authentication code. SHA-1 is no longer suitable for security-sensitive use cases that require collision resistance; new systems generally choose a specific SHA-2 or SHA-3 algorithm.
 
 **SM3**
 
-国密算法 **SM3**。加密强度和 SHA-256 算法相差不多。主要是受到了国家的支持。
+**SM3** is a Chinese cryptographic hash standard with a 256-bit digest, similar in output size to SHA-256.
 
-**总结**：
+**Summary:**
 
-![常见散列算法对比总结](../images/shared/79c3c2f72d2f44c7abf2d73a49024495-tplv-k3u1fbpfcp-zoom-1.png)
+![Comparison of common hash algorithms](../images/shared/79c3c2f72d2f44c7abf2d73a49024495-tplv-k3u1fbpfcp-zoom-1.png)
 
-对称加密、非对称密码和散列算法解决的问题不同：对称加密用于保护大量数据，非对称密码可用于密钥协商、加密或数字签名，散列算法用于生成摘要。具体方案还要根据保密性、完整性、身份认证和密码存储等目标选择，不能只按“是否可逆”判断。
+Symmetric encryption, asymmetric cryptography, and hash functions solve different problems. Symmetric encryption protects bulk data; asymmetric cryptography supports key establishment, encryption, and digital signatures; hash functions produce digests. Choose a method based on the goal—confidentiality, integrity, authentication, or password storage—not simply whether the operation is reversible.
 
-#### 第三方机构和证书机制有什么用？
+#### What Are Certificate Authorities and Certificates For?
 
-问题还有，此时如果 Sum 否认给过 Mike 的公钥和合同，不久就麻烦了。
+There is another problem: Sum could later deny that the public key or contract came from them.
 
-所以需要 Sum 过的话做过的事儿需要足够的信誉，这就引入了**第三方机构和证书机制**。
+This is where **certificate authorities and digital certificates** help establish trust in the binding between an identity and a public key.
 
-证书之所以会有信用，是因为证书的签发方拥有信用。所以如果 Sum 想让 Mike 承认自己的公钥，Sum 不会直接将公钥给 Mike，而是提供由第三方机构签发的含有公钥的证书。如果 Mike 也信任这个机构，法律都认可，那信任关系成立。
+A certificate is trusted because its issuer is trusted. Instead of giving Mike an unauthenticated public key, Sum can provide a certificate containing the key and signed by a trusted certificate authority (CA). Mike can then validate the certificate according to his trust store and the relevant policies.
 
-![第三方机构签发证书并完成验签的过程](../images/shared/b1a3dbf87e3e41ff894f39512a10f66d-tplv-k3u1fbpfcp-zoom-1.png)
+![A certificate authority issues a certificate that can be verified](../images/shared/b1a3dbf87e3e41ff894f39512a10f66d-tplv-k3u1fbpfcp-zoom-1.png)
 
-如上图所示，Sum 将证书申请提交给证书机构。机构核验申请信息后，使用自己的私钥对证书待签名部分生成数字签名。Mike 拿到证书后，使用签发机构的公钥验证签名；验签通过，说明证书内容未被篡改，并且签名由持有该机构私钥的一方生成。
+Sum submits a certificate request to a CA. After validating the request, the CA signs the certificate with its private key. Mike uses the CA's public key to verify the signature. Successful verification shows that the signed certificate data has not been changed and that the signature was made by someone holding the CA's private key.
 
-这个方案依赖第三方机构为身份与公钥的绑定关系提供信用背书。如果签发机构被攻破或错误签发，依赖它的证书验证就可能受到影响。
+This scheme relies on the CA to vouch for the association between an identity and a public key. If the CA is compromised or issues a certificate incorrectly, certificate validation may be affected.
 
-实际 PKI 通常采用根 CA、中间 CA 和终端证书组成的分层结构，便于隔离根私钥、委派签发权限和限制证书用途。链条更长本身并不会自动消除信任风险。
+In practice, Public Key Infrastructure (PKI) commonly uses a hierarchy of root CAs, intermediate CAs, and end-entity certificates. This helps isolate root keys, delegate issuance, and constrain certificate use. A longer chain does not by itself eliminate trust risks.
 
-![根证书到终端证书的信任链](../images/shared/1481f0409da94ba6bb0fee69bf0996f8-tplv-k3u1fbpfcp-zoom-1.png)
+![A trust chain from the root certificate to an end-entity certificate](../images/shared/1481f0409da94ba6bb0fee69bf0996f8-tplv-k3u1fbpfcp-zoom-1.png)
 
-上图中，由信誉最好的根证书机构提供根证书，然后根证书机构去签发二级机构的证书；二级机构去签发三级机构的证书；最后有由三级机构去签发 Sum 证书。
+In the diagram, a trusted root CA issues a certificate to an intermediate CA, which may issue a certificate to another intermediate, which then issues Sum's certificate.
 
-验证 Sum 证书时，需要使用三级机构证书中的公钥验证 Sum 证书的数字签名。
+To validate Sum's certificate, verify its signature with the public key in the issuing intermediate's certificate.
 
-验证三级机构证书时，需要使用二级机构证书中的公钥验证其数字签名。
+To validate that intermediate's certificate, verify its signature with the public key in the parent intermediate's certificate.
 
-验证二级机构证书时，需要使用受信根对应的公钥验证其数字签名。客户端还要检查证书有效期、名称、用途、路径约束等条件，最终确认该路径是否锚定到本地信任的根。
+To validate the parent intermediate, verify its signature with the trusted root's public key. The client must also check validity dates, names, intended use, path constraints, and whether the chain leads to a locally trusted root.
 
-以上构成了一条证书信任链。链中的某个受信 CA 如果被攻破或错误签发，就可能在其授权范围内签发欺诈证书，并不需要所有机构同时合谋。
+Together, these certificates form a trust chain. If a trusted CA is compromised or issues a certificate improperly, it may be able to issue fraudulent certificates within its authority; all CAs do not need to collude.
 
-### 中间人攻击如何避免？
+### How Can MITM Attacks Be Prevented?
 
-既然知道了中间人攻击的原理也知道了他的危险，现在我们看看如何避免。相信我们都遇到过下面这种状况：
+Browsers may display certificate warnings such as the one shown below:
 
-![浏览器提示证书不受信任的安全警告](../images/shared/0dde4b76be6240699312d822a3fe1ed3-tplv-k3u1fbpfcp-zoom-1.png)
+![A browser warns that a certificate is not trusted](../images/shared/0dde4b76be6240699312d822a3fe1ed3-tplv-k3u1fbpfcp-zoom-1.png)
 
-浏览器证书告警表示证书验证没有通过。原因可能是证书过期、域名不匹配、证书链不受信、本机时间错误或服务器配置错误，也可能是中间人攻击；仅凭告警界面无法确定具体原因，用户不应绕过告警继续访问。
+A browser certificate warning means certificate validation failed. Possible causes include an expired certificate, a hostname mismatch, an untrusted certificate chain, an incorrect system clock, a server configuration problem, or a MITM attack. The warning alone does not identify the cause; users should not bypass it and continue.
 
-受控 App 可以在明确的威胁模型下考虑证书或公钥固定，但需要同时设计证书轮换、备用密钥和失效恢复机制，否则证书更新时可能导致客户端无法连接。对于普通浏览器访问，正确做法是依赖系统信任库完成证书链、域名和有效期校验，而不是自行信任未知证书。
+An application may use certificate or public-key pinning for a clearly defined threat model, but it must also plan for certificate rotation, backup keys, and recovery. Otherwise, certificate updates may prevent clients from connecting. For ordinary browser traffic, rely on the system trust store to validate the certificate chain, hostname, and validity period; do not manually trust an unknown certificate.
 
 ## DDoS
 
-通过上面的描述，前面好多种攻击都属于 DDoS 攻击，所以简单总结一下这个攻击的相关内容。
+Several attacks described above can be used as DDoS attacks. This section summarizes the concept and some common defenses.
 
-其实，像全球互联网各大公司，均遭受过大量的 **DDoS**。
+Many major Internet companies have experienced **DDoS** attacks.
 
-2018 年，GitHub 在一瞬间遭到高达 1.35Tbps 的带宽攻击。这次 DDoS 攻击几乎可以堪称是互联网有史以来规模最大、威力最大的 DDoS 攻击了。在 GitHub 遭到攻击后，仅仅一周后，DDoS 攻击又开始对 Google、亚马逊甚至 Pornhub 等网站进行了 DDoS 攻击。后续的 DDoS 攻击带宽最高也达到了 1Tbps。
+In 2018, GitHub experienced a DDoS attack that peaked at about 1.35 Tbps. Similar attacks have targeted other large Internet services.
 
-### DDoS 攻击究竟是什么？
+### What Is a DDoS Attack?
 
-DDos 全名 Distributed Denial of Service，翻译成中文就是**分布式拒绝服务**。指的是处于不同位置的多个攻击者同时向一个或数个目标发动攻击，是一种分布的、协同的大规模攻击方式。单一的 DoS 攻击一般是采用一对一方式的，它利用网络协议和操作系统的一些缺陷，采用**欺骗和伪装**的策略来进行网络攻击，使网站服务器充斥大量要求回复的信息，消耗网络带宽或系统资源，导致网络或系统不胜负荷以至于瘫痪而停止提供正常的网络服务。
+**DDoS** stands for **Distributed Denial of Service**. Multiple sources coordinate traffic against one or more targets. A single-source DoS attack may exploit protocol or operating-system weaknesses, or simply consume bandwidth and system resources with a large volume of requests, preventing normal service.
 
-> 举个例子
+> For example:
 
-我开了一家有五十个座位的重庆火锅店，由于用料上等，童叟无欺。平时门庭若市，生意特别红火，而对面二狗家的火锅店却无人问津。二狗为了对付我，想了一个办法，叫了五十个人来我的火锅店坐着却不点菜，让别的客人无法吃饭。
+Imagine a restaurant with 50 seats. A competitor sends 50 people to occupy every seat without ordering, so real customers cannot get a table.
 
-上面这个例子讲的就是典型的 DDoS 攻击，一般来说是指攻击者利用“肉鸡”对目标网站在较短的时间内发起大量请求，大规模消耗目标网站的主机资源，让它无法正常服务。在线游戏、互联网金融等领域是 DDoS 攻击的高发行业。
+This illustrates a DDoS attack: an attacker uses compromised devices (a botnet) to send many requests in a short time, consuming the target's resources and disrupting service. Online games and financial services are among the sectors that may be targeted.
 
-攻击方式很多，比如 **ICMP Flood**、**UDP Flood**、**NTP Flood**、**SYN Flood**、**CC 攻击**、**DNS Query Flood**等等。
+Common forms include **ICMP floods**, **UDP floods**, **NTP floods**, **SYN floods**, **HTTP floods**, and **DNS query floods**.
 
-### 如何应对 DDoS 攻击？
+### How Can DDoS Attacks Be Mitigated?
 
-#### 高防服务器
+#### DDoS-Protection Services
 
-还是拿开的重庆火锅店举例，高防服务器就是我给重庆火锅店增加了两名保安，这两名保安可以让保护店铺不受流氓骚扰，并且还会定期在店铺周围巡逻防止流氓骚扰。
+Using the restaurant analogy, a DDoS-protection service is like adding security staff to identify and turn away disruptive visitors.
 
-高防服务器主要是指能独立硬防御 50Gbps 以上的服务器，能够帮助网站拒绝服务攻击，定期扫描网络主节点等。
+These services provide network capacity and filtering designed to absorb or mitigate DDoS traffic. Their effectiveness depends on the attack and the provider's capacity and configuration.
 
-#### 黑名单
+#### Blocklists
 
-面对火锅店里面的流氓，我一怒之下将他们拍照入档，并禁止他们踏入店铺，但是有的时候遇到长得像的人也会禁止他进入店铺。这个就是设置黑名单，此方法秉承的就是“错杀一千，也不放一百”的原则，会封锁正常流量，影响到正常业务。
+Blocklists can block known malicious sources, but overly broad rules may also block legitimate users. They should be applied carefully and reviewed as traffic changes.
 
-#### DDoS 清洗
+#### Traffic Scrubbing
 
-**DDos** 清洗，就是我发现客人进店几分钟以后，但是一直不点餐，我就把他踢出店里。
+Traffic scrubbing monitors requests in real time and filters traffic identified as abnormal, while attempting to preserve legitimate service.
 
-**DDoS** 清洗会对用户请求数据进行实时监控，及时发现 **DOS** 攻击等异常流量，在不影响正常业务开展的情况下清洗掉这些异常流量。
+#### CDN
 
-#### CDN 加速
+A content delivery network (CDN) serves traffic from distributed edge nodes. This can reduce exposure of the origin server and distribute traffic during an attack, although CDN protection depends on configuration and does not guarantee that an origin cannot be reached directly.
 
-CDN 加速，我们可以这么理解：为了减少流氓骚扰，我干脆将火锅店开到了线上，承接外卖服务，这样流氓找不到店在哪里，也耍不来流氓了。
+## References
 
-在现实中，CDN 服务将网站访问流量分配到了各个节点中，这样一方面隐藏网站的真实 IP，另一方面即使遭遇 **DDoS** 攻击，也可以将流量分散到各个节点中，防止源站崩溃。
-
-## 参考
-
-- HTTP 洪水攻击 - CloudFlare：<https://www.cloudflare.com/zh-cn/learning/ddos/http-flood-ddos-attack/>
-- SYN 洪水攻击：<https://www.cloudflare.com/zh-cn/learning/ddos/syn-flood-ddos-attack/>
-- 什么是 IP 欺骗？：<https://www.cloudflare.com/zh-cn/learning/ddos/glossary/ip-spoofing/>
-- 什么是 DNS 洪水？| DNS 洪水 DDoS 攻击：<https://www.cloudflare.com/zh-cn/learning/ddos/dns-flood-ddos-attack/>
+- HTTP flood attack - Cloudflare: <https://www.cloudflare.com/learning/ddos/http-flood-ddos-attack/>
+- SYN flood attack: <https://www.cloudflare.com/learning/ddos/syn-flood-ddos-attack/>
+- What is IP spoofing?: <https://www.cloudflare.com/learning/ddos/glossary/ip-spoofing/>
+- What is a DNS flood? DNS flood DDoS attack: <https://www.cloudflare.com/learning/ddos/dns-flood-ddos-attack/>
 
 <!-- @include: @article-footer.snippet.md -->

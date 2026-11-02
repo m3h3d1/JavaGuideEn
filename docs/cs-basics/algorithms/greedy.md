@@ -1,48 +1,48 @@
 ---
-title: 贪心算法面试题总结：区间贪心、跳跃游戏与证明思路
-description: 贪心算法面试题总结，讲解贪心题型识别、排序贪心、区间贪心、跳跃游戏、贪心证明思路和 LeetCode 高频题。
-category: 计算机基础
+title: "Greedy Algorithm Interview Guide: Interval Scheduling, Jump Game, and Proof Techniques"
+description: An interview guide to greedy algorithms, covering pattern recognition, sorting-based and interval strategies, Jump Game, correctness arguments, and common LeetCode problems.
+category: Computer Science Fundamentals
 tag:
-  - 算法
+  - Algorithms
 head:
   - - meta
     - name: keywords
-      content: 贪心算法,贪心算法模板,区间贪心,排序贪心,跳跃游戏,贪心证明,LeetCode贪心,算法面试题
+      content: greedy algorithms,greedy templates,interval scheduling,sorting,Jump Game,greedy proof,LeetCode greedy,algorithm interview questions
 ---
 
-贪心算法的代码往往不长，难点在于为什么当前选择不会影响全局最优。面试里如果只写代码，不解释贪心策略，很容易被追问到卡住。
+Greedy algorithms often have short implementations. The hard part is explaining why a local choice doesn't prevent a globally optimal result. In an interview, code without an explanation of the greedy strategy is likely to invite follow-up questions.
 
-可以先记一个判断方式：如果问题可以通过排序或维护一个当前最优边界，每一步做出局部选择，并且这个选择不会破坏后续最优解，就可以尝试贪心。
+A useful starting point: if a problem can be approached by sorting or maintaining the best current boundary, and each local choice preserves an optimal solution, consider a greedy algorithm.
 
-## 面试考察重点
+## What Interviewers Look For
 
-- 能找出贪心策略。
-- 能用交换、反证或直觉边界说明策略合理。
-- 能处理排序后的遍历条件。
-- 能区分贪心和动态规划。
+- Identify a greedy strategy.
+- Explain why it works using an exchange argument, contradiction, or a clear boundary argument.
+- Handle the conditions for iterating through sorted data.
+- Distinguish greedy algorithms from dynamic programming.
 
-## 贪心题怎么想？
+## How to Approach Greedy Problems
 
-贪心题最怕“凭感觉选”。写代码前至少要说清两个东西：
+Avoid making choices based only on intuition. Before coding, explain at least two things:
 
-1. 每一步贪的是什么，比如结束时间最早、当前能跳到最远、当前收益为正。
-2. 为什么这个选择不会让后面变差。
+1. What you choose at each step, such as the earliest finishing interval, the farthest reachable position, or a positive gain.
+2. Why that choice doesn't make the remaining problem harder.
 
-证明不一定要很形式化，但要能讲出取舍。比如区间调度里，选择结束最早的区间，是因为它给后面留下的可选空间最大；如果选择一个结束更晚的区间，不会让答案变得更多。
+The proof doesn't need to be overly formal, but it should explain the trade-off. For interval scheduling, for example, choosing the interval that ends earliest leaves the most room for later intervals. Choosing an interval that ends later can't increase the number of intervals you can select.
 
-## 常见题型
+## Common Patterns
 
-| 题型       | 贪心策略                       | 代表题                             |
-| ---------- | ------------------------------ | ---------------------------------- |
-| 分配问题   | 优先满足最容易满足的对象       | 分发饼干                           |
-| 股票买卖   | 把所有正收益累加               | 买卖股票的最佳时机 II              |
-| 跳跃问题   | 维护当前能到达的最远位置       | 跳跃游戏                           |
-| 区间问题   | 按右端点或左端点排序           | 无重叠区间、用最少数量的箭引爆气球 |
-| 字符串重构 | 维护剩余可用次数或最远覆盖位置 | 划分字母区间                       |
+| Pattern             | Greedy strategy                                  | Example problem                                                       |
+| ------------------- | ------------------------------------------------ | --------------------------------------------------------------------- |
+| Assignment          | Satisfy the easiest-to-satisfy item first.       | Assign Cookies                                                        |
+| Stock trading       | Add up all positive gains.                       | Best Time to Buy and Sell Stock II                                    |
+| Jumping             | Track the farthest reachable position.           | Jump Game                                                             |
+| Intervals           | Sort by the start or end point.                  | Non-overlapping Intervals, Minimum Number of Arrows to Burst Balloons |
+| String partitioning | Track remaining counts or the farthest coverage. | Partition Labels                                                      |
 
-贪心常常和排序一起出现，因为排序能让“当前最优选择”变得明确。区间题经常按左端点或右端点排序，分配题经常把需求和资源都排序后用双指针匹配。
+Greedy problems often use sorting because it makes the local choice clear. Interval problems are commonly sorted by start or end point. Assignment problems often sort both requirements and resources, then match them with two pointers.
 
-## 跳跃游戏模板
+## Jump Game Template
 
 ```java
 boolean canJump(int[] nums) {
@@ -57,20 +57,20 @@ boolean canJump(int[] nums) {
 }
 ```
 
-`farthest` 表示当前能到达的最远位置。遍历到 `i` 时，如果 `i > farthest`，说明当前位置根本不可达。
+`farthest` is the most distant position reachable so far. If `i > farthest`, the current position can't be reached.
 
-这题的贪心点是：不关心具体从哪一步跳到 `i`，只关心当前能覆盖到的最远位置。只要当前位置在覆盖范围内，就可以用它继续更新覆盖范围。
+The greedy choice is to track the farthest reachable position, not the exact jump used to get to `i`. If `i` is within the reachable range, use it to extend that range.
 
-“跳跃游戏 II”多了一个最少步数。它维护两个边界：
+Jump Game II adds the goal of using the fewest jumps. Track two boundaries:
 
-- `curEnd`：当前步数能覆盖到的最远位置。
-- `farthest`：在当前覆盖范围内再跳一步能到的最远位置。
+- `curEnd`: the farthest position reachable with the current number of jumps.
+- `farthest`: the farthest position reachable with one more jump from the current range.
 
-当遍历到 `curEnd` 时，说明当前步数的范围用完了，必须多跳一步，并把 `curEnd` 更新为 `farthest`。
+When the scan reaches `curEnd`, the current jump has covered its range. Increment the jump count and update `curEnd` to `farthest`.
 
-## 区间贪心模板
+## Interval Greedy Template
 
-以无重叠区间为例，按右端点升序排序，每次保留结束最早的区间：
+For Non-overlapping Intervals, sort by end point in ascending order and keep the interval that ends earliest:
 
 ```java
 int eraseOverlapIntervals(int[][] intervals) {
@@ -90,23 +90,23 @@ int eraseOverlapIntervals(int[][] intervals) {
 }
 ```
 
-结束越早，留给后面区间的空间越大，这是这类题的核心选择。
+An earlier end leaves more room for later intervals. This is the key choice in this pattern.
 
-区间题最容易错在排序字段。几个常见选择：
+The field used for sorting is a common source of mistakes:
 
-- 要选最多不重叠区间：按右端点升序。
-- 要合并区间：按左端点升序。
-- 要用最少箭引爆气球：按右端点升序，尽量用当前箭覆盖更多气球。
+- To select the most non-overlapping intervals, sort by end point in ascending order.
+- To merge intervals, sort by start point in ascending order.
+- To use the fewest arrows for balloons, sort by end point and let each arrow cover as many balloons as possible.
 
-如果一个贪心策略不好解释，先用小样例找反例。比如“每次选长度最短的区间”看起来合理，但并不能保证选出最多不重叠区间。
+If a greedy strategy is hard to explain, try to find a counterexample with a small input. For instance, choosing the shortest interval may seem reasonable, but it doesn't guarantee the largest set of non-overlapping intervals.
 
-## 代表题精讲：用最少数量的箭引爆气球
+## Example: Minimum Number of Arrows to Burst Balloons
 
-[452. 用最少数量的箭引爆气球](https://leetcode.cn/problems/minimum-number-of-arrows-to-burst-balloons/) 是区间贪心的典型题。题目给出一组气球区间 `[start, end]`，一支箭射在某个坐标 `x` 上，只要 `start <= x <= end`，这个气球就会被引爆，要求用最少的箭引爆所有气球。
+[452. Minimum Number of Arrows to Burst Balloons](https://leetcode.cn/problems/minimum-number-of-arrows-to-burst-balloons/) is a classic interval-greedy problem. Each balloon is an interval `[start, end]`. An arrow at coordinate `x` bursts a balloon when `start <= x <= end`. Find the fewest arrows needed to burst them all.
 
-这题的贪心点是：**每次把箭射在当前可选区间的最右边界**。先按右端点升序排序，第一支箭放在第一个气球的右端点。后面的气球如果左端点 `<= arrow`，说明这支箭还能覆盖它；如果左端点 `> arrow`，说明当前箭已经够不到了，必须新增一支箭，并把新箭放在这个气球的右端点。
+The greedy choice is to **shoot each arrow at the right endpoint of the current overlap**. Sort by end point and place the first arrow at the first balloon's end. If a later balloon's start is `<= arrow`, the same arrow can burst it. If its start is `> arrow`, add an arrow at that balloon's end.
 
-代码里要注意两个边界：空数组返回 `0`；排序比较器不要写成 `a[1] - b[1]`，极端坐标下可能溢出。
+Handle two details in the code: return `0` for an empty array, and don't compare endpoints with `a[1] - b[1]`, which can overflow for extreme coordinates.
 
 ```java
 int findMinArrowShots(int[][] points) {
@@ -126,41 +126,41 @@ int findMinArrowShots(int[][] points) {
 }
 ```
 
-如果样例是 `[[10,16],[2,8],[1,6],[7,12]]`，按右端点排序后是 `[1,6]、[2,8]、[7,12]、[10,16]`。第一支箭放在 `6`，能覆盖前两个区间；遇到 `[7,12]` 时左端点已经大于 `6`，必须新增一支箭，放在 `12`，它又能覆盖 `[10,16]`。最终答案是 `2`。
+For `[[10,16],[2,8],[1,6],[7,12]]`, sorting by end point gives `[1,6]`, `[2,8]`, `[7,12]`, `[10,16]`. Put the first arrow at `6` to cover the first two intervals. The next interval starts at `7`, so add an arrow at `12`; that arrow also covers `[10,16]`. The answer is `2`.
 
-## 贪心和动态规划怎么区分？
+## Greedy Algorithms vs. Dynamic Programming
 
-| 对比点       | 贪心                     | 动态规划               |
-| ------------ | ------------------------ | ---------------------- |
-| 决策方式     | 当前一步直接选           | 依赖前面多个状态       |
-| 是否回看历史 | 通常不回看               | 需要状态转移           |
-| 证明重点     | 当前选择不会破坏全局最优 | 最优子结构和重叠子问题 |
-| 常见题       | 区间、跳跃、分配         | 背包、子序列、路径     |
+| Aspect          | Greedy                                         | Dynamic programming                               |
+| --------------- | ---------------------------------------------- | ------------------------------------------------- |
+| Decision        | Choose the current option directly.            | Use multiple previous states.                     |
+| Looking back    | Usually not needed.                            | State transitions depend on earlier results.      |
+| What to prove   | The local choice preserves the global optimum. | Optimal substructure and overlapping subproblems. |
+| Common problems | Intervals, jumps, assignment.                  | Knapsack, subsequences, paths.                    |
 
-如果当前选择看起来合理，但举个小反例就会错，那它更可能需要 DP 或搜索。
+If a choice seems reasonable but fails on a small counterexample, the problem may need DP or search instead.
 
-## 易错点
+## Common Mistakes
 
-- 贪心题常常需要先排序，排序字段错了答案就错。
-- 区间题要看边界是否允许相等，比如 `[1,2]` 和 `[2,3]` 是否重叠。
-- 跳跃游戏 II 里“步数增加”的时机和当前覆盖边界有关。
-- 贪心策略要能解释，不要只说“每次选最优”。
+- Many greedy problems require sorting; the wrong sort field can produce the wrong answer.
+- Check whether touching interval boundaries count as overlap, such as `[1,2]` and `[2,3]`.
+- In Jump Game II, when to increment the jump count depends on the current reachable boundary.
+- Explain the greedy strategy; “choose the best option each time” isn't enough.
 
-## 高频问题自测
+## Questions to Review
 
-- 贪心和动态规划怎么区分？
-- 区间题为什么经常按右端点排序？
-- 跳跃游戏里为什么只维护最远可达位置就够了？
-- 贪心题怎样用交换或反证说明策略正确？
-- 区间边界允许相等时，判断条件应该怎么写？
+- How do you distinguish greedy from dynamic programming?
+- Why are interval problems often sorted by end point?
+- Why is tracking the farthest reachable position enough for Jump Game?
+- How can an exchange argument or contradiction establish a greedy strategy?
+- How should the comparison handle intervals that share a boundary?
 
-## 推荐练习题
+## Recommended Practice Problems
 
-- [455. 分发饼干](https://leetcode.cn/problems/assign-cookies/)
-- [122. 买卖股票的最佳时机 II](https://leetcode.cn/problems/best-time-to-buy-and-sell-stock-ii/)
-- [55. 跳跃游戏](https://leetcode.cn/problems/jump-game/)
-- [45. 跳跃游戏 II](https://leetcode.cn/problems/jump-game-ii/)
-- [435. 无重叠区间](https://leetcode.cn/problems/non-overlapping-intervals/)
-- [763. 划分字母区间](https://leetcode.cn/problems/partition-labels/)
+- [455. Assign Cookies](https://leetcode.cn/problems/assign-cookies/)
+- [122. Best Time to Buy and Sell Stock II](https://leetcode.cn/problems/best-time-to-buy-and-sell-stock-ii/)
+- [55. Jump Game](https://leetcode.cn/problems/jump-game/)
+- [45. Jump Game II](https://leetcode.cn/problems/jump-game-ii/)
+- [435. Non-overlapping Intervals](https://leetcode.cn/problems/non-overlapping-intervals/)
+- [763. Partition Labels](https://leetcode.cn/problems/partition-labels/)
 
 <!-- @include: @article-footer.snippet.md -->

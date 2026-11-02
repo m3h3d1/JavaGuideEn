@@ -1,43 +1,43 @@
 ---
-title: 回溯算法面试题总结：组合、排列、子集、剪枝与 Java 模板
-description: 回溯算法面试题总结，讲解回溯题型识别、组合模板、排列模板、子集模板、去重剪枝、复杂度分析和 LeetCode 高频题。
-category: 计算机基础
+title: "Backtracking Interview Questions: Combinations, Permutations, Subsets, Pruning, and Java Templates"
+description: Learn how to recognize backtracking problems, implement combination, permutation, and subset patterns, prune duplicate or invalid choices, and analyze complexity.
+category: Computer Science Basics
 tag:
-  - 算法
+  - Algorithms
 head:
   - - meta
     - name: keywords
-      content: 回溯算法,回溯模板,组合,排列,子集,N皇后,剪枝,Java回溯,LeetCode回溯,算法面试题
+      content: backtracking,backtracking templates,combinations,permutations,subsets,N-Queens,pruning,Java,LeetCode,algorithm interview questions
 ---
 
-回溯题的特点很明显：题目让你找所有方案、所有路径、所有组合，或者在一堆选择里试探。它和 DFS 很像，区别在于回溯更强调“选择 -> 递归 -> 撤销选择”。
+Backtracking problems ask you to find all solutions, paths, or combinations by exploring a set of choices. It is closely related to DFS, but emphasizes the cycle **choose -> recurse -> undo the choice**.
 
-面试里写回溯，最重要的是先说清递归函数的含义。函数含义稳了，参数、结束条件和撤销选择就不容易乱。
+In an interview, first explain what the recursive function represents. Once that is clear, it is easier to define the parameters, base case, and undo step.
 
-## 面试考察重点
+## Interview Topics
 
-- 能写组合、排列、子集三类模板。
-- 能解释 `path`、`startIndex`、`used` 的作用。
-- 能根据题目判断是否需要去重。
-- 能做简单剪枝，避免无效搜索。
-- 能说清复杂度和结果规模有关。
+- Implement templates for combinations, permutations, and subsets.
+- Explain the roles of `path`, `startIndex`, and `used`.
+- Determine whether a problem requires deduplication.
+- Prune branches that cannot produce valid results.
+- Explain how complexity depends on the number of results.
 
-## 回溯题怎么想？
+## How to Approach Backtracking
 
-回溯题可以先画成一棵“选择树”。树上的每一层代表一次选择，根节点代表还没选，叶子节点代表一个完整方案。
+Start by drawing a **decision tree**. Each level represents a choice, the root represents the state before any choices, and each leaf represents a complete solution.
 
-写代码前先回答 4 个问题：
+Before coding, answer four questions:
 
-1. 路径是什么？通常是已经选择的元素，代码里叫 `path`。
-2. 选择列表是什么？当前还能选哪些元素。
-3. 结束条件是什么？什么时候把 `path` 放进答案。
-4. 是否需要剪枝？哪些选择一定不会得到合法答案。
+1. What is the path? It is usually the elements already chosen and is often named `path`.
+2. What choices are available at this point?
+3. What is the stopping condition? When should `path` be added to the answer?
+4. Is pruning needed? Which choices cannot lead to a valid solution?
 
-回溯模板里的“撤销选择”不是形式主义。因为 `path` 是复用的，当前分支试完后必须还原现场，给下一个分支使用。
+Undoing a choice is essential, not just a convention. The same `path` is reused, so each branch must restore it before the next branch runs.
 
-## 组合模板
+## Combination Template
 
-组合不关心顺序，通常用 `startIndex` 控制下一层从哪里开始：
+Combinations do not depend on order, so `startIndex` usually controls where the next level begins:
 
 ```java
 List<List<Integer>> combine(int n, int k) {
@@ -59,9 +59,9 @@ void backtrack(int start, int n, int k, List<Integer> path, List<List<Integer>> 
 }
 ```
 
-组合问题不关心顺序，所以 `[1, 2]` 和 `[2, 1]` 是同一个答案。`start` 的作用就是保证后续只能选当前位置之后的数字，避免重复。
+Combinations do not depend on order, so `[1, 2]` and `[2, 1]` are the same result. `start` ensures that later choices come only from positions after the current one, avoiding duplicates.
 
-如果要从 `1..n` 里选 `k` 个数，还可以剪枝：
+When choosing `k` numbers from `1..n`, you can also prune branches:
 
 ```java
 for (int i = start; i <= n - (k - path.size()) + 1; i++) {
@@ -69,11 +69,11 @@ for (int i = start; i <= n - (k - path.size()) + 1; i++) {
 }
 ```
 
-含义是：如果从 `i` 开始，剩余数字数量已经不够凑满 `k` 个，就没必要继续枚举。
+If there are not enough numbers from `i` onward to complete a combination of size `k`, there is no need to continue exploring that branch.
 
-## 排列模板
+## Permutation Template
 
-排列关心顺序，通常用 `used` 标记元素是否已经被选过：
+Permutations depend on order, so use `used` to mark whether an element has already been chosen:
 
 ```java
 List<List<Integer>> permute(int[] nums) {
@@ -101,9 +101,9 @@ void backtrack(int[] nums, boolean[] used, List<Integer> path, List<List<Integer
 }
 ```
 
-排列问题关心顺序，所以每一层都可以从所有数字里选，只是不能重复使用同一个数字。`used[i]` 表示 `nums[i]` 是否已经在当前路径里。
+Permutations depend on order, so each level can consider every number, but cannot reuse a number. `used[i]` indicates whether `nums[i]` is already in the current path.
 
-如果数组里有重复数字，排列去重要比组合更容易写错。通常先排序，然后在同一层跳过“前一个相同数字还没被使用”的情况：
+Deduplicating permutations is more error-prone than deduplicating combinations when the input contains duplicates. Sort first, then at each level skip a duplicate if the previous equal value has not been used:
 
 ```java
 if (i > 0 && nums[i] == nums[i - 1] && !used[i - 1]) {
@@ -111,11 +111,11 @@ if (i > 0 && nums[i] == nums[i - 1] && !used[i - 1]) {
 }
 ```
 
-这句的作用是固定重复数字在同一层的选择顺序，避免生成重复排列。
+This keeps duplicate values in a consistent order at each level and prevents duplicate permutations.
 
-## 子集模板
+## Subset Template
 
-子集问题通常每个节点都是一个答案：
+For subset problems, every node in the decision tree is a valid answer:
 
 ```java
 List<List<Integer>> subsets(int[] nums) {
@@ -134,9 +134,9 @@ void backtrack(int start, int[] nums, List<Integer> path, List<List<Integer>> an
 }
 ```
 
-子集问题和组合问题很像，但它不是只在固定长度时收集答案，而是每到一个节点都收集一次。因为任何长度的路径都可以是一个子集。
+Subset problems resemble combinations, but collect an answer at every node instead of only at a fixed length. A path of any length can be a subset.
 
-如果题目要求去重，比如输入 `[1, 2, 2]`，仍然是先排序，再跳过同一层重复元素：
+If duplicates must be removed, as with input `[1, 2, 2]`, sort first and skip repeated values at the same level:
 
 ```java
 if (i > start && nums[i] == nums[i - 1]) {
@@ -144,61 +144,61 @@ if (i > start && nums[i] == nums[i - 1]) {
 }
 ```
 
-## 去重怎么做？
+## How to Deduplicate Results
 
-如果输入有重复元素，通常先排序，再根据题型选择去重策略：
+If the input contains duplicates, sort it first, then choose a deduplication strategy based on the problem:
 
-- 子集、组合这类按下标向后选择的题，跳过同一层重复元素，例如 `i > start && nums[i] == nums[i - 1]`。
-- 全排列这类每层都可能从头扫描的题，通常还要结合 `used[]`，避免同一个位置被重复使用。
-- 去重判断要区分“同一层重复选择”和“同一路径重复使用”。前者会产生重复答案，后者可能正是题目允许的选择。
+- For subsets and combinations, which choose later indexes, skip duplicate values at the same level with a condition such as `i > start && nums[i] == nums[i - 1]`.
+- For permutations, which may scan from the beginning at each level, also use `used[]` to prevent reusing the same position.
+- Distinguish choosing a duplicate at the same level from reusing an element along the same path. The former can create duplicate answers; the latter may be allowed by the problem.
 
-## 过程示意和边界样例
+## Walkthrough and Edge Cases
 
-以 `n = 3, k = 2` 的组合问题为例，选择树可以简化成下面这样：
+For combinations with `n = 3` and `k = 2`, the decision tree can be summarized as follows:
 
-| 第一层选择 | 第二层可选 | 产生结果           |
-| ---------- | ---------- | ------------------ |
-| 选 1       | 2、3       | `[1, 2]`、`[1, 3]` |
-| 选 2       | 3          | `[2, 3]`           |
-| 选 3       | 无         | 不足 2 个数，剪枝  |
+| First choice | Available second choices | Result                                   |
+| ------------ | ------------------------ | ---------------------------------------- |
+| Choose 1     | 2, 3                     | `[1, 2]`, `[1, 3]`                       |
+| Choose 2     | 3                        | `[2, 3]`                                 |
+| Choose 3     | None                     | Fewer than two numbers remain, so prune. |
 
-回溯题建议检查这些边界：
+Check these edge cases:
 
-| 输入         | 重点                    |
-| ------------ | ----------------------- |
-| 空数组       | 子集题通常要返回 `[[]]` |
-| `k = 0`      | 组合题是否返回空组合    |
-| 有重复元素   | 是否先排序并做同层去重  |
-| 结果只有一个 | 是否正确拷贝 `path`     |
+| Input              | Check                                                      |
+| ------------------ | ---------------------------------------------------------- |
+| Empty array        | A subset problem usually returns `[[]]`.                   |
+| `k = 0`            | Should a combination problem return the empty combination? |
+| Duplicate elements | Sort first and deduplicate at each level.                  |
+| Only one result    | Make sure to copy `path`.                                  |
 
-常见错误写法：
+Common mistake:
 
 ```java
-ans.add(path); // 错：后续 path 会继续变化
+ans.add(path); // Wrong: path will keep changing during later recursion.
 ```
 
-应该写成：
+Instead, write:
 
 ```java
 ans.add(new ArrayList<>(path));
 ```
 
-回溯里的 `path` 是复用对象，不拷贝就会导致答案里的列表一起被后续递归修改。
+Backtracking reuses the same `path` object. Without copying it, later recursive calls will change the lists already stored in the answer.
 
-## 易错点
+## Common Pitfalls
 
-- 加入答案时要拷贝 `path`，不能直接放引用。
-- 组合用 `startIndex`，排列用 `used`，不要混着写。
-- 去重通常要先排序。
-- 剪枝条件必须不影响正确答案。
-- 回溯复杂度经常和结果数量相同量级，不要随手写 `O(n)`。
+- Copy `path` when adding it to the answer; do not store the reference directly.
+- Use `startIndex` for combinations and `used` for permutations.
+- Sort first when deduplicating in the common patterns shown here.
+- Pruning must not remove valid answers.
+- Backtracking complexity often grows with the number of results; do not casually write `O(n)`.
 
-## 推荐练习题
+## Practice Problems
 
-- [77. 组合](https://leetcode.cn/problems/combinations/)
-- [78. 子集](https://leetcode.cn/problems/subsets/)
-- [46. 全排列](https://leetcode.cn/problems/permutations/)
-- [39. 组合总和](https://leetcode.cn/problems/combination-sum/)
-- [51. N 皇后](https://leetcode.cn/problems/n-queens/)
+- [77. Combinations](https://leetcode.cn/problems/combinations/)
+- [78. Subsets](https://leetcode.cn/problems/subsets/)
+- [46. Permutations](https://leetcode.cn/problems/permutations/)
+- [39. Combination Sum](https://leetcode.cn/problems/combination-sum/)
+- [51. N-Queens](https://leetcode.cn/problems/n-queens/)
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,50 +1,50 @@
 ---
-title: 红黑树详解（性质、旋转、应用）
-description: 深入讲解红黑树的五大性质与旋转调整过程，理解自平衡机制及在标准库与索引结构中的应用。
-category: 计算机基础
+title: "Red-Black Trees: Properties, Rotations, and Applications"
+description: Learn the five red-black tree properties, how rotations restore balance, and how these trees are used in standard libraries and indexes.
+category: Computer Science Basics
 tag:
-  - 数据结构
+  - Data Structures
 head:
   - - meta
     - name: keywords
-      content: 红黑树,自平衡,旋转,插入删除,性质,黑高,时间复杂度
+      content: red-black trees,self-balancing,rotations,insertion,deletion,properties,black height,time complexity
 ---
 
-# 红黑树
+# Red-Black Trees
 
-## 红黑树介绍
+## Introduction
 
-红黑树（Red Black Tree）是一种自平衡二叉查找树。它是在 1972 年由 Rudolf Bayer 发明的，当时被称为平衡二叉 B 树（symmetric binary B-trees）。后来，在 1978 年被 Leo J. Guibas 和 Robert Sedgewick 修改为如今的“红黑树”。
+A **red-black tree** is a self-balancing binary search tree. Rudolf Bayer invented it in 1972 as a symmetric binary B-tree. In 1978, Leo J. Guibas and Robert Sedgewick modified it into what is now known as the red-black tree.
 
-由于其自平衡的特性，保证了最坏情形下在 O(logn) 时间复杂度内完成查找、增加、删除等操作，性能表现稳定。
+Its self-balancing property guarantees `O(log n)` worst-case time for lookup, insertion, and deletion, providing stable performance.
 
-在 JDK 中，`TreeMap`、`TreeSet` 以及 JDK1.8 的 `HashMap` 底层都用到了红黑树。
+In the JDK, `TreeMap` and `TreeSet` use red-black trees. Since JDK 8, `HashMap` may also use them for heavily populated buckets.
 
-## 为什么需要红黑树？
+## Why Use a Red-Black Tree?
 
-红黑树的诞生就是为了解决二叉查找树的缺陷。
+Red-black trees address a weakness of ordinary binary search trees.
 
-二叉查找树是一种基于比较的数据结构，它的每个节点都有一个键值，而且左子节点的键值小于父节点的键值，右子节点的键值大于父节点的键值。这样的结构可以方便地进行查找、插入和删除操作，因为只需要比较节点的键值就可以确定目标节点的位置。但是，二叉查找树有一个很大的问题，就是它的形状取决于节点插入的顺序。如果节点是按照升序或降序的方式插入的，那么二叉查找树就会退化成一个线性结构，也就是一个链表。这样的情况下，二叉查找树的性能就会大大降低，时间复杂度就会从 O(logn) 变为 O(n)。
+A binary search tree orders nodes by key: each left child is smaller than its parent, and each right child is larger. This makes lookup, insertion, and deletion straightforward because comparisons guide the search. However, the tree's shape depends on insertion order. If values are inserted in ascending or descending order, the tree can become a linear structure like a linked list. Its performance then degrades from `O(log n)` to `O(n)`.
 
-红黑树的诞生就是为了解决二叉查找树的缺陷，因为二叉查找树在某些情况下会退化成一个线性结构。
+Red-black trees prevent this degradation by keeping the tree approximately balanced.
 
-## 红黑树特点
+## Red-Black Tree Properties
 
-1. 每个节点非红即黑。
-2. 根节点总是黑色的。
-3. 每个空子链接都视为黑色的 NIL 叶节点。
-4. 如果节点是红色的，则它的子节点必须是黑色的，也就是不会出现连续的红色节点。
-5. 从任意节点到其所有后代 NIL 节点的每条路径，都包含相同数量的黑色节点，即具有相同的黑高。
+1. Every node is either red or black.
+2. The root is always black.
+3. Every empty child link is treated as a black NIL leaf.
+4. A red node must have black children; there cannot be two consecutive red nodes on a path.
+5. Every path from a node to any of its descendant NIL leaves contains the same number of black nodes. This number is called the **black height**.
 
-在红黑树与 2-3 树的对应关系中，一个黑节点和与其相连的红节点可以共同表示一个多键节点。这只是一种结构映射，红黑树节点本身始终至多有两个子节点。
+In the correspondence between red-black trees and 2-3 trees, a black node and its connected red node can represent a multi-key node. This is only a structural mapping; a red-black tree node itself still has at most two children.
 
-正是这些特点才保证了红黑树的平衡，让红黑树的高度不会超过 2log(n+1)。
+These properties keep the tree balanced and limit its height to at most `2 log(n + 1)`.
 
-## 红黑树数据结构
+## Related Tree Structures
 
-AVL 树和红黑树都是自平衡二叉搜索树，2-3 树则是多路搜索树。红黑树可以与 2-3 树或 2-3-4 树建立结构对应，但它们不能统称为 B 树。相比 AVL 树，红黑树的平衡条件更宽松，它通过颜色规则和黑高约束限制树高。
+AVL trees and red-black trees are both self-balancing binary search trees, while 2-3 trees are multiway search trees. Red-black trees can be mapped structurally to 2-3 or 2-3-4 trees, but these structures should not all be called B-trees. Red-black trees have looser balancing requirements than AVL trees and constrain their height through color rules and black height.
 
-## 红黑树结构实现
+## Red-Black Tree Node Structure
 
 ```java
 public class Node {
@@ -55,63 +55,63 @@ public class Node {
     public Node left;
     public Node right;
 
-    // AVL 树所需属性
+    // Required by AVL trees
     public int height;
-    // 红黑树所需属性
+    // Required by red-black trees
     public Color color = Color.RED;
 
 }
 ```
 
-### 1. 左倾染色
+### 1. Left-Leaning Recoloring
 
-![红黑树左倾染色示意图](../images/shared/red-black-tree-1.png)
+![Left-leaning recoloring in a red-black tree](../images/shared/red-black-tree-1.png)
 
-- 染色时根据当前节点的爷爷节点，找到当前节点的叔叔节点。
-- 再把父节点染黑、叔叔节点染黑，爷爷节点染红。但爷爷节点染红是临时的，当平衡树高操作后会把根节点染黑。
+- During recoloring, use the current node's grandparent to find its uncle.
+- Recolor the parent and uncle black, and the grandparent red. The grandparent's red color may be temporary; after rebalancing, the root is recolored black.
 
-### 2. 右倾染色
+### 2. Right-Leaning Recoloring
 
-![红黑树右倾染色示意图](../images/shared/red-black-tree-2.png)
+![Right-leaning recoloring in a red-black tree](../images/shared/red-black-tree-2.png)
 
-### 3. 左旋调衡
+### 3. Rebalancing with Left Rotations
 
-#### 3.1 一次左旋
+#### 3.1. Single Left Rotation
 
-![红黑树一次左旋调衡示意图](../images/shared/red-black-tree-3.png)
+![Rebalancing with a single left rotation](../images/shared/red-black-tree-3.png)
 
-#### 3.2 右旋 + 左旋
+#### 3.2. Right Rotation Followed by Left Rotation
 
-![红黑树右旋加左旋调衡示意图](../images/shared/red-black-tree-4.png)
+![Rebalancing with a right rotation followed by a left rotation](../images/shared/red-black-tree-4.png)
 
-### 4. 右旋调衡
+### 4. Rebalancing with Right Rotations
 
-#### 4.1 一次右旋
+#### 4.1. Single Right Rotation
 
-![红黑树一次右旋调衡示意图](../images/shared/red-black-tree-5.png)
+![Rebalancing with a single right rotation](../images/shared/red-black-tree-5.png)
 
-#### 4.2 左旋 + 右旋
+#### 4.2. Left Rotation Followed by Right Rotation
 
-![红黑树左旋加右旋调衡示意图](../images/shared/red-black-tree-6.png)
+![Rebalancing with a left rotation followed by a right rotation](../images/shared/red-black-tree-6.png)
 
-## 面试复盘重点
+## Interview Review
 
-红黑树面试一般不会要求完整手写插入删除修复，更常见的是让你说清性质、为什么近似平衡、和 AVL 树有什么区别、Java 里哪里用到了。
+Interviews rarely require implementing all red-black tree insertion and deletion fixes. More often, candidates are asked to explain its properties, why it is approximately balanced, how it differs from an AVL tree, and where Java uses it.
 
-| 对比点   | AVL 树             | 红黑树                               |
-| -------- | ------------------ | ------------------------------------ |
-| 平衡要求 | 更严格             | 相对宽松                             |
-| 查询性能 | 更稳定             | 也能保持 `O(logn)`                   |
-| 插入删除 | 旋转调整可能更多   | 调整次数通常更少                     |
-| 常见应用 | 读多写少的搜索结构 | `TreeMap`、`TreeSet`、`HashMap` 树化 |
+| Comparison             | AVL tree                                      | Red-black tree                                   |
+| ---------------------- | --------------------------------------------- | ------------------------------------------------ |
+| Balance requirement    | Stricter                                      | Less strict                                      |
+| Lookup performance     | More consistent                               | Also maintains `O(log n)`                        |
+| Insertion and deletion | May require more rotations                    | Usually requires fewer adjustments               |
+| Common uses            | Search structures with more reads than writes | `TreeMap`, `TreeSet`, and tree bins in `HashMap` |
 
-面试回答可以按这个顺序组织：
+Structure an interview answer in this order:
 
-1. 普通二叉搜索树在有序插入时会退化成链表。
-2. 红黑树通过颜色规则限制树高，保证查询、插入、删除仍然是 `O(logn)`。
-3. 它不是完全平衡，而是近似平衡，所以插入删除时调整成本比 AVL 树更低。
-4. Java 中 `TreeMap`、`TreeSet` 基于红黑树，JDK 8 后 `HashMap` 链表过长时也会树化为红黑树。
+1. An ordinary binary search tree can become a linked list when values are inserted in sorted order.
+2. Red-black tree color rules constrain the height, keeping lookup, insertion, and deletion at `O(log n)`.
+3. It is approximately balanced rather than perfectly balanced, so insertions and deletions usually require fewer adjustments than in an AVL tree.
+4. Java's `TreeMap` and `TreeSet` use red-black trees. Since JDK 8, a long `HashMap` bucket list can also be converted into a red-black tree.
 
-`HashMap` 树化还要满足容量条件，并不是链表长度到阈值就一定树化。这个细节在 Java 集合面试里经常被追问。
+Treeifying a `HashMap` bucket also depends on the table capacity; reaching the list-length threshold alone does not guarantee conversion. This detail often comes up in Java collections interviews.
 
 <!-- @include: @article-footer.snippet.md -->

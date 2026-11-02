@@ -1,109 +1,107 @@
 ---
-title: ARP 协议详解（网络层）
-description: 讲解 ARP 的地址解析机制与报文流程，结合 ARP 表与广播/单播详解常见攻击与防御策略。
-category: 计算机基础
+title: "ARP Explained: Address Resolution on a Local Network"
+description: Learn how ARP maps IP addresses to MAC addresses, how requests and replies work, what ARP tables do, and how to prevent common ARP attacks.
+category: Computer Science Fundamentals
 tag:
-  - 计算机网络
+  - Computer Networking
 head:
   - - meta
     - name: keywords
-      content: ARP,地址解析,IP到MAC,广播问询,单播响应,ARP表,欺骗
+      content: ARP, address resolution, IP to MAC, broadcast request, unicast reply, ARP table, spoofing
 ---
 
-IP 地址负责网络层寻址，但数据帧在局域网里真正转发时，还需要知道下一跳设备的 MAC 地址。
+IP addresses are used for network-layer addressing. To forward a frame across a local network, however, a device also needs the MAC address of the next hop.
 
-ARP 要解决的就是这个转换问题：**已知目标 IP 地址，如何找到对应的 MAC 地址**。它看起来简单，却串起了网络层和链路层，也是理解局域网通信、网关转发和 ARP 欺骗的基础。
+ARP solves this mapping problem: **given a destination IP address, how do you find its MAC address?** This simple protocol connects the network and link layers and is essential to understanding local network communication, gateway forwarding, and ARP spoofing.
 
-这篇文章主要回答几个问题：
+This article answers four questions:
 
-1. ARP 在协议栈中处于什么位置？
-2. ARP 如何通过广播问询、单播响应完成地址解析？
-3. ARP 表有什么作用，缓存过期会带来什么影响？
-4. 常见 ARP 攻击是怎么发生的，又该如何防御？
+1. Where does ARP fit in the protocol stack?
+2. How does ARP resolve an address with a broadcast request and a unicast reply?
+3. What does an ARP table do, and what happens when an entry expires?
+4. How do common ARP attacks work, and how can you defend against them?
 
-## MAC 地址
+## MAC Addresses
 
-在介绍 ARP 协议之前，有必要介绍一下 MAC 地址。
+Before discussing ARP, let's look at MAC addresses.
 
-MAC 地址的全称是 **媒体访问控制地址（Media Access Control Address）**，用于标识链路层接口并在本地网络中传输数据帧。它属于网络接口，而不是整台设备的永久身份证；一台设备可以有多个网络接口，每个接口可以使用不同的 MAC 地址。
+A **Media Access Control (MAC) address** identifies a link-layer interface and is used to send frames on a local network. It belongs to a network interface, not permanently to an entire device. A device can have multiple interfaces, each with its own MAC address.
 
-![路由器的背面就会注明 MAC 位址](../images/shared/router-back-will-indicate-mac-address.jpg)
+![A MAC address printed on the back of a router](../images/shared/router-back-will-indicate-mac-address.jpg)
 
-MAC 地址也常被称为 LAN 地址、物理地址或以太网地址。与用于网络层路由的 IP 地址不同，MAC 地址主要在当前链路或广播域内使用。
+MAC addresses are also called LAN addresses, physical addresses, or Ethernet addresses. Unlike IP addresses, which are used for network-layer routing, MAC addresses are primarily used on the current link or within the current broadcast domain.
 
-> 还有一点要知道的是，不仅仅是网络资源才有 IP 地址，网络设备也有 IP 地址，比如路由器。但从结构上说，路由器等网络设备的作用是组成一个网络，而且通常是内网，所以它们使用的 IP 地址通常是内网 IP，内网的设备在与内网以外的设备进行通信时，需要用到 NAT 协议。
+> Network devices also have IP addresses. For example, a router has an IP address on each interface. A router connects networks, and its interfaces often use private IP addresses. Devices on a private network use NAT when communicating with devices outside that network.
 
-以太网常见的 MAC 地址是 6 字节（48 比特）的 EUI-48。IEEE 会分配 MA-L、MA-M、MA-S 等不同大小的地址块，由厂商继续分配全局管理地址；此外还存在本地管理地址，不需要由 IEEE 全局分配。操作系统可以修改或随机化 MAC 地址，因此地址并不保证永久不变，不同网络中也可能出现相同地址。
+A common Ethernet MAC address is the six-byte (48-bit) EUI-48 format. IEEE allocates address blocks of different sizes, including MA-L, MA-M, and MA-S, which manufacturers use to assign globally administered addresses. Locally administered addresses also exist and don't require a global IEEE allocation. Operating systems can change or randomize MAC addresses, so an address isn't guaranteed to remain permanent; the same address can also appear on different networks.
 
-最后，记住，MAC 地址有一个特殊地址：FF-FF-FF-FF-FF-FF（全 1 地址），该地址表示广播地址。
+One special MAC address is the broadcast address: `FF-FF-FF-FF-FF-FF`, consisting of all 1s.
 
-## ARP 协议工作原理
+## How ARP Works
 
-ARP 协议工作时有一个大前提，那就是 **ARP 表**。
+ARP relies on an **ARP table**. Each network interface maintains a table of some other devices' IP-to-MAC mappings on the local network. An entry is stored as an `<IP, MAC, TTL>` tuple. TTL is the entry's lifetime; a typical value is 20 minutes, after which the entry is discarded.
 
-在一个局域网内，每个网络设备都自己维护了一个 ARP 表，ARP 表记录了某些其他网络设备的 IP 地址-MAC 地址映射关系，该映射关系以 `<IP, MAC, TTL>` 三元组的形式存储。其中，TTL 为该映射关系的生存周期，典型值为 20 分钟，超过该时间，该条目将被丢弃。
+We'll look at two scenarios:
 
-ARP 的工作原理将分两种场景讨论：
+1. Resolving a MAC address for a device on the same local network.
+2. Sending a packet to a device on a different local network.
 
-1. **同一局域网内的 MAC 寻址**；
-2. **从一个局域网到另一个局域网中的网络设备的寻址**。
+### Resolving an Address on the Same Local Network
 
-### 同一局域网内的 MAC 寻址
+Suppose host A, with IP address `137.196.7.23`, wants to send an IP datagram to host B, with IP address `137.196.7.14`, on the same local network.
 
-假设当前有如下场景：IP 地址为 `137.196.7.23` 的主机 A，想要给同一局域网内的 IP 地址为 `137.196.7.14` 主机 B，发送 IP 数据报文。
+> When a host sends an IP datagram at the network layer, it knows the destination IP address but not necessarily the destination MAC address. ARP resolves that address.
 
-> 再次强调，当主机发送 IP 数据报文时（网络层），仅知道目的地的 IP 地址，并不清楚目的地的 MAC 地址，而 ARP 协议就是解决这一问题的。
+Host A uses ARP to find host B's MAC address, then encapsulates the IP packet in a link-layer frame and sends it to the next hop. The following events happen in order:
 
-为了达成这一目标，主机 A 将不得不通过 ARP 协议来获取主机 B 的 MAC 地址，并将 IP 报文封装成链路层帧，发送到下一跳上。在该局域网内，关于此将按照时间顺序，依次发生如下事件：
+1. Host A checks its ARP table. There is no mapping for host B's IP address, so A doesn't know B's MAC address.
 
-1. 主机 A 检索自己的 ARP 表，发现 ARP 表中并无主机 B 的 IP 地址对应的映射条目，也就无从知道主机 B 的 MAC 地址。
+2. Host A creates an ARP request and broadcasts it on the local network.
 
-2. 主机 A 将构造一个 ARP 查询分组，并将其广播到所在的局域网中。
+   ARP requests and replies have the same field layout, including the sender's and target's protocol and hardware addresses. When A sends a request, it knows the sender IP, sender MAC, and target IP, but not the target hardware address, which is usually set to all zeros. The **Ethernet frame** carrying the ARP request sets its destination MAC address to the broadcast address `FF-FF-FF-FF-FF-FF`, so every interface in the broadcast domain can receive it. Don't confuse the Ethernet frame's destination MAC address with the target hardware address inside the ARP message.
 
-   ARP 查询和响应报文具有相同的字段格式，包含发送方和目标方的协议地址、硬件地址。主机 A 发送请求时，ARP 报文中的发送方 IP、发送方 MAC 和目标 IP 都已知，但目标硬件地址还未知，通常填全零。承载这个 ARP 请求的**以太网帧**才会把目的 MAC 设置为广播地址 `FF-FF-FF-FF-FF-FF`，从而让当前广播域内的接口都能收到请求。不要把以太网帧的目的 MAC 与 ARP 报文内部的目标硬件地址混为一谈。
+3. Every device on the local network receives the broadcast and checks whether the target IP address is its own. Host B recognizes its IP address; other devices discard the request.
 
-3. 主机 A 构造的查询分组将在该局域网内广播，理论上，每一个设备都会收到该分组，并检查查询分组的接收 IP 地址是否为自己的 IP 地址，如果是，说明查询分组已经到达了主机 B，否则，该查询分组对当前设备无效，丢弃之。
+4. Host B creates an ARP reply addressed only to host A. B also uses the request's sender IP and MAC addresses to add A's mapping to its own ARP table.
 
-4. 主机 B 收到了查询分组之后，验证是对自己的问询，接着构造一个 ARP 响应分组，该分组的目的地只有一个——主机 A，发送给主机 A。同时，主机 B 提取查询分组中的 IP 地址和 MAC 地址信息，在自己的 ARP 表中构造一条主机 A 的 IP-MAC 映射记录。
+   The reply uses the same field layout as the request, but the sender and target addresses are reversed. The sender MAC is B's MAC address, and the target MAC is A's. Unlike the request, the reply is unicast.
 
-   ARP 响应分组具有和 ARP 查询分组相同的构造，不同的是，发送和接受的 IP 地址恰恰相反，发送的 MAC 地址为发送者本身，目标 MAC 地址为查询分组的发送者，也就是说，ARP 响应分组只有一个目的地，而非广播。
+5. Host A receives B's reply, extracts the IP and MAC addresses, and adds the mapping to its ARP table.
 
-5. 主机 A 终将收到主机 B 的响应分组，提取出该分组中的 IP 地址和 MAC 地址后，构造映射信息，加入到自己的 ARP 表中。
+![ARP resolves the MAC address of a host on the same local network](./images/arp/arp_same_lan.png)
 
-![同一局域网内通过 ARP 获取目标主机 MAC 地址](./images/arp/arp_same_lan.png)
+Keep a few details in mind:
 
-在整个过程中，有几点需要补充说明的是：
+1. If host A already has B's IP-to-MAC mapping in its ARP table, A doesn't need to broadcast a request. It can use the MAC address to build and send the link-layer frame.
+2. ARP table entries have a lifetime, typically around 20 minutes.
+3. After receiving a request, the target host can add the sender's IP-to-MAC mapping to its own table, which lets it address the reply correctly.
 
-1. 主机 A 想要给主机 B 发送 IP 数据报，如果主机 B 的 IP-MAC 映射信息已经存在于主机 A 的 ARP 表中，那么主机 A 无需广播，只需提取 MAC 地址并构造链路层帧发送即可。
-2. ARP 表中的映射信息是有生存周期的，典型值为 20 分钟。
-3. 目标主机接收到了问询主机构造的问询报文后，将先把问询主机的 IP-MAC 映射存进自己的 ARP 表中，这样才能获取到响应的目标 MAC 地址，顺利的发送响应分组。
+In short, ARP uses a **broadcast request and a unicast reply**.
 
-总结来说，ARP 协议是一个**广播问询，单播响应**协议。
+### Resolving an Address Across Local Networks
 
-### 不同局域网内的 MAC 寻址
+Now suppose hosts A and B are on different subnets connected by a router. A network device, more precisely, has an IP address and a MAC address on each interface. A router has multiple interfaces, each with its own IP address and MAC address. Each router interface maintains its own ARP table; the router doesn't have just one table for all its interfaces.
 
-更复杂的情况是，发送主机 A 和接收主机 B 不在同一个子网中，假设一个一般场景，两台主机所在的子网由一台路由器联通。这里需要注意的是，一般情况下，我们说网络设备都有一个 IP 地址和一个 MAC 地址，这里说的网络设备，更严谨的说法应该是一个接口。路由器作为互联设备，具有多个接口，每个接口同样也应该具备不重复的 IP 地址和 MAC 地址。因此，在讨论 ARP 表时，路由器的多个接口都各自维护一个 ARP 表，而非一个路由器只维护一个 ARP 表。
+An Ethernet broadcast frame reaches interfaces in the current broadcast domain, regardless of whether the target IP is on the sender's subnet. Only the node that recognizes the target IP responds. Before sending the IP datagram, the host checks its routing table. If the destination isn't on a directly connected network, the host resolves the MAC address of the next-hop router interface—not the remote host. The process is:
 
-以太网广播帧会被当前广播域内的接口接收，与 ARP 报文中的目标 IP 是否和发送方同一子网无关；但只有认为目标 IP 属于自己的节点才会正常响应。实际发送 IP 数据报前，主机会先查询路由表。如果目的地址不在直连前缀内，主机不会解析远端主机的 MAC，而是使用 ARP 解析下一跳路由器接口的 MAC。整个过程按照时间顺序发生的事件如下：
+1. Host A checks its ARP table for the MAC address of the router interface on A's local subnet.
 
-1. 主机 A 查询 ARP 表，期望寻找到目标路由器的本子网接口的 MAC 地址。
+   This is the router that can forward the packet toward the subnet containing host B.
 
-   目标路由器指的是，根据目的主机 B 的 IP 地址，分析出 B 所在的子网，能够把报文转发到 B 所在子网的那个路由器。
+2. If A doesn't have that mapping, it uses ARP to resolve the router interface's MAC address. Since that interface is on A's subnet, this works like address resolution between hosts on the same local network.
 
-2. 主机 A 未能找到目标路由器的本子网接口的 MAC 地址，将采用 ARP 协议，问询到该 MAC 地址，由于目标接口与主机 A 在同一个子网内，该过程与同一局域网内的 MAC 寻址相同。
+3. Host A creates an IP datagram with A's IP address as the source and B's IP address as the destination. It then creates a link-layer frame with A's MAC address as the source and the router interface's MAC address on A's subnet as the destination. A sends the frame to the router interface by unicast.
 
-3. 主机 A 获取到目标接口的 MAC 地址，先构造 IP 数据报，其中源 IP 是 A 的 IP 地址，目的 IP 地址是 B 的 IP 地址，再构造链路层帧，其中源 MAC 地址是 A 的 MAC 地址，目的 MAC 地址是**本子网内与路由器连接的接口的 MAC 地址**。主机 A 将把这个链路层帧，以单播的方式，发送给目标接口。
+4. The router interface receives the frame, examines the destination IP address, checks its forwarding table, and forwards the IP datagram through the interface connected to B's subnet.
 
-4. 目标接口接收到了主机 A 发过来的链路层帧，解析，根据目的 IP 地址，查询转发表，将该 IP 数据报转发到与主机 B 所在子网相连的接口上。
+   The packet has now moved from A's subnet to B's subnet.
 
-   到此，该帧已经从主机 A 所在的子网，转移到了主机 B 所在的子网了。
+5. The router interface checks its ARP table for host B's MAC address.
 
-5. 路由器接口查询 ARP 表，期望寻找到主机 B 的 MAC 地址。
+6. If it doesn't have the mapping, the router interface uses ARP to broadcast a request and receive a unicast reply from B.
 
-6. 路由器接口如未能找到主机 B 的 MAC 地址，将采用 ARP 协议，广播问询，单播响应，获取到主机 B 的 MAC 地址。
+7. The router interface encapsulates the IP datagram in a new link-layer frame addressed to B's MAC address and sends it by unicast toward its destination.
 
-7. 路由器接口将对 IP 数据报重新封装成链路层帧，目标 MAC 地址为主机 B 的 MAC 地址，单播发送，直到目的地。
-
-![跨局域网通信时路由器通过 ARP 获取下一跳 MAC 地址](./images/arp/arp_different_lan.png)
+![A router resolves the next-hop MAC address for communication across local networks](./images/arp/arp_different_lan.png)
 
 <!-- @include: @article-footer.snippet.md -->

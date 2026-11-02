@@ -1,144 +1,144 @@
 ---
-title: 经典算法思想总结（含 LeetCode 题目推荐）
-description: 总结二分、双指针、滑动窗口、DFS/BFS、回溯、动态规划、贪心、分治、拓扑排序、并查集、位运算等高频算法思想，并给出题型识别、模板、代表题和复盘重点。
-category: 计算机基础
+title: "Classic Algorithmic Techniques: LeetCode Problem Recommendations"
+description: A guide to common algorithm patterns, including binary search, two pointers, sliding windows, DFS/BFS, backtracking, dynamic programming, greedy algorithms, divide and conquer, topological sorting, union-find, and bit manipulation.
+category: Computer Science Fundamentals
 tag:
-  - 算法
+  - Algorithms
   - LeetCode
-  - 面试
+  - Interviews
 head:
   - - meta
     - name: keywords
-      content: 算法思想,二分查找,双指针,滑动窗口,DFS,BFS,回溯,动态规划,贪心,分治,拓扑排序,并查集,位运算,LeetCode题目推荐
+      content: algorithm patterns,binary search,two pointers,sliding window,DFS,BFS,backtracking,dynamic programming,greedy,divide and conquer,topological sort,union-find,bit manipulation,LeetCode recommendations
 ---
 
-算法思想不要孤立背。面试里更有用的问法是：什么信号提示我该用它？模板里最容易错的地方在哪里？如果面试官改条件，我应该从哪个变量或状态开始调整？
+Don't memorize algorithm patterns in isolation. In interviews, the more useful questions are: What clues suggest this pattern? Which parts of the template are easy to get wrong? If the interviewer changes a condition, which variable or state should you adjust first?
 
-这份题单按思想组织，每一类都给出“识别信号、常用模板、代表题、复盘重点”。题目数量控制在能代表模板的范围内，先把这些题讲明白，比机械刷更多题更划算。
+This problem list is organized by pattern. Each section covers recognition clues, common templates, representative problems, and review points. The list is intentionally focused: understanding these patterns is more useful than mechanically solving a larger number of problems.
 
-## 怎么用这份题单
+## How to Use This Problem List
 
-不要一上来就把所有题目按顺序刷完。更适合面试准备的方式是：先读对应的模板文章，确认自己能手写核心代码，再做“必刷题”，最后用“进阶题”检查边界和变体。
+Don't try to solve every problem in order. First read the relevant template guide and make sure you can write the core code yourself. Then solve the core problems and use the advanced problems to check your handling of edge cases and variations.
 
-| 目标           | 建议动作                                                                                                                                |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| 快速建立模板   | 先读 [二分查找](./binary-search.md)、[双指针与滑动窗口](./two-pointers-and-sliding-window.md)、[DFS/BFS](./dfs-bfs.md) 这些高频模板文章 |
-| 补齐搜索和 DP  | 继续读 [回溯算法](./backtracking.md)、[动态规划](./dynamic-programming.md)，每类至少手写 2 道基础题                                     |
-| 面试前查漏补缺 | 用 [贪心算法](./greedy.md)、[Top K 问题](./top-k.md)、[并查集](../data-structure/union-find.md) 补齐常见变体                            |
-| 复盘自己的答案 | 每题写下题型识别信号、核心变量含义、复杂度、边界样例。如果这些讲不清，说明这题还没真正掌握                                              |
+| Goal                     | Suggested action                                                                                                                                                  |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Build core templates     | Read the guides to [binary search](./binary-search.md), [two pointers and sliding windows](./two-pointers-and-sliding-window.md), and [DFS/BFS](./dfs-bfs.md).    |
+| Strengthen search and DP | Read [backtracking](./backtracking.md) and [dynamic programming](./dynamic-programming.md), then write solutions to at least two basic problems for each.         |
+| Review before interviews | Use [greedy algorithms](./greedy.md), [Top K problems](./top-k.md), and [union-find](../data-structure/union-find.md) to cover common variations.                 |
+| Review your solutions    | Write down the pattern clues, the meaning of each key variable, the complexity, and edge cases. If you can't explain these, you haven't mastered the problem yet. |
 
-## 二分查找
+## Binary Search
 
-| 项目     | 内容                                                                                                                                                                                                  |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 识别信号 | 有序数组、单调条件、找边界、找最小可行值或最大可行值                                                                                                                                                  |
-| 常用模板 | 基础二分、左边界、右边界、答案二分                                                                                                                                                                    |
-| 必刷题   | [704. 二分查找](https://leetcode.cn/problems/binary-search/)、[34. 在排序数组中查找元素的第一个和最后一个位置](https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/) |
-| 进阶题   | [35. 搜索插入位置](https://leetcode.cn/problems/search-insert-position/)、[875. 爱吃香蕉的珂珂](https://leetcode.cn/problems/koko-eating-bananas/)                                                    |
-| 复盘重点 | 循环条件、`mid` 计算、边界更新后是否会死循环                                                                                                                                                          |
+| Aspect            | Details                                                                                                                                                                                                                 |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Recognition clues | Sorted arrays, monotonic conditions, boundary searches, or finding the smallest or largest feasible value                                                                                                               |
+| Common templates  | Basic binary search, left boundary, right boundary, binary search on the answer                                                                                                                                         |
+| Core problems     | [704. Binary Search](https://leetcode.cn/problems/binary-search/), [34. Find First and Last Position of Element in Sorted Array](https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/) |
+| Advanced problems | [35. Search Insert Position](https://leetcode.cn/problems/search-insert-position/), [875. Koko Eating Bananas](https://leetcode.cn/problems/koko-eating-bananas/)                                                       |
+| Review points     | Loop condition, calculating `mid`, and whether boundary updates can cause an infinite loop                                                                                                                              |
 
-## 双指针
+## Two Pointers
 
-| 项目     | 内容                                                                                                                                                                            |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 识别信号 | 有序数组、原地修改、两端向中间收缩、链表快慢追赶                                                                                                                                |
-| 常用模板 | 左右指针、快慢指针、读写指针                                                                                                                                                    |
-| 必刷题   | [26. 删除有序数组中的重复项](https://leetcode.cn/problems/remove-duplicates-from-sorted-array/)、[977. 有序数组的平方](https://leetcode.cn/problems/squares-of-a-sorted-array/) |
-| 进阶题   | [15. 三数之和](https://leetcode.cn/problems/3sum/)、[142. 环形链表 II](https://leetcode.cn/problems/linked-list-cycle-ii/)                                                      |
-| 复盘重点 | 指针含义要固定，去重条件不要漏，链表题先画 3 个节点                                                                                                                             |
+| Aspect            | Details                                                                                                                                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Recognition clues | Sorted arrays, in-place changes, pointers moving inward, or fast and slow pointers on a linked list                                                                                                     |
+| Common templates  | Left and right pointers, fast and slow pointers, read and write pointers                                                                                                                                |
+| Core problems     | [26. Remove Duplicates from Sorted Array](https://leetcode.cn/problems/remove-duplicates-from-sorted-array/), [977. Squares of a Sorted Array](https://leetcode.cn/problems/squares-of-a-sorted-array/) |
+| Advanced problems | [15. 3Sum](https://leetcode.cn/problems/3sum/), [142. Linked List Cycle II](https://leetcode.cn/problems/linked-list-cycle-ii/)                                                                         |
+| Review points     | Keep each pointer's role clear, handle duplicate values, and sketch linked lists before changing pointers.                                                                                              |
 
-## 滑动窗口
+## Sliding Window
 
-| 项目     | 内容                                                                                                                                                                                      |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 识别信号 | 连续子数组、连续子串、最长/最短、窗口内满足某个条件                                                                                                                                       |
-| 常用模板 | 固定窗口、可变窗口、计数 Map                                                                                                                                                              |
-| 必刷题   | [3. 无重复字符的最长子串](https://leetcode.cn/problems/longest-substring-without-repeating-characters/)、[209. 长度最小的子数组](https://leetcode.cn/problems/minimum-size-subarray-sum/) |
-| 进阶题   | [76. 最小覆盖子串](https://leetcode.cn/problems/minimum-window-substring/)、[438. 找到字符串中所有字母异位词](https://leetcode.cn/problems/find-all-anagrams-in-a-string/)                |
-| 复盘重点 | 什么时候扩右边界，什么时候缩左边界，窗口内变量如何维护                                                                                                                                    |
+| Aspect            | Details                                                                                                                                                                                                                      |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Recognition clues | Contiguous subarrays or substrings, longest or shortest ranges, or a condition on the current window                                                                                                                         |
+| Common templates  | Fixed-size window, variable-size window, frequency map                                                                                                                                                                       |
+| Core problems     | [3. Longest Substring Without Repeating Characters](https://leetcode.cn/problems/longest-substring-without-repeating-characters/), [209. Minimum Size Subarray Sum](https://leetcode.cn/problems/minimum-size-subarray-sum/) |
+| Advanced problems | [76. Minimum Window Substring](https://leetcode.cn/problems/minimum-window-substring/), [438. Find All Anagrams in a String](https://leetcode.cn/problems/find-all-anagrams-in-a-string/)                                    |
+| Review points     | Know when to expand or shrink the window and how to maintain its state.                                                                                                                                                      |
 
-## DFS 与 BFS
+## DFS and BFS
 
-| 项目     | 内容                                                                                                                                                       |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 识别信号 | 树遍历、图遍历、矩阵连通块、最短步数、层序遍历                                                                                                             |
-| 常用模板 | 递归 DFS、栈模拟 DFS、队列 BFS、层序 BFS                                                                                                                   |
-| 必刷题   | [102. 二叉树的层序遍历](https://leetcode.cn/problems/binary-tree-level-order-traversal/)、[200. 岛屿数量](https://leetcode.cn/problems/number-of-islands/) |
-| 进阶题   | [994. 腐烂的橘子](https://leetcode.cn/problems/rotting-oranges/)、[127. 单词接龙](https://leetcode.cn/problems/word-ladder/)                               |
-| 复盘重点 | 访问标记、越界判断、BFS 层数统计                                                                                                                           |
+| Aspect            | Details                                                                                                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Recognition clues | Tree or graph traversal, connected regions in a matrix, shortest number of steps, or level-order traversal                                                                           |
+| Common templates  | Recursive DFS, iterative DFS with a stack, BFS with a queue, level-order BFS                                                                                                         |
+| Core problems     | [102. Binary Tree Level Order Traversal](https://leetcode.cn/problems/binary-tree-level-order-traversal/), [200. Number of Islands](https://leetcode.cn/problems/number-of-islands/) |
+| Advanced problems | [994. Rotting Oranges](https://leetcode.cn/problems/rotting-oranges/), [127. Word Ladder](https://leetcode.cn/problems/word-ladder/)                                                 |
+| Review points     | Visited markers, boundary checks, and BFS level counting                                                                                                                             |
 
-## 回溯算法
+## Backtracking
 
-| 项目     | 内容                                                                                                                |
-| -------- | ------------------------------------------------------------------------------------------------------------------- |
-| 识别信号 | 枚举所有方案、路径选择、组合、排列、子集、棋盘约束                                                                  |
-| 常用模板 | 路径 `path`、选择列表、递归层、撤销选择                                                                             |
-| 必刷题   | [77. 组合](https://leetcode.cn/problems/combinations/)、[78. 子集](https://leetcode.cn/problems/subsets/)           |
-| 进阶题   | [39. 组合总和](https://leetcode.cn/problems/combination-sum/)、[51. N 皇后](https://leetcode.cn/problems/n-queens/) |
-| 复盘重点 | 递归参数代表什么，剪枝条件放在循环前还是循环内                                                                      |
+| Aspect            | Details                                                                                                                      |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Recognition clues | Enumerating all solutions, choosing paths, combinations, permutations, subsets, or board constraints                         |
+| Common templates  | A `path`, a set of choices, recursive levels, and undoing each choice                                                        |
+| Core problems     | [77. Combinations](https://leetcode.cn/problems/combinations/), [78. Subsets](https://leetcode.cn/problems/subsets/)         |
+| Advanced problems | [39. Combination Sum](https://leetcode.cn/problems/combination-sum/), [51. N-Queens](https://leetcode.cn/problems/n-queens/) |
+| Review points     | Know what each recursive argument represents and whether pruning belongs before or inside the loop.                          |
 
-## 动态规划
+## Dynamic Programming
 
-| 项目     | 内容                                                                                                                                                               |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 识别信号 | 求最优值、方案数、能否到达、子序列、背包、区间合并                                                                                                                 |
-| 常用模板 | 一维 DP、二维 DP、滚动数组、背包 DP                                                                                                                                |
-| 必刷题   | [70. 爬楼梯](https://leetcode.cn/problems/climbing-stairs/)、[322. 零钱兑换](https://leetcode.cn/problems/coin-change/)                                            |
-| 进阶题   | [300. 最长递增子序列](https://leetcode.cn/problems/longest-increasing-subsequence/)、[416. 分割等和子集](https://leetcode.cn/problems/partition-equal-subset-sum/) |
-| 复盘重点 | `dp[i]` 的含义、初始化、遍历顺序、是否能压缩空间                                                                                                                   |
+| Aspect            | Details                                                                                                                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Recognition clues | Finding an optimum, counting solutions, reachability, subsequences, knapsack problems, or merging intervals                                                                                      |
+| Common templates  | One-dimensional DP, two-dimensional DP, rolling arrays, knapsack DP                                                                                                                              |
+| Core problems     | [70. Climbing Stairs](https://leetcode.cn/problems/climbing-stairs/), [322. Coin Change](https://leetcode.cn/problems/coin-change/)                                                              |
+| Advanced problems | [300. Longest Increasing Subsequence](https://leetcode.cn/problems/longest-increasing-subsequence/), [416. Partition Equal Subset Sum](https://leetcode.cn/problems/partition-equal-subset-sum/) |
+| Review points     | Define `dp[i]`, initialization, iteration order, and whether the space can be reduced.                                                                                                           |
 
-## 贪心算法
+## Greedy Algorithms
 
-| 项目     | 内容                                                                                                                                      |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| 识别信号 | 每一步选择当前最合适的对象，常伴随排序、区间、跳跃、买卖                                                                                  |
-| 常用模板 | 排序后选择、维护最远边界、区间合并/覆盖                                                                                                   |
-| 必刷题   | [455. 分发饼干](https://leetcode.cn/problems/assign-cookies/)、[55. 跳跃游戏](https://leetcode.cn/problems/jump-game/)                    |
-| 进阶题   | [45. 跳跃游戏 II](https://leetcode.cn/problems/jump-game-ii/)、[435. 无重叠区间](https://leetcode.cn/problems/non-overlapping-intervals/) |
-| 复盘重点 | 贪心策略为什么不会错，反例能否推翻当前策略                                                                                                |
+| Aspect            | Details                                                                                                                                                   |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Recognition clues | Choosing the locally best option at each step, often involving sorting, intervals, jumps, or buying and selling                                           |
+| Common templates  | Select after sorting, track the farthest boundary, merge or cover intervals                                                                               |
+| Core problems     | [455. Assign Cookies](https://leetcode.cn/problems/assign-cookies/), [55. Jump Game](https://leetcode.cn/problems/jump-game/)                             |
+| Advanced problems | [45. Jump Game II](https://leetcode.cn/problems/jump-game-ii/), [435. Non-overlapping Intervals](https://leetcode.cn/problems/non-overlapping-intervals/) |
+| Review points     | Explain why the greedy choice works and whether a counterexample disproves it.                                                                            |
 
-## 分治算法
+## Divide and Conquer
 
-| 项目     | 内容                                                                                                                                                                       |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 识别信号 | 问题可以拆成同类子问题，子问题结果能合并                                                                                                                                   |
-| 常用模板 | 递归拆分、子问题求解、合并结果                                                                                                                                             |
-| 必刷题   | [108. 将有序数组转换为二叉搜索树](https://leetcode.cn/problems/convert-sorted-array-to-binary-search-tree/)、[148. 排序链表](https://leetcode.cn/problems/sort-list/)      |
-| 进阶题   | [23. 合并 K 个升序链表](https://leetcode.cn/problems/merge-k-sorted-lists/)、[215. 数组中的第 K 个最大元素](https://leetcode.cn/problems/kth-largest-element-in-an-array/) |
-| 复盘重点 | 递归出口、左右区间是否重叠、合并复杂度                                                                                                                                     |
+| Aspect            | Details                                                                                                                                                                                |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Recognition clues | The problem can be split into smaller problems of the same kind, and their results can be combined                                                                                     |
+| Common templates  | Split recursively, solve subproblems, combine results                                                                                                                                  |
+| Core problems     | [108. Convert Sorted Array to Binary Search Tree](https://leetcode.cn/problems/convert-sorted-array-to-binary-search-tree/), [148. Sort List](https://leetcode.cn/problems/sort-list/) |
+| Advanced problems | [23. Merge k Sorted Lists](https://leetcode.cn/problems/merge-k-sorted-lists/), [215. Kth Largest Element in an Array](https://leetcode.cn/problems/kth-largest-element-in-an-array/)  |
+| Review points     | Base cases, whether the left and right ranges overlap, and merge complexity                                                                                                            |
 
-## 拓扑排序
+## Topological Sort
 
-| 项目     | 内容                                                                                                                                |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| 识别信号 | 课程依赖、任务依赖、有向无环图、判断是否能完成                                                                                      |
-| 常用模板 | 入度数组 + 队列，或 DFS 三色标记                                                                                                    |
-| 必刷题   | [207. 课程表](https://leetcode.cn/problems/course-schedule/)                                                                        |
-| 进阶题   | [210. 课程表 II](https://leetcode.cn/problems/course-schedule-ii/)、[269. 火星词典](https://leetcode.cn/problems/alien-dictionary/) |
-| 复盘重点 | 入度什么时候减，结果数量是否等于节点数量                                                                                            |
+| Aspect            | Details                                                                                                                                              |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Recognition clues | Course or task dependencies, directed acyclic graphs, or checking whether all tasks can be completed                                                 |
+| Common templates  | Indegree array and queue, or three-color DFS                                                                                                         |
+| Core problems     | [207. Course Schedule](https://leetcode.cn/problems/course-schedule/)                                                                                |
+| Advanced problems | [210. Course Schedule II](https://leetcode.cn/problems/course-schedule-ii/), [269. Alien Dictionary](https://leetcode.cn/problems/alien-dictionary/) |
+| Review points     | When to decrease the indegree and whether the result includes every node                                                                             |
 
-## 并查集
+## Union-Find
 
-| 项目     | 内容                                                                                                                                                               |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 识别信号 | 连通性、分组、朋友圈、冗余边、等式关系                                                                                                                             |
-| 常用模板 | `find`、`union`、路径压缩、按大小合并                                                                                                                              |
-| 必刷题   | [547. 省份数量](https://leetcode.cn/problems/number-of-provinces/)                                                                                                 |
-| 进阶题   | [684. 冗余连接](https://leetcode.cn/problems/redundant-connection/)、[990. 等式方程的可满足性](https://leetcode.cn/problems/satisfiability-of-equality-equations/) |
-| 复盘重点 | `find` 是否路径压缩，什么时候判断冲突                                                                                                                              |
+| Aspect            | Details                                                                                                                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Recognition clues | Connectivity, grouping, friend circles, redundant edges, or equality relationships                                                                                                               |
+| Common templates  | `find`, `union`, path compression, union by size                                                                                                                                                 |
+| Core problems     | [547. Number of Provinces](https://leetcode.cn/problems/number-of-provinces/)                                                                                                                    |
+| Advanced problems | [684. Redundant Connection](https://leetcode.cn/problems/redundant-connection/), [990. Satisfiability of Equality Equations](https://leetcode.cn/problems/satisfiability-of-equality-equations/) |
+| Review points     | Whether `find` compresses paths and when to detect a conflict                                                                                                                                    |
 
-## 位运算
+## Bit Manipulation
 
-| 项目     | 内容                                                                                                                            |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| 识别信号 | 奇偶、是否为 2 的幂、只出现一次、状态压缩                                                                                       |
-| 常用模板 | 异或、与运算清最低位 1、位掩码枚举                                                                                              |
-| 必刷题   | [136. 只出现一次的数字](https://leetcode.cn/problems/single-number/)、[231. 2 的幂](https://leetcode.cn/problems/power-of-two/) |
-| 进阶题   | [191. 位 1 的个数](https://leetcode.cn/problems/number-of-1-bits/)、[78. 子集](https://leetcode.cn/problems/subsets/)           |
-| 复盘重点 | 异或性质、`n & (n - 1)` 的含义、负数位表示                                                                                      |
+| Aspect            | Details                                                                                                                            |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Recognition clues | Odd or even checks, powers of two, single occurrences, or state compression                                                        |
+| Common templates  | XOR, clearing the lowest set bit, bitmask enumeration                                                                              |
+| Core problems     | [136. Single Number](https://leetcode.cn/problems/single-number/), [231. Power of Two](https://leetcode.cn/problems/power-of-two/) |
+| Advanced problems | [191. Number of 1 Bits](https://leetcode.cn/problems/number-of-1-bits/), [78. Subsets](https://leetcode.cn/problems/subsets/)      |
+| Review points     | XOR properties, what `n & (n - 1)` does, and how negative numbers are represented                                                  |
 
-## 复习路线入口
+## Review Roadmap
 
-这篇文章只保留经典题型和题单推荐，7 天速刷和 30 天系统路线统一维护在[算法面试复习总览](./README.md)。后续如果调整复习节奏，只需要更新总览页，避免多个题单里的路线表互相漂移。
+This page lists classic patterns and recommended problems. The [algorithm interview review guide](./README.md) contains the 7-day and 30-day study plans. Keeping those plans in one place avoids inconsistencies between problem lists.
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,326 +1,316 @@
 ---
-title: 常见应用层协议总结：HTTP、WebSocket、SMTP、FTP、SSH、DNS 等
-description: 汇总应用层常见协议的核心概念与典型场景，重点对比 HTTP 与 WebSocket 的通信模型与能力边界。
-category: 计算机基础
+title: "Common Application-Layer Protocols: HTTP, WebSocket, SMTP, FTP, SSH, DNS, and More"
+description: A practical overview of common application-layer protocols, their transport protocols, ports, use cases, and differences, including HTTP and WebSocket.
+category: Computer Science Fundamentals
 tag:
-  - 计算机网络
+  - Computer Networking
 head:
   - - meta
     - name: keywords
-      content: 应用层协议,HTTP,WebSocket,DNS,SMTP,FTP,特性,场景
+      content: application-layer protocols, HTTP, WebSocket, DNS, SMTP, FTP, features, use cases
 ---
 
-<!-- @include: @article-header.snippet.md -->
+Application-layer protocols include HTTP, WebSocket, SMTP, POP3/IMAP, FTP, Telnet, SSH, RTP, and DNS.
 
-应用层协议很多，HTTP、WebSocket、SMTP、POP3/IMAP、FTP、Telnet、SSH、RTP、DNS 这些名字也经常一起出现。
+You don't need to learn the implementation details of every protocol. But memorizing names without understanding their purpose, transport protocol, and typical use cases makes them easy to confuse.
 
-这些协议不需要每一个都学到实现细节，但如果只记协议名，很容易在“用途、底层传输协议、典型场景”这几个点上混在一起。
+This article answers three questions:
 
-这篇文章主要回答几个问题：
+1. What problems do protocols such as HTTP, WebSocket, SMTP, FTP, SSH, and DNS solve?
+2. Do they usually use TCP or UDP, and what are their common ports and use cases?
+3. Which protocols are easy to confuse, and how should you tell them apart?
 
-1. HTTP、WebSocket、SMTP、FTP、SSH、DNS 等协议分别解决什么问题？
-2. 这些协议通常基于 TCP 还是 UDP，常见端口和使用场景是什么？
-3. 哪些协议最容易混淆，面试和实践中应该怎么区分？
+## HTTP: Hypertext Transfer Protocol
 
-## HTTP：超文本传输协议
+**HTTP (Hypertext Transfer Protocol)** is an application-layer protocol for transferring hypertext and multimedia content. Its most common use is communication between web browsers and web servers.
 
-**超文本传输协议（HTTP，HyperText Transfer Protocol）** 是一种用于传输超文本和多媒体内容的应用层协议，最常见的使用场景就是 Web 浏览器与 Web 服务器之间的通信。
+![Overview of HTTP, the Hypertext Transfer Protocol](../images/shared/http-overview.png)
 
-![HTTP：超文本传输协议概览](../images/shared/http-overview.png)
+When you visit a web page, the browser sends an HTTP request and the server returns an HTTP response. HTML, CSS, JavaScript, images, video, and other page resources are commonly loaded over HTTP.
 
-当我们在浏览器里访问一个网页时，浏览器会向服务器发送 HTTP 请求，服务器处理后返回 HTTP 响应。页面中的 HTML、CSS、JavaScript、图片、视频等资源，很多都是通过 HTTP 加载的。
+HTTP follows a client-server model: the client sends an HTTP Request and the server returns an HTTP Response.
 
-HTTP 使用客户端-服务器模型，客户端发送 HTTP Request（请求），服务器返回 HTTP Response（响应），整个过程如下图所示。
+![The HTTP protocol](../images/shared/450px-http-header.png)
 
-![HTTP 协议](../images/shared/450px-http-header.png)
+HTTP is an application-layer protocol and doesn't provide reliable transport itself. Different HTTP versions use different transport protocols:
 
-需要注意的是，HTTP 是应用层协议，它本身不直接负责可靠传输。不同版本的 HTTP 底层依赖也不完全一样：
+- **HTTP/1.1:** Uses TCP.
+- **HTTP/2:** Usually uses TCP and adds features such as multiplexing and header compression.
+- **HTTP/3:** Uses QUIC, which runs over UDP. This reduces connection setup overhead and avoids some of the head-of-line blocking associated with TCP.
 
-- **HTTP/1.1**：基于 TCP。
-- **HTTP/2**：通常也基于 TCP，但引入了多路复用、头部压缩等能力。
-- **HTTP/3**：基于 QUIC，而 QUIC 基于 UDP，主要用于降低连接建立开销，并缓解 TCP 队头阻塞带来的影响。
+HTTP/1.1 uses persistent connections by default. Multiple HTTP requests can reuse the same TCP connection, avoiding the overhead of a new TCP handshake for every request.
 
-在 HTTP/1.1 中，默认开启 Keep-Alive，也就是长连接。这样同一个 TCP 连接可以被多个 HTTP 请求复用，避免每次请求都重新建立 TCP 连接，从而减少三次握手带来的开销。
+Keep-Alive solves connection reuse, but requests on one HTTP/1.1 connection can still block one another. HTTP/2 adds multiplexing on a single TCP connection, allowing multiple requests and responses to be transferred concurrently. Since HTTP/2 still uses TCP, packet loss can affect all streams on that connection.
 
-从连接复用角度看，HTTP/1.1 的 Keep-Alive 解决的是“同一个 TCP 连接复用多个请求”的问题，但同一连接上的请求处理仍然可能受到队头阻塞影响。
+HTTP/3 is based on QUIC, which implements multiplexing and reliable delivery over UDP. Its streams are independent, which helps avoid TCP-level head-of-line blocking between streams.
 
-HTTP/2 在一个 TCP 连接上引入多路复用，可以并行传输多个请求和响应，减少了 HTTP 层面的队头阻塞。但由于底层仍然是 TCP，一旦某个 TCP 包丢失，整个连接上的数据仍然会受影响。
+HTTP is also **stateless**: a server doesn't inherently remember who made the previous request or what state that client was in. Web applications commonly use cookies, sessions, or tokens (including JWTs) to maintain login and session state.
 
-HTTP/3 基于 QUIC，QUIC 在 UDP 之上实现多路复用和可靠传输。不同流之间相互独立，可以缓解 TCP 层队头阻塞问题。
+## WebSocket: Full-Duplex Communication
 
-另外，HTTP 是一种**无状态协议**。服务端不会天然记住“上一次请求是谁发的、处于什么状态”。因此，在实际 Web 开发中，通常需要借助 Cookie、Session、Token（包括 JWT）等机制来维护用户登录态和会话状态。
+**WebSocket** is a full-duplex protocol over a TCP connection. The client and server can both send and receive data over the same connection.
 
-## WebSocket：全双工通信协议
+![Overview of WebSocket, a full-duplex communication protocol](../images/shared/websocket-overview.png)
 
-**WebSocket** 是一种基于 TCP 连接的全双工通信协议，客户端和服务器可以在同一条连接上同时发送和接收数据。
+Its key feature is that **the server can push messages to the client after the connection is established**, which suits real-time communication better than the traditional HTTP request-response model.
 
-![WebSocket：全双工通信协议概览](../images/shared/websocket-overview.png)
+WebSocket was introduced in 2008 and became an international standard in 2011. Modern browsers support it, as do many programming languages, frameworks, and servers.
 
-它的典型特点是：**连接建立后，服务端也可以主动向客户端推送消息**。这正好弥补了传统 HTTP 请求-响应模型在实时通信场景下的不足。
+WebSocket is an application-layer protocol. It usually starts with an HTTP request to upgrade the connection. Once the upgrade succeeds, the client and server keep a persistent connection for bidirectional communication.
 
-WebSocket 协议在 2008 年诞生，2011 年成为国际标准，现代主流浏览器基本都已经支持。WebSocket 不只用于浏览器场景，很多编程语言、框架和服务器也都提供了对应支持。
+![A WebSocket connection](../images/shared/1460000042192394.png)
 
-WebSocket 本质上仍然是应用层协议。它通常先通过一次 HTTP 请求发起协议升级，升级成功后，客户端和服务端之间会建立一条持久连接，后续就可以进行双向数据传输。
+Common use cases include:
 
-![WebSocket 示意图](../images/shared/1460000042192394.png)
+- Video comments and live overlays
+- Real-time message delivery; see [Web Real-Time Message Delivery](https://javaguide.cn/system-design/web-real-time-message-push.html)
+- Multiplayer games
+- Collaborative editing
+- Customer support and social chat
+- Live updates such as stock prices and sports scores
 
-WebSocket 的常见应用场景包括：
+A WebSocket connection is established as follows:
 
-- 视频弹幕
-- 实时消息推送，详见[Web 实时消息推送详解](https://javaguide.cn/system-design/web-real-time-message-push.html)
-- 实时游戏对战
-- 多用户协同编辑
-- 在线客服 / 社交聊天
-- 股票行情、体育比分等实时数据更新
+1. The client sends an HTTP request with headers such as `Upgrade: websocket`, `Connection: Upgrade`, and `Sec-WebSocket-Key` to request an upgrade.
+2. If the server supports WebSocket, it returns `101 Switching Protocols` with headers including `Upgrade: websocket`, `Connection: Upgrade`, and `Sec-WebSocket-Accept`.
+3. After the upgrade, the client and server have a WebSocket connection and can communicate in both directions.
+4. Data is transmitted in frames. A message may be split across multiple frames and reassembled by the receiver.
+5. Either side can send a close frame. The other side responds with a close frame, and both close the TCP connection.
 
-WebSocket 的工作过程可以简单分为下面几步：
+WebSocket connections often use **heartbeats**. For example, peers can periodically send Ping/Pong frames or application-level heartbeat messages to check that a connection is still usable and detect stale connections.
 
-1. 客户端向服务器发送一个 HTTP 请求，请求头中包含 `Upgrade: websocket`、`Connection: Upgrade`、`Sec-WebSocket-Key` 等字段，表示希望把当前连接升级为 WebSocket。
-2. 服务器收到请求后，如果支持 WebSocket，会返回 HTTP `101 Switching Protocols` 状态码，响应头中包含 `Upgrade: websocket`、`Connection: Upgrade`、`Sec-WebSocket-Accept` 等字段，表示协议升级成功。
-3. 协议升级后，客户端和服务器之间就建立了一条 WebSocket 连接，双方可以进行双向通信。
-4. WebSocket 数据以帧（Frame）的形式传输。一条完整消息可能会被拆分成多个帧发送，接收端再重新组装成完整消息。
-5. 客户端或服务器都可以主动发送关闭帧，另一方收到后也会回复关闭帧，然后双方关闭 TCP 连接。
+## SMTP: Simple Mail Transfer Protocol
 
-另外，WebSocket 连接通常会配合**心跳机制**使用。比如定期发送 Ping/Pong 帧，或者在业务层发送心跳包，用来检测连接是否仍然可用，避免连接假死。
+**SMTP (Simple Mail Transfer Protocol)** is an application-layer protocol over TCP used mainly to **send and relay email**.
 
-## SMTP：简单邮件传输协议
+![Overview of SMTP, the Simple Mail Transfer Protocol](../images/shared/smtp-overview.png)
 
-**简单邮件传输协议（SMTP，Simple Mail Transfer Protocol）** 是一种基于 TCP 的应用层协议，主要用于**发送和转发电子邮件**。
+One distinction is easy to miss:
 
-![SMTP：简单邮件传输协议概览](../images/shared/smtp-overview.png)
+**SMTP sends and relays email between mail servers; POP3 and IMAP let users retrieve email from a mail server.**
 
-这里要注意一个容易混淆的点：
+Email is usually relayed from the sender's mail server to the recipient's mail server using SMTP. Users typically use POP3 or IMAP to read messages from their mailboxes.
 
-**SMTP 负责邮件发送和邮件服务器之间的转发；POP3/IMAP 负责用户从邮箱服务器收取邮件。**
+![The SMTP protocol](../images/shared/what-is-smtp.png)
 
-也就是说，邮件从你的邮箱服务器发送到对方邮箱服务器，这个过程通常还是 SMTP；而用户使用客户端查看邮箱里的邮件，通常使用 POP3 或 IMAP。
+Common SMTP ports include 25, 465, and 587, but their uses differ:
 
-![SMTP 协议](../images/shared/what-is-smtp.png)
+| Port | Common use                           | Notes                                                                                                          |
+| ---- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| 25   | Mail relay between servers           | Mainly MTA-to-MTA delivery. Many cloud providers and ISPs restrict outbound traffic on port 25 to reduce spam. |
+| 587  | Client message submission            | The standard submission port, commonly used with STARTTLS and authentication.                                  |
+| 465  | Message submission over implicit TLS | TLS is established immediately when the client connects; many email providers still support it.                |
 
-常见 SMTP 相关端口有 25、465、587，三者用途不完全一样：
+### How Email Is Sent
 
-| 端口 | 常见用途               | 说明                                                                          |
-| ---- | ---------------------- | ----------------------------------------------------------------------------- |
-| 25   | 邮件服务器之间转发邮件 | 主要用于 MTA 到 MTA 的投递，很多云厂商或 ISP 会限制 25 端口出站，防止垃圾邮件 |
-| 587  | 客户端提交邮件         | 标准的 Message Submission 端口，通常配合 STARTTLS 和身份认证使用              |
-| 465  | 隐式 TLS 的邮件提交    | 客户端连接时直接建立 TLS 加密通道，很多邮件服务商仍然支持                     |
+Suppose I use `<dabai@cszhinan.com>` and want to email `<xiaoma@qq.com>`:
 
-### 电子邮件的发送过程
+1. I write the message in a mail client or webmail.
+2. The client submits it over SMTP to the mail server for `cszhinan.com`.
+3. The sender's mail server looks up the mail server for the recipient domain, `qq.com`.
+4. The sender's server relays the message to the QQ mail server using SMTP.
+5. The QQ mail server receives and stores the message.
+6. `<xiaoma@qq.com>` reads the message from the QQ mail server using POP3 or IMAP.
 
-比如我的邮箱是 `<dabai@cszhinan.com>`，我要向 `<xiaoma@qq.com>` 发送邮件，整个过程可以简单理解为：
+### Can You Check Whether an Email Address Exists?
 
-1. 我通过邮箱客户端或网页邮箱写好邮件。
-2. 邮件客户端通过 SMTP 协议，把邮件提交给 `cszhinan.com` 对应的邮件服务器。
-3. 发送方邮件服务器根据收件人域名 `qq.com` 查询对应的邮件服务器地址。
-4. 发送方邮件服务器再通过 SMTP，把邮件投递到 QQ 邮箱服务器。
-5. QQ 邮箱服务器接收邮件并保存。
-6. 用户 `<xiaoma@qq.com>` 通过 POP3 或 IMAP 协议从 QQ 邮箱服务器读取邮件。
+Some systems try to determine whether an email address exists by probing its mail server over SMTP:
 
-### 如何判断邮箱是否真正存在？
+1. Look up the domain's MX record to find its mail server.
+2. Connect to the mail server.
+3. Simulate the SMTP delivery commands.
+4. Use the server's response as an indication of whether the address might exist.
 
-一些场景下，我们可能需要判断某个邮箱地址是否真实存在。常见思路是基于 SMTP 做探测：
+This isn't always reliable. To prevent spam, credential stuffing, and privacy leaks, many providers block such probes or return ambiguous results. SMTP probing can't prove with certainty that an address exists or doesn't exist.
 
-1. 查询邮箱域名对应的 MX 记录，找到邮件服务器。
-2. 尝试连接目标邮件服务器。
-3. 使用 SMTP 命令模拟投递流程。
-4. 根据服务器返回结果判断邮箱地址是否可能存在。
-
-不过，这种方式并不总是可靠。
-
-很多邮件服务商为了防止垃圾邮件、撞库和隐私泄露，会屏蔽邮箱存在性探测，或者统一返回模糊结果。因此，SMTP 探测只能作为参考，不能 100% 判断邮箱一定存在或不存在。
-
-推荐几个在线邮箱有效性检测工具：
+Online email verification tools include:
 
 1. <https://verify-email.org/>
 2. <http://tool.chacuo.net/mailverify>
 3. <https://www.emailcamel.com/>
 
-## POP3/IMAP：邮件接收协议
+## POP3 and IMAP: Email Retrieval
 
-**POP3 和 IMAP 都是用于接收邮件的协议**，二者也都是基于 TCP 的应用层协议。
+**POP3 and IMAP are TCP-based application-layer protocols for receiving email.**
 
-![POP3/IMAP：邮件接收协议概览](../images/shared/pop3-imap-overview.png)
+![Overview of POP3 and IMAP, email retrieval protocols](../images/shared/pop3-imap-overview.png)
 
-需要注意的是：**SMTP 主要负责邮件发送和转发，POP3/IMAP 主要负责用户从邮箱服务器读取邮件。**
+Remember: **SMTP sends and relays email; POP3 and IMAP let users retrieve email from a mail server.**
 
-POP3 的设计比较简单，常见模式是把邮件从服务器下载到本地。它适合单设备收信，但多设备同步体验较差。
+POP3 is simple and commonly downloads messages to a local device. It can work well for a single device, but provides weaker synchronization across devices.
 
-IMAP 是更现代、更常用的邮件接收协议。它支持在服务器端管理邮件，能够同步邮件状态，比如已读、未读、删除、归档、文件夹分类等。因此，如果你同时在手机、电脑、网页端查看同一个邮箱，IMAP 的体验通常会更好。
+IMAP is more commonly used today. It lets users manage messages on the server and synchronize state such as read/unread, deleted, archived, and folder placement. IMAP is usually a better fit when accessing the same mailbox from a phone, computer, and browser.
 
-简单对比一下：
+| Protocol | Main purpose              | Characteristics                                                            |
+| -------- | ------------------------- | -------------------------------------------------------------------------- |
+| POP3     | Retrieve email            | Primarily downloads messages locally; limited multi-device synchronization |
+| IMAP     | Retrieve and manage email | Supports multi-device synchronization, search, flags, and archiving        |
+| SMTP     | Send and relay email      | Handles email delivery                                                     |
 
-| 协议 | 主要用途       | 特点                             |
-| ---- | -------------- | -------------------------------- |
-| POP3 | 接收邮件       | 偏下载到本地，多设备同步能力弱   |
-| IMAP | 接收和管理邮件 | 支持多设备同步、搜索、标记、归档 |
-| SMTP | 发送和转发邮件 | 负责邮件投递链路                 |
+## FTP: File Transfer Protocol
 
-## FTP：文件传输协议
+**FTP (File Transfer Protocol)** is a TCP-based application-layer protocol for transferring files between a client and a server.
 
-**FTP（File Transfer Protocol，文件传输协议）** 是一种基于 TCP 的应用层协议，用于在客户端和服务器之间传输文件。
+![Overview of FTP, the File Transfer Protocol](../images/shared/ftp-overview.png)
 
-![FTP：文件传输协议概览](../images/shared/ftp-overview.png)
+FTP follows a client-server model and commonly uses two separate TCP connections:
 
-FTP 采用客户端-服务器模型。它比较特殊的一点是：FTP 通常会建立两条 TCP 连接。
+> 1. **Control connection:** Carries commands and responses, such as login, directory changes, and file deletion.
+> 2. **Data connection:** Transfers file content or directory listings.
 
-> FTP 与很多应用层协议不同，它在客户端和服务器之间使用两条连接：
->
-> 1. **控制连接**：用于传输命令和响应，例如登录、切换目录、删除文件等。
-> 2. **数据连接**：用于真正传输文件内容或目录列表。
+Separating commands from file data keeps the two kinds of traffic independent.
 
-这种将命令和数据分开传输的设计，能够让控制命令和文件数据互不干扰。
+![How FTP works](../images/shared/ftp.png)
 
-![FTP 工作过程](../images/shared/ftp.png)
+FTP has two data-connection modes: active (PORT) and passive (PASV).
 
-FTP 有主动模式（PORT）和被动模式（PASV）两种数据连接方式：
+- **Active mode:** The client tells the server which port it is listening on over the control connection. The server then initiates a connection to that client port. This often fails when the client is behind NAT or a firewall because the server initiates the connection.
+- **Passive mode:** The client asks the server to open a data port, then initiates a connection to that port. Since the connection goes from client to server, this mode works more easily through NAT and firewalls and is more common in production.
 
-- **主动模式**：客户端通过控制连接告诉服务端自己监听的端口，服务端再主动连接客户端的这个端口建立数据连接。由于服务端要主动连接客户端，如果客户端在 NAT 或防火墙后面，很容易连接失败。
-- **被动模式**：客户端请求服务端开放一个数据端口，然后由客户端主动连接服务端的数据端口。因为连接方向仍然是客户端到服务端，更容易穿过 NAT 和防火墙，所以实际生产环境中更常用被动模式。
+FTP is insecure by default. It doesn't encrypt data, so usernames, passwords, and file contents may be intercepted or modified.
 
-注意：FTP 本身是不安全的。它默认不会加密传输内容，用户名、密码和文件数据都可能被窃听或篡改。
+For sensitive files, use a secure alternative:
 
-因此，传输敏感文件时不建议使用普通 FTP，可以选择：
+- **SFTP:** A file-transfer protocol that runs over SSH.
+- **FTPS:** FTP protected with TLS/SSL.
 
-- **SFTP**：基于 SSH 的安全文件传输协议。
-- **FTPS**：在 FTP 基础上增加 TLS/SSL 加密。
+Despite their similar names, SFTP and FTPS are different protocols. SFTP uses SSH; FTPS is FTP over TLS.
 
-其中，SFTP 和 FTPS 名字相似，但不是同一个协议。SFTP 基于 SSH，FTPS 是 FTP over TLS。
+## Telnet: Remote Login
 
-## Telnet：远程登录协议
+**Telnet** is a TCP-based remote-login protocol that uses port 23 by default. It lets users log in to a remote server through a terminal and run commands there.
 
-**Telnet** 是一种基于 TCP 的远程登录协议，默认端口是 23。它允许用户通过终端远程登录到服务器，并在远程机器上执行命令。
+Telnet's main problem is that it **transmits data in plaintext**.
 
-Telnet 最大的问题是：**明文传输**。
+![Overview of Telnet, the remote login protocol](../images/shared/telnet-overview.png)
 
-![Telnet：远程登录协议概览](../images/shared/telnet-overview.png)
+Usernames, passwords, commands, and responses aren't encrypted. Anyone able to monitor the traffic may see sensitive information.
 
-用户名、密码、命令内容和返回结果都不会加密，攻击者如果能监听网络流量，就可能直接看到敏感信息。
+![Telnet traffic can be intercepted](../images/shared/telnet_is_vulnerable_to_eavesdropping-2.png)
 
-![Telnet：远程登录协议](../images/shared/telnet_is_vulnerable_to_eavesdropping-2.png)
+Telnet is rarely used for remote administration today. SSH is the usual replacement.
 
-因此，Telnet 现在已经很少用于真正的远程管理。实际生产环境中，通常使用 SSH 替代 Telnet。
+## SSH: Secure Shell
 
-## SSH：安全的网络传输协议
+**SSH (Secure Shell)** is a secure network protocol over TCP that uses port 22 by default. Encryption and authentication protect remote login, command execution, and file transfer.
 
-**SSH（Secure Shell）** 是一种基于 TCP 的安全网络协议，默认端口是 22。它通过加密和认证机制，为远程登录、命令执行和文件传输提供安全保障。
+![Overview of SSH, Secure Shell](../images/shared/ssh-overview.png)
 
-![SSH：安全的网络传输协议概览](../images/shared/ssh-overview.png)
-
-SSH 最经典的用途是登录远程服务器：
+The most familiar SSH use is logging in to a remote server:
 
 ```bash
 ssh user@server_ip
 ```
 
-除了远程登录，SSH 还支持：
+SSH also supports:
 
-- 远程执行命令
-- 端口转发
-- 隧道代理
-- X11 转发
-- 基于 SFTP 或 SCP 的安全文件传输
+- Remote command execution
+- Port forwarding
+- Tunneling
+- X11 forwarding
+- Secure file transfer through SFTP or SCP
 
-SSH 使用客户端-服务器模型。SSH Server 监听客户端连接请求，SSH Client 发起连接。双方会先协商加密算法，并通过密钥交换生成后续通信使用的对称加密密钥。之后的通信内容都会被加密传输。
+SSH follows a client-server model. The SSH server listens for requests and the SSH client initiates the connection. They negotiate cryptographic algorithms and use key exchange to derive symmetric keys for subsequent communication.
 
-![SSH：安全的网络传输协议](../images/shared/ssh-client-server.png)
+![SSH client-server communication](../images/shared/ssh-client-server.png)
 
-需要注意的是，SSH 的安全性不仅来自加密传输，也来自身份认证机制。常见认证方式包括：
+SSH security comes from authentication as well as encryption. Common authentication methods include:
 
-- 密码认证
-- 公钥认证
-- 多因素认证
+- Password authentication
+- Public-key authentication
+- Multi-factor authentication
 
-实际生产环境中，更推荐使用公钥认证，并关闭弱密码登录。
+Public-key authentication is generally preferable in production; avoid weak password logins.
 
-## RTP：实时传输协议
+## RTP: Real-Time Transport Protocol
 
-**RTP（Real-time Transport Protocol，实时传输协议）** 是一种用于传输音频、视频等实时数据的协议。它通常运行在 UDP 之上。在 TCP/IP 分层模型中，UDP 之上就是应用层，所以 RTP 按分层规则被归入应用层。但它承担的职责（序列号、时间戳、同步、质量反馈）更接近传输层功能，RFC 3550 也说它“通常会集成到应用处理中，而不是作为独立层实现”。
+**RTP (Real-time Transport Protocol)** carries real-time data such as audio and video and usually runs over UDP. In the TCP/IP model, UDP is below the application layer, so RTP is classified as an application-layer protocol. Its functions—sequence numbers, timestamps, synchronization, and quality feedback—are closer to transport-layer functions. RFC 3550 notes that RTP is usually integrated into application processing rather than implemented as a separate layer.
 
-![RTP：实时传输协议概览](../images/shared/rtp-overview.png)
+![Overview of RTP, the Real-time Transport Protocol](../images/shared/rtp-overview.png)
 
-RTP 主要用在语音通话、视频会议、直播等实时场景。它本身不保证可靠传输，也不保证按时到达，而是通过序列号、时间戳等信息帮助接收端进行排序、同步和播放控制。虽然也存在 RTP over TCP 的封装方式（如 RFC 4571），但更多用于穿越防火墙或兼容特定协议栈等特殊场景，实际实时音视频场景中 RTP 仍以 UDP 为主。
+RTP is used for voice calls, video conferences, live streams, and other real-time applications. It doesn't guarantee reliable or timely delivery. Instead, sequence numbers and timestamps help the receiver reorder, synchronize, and control playback. RTP can also be carried over TCP (for example, under RFC 4571), usually for special cases such as firewall traversal or compatibility. UDP remains the common choice for real-time audio and video.
 
-RTP 通常会和 RTCP 配合使用：
+RTP is commonly paired with RTCP:
 
-- **RTP**：负责传输实时音视频数据。
-- **RTCP（RTP Control Protocol）**：负责传输控制信息和统计信息，比如丢包率、延迟、抖动等。
+- **RTP** carries real-time audio and video.
+- **RTCP (RTP Control Protocol)** carries control and statistics, such as packet loss, delay, and jitter.
 
-在 WebRTC 中，RTP/RTCP 是实时音视频传输的重要基础。WebRTC 还会结合 SRTP 加密、拥塞控制、抖动缓冲、NACK、FEC 等机制，提升实时通信的安全性和质量。
+RTP and RTCP are foundational to WebRTC media transport. WebRTC also uses SRTP encryption, congestion control, jitter buffers, NACK, FEC, and other mechanisms to improve security and quality.
 
-需要注意的是，RTP 本身不负责资源预留，也不保证实时传输质量。它提供的是实时媒体传输的基础能力，具体的质量控制需要依赖上层机制配合完成。
+RTP itself doesn't reserve resources or guarantee real-time quality. It provides basic real-time media transport; higher-level mechanisms are needed to manage quality.
 
-## DNS：域名系统
+## DNS: Domain Name System
 
-**DNS（Domain Name System，域名系统）** 用于解决域名和 IP 地址之间的映射问题。
+**DNS (Domain Name System)** maps domain names to IP addresses.
 
-![DNS：域名系统概览](../images/shared/dns-overview.png)
+![Overview of DNS, the Domain Name System](../images/shared/dns-overview.png)
 
-我们访问网站时，通常输入的是域名，例如：
+For example, a user may enter a domain name:
 
 ```text
 www.javaguide.cn
 ```
 
-但网络通信实际需要的是 IP 地址。DNS 的作用就是把域名解析成对应的 IP 地址。
+Network communication needs an IP address, so DNS resolves the name to its corresponding address.
 
-DNS 通常使用 UDP，默认端口是 53。之所以优先使用 UDP，是因为大多数 DNS 查询和响应都比较小，不需要 TCP 三次握手，响应更快。
+DNS usually uses UDP on port 53. Most queries and responses are small, so UDP avoids TCP's three-way handshake and responds quickly.
 
-在早期 DNS 规范中，UDP DNS 消息大小限制为 512 字节（不包含 IP 和 UDP 头）。如果响应过大，服务器会设置截断标志，客户端再通过 TCP 重试。
+Early DNS specifications limited UDP messages to 512 bytes, excluding the IP and UDP headers. If a response was too large, the server set a truncation flag and the client retried over TCP.
 
-后来 EDNS0 扩展了 DNS over UDP 的报文大小上限，使 DNS 能承载更大的响应，比如 DNSSEC 相关数据。但如果响应超过协商的 UDP 大小，或者发生区域传送（DNS 服务器之间同步整域数据，普通域名解析几乎不会触发），仍然会使用 TCP。
+EDNS(0) later extended the maximum size of DNS messages over UDP, allowing larger responses such as those containing DNSSEC data. TCP is still used when a response exceeds the negotiated UDP size, is truncated, or during a zone transfer, when DNS servers synchronize an entire zone. Ordinary name lookups rarely trigger a zone transfer.
 
-现代网络中还出现了更安全的 DNS 方案，比如：
+More privacy-focused DNS options include:
 
-- **DoH（DNS over HTTPS）**
-- **DoT（DNS over TLS）**
+- **DoH (DNS over HTTPS)**
+- **DoT (DNS over TLS)**
 
-它们的目的都是减少 DNS 明文查询带来的隐私和安全问题。
+Both aim to reduce the privacy and security risks of plaintext DNS queries.
 
-## 常见应用层协议端口总结
+## Common Application-Layer Protocol Ports
 
-| 协议      |                          默认端口 | 传输层协议 | 主要用途               |
-| --------- | --------------------------------: | ---------- | ---------------------- |
-| HTTP      |                                80 | TCP        | Web 页面访问           |
-| HTTPS     |                               443 | TCP / QUIC | 加密 Web 访问          |
-| WebSocket |                          80 / 443 | TCP        | 双向实时通信           |
-| SMTP      |                    25 / 465 / 587 | TCP        | 邮件发送和转发         |
-| POP3      |                         110 / 995 | TCP        | 邮件接收               |
-| IMAP      |                         143 / 993 | TCP        | 邮件接收和同步         |
-| FTP       |                           20 / 21 | TCP        | 文件传输               |
-| SSH       |                                22 | TCP        | 安全远程登录和文件传输 |
-| Telnet    |                                23 | TCP        | 明文远程登录           |
-| DNS       |                                53 | UDP / TCP  | 域名解析               |
-| RTP       | 动态端口（偶数），RTCP 用相邻奇数 | UDP 为主   | 实时音视频传输         |
+| Protocol  | Default port(s)                                       | Transport   | Main use                              |
+| --------- | ----------------------------------------------------- | ----------- | ------------------------------------- |
+| HTTP      | 80                                                    | TCP         | Web access                            |
+| HTTPS     | 443                                                   | TCP / QUIC  | Encrypted web access                  |
+| WebSocket | 80 / 443                                              | TCP         | Bidirectional real-time communication |
+| SMTP      | 25 / 465 / 587                                        | TCP         | Email submission and relay            |
+| POP3      | 110 / 995                                             | TCP         | Email retrieval                       |
+| IMAP      | 143 / 993                                             | TCP         | Email retrieval and synchronization   |
+| FTP       | 20 / 21                                               | TCP         | File transfer                         |
+| SSH       | 22                                                    | TCP         | Secure remote login and file transfer |
+| Telnet    | 23                                                    | TCP         | Plaintext remote login                |
+| DNS       | 53                                                    | UDP / TCP   | Domain name resolution                |
+| RTP       | Dynamic ports (even); RTCP uses the adjacent odd port | Usually UDP | Real-time audio and video             |
 
-这里 HTTPS 写成 TCP / QUIC，是因为传统 HTTPS 通常基于 TLS over TCP，而 HTTP/3 场景下会基于 QUIC。
+HTTPS is listed as TCP / QUIC because traditional HTTPS usually uses TLS over TCP, while HTTP/3 uses QUIC.
 
-## 小结
+## Summary
 
-这篇文章只做了常见应用层协议的快速梳理，没有展开到协议报文和具体实现细节。
+This article is a quick guide to common application-layer protocols, not a detailed explanation of their packet formats or implementations.
 
-复习时可以重点记住几个容易混淆的点：
+Keep these distinctions in mind:
 
-- HTTP 是应用层协议，HTTP/1.1 和 HTTP/2 通常基于 TCP，HTTP/3 基于 QUIC。
-- HTTP/1.1 通过 Keep-Alive 复用 TCP 连接，HTTP/2 在一个 TCP 连接上做多路复用，HTTP/3 基于 QUIC 缓解 TCP 队头阻塞。
-- WebSocket 通过 HTTP 升级建立连接，之后支持双向通信。
-- SMTP 负责邮件发送和服务器间转发，POP3/IMAP 负责用户收取邮件。
-- SMTP 常见端口包括 25、587、465，分别对应服务器间转发、客户端提交和隐式 TLS 提交等场景。
-- FTP 有主动模式和被动模式，实际生产环境中被动模式更常见。
-- FTP、SFTP、FTPS 不是一回事，FTP 明文传输，SFTP 基于 SSH，FTPS 基于 TLS。
-- Telnet 明文传输，不适合生产环境远程管理，实际更常用 SSH。
-- DNS 通常基于 UDP，但响应过大、发生截断、区域传送等场景下也会使用 TCP。
-- RTP 运行在 UDP 之上，按分层规则归入应用层，但职责更接近传输层；RTP 用偶数端口，配套 RTCP 用相邻奇数端口。
+- HTTP is an application-layer protocol. HTTP/1.1 and HTTP/2 usually use TCP; HTTP/3 uses QUIC.
+- HTTP/1.1 reuses TCP connections with Keep-Alive. HTTP/2 multiplexes over one TCP connection. HTTP/3 uses QUIC to avoid TCP-level head-of-line blocking.
+- WebSocket upgrades an HTTP connection and then supports bidirectional communication.
+- SMTP sends and relays email; POP3 and IMAP let users retrieve it.
+- Common SMTP ports include 25, 587, and 465 for server relay, client submission, and submission over implicit TLS, respectively.
+- FTP has active and passive modes; passive mode is more common in production.
+- FTP, SFTP, and FTPS are different: FTP sends plaintext, SFTP uses SSH, and FTPS uses TLS.
+- Telnet sends plaintext and isn't suitable for production remote administration; SSH is the common alternative.
+- DNS usually uses UDP, but also uses TCP for large or truncated responses and zone transfers.
+- RTP usually runs over UDP and is classified at the application layer, though some of its functions resemble transport-layer functions. RTP commonly uses an even port, with RTCP on the adjacent odd port.
 
-## 参考
+## References
 
-- 《计算机网络：自顶向下方法》（第七版）
-- RTP 协议介绍：<https://mthli.xyz/rtp-introduction/>
-- RFC 6455：The WebSocket Protocol
-- RFC 9110：HTTP Semantics
-- RFC 8446：TLS 1.3
-- RFC 9000：QUIC
-- RFC 3550：RTP: A Transport Protocol for Real-Time Applications
-- RFC 4571：Framing Real-time Transport Protocol（RTP） and RTP Control Protocol（RTCP） Packets over Connection-Oriented Transport
-- RFC 6891：Extension Mechanisms for DNS (EDNS(0))
+- _Computer Networking: A Top-Down Approach_, 7th edition
+- [Introduction to RTP](https://mthli.xyz/rtp-introduction/)
+- RFC 6455: The WebSocket Protocol
+- RFC 9110: HTTP Semantics
+- RFC 8446: TLS 1.3
+- RFC 9000: QUIC
+- RFC 3550: RTP: A Transport Protocol for Real-Time Applications
+- RFC 4571: Framing Real-time Transport Protocol (RTP) and RTP Control Protocol (RTCP) Packets over Connection-Oriented Transport
+- RFC 6891: Extension Mechanisms for DNS (EDNS(0))
 
 <!-- @include: @article-footer.snippet.md -->

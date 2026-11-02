@@ -1,335 +1,332 @@
 ---
-title: 《计算机网络》（谢希仁）内容总结
-description: 基于《计算机网络》教材的学习笔记，梳理术语与分层模型等核心知识点，便于期末复习与面试巩固。
-category: 计算机基础
+title: Computer Networking Notes Based on Xie Xiren's Textbook
+description: Study notes based on *Computer Networking*, covering key terminology and layered models for review and interview preparation.
+category: Computer Science Basics
 tag:
-  - 计算机网络
+  - Computer Networking
 head:
   - - meta
     - name: keywords
-      content: 计算机网络,谢希仁,术语,分层模型,链路,主机,教材总结
+      content: computer networking,Xie Xiren,terminology,layered models,links,hosts,study notes
 ---
 
-这篇笔记来自我大二学习计算机网络时的整理，大部分内容参考谢希仁老师的[《计算机网络》第七版](https://www.elias.ltd/usr/local/etc/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C%EF%BC%88%E7%AC%AC7%E7%89%88%EF%BC%89%E8%B0%A2%E5%B8%8C%E4%BB%81.pdf)。
+These notes are based on material I collected while studying computer networking as a sophomore. Most of the content follows Xie Xiren's [_Computer Networking_, 7th edition](https://www.elias.ltd/usr/local/etc/%E8%AE%A1%E7%AE%97%E6%9C%BA%E7%BD%91%E7%BB%9C%EF%BC%88%E7%AC%AC7%E7%89%88%EF%BC%89%E8%B0%A2%E5%B8%8C%E4%BB%81.pdf).
 
-计算机网络教材内容很散：术语、分层、链路、路由、运输层、应用层都要串起来看。为了复习起来更顺，我对原来的笔记做了一次重构，并补充了一些示意图。
+Networking textbooks cover many connected topics: terminology, layers, links, routing, the transport layer, and the application layer. I reorganized my notes and added diagrams to make them easier to review.
 
-这篇文章主要回答几个问题：
+This article answers four questions:
 
-1. 计算机网络里常见基础术语分别是什么意思？
-2. OSI、TCP/IP 分层模型分别如何理解？
-3. 链路层、网络层、运输层、应用层各自解决什么问题？
-4. 复习《计算机网络》这本书时，哪些概念最容易混淆？
+1. What do common networking terms mean?
+2. How should we understand the OSI and TCP/IP models?
+3. What problems do the link, network, transport, and application layers solve?
+4. Which concepts are easy to confuse when reviewing computer networking?
 
-![《计算机网络》教材知识点总结概览](../images/shared/fb5d8645cd55484ab0177f25a13e97db-tplv-k3u1fbpfcp-zoom-1.png)
+![Overview of key concepts in the computer networking textbook](../images/shared/fb5d8645cd55484ab0177f25a13e97db-tplv-k3u1fbpfcp-zoom-1.png)
 
-相关问题：[如何评价谢希仁的计算机网络（第七版）？ - 知乎](https://www.zhihu.com/question/327872966)。
+Related discussion: [What do you think of Xie Xiren's _Computer Networking_, 7th edition? (Zhihu)](https://www.zhihu.com/question/327872966).
 
-## 1. 计算机网络概述
+## 1. Computer Networking Overview
 
-### 1.1. 基本术语
+### 1.1. Basic Terms
 
-1. **结点（node）**：网络中的结点可以是计算机，集线器，交换机或路由器等。
-2. **链路（link）**：从一个结点到另一个结点的一段物理线路。中间没有任何其他交点。
-3. **主机（host）**：连接在因特网上的计算机。
-4. **ISP（Internet Service Provider）**：因特网服务提供者（提供商）。
+1. **Node:** A device in a network, such as a computer, hub, switch, or router.
+2. **Link:** A physical connection between two nodes, with no intermediate junctions.
+3. **Host:** A computer connected to the Internet.
+4. **ISP (Internet Service Provider):** A company that provides Internet access or related services.
 
    ![ISP (Internet Service Provider) Definition](../images/shared/e77e26123d404d438d0c5943e3c65893-tplv-k3u1fbpfcp-zoom-1.png)
 
-5. **IXP（Internet eXchange Point）**：互联网交换点 IXP 的主要作用就是允许两个网络直接相连并交换分组，而不需要再通过第三个网络来转发分组。
+5. **IXP (Internet Exchange Point):** Allows two networks to connect directly and exchange packets without routing them through a third network.
 
    ![IXP Traffic Levels During the Stratos Skydive — RIPE Labs](../images/shared/7f9a6ddaa09441ceac11cb77f7a69d8f-tplv-k3u1fbpfcp-zoom-1.png)
 
    <p style="text-align:center;font-size:13px;color:gray">https://labs.ripe.net/Members/fergalc/ixp-traffic-during-stratos-skydive</p>
 
-6. **RFC（Request For Comments）**：意思是“请求评议”，包含了关于 Internet 几乎所有的重要的文字资料。
-7. **广域网 WAN（Wide Area Network）**：任务是通过长距离运送主机发送的数据。
-8. **城域网 MAN（Metropolitan Area Network）**：用来将多个局域网进行互连。
-9. **局域网 LAN（Local Area Network）**：学校或企业大多拥有多个互连的局域网。
+6. **RFC (Request for Comments):** A collection of documents describing Internet standards, protocols, and related technical information.
+7. **WAN (Wide Area Network):** Connects hosts over long distances.
+8. **MAN (Metropolitan Area Network):** Connects multiple local area networks in a metropolitan area.
+9. **LAN (Local Area Network):** A network in a limited area. Schools and companies often have several interconnected LANs.
 
    ![MAN & WMAN | Red de área metropolitana, Redes informaticas, Par trenzado](../images/shared/eb48d21b2e984a63a26250010d7adac4-tplv-k3u1fbpfcp-zoom-1.png)
 
    <p style="text-align:center;font-size:13px;color:gray">http://conexionesmanwman.blogspot.com/</p>
 
-10. **个人区域网 PAN（Personal Area Network）**：在个人工作的地方把属于个人使用的电子设备用无线技术连接起来的网络。
+10. **PAN (Personal Area Network):** Connects a person's devices over a short range, often using wireless technology.
 
     ![Advantages and disadvantages of personal area network (PAN) - IT Release](../images/shared/54bd7b420388494fbe917e3c9c13f1a7-tplv-k3u1fbpfcp-zoom-1.png)
 
     <p style=”text-align:center;font-size:13px;color:gray”>https://www.itrelease.com/2018/07/advantages-and-disadvantages-of-personal-area-network-pan/</p>
 
-11. **分组（packet）**：因特网中传送的数据单元。由首部 header 和数据段组成。分组又称为包，首部可称为包头。
-12. **存储转发（store and forward）**：路由器收到一个分组，先检查分组是否正确，并过滤掉冲突包错误。确定包正确后，取出目的地址，通过查找表找到想要发送的输出端口地址，然后将该包发送出去。
+11. **Packet:** A unit of data sent over the Internet. It consists of a header and payload; it is also sometimes called a data packet.
+12. **Store and forward:** A router receives a packet, checks it, reads its destination address, looks up the outgoing interface, and forwards it.
 
-    ![路由器存储转发分组的过程](../images/shared/addb6b2211444a4da9e0ffc129dd444f-tplv-k3u1fbpfcp-zoom-1.gif)
+    ![How a router stores and forwards packets](../images/shared/addb6b2211444a4da9e0ffc129dd444f-tplv-k3u1fbpfcp-zoom-1.gif)
 
-13. **带宽（bandwidth）**：在计算机网络中，表示在单位时间内从网络中的某一点到另一点所能通过的“最高数据率”。常用来表示网络的通信线路所能传送数据的能力。单位是“比特每秒”，记为 b/s。
-14. **吞吐量（throughput）**：表示在单位时间内通过某个网络（或信道、接口）的数据量。吞吐量更经常地用于对现实世界中的网络的一种测量，以便知道实际上到底有多少数据量能够通过网络。吞吐量受网络的带宽或网络的额定速率的限制。
+13. **Bandwidth:** The maximum data rate a network path can carry, usually measured in bits per second (bit/s).
+14. **Throughput:** The amount of data that actually passes through a network, channel, or interface per unit time. Throughput is limited by the available bandwidth or link rate.
 
-### 1.2. 重要知识点总结
+### 1.2. Key Concepts
 
-1. **计算机网络（简称网络）把许多计算机连接在一起，而互联网把许多网络连接在一起，是网络的网络。**
-2. 小写字母 i 开头的 internet（互联网）是通用名词，它泛指由多个计算机网络相互连接而成的网络。在这些网络之间的通信协议（即通信规则）可以是任意的。大写字母 I 开头的 Internet（互联网）是专用名词，它指全球最大的，开放的，由众多网络相互连接而成的特定的互联网，并采用 TCP/IP 协议作为通信规则，其前身为 ARPANET。Internet 的推荐译名为因特网，现在一般流行称为互联网。
-3. 路由器是实现分组交换的关键构件，其任务是转发收到的分组，这是网络核心部分最重要的功能。分组交换采用存储转发技术，表示把一个报文（要发送的整块数据）分为几个分组后再进行传送。在发送报文之前，先把较长的报文划分成为一个个更小的等长数据段。在每个数据段的前面加上一些由必要的控制信息组成的首部后，就构成了一个分组。分组又称为包。分组是在互联网中传送的数据单元，正是由于分组的头部包含了诸如目的地址和源地址等重要控制信息，每一个分组才能在互联网中独立的选择传输路径，并正确地交付到分组传输的终点。
-4. 互联网按工作方式可划分为边缘部分和核心部分。主机在网络的边缘部分，其作用是进行信息处理。由大量网络和连接这些网络的路由器组成核心部分，其作用是提供连通性和交换。
-5. 计算机通信是计算机中进程（即运行着的程序）之间的通信。计算机网络采用的通信方式是客户-服务器方式（C/S 方式）和对等连接方式（P2P 方式）。
-6. 客户和服务器都是指通信中所涉及的应用进程。客户是服务请求方，服务器是服务提供方。
-7. 按照作用范围的不同，计算机网络分为广域网 WAN，城域网 MAN，局域网 LAN，个人区域网 PAN。
-8. **计算机网络最常用的性能指标是：速率，带宽，吞吐量，时延（发送时延，处理时延，排队时延），时延带宽积，往返时间和信道利用率。**
-9. 网络协议即协议，是为进行网络中的数据交换而建立的规则。计算机网络的各层以及其协议集合，称为网络的体系结构。
-10. **五层体系结构由应用层，运输层，网络层（网际层），数据链路层，物理层组成。运输层最主要的协议是 TCP 和 UDP 协议，网络层最重要的协议是 IP 协议。**
+1. **A computer network connects computers; the Internet connects networks. It is a network of networks.**
+2. Lowercase **internet** is a general term for interconnected networks, which may use different communication protocols. Capitalized **Internet** refers to the global, open network of networks that uses the TCP/IP suite and evolved from ARPANET.
+3. Routers are central to packet switching: they forward packets through the network core. Packet switching divides a message into smaller pieces, adds a header containing control information such as source and destination addresses, and sends the resulting packets. Each packet can be routed independently to its destination.
+4. The Internet has an edge and a core. Hosts at the edge process information. The core consists of interconnected networks and routers that provide connectivity and packet forwarding.
+5. Computer communication is communication between processes (running programs). Common models include client-server (C/S) and peer-to-peer (P2P).
+6. A client and a server are application processes: the client requests a service, and the server provides it.
+7. Networks are commonly grouped by scope as WANs, MANs, LANs, and PANs.
+8. **Common performance metrics include data rate, bandwidth, throughput, delay (transmission, processing, and queuing), bandwidth-delay product, round-trip time, and channel utilization.**
+9. A network protocol is a set of rules for exchanging data. The layers of a network and their protocols form its architecture.
+10. **The five-layer model consists of the application, transport, network (Internet), data link, and physical layers. TCP and UDP are key transport protocols; IP is the key network-layer protocol.**
 
-![计算机网络五层体系结构概览](../images/shared/acec0fa44041449b8088872dcd7c0b3a-tplv-k3u1fbpfcp-zoom-1.gif)
+![Overview of the five-layer network architecture](../images/shared/acec0fa44041449b8088872dcd7c0b3a-tplv-k3u1fbpfcp-zoom-1.gif)
 
-下面的内容会介绍计算机网络的五层体系结构：**物理层+数据链路层+网络层（网际层）+运输层+应用层**。
+The following sections introduce the five layers: **physical, data link, network (Internet), transport, and application**.
 
-## 2. 物理层（Physical Layer）
+## 2. Physical Layer
 
-![物理层](../images/shared/cf1bfdd36e5f4bde94aea44bbe7a6f8a-tplv-k3u1fbpfcp-zoom-1.png)
+![Physical layer](../images/shared/cf1bfdd36e5f4bde94aea44bbe7a6f8a-tplv-k3u1fbpfcp-zoom-1.png)
 
-### 2.1. 基本术语
+### 2.1. Basic Terms
 
-1. **数据（data）**：运送消息的实体。
-2. **信号（signal）**：数据的电气的或电磁的表现。或者说信号是适合在传输介质上传输的对象。
-3. **码元（code）**：在使用时间域（或简称为时域）的波形来表示数字信号时，代表不同离散数值的基本波形。
-4. **单工（simplex）**：只能有一个方向的通信而没有反方向的交互。
-5. **半双工（half duplex）**：通信的双方都可以发送信息，但不能双方同时发送（当然也就不能同时接收）。
-6. **全双工（full duplex）**：通信的双方可以同时发送和接收信息。
+1. **Data:** The information being carried.
+2. **Signal:** The electrical or electromagnetic representation of data, suitable for transmission over a medium.
+3. **Symbol:** A basic waveform representing one of several discrete values in a digital signal.
+4. **Simplex:** Communication in one direction only.
+5. **Half-duplex:** Both parties can send data, but not at the same time.
+6. **Full-duplex:** Both parties can send and receive data at the same time.
 
-   ![单工、半双工和全双工通信方式对比](../images/shared/b1f02095b7c34eafb3c255ee81f58c2a-tplv-k3u1fbpfcp-zoom-1.png)
+   ![Simplex, half-duplex, and full-duplex communication](../images/shared/b1f02095b7c34eafb3c255ee81f58c2a-tplv-k3u1fbpfcp-zoom-1.png)
 
-7. **失真**：失去真实性，主要是指接受到的信号和发送的信号不同，有磨损和衰减。影响失真程度的因素：1.码元传输速率 2.信号传输距离 3.噪声干扰 4.传输媒体质量
+7. **Distortion:** A received signal differs from the transmitted signal, for example because of attenuation or noise. The degree of distortion depends on the symbol rate, transmission distance, interference, and medium quality.
 
-   ![信号传输失真示意图](../images/shared/f939342f543046459ffabdc476f7bca4-tplv-k3u1fbpfcp-zoom-1.png)
+   ![Signal distortion during transmission](../images/shared/f939342f543046459ffabdc476f7bca4-tplv-k3u1fbpfcp-zoom-1.png)
 
-8. **奈氏准则**：在任何信道中，码元的传输的效率是有上限的，传输速率超过此上限，就会出现严重的码间串扰问题，使接收端对码元的判决（即识别）成为不可能。
-9. **香农定理**：在带宽受限且有噪声的信道中，为了不产生误差，信息的数据传输速率有上限值。
-10. **基带信号（baseband signal）**：来自信源的信号。指没有经过调制的数字信号或模拟信号。
-11. **带通（频带）信号（bandpass signal）**：把基带信号经过载波调制后，把信号的频率范围搬移到较高的频段以便在信道中传输（即仅在一段频率范围内能够通过信道），这里调制过后的信号就是带通信号。
-12. **调制（modulation）**：对信号源的信息进行处理后加到载波信号上，使其变为适合在信道传输的形式的过程。
-13. **信噪比（signal-to-noise ratio）**：指信号的平均功率和噪声的平均功率之比，记为 S/N。信噪比（dB）=10\*log10（S/N）。
-14. **信道复用（channel multiplexing）**：指多个用户共享同一个信道。（并不一定是同时）。
+8. **Nyquist criterion:** A channel has an upper limit on its symbol rate. Exceeding it causes severe intersymbol interference, making symbols difficult for the receiver to distinguish.
+9. **Shannon theorem:** A bandwidth-limited channel with noise has a maximum information rate for reliable transmission.
+10. **Baseband signal:** An unmodulated signal from a source; it can be digital or analog.
+11. **Bandpass signal:** A baseband signal shifted to a higher frequency range by modulation so it can pass through a channel.
+12. **Modulation:** Processing source information and applying it to a carrier so it can be transmitted over a channel.
+13. **Signal-to-noise ratio (SNR):** The ratio of average signal power to average noise power, written as S/N. In decibels, SNR = 10 × log10(S/N).
+14. **Channel multiplexing:** Sharing one channel among multiple users, not necessarily at the same time.
 
-    ![信道复用技术](../images/shared/5d9bf7b3db324ae7a88fcedcbace45d8-tplv-k3u1fbpfcp-zoom-1.png)
+    ![Channel multiplexing techniques](../images/shared/5d9bf7b3db324ae7a88fcedcbace45d8-tplv-k3u1fbpfcp-zoom-1.png)
 
-15. **比特率（bit rate）**：单位时间（每秒）内传送的比特数。
-16. **波特率（baud rate）**：单位时间载波调制状态改变的次数。针对数据信号对载波的调制速率。
-17. **复用（multiplexing）**：共享信道的方法。
-18. **ADSL（Asymmetric Digital Subscriber Line）**：非对称数字用户线。
-19. **光纤同轴混合网（HFC 网）**：在目前覆盖范围很广的有线电视网的基础上开发的一种居民宽带接入网
+15. **Bit rate:** The number of bits transmitted per second.
+16. **Baud rate:** The number of changes in a carrier's modulation state per second.
+17. **Multiplexing:** A method for sharing a communication channel.
+18. **ADSL (Asymmetric Digital Subscriber Line):** A DSL technology with asymmetric upstream and downstream rates.
+19. **HFC (Hybrid Fiber-Coaxial):** A residential broadband access network built on cable television infrastructure.
 
-### 2.2. 重要知识点总结
+### 2.2. Key Concepts
 
-1. **物理层的主要任务就是确定与传输媒体接口有关的一些特性，如机械特性，电气特性，功能特性，过程特性。**
-2. 一个数据通信系统可划分为三大部分，即源系统，传输系统，目的系统。源系统包括源点（或源站，信源）和发送器，目的系统包括接收器和终点。
-3. **通信的目的是传送消息。如话音，文字，图像等都是消息，数据是运送消息的实体。信号则是数据的电气或电磁的表现。**
-4. 根据信号中代表消息的参数的取值方式不同，信号可分为模拟信号（或连续信号）和数字信号（或离散信号）。在使用时间域（简称时域）的波形表示数字信号时，代表不同离散数值的基本波形称为码元。
-5. 根据双方信息交互的方式，通信可划分为单向通信（或单工通信），双向交替通信（或半双工通信），双向同时通信（全双工通信）。
-6. 来自信源的信号称为基带信号。信号要在信道上传输就要经过调制。调制有基带调制和带通调制之分。最基本的带通调制方法有调幅，调频和调相。还有更复杂的调制方法，如正交振幅调制。
-7. 要提高数据在信道上的传递速率，可以使用更好的传输媒体，或使用先进的调制技术。但数据传输速率不可能任意被提高。
-8. 传输媒体可分为两大类，即导引型传输媒体（双绞线，同轴电缆，光纤）和非导引型传输媒体（无线，红外，大气激光）。
-9. 为了有效利用光纤资源，在光纤干线和用户之间广泛使用无源光网络 PON。无源光网络无需配备电源，其长期运营成本和管理成本都很低。最流行的无源光网络是以太网无源光网络 EPON 和吉比特无源光网络 GPON。
+1. **The physical layer defines properties of the interface to the transmission medium, including mechanical, electrical, functional, and procedural characteristics.**
+2. A data communication system has a source, a transmission system, and a destination. The source includes the origin and a transmitter; the destination includes a receiver and an endpoint.
+3. **Communication carries messages such as speech, text, and images. Data represents a message, and signals are the electrical or electromagnetic form of that data.**
+4. Signals can be analog (continuous) or digital (discrete). A basic waveform that represents one discrete value in a digital signal is called a symbol.
+5. Communication can be simplex, half-duplex, or full-duplex, depending on whether data flows in one direction, alternates directions, or flows in both directions at once.
+6. A source produces a baseband signal. Modulation adapts a signal for transmission over a channel. Basic bandpass methods include amplitude, frequency, and phase modulation; quadrature amplitude modulation is a more complex method.
+7. Better media or modulation can increase data rates, but every channel has limits.
+8. Transmission media are guided (twisted-pair cable, coaxial cable, and fiber) or unguided (radio, infrared, and free-space optical communication).
+9. Passive optical networks (PONs) are widely used between fiber backbones and subscribers. They do not require powered equipment in the distribution network, reducing operating and management costs. Common types include EPON and GPON.
 
-### 2.3. 补充
+### 2.3. Additional Notes
 
-#### 2.3.1. 物理层主要做啥？
+#### 2.3.1. What Does the Physical Layer Do?
 
-物理层主要做的事情就是 **透明地传送比特流**。也可以将物理层的主要任务描述为确定与传输媒体的接口的一些特性，即：机械特性（接口所用接线器的一些物理属性如形状和尺寸），电气特性（接口电缆的各条线上出现的电压的范围），功能特性（某条线上出现的某一电平的电压的意义），过程特性（对于不同功能的各种可能事件的出现顺序）。
+The physical layer **transmits a bit stream transparently**. It also defines the interface to the medium: mechanical properties such as connector shape and size, electrical properties such as voltage ranges, functional properties that define what voltage levels mean, and procedural properties that specify event sequences.
 
-**物理层考虑的是怎样才能在连接各种计算机的传输媒体上传输数据比特流，而不是指具体的传输媒体。** 现有的计算机网络中的硬件设备和传输媒体的种类非常繁多，而且通信手段也有许多不同的方式。物理层的作用正是尽可能地屏蔽掉这些传输媒体和通信手段的差异，使物理层上面的数据链路层感觉不到这些差异，这样就可以使数据链路层只考虑完成本层的协议和服务，而不必考虑网络的具体传输媒体和通信手段是什么。
+**The physical layer concerns how to transmit bits over a medium, not which specific medium is used.** Networks use many types of hardware, media, and communication methods. The physical layer hides as many of these differences as possible from the data link layer, allowing it to focus on its own protocols and services.
 
-#### 2.3.2. 几种常用的信道复用技术
+#### 2.3.2. Common Channel Multiplexing Techniques
 
-1. **频分复用（FDM）**：所有用户在同样的时间占用不同的带宽资源。
-2. **时分复用（TDM）**：所有用户在不同的时间占用同样的频带宽度（分时不分频）。
-3. **统计时分复用（Statistic TDM）**：改进的时分复用，能够明显提高信道的利用率。
-4. **码分复用（CDM）**：用户使用经过特殊挑选的不同码型，因此各用户之间不会造成干扰。这种系统发送的信号有很强的抗干扰能力，其频谱类似于白噪声，不易被敌人发现。
-5. **波分复用（WDM）**：波分复用就是光的频分复用。
+1. **Frequency-division multiplexing (FDM):** Users share the channel at the same time on different frequency bands.
+2. **Time-division multiplexing (TDM):** Users take turns using the same frequency band.
+3. **Statistical TDM:** An improved form of TDM that can use channel capacity more efficiently.
+4. **Code-division multiplexing (CDM):** Users transmit with distinct codes that allow their signals to be separated. The signals are resistant to interference and have a noise-like spectrum.
+5. **Wavelength-division multiplexing (WDM):** Frequency-division multiplexing for light.
 
-#### 2.3.3. 几种常用的宽带接入技术，主要是 ADSL 和 FTTx
+#### 2.3.3. Common Broadband Access Technologies: ADSL and FTTx
 
-用户到互联网的宽带接入方法有非对称数字用户线 ADSL（用数字技术对现有的模拟电话线进行改造，而不需要重新布线。ADSL 的快速版本是甚高速数字用户线 VDSL。），光纤同轴混合网 HFC（是在目前覆盖范围很广的有线电视网的基础上开发的一种居民宽带接入网）和 FTTx（即光纤到······）。
+Common broadband access technologies include ADSL, which upgrades existing copper telephone lines without requiring new wiring; VDSL, a faster DSL variant; HFC, which uses cable television infrastructure; and FTTx, meaning fiber to a point such as the home, building, or cabinet.
 
-## 3. 数据链路层（Data Link Layer）
+## 3. Data Link Layer
 
-![数据链路层](../images/shared/83ec6dafc8c14ca185bafb656d86f0b2-tplv-k3u1fbpfcp-zoom-1.png)
+![Data link layer](../images/shared/83ec6dafc8c14ca185bafb656d86f0b2-tplv-k3u1fbpfcp-zoom-1.png)
 
-### 3.1. 基本术语
+### 3.1. Basic Terms
 
-1. **链路（link）**：一个结点到相邻结点的一段物理链路。
-2. **数据链路（data link）**：把实现控制数据运输的协议的硬件和软件加到链路上就构成了数据链路。
-3. **循环冗余检验 CRC（Cyclic Redundancy Check）**：为了保证数据传输的可靠性，CRC 是数据链路层广泛使用的一种检错技术。
-4. **帧（frame）**：一个数据链路层的传输单元，由一个数据链路层首部和其携带的封包所组成协议数据单元。
-5. **MTU（Maximum Transfer Uint）**：最大传送单元。帧的数据部分的长度上限。
-6. **误码率 BER（Bit Error Rate）**：在一段时间内，传输错误的比特占所传输比特总数的比率。
-7. **PPP（Point-to-Point Protocol）**：点对点协议。即用户计算机和 ISP 进行通信时所使用的数据链路层协议。以下是 PPP 帧的示意图：
-   ![PPP 点对点协议帧格式](../images/shared/6b0310d3103c4149a725a28aaf001899-tplv-k3u1fbpfcp-zoom-1.jpg)
-8. **MAC 地址（Media Access Control 或者 Medium Access Control）**：意译为媒体访问控制，或称为物理地址、硬件地址，用来定义网络设备的位置。在 OSI 模型中，第三层网络层负责 IP 地址，第二层数据链路层则负责 MAC 地址。因此一个主机会有一个 MAC 地址，而每个网络位置会有一个专属于它的 IP 地址。地址是识别某个系统的重要标识符，“名字指出我们所要寻找的资源，地址指出资源所在的地方，路由告诉我们如何到达该处。”
+1. **Link:** A physical connection between one node and an adjacent node.
+2. **Data link:** A link together with the hardware (such as a network adapter) and software (such as protocol implementations) needed to control data transfer.
+3. **CRC (Cyclic Redundancy Check):** A widely used data-link error-detection technique.
+4. **Frame:** A data-link-layer transmission unit consisting of a header and the encapsulated payload.
+5. **MTU (Maximum Transmission Unit):** The maximum size of a packet payload that a link can carry.
+6. **BER (Bit Error Rate):** The ratio of incorrectly transmitted bits to the total number of bits over a period.
+7. **PPP (Point-to-Point Protocol):** A data-link protocol used for communication between a user's computer and an ISP. The diagram below shows a PPP frame:
+   ![PPP frame format](../images/shared/6b0310d3103c4149a725a28aaf001899-tplv-k3u1fbpfcp-zoom-1.jpg)
+8. **MAC address (Media Access Control):** Also called a physical or hardware address, it identifies a network interface on a local link. In the OSI model, IP addresses belong to the network layer and MAC addresses to the data link layer. A host may have multiple MAC addresses, one for each interface. A name identifies a resource, an address indicates where it is, and a route describes how to reach it.
 
    ![ARP (Address Resolution Protocol) explained](../images/shared/057b83e7ec5b4c149e56255a3be89141-tplv-k3u1fbpfcp-zoom-1.png)
 
-9. **网桥（bridge）**：一种用于数据链路层实现中继，连接两个或多个局域网的网络互连设备。
-10. **交换机（switch）**：广义的来说，交换机指的是一种通信系统中完成信息交换的设备。这里工作在数据链路层的交换机指的是交换式集线器，其实质是一个多接口的网桥
+9. **Bridge:** A data-link device that connects two or more LAN segments.
+10. **Switch:** A device that forwards frames between ports. A data-link switch is essentially a multiport bridge.
 
-### 3.2. 重要知识点总结
+### 3.2. Key Concepts
 
-1. 链路是从一个结点到相邻结点的一段物理链路，数据链路则在链路的基础上增加了一些必要的硬件（如网络适配器）和软件（如协议的实现）
-2. 数据链路层使用的主要是**点对点信道**和**广播信道**两种。
-3. 数据链路层传输的协议数据单元是帧。数据链路层的三个基本问题是：**封装成帧**，**透明传输**和**差错检测**
-4. **循环冗余检验 CRC** 是一种检错方法，而帧检验序列 FCS 是添加在数据后面的冗余码
-5. **点对点协议 PPP** 是数据链路层使用最多的一种协议，它的特点是：简单，只检测差错而不去纠正差错，不使用序号，也不进行流量控制，可同时支持多种网络层协议
-6. PPPoE 是为宽带上网的主机使用的链路层协议
-7. **局域网的优点是：具有广播功能，从一个站点可方便地访问全网；便于系统的扩展和逐渐演变；提高了系统的可靠性，可用性和生存性。**
-8. 计算机与外接局域网通信需要通过通信适配器（或网络适配器），它又称为网络接口卡或网卡。**计算器的硬件地址就在适配器的 ROM 中**。
-9. 以太网采用的无连接的工作方式，对发送的数据帧不进行编号，也不要求对方发回确认。目的站收到有差错帧就把它丢掉，其他什么也不做
-10. 以太网采用的协议是具有冲突检测的**载波监听多点接入 CSMA/CD**。协议的特点是：**发送前先监听，边发送边监听，一旦发现总线上出现了碰撞，就立即停止发送。然后按照退避算法等待一段随机时间后再次发送。** 因此，每一个站点在自己发送数据之后的一小段时间内，存在着遭遇碰撞的可能性。以太网上的各站点平等地争用以太网信道
-11. 以太网的适配器具有过滤功能，它只接收单播帧，广播帧和多播帧。
-12. 使用集线器可以在物理层扩展以太网（扩展后的以太网仍然是一个网络）
+1. A link is a physical connection between adjacent nodes. A data link adds the hardware and software needed to control communication.
+2. The data link layer mainly uses **point-to-point** and **broadcast** channels.
+3. The data-link protocol data unit is a frame. Its three basic tasks are **framing**, **transparent transmission**, and **error detection**.
+4. **CRC** detects errors; the **Frame Check Sequence (FCS)** is the redundant value added to a frame.
+5. **PPP** is a common data-link protocol. It is simple, detects but does not correct errors, does not use sequence numbers or flow control, and supports multiple network-layer protocols.
+6. PPPoE is a data-link protocol used by hosts to access broadband services.
+7. **LANs support broadcast, make network expansion easier, and can improve reliability, availability, and resilience.**
+8. A network adapter (network interface card or NIC) connects a computer to a LAN. **The adapter stores its hardware address in ROM.**
+9. Ethernet is connectionless: frames are not numbered, and the sender does not require acknowledgments. A destination that receives a corrupted frame discards it.
+10. Traditional shared Ethernet uses **CSMA/CD (Carrier Sense Multiple Access with Collision Detection)**: listen before sending, monitor while sending, stop if a collision is detected, then retry after a random backoff. Stations share the Ethernet channel equally.
+11. An Ethernet adapter filters frames and accepts the unicast, broadcast, or multicast frames intended for it.
+12. A hub can extend Ethernet at the physical layer; the extended network remains one collision domain.
 
-### 3.3. 补充
+### 3.3. Additional Notes
 
-1. 数据链路层的点对点信道和广播信道的特点，以及这两种信道所使用的协议（PPP 协议以及 CSMA/CD 协议）的特点
-2. 数据链路层的三个基本问题：**封装成帧**，**透明传输**，**差错检测**
-3. 以太网的 MAC 层硬件地址
-4. 适配器，转发器，集线器，网桥，以太网交换机的作用以及适用场合
+1. The characteristics of point-to-point and broadcast channels and their protocols, including PPP and CSMA/CD.
+2. The data link layer's three basic tasks: **framing**, **transparent transmission**, and **error detection**.
+3. Ethernet MAC addresses.
+4. The roles and use cases of adapters, repeaters, hubs, bridges, and Ethernet switches.
 
-## 4. 网络层（Network Layer）
+## 4. Network Layer
 
-![网络层](../images/shared/775dc8136bec486aad4f1182c68f24cd-tplv-k3u1fbpfcp-zoom-1.png)
+![Network layer](../images/shared/775dc8136bec486aad4f1182c68f24cd-tplv-k3u1fbpfcp-zoom-1.png)
 
-### 4.1. 基本术语
+### 4.1. Basic Terms
 
-1. **虚电路（Virtual Circuit）** : 在两个终端设备的逻辑或物理端口之间，通过建立的双向的透明传输通道。虚电路表示这只是一条逻辑上的连接，分组都沿着这条逻辑连接按照存储转发方式传送，而并不是真正建立了一条物理连接。
-2. **IP（Internet Protocol）**：网际协议 IP 是 TCP/IP 体系中两个最主要的协议之一，是 TCP/IP 体系结构网际层的核心。配套的有 ARP，RARP，ICMP，IGMP。
-3. **ARP（Address Resolution Protocol）** : 地址解析协议。地址解析协议 ARP 把 IP 地址解析为硬件地址。
-4. **ICMP（Internet Control Message Protocol）**：网际控制报文协议（ICMP 允许主机或路由器报告差错情况和提供有关异常情况的报告）。
-5. **子网掩码（subnet mask）**：它是一种用来指明一个 IP 地址的哪些位标识的是主机所在的子网以及哪些位标识的是主机的位掩码。子网掩码不能单独存在，它必须结合 IP 地址一起使用。
-6. **CIDR（Classless Inter-Domain Routing）**：无分类域间路由选择（特点是消除了传统的 A 类、B 类和 C 类地址以及划分子网的概念，并使用各种长度的“网络前缀”（network-prefix）来代替分类地址中的网络号和子网号）。
-7. **默认路由（default route）**：当在路由表中查不到能到达目的地址的路由时，路由器选择的路由。默认路由还可以减小路由表所占用的空间和搜索路由表所用的时间。
-8. **路由选择算法（Routing Algorithm）**：路由选择协议的核心部分。因特网采用自适应的、分层次的路由选择协议。
+1. **Virtual circuit:** A logical bidirectional channel between endpoints. Packets follow this logical path using store-and-forward; no dedicated physical connection is necessarily established.
+2. **IP (Internet Protocol):** One of the main protocols in the TCP/IP suite and the core of its Internet layer. Related protocols include ARP, RARP, ICMP, and IGMP.
+3. **ARP (Address Resolution Protocol):** Resolves an IP address to a hardware address on a local network.
+4. **ICMP (Internet Control Message Protocol):** Allows hosts and routers to report errors and other network conditions.
+5. **Subnet mask:** Identifies which bits of an IP address represent the network and which represent the host. It is used together with an IP address.
+6. **CIDR (Classless Inter-Domain Routing):** Replaces class-based addressing with network prefixes of varying lengths.
+7. **Default route:** The route a router uses when its routing table has no more specific route to the destination. A default route can reduce routing-table size and lookup work.
+8. **Routing algorithm:** A core part of a routing protocol. The Internet uses adaptive, hierarchical routing protocols.
 
-### 4.2. 重要知识点总结
+### 4.2. Key Concepts
 
-1. **TCP/IP 协议中的网络层向上只提供简单灵活的，无连接的，尽最大努力交付的数据报服务。网络层不提供服务质量的承诺，不保证分组交付的时限，所传送的分组可能出错、丢失、重复和失序。进程之间通信的可靠性由运输层负责**
-2. 在互联网的交付有两种，一是在本网络直接交付不用经过路由器，另一种是和其他网络的间接交付，至少经过一个路由器，但最后一次一定是直接交付
-3. 分类的 IP 地址由网络号字段（指明网络）和主机号字段（指明主机）组成。网络号字段最前面的类别指明 IP 地址的类别。IP 地址是一种分等级的地址结构。IP 地址管理机构分配 IP 地址时只分配网络号，主机号由得到该网络号的单位自行分配。路由器根据目的主机所连接的网络号来转发分组。一个路由器至少连接到两个网络，所以一个路由器至少应当有两个不同的 IP 地址
-4. IP 数据报分为首部和数据两部分。首部的前一部分是固定长度，共 20 字节，是所有 IP 数据包必须具有的（源地址，目的地址，总长度等重要地段都固定在首部）。一些长度可变的可选字段固定在首部的后面。IP 首部中的生存时间给出了 IP 数据报在互联网中所能经过的最大路由器数。可防止 IP 数据报在互联网中无限制的兜圈子。
-5. **地址解析协议 ARP 把 IP 地址解析为硬件地址。ARP 的高速缓存可以大大减少网络上的通信量。因为这样可以使主机下次再与同样地址的主机通信时，可以直接从高速缓存中找到所需要的硬件地址而不需要再去以广播方式发送 ARP 请求分组**
-6. 无分类域间路由选择 CIDR 是解决目前 IP 地址紧缺的一个好办法。CIDR 记法在 IP 地址后面加上斜线“/”，然后写上前缀所占的位数。前缀（或网络前缀）用来指明网络，前缀后面的部分是后缀，用来指明主机。CIDR 把前缀都相同的连续的 IP 地址组成一个“CIDR 地址块”，IP 地址分配都以 CIDR 地址块为单位。
-7. 网际控制报文协议是 IP 层的协议。ICMP 报文作为 IP 数据报的数据，加上首部后组成 IP 数据报发送出去。使用 ICMP 数据报并不是为了实现可靠传输。ICMP 允许主机或路由器报告差错情况和提供有关异常情况的报告。ICMP 报文的种类有两种，即 ICMP 差错报告报文和 ICMP 询问报文。
-8. **要解决 IP 地址耗尽的问题，最根本的办法是采用具有更大地址空间的新版本 IP 协议-IPv6。** IPv6 所带来的变化有 ① 更大的地址空间（采用 128 位地址）② 灵活的首部格式 ③ 改进的选项 ④ 支持即插即用 ⑤ 支持资源的预分配 ⑥IPv6 的首部改为 8 字节对齐。
-9. **虚拟专用网络 VPN 利用公用的互联网作为本机构专用网之间的通信载体。VPN 内使用互联网的专用地址。一个 VPN 至少要有一个路由器具有合法的全球 IP 地址，这样才能和本系统的另一个 VPN 通过互联网进行通信。所有通过互联网传送的数据都需要加密。**
-10. MPLS 的特点是：① 支持面向连接的服务质量 ② 支持流量工程，平衡网络负载 ③ 有效的支持虚拟专用网 VPN。MPLS 在入口节点给每一个 IP 数据报打上固定长度的“标记”，然后根据标记在第二层（链路层）用硬件进行转发（在标记交换路由器中进行标记交换），因而转发速率大大加快。
+1. **The TCP/IP network layer provides a simple, connectionless, best-effort datagram service. It does not guarantee quality of service or delivery time; packets may be corrupted, lost, duplicated, or reordered. The transport layer provides reliability between processes.**
+2. Internet delivery is either direct within the local network or indirect through one or more routers. The final delivery to a host is direct on its local network.
+3. Classful IP addresses have a network field and a host field. Addressing is hierarchical: address authorities assign network numbers, and organizations assign host numbers within their networks. A router connects at least two networks and therefore has at least two IP addresses.
+4. An IP datagram has a header and payload. The IPv4 header has a 20-byte fixed portion with fields such as source address, destination address, and total length, followed by optional fields. The Time to Live (TTL) limits how many routers a datagram can pass through and prevents it from circulating indefinitely.
+5. **ARP resolves IP addresses to hardware addresses. An ARP cache reduces network traffic because a host can reuse a recently learned hardware address instead of broadcasting another ARP request.**
+6. CIDR helps use IP address space more efficiently. CIDR notation appends a slash and prefix length to an address, such as `/24`. Addresses with the same prefix form a CIDR block, which is used for routing and allocation.
+7. ICMP is a network-layer protocol carried inside IP datagrams. It is not used to provide reliable delivery; it lets hosts and routers report errors and other conditions. ICMP messages include error-reporting and query messages.
+8. **IPv6 addresses IPv4 exhaustion with a much larger address space.** It uses 128-bit addresses and has a flexible header format, revised options, support for autoconfiguration, and 8-byte header alignment.
+9. **A virtual private network (VPN) uses the public Internet to connect an organization's private networks. VPNs use private addresses internally and generally encrypt traffic sent over the Internet. A VPN gateway needs a globally reachable address to communicate with another gateway.**
+10. MPLS supports connection-oriented quality of service, traffic engineering, load balancing, and VPNs. An ingress node adds a fixed-length label to each IP datagram; label-switching routers forward packets based on that label, often using hardware for faster forwarding.
 
-## 5. 传输层（Transport Layer）
+## 5. Transport Layer
 
-![传输层](../images/shared/9fe85e137e7f4f03a580512200a59609-tplv-k3u1fbpfcp-zoom-1.png)
+![Transport layer](../images/shared/9fe85e137e7f4f03a580512200a59609-tplv-k3u1fbpfcp-zoom-1.png)
 
-### 5.1. 基本术语
+### 5.1. Basic Terms
 
-1. **进程（process）**：指计算机中正在运行的程序实体。
-2. **应用进程互相通信**：一台主机的进程和另一台主机中的一个进程交换数据的过程（另外注意通信真正的端点不是主机而是主机中的进程，也就是说端到端的通信是应用进程之间的通信）。
-3. **传输层的复用与分用**：复用指发送方不同的进程都可以通过同一个运输层协议传送数据。分用指接收方的运输层在剥去报文的首部后能把这些数据正确的交付到目的应用进程。
-4. **TCP（Transmission Control Protocol）**：传输控制协议。
-5. **UDP（User Datagram Protocol）**：用户数据报协议。
+1. **Process:** A running program.
+2. **Communication between application processes:** Data exchange between processes on different hosts. The true endpoints are the processes, not the hosts.
+3. **Transport-layer multiplexing and demultiplexing:** Multiplexing lets processes share a transport protocol at the sender. Demultiplexing delivers incoming data to the correct application process at the receiver.
+4. **TCP (Transmission Control Protocol).**
+5. **UDP (User Datagram Protocol).**
 
-   ![TCP 和 UDP](../images/shared/b136e69e0b9b426782f77623dcf098bd-tplv-k3u1fbpfcp-zoom-1.png)
+   ![TCP and UDP](../images/shared/b136e69e0b9b426782f77623dcf098bd-tplv-k3u1fbpfcp-zoom-1.png)
 
-6. **端口（port）**：端口的目的是为了确认对方机器的哪个进程在与自己进行交互，比如 MSN 和 QQ 的端口不同，如果没有端口就可能出现 QQ 进程和 MSN 交互错误。端口又称协议端口号。
-7. **停止等待协议（stop-and-wait）**：指发送方每发送完一个分组就停止发送，等待对方确认，在收到确认之后在发送下一个分组。
-8. **流量控制**：就是让发送方的发送速率不要太快，既要让接收方来得及接收，也不要使网络发生拥塞。
-9. **拥塞控制**：防止过多的数据注入到网络中，这样可以使网络中的路由器或链路不致过载。拥塞控制所要做的都有一个前提，就是网络能够承受现有的网络负荷。
+6. **Port:** Identifies the application process on a host that should receive data. A port number is also called a protocol port number.
+7. **Stop-and-wait protocol:** The sender transmits one packet and waits for an acknowledgment before sending the next.
+8. **Flow control:** Limits the sender's rate so the receiver can keep up.
+9. **Congestion control:** Prevents too much data from entering the network and overloading routers or links. It assumes the network can handle the existing load.
 
-### 5.2. 重要知识点总结
+### 5.2. Key Concepts
 
-1. **运输层提供应用进程之间的逻辑通信，也就是说，运输层之间的通信并不是真正在两个运输层之间直接传输数据。运输层向应用层屏蔽了下面网络的细节（如网络拓补，所采用的路由选择协议等），它使应用进程之间看起来好像两个运输层实体之间有一条端到端的逻辑通信信道。**
-2. **网络层为主机提供逻辑通信，而运输层为应用进程之间提供端到端的逻辑通信。**
-3. 运输层的两个重要协议是用户数据报协议 UDP 和传输控制协议 TCP。按照 OSI 的术语，两个对等运输实体在通信时传送的数据单位叫做运输协议数据单元 TPDU（Transport Protocol Data Unit）。但在 TCP/IP 体系中，则根据所使用的协议是 TCP 或 UDP，分别称之为 TCP 报文段或 UDP 用户数据报。
-4. **UDP 在传送数据之前不需要先建立连接，远地主机在收到 UDP 报文后，不需要给出任何确认。虽然 UDP 不提供可靠交付，但在某些情况下 UDP 确是一种最有效的工作方式。TCP 提供面向连接的服务。在传送数据之前必须先建立连接，数据传送结束后要释放连接。TCP 不提供广播或多播服务。由于 TCP 要提供可靠的，面向连接的传输服务，难以避免地增加了许多开销，如确认，流量控制，计时器以及连接管理等。这不仅使协议数据单元的首部增大很多，还要占用许多处理机资源。**
-5. 硬件端口是不同硬件设备进行交互的接口，而软件端口是应用层各种协议进程与运输实体进行层间交互的一种地址。UDP 和 TCP 的首部格式中都有源端口和目的端口这两个重要字段。当运输层收到 IP 层交上来的运输层报文时，就能够根据其首部中的目的端口号把数据交付应用层的目的应用层。（两个进程之间进行通信不光要知道对方 IP 地址而且要知道对方的端口号（为了找到对方计算机中的应用进程））
-6. 运输层用一个 16 位端口号标志一个端口。端口号只有本地意义，它只是为了标志计算机应用层中的各个进程在和运输层交互时的层间接口。在互联网的不同计算机中，相同的端口号是没有关联的。协议端口号简称端口。虽然通信的终点是应用进程，但只要把所发送的报文交到目的主机的某个合适端口，剩下的工作（最后交付目的进程）就由 TCP 和 UDP 来完成。
-7. 运输层的端口号分为服务器端使用的端口号（0&tilde;1023 指派给熟知端口，1024&tilde;49151 是登记端口号）和客户端暂时使用的端口号（49152&tilde;65535）
-8. **UDP 的主要特点是 ① 无连接 ② 尽最大努力交付 ③ 面向报文 ④ 无拥塞控制 ⑤ 支持一对一，一对多，多对一和多对多的交互通信 ⑥ 首部开销小（只有四个字段：源端口，目的端口，长度和检验和）**
-9. **TCP 的主要特点是 ① 面向连接 ② 每一条 TCP 连接只能是一对一的 ③ 提供可靠交付 ④ 提供全双工通信 ⑤ 面向字节流**
-10. **TCP 用主机的 IP 地址加上主机上的端口号作为 TCP 连接的端点。这样的端点就叫做套接字（socket）或插口。套接字用（IP 地址：端口号）来表示。每一条 TCP 连接唯一地被通信两端的两个端点所确定。**
-11. 停止等待协议是为了实现可靠传输的，它的基本原理就是每发完一个分组就停止发送，等待对方确认。在收到确认后再发下一个分组。
-12. 为了提高传输效率，发送方可以不使用低效率的停止等待协议，而是采用流水线传输。流水线传输就是发送方可连续发送多个分组，不必每发完一个分组就停下来等待对方确认。这样可使信道上一直有数据不间断的在传送。这种传输方式可以明显提高信道利用率。
-13. 停止等待协议中超时重传是指只要超过一段时间仍然没有收到确认，就重传前面发送过的分组（认为刚才发送过的分组丢失了）。因此每发送完一个分组需要设置一个超时计时器，其重传时间应比数据在分组传输的平均往返时间更长一些。这种自动重传方式常称为自动重传请求 ARQ。另外在停止等待协议中若收到重复分组，就丢弃该分组，但同时还要发送确认。连续 ARQ 协议可提高信道利用率。发送维持一个发送窗口，凡位于发送窗口内的分组可连续发送出去，而不需要等待对方确认。接收方一般采用累积确认，对按序到达的最后一个分组发送确认，表明到这个分组位置的所有分组都已经正确收到了。
-14. TCP 报文段的前 20 个字节是固定的，其后有 40 字节长度的可选字段。如果加入可选字段后首部长度不是 4 的整数倍字节，需要在再在之后用 0 填充。因此，TCP 首部的长度取值为 20+4n 字节，最长为 60 字节。
-15. **TCP 使用滑动窗口机制。发送窗口里面的序号表示允许发送的序号。发送窗口后沿的后面部分表示已发送且已收到确认，而发送窗口前沿的前面部分表示不允许发送。发送窗口后沿的变化情况有两种可能，即不动（没有收到新的确认）和前移（收到了新的确认）。发送窗口的前沿通常是不断向前移动的。一般来说，我们总是希望数据传输更快一些。但如果发送方把数据发送的过快，接收方就可能来不及接收，这就会造成数据的丢失。所谓流量控制就是让发送方的发送速率不要太快，要让接收方来得及接收。**
-16. 在某段时间，若对网络中某一资源的需求超过了该资源所能提供的可用部分，网络的性能就要变坏。这种情况就叫拥塞。拥塞控制就是为了防止过多的数据注入到网络中，这样就可以使网络中的路由器或链路不致过载。拥塞控制所要做的都有一个前提，就是网络能够承受现有的网络负荷。拥塞控制是一个全局性的过程，涉及到所有的主机，所有的路由器，以及与降低网络传输性能有关的所有因素。相反，流量控制往往是点对点通信量的控制，是个端到端的问题。流量控制所要做到的就是抑制发送端发送数据的速率，以便使接收端来得及接收。
-17. **为了进行拥塞控制，TCP 发送方要维持一个拥塞窗口 cwnd 的状态变量。拥塞控制窗口的大小取决于网络的拥塞程度，并且动态变化。发送方让自己的发送窗口取为拥塞窗口和接收方的接受窗口中较小的一个。**
-18. **TCP 的拥塞控制采用了四种算法，即慢开始，拥塞避免，快重传和快恢复。在网络层也可以使路由器采用适当的分组丢弃策略（如主动队列管理 AQM），以减少网络拥塞的发生。**
-19. 运输连接的三个阶段，即：连接建立，数据传送和连接释放。
-20. **主动发起 TCP 连接建立的应用进程叫做客户，而被动等待连接建立的应用进程叫做服务器。TCP 连接采用三报文握手机制。服务器要确认用户的连接请求，然后客户要对服务器的确认进行确认。**
-21. TCP 的连接释放采用四报文握手机制。任何一方都可以在数据传送结束后发出连接释放的通知，待对方确认后进入半关闭状态。当另一方也没有数据再发送时，则发送连接释放通知，对方确认后就完全关闭了 TCP 连接
+1. **The transport layer provides logical communication between application processes. It hides network details such as topology and routing from applications, making the processes appear to have an end-to-end logical channel.**
+2. **The network layer provides logical communication between hosts; the transport layer provides it between application processes.**
+3. The main transport protocols are UDP and TCP. In OSI terminology, the data exchanged by peer transport entities is a Transport Protocol Data Unit (TPDU). In TCP/IP, these are called TCP segments and UDP datagrams.
+4. **UDP does not require connection setup or acknowledgments. It does not provide reliable delivery, but can be efficient for some applications. TCP is connection-oriented: it establishes a connection before transferring data and releases it afterward. TCP does not support broadcast or multicast. Reliability and connection management add overhead, including acknowledgments, flow control, timers, and connection state.**
+5. A hardware port connects physical devices; a software port identifies an application endpoint to the transport layer. TCP and UDP headers contain source and destination port numbers. The transport layer uses the destination port to deliver data from IP to the appropriate application process.
+6. Transport ports are 16-bit numbers and have local meaning on each host. The same port number on different computers does not identify a shared endpoint. TCP and UDP deliver data to the destination process through the appropriate port.
+7. Server ports include well-known ports (`0–1023`) and registered ports (`1024–49151`); clients typically use ephemeral ports (`49152–65535`).
+8. **UDP is connectionless, best-effort, message-oriented, has no built-in congestion control, supports unicast and multicast/broadcast communication patterns, and has a small header with four fields: source port, destination port, length, and checksum.**
+9. **TCP is connection-oriented, provides reliable delivery and full-duplex communication, and presents data as a byte stream. Each TCP connection is point-to-point.**
+10. **A TCP endpoint is identified by an IP address and port number, often called a socket. A TCP connection is uniquely identified by the endpoints at both ends.**
+11. Stop-and-wait supports reliable delivery by making the sender wait for an acknowledgment after each packet.
+12. Pipelining improves utilization by allowing the sender to transmit multiple packets before waiting for acknowledgments.
+13. In stop-and-wait, the sender retransmits a packet if its acknowledgment does not arrive before a timeout. The timeout should exceed the expected round-trip time. This is an Automatic Repeat reQuest (ARQ) mechanism. Duplicate packets are discarded, but acknowledged again. Continuous ARQ uses a send window to transmit multiple packets and often uses cumulative acknowledgments for in-order data.
+14. A TCP header has a 20-byte fixed portion and up to 40 bytes of options. Padding aligns the header to a 4-byte boundary, so the total header length is 20–60 bytes.
+15. **TCP uses a sliding window. The sequence numbers in the send window indicate which data may be sent. As acknowledgments arrive, the window advances. Flow control limits the sender so the receiver can keep up and avoid buffer overflow.**
+16. Congestion occurs when demand for a network resource exceeds its capacity. Congestion control prevents too much data from entering the network and overloading routers or links. It is a network-wide process, unlike flow control, which is end-to-end and regulates the sender to match the receiver's capacity.
+17. **For congestion control, TCP maintains a congestion window (`cwnd`) that changes with network conditions. The effective send window is limited by the smaller of the congestion window and the receiver's advertised window.**
+18. **TCP congestion control commonly uses slow start, congestion avoidance, fast retransmit, and fast recovery. Routers can also use packet-dropping strategies such as Active Queue Management (AQM).**
+19. A transport connection has three phases: establishment, data transfer, and release.
+20. **The application process that initiates a TCP connection is the client; the process that waits for a connection is the server. TCP uses a three-way handshake: the server acknowledges the client's request, and the client acknowledges the server's response.**
+21. TCP connection release usually uses four segments. Either side can initiate release. After the first side's FIN is acknowledged, the connection is half-closed; the other side can send remaining data before sending its own FIN.
 
-### 5.3. 补充（重要）
+### 5.3. Additional Review Topics
 
-以下知识点需要重点关注：
+Review these topics in particular:
 
-1. 端口和套接字的意义
-2. UDP 和 TCP 的区别以及两者的应用场景
-3. 在不可靠的网络上实现可靠传输的工作原理，停止等待协议和 ARQ 协议
-4. TCP 的滑动窗口，流量控制，拥塞控制和连接管理
-5. TCP 的三次握手，四次挥手机制
+1. Ports and sockets.
+2. Differences between UDP and TCP and their use cases.
+3. Reliable delivery over an unreliable network, including stop-and-wait and ARQ.
+4. TCP sliding windows, flow control, congestion control, and connection management.
+5. The TCP three-way handshake and four-way teardown.
 
-## 6. 应用层（Application Layer）
+## 6. Application Layer
 
-![应用层](../images/shared/0f13f0ee13b24af7bdddf56162eb6602-tplv-k3u1fbpfcp-zoom-1.png)
+![Application layer](../images/shared/0f13f0ee13b24af7bdddf56162eb6602-tplv-k3u1fbpfcp-zoom-1.png)
 
-### 6.1. 基本术语
+### 6.1. Basic Terms
 
-1. **域名系统（DNS）**：域名系统（DNS，Domain Name System）将人类可读的域名（例如，www.baidu.com）转换为机器可读的 IP 地址（例如，220.181.38.148）。我们可以将其理解为专为互联网设计的电话薄。
+1. **DNS (Domain Name System):** Converts human-readable domain names such as `www.baidu.com` into IP addresses such as `220.181.38.148`. It is like an Internet directory.
 
-   ![DNS 将域名解析为 IP 地址的过程](../images/shared/e7da4b07947f4c0094d46dc96a067df0-tplv-k3u1fbpfcp-zoom-1.png)
+   ![How DNS resolves a domain name to an IP address](../images/shared/e7da4b07947f4c0094d46dc96a067df0-tplv-k3u1fbpfcp-zoom-1.png)
 
    <p style="text-align:right;font-size:12px">https://www.seobility.net/en/wiki/HTTP_headers</p>
 
-2. **文件传输协议（FTP）**：FTP 是 File Transfer Protocol（文件传输协议）的英文简称，而中文简称为“文传协议”。用于 Internet 上的控制文件的双向传输。同时，它也是一个应用程序（Application）。基于不同的操作系统有不同的 FTP 应用程序，而所有这些应用程序都遵守同一种协议以传输文件。在 FTP 的使用当中，用户经常遇到两个概念：“下载”（Download）和“上传”（Upload）。 “下载”文件就是从远程主机拷贝文件至自己的计算机上；“上传”文件就是将文件从自己的计算机中拷贝至远程主机上。用 Internet 语言来说，用户可通过客户机程序向（从）远程主机上传（下载）文件。
+2. **FTP (File Transfer Protocol):** Transfers files between a client and a server. Downloading copies a file from a remote host to the local computer; uploading copies it in the opposite direction. FTP clients on different operating systems follow the same protocol.
 
-   ![FTP工作过程](../images/shared/f3f2caaa361045a38fb89bb9fee15bd3-tplv-k3u1fbpfcp-zoom-1.png)
+   ![How FTP works](../images/shared/f3f2caaa361045a38fb89bb9fee15bd3-tplv-k3u1fbpfcp-zoom-1.png)
 
-3. **简单文件传输协议（TFTP）**：TFTP（Trivial File Transfer Protocol,简单文件传输协议）是 TCP/IP 协议族中的一个用来在客户机与服务器之间进行简单文件传输的协议，提供不复杂、开销不大的文件传输服务。端口号为 69。
-4. **远程终端协议（TELNET）**：Telnet 协议是 TCP/IP 协议族中的一员，是 Internet 远程登陆服务的标准协议和主要方式。它为用户提供了在本地计算机上完成远程主机工作的能力。在终端使用者的电脑上使用 telnet 程序，用它连接到服务器。终端使用者可以在 telnet 程序中输入命令，这些命令会在服务器上运行，就像直接在服务器的控制台上输入一样。可以在本地就能控制服务器。要开始一个 telnet 会话，必须输入用户名和密码来登录服务器。Telnet 是常用的远程控制 Web 服务器的方法。
-5. **万维网（WWW）**：WWW 是环球信息网的缩写，（亦作“Web”、“WWW”、“'W3'”，英文全称为“World Wide Web”），中文名字为“万维网”，“环球网”等，常简称为 Web。分为 Web 客户端和 Web 服务器程序。WWW 可以让 Web 客户端（常用浏览器）访问浏览 Web 服务器上的页面。是一个由许多互相链接的超文本组成的系统，通过互联网访问。在这个系统中，每个有用的事物，称为一样“资源”；并且由一个全局“统一资源标识符”（URI）标识；这些资源通过超文本传输协议（Hypertext Transfer Protocol）传送给用户，而后者通过点击链接来获得资源。万维网联盟（英语：World Wide Web Consortium，简称 W3C），又称 W3C 理事会。1994 年 10 月在麻省理工学院（MIT）计算机科学实验室成立。万维网联盟的创建者是万维网的发明者蒂姆·伯纳斯-李。万维网并不等同互联网，万维网只是互联网所能提供的服务其中之一，是靠着互联网运行的一项服务。
-6. **万维网的大致工作工程：**
+3. **TFTP (Trivial File Transfer Protocol):** A simple, low-overhead protocol for transferring files between clients and servers. It uses port `69`.
+4. **Telnet:** A TCP/IP protocol for remote terminal access. A user runs a Telnet client, connects to a server, and enters commands that run on the remote host. Telnet is insecure because it does not encrypt the session; use SSH instead.
+5. **WWW (World Wide Web):** A system of interlinked hypertext documents and other resources accessed over the Internet. Web clients, commonly browsers, request resources from web servers using protocols such as HTTP. Resources are identified by URIs. The World Wide Web Consortium (W3C), founded at MIT in 1994 by Tim Berners-Lee, develops Web standards. The Web is one service that runs over the Internet, not the Internet itself.
+6. **A simplified view of how the Web works:**
 
-   ![万维网的大致工作工程](../images/shared/ba628fd37fdc4ba59c1a74eae32e03b1-tplv-k3u1fbpfcp-zoom-1.jpg)
+   ![A simplified view of how the Web works](../images/shared/ba628fd37fdc4ba59c1a74eae32e03b1-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-7. **统一资源定位符（URL）**：统一资源定位符是对可以从互联网上得到的资源的位置和访问方法的一种简洁的表示，是互联网上标准资源的地址。互联网上的每个文件都有一个唯一的 URL，它包含的信息指出文件的位置以及浏览器应该怎么处理它。
-8. **超文本传输协议（HTTP）**：超文本传输协议（HTTP，HyperText Transfer Protocol）是互联网上应用最为广泛的一种网络协议。所有的 WWW 文件都必须遵守这个标准。设计 HTTP 最初的目的是为了提供一种发布和接收 HTML 页面的方法。1960 年美国人 Ted Nelson 构思了一种通过计算机处理文本信息的方法，并称之为超文本（hypertext）,这成为了 HTTP 超文本传输协议标准架构的发展根基。
+7. **URL (Uniform Resource Locator):** A compact representation of a resource's location and access method. A URL contains information about where a resource is and how a browser should access it.
+8. **HTTP (Hypertext Transfer Protocol):** A widely used protocol for communication between Web clients and servers. It was designed to publish and retrieve HTML pages. HTTP defines the message format used by clients and servers. The diagram below shows a basic request-response exchange:
 
-   HTTP 协议的本质就是一种浏览器与服务器之间约定好的通信格式。HTTP 的原理如下图所示：
+   ![HTTP request-response exchange between a client and server](../images/shared/8e3efca026654874bde8be88c96e1783-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-   ![HTTP 客户端和服务器请求响应过程](../images/shared/8e3efca026654874bde8be88c96e1783-tplv-k3u1fbpfcp-zoom-1.jpg)
+9. **Proxy server:** A network intermediary that can act as a Web cache. It stores recent requests and responses locally. If a new request matches a cached one, the proxy can return the stored response instead of fetching the resource again. Proxies can be deployed at the client, server, or an intermediate point.
+10. **SMTP (Simple Mail Transfer Protocol):** A protocol for sending and relaying email from a sender to a recipient's mail server. SMTP servers follow this protocol to deliver or forward messages.
 
-9. **代理服务器（Proxy Server）**：代理服务器（Proxy Server）是一种网络实体，它又称为万维网高速缓存。代理服务器把最近的一些请求和响应暂存在本地磁盘中。当新请求到达时，若代理服务器发现这个请求与暂时存放的请求相同，就返回暂存的响应，而不需要按 URL 的地址再次去互联网访问该资源。代理服务器可在客户端或服务器工作，也可以在中间系统工作。
-10. **简单邮件传输协议（SMTP）**：SMTP（Simple Mail Transfer Protocol）即简单邮件传输协议，它是一组用于由源地址到目的地址传送邮件的规则，由它来控制信件的中转方式。SMTP 协议属于 TCP/IP 协议簇，它帮助每台计算机在发送或中转信件时找到下一个目的地。通过 SMTP 协议所指定的服务器，就可以把 E-mail 寄到收信人的服务器上了，整个过程只要几分钟。SMTP 服务器则是遵循 SMTP 协议的发送邮件服务器，用来发送或中转发出的电子邮件。
-
-    ![一个电子邮件被发送的过程](../images/shared/2bdccb760474435aae52559f2ef9652f-tplv-k3u1fbpfcp-zoom-1.png)
+    ![How an email is sent](../images/shared/2bdccb760474435aae52559f2ef9652f-tplv-k3u1fbpfcp-zoom-1.png)
 
     <p style="text-align:right;font-size:12px">https://www.campaignmonitor.com/resources/knowledge-base/what-is-the-code-that-makes-bcc-or-cc-operate-in-an-email/</p>
 
-11. **搜索引擎**：搜索引擎（Search Engine）是指根据一定的策略、运用特定的计算机程序从互联网上搜集信息，在对信息进行组织和处理后，为用户提供检索服务，将用户检索相关的信息展示给用户的系统。搜索引擎包括全文索引、目录索引、元搜索引擎、垂直搜索引擎、集合式搜索引擎、门户搜索引擎与免费链接列表等。
+11. **Search engine:** A system that collects, organizes, and processes information from the Internet, then presents relevant results to users. Types include full-text, directory, metasearch, vertical, and portal search engines.
+12. **Vertical search engine:** Focuses on a specific industry, audience, or need. It extracts and organizes information from a particular domain, returning more focused results than a general search engine.
+13. **Full-text index:** An indexing technique used by search engines to find terms efficiently across large collections of documents. It is often implemented with an inverted index.
+14. **Directory index:** Organizes websites into categories so users can browse a hierarchy or search by keyword.
 
-12. **垂直搜索引擎**：垂直搜索引擎是针对某一个行业的专业搜索引擎，是搜索引擎的细分和延伸，是对网页库中的某类专门的信息进行一次整合，定向分字段抽取出需要的数据进行处理后再以某种形式返回给用户。垂直搜索是相对通用搜索引擎的信息量大、查询不准确、深度不够等提出来的新的搜索引擎服务模式，通过针对某一特定领域、某一特定人群或某一特定需求提供的有一定价值的信息和相关服务。其特点就是“专、精、深”，且具有行业色彩，相比较通用搜索引擎的海量信息无序化，垂直搜索引擎则显得更加专注、具体和深入。
-13. **全文索引** :全文索引技术是目前搜索引擎的关键技术。试想在 1M 大小的文件中搜索一个词，可能需要几秒，在 100M 的文件中可能需要几十秒，如果在更大的文件中搜索那么就需要更大的系统开销，这样的开销是不现实的。所以在这样的矛盾下出现了全文索引技术，有时候有人叫倒排文档技术。
-14. **目录索引**：目录索引（search index/directory），顾名思义就是将网站分门别类地存放在相应的目录中，因此用户在查询信息时，可选择关键词搜索，也可按分类目录逐层查找。
+### 6.2. Key Concepts
 
-### 6.2. 重要知识点总结
+1. FTP uses TCP and a client-server model. An FTP server can serve multiple clients. File transfer uses two parallel TCP connections: a control connection and a data connection.
+2. Web clients and servers use HTTP. Traditionally, HTTP uses TCP for reliable transport, but HTTP itself is stateless. HTTP/1.1 supports persistent connections, with pipelined and non-pipelined request modes.
+3. Email is delivered to a recipient's mail server and stored in the recipient's mailbox, where it can be retrieved later.
+4. An email system has three main components: user agents, mail servers, and mail protocols. SMTP is commonly used to send mail; POP3 and IMAP are used to retrieve it.
 
-1. 文件传输协议（FTP）使用 TCP 可靠的运输服务。FTP 使用客户服务器方式。一个 FTP 服务器进程可以同时为多个用户提供服务。在进行文件传输时，FTP 的客户和服务器之间要先建立两个并行的 TCP 连接：控制连接和数据连接。实际用于传输文件的是数据连接。
-2. 万维网客户程序与服务器之间进行交互使用的协议是超文本传输协议 HTTP。HTTP 使用 TCP 连接进行可靠传输。但 HTTP 本身是无连接、无状态的。HTTP/1.1 协议使用了持续连接（分为非流水线方式和流水线方式）
-3. 电子邮件把邮件发送到收件人使用的邮件服务器，并放在其中的收件人邮箱中，收件人可随时上网到自己使用的邮件服务器读取，相当于电子邮箱。
-4. 一个电子邮件系统有三个重要组成构件：用户代理、邮件服务器、邮件协议（包括邮件发送协议，如 SMTP，和邮件读取协议，如 POP3 和 IMAP）。用户代理和邮件服务器都要运行这些协议。
+### 6.3. Additional Review Topics
 
-### 6.3. 补充（重要）
+Review these topics in particular:
 
-以下知识点需要重点关注：
-
-1. 应用层的常见协议（重点关注 HTTP 协议）
-2. 域名系统-从域名解析出 IP 地址
-3. 访问一个网站大致的过程
-4. 系统调用和应用编程接口概念
+1. Common application-layer protocols, especially HTTP.
+2. DNS and how a domain name resolves to an IP address.
+3. The steps involved in loading a website.
+4. System calls and application programming interfaces.
 
 <!-- @include: @article-footer.snippet.md -->

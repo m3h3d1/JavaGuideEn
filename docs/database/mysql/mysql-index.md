@@ -1,58 +1,58 @@
 ---
-title: MySQL索引详解
-description: MySQL索引详解，深入剖析B+树索引结构、聚簇索引与二级索引的区别、联合索引与最左前缀原则、覆盖索引与索引下推优化，以及常见的索引失效场景。
-category: 数据库
+title: MySQL Indexes Explained
+description: Learn how MySQL indexes work, including B+Tree indexes, clustered and secondary indexes, composite indexes, the leftmost prefix rule, covering indexes, index condition pushdown, and common causes of index nonuse.
+category: Database
 tag:
   - MySQL
 head:
   - - meta
     - name: keywords
-      content: MySQL索引,B+树索引,聚簇索引,覆盖索引,联合索引,索引下推,回表查询,索引失效,最左前缀原则
+      content: MySQL indexes, B+Tree index, clustered index, covering index, composite index, index condition pushdown, table lookup, index usage, leftmost prefix rule
 ---
 
-> 感谢[WT-AHA](https://github.com/WT-AHA)对本文的完善，相关 PR：<https://github.com/Snailclimb/JavaGuide/pull/1648> 。
+> Thanks to [WT-AHA](https://github.com/WT-AHA) for improving this article. Related PR: <https://github.com/Snailclimb/JavaGuide/pull/1648>.
 
-但凡经历过几场面试的小伙伴，应该都清楚，数据库索引这个知识点在面试中出现的频率高到离谱。
+Anyone who has been through a few interviews knows that database indexes come up often.
 
-除了对于准备面试来说非常重要之外，善用索引对 SQL 的性能提升非常明显，是一个性价比较高的 SQL 优化手段。
+Indexes are important for interview preparation, and using them well can significantly improve SQL performance. They are also a cost-effective optimization technique.
 
-## 索引介绍
+## Indexes
 
-**索引是一种用于快速查询和检索数据的数据结构，其本质可以看成是一种排序好的数据结构。**
+**An index is a data structure that speeds up data searches and retrieval. It can be thought of as an ordered data structure.**
 
-索引的作用就相当于书的目录。打个比方：我们在查字典的时候，如果没有目录，那我们就只能一页一页地去找我们需要查的那个字，速度很慢；如果有目录了，我们只需要先去目录里查找字的位置，然后直接翻到那一页就行了。
+An index works like a book's table of contents. Without one, you would have to search every page of a dictionary for a word. With one, you can find the page number first and turn directly to it.
 
-索引底层数据结构存在很多种类型，常见的索引结构有：B 树、 B+ 树 和 Hash、红黑树。在 MySQL 中，无论是 Innodb 还是 MyISAM，都使用了 B+ 树作为索引结构。
+Indexes can use different underlying data structures, including B-Trees, B+Trees, hash tables, and red-black trees. MySQL's InnoDB and MyISAM engines both use B+Trees for indexes.
 
-## 索引的优缺点
+## Index Tradeoffs
 
-**索引的优点：**
+**Advantages:**
 
-1. **查询速度起飞 (主要目的)**：通过索引，数据库可以**大幅减少需要扫描的数据量**，直接定位到符合条件的记录，从而显著加快数据检索速度，减少磁盘 I/O 次数。
-2. **保证数据唯一性**：通过创建**唯一索引 (Unique Index)**，可以确保表中的某一列（或几列组合）的值是独一无二的，比如用户 ID、邮箱等。主键本身就是一种唯一索引。
-3. **加速排序和分组**：如果查询中的 ORDER BY 或 GROUP BY 子句涉及的列建有索引，数据库往往可以直接利用索引已经排好序的特性，避免额外的排序操作，从而提升性能。
+1. **Faster queries (the primary purpose)**: An index can **greatly reduce the amount of data to scan**, locate matching records directly, and reduce disk I/O.
+2. **Enforce uniqueness**: A **unique index** ensures that values in one or more columns are unique, for example, user IDs or email addresses. A primary key is also a unique index.
+3. **Faster sorting and grouping**: If an `ORDER BY` or `GROUP BY` clause uses indexed columns, the database may use the index's ordering to avoid an extra sort.
 
-**索引的缺点：**
+**Disadvantages:**
 
-1. **创建和维护耗时**：创建索引本身需要时间，特别是对大表操作时。更重要的是，当对表中的数据进行**增、删、改 (DML 操作)** 时，不仅要操作数据本身，相关的索引也必须动态更新和维护，这会**降低这些 DML 操作的执行效率**。
-2. **占用存储空间**：索引本质上也是一种数据结构，需要以物理文件（或内存结构）的形式存储，因此会**额外占用一定的磁盘空间**。索引越多、越大，占用的空间也就越多。
-3. **可能被误用或失效**：如果索引设计不当，或者查询语句写得不好，数据库优化器可能不会选择使用索引（或者选错索引），反而导致性能下降。
+1. **Creation and maintenance costs**: Creating an index takes time, especially for large tables. Inserts, deletes, and updates (DML operations) must also maintain the relevant indexes, which can reduce write performance.
+2. **Storage use**: Indexes require storage, so more or larger indexes use more disk space.
+3. **Poor index use**: With a poorly designed index or query, the optimizer may skip the index or choose the wrong one, reducing performance.
 
-**那么，用了索引就一定能提高查询性能吗？**
+**Does using an index always improve query performance?**
 
-**不一定。** 大多数情况下，合理使用索引确实比全表扫描快得多。但也有例外：
+**No.** A well-chosen index is usually much faster than a full table scan, but there are exceptions:
 
-- **数据量太小**：如果表里的数据非常少（比如就几百条），全表扫描可能比通过索引查找更快，因为走索引本身也有开销。
-- **查询结果集占比过大**：如果要查询的数据占了整张表的大部分（比如超过 20%-30%），优化器可能会认为全表扫描更划算，因为通过索引多次回表（随机 I/O）的成本可能高于一次顺序的全表扫描。
-- **索引维护不当或统计信息过时**：导致优化器做出错误判断。
+- **Small tables**: A full table scan may be faster for a table with only a few hundred rows because using an index also has a cost.
+- **Large result sets**: If a query returns a large share of the table (for example, more than 20–30%), the optimizer may prefer a full table scan over repeated lookups from the index, which involve random I/O.
+- **Stale statistics or poor index maintenance**: These can lead the optimizer to choose a poor plan.
 
-## 索引底层数据结构选型
+## Index Data Structures
 
-### Hash 表
+### Hash Tables
 
-哈希表是键值对的集合，通过键(key)即可快速取出对应的值(value)，因此哈希表可以快速检索数据（接近 O(1)）。
+A hash table stores key-value pairs and can retrieve a value by its key in close to O(1) time.
 
-**为何能够通过 key 快速取出 value 呢？** 原因在于 **哈希算法**（也叫散列算法）。通过哈希算法，我们可以快速找到 key 对应的 index，找到了 index 也就找到了对应的 value。
+**Why can a hash table retrieve a value by key so quickly?** A **hash function** maps the key to an array index, which identifies the value.
 
 ```java
 hash = hashfunc(key)
@@ -61,237 +61,236 @@ index = hash % array_size
 
 ![](../../cs-basics/images/shared/mysql20210513092328171.png)
 
-但是！哈希算法有个 **Hash 冲突** 问题，也就是说多个不同的 key 最后得到的 index 相同。通常情况下，我们常用的解决办法是 **链地址法**。链地址法就是将哈希冲突数据存放在链表中。就比如 JDK1.8 之前 `HashMap` 就是通过链地址法来解决哈希冲突的。不过，JDK1.8 以后`HashMap`为了提高链表过长时的搜索效率，引入了红黑树。
+However, hash functions can produce **hash collisions**, where different keys map to the same index. A common solution is **separate chaining**, which stores colliding entries in a linked list. Before JDK 1.8, `HashMap` used this approach. From JDK 1.8 onward, it can use a red-black tree when a list becomes too long, improving lookup performance.
 
 ![](../../cs-basics/images/shared/mysql20210513092224836.png)
 
-为了减少 Hash 冲突的发生，一个好的哈希函数应该“均匀地”将数据分布在整个可能的哈希值集合中。
+A good hash function distributes values evenly across the possible hash values to reduce collisions.
 
-MySQL 的 InnoDB 存储引擎不直接支持常规的哈希索引，但是，InnoDB 存储引擎中存在一种特殊的“自适应哈希索引”（Adaptive Hash Index），自适应哈希索引并不是传统意义上的纯哈希索引，而是结合了 B+Tree 和哈希索引的特点，以便更好地适应实际应用中的数据访问模式和性能需求。自适应哈希索引的每个哈希桶实际上是一个小型的 B+Tree 结构。这个 B+Tree 结构可以存储多个键值对，而不仅仅是一个键。这有助于减少哈希冲突链的长度，提高了索引的效率。关于 Adaptive Hash Index 的详细介绍，可以查看 [MySQL 各种“Buffer”之 Adaptive Hash Index](https://mp.weixin.qq.com/s/ra4v1XR5pzSWc-qtGO-dBg) 这篇文章。
+InnoDB does not directly support conventional hash indexes, but it has a special **Adaptive Hash Index**. This combines features of B+Trees and hash indexes to adapt to data access patterns. Each hash bucket is a small B+Tree that can store multiple key-value pairs, helping reduce collision chain length. See [Adaptive Hash Index: One of MySQL's Buffer Structures](https://mp.weixin.qq.com/s/ra4v1XR5pzSWc-qtGO-dBg) for details.
 
-既然哈希表这么快，**为什么 MySQL 没有使用其作为索引的数据结构呢？** 主要是因为 Hash 索引不支持顺序和范围查询。假如我们要对表中的数据进行排序或者进行范围查询，那 Hash 索引可就不行了。并且，每次 IO 只能取一个。
+If hash tables are so fast, **why doesn't MySQL use them as its main index structure?** Hash indexes do not support ordered or range queries, and each I/O operation can fetch only one item.
 
-试想一种情况：
+Consider this query:
 
 ```java
 SELECT * FROM tb1 WHERE id < 500;
 ```
 
-在这种范围查询中，优势非常大，直接遍历比 500 小的叶子节点就够了。而 Hash 索引是根据 hash 算法来定位的，难不成还要把 1 - 499 的数据，每个都进行一次 hash 计算来定位吗？这就是 Hash 最大的缺点了。
+With an ordered index, the database can scan the leaf nodes for IDs below 500. A hash index would need to hash each value from 1 to 499 separately. This is its main limitation.
 
-### 二叉查找树（BST）
+### Binary Search Trees (BSTs)
 
-二叉查找树（Binary Search Tree）是一种基于二叉树的数据结构，它具有以下特点：
+A binary search tree has these properties:
 
-1. 左子树所有节点的值均小于根节点的值。
-2. 右子树所有节点的值均大于根节点的值。
-3. 左右子树也分别为二叉查找树。
+1. Every value in the left subtree is smaller than the root value.
+2. Every value in the right subtree is larger than the root value.
+3. Both subtrees are also binary search trees.
 
-当二叉查找树是平衡的时候，也就是树的每个节点的左右子树深度相差不超过 1 的时候，查询的时间复杂度为 O(log2(N))，具有比较高的效率。然而，当二叉查找树不平衡时，例如在最坏情况下（有序插入节点），树会退化成线性链表（也被称为斜树），导致查询效率急剧下降，时间复杂退化为 O(N)。
+When a binary search tree is balanced, with the heights of each node's subtrees differing by at most 1, lookup takes O(log₂ N) time. An unbalanced tree, such as one built by inserting values in sorted order, can degrade into a linear chain, making lookup O(N).
 
-![斜树](../../cs-basics/images/shared/oblique-tree.png)
+![Skewed tree](../../cs-basics/images/shared/oblique-tree.png)
 
-也就是说，**二叉查找树的性能非常依赖于它的平衡程度，这就导致其不适合作为 MySQL 底层索引的数据结构。**
+**A binary search tree's performance depends heavily on its balance, making it unsuitable as MySQL's underlying index structure.**
 
-为了解决这个问题，并提高查询效率，人们发明了多种在二叉查找树基础上的改进型数据结构，如平衡二叉树、B-Tree、B+Tree 等。
+Several improved structures address this problem, including balanced binary trees, B-Trees, and B+Trees.
 
-### AVL 树
+### AVL Trees
 
-AVL 树是计算机科学中最早被发明的自平衡二叉查找树，它的名称来自于发明者 G.M. Adelson-Velsky 和 E.M. Landis 的名字缩写。AVL 树的特点是保证任何节点的左右子树高度之差不超过 1，因此也被称为高度平衡二叉树，它的查找、插入和删除在平均和最坏情况下的时间复杂度都是 O(logn)。
+The AVL tree was one of the first self-balancing binary search trees. Its name comes from its inventors, G. M. Adelson-Velsky and E. M. Landis. It keeps the height difference between a node's left and right subtrees at no more than 1, so it is also called a height-balanced binary tree. Lookup, insertion, and deletion take O(log n) time on average and in the worst case.
 
 ![](../../cs-basics/images/shared/avl-tree.png)
 
-AVL 树采用了旋转操作来保持平衡。主要有四种旋转操作：LL 旋转、RR 旋转、LR 旋转和 RL 旋转。其中 LL 旋转和 RR 旋转分别用于处理左左和右右失衡，而 LR 旋转和 RL 旋转则用于处理左右和右左失衡。
+AVL trees use rotations to stay balanced. The four main rotations are LL, RR, LR, and RL. LL and RR rotations fix left-left and right-right imbalances; LR and RL rotations fix left-right and right-left imbalances.
 
-由于 AVL 树需要频繁地进行旋转操作来保持平衡，因此会有较大的计算开销进而降低了数据库写操作的性能。并且， 在使用 AVL 树时，每个树节点仅存储一个数据，而每次进行磁盘 IO 时只能读取一个节点的数据，如果需要查询的数据分布在多个节点上，那么就需要进行多次磁盘 IO。**磁盘 IO 是一项耗时的操作，在设计数据库索引时，我们需要优先考虑如何最大限度地减少磁盘 IO 操作的次数。**
+AVL trees may require frequent rotations to stay balanced, adding overhead to database writes. Each node also stores only one value, so a disk I/O reads only one node. Finding data across multiple nodes therefore requires multiple disk I/O operations. **Because disk I/O is expensive, database indexes should minimize the number of I/O operations.**
 
-实际应用中，AVL 树使用的并不多。
+AVL trees are not widely used in practice.
 
-### 红黑树
+### Red-Black Trees
 
-红黑树是一种自平衡二叉查找树，通过在插入和删除节点时进行颜色变换和旋转操作，使得树始终保持平衡状态，它具有以下特点：
+A red-black tree is a self-balancing binary search tree. It uses recoloring and rotations during insertion and deletion to keep the tree balanced. Its properties are:
 
-1. 每个节点非红即黑；
-2. 根节点总是黑色的；
-3. 每个叶子节点都是黑色的空节点（NIL 节点）；
-4. 如果节点是红色的，则它的子节点必须是黑色的（反之不一定）；
-5. 从任意节点到它的叶子节点或空子节点的每条路径，必须包含相同数目的黑色节点（即相同的黑色高度）。
+1. Every node is either red or black.
+2. The root is black.
+3. Every leaf is a black NIL node.
+4. A red node has black children, though a black node's children need not be red.
+5. Every path from a node to a leaf or NIL node contains the same number of black nodes (the same black height).
 
-![红黑树](../../cs-basics/images/shared/red-black-tree.png)
+![Red-black tree](../../cs-basics/images/shared/red-black-tree.png)
 
-和 AVL 树不同的是，红黑树并不追求严格的平衡，而是大致的平衡。正因如此，红黑树的查询效率稍有下降，因为红黑树的平衡性相对较弱，可能会导致树的高度较高，这可能会导致一些数据需要进行多次磁盘 IO 操作才能查询到，这也是 MySQL 没有选择红黑树的主要原因。也正因如此，红黑树的插入和删除操作效率大大提高了，因为红黑树在插入和删除节点时只需进行 O(1) 次数的旋转和变色操作，即可保持基本平衡状态，而不需要像 AVL 树一样进行 O(logn) 次数的旋转操作。
+Unlike AVL trees, red-black trees allow a looser balance. Lookups may be slower because the tree can be taller, potentially requiring more disk I/O. This is a key reason MySQL does not use red-black trees for indexes. Insertion and deletion are faster, however: they need only O(1) rotations and recolorings to maintain balance, rather than the O(log n) rotations that AVL trees may require.
 
-**红黑树的应用还是比较广泛的，TreeMap、TreeSet 以及 JDK1.8 的 HashMap 底层都用到了红黑树。对于数据在内存中的这种情况来说，红黑树的表现是非常优异的。**
+**Red-black trees are widely used. `TreeMap`, `TreeSet`, and `HashMap` in JDK 1.8 use them internally. They work very well for in-memory data.**
 
-关于二叉搜索树、AVL 树、红黑树、B 树和 B+ 树的基础对比，可以先看 [树结构详解](../../cs-basics/data-structure/tree.md) 和 [红黑树详解](../../cs-basics/data-structure/red-black-tree.md)。
+For a basic comparison of binary search trees, AVL trees, red-black trees, B-Trees, and B+Trees, see [Trees Explained](../../cs-basics/data-structure/tree.md) and [Red-Black Trees Explained](../../cs-basics/data-structure/red-black-tree.md).
 
-### B 树& B+ 树
+### B-Trees and B+Trees
 
-B 树也称 B- 树，全称为 **多路平衡查找树**，B+ 树是 B 树的一种变体。B 树和 B+ 树中的 B 是 `Balanced`（平衡）的意思。
+A B-Tree is a **balanced multiway search tree**. A B+Tree is a variant of a B-Tree. The “B” stands for `Balanced`.
 
-目前大部分数据库系统及文件系统都采用 B-Tree 或其变种 B+Tree 作为索引结构。
+Most database systems and file systems use B-Trees or variants such as B+Trees for indexes.
 
-**B 树& B+ 树两者有何异同呢？**
+**How do B-Trees and B+Trees differ?**
 
-- B 树的所有节点既存放键(key)也存放数据(data)，而 B+ 树只有叶子节点存放 key 和 data，其他内节点只存放 key。
-- B 树的叶子节点都是独立的；B+ 树的叶子节点有一条引用链指向与它相邻的叶子节点。
-- B 树的检索的过程相当于对范围内的每个节点的关键字做二分查找，可能还没有到达叶子节点，检索就结束了。而 B+ 树的检索效率就很稳定了，任何查找都是从根节点到叶子节点的过程，叶子节点的顺序检索很明显。
-- 在 B 树中进行范围查询时，首先找到要查找的下限，然后对 B 树进行中序遍历，直到找到查找的上限；而 B+ 树的范围查询，只需要对链表进行遍历即可。
+- B-Tree nodes store both keys and data. In a B+Tree, only leaf nodes store data; internal nodes store keys only.
+- B-Tree leaf nodes are independent. B+Tree leaf nodes are linked to their neighbors.
+- A B-Tree search may finish at an internal node. A B+Tree search always traverses from the root to a leaf, so lookup performance is more consistent.
+- For a B-Tree range query, the database finds the lower bound and traverses the tree in order until it reaches the upper bound. For a B+Tree, it can scan the linked leaves.
 
-综上，B+ 树与 B 树相比，具备更少的 IO 次数、更稳定的查询效率和更适于范围查询这些优势。
+Compared with B-Trees, B+Trees require fewer I/O operations, provide more consistent lookup performance, and are better suited to range queries.
 
-如果只想从数据结构角度快速复盘 B 树和 B+ 树，可以回到 [树结构详解](../../cs-basics/data-structure/tree.md) 的面试复盘部分。
+For a quick review of B-Trees and B+Trees from a data-structure perspective, see the interview review section in [Trees Explained](../../cs-basics/data-structure/tree.md).
 
-在 MySQL 中，MyISAM 引擎和 InnoDB 引擎都是使用 B+Tree 作为索引结构，但是，两者的实现方式不太一样。（下面的内容整理自《Java 工程师修炼之道》）
+MySQL's MyISAM and InnoDB engines both use B+Trees for indexes, but their implementations differ. (The following is adapted from _The Way of the Java Engineer_.)
 
-> MyISAM 引擎中，B+Tree 叶节点的 data 域存放的是数据记录的地址。在索引检索的时候，首先按照 B+Tree 搜索算法搜索索引，如果指定的 Key 存在，则取出其 data 域的值，然后以 data 域的值为地址读取相应的数据记录。这被称为“**非聚簇索引（非聚集索引）**”。
+> In MyISAM, the data field of each B+Tree leaf stores the address of a row. An index lookup first searches the B+Tree for the key, then uses the data field as an address to read the row. This is called a **nonclustered index**.
 >
-> InnoDB 引擎中，其数据文件本身就是索引文件。相比 MyISAM，索引文件和数据文件是分离的，其表数据文件本身就是按 B+Tree 组织的一个索引结构，树的叶节点 data 域保存了完整的数据记录。这个索引的 key 是数据表的主键，因此 InnoDB 表数据文件本身就是主索引。这被称为“**聚簇索引（聚集索引）**”，而其余的索引都作为 **辅助索引**，辅助索引的 data 域存储相应记录主键的值而不是地址，这也是和 MyISAM 不同的地方。在根据主索引搜索时，直接找到 key 所在的节点即可取出数据；在根据辅助索引查找时，则需要先取出主键的值，再走一遍主索引。 因此，在设计表的时候，不建议使用过长的字段作为主键，也不建议使用非单调的字段作为主键，这样会造成主索引频繁分裂。
+> In InnoDB, the table's data file is itself an index. Unlike MyISAM, which keeps index and data files separate, InnoDB organizes table data as a B+Tree whose leaf nodes contain complete rows. The tree is keyed by the primary key, so the data file is the primary index. This is called a **clustered index**. Other indexes are **secondary indexes**; their leaf nodes store the corresponding primary key rather than a row address. A lookup through the primary index retrieves the row directly. A lookup through a secondary index first retrieves the primary key, then searches the primary index. For this reason, avoid long or non-monotonic primary keys, which can cause frequent splits in the primary index.
 
-## 索引类型总结
+## Index Types
 
-按照数据结构维度划分：
+By data structure:
 
-- BTree 索引：MySQL 里默认和最常用的索引类型。只有叶子节点存储 value，非叶子节点只有指针和 key。存储引擎 MyISAM 和 InnoDB 实现 BTree 索引都是使用 B+Tree，但二者实现方式不一样（前面已经介绍了）。
-- 哈希索引：类似键值对的形式，一次即可定位。
-- RTree 索引：一般不会使用，仅支持 geometry 数据类型，优势在于范围查找，效率较低，通常使用搜索引擎如 ElasticSearch 代替。
-- 全文索引：对文本的内容进行分词，进行搜索。目前只有 `CHAR`、`VARCHAR`、`TEXT` 列上可以创建全文索引。一般不会使用，效率较低，通常使用搜索引擎如 ElasticSearch 代替。
+- **B-Tree index**: MySQL's default and most common index type. Only leaf nodes store values; internal nodes store keys and pointers. MyISAM and InnoDB both implement these as B+Trees, though their implementations differ.
+- **Hash index**: Uses key-value pairs to locate a value directly.
+- **R-Tree index**: Rarely used. It supports only geometry data types and is designed for spatial range searches. Search engines such as Elasticsearch are often used instead.
+- **Full-text index**: Tokenizes text for searching. Full-text indexes can be created only on `CHAR`, `VARCHAR`, and `TEXT` columns. Search engines such as Elasticsearch are often used instead.
 
-按照底层存储方式角度划分：
+By storage organization:
 
-- 聚簇索引（聚集索引）：索引结构和数据一起存放的索引，InnoDB 中的主键索引就属于聚簇索引。
-- 非聚簇索引（非聚集索引）：索引结构和数据分开存放的索引，二级索引（辅助索引）就属于非聚簇索引。MySQL 的 MyISAM 引擎，不管主键还是非主键，使用的都是非聚簇索引。
+- **Clustered index**: Stores the index structure and table data together. InnoDB's primary key index is clustered.
+- **Nonclustered index**: Stores the index separately from the table data. Secondary indexes are nonclustered. MyISAM uses nonclustered indexes for both primary and non-primary keys.
 
-按照应用维度划分：
+By purpose:
 
-- 主键索引：加速查询 + 列值唯一（不可以有 NULL）+ 表中只有一个。
-- 普通索引：仅加速查询。
-- 唯一索引：加速查询 + 列值唯一（可以有 NULL）。
-- 覆盖索引：一个索引包含（或者说覆盖）所有需要查询的字段的值。
-- 联合索引：多列值组成一个索引，专门用于组合搜索，其效率大于索引合并。
-- 全文索引：对文本的内容进行分词，进行搜索。目前只有 `CHAR`、`VARCHAR`、`TEXT` 列上可以创建全文索引。一般不会使用，效率较低，通常使用搜索引擎如 ElasticSearch 代替。
-- 前缀索引：对文本的前几个字符创建索引，相比普通索引建立的数据更小，因为只取前几个字符。
+- **Primary key index**: Speeds up lookups and enforces unique, non-`NULL` values. A table can have only one.
+- **Regular index**: Speeds up lookups.
+- **Unique index**: Speeds up lookups and enforces unique values. It can contain `NULL` values.
+- **Covering index**: Contains all column values needed by a query.
+- **Composite index**: Indexes multiple columns for queries that use them together. It is generally more efficient than index merge.
+- **Full-text index**: Tokenizes text for searching. It can be created only on `CHAR`, `VARCHAR`, and `TEXT` columns; search engines such as Elasticsearch are often used instead.
+- **Prefix index**: Indexes only the first few characters of a string, so it uses less space than a regular index.
 
-MySQL 8.x 中实现的索引新特性：
+Index features introduced in MySQL 8.x:
 
-- 隐藏索引：也称为不可见索引，不会被优化器使用，但是仍然需要维护，通常会软删除和灰度发布的场景中使用。主键不能设置为隐藏（包括显式设置或隐式设置）。
-- 降序索引：之前的版本就支持通过 desc 来指定索引为降序，但实际上创建的仍然是常规的升序索引。直到 MySQL 8.x 版本才开始真正支持降序索引。另外，在 MySQL 8.x 版本中，不再对 GROUP BY 语句进行隐式排序。
-- 函数索引：从 MySQL 8.0.13 版本开始支持在索引中使用函数或者表达式的值，也就是在索引中可以包含函数或者表达式。
+- **Invisible indexes**: The optimizer does not use them, but they still need to be maintained. They are useful for soft deletion and gradual rollouts. A primary key cannot be made invisible, explicitly or implicitly.
+- **Descending indexes**: Earlier versions accepted `DESC` when defining an index but still created an ascending index. MySQL 8.x supports actual descending indexes. MySQL 8.x also no longer sorts `GROUP BY` results implicitly.
+- **Functional indexes**: Since MySQL 8.0.13, indexes can include the values of functions or expressions.
 
-## 主键索引（Primary Key）
+## Primary Key Indexes
 
-数据表的主键列使用的就是主键索引。
+The primary key column of a table uses a primary key index.
 
-一张数据表有只能有一个主键，并且主键不能为 null，不能重复。
+A table can have only one primary key. Its values must be unique and cannot be `NULL`.
 
-在 MySQL 的 InnoDB 的表中，当没有显示的指定表的主键时，InnoDB 会自动先检查表中是否有唯一索引且不允许存在 null 值的字段，如果有，则选择该字段为默认的主键，否则 InnoDB 将会自动创建一个 6Byte 的自增主键。
+If an InnoDB table has no explicitly defined primary key, InnoDB first checks for a `NOT NULL` unique index and uses it as the primary key if one exists. Otherwise, InnoDB creates a 6-byte auto-incrementing primary key.
 
-![主键索引](../../cs-basics/images/shared/cluster-index.png)
+![Primary key index](../../cs-basics/images/shared/cluster-index.png)
 
-## 二级索引
+## Secondary Indexes
 
-二级索引（Secondary Index）的叶子节点存储的数据是主键的值，也就是说，通过二级索引可以定位主键的位置，二级索引又称为辅助索引/非主键索引。
+The leaf nodes of a secondary index store primary key values. A secondary index can therefore locate a row's primary key; it is also called an auxiliary or non-primary-key index.
 
-唯一索引、普通索引、前缀索引等索引都属于二级索引。
+Unique, regular, and prefix indexes are all secondary indexes.
 
-PS：不懂的同学可以暂存疑，慢慢往下看，后面会有答案的，也可以自行搜索。
+> If some details are unclear, keep reading; the following sections explain them.
 
-1. **唯一索引（Unique Key）**：唯一索引也是一种约束。唯一索引的属性列不能出现重复的数据，但是允许数据为 NULL，一张表允许创建多个唯一索引。 建立唯一索引的目的大部分时候都是为了该属性列的数据的唯一性，而不是为了查询效率。
-2. **普通索引（Index）**：普通索引的唯一作用就是为了快速查询数据。一张表允许创建多个普通索引，并允许数据重复和 NULL。
-3. **前缀索引（Prefix）**：前缀索引只适用于字符串类型的数据。前缀索引是对文本的前几个字符创建索引，相比普通索引建立的数据更小，因为只取前几个字符。
-4. **全文索引（Full Text）**：全文索引主要是为了检索大文本数据中的关键字的信息，是目前搜索引擎数据库使用的一种技术。Mysql5.6 之前只有 MyISAM 引擎支持全文索引，5.6 之后 InnoDB 也支持了全文索引。
+1. **Unique index (`UNIQUE KEY`)**: A constraint that prevents duplicate values in the indexed columns but allows `NULL`. A table can have multiple unique indexes. Its main purpose is usually to enforce uniqueness, not to improve query performance.
+2. **Regular index (`INDEX`)**: Speeds up lookups. A table can have multiple regular indexes, and their values may repeat or be `NULL`.
+3. **Prefix index**: Available only for string data. It indexes the first few characters, so it is smaller than a regular index on the full string.
+4. **Full-text index**: Searches for keywords in large text fields. MyISAM supported full-text indexes before MySQL 5.6; InnoDB has supported them since MySQL 5.6.
 
-二级索引：
+Secondary index:
 
-![二级索引](../../cs-basics/images/shared/no-cluster-index.png)
+![Secondary index](../../cs-basics/images/shared/no-cluster-index.png)
 
-## 聚簇索引与非聚簇索引
+## Clustered and Nonclustered Indexes
 
-### 聚簇索引（聚集索引）
+### Clustered Indexes
 
-#### 聚簇索引介绍
+#### Overview
 
-聚簇索引（Clustered Index）即索引结构和数据一起存放的索引，并不是一种单独的索引类型。InnoDB 中的主键索引就属于聚簇索引。
+A clustered index stores the index structure and table data together; it is not a separate index type. InnoDB's primary key index is clustered.
 
-在 MySQL 中，InnoDB 引擎的表的 `.ibd`文件就包含了该表的索引和数据，对于 InnoDB 引擎表来说，该表的索引（B+ 树）的每个非叶子节点存储索引，叶子节点存储索引和索引对应的数据。
+In MySQL, an InnoDB table's `.ibd` file contains both its data and indexes. In the table's B+Tree, internal nodes store index entries, while leaf nodes store index entries and their corresponding data.
 
-#### 聚簇索引的优缺点
+#### Advantages and Disadvantages
 
-**优点**：
+**Advantages:**
 
-- **查询速度非常快**：聚簇索引的查询速度非常的快，因为整个 B+ 树本身就是一颗多叉平衡树，叶子节点也都是有序的，定位到索引的节点，就相当于定位到了数据。相比于非聚簇索引， 聚簇索引少了一次读取数据的 IO 操作。
-- **对排序查找和范围查找优化**：聚簇索引对于主键的排序查找和范围查找速度非常快。
+- **Fast lookups**: A B+Tree is a balanced multiway tree with ordered leaf nodes. Finding an index entry also locates the data, avoiding the extra I/O required by a nonclustered index.
+- **Efficient sorting and range scans**: Clustered indexes support fast primary key lookups and range scans.
 
-**缺点**：
+**Disadvantages:**
 
-- **依赖于有序的数据**：因为 B+ 树是多路平衡树，如果索引的数据不是有序的，那么就需要在插入时排序，如果数据是整型还好，否则类似于字符串或 UUID 这种又长又难比较的数据，插入或查找的速度肯定比较慢。
-- **更新代价大**：如果对索引列的数据被修改时，那么对应的索引也将会被修改，而且聚簇索引的叶子节点还存放着数据，修改代价肯定是较大的，所以对于主键索引来说，主键一般都是不可被修改的。
+- **Requires ordered data**: B+Trees keep data ordered. Long strings or UUIDs can be slower to compare and insert than integers.
+- **Expensive updates**: Updating an indexed column also updates the index. Since clustered index leaves contain the rows, these updates can be costly. Primary keys are therefore generally treated as immutable.
 
-### 非聚簇索引（非聚集索引）
+### Nonclustered Indexes
 
-#### 非聚簇索引介绍
+#### Overview
 
-非聚簇索引（Non-Clustered Index）即索引结构和数据分开存放的索引，并不是一种单独的索引类型。二级索引（辅助索引）就属于非聚簇索引。MySQL 的 MyISAM 引擎，不管主键还是非主键，使用的都是非聚簇索引。
+A nonclustered index stores its structure separately from the table data; it is not a separate index type. Secondary indexes are nonclustered. MyISAM uses nonclustered indexes for both primary and non-primary keys.
 
-非聚簇索引的叶子节点并不一定存放数据的指针，因为二级索引的叶子节点就存放的是主键，根据主键再回表查数据。
+Nonclustered index leaves do not always store row pointers. In InnoDB, secondary index leaves store primary keys, which are then used to look up the row.
 
-#### 非聚簇索引的优缺点
+#### Advantages and Disadvantages
 
-**优点**：
+**Advantages:**
 
-更新代价比聚簇索引要小。非聚簇索引的更新代价就没有聚簇索引那么大了，非聚簇索引的叶子节点是不存放数据的。
+Updates cost less than with a clustered index because nonclustered index leaves do not store the table data.
 
-**缺点**：
+**Disadvantages:**
 
-- **依赖于有序的数据**：跟聚簇索引一样，非聚簇索引也依赖于有序的数据。
-- **可能会二次查询（回表）**：这应该是非聚簇索引最大的缺点了。当查到索引对应的指针或主键后，可能还需要根据指针或主键再到数据文件或表中查询。
+- **Requires ordered data**: Like clustered indexes, nonclustered indexes rely on ordered data.
+- **May require a second lookup**: After finding an index entry's pointer or primary key, the database may need another lookup in the data file or table to retrieve the row.
 
-这是 MySQL 的表的文件截图：
+The following image shows MySQL table files:
 
-![MySQL 表的文件](../../cs-basics/images/shared/mysql20210420165311654.png)
+![MySQL table files](../../cs-basics/images/shared/mysql20210420165311654.png)
 
-聚簇索引和非聚簇索引：
+Clustered and nonclustered indexes:
 
-![聚簇索引和非聚簇索引](../../cs-basics/images/shared/mysql20210420165326946.png)
+![Clustered and nonclustered indexes](../../cs-basics/images/shared/mysql20210420165326946.png)
 
-#### 非聚簇索引一定回表查询吗（覆盖索引）？
+#### Do Nonclustered Indexes Always Require a Table Lookup?
 
-**非聚簇索引不一定回表查询。**
+**No. A nonclustered index does not always require a table lookup.**
 
-试想一种情况，用户准备使用 SQL 查询用户名，而用户名字段正好建立了索引。
+Suppose a user wants to query a username and the `name` column is indexed:
 
 ```sql
- SELECT name FROM table WHERE name='guang19';
+SELECT name FROM table WHERE name='guang19';
 ```
 
-那么这个索引的 key 本身就是 name，查到对应的 name 直接返回就行了，无需回表查询。
+The index key is `name`, so MySQL can return the matching value directly without looking up the row.
 
-即使是 MyISAM 也是这样，虽然 MyISAM 的主键索引确实需要回表，因为它的主键索引的叶子节点存放的是指针。但是！**如果 SQL 查的就是主键呢?**
+This also applies to MyISAM. Its primary key index normally requires a table lookup because its leaf nodes store pointers. But **what if the query selects only the primary key?**
 
 ```sql
 SELECT id FROM table WHERE id=1;
 ```
 
-主键索引本身的 key 就是主键，查到返回就行了。这种情况就称之为覆盖索引了。
+The primary key is the index key, so MySQL can return it directly. This is a **covering index**.
 
-## 覆盖索引和联合索引
+## Covering and Composite Indexes
 
-### 覆盖索引
+### Covering Indexes
 
-如果一个索引包含（或者说覆盖）所有需要查询的字段的值，我们就称之为 **覆盖索引（Covering Index）**。
+An index that contains all the column values required by a query is called a **covering index**.
 
-在 InnoDB 存储引擎中，非主键索引的叶子节点包含的是主键的值。这意味着，当使用非主键索引进行查询时，数据库会先找到对应的主键值，然后再通过主键索引来定位和检索完整的行数据。这个过程被称为“回表”。
+In InnoDB, secondary index leaves contain primary key values. When a query uses a secondary index, the database first finds the primary key, then uses the primary key index to retrieve the full row. This is called a **table lookup**.
 
-**覆盖索引即需要查询的字段正好是索引的字段，那么直接根据该索引，就可以查到数据了，而无需回表查询。**
+**When an index contains all columns needed by a query, MySQL can return the result from the index without looking up the row.**
 
-> 如主键索引，如果一条 SQL 需要查询主键，那么正好根据主键索引就可以查到主键。再如普通索引，如果一条 SQL 需要查询 name，name 字段正好有索引，
-> 那么直接根据这个索引就可以查到数据，也无需回表。
+> For example, a query that selects only the primary key can get it from the primary key index. Likewise, if `name` has a regular index, a query that selects only `name` can return the value from that index without a table lookup.
 
-![覆盖索引](../../cs-basics/images/shared/mysql20210420165341868.png)
+![Covering index](../../cs-basics/images/shared/mysql20210420165341868.png)
 
-我们这里简单演示一下覆盖索引的效果。
+The following example demonstrates a covering index.
 
-1、创建一个名为 `cus_order` 的表，来实际测试一下这种排序方式。为了测试方便，`cus_order` 这张表只有 `id`、`score`、`name` 这 3 个字段。
+1. Create a table named `cus_order` to test this query. For simplicity, it has only three columns: `id`, `score`, and `name`.
 
 ```sql
 CREATE TABLE `cus_order` (
@@ -302,7 +301,7 @@ CREATE TABLE `cus_order` (
 ) ENGINE=InnoDB AUTO_INCREMENT=100000 DEFAULT CHARSET=utf8mb4;
 ```
 
-2、定义一个简单的存储过程（PROCEDURE）来插入 100w 测试数据。
+2. Define a stored procedure to insert one million test rows.
 
 ```sql
 DELIMITER ;;
@@ -318,66 +317,66 @@ BEGIN
 DELIMITER ;
 ```
 
-存储过程定义完成之后，我们执行存储过程即可！
+After defining the procedure, run it:
 
 ```sql
-CALL BatchinsertDataToCusOder(1, 1000000); # 插入100w+的随机数据
+CALL BatchinsertDataToCusOder(1, 1000000); # Insert over one million random rows
 ```
 
-等待一会，100w 的测试数据就插入完成了！
+After a short wait, the million test rows will be inserted.
 
-3、创建覆盖索引并使用 `EXPLAIN` 命令分析。
+3. Create a covering index and analyze the query with `EXPLAIN`.
 
-为了能够对这 100w 数据按照 `score` 进行排序，我们需要执行下面的 SQL 语句。
+To sort these rows by `score`, run this query:
 
 ```sql
-#降序排序
+# Sort in descending order
 SELECT `score`,`name` FROM `cus_order` ORDER BY `score` DESC;
 ```
 
-使用 `EXPLAIN` 命令分析这条 SQL 语句，通过 `Extra` 这一列的 `Using filesort`，我们发现是没有用到覆盖索引的。
+Analyze the query with `EXPLAIN`. The `Using filesort` value in the `Extra` column shows that it is not using a covering index.
 
 ![](../../cs-basics/images/shared/not-using-covering-index-demo.png)
 
-不过这也是理所应当，毕竟我们现在还没有创建索引呢！
+This is expected because no index has been created yet.
 
-我们这里以 `score` 和 `name` 两个字段建立联合索引：
+Create a composite index on `score` and `name`:
 
 ```sql
 ALTER TABLE `cus_order` ADD INDEX id_score_name(score, name);
 ```
 
-创建完成之后，再用 `EXPLAIN` 命令分析再次分析这条 SQL 语句。
+After creating the index, analyze the query again with `EXPLAIN`.
 
 ![](../images/shared/using-covering-index-demo.png)
 
-通过 `Extra` 这一列的 `Using index`，说明这条 SQL 语句成功使用了覆盖索引。
+The `Using index` value in the `Extra` column indicates that the query is using a covering index.
 
-关于 `EXPLAIN` 命令的详细介绍请看：[MySQL 执行计划分析](./mysql-query-execution-plan.md)这篇文章。
+For details about `EXPLAIN`, see [MySQL Execution Plan Analysis](./mysql-query-execution-plan.md).
 
-### 联合索引
+### Composite Indexes
 
-使用表中的多个字段创建索引，就是 **联合索引**，也叫 **组合索引** 或 **复合索引**。
+An index created on multiple columns is called a **composite index**.
 
-以 `score` 和 `name` 两个字段建立联合索引：
+Create a composite index on `score` and `name`:
 
 ```sql
 ALTER TABLE `cus_order` ADD INDEX id_score_name(score, name);
 ```
 
-### 最左前缀匹配原则
+### The Leftmost Prefix Rule
 
-最左前缀匹配原则指的是在使用联合索引时，MySQL 会根据索引中的字段顺序，从左到右依次匹配查询条件中的字段。如果查询条件与索引中的最左侧字段相匹配，那么 MySQL 就会使用索引来过滤数据，这样可以提高查询效率。
+When using a composite index, MySQL matches query conditions to indexed columns from left to right. If a query condition matches the leftmost column, MySQL can use the index to filter rows.
 
-最左匹配原则会一直向右匹配，直到遇到范围查询（如 >、<）为止。对于 >=、<=、BETWEEN 以及前缀匹配 LIKE 的范围查询，不会停止匹配。
+Matching continues to the right until MySQL encounters a range condition such as `>` or `<`. Conditions using `>=`, `<=`, `BETWEEN`, or a prefix `LIKE` do not stop matching.
 
-假设有一个联合索引 `(column1, column2, column3)`，其从左到右的所有前缀为 `(column1)`、`(column1, column2)`、`(column1, column2, column3)`（创建 1 个联合索引相当于创建了 3 个索引），包含这些列的所有查询都会走索引而不会全表扫描。
+Suppose a composite index covers `(column1, column2, column3)`. Its leftmost prefixes are `(column1)`, `(column1, column2)`, and `(column1, column2, column3)`. Queries using these prefixes can use the index instead of a full table scan.
 
-我们在使用联合索引时，可以将区分度高的字段放在最左边，这也可以过滤更多数据。
+When creating a composite index, consider placing the column with higher cardinality first, since it can filter out more rows.
 
-我们这里简单演示一下最左前缀匹配的效果。
+The following example demonstrates the leftmost prefix rule.
 
-1、创建一个名为 `student` 的表，这张表只有 `id`、`name`、`class` 这 3 个字段。
+1. Create a table named `student` with three columns: `id`, `name`, and `class`.
 
 ```sql
 CREATE TABLE `student` (
@@ -389,34 +388,34 @@ CREATE TABLE `student` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
-2、下面我们分别测试三条不同的 SQL 语句。
+2. Test these three SQL statements:
 
 ![](../images/shared/leftmost-prefix-matching-rule.png)
 
 ```sql
-# 可以命中索引
+# Uses the index
 SELECT * FROM student WHERE name = 'Anne Henry';
 EXPLAIN SELECT * FROM student WHERE name = 'Anne Henry' AND class = 'lIrm08RYVk';
-# 无法命中索引
+# Cannot use the index
 SELECT * FROM student WHERE class = 'lIrm08RYVk';
 ```
 
-再来看一个常见的面试题：如果有索引 `联合索引（a，b，c）`，查询 `a=1 AND c=1` 会走索引么？`c=1` 呢？`b=1 AND c=1` 呢？ `b = 1 AND a = 1 AND  c = 1` 呢？
+Consider a common interview question. Given a composite index `(a, b, c)`, can these queries use it: `a=1 AND c=1`, `c=1`, `b=1 AND c=1`, and `b=1 AND a=1 AND c=1`?
 
-先不要往下看答案，给自己 3 分钟时间想一想。
+Try to answer before reading on.
 
-1. 查询 `a=1 AND c=1`：根据最左前缀匹配原则，查询可以使用索引的前缀部分。因此，该查询仅在 `a=1` 上使用索引，然后对结果进行 `c=1` 的过滤。
-2. 查询 `c=1`：由于查询中不包含最左列 `a`，根据最左前缀匹配原则，整个索引都无法被使用。
-3. 查询 `b=1 AND c=1`：和第二种一样的情况，整个索引都不会使用。
-4. 查询 `b=1 AND a=1 AND c=1`：这个查询是可以用到索引的。查询优化器分析 SQL 语句时，对于联合索引，会对查询条件进行重排序，以便用到索引。会将 `b=1` 和 `a=1` 的条件进行重排序，变成 `a=1 AND b=1 AND c=1`。
+1. `a=1 AND c=1`: The query can use the index prefix on `a`, then filter the results by `c=1`.
+2. `c=1`: The query does not include the leftmost column `a`, so it cannot use the index.
+3. `b=1 AND c=1`: As in the previous case, the query cannot use the index.
+4. `b=1 AND a=1 AND c=1`: The query optimizer can reorder conditions for a composite index, so this query can use the index as if the conditions were `a=1 AND b=1 AND c=1`.
 
-MySQL 8.0.13 版本引入了索引跳跃扫描（Index Skip Scan，简称 ISS），它可以在某些索引查询场景下提高查询效率。在没有 ISS 之前，不满足最左前缀匹配原则的联合索引查询中会执行全表扫描。而 ISS 允许 MySQL 在某些情况下避免全表扫描，即使查询条件不符合最左前缀。不过，这个功能比较鸡肋， 和 Oracle 中的没法比，MySQL 8.0.31 还报告了一个 bug：[Bug #109145 Using index for skip scan cause incorrect result](https://bugs.mysql.com/bug.php?id=109145)（后续版本已经修复）。个人建议知道有这个东西就好，不需要深究，实际项目也不一定能用上。
+MySQL 8.0.13 introduced **Index Skip Scan (ISS)**, which can improve some index queries. Before ISS, a query that did not follow the leftmost prefix rule required a full table scan. ISS can avoid that scan in some cases. Its capabilities are limited compared with Oracle's, and MySQL 8.0.31 had a bug that caused incorrect results; it was fixed in later versions. See [Bug #109145](https://bugs.mysql.com/bug.php?id=109145). It is useful to know that ISS exists, but you may not encounter it in practice.
 
-## 索引下推
+## Index Condition Pushdown
 
-**索引下推（Index Condition Pushdown，简称 ICP）** 是 **MySQL 5.6** 版本中提供的一项索引优化功能，它允许存储引擎在索引遍历过程中，执行部分 `WHERE` 字句的判断条件，直接过滤掉不满足条件的记录，从而减少回表次数，提高查询效率。
+**Index Condition Pushdown (ICP)**, introduced in **MySQL 5.6**, lets the storage engine evaluate some `WHERE` conditions while scanning an index. It can filter out rows that do not match, reducing table lookups and improving query performance.
 
-假设我们有一个名为 `user` 的表，其中包含 `id`、`username`、`zipcode` 和 `birthdate` 4 个字段，创建了联合索引 `(zipcode, birthdate)`。
+Suppose a table named `user` has four columns: `id`, `username`, `zipcode`, and `birthdate`. It has a composite index on `(zipcode, birthdate)`.
 
 ```sql
 CREATE TABLE `user` (
@@ -427,119 +426,119 @@ CREATE TABLE `user` (
   PRIMARY KEY (`id`),
   KEY `idx_zipcode_birthdate` (`zipcode`,`birthdate`) ) ENGINE=InnoDB AUTO_INCREMENT=1001 DEFAULT CHARSET=utf8mb4;
 
-# 查询 zipcode 为 431200 且生日在 3 月的用户
+# Find users with zipcode 431200 who were born in March
 SELECT * FROM user WHERE zipcode = '431200' AND MONTH(birthdate) = 3;
 ```
 
-- 没有索引下推之前，即使 `zipcode` 字段利用索引可以帮助我们快速定位到 `zipcode = '431200'` 的用户，但我们仍然需要对每一个找到的用户进行回表操作，获取完整的用户数据，再去判断 `MONTH(birthdate) = 3`。
-- 有了索引下推之后，存储引擎会在使用 `zipcode` 字段索引查找 `zipcode = '431200'` 的用户时，同时判断 `MONTH(birthdate) = 3`。这样，只有同时满足条件的记录才会被返回，减少了回表次数。
+- **Without ICP**: The index on `zipcode` quickly finds users where `zipcode = '431200'`, but MySQL must look up every matching row to retrieve the full data before checking `MONTH(birthdate) = 3`.
+- **With ICP**: While using the `zipcode` index, the storage engine also checks `MONTH(birthdate) = 3`. Only rows that satisfy both conditions are returned, reducing table lookups.
 
 ![](../images/shared/index-condition-pushdown.png)
 
 ![](../images/shared/index-condition-pushdown-graphic-illustration.png)
 
-再来讲讲索引下推的具体原理，先看下面这张 MySQL 简要架构图。
+To understand how ICP works, first look at this simplified MySQL architecture diagram.
 
 ![](../images/shared/13526879-3037b144ed09eb88.png)
 
-MySQL 可以简单分为 Server 层和存储引擎层这两层。Server 层处理查询解析、分析、优化、缓存以及与客户端的交互等操作，而存储引擎层负责数据的存储和读取，MySQL 支持 InnoDB、MyISAM、Memory 等多种存储引擎。
+MySQL can be divided into the Server layer and the storage engine layer. The Server layer handles query parsing, analysis, optimization, caching, and client interaction. The storage engine layer stores and reads data. MySQL supports several storage engines, including InnoDB, MyISAM, and Memory.
 
-索引下推的 **下推** 其实就是指将部分上层（Server 层）负责的事情，交给了下层（存储引擎层）去处理。
+The **pushdown** in index condition pushdown means that some work normally done by the upper Server layer is delegated to the lower storage engine layer.
 
-我们这里结合索引下推原理再对上面提到的例子进行解释。
+Here is how ICP changes the example query.
 
-没有索引下推之前：
+Without ICP:
 
-- 存储引擎层先根据 `zipcode` 索引字段找到所有 `zipcode = '431200'` 的用户的主键 ID，然后二次回表查询，获取完整的用户数据；
-- 存储引擎层把所有 `zipcode = '431200'` 的用户数据全部交给 Server 层，Server 层根据 `MONTH(birthdate) = 3` 这一条件再进一步做筛选。
+- The storage engine uses the `zipcode` index to find the primary keys of all users where `zipcode = '431200'`, then looks up each full row.
+- It passes all matching rows to the Server layer, which filters them using `MONTH(birthdate) = 3`.
 
-有了索引下推之后：
+With ICP:
 
-- 存储引擎层先根据 `zipcode` 索引字段找到所有 `zipcode = '431200'` 的用户，然后直接判断 `MONTH(birthdate) = 3`，筛选出符合条件的主键 ID；
-- 二次回表查询，根据符合条件的主键 ID 去获取完整的用户数据；
-- 存储引擎层把符合条件的用户数据全部交给 Server 层。
+- The storage engine uses the `zipcode` index to find users where `zipcode = '431200'`, then checks `MONTH(birthdate) = 3` and keeps only the matching primary keys.
+- It looks up the full rows for those primary keys.
+- It passes only the matching rows to the Server layer.
 
-可以看出，**除了可以减少回表次数之外，索引下推还可以减少存储引擎层和 Server 层的数据传输量。**
+**ICP reduces both the number of table lookups and the amount of data passed from the storage engine layer to the Server layer.**
 
-最后，总结一下索引下推应用范围：
+ICP applies in these cases:
 
-1. 适用于 InnoDB 引擎和 MyISAM 引擎的查询。
-2. 适用于执行计划是 range、ref、eq_ref、ref_or_null 的范围查询。
-3. 对于 InnoDB 表，仅用于非聚簇索引。索引下推的目标是减少全行读取次数，从而减少 I/O 操作。对于 InnoDB 聚集索引，完整的记录已经读入 InnoDB 缓冲区。在这种情况下使用索引下推不会减少 I/O。
-4. 子查询不能使用索引下推，因为子查询通常会创建临时表来处理结果，而这些临时表是没有索引的。
-5. 存储过程不能使用索引下推，因为存储引擎无法调用存储函数。
+1. Queries using the InnoDB or MyISAM storage engine.
+2. Range queries whose execution plans use `range`, `ref`, `eq_ref`, or `ref_or_null` access.
+3. For InnoDB tables, only nonclustered indexes. ICP aims to reduce full-row reads and I/O. With a clustered index, InnoDB has already read the complete row into its buffer, so ICP does not reduce I/O.
+4. Subqueries cannot use ICP because they usually process results in temporary tables without indexes.
+5. Stored procedures cannot use ICP because the storage engine cannot call stored functions.
 
-## 正确使用索引的一些建议
+## Indexing Guidelines
 
-### 选择合适的字段创建索引
+### Choose Columns Carefully
 
-- **不为 NULL 的字段**：索引字段的数据应该尽量不为 NULL，因为对于数据为 NULL 的字段，数据库较难优化。如果字段频繁被查询，但又避免不了为 NULL，建议使用 0、1、true、false 这样语义较为清晰的短值或短字符作为替代。
-- **被频繁查询的字段**：我们创建索引的字段应该是查询操作非常频繁的字段。
-- **被作为条件查询的字段**：被作为 WHERE 条件查询的字段，应该被考虑建立索引。
-- **频繁需要排序的字段**：索引已经排序，这样查询可以利用索引的排序，加快排序查询时间。
-- **被经常频繁用于连接的字段**：经常用于连接的字段可能是一些外键列，对于外键列并不一定要建立外键，只是说该列涉及到表与表的关系。对于频繁被连接查询的字段，可以考虑建立索引，提高多表连接查询的效率。
+- **Columns that are not `NULL`**: Prefer non-`NULL` values because they can be easier for the database to optimize. If a frequently queried column must allow `NULL`, consider clear short values such as `0`, `1`, `true`, or `false` as alternatives where appropriate.
+- **Frequently queried columns**: Consider indexing columns used often in queries.
+- **Filter columns**: Consider indexing columns used in `WHERE` conditions.
+- **Sort columns**: An index may speed up sorting when a query can use its order.
+- **Join columns**: Consider indexing columns frequently used in joins, including columns that represent relationships between tables. A foreign key constraint is not required for a column to be used in a join.
 
-### 避免索引失效
+### Avoid Conditions That Prevent Index Use
 
-索引失效也是慢查询的主要原因之一，常见的导致索引失效的情况有下面这两类：
+Queries that cannot use an index are a common cause of slow performance. Common causes fall into two categories:
 
-**1. SQL 写法与底层逻辑冲突（破坏 B+Tree 有序性）**
+**1. The SQL condition conflicts with the index structure**
 
-此类问题最为常见，本质是查询条件让底层的 B+Tree 失去了“二分查找”的快速定位能力。
+These cases are common. The query condition prevents the B+Tree from quickly locating values through its ordering.
 
-- **违背最左前缀原则**：跳过联合索引前导列，或遇到范围查询（如 `>`、`<`、`BETWEEN`、`LIKE "abc%"`）导致后续列中断精确定位，降级为范围扫描加过滤。
-- **对索引列进行加工**：在 `WHERE` 左侧对索引列进行数学计算或应用函数，导致原始数据发生逻辑改变，在索引树中呈现无序状态。
-- **隐式类型转换（隐蔽且致命）**：当“字符串类型的列”去比较“数字类型的值”时，MySQL 会默认在列上套用转换函数，直接破坏树的有序性。
-- **LIKE 模糊查询前置通配符**：如 `LIKE "%abc"`，前缀字符的不确定性使得优化器无法锁定扫描区间的起始点。
-- **ORDER BY 排序陷阱**：排序列未命中索引、排序方向与索引结构不一致等触发额外的内存或磁盘排序（`Using filesort`）。
+- **Violating the leftmost prefix rule**: Skipping leading columns in a composite index, or using a range condition such as `>`, `<`, `BETWEEN`, or `LIKE "abc%"`, can prevent precise lookups on later columns. MySQL may scan a range and filter the results instead.
+- **Applying an operation to an indexed column**: Arithmetic or a function on the indexed column in a `WHERE` condition can prevent MySQL from using the index order.
+- **Implicit type conversion**: Comparing a string column to a numeric value may make MySQL convert the column values, preventing efficient index use.
+- **Leading wildcard in `LIKE`**: For example, `LIKE "%abc"` gives the optimizer no fixed starting point for an index scan.
+- **`ORDER BY` without a suitable index**: An unmatched sort column or sort direction may require an additional in-memory or on-disk sort (`Using filesort`).
 
-**2. 优化器的成本决策（基于 I/O 成本妥协）**
+**2. The optimizer's cost decision**
 
-此类问题并非索引本身不可用，而是 MySQL 优化器经过计算后，认为“不走普通索引”整体开销反而更小。
+The index may be usable, but the MySQL optimizer estimates that another plan will cost less.
 
-- **无脑 `SELECT \*` 导致回表成本超载**：查询大量非索引覆盖列时，若命中数据量较大（通常超 20%~30%），优化器会判定全表扫描的顺序 I/O 优于频繁回表的随机 I/O，从而主动放弃索引。
-- **`OR` 条件导致全表扫描**：只要 `OR` 连接的任意一侧条件没有对应索引，就会触发全表扫描。即使两侧都有索引，若 Index Merge（索引合并）的预期成本过高，依然会被放弃。
-- **`IN` 列表过长引发估算失真**：当 `IN` 列表长度超过系统阈值（默认 200）时，优化器会从精准的深入探测（Index Dive）切换为粗略的统计估算，极易因统计信息陈旧而产生执行成本的误判。
+- **`SELECT *` makes table lookups expensive**: When a query requests many columns not covered by an index and matches many rows (often more than 20–30%), the optimizer may prefer sequential I/O from a full table scan over repeated random I/O from table lookups.
+- **`OR` conditions**: A full table scan may be chosen if either side of an `OR` has no suitable index. Even if both sides are indexed, the optimizer may reject Index Merge if its estimated cost is too high.
+- **Long `IN` lists**: When an `IN` list exceeds a system threshold (200 by default), the optimizer may switch from index dives to rougher statistical estimates. Stale statistics can then lead to a poor cost estimate.
 
-详细介绍：[MySQL索引失效场景总结](https://javaguide.cn/database/mysql/mysql-index-invalidation.html)。
+For details, see [Common Cases Where MySQL Does Not Use an Index](https://javaguide.cn/database/mysql/mysql-index-invalidation.html).
 
-### 被频繁更新的字段应该慎重建立索引
+### Be Careful When Indexing Frequently Updated Columns
 
-虽然索引能带来查询上的效率，但是维护索引的成本也是不小的。 如果一个字段不被经常查询，反而被经常修改，那么就更不应该在这种字段上建立索引了。
+Indexes can speed up queries, but maintaining them has a cost. If a column is rarely queried but frequently updated, it may not be a good candidate for an index.
 
-### 限制每张表上的索引数量
+### Limit the Number of Indexes per Table
 
-索引并不是越多越好，建议单张表索引不超过 5 个！索引可以提高效率，同样可以降低效率。
+More indexes are not always better. As a guideline, keep the number of indexes per table below five. Indexes can improve performance, but they can also reduce it.
 
-索引可以增加查询效率，但同样也会降低插入和更新的效率，甚至有些情况下会降低查询效率。
+Indexes can speed up queries, but they also slow down inserts and updates and can sometimes make queries slower.
 
-因为 MySQL 优化器在选择如何优化查询时，会根据统计信息，对每一个可以用到的索引来进行评估，以生成出一个最好的执行计划，如果同时有很多个索引都可以用于查询，就会增加 MySQL 优化器生成执行计划的时间，同样会降低查询性能。
+The MySQL optimizer evaluates available indexes using statistics to choose an execution plan. When many indexes could be used, plan generation takes longer and may reduce query performance.
 
-### 尽可能的考虑建立联合索引而不是单列索引
+### Prefer Composite Indexes Where Appropriate
 
-因为索引是需要占用磁盘空间的，可以简单理解为每个索引都对应着一颗 B+ 树。如果一个表的字段过多，索引过多，那么当这个表的数据达到一个体量后，索引占用的空间也是很多的，且修改索引时，耗费的时间也是较多的。如果是联合索引，多个字段在一个索引上，那么将会节约很大磁盘空间，且修改数据的操作效率也会提升。
+Indexes use disk space; each can be thought of as a B+Tree. When a table has many columns and indexes, they can consume substantial space and take longer to update. A composite index can store multiple columns in one index, saving space and reducing the cost of maintaining separate indexes.
 
-### 注意避免冗余索引
+### Avoid Redundant Indexes
 
-冗余索引指的是索引的功能相同，能够命中索引(a, b)就肯定能命中索引(a) ，那么索引(a)就是冗余索引。如(name,city)和(name)这两个索引就是冗余索引，能够命中前者的查询肯定是能够命中后者的。在大多数情况下，都应该尽量扩展已有的索引而不是创建新索引。
+Redundant indexes provide the same functionality. If an index on `(a, b)` can serve the same queries as an index on `(a)`, the latter is redundant. For example, `(name, city)` can serve queries that use the `name` prefix, so a separate `(name)` index is often unnecessary. In most cases, extend an existing index instead of creating another one.
 
-### 字符串类型的字段使用前缀索引代替普通索引
+### Consider Prefix Indexes for String Columns
 
-前缀索引仅限于字符串类型，较普通索引会占用更小的空间，所以可以考虑使用前缀索引带替普通索引。
+Prefix indexes are available only for strings and use less space than indexes on full values. Consider them as an alternative to regular indexes when appropriate.
 
-### 删除长期未使用的索引
+### Remove Indexes That Are No Longer Used
 
-删除长期未使用的索引，不用的索引的存在会造成不必要的性能损耗。
+Remove indexes that are no longer used; unused indexes add unnecessary overhead.
 
-MySQL 5.7 可以通过查询 `sys` 库的 `schema_unused_indexes` 视图来查询哪些索引从未被使用。
+In MySQL 5.7, query the `schema_unused_indexes` view in the `sys` schema to find indexes that have never been used.
 
-### 知道如何分析 SQL 语句是否走索引查询
+### Check Whether a Query Uses an Index
 
-我们可以使用 `EXPLAIN` 命令来分析 SQL 的 **执行计划** ，这样就知道语句是否命中索引了。执行计划是指一条 SQL 语句在经过 MySQL 查询优化器的优化会后，具体的执行方式。
+Use `EXPLAIN` to inspect a query's **execution plan** and see whether it uses an index. An execution plan describes how MySQL runs a query after optimizing it.
 
-`EXPLAIN` 并不会真的去执行相关的语句，而是通过 **查询优化器** 对语句进行分析，找出最优的查询方案，并显示对应的信息。
+`EXPLAIN` does not execute the query. It uses the **query optimizer** to analyze the statement, choose a plan, and display information about it.
 
-`EXPLAIN` 的输出格式如下：
+An `EXPLAIN` result looks like this:
 
 ```sql
 mysql> EXPLAIN SELECT `score`,`name` FROM `cus_order` ORDER BY `score` DESC;
@@ -551,30 +550,30 @@ mysql> EXPLAIN SELECT `score`,`name` FROM `cus_order` ORDER BY `score` DESC;
 1 row in set, 1 warning (0.00 sec)
 ```
 
-各个字段的含义如下：
+The columns mean:
 
-| **列名**      | **含义**                                     |
-| ------------- | -------------------------------------------- |
-| id            | SELECT 查询的序列标识符                      |
-| select_type   | SELECT 关键字对应的查询类型                  |
-| table         | 用到的表名                                   |
-| partitions    | 匹配的分区，对于未分区的表，值为 NULL        |
-| type          | 表的访问方法                                 |
-| possible_keys | 可能用到的索引                               |
-| key           | 实际用到的索引                               |
-| key_len       | 所选索引的长度                               |
-| ref           | 当使用索引等值查询时，与索引作比较的列或常量 |
-| rows          | 预计要读取的行数                             |
-| filtered      | 按表条件过滤后，留存的记录数的百分比         |
-| Extra         | 附加信息                                     |
+| **Column**    | **Meaning**                                                       |
+| ------------- | ----------------------------------------------------------------- |
+| id            | Identifier for the `SELECT` query sequence                        |
+| select_type   | Type of `SELECT` query                                            |
+| table         | Table used                                                        |
+| partitions    | Matching partitions; `NULL` for unpartitioned tables              |
+| type          | Table access method                                               |
+| possible_keys | Indexes that might be used                                        |
+| key           | Index actually used                                               |
+| key_len       | Length of the selected index                                      |
+| ref           | Column or constant compared with the index for an equality lookup |
+| rows          | Estimated number of rows to read                                  |
+| filtered      | Estimated percentage of rows remaining after filtering            |
+| Extra         | Additional information                                            |
 
-篇幅问题，我这里只是简单介绍了一下 MySQL 执行计划，详细介绍请看：[MySQL 执行计划分析](./mysql-query-execution-plan.md)这篇文章。
+This is a brief introduction to MySQL execution plans. For details, see [MySQL Execution Plan Analysis](./mysql-query-execution-plan.md).
 
-## 数据结构延伸阅读
+## Further Reading on Data Structures
 
-理解 MySQL 索引时，建议回到树结构本身看一遍：
+To understand MySQL indexes, review these tree structures:
 
-- [树结构详解](../../cs-basics/data-structure/tree.md)：对比二叉搜索树、AVL、红黑树、B 树和 B+ 树。
-- [红黑树详解](../../cs-basics/data-structure/red-black-tree.md)：理解内存中自平衡搜索树的取舍，再对比 B+ 树为什么更适合磁盘索引。
+- [Trees Explained](../../cs-basics/data-structure/tree.md): Compare binary search trees, AVL trees, red-black trees, B-Trees, and B+Trees.
+- [Red-Black Trees Explained](../../cs-basics/data-structure/red-black-tree.md): Review the tradeoffs of in-memory self-balancing search trees and why B+Trees are better suited to disk indexes.
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,51 +1,51 @@
 ---
-title: 二分查找面试题总结：左右边界、答案二分与 Java 模板
-description: 二分查找面试题总结，系统讲解基础二分、左边界、右边界、答案二分、Java 手写模板、复杂度分析和 LeetCode 高频题。
-category: 计算机基础
+title: "Binary Search Interview Questions: Boundaries, Binary Search on the Answer, and Java Templates"
+description: Learn basic binary search, lower and upper bounds, binary search on the answer, Java templates, complexity, and common LeetCode problems.
+category: Computer Science Basics
 tag:
-  - 算法
+  - Algorithms
 head:
   - - meta
     - name: keywords
-      content: 二分查找,二分查找模板,左右边界,答案二分,Java二分查找,LeetCode二分查找,算法面试题
+      content: binary search,binary search templates,lower bound,upper bound,binary search on the answer,Java,LeetCode,algorithm interview questions
 ---
 
-二分查找最容易让人翻车的地方不是思想，而是边界。`left`、`right`、`mid`、循环条件、返回值，只要有一个含义没想清楚，就很容易写出死循环或者漏掉答案。
+The hardest part of binary search is usually not the idea but the boundaries. If the meanings of `left`, `right`, or `mid`, the loop condition, or the return value are unclear, it is easy to write an infinite loop or miss the answer.
 
-面试里判断能不能用二分，先看一句话：**答案所在空间是否有单调性**。数组有序只是最直观的一种情况，最小速度、最小容量、最小天数这类题，也可以在答案范围上二分。
+To decide whether binary search applies, ask: **Is the answer space monotonic?** A sorted array is the most obvious case, but problems that ask for a minimum speed, capacity, or number of days can also use binary search over the answer range.
 
-## 面试考察重点
+## Interview Topics
 
-- 能写出基础二分模板。
-- 能处理左边界、右边界。
-- 能识别答案二分，而不是只会在数组里找数。
-- 能解释为什么循环会结束，为什么不会漏答案。
-- 能说出时间复杂度是 `O(logn)`，空间复杂度通常是 `O(1)`。
+- Implement the basic binary search template.
+- Handle lower and upper bounds.
+- Recognize binary search on the answer, not just searches in arrays.
+- Explain why the loop terminates and does not miss the answer.
+- State that time complexity is `O(log n)` and space complexity is usually `O(1)`.
 
-## 什么时候想到二分？
+## When Should You Consider Binary Search?
 
-不要把二分查找理解成“只能在有序数组里找数字”。它真正依赖的是 **单调性**。
+Do not think of binary search as a technique only for finding a number in a sorted array. It depends on **monotonicity**.
 
-常见单调性有两类：
+There are two common forms of monotonicity:
 
-| 类型     | 例子                           | 判断方式                                   |
-| -------- | ------------------------------ | ------------------------------------------ |
-| 数组单调 | 有序数组中找 `target`          | `nums[mid]` 和 `target` 比较后能排除一半   |
-| 答案单调 | 求最小速度、最小容量、最少天数 | 某个答案可行时，更大的答案也可行，或反过来 |
+| Type             | Example                                              | How to recognize it                                                            |
+| ---------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Sorted array     | Find `target` in a sorted array.                     | Comparing `nums[mid]` with `target` rules out half of the range.               |
+| Monotonic answer | Find the minimum speed, capacity, or number of days. | If one answer is feasible, larger answers may also be feasible, or vice versa. |
 
-比如“爱吃香蕉的珂珂”里，吃香蕉速度越快，越容易在规定时间内吃完。这里数组本身不需要有序，单调的是“速度”和“是否能吃完”之间的关系。
+For example, in Koko Eating Bananas, a faster eating speed makes it easier to finish within the time limit. The array does not need to be sorted; the relationship between speed and feasibility is monotonic.
 
-面试时可以这样判断：
+In an interview, ask:
 
-1. 题目是否在找一个位置、边界或最小/最大可行值？
-2. 如果猜一个答案 `x`，能不能在 `O(n)` 或更低复杂度内判断它是否可行？
-3. `x` 变大或变小时，可行性是否单调变化？
+1. Is the problem asking for a position, a boundary, or the minimum or maximum feasible value?
+2. Given a candidate answer `x`, can you check feasibility in `O(n)` or less?
+3. Does feasibility change monotonically as `x` increases or decreases?
 
-三个问题都能回答上来，基本就可以尝试二分。
+If you can answer all three, binary search may be a good fit.
 
-## 基础二分模板
+## Basic Binary Search Template
 
-适合在有序数组中查找一个确定值：
+Use this to find a specific value in a sorted array:
 
 ```java
 int binarySearch(int[] nums, int target) {
@@ -65,21 +65,21 @@ int binarySearch(int[] nums, int target) {
 }
 ```
 
-这个模板里，搜索区间是闭区间 `[left, right]`，所以循环条件是 `left <= right`。每次排除 `mid`，因此更新成 `mid + 1` 或 `mid - 1`。
+This template searches a closed interval, `[left, right]`, so its loop condition is `left <= right`. Each iteration excludes `mid`, which is why the updates use `mid + 1` or `mid - 1`.
 
-用一句话记这个模板：**区间里每个位置都还可能是答案，循环结束时区间为空。**
+Remember: **Every position in the interval may still be the answer; the interval is empty when the loop ends.**
 
-举个例子，数组 `[1, 3, 5, 7, 9]` 中找 `7`：
+For example, find `7` in `[1, 3, 5, 7, 9]`:
 
-1. `left = 0`，`right = 4`，`mid = 2`，`nums[mid] = 5`，目标在右侧。
-2. 更新 `left = mid + 1 = 3`。
-3. `mid = 3`，找到 `7`。
+1. `left = 0`, `right = 4`, `mid = 2`, and `nums[mid] = 5`, so the target is to the right.
+2. Set `left = mid + 1 = 3`.
+3. Now `mid = 3`, and the value `7` is found.
 
-如果查找 `6`，最后会出现 `left > right`，说明闭区间已经被排空，返回 `-1`。
+If you search for `6`, eventually `left > right`, meaning the closed interval is empty. Return `-1`.
 
-## 左边界模板
+## Lower Bound Template
 
-找第一个大于等于 `target` 的位置：
+Find the first position whose value is greater than or equal to `target`:
 
 ```java
 int lowerBound(int[] nums, int target) {
@@ -97,20 +97,20 @@ int lowerBound(int[] nums, int target) {
 }
 ```
 
-这个模板的搜索区间是左闭右开 `[left, right)`。`right` 初始化为 `nums.length`，返回值可能等于 `nums.length`，表示数组中不存在大于等于 `target` 的位置。
+This template searches the half-open interval `[left, right)`. `right` starts at `nums.length`; the return value may equal `nums.length`, meaning no array value is greater than or equal to `target`.
 
-左边界模板的关键不是“找到 target”，而是“找到第一个满足条件的位置”。这个写法能自然处理目标不存在的情况。
+The goal is not simply to find `target`, but to find the first position that satisfies a condition. This naturally handles cases where the target is absent.
 
-比如数组 `[1, 2, 2, 2, 4]`，找第一个大于等于 `2` 的位置：
+For example, find the first value greater than or equal to `2` in `[1, 2, 2, 2, 4]`:
 
-- 当 `nums[mid] >= 2`，`mid` 可能就是答案，所以不能排除 `mid`，更新 `right = mid`。
-- 当 `nums[mid] < 2`，`mid` 和它左边都不可能是答案，更新 `left = mid + 1`。
+- If `nums[mid] >= 2`, `mid` may be the answer, so keep it in the search range by setting `right = mid`.
+- If `nums[mid] < 2`, neither `mid` nor any position to its left can be the answer, so set `left = mid + 1`.
 
-循环结束时，`left == right`，这个位置就是第一个满足条件的位置。
+When the loop ends, `left == right`, and that index is the first position that satisfies the condition.
 
-## 右边界模板
+## Upper Bound Template
 
-找最后一个小于等于 `target` 的位置，可以先找第一个大于 `target` 的位置，再减 1：
+To find the last position whose value is less than or equal to `target`, find the first position greater than `target` and subtract 1:
 
 ```java
 int upperBound(int[] nums, int target) {
@@ -128,27 +128,27 @@ int upperBound(int[] nums, int target) {
 }
 ```
 
-这种写法的好处是左右边界只记一套思路：找第一个满足条件的位置。
+This lets you use the same idea for both boundaries: find the first position that satisfies a condition.
 
-右边界容易写错，推荐转化成左边界问题：
+Upper-bound searches are easy to get wrong, so convert them to lower-bound searches:
 
-- 最后一个小于等于 `target` 的位置 = 第一个大于 `target` 的位置 - 1。
-- 最后一个小于 `target` 的位置 = 第一个大于等于 `target` 的位置 - 1。
+- Last position `<= target` = first position `> target` minus 1.
+- Last position `< target` = first position `>= target` minus 1.
 
-这样不需要维护两套模板，面试手写时更稳。
+This avoids maintaining two separate templates and is less error-prone in an interview.
 
-## 答案二分
+## Binary Search on the Answer
 
-答案二分不是在数组里找元素，而是在答案范围里找最小可行值或最大可行值。
+Binary search on the answer searches for the minimum or maximum feasible value in a range, rather than for an element in an array.
 
-典型问题：给定若干堆香蕉和总时间 `h`，求最小吃香蕉速度。速度越快，越容易在 `h` 小时内吃完，这就是单调性。
+A typical problem gives several piles of bananas and a time limit `h`, then asks for the minimum eating speed. The faster the speed, the easier it is to finish within `h` hours, which gives us monotonicity.
 
-这类题通常分两步：
+These problems usually have two steps:
 
-1. 确定答案范围。比如速度最小是 `1`，最大不超过最大那堆香蕉数。
-2. 写 `check` 函数。给定一个速度，判断能不能在 `h` 小时内吃完。
+1. Set the answer range. For example, the minimum speed is `1`, and the maximum need not exceed the size of the largest pile.
+2. Write a `check` function that determines whether a given speed can finish within `h` hours.
 
-这个上界成立依赖题目约束：`h >= piles.length`。因为速度等于最大堆大小时，每堆香蕉最多 1 小时吃完，总耗时不会超过堆数。
+This upper bound relies on the problem constraint `h >= piles.length`. At a speed equal to the largest pile, each pile takes at most one hour, so total time does not exceed the number of piles.
 
 ```java
 int minEatingSpeed(int[] piles, int h) {
@@ -177,42 +177,42 @@ boolean canFinish(int[] piles, int h, int speed) {
 }
 ```
 
-这里为什么返回 `left`？因为循环一直在找“第一个可行速度”。当 `canFinish(mid)` 为 true，说明 `mid` 可行，但可能还有更小的速度也可行，所以收缩右边界。最后左右边界重合的位置，就是最小可行速度。
+Why return `left`? The loop searches for the first feasible speed. If `canFinish(mid)` is true, `mid` works, but a smaller speed may also work, so the right boundary moves left. When the boundaries meet, they identify the minimum feasible speed.
 
-答案二分的 `check` 函数往往比二分本身更重要。面试时建议先把 `check` 的含义说清楚，再写二分框架。
+The `check` function is often more important than the binary search itself. Explain what `check` means before writing the search loop.
 
-## 三类二分怎么选？
+## Choosing a Binary Search Pattern
 
-| 目标                         | 推荐模板 | 返回值                        |
-| ---------------------------- | -------- | ----------------------------- |
-| 找到某个等于 `target` 的下标 | 基础二分 | 找到返回下标，找不到返回 `-1` |
-| 找第一个满足条件的位置       | 左边界   | 返回 `left`，可能等于数组长度 |
-| 找最小可行答案               | 答案二分 | 返回最终的 `left`             |
+| Goal                                           | Template                    | Return value                                     |
+| ---------------------------------------------- | --------------------------- | ------------------------------------------------ |
+| Find an index equal to `target`                | Basic binary search         | Return its index, or `-1` if absent.             |
+| Find the first position satisfying a condition | Lower bound                 | Return `left`, which may equal the array length. |
+| Find the minimum feasible answer               | Binary search on the answer | Return the final `left`.                         |
 
-如果题目里有“第一个”“最后一个”“最小可行”“最大可行”，不要急着写基础二分，先判断是不是边界问题。
+If a problem asks for the “first,” “last,” “minimum feasible,” or “maximum feasible” value, check whether it is a boundary search before using the basic template.
 
-## 面试手写路径
+## A Step-by-Step Interview Approach
 
-二分题的代码不长，面试里更容易被追问的是“你为什么敢丢掉一半”。手写时可以按这个顺序来：
+Binary search code is short. Interviewers are more likely to ask why it is safe to discard half the range. When writing it, follow these steps:
 
-1. 先说明搜索空间：是在数组下标里找，还是在答案范围里找。
-2. 再说明单调性：`mid` 左右两侧为什么可以排除一边。
-3. 明确区间含义：闭区间 `[left, right]` 还是左闭右开 `[left, right)`。
-4. 写更新规则：`mid` 还能不能成为答案，决定写 `right = mid` 还是 `right = mid - 1`。
-5. 最后说返回值：循环结束时 `left`、`right` 分别代表什么。
+1. State the search space: array indexes or an answer range.
+2. Explain the monotonicity: why can one side of `mid` be discarded?
+3. Define the interval: closed `[left, right]` or half-open `[left, right)`.
+4. Set the update rules: whether `mid` may still be the answer determines whether to use `right = mid` or `right = mid - 1`.
+5. Explain the return value: what do `left` and `right` represent when the loop ends?
 
-一个很实用的自检问题是：**当 `nums[mid]` 正好满足条件时，我有没有把可能的答案删掉？** 左边界、答案二分里，`mid` 经常仍然可能是答案，所以不能随手写成 `right = mid - 1`。
+A useful self-check is: **If `nums[mid]` satisfies the condition, have I accidentally discarded a possible answer?** In lower-bound searches and binary search on the answer, `mid` may still be valid, so do not automatically write `right = mid - 1`.
 
-## 代表题精讲：查找第一个和最后一个位置
+## Example: Find the First and Last Position
 
-[34. 在排序数组中查找元素的第一个和最后一个位置](https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/) 是边界二分的典型题。题目要求返回 `target` 的起始和结束位置，如果不存在返回 `[-1, -1]`。
+[34. Find First and Last Position of Element in Sorted Array](https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/) is a classic boundary-search problem. Return the starting and ending positions of `target`, or `[-1, -1]` if it does not exist.
 
-这题不要写成“找到一个 target 后向两边扫描”。虽然能过一些用例，但最坏情况下会退化成 `O(n)`。更稳的写法是做两次边界查找：
+Do not find one occurrence of `target` and then scan in both directions. That may pass some cases, but can take `O(n)` in the worst case. A more reliable solution performs two boundary searches:
 
-- 第一次找第一个大于等于 `target` 的位置。
-- 第二次找第一个大于 `target` 的位置，再减 1。
+- First, find the first position greater than or equal to `target`.
+- Then, find the first position greater than `target` and subtract 1.
 
-下面两个辅助方法与上文模板一致，这里保留完整代码，方便把返回值含义和主逻辑放在一起对照。
+The helper methods below match the earlier templates. The full code is included here so you can compare the return values with the main logic.
 
 ```java
 int[] searchRange(int[] nums, int target) {
@@ -253,66 +253,66 @@ int upperBound(int[] nums, int target) {
 }
 ```
 
-面试里这题常见追问是：如果数组中全是 `target` 怎么办？如果 `target` 不存在但应该插在中间怎么办？这两个问题其实都在考返回值含义。`lowerBound` 返回的是第一个满足条件的位置，不保证这个位置上的值一定等于 `target`，所以返回前要再检查一次。
+Common follow-up questions include: what if every array element equals `target`? What if `target` is absent but belongs in the middle? Both test whether you understand the return value. `lowerBound` returns the first position satisfying the condition; it does not guarantee that the value there equals `target`, so check before returning.
 
-## 过程示意和边界样例
+## Walkthrough and Edge Cases
 
-以左边界模板为例，数组 `[1, 2, 2, 2, 4]` 中找第一个大于等于 `2` 的位置：
+Using the lower-bound template, find the first value greater than or equal to `2` in `[1, 2, 2, 2, 4]`:
 
-| 轮次 | `left` | `right` | `mid` | 判断            | 下一步      |
-| ---- | ------ | ------- | ----- | --------------- | ----------- |
-| 1    | 0      | 5       | 2     | `nums[2] >= 2`  | `right = 2` |
-| 2    | 0      | 2       | 1     | `nums[1] >= 2`  | `right = 1` |
-| 3    | 0      | 1       | 0     | `nums[0] < 2`   | `left = 1`  |
-| 结束 | 1      | 1       | -     | `left == right` | 返回 1      |
+| Iteration | `left` | `right` | `mid` | Check           | Next step   |
+| --------- | ------ | ------- | ----- | --------------- | ----------- |
+| 1         | 0      | 5       | 2     | `nums[2] >= 2`  | `right = 2` |
+| 2         | 0      | 2       | 1     | `nums[1] >= 2`  | `right = 1` |
+| 3         | 0      | 1       | 0     | `nums[0] < 2`   | `left = 1`  |
+| End       | 1      | 1       | -     | `left == right` | Return 1    |
 
-几个边界样例建议手写前先过一遍：
+Check these edge cases before coding:
 
-| 输入        | 目标       | 预期                                 |
-| ----------- | ---------- | ------------------------------------ |
-| `[]`        | `1`        | 返回 `-1` 或插入位置 `0`，看题目要求 |
-| `[1]`       | `1`        | 能命中唯一元素                       |
-| `[1, 1, 1]` | 左边界 `1` | 返回 `0`                             |
-| `[1, 3, 5]` | 左边界 `4` | 返回 `2`                             |
-| `[1, 3, 5]` | 左边界 `6` | 返回 `3`                             |
+| Input       | Search             | Expected result                                                  |
+| ----------- | ------------------ | ---------------------------------------------------------------- |
+| `[]`        | `1`                | Return `-1` or insertion position `0`, depending on the problem. |
+| `[1]`       | `1`                | Find the only element.                                           |
+| `[1, 1, 1]` | Lower bound of `1` | Return `0`.                                                      |
+| `[1, 3, 5]` | Lower bound of `4` | Return `2`.                                                      |
+| `[1, 3, 5]` | Lower bound of `6` | Return `3`.                                                      |
 
-常见错误写法：
+Common mistake:
 
 ```java
 while (left < right) {
     int mid = (left + right) / 2;
     if (nums[mid] >= target) {
-        right = mid - 1; // 错：mid 可能就是左边界，不能直接排除
+        right = mid - 1; // Wrong: mid may be the lower bound, so do not discard it.
     } else {
         left = mid + 1;
     }
 }
 ```
 
-左边界里，当 `nums[mid] >= target` 时，`mid` 仍然可能是答案，所以应该写 `right = mid`。
+For a lower-bound search, when `nums[mid] >= target`, `mid` may still be the answer, so set `right = mid`.
 
-## 易错点
+## Common Pitfalls
 
-- `mid = (left + right) / 2` 可能整数溢出，推荐写成 `left + (right - left) / 2`。
-- 不要混用闭区间和左闭右开区间的更新方式。
-- 找边界时，命中目标后通常不能直接返回，还要继续收缩区间。
-- 答案二分要先证明单调性，不能看到“最小值”就硬套。
-- `canFinish` 这类判断函数里可能需要 `long`，避免累计值溢出。
+- `mid = (left + right) / 2` may overflow; prefer `left + (right - left) / 2`.
+- Do not mix update rules for closed and half-open intervals.
+- When searching for a boundary, finding a matching value usually is not enough; continue narrowing the interval.
+- Prove monotonicity before using binary search on the answer; do not apply it just because a problem asks for a minimum.
+- A feasibility function such as `canFinish` may need `long` to avoid overflow when accumulating values.
 
-## 高频问题自测
+## Review Questions
 
-- `left < right` 和 `left <= right` 有什么区别？
-- 二分查找为什么是 `O(logn)`？
-- 找左边界时，为什么命中后要移动 `right`？
-- 什么是答案二分？它和普通二分有什么区别？
-- 二分查找一定要求数组有序吗？
+- How do `left < right` and `left <= right` differ?
+- Why does binary search take `O(log n)` time?
+- Why does a lower-bound search move `right` after finding a qualifying value?
+- What is binary search on the answer, and how does it differ from ordinary binary search?
+- Does binary search always require a sorted array?
 
-## 推荐练习题
+## Practice Problems
 
-- [704. 二分查找](https://leetcode.cn/problems/binary-search/)
-- [35. 搜索插入位置](https://leetcode.cn/problems/search-insert-position/)
-- [34. 在排序数组中查找元素的第一个和最后一个位置](https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/)
-- [875. 爱吃香蕉的珂珂](https://leetcode.cn/problems/koko-eating-bananas/)
-- [1011. 在 D 天内送达包裹的能力](https://leetcode.cn/problems/capacity-to-ship-packages-within-d-days/)
+- [704. Binary Search](https://leetcode.cn/problems/binary-search/)
+- [35. Search Insert Position](https://leetcode.cn/problems/search-insert-position/)
+- [34. Find First and Last Position of Element in Sorted Array](https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/)
+- [875. Koko Eating Bananas](https://leetcode.cn/problems/koko-eating-bananas/)
+- [1011. Capacity To Ship Packages Within D Days](https://leetcode.cn/problems/capacity-to-ship-packages-within-d-days/)
 
 <!-- @include: @article-footer.snippet.md -->

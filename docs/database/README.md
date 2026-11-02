@@ -1,9 +1,9 @@
 ---
-title: 数据库知识体系：SQL、MySQL、Redis、MongoDB 与 Elasticsearch
-description: 数据库面试与知识体系学习路线，涵盖 SQL、MySQL 索引、事务、日志、MVCC、执行计划、Redis 缓存、MongoDB 和 Elasticsearch。
-category: 数据库
+title: "Database Guide: SQL, MySQL, Redis, MongoDB, and Elasticsearch"
+description: A database study and interview guide covering SQL, MySQL indexes and transactions, logs, MVCC, query plans, Redis caching, MongoDB, and Elasticsearch.
+category: Databases
 tag:
-  - 数据库
+  - Databases
   - MySQL
   - Redis
 sitemap:
@@ -12,100 +12,100 @@ sitemap:
 head:
   - - meta
     - name: keywords
-      content: 数据库,数据库面试题,SQL,MySQL,Redis,MongoDB,Elasticsearch,MySQL索引,MySQL事务,MySQL日志,MVCC,Redis缓存,Redis持久化,Redis集群,后端面试
+      content: databases,database interview questions,SQL,MySQL,Redis,MongoDB,Elasticsearch,MySQL indexes,MySQL transactions,MySQL logs,MVCC,Redis cache,Redis persistence,Redis cluster,backend interviews
 ---
 
 <!-- @include: @small-advertisement.snippet.md -->
 
-这份 **数据库知识体系** 面向后端学习、工程实践和面试复习，按“数据库基础 -> SQL -> MySQL -> Redis -> NoSQL 与搜索”的顺序整理本站数据库相关文章。
+This **database guide** is for backend developers studying database fundamentals, applying them in engineering work, and preparing for interviews. It organizes the site's articles in this order: database fundamentals, SQL, MySQL, Redis, and NoSQL and search systems.
 
-如果你时间有限，建议先看 [数据库基础常见面试题总结](./basis.md)、[SQL 语法基础知识总结](./sql/sql-syntax-summary.md)、[MySQL 常见面试题总结](./mysql/mysql-questions-01.md) 和 [Redis 常见面试题总结（上）](./redis/redis-questions-01.md)，快速建立高频问题清单。
+If you have limited time, start with [common database interview questions](./basis.md), [SQL syntax fundamentals](./sql/sql-syntax-summary.md), [common MySQL interview questions](./mysql/mysql-questions-01.md), and [common Redis interview questions, part 1](./redis/redis-questions-01.md).
 
-## 适合谁看
+## Who This Guide Is For
 
-- 正在系统学习数据库基础、SQL、MySQL 和 Redis 的后端开发者。
-- 准备校招、社招、中大厂后端面试的同学。
-- 想补齐索引、事务、日志、执行计划、缓存一致性、Redis 持久化和集群能力的工程师。
-- 已经写过业务 CRUD，但对数据库底层原理、性能优化和 NoSQL 选型不够熟的读者。
+- Backend developers studying databases, SQL, MySQL, and Redis systematically.
+- Candidates preparing for new graduate or experienced-hire backend interviews.
+- Engineers who want to strengthen their understanding of indexes, transactions, logs, query plans, cache consistency, Redis persistence, and clustering.
+- Developers who write CRUD code but want a stronger grasp of database internals, performance tuning, and NoSQL selection.
 
-## 学习重点
+## Key Topics
 
-- 关系型数据库和 NoSQL 分别适合解决什么问题，常见选型边界在哪里？
-- SQL 的查询、聚合、连接、子查询和事务语义应该如何掌握？
-- MySQL 索引、事务隔离、MVCC、三大日志和执行计划如何串成一条主线？
-- Redis 为什么快，常用数据结构、缓存策略、持久化、阻塞问题和集群机制如何理解？
-- MongoDB、Elasticsearch 这类 NoSQL/搜索系统在后端面试和工程选型中常考哪些点？
+- What problems do relational databases and NoSQL systems solve, and where are the trade-offs?
+- How do you use SQL queries, aggregation, joins, subqueries, and transaction semantics?
+- How do MySQL indexes, transaction isolation, MVCC, logs, and query plans fit together?
+- Why is Redis fast? How do its data structures, caching strategies, persistence, blocking behavior, and cluster mechanisms work?
+- Which concepts about MongoDB and Elasticsearch commonly come up in backend interviews and system selection?
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [数据库基础常见面试题总结](./basis.md) 和 [NoSQL 基础常见面试题总结](./nosql.md)：先理解数据库分类、事务、范式、NoSQL 类型和典型应用场景。
-2. [SQL 语法基础知识总结](./sql/sql-syntax-summary.md)：补齐查询、过滤、排序、聚合、连接、子查询、插入、更新和删除等 SQL 基本功。
-3. [MySQL 专题](./mysql/)：重点学习索引、事务隔离、MVCC、三大日志、执行过程和执行计划。
-4. [Redis 专题](./redis/)：重点学习缓存基础、数据结构、缓存读写策略、持久化、阻塞问题、内存碎片和集群。
-5. [MongoDB 专题](./mongodb/) 和 [Elasticsearch 常见面试题总结](./elasticsearch/elasticsearch-questions-01.md)：根据岗位要求补充文档数据库和搜索引擎相关知识。
+1. [Database fundamentals](./basis.md) and [NoSQL fundamentals](./nosql.md): Learn database categories, transactions, normal forms, NoSQL types, and common use cases.
+2. [SQL syntax fundamentals](./sql/sql-syntax-summary.md): Review queries, filtering, sorting, aggregation, joins, subqueries, inserts, updates, and deletes.
+3. [MySQL](./mysql/): Focus on indexes, transaction isolation, MVCC, logs, execution, and query plans.
+4. [Redis](./redis/): Focus on caching, data structures, read/write strategies, persistence, blocking issues, memory fragmentation, and clustering.
+5. [MongoDB](./mongodb/) and [Elasticsearch interview questions](./elasticsearch/elasticsearch-questions-01.md): Study document databases and search engines based on the requirements of your role.
 
-## 核心文章
+## Core Articles
 
-### 数据库基础与 SQL
+### Database Fundamentals and SQL
 
-这部分适合先建立数据库通用认知，重点理解数据库类型、事务语义、字符集、SQL 基础和常见查询题。
+Start here to build a general understanding of database types, transaction semantics, character sets, SQL, and common query problems.
 
-- [数据库基础常见面试题总结](./basis.md)：梳理数据库基础概念、事务特性、并发控制、范式和常见面试问题。
-- [NoSQL 基础常见面试题总结](./nosql.md)：理解键值、文档、列族、图数据库等 NoSQL 类型及适用场景。
-- [字符集详解：字符集是什么？怎么用？](./character-set.md)：理解字符集、编码、乱码原因以及 MySQL 字符集设置。
-- [SQL 专题](./sql/)：从 SQL 语法基础讲到常见 SQL 面试题。
-- [SQL 语法基础知识总结](./sql/sql-syntax-summary.md)：覆盖查询、过滤、排序、聚合、分组、连接、子查询和数据修改。
+- [Common database interview questions](./basis.md): Core concepts, transaction properties, concurrency control, normal forms, and interview questions.
+- [NoSQL interview questions](./nosql.md): Key-value, document, column-family, and graph databases and their use cases.
+- [Character sets explained](./character-set.md): Character sets, encodings, mojibake, and MySQL character set configuration.
+- [SQL](./sql/): SQL fundamentals and common SQL interview questions.
+- [SQL syntax fundamentals](./sql/sql-syntax-summary.md): Queries, filtering, sorting, aggregation, grouping, joins, subqueries, and data modification.
 
 ### MySQL
 
-MySQL 是后端开发最核心的关系型数据库考点之一，学习时建议把“索引 -> 执行计划 -> 事务 -> MVCC -> 日志 -> 性能优化”连起来。
+MySQL is a core relational database topic for backend interviews. Study indexes, query plans, transactions, MVCC, logs, and performance tuning as connected topics.
 
-- [MySQL 专题](./mysql/)：串联 MySQL 索引、事务、MVCC、日志、执行计划和性能优化。
-- [MySQL 常见面试题总结](./mysql/mysql-questions-01.md)：快速建立 MySQL 高频问题清单。
-- [MySQL 索引详解](./mysql/mysql-index.md)：理解索引数据结构、最左前缀、覆盖索引、回表和索引设计原则。
-- [MySQL 事务隔离级别详解](./mysql/transaction-isolation-level.md)：理解脏读、不可重复读、幻读和不同隔离级别的权衡。
-- [InnoDB 存储引擎对 MVCC 的实现](./mysql/innodb-implementation-of-mvcc.md)：理解 Read View、隐藏字段、undo log 和快照读。
-- [MySQL 三大日志详解](./mysql/mysql-logs.md)：理解 binlog、redo log、undo log 的作用和关系。
-- [MySQL 数据同步到 Elasticsearch 详解](./mysql/mysql-to-elasticsearch-sync.md)：对比应用层双写、定时同步、Canal、Debezium 和 Flink CDC，理解全量、增量和数据一致性问题。
-- [MySQL 执行计划分析](./mysql/mysql-query-execution-plan.md)：掌握 EXPLAIN 常见字段和慢 SQL 分析入口。
+- [MySQL](./mysql/): Indexes, transaction isolation, MVCC, logs, query plans, and performance tuning.
+- [Common MySQL interview questions](./mysql/mysql-questions-01.md): An overview of frequently asked MySQL questions.
+- [MySQL indexes](./mysql/mysql-index.md): Index structures, the leftmost-prefix rule, covering indexes, table lookups, and index design.
+- [MySQL transaction isolation levels](./mysql/transaction-isolation-level.md): Dirty reads, non-repeatable reads, phantom reads, and isolation-level trade-offs.
+- [How InnoDB implements MVCC](./mysql/innodb-implementation-of-mvcc.md): Read views, hidden columns, undo logs, and consistent reads.
+- [MySQL logs](./mysql/mysql-logs.md): The purposes and relationships of the binary log, redo log, and undo log.
+- [Syncing MySQL data to Elasticsearch](./mysql/mysql-to-elasticsearch-sync.md): Application-level dual writes, scheduled sync, Canal, Debezium, Flink CDC, full and incremental sync, and consistency.
+- [MySQL query plans](./mysql/mysql-query-execution-plan.md): Common `EXPLAIN` fields and how to start analyzing slow queries.
 
 ### Redis
 
-Redis 既是缓存，也是高频中间件考点。学习时不要只背命令，更要理解缓存策略、数据结构、持久化、阻塞原因和集群机制。
+Redis is both a cache and a common interview topic. Go beyond memorizing commands and understand caching strategies, data structures, persistence, blocking behavior, and clustering.
 
-- [Redis 专题](./redis/)：围绕缓存、数据结构、持久化、集群、阻塞问题和工程实践展开。
-- [缓存基础常见面试题总结](./redis/cache-basics.md)：理解缓存使用场景、缓存穿透、击穿、雪崩和一致性问题。
-- [Redis 常见面试题总结（上）](./redis/redis-questions-01.md) 和 [Redis 常见面试题总结（下）](./redis/redis-questions-02.md)：快速建立 Redis 高频问题清单。
-- [Redis 5 种基本数据类型详解](./redis/redis-data-structures-01.md)：理解 String、List、Hash、Set、Sorted Set 的应用场景。
-- [Redis 持久化机制详解](./redis/redis-persistence.md)：理解 RDB、AOF、AOF 重写和混合持久化。
-- [Redis 集群详解](./redis/redis-cluster.md)：理解主从复制、哨兵、Cluster、槽位和故障转移。
+- [Redis](./redis/): Caching, data structures, persistence, clustering, blocking issues, and engineering practices.
+- [Caching fundamentals](./redis/cache-basics.md): Cache use cases, cache penetration, cache breakdown, cache avalanche, and consistency.
+- [Common Redis interview questions, part 1](./redis/redis-questions-01.md) and [part 2](./redis/redis-questions-02.md): Frequently asked Redis questions.
+- [Redis's five basic data types](./redis/redis-data-structures-01.md): Use cases for strings, lists, hashes, sets, and sorted sets.
+- [Redis persistence](./redis/redis-persistence.md): RDB, AOF, AOF rewriting, and hybrid persistence.
+- [Redis clustering](./redis/redis-cluster.md): Primary-replica replication, Sentinel, Cluster, hash slots, and failover.
 
-### NoSQL 与搜索
+### NoSQL and Search
 
-这部分适合在掌握关系型数据库和缓存之后补充，用来理解文档数据库、搜索引擎和非关系型存储的选型边界。
+Study these topics after relational databases and caching to understand document databases, search engines, and the trade-offs of non-relational storage.
 
-- [MongoDB 专题](./mongodb/)：整理 MongoDB 文档模型、索引、副本集、分片、事务和常见面试问题。
-- [MongoDB 常见面试题总结（上）](./mongodb/mongodb-questions-01.md) 和 [MongoDB 常见面试题总结（下）](./mongodb/mongodb-questions-02.md)：理解 MongoDB 核心概念和工程实践。
-- [Elasticsearch 常见面试题总结](./elasticsearch/elasticsearch-questions-01.md)：理解倒排索引、分片、副本、写入查询流程和搜索场景。
+- [MongoDB](./mongodb/): Document models, indexes, replica sets, sharding, transactions, and interview questions.
+- [MongoDB interview questions, part 1](./mongodb/mongodb-questions-01.md) and [part 2](./mongodb/mongodb-questions-02.md): Core concepts and engineering practices.
+- [Elasticsearch interview questions](./elasticsearch/elasticsearch-questions-01.md): Inverted indexes, shards, replicas, indexing and query flows, and search use cases.
 
-## 高频问题
+## Common Interview Questions
 
-- 关系型数据库和 NoSQL 有什么区别？分别适合哪些场景？
-- 数据库事务 ACID 是什么？隔离级别分别解决什么问题？
-- SQL 中 WHERE、GROUP BY、HAVING、ORDER BY 的执行顺序如何理解？
-- MySQL 索引为什么能加速查询？什么情况下会索引失效？
-- InnoDB 如何通过 MVCC 实现非锁定一致性读？
-- binlog、redo log、undo log 分别解决什么问题？
-- 如何通过 EXPLAIN 分析 SQL 执行计划？
-- Redis 为什么快？缓存穿透、击穿、雪崩如何处理？
-- Redis 持久化、主从复制、哨兵和 Cluster 分别解决什么问题？
-- MongoDB 和 Elasticsearch 分别适合什么业务场景？
+- How do relational databases and NoSQL differ, and what are their use cases?
+- What are the ACID properties of a database transaction? What does each isolation level address?
+- How should you understand the order of `WHERE`, `GROUP BY`, `HAVING`, and `ORDER BY` in SQL?
+- How do MySQL indexes speed up queries, and what can prevent an index from being used?
+- How does InnoDB use MVCC to provide non-locking consistent reads?
+- What problems do the binary log, redo log, and undo log solve?
+- How do you analyze a SQL execution plan with `EXPLAIN`?
+- Why is Redis fast? How do you address cache penetration, breakdown, and avalanche?
+- What do Redis persistence, primary-replica replication, Sentinel, and Cluster provide?
+- What business use cases fit MongoDB and Elasticsearch?
 
-## 相关专题
+## Related Topics
 
-- [高性能系统知识体系](../high-performance/)
-- [高可用系统知识体系](../high-availability/)
-- [分布式系统知识体系](../distributed-system/)
-- [系统设计](../system-design/)
+- [High-performance systems](../high-performance/)
+- [High-availability systems](../high-availability/)
+- [Distributed systems](../distributed-system/)
+- [System design](../system-design/)
 
 <!-- @include: @article-footer.snippet.md -->

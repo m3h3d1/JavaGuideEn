@@ -1,71 +1,71 @@
 ---
-title: Trie 前缀树面试题总结：字典树原理、前缀匹配与 Java 实现
-description: Trie 前缀树面试题总结，讲解字典树节点结构、插入、查询、前缀匹配、复杂度、搜索提示、敏感词过滤和 LeetCode 高频题。
-category: 计算机基础
+title: "Trie Interview Questions: Prefix Matching and Java Implementation"
+description: Learn trie node structure, insertion, lookup, prefix matching, complexity, search suggestions, word filtering, and common LeetCode problems.
+category: Computer Science Basics
 tag:
-  - 数据结构
+  - Data Structures
 head:
   - - meta
     - name: keywords
-      content: Trie,前缀树,字典树,前缀匹配,字符串算法,搜索提示,敏感词过滤,Java Trie,LeetCode Trie,数据结构面试题
+      content: tries,prefix trees,prefix matching,string algorithms,search suggestions,word filtering,Java trie,LeetCode trie,data structure interview questions
 ---
 
-Trie，也叫前缀树或字典树，适合处理大量字符串的前缀匹配问题。搜索提示、词典查询、敏感词过滤、路由前缀匹配，都能看到它的影子。
+A **trie**, also called a prefix tree, is useful for prefix matching across large sets of strings. Tries are used for search suggestions, dictionary lookup, word filtering, and route-prefix matching.
 
-它的核心思路很直接：把字符串按字符拆开，共享相同前缀。比如 `app`、`apple`、`apply` 会共用 `a -> p -> p` 这条路径。
+The idea is simple: split strings into characters and share paths for common prefixes. For example, `app`, `apple`, and `apply` share the path `a -> p -> p`.
 
-文章内容概览：
+This article covers:
 
-1. 什么是 Trie？
-2. Trie 为什么适合前缀匹配？
-3. Trie 节点怎么设计？
-4. Trie 的插入、查询和前缀查询怎么写？
-5. Trie 和哈希表应该怎么选？
+1. What is a trie?
+2. Why are tries useful for prefix matching?
+3. How should trie nodes be designed?
+4. How do you implement insertion, lookup, and prefix lookup?
+5. When should you choose a trie over a hash table?
 
-![Trie 树按字符路径组织字符串集合的结构示意图](../images/shared/trie.png)
+![A trie organizes strings by character paths](../images/shared/trie.png)
 
-## 什么是 Trie？
+## What Is a Trie?
 
-Trie 是一种专门面向字符串集合的数据结构。和二叉搜索树不同，Trie 的节点通常不靠“大小关系”组织，而是靠“字符路径”组织。
+A trie is a data structure designed for sets of strings. Unlike a binary search tree, it usually organizes nodes by character paths rather than by relative order.
 
-可以这样理解：
+Think of it this way:
 
-- 根节点不代表任何字符，只是所有字符串的入口。
-- 从根节点出发，每向下一层走一步，就匹配字符串中的一个字符。
-- 从根节点到某个节点经过的字符连起来，就是一个前缀。
-- 如果某个节点被标记为单词结尾，说明从根到这个节点形成的字符串是一个完整单词。
+- The root does not represent a character; it is the entry point for all strings.
+- Each step down from the root matches one character in a string.
+- The characters along a path from the root to a node form a prefix.
+- A node marked as the end of a word means that the path from the root forms a complete word.
 
-举个例子，插入 `app`、`apple`、`apply` 之后，它们会共享 `a -> p -> p` 这段路径。`app` 对应的最后一个 `p` 节点需要标记为单词结尾，否则 Trie 只能知道 `app` 是某些单词的前缀，不能知道它本身也是一个完整单词。
+For example, after inserting `app`, `apple`, and `apply`, they share the path `a -> p -> p`. The last `p` for `app` must be marked as the end of a word. Otherwise, the trie knows that `app` is a prefix of other words but not that `app` is also a complete word.
 
-这就是 `isWord` 变量存在的意义。没有它，就无法区分“这个路径只是前缀”还是“这个路径已经构成一个词”。
+That is the purpose of the `isWord` field. Without it, the trie cannot distinguish a path that is only a prefix from one that forms a complete word.
 
-## Trie 为什么适合前缀匹配？
+## Why Are Tries Useful for Prefix Matching?
 
-哈希表很适合判断一个完整字符串是否存在，比如查询 `apple` 在不在集合里。但如果问题变成“找出所有以 `app` 开头的词”，哈希表就不那么顺手了：除非额外维护前缀索引，否则需要扫描大量 key。
+A hash table is good for checking whether a complete string exists, such as whether `apple` is in a set. But to find every word starting with `app`, a hash table is less convenient: without a separate prefix index, it must scan many keys.
 
-Trie 的优势在于，前缀天然对应树上的一条路径。查询 `app` 前缀时，只需要从根节点依次走 `a`、`p`、`p`：
+A trie represents each prefix as a path. To look up the prefix `app`, follow `a`, `p`, and `p` from the root:
 
-- 如果中途某个字符路径不存在，说明没有任何单词以 `app` 为前缀。
-- 如果能走到最后一个 `p`，说明这个节点下面的所有单词都以 `app` 开头。
+- If a character path is missing, no word starts with `app`.
+- If the path reaches the last `p`, every word below that node starts with `app`.
 
-所以，Trie 的前缀查询复杂度主要和前缀长度有关，而不是和词典中有多少个单词直接相关。这个特点在搜索提示、路由最长前缀匹配、词典过滤这类场景里很有用。
+Trie prefix lookup depends mainly on the prefix length, not directly on the number of words in the dictionary. This is useful for search suggestions, longest-prefix route matching, and dictionary filtering.
 
-## 面试考察重点
+## Interview Topics
 
-- 能说清 Trie 为什么适合前缀查询。
-- 能写插入、完整单词查询、前缀查询。
-- 能分析时间复杂度和字符串长度有关。
-- 能说明 Trie 的空间开销可能比较大。
-- 能和哈希表做对比。
+- Explain why tries are useful for prefix lookup.
+- Implement insertion, complete-word lookup, and prefix lookup.
+- Analyze time complexity in terms of string length.
+- Explain why tries may use a lot of space.
+- Compare tries with hash tables.
 
-## 节点结构
+## Node Structure
 
-Trie 节点通常包含两类信息：
+A trie node usually stores two kinds of information:
 
-1. 指向子节点的引用，用来继续匹配下一个字符。
-2. 是否为完整单词结尾的标记。
+1. References to child nodes, used to match the next character.
+2. A flag indicating whether the node ends a complete word.
 
-如果只处理小写英文字母，可以用长度为 26 的数组：
+For lowercase English letters, use an array of length 26:
 
 ```java
 class TrieNode {
@@ -74,20 +74,20 @@ class TrieNode {
 }
 ```
 
-如果字符集不固定，可以用 `Map<Character, TrieNode>`，空间更灵活，但每次访问有哈希表成本。
+For a variable character set, use `Map<Character, TrieNode>`. This is more space-flexible but adds hash table lookup overhead.
 
-这两种写法没有绝对好坏：
+Neither approach is always better:
 
-| 节点实现方式                             | 优点                       | 缺点                     |
-| ---------------------------------------- | -------------------------- | ------------------------ |
-| `TrieNode[] children = new TrieNode[26]` | 访问快，适合固定小字符集   | 空节点多时比较浪费空间   |
-| `Map<Character, TrieNode>`               | 只存实际出现的字符，更灵活 | 有额外对象和哈希访问成本 |
+| Node representation                      | Advantage                                                               | Disadvantage                                  |
+| ---------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------- |
+| `TrieNode[] children = new TrieNode[26]` | Fast access; suitable for a small, fixed character set.                 | Wastes space when many child slots are empty. |
+| `Map<Character, TrieNode>`               | Stores only characters that occur and supports flexible character sets. | Adds object and hash lookup overhead.         |
 
-面试手写代码时，如果题目明确只有小写英文字母，用数组最清楚；如果字符集包含大小写、中文、路径片段或任意字符，用 `Map` 更稳妥。
+In an interview, use an array when the problem specifies lowercase English letters. If the character set includes uppercase letters, other scripts, path segments, or arbitrary characters, a `Map` is a safer choice.
 
-## 基础实现
+## Basic Implementation
 
-下面这个模板假设字符串只包含小写英文字母：
+This template assumes that strings contain only lowercase English letters:
 
 ```java
 class Trie {
@@ -128,74 +128,74 @@ class Trie {
 }
 ```
 
-插入和查询的逻辑其实是同一条主线：从根节点开始，按字符一层一层往下走。插入时如果路径不存在就创建节点；查询时如果路径不存在就返回 `false`。区别只在最后一步：`search()` 要检查 `isWord`，`startsWith()` 只要能走完整个前缀即可。
+Insertion and lookup follow the same path: start at the root and move down one level for each character. Insertion creates a node when a path is missing; lookup returns `false` if it is missing. The final check differs: `search()` checks `isWord`, while `startsWith()` only needs to reach the end of the prefix.
 
-## 删除操作怎么理解？
+## How Does Deletion Work?
 
-Trie 的删除比插入和查询更容易写错，因为删除一个单词时不能简单地把整条路径都删掉。
+Deletion is easier to get wrong than insertion or lookup because you cannot simply remove the entire path for a word.
 
-比如 Trie 里同时有 `app` 和 `apple`，删除 `app` 时，只能取消 `app` 最后一个 `p` 节点上的 `isWord` 标记，不能把 `a -> p -> p` 这条路径删掉，否则 `apple` 也会被破坏。
+If the trie contains both `app` and `apple`, deleting `app` should only clear the `isWord` flag on its last `p` node. Do not delete the path `a -> p -> p`, or `apple` will be lost too.
 
-真正删除节点时，需要从单词末尾往回看：如果某个节点没有子节点，并且也不是其他单词的结尾，才可以被删除。面试中如果没有明确要求删除，一般先把插入、完整查询、前缀查询写稳。
+To remove nodes, work backward from the end of the word. A node can be deleted only if it has no children and is not the end of another word. If an interview problem does not require deletion, focus first on insertion, complete-word lookup, and prefix lookup.
 
-## 复杂度
+## Complexity
 
-设字符串长度为 `L`：
+Let `L` be the string length:
 
-- 插入：`O(L)`
-- 查询完整单词：`O(L)`
-- 查询前缀：`O(L)`
+- Insertion: `O(L)`
+- Complete-word lookup: `O(L)`
+- Prefix lookup: `O(L)`
 
-空间复杂度取决于节点数量。最坏情况下，如果字符串几乎没有公共前缀，空间开销会接近所有字符数量之和。
+Space complexity depends on the number of nodes. In the worst case, when strings share few prefixes, the trie may use close to one node per character.
 
-如果还要枚举某个前缀下的所有单词，复杂度就不只是 `O(L)` 了。定位前缀节点需要 `O(L)`，后面还要遍历这个节点下面的子树，额外成本和返回结果数量、子树规模有关。
+Enumerating every word with a given prefix takes more than `O(L)`: locating the prefix node takes `O(L)`, then the subtree below that node must be traversed. The additional cost depends on the subtree size and number of results.
 
-## Trie 和哈希表怎么选？
+## Tries vs. Hash Tables
 
-| 场景             | Trie               | 哈希表       |
-| ---------------- | ------------------ | ------------ |
-| 完整字符串查询   | 可以做，但空间更大 | 更直接       |
-| 前缀查询         | 很适合             | 需要额外处理 |
-| 按前缀枚举所有词 | 很适合             | 不方便       |
-| 字符集很大       | 需要优化节点结构   | 更省心       |
+| Use case                  | Trie                                          | Hash table            |
+| ------------------------- | --------------------------------------------- | --------------------- |
+| Complete-string lookup    | Supported, but uses more space.               | More straightforward. |
+| Prefix lookup             | A natural fit.                                | Requires extra work.  |
+| Enumerate words by prefix | A natural fit.                                | Inconvenient.         |
+| Large character set       | May require an optimized node representation. | Easier to handle.     |
 
-如果只是判断一个词是否存在，哈希表通常更简单。如果要频繁查前缀，Trie 更合适。
+For checking whether a word exists, a hash table is usually simpler. For frequent prefix lookups, a trie is a better fit.
 
-还有一个容易忽略的差异：哈希表的完整匹配通常更省空间、更通用；Trie 则把公共前缀显式存成路径，因此能自然支持前缀查询、按前缀枚举、最长前缀匹配。二者解决的问题重心不同，不是谁完全替代谁。
+One more difference is easy to overlook: hash tables are often more space-efficient and general for exact matches, while tries store shared prefixes as paths and naturally support prefix lookup, prefix enumeration, and longest-prefix matching. They serve different needs rather than replacing each other.
 
-## 工程场景
+## Production Use Cases
 
-- 搜索框自动补全：根据用户输入前缀找到候选词。
-- 敏感词匹配：Trie 可以配合 AC 自动机做多模式匹配。
-- IP 路由匹配：最长前缀匹配可以借鉴 Trie 思路。
-- 词典校验：快速判断单词或前缀是否存在。
+- Search autocomplete: find candidate words from the user's prefix.
+- Word filtering: combine a trie with the Aho-Corasick automaton for multi-pattern matching.
+- IP routing: longest-prefix matching can use trie-based approaches.
+- Dictionary validation: quickly check whether a word or prefix exists.
 
-实际工程中还会看到一些 Trie 的变体：
+Production systems also use trie variants:
 
-- **压缩 Trie / Radix Tree**：把只有一个子节点的连续路径压缩成一段字符串，减少节点数量。
-- **Ternary Search Trie（三向单词查找树）**：每个节点通过小于、等于、大于三个方向组织字符，在空间和查询灵活性之间做折中。
-- **AC 自动机**：在 Trie 的基础上增加失败指针，用来做多模式字符串匹配。
+- **Compressed trie / radix tree:** Compress consecutive paths with a single child into one string to reduce the number of nodes.
+- **Ternary search trie:** Organize characters through less-than, equal-to, and greater-than links, balancing space use with lookup flexibility.
+- **Aho-Corasick automaton:** Add failure links to a trie for multi-pattern string matching.
 
-这些变体不需要一开始就全背下来，但要知道 Trie 的基础思想是它们的共同起点：用路径表示字符串，用共享路径复用公共前缀。
+You do not need to memorize every variant at first. They all build on the same idea: represent strings as paths and reuse paths for shared prefixes.
 
-## 易错点
+## Common Pitfalls
 
-- `isWord` 不能省，否则无法区分 `app` 和 `apple`。
-- 字符集不一定只有小写字母，面试时要根据题目调整。
-- 删除单词比插入查询复杂，需要判断节点是否还能被其他单词复用。
-- Trie 查询复杂度和字符串长度有关，不直接和词典大小成正比。
+- Do not omit `isWord`; it distinguishes `app` from `apple`.
+- The character set may include more than lowercase letters; adapt the implementation to the problem.
+- Deletion is more complex than insertion and lookup because a node may be shared by other words.
+- Trie lookup depends on string length, not directly on dictionary size.
 
-## 推荐练习题
+## Practice Problems
 
-- [208. 实现 Trie](https://leetcode.cn/problems/implement-trie-prefix-tree/)
-- [211. 添加与搜索单词](https://leetcode.cn/problems/design-add-and-search-words-data-structure/)
-- [212. 单词搜索 II](https://leetcode.cn/problems/word-search-ii/)
-- [648. 单词替换](https://leetcode.cn/problems/replace-words/)
+- [208. Implement Trie](https://leetcode.cn/problems/implement-trie-prefix-tree/)
+- [211. Design Add and Search Words Data Structure](https://leetcode.cn/problems/design-add-and-search-words-data-structure/)
+- [212. Word Search II](https://leetcode.cn/problems/word-search-ii/)
+- [648. Replace Words](https://leetcode.cn/problems/replace-words/)
 
-## 参考资料
+## References
 
-- [Algorithms, 4th Edition：Tries](https://algs4.cs.princeton.edu/52trie/)
-- [Algorithms, 4th Edition：TrieST API](https://algs4.cs.princeton.edu/code/javadoc/edu/princeton/cs/algs4/TrieST.html)
+- [Algorithms, 4th Edition: Tries](https://algs4.cs.princeton.edu/52trie/)
+- [Algorithms, 4th Edition: TrieST API](https://algs4.cs.princeton.edu/code/javadoc/edu/princeton/cs/algs4/TrieST.html)
 - [Stanford CS166：Tries and Suffix Trees](https://web.stanford.edu/class/archive/cs/cs166/cs166.1216/lectures/16/Slides16.pdf)
 
 <!-- @include: @article-footer.snippet.md -->

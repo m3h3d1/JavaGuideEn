@@ -1,150 +1,150 @@
 ---
-title: 从输入 URL 到页面展示到底发生了什么？
-description: 串联从输入 URL 到页面渲染的完整链路，涵盖 DNS、TCP、HTTP、TLS、ARP、数据封装与浏览器渲染，助力面试与实践理解。
-category: 计算机基础
+title: What Happens Between Entering a URL and Seeing a Web Page?
+description: Follow the path from entering a URL to rendering a page, including DNS, TCP, HTTP, TLS, ARP, data encapsulation, and browser rendering.
+category: Computer Science Basics
 tag:
-  - 计算机网络
+  - Computer Networking
 head:
   - - meta
     - name: keywords
-      content: 访问网页流程,DNS,TCP 建连,HTTP 请求,TLS 握手,ARP,资源加载,浏览器渲染,关闭连接
+      content: web page request flow,DNS,TCP connection,HTTP request,TLS handshake,ARP,resource loading,browser rendering,connection close
 ---
 
-在浏览器地址栏输入 URL 到页面展示，背后会串起 DNS、TCP、TLS、HTTP、ARP、数据封装与浏览器渲染等多个环节。
+From entering a URL in the browser's address bar to seeing the page, several steps take place: DNS, TCP, TLS, HTTP, ARP, data encapsulation, and browser rendering.
 
-这道题经常被用来考察计网整体理解，因为它能把应用层、传输层、网络层和链路层的知识点都串起来。只背单个协议容易断片，按访问网页的全过程走一遍，会清楚很多。
+This common interview question checks your overall understanding of networking because it connects concepts from the application, transport, network, and link layers. Following the full page-loading process helps connect the protocols instead of memorizing them in isolation.
 
-这篇文章主要回答几个问题：
+This article answers a few questions:
 
-1. 输入 URL 后，浏览器会先做哪些本地处理？
-2. DNS 解析域名的过程是怎样的？
-3. TCP 连接如何建立？如果用了 HTTPS，TLS 握手又做了什么？
-4. HTTP 请求和响应的交互流程是什么？
-5. 数据包从主机到服务器，经过了哪些层的封装和转发？
-6. 浏览器拿到 HTML 后，如何继续加载 CSS、JS、图片等资源并渲染页面？
-7. 页面加载完成后，连接会如何复用或关闭？
+1. What does the browser do locally after you enter a URL?
+2. How does DNS resolve the domain name?
+3. How is a TCP connection established, and what happens during the TLS handshake for HTTPS?
+4. How do HTTP requests and responses work?
+5. How are packets encapsulated and forwarded between the host and server?
+6. After receiving HTML, how does the browser load CSS, JavaScript, images, and other resources and render the page?
+7. How are connections reused or closed after the page loads?
 
-总的来说，网络通信模型可以用下图来表示。访问网页的过程，就是数据从应用层逐层向下封装，经物理网络传输到对端，再逐层向上解封装的过程。
+The diagram below shows the network communication model. Loading a web page involves encapsulating data as it moves down the layers, transmitting it over the physical network, and then decapsulating it as it moves up the layers at the other end.
 
-![五层网络模型在网页访问过程中的协作](../images/shared/five-layers.png)
+![How the five-layer network model works during a web request](../images/shared/five-layers.png)
 
-开始之前，先简单过一遍完整流程：
+Here is a quick overview of the process:
 
-1. **浏览器解析 URL 并检查缓存**：浏览器解析 URL 的各组成部分，并检查 HTTP 缓存（强缓存、协商缓存）是否已有该资源的有效副本。
-2. **DNS 解析**：浏览器通过 DNS 协议，获取域名对应的 IP 地址。
-3. **建立传输连接**：HTTP/1.1 和 HTTP/2 通常先通过 TCP 三次握手建立连接；HTTP/3 则建立基于 UDP 的 QUIC 连接。
-4. **建立安全通道（HTTPS）**：HTTP/1.1 和 HTTP/2 通常在 TCP 建连后进行 TLS 握手；HTTP/3 在 QUIC 建连过程中集成 TLS 1.3，完成密钥协商和服务器身份验证。
-5. **发送 HTTP 请求**：浏览器在连接上向服务器发送 HTTP 请求报文，请求获取网页内容。
-6. **服务器处理并返回响应**：服务器收到请求后处理并返回 HTTP 响应报文。
-7. **浏览器解析与渲染**：浏览器解析 HTML、CSS，执行 JavaScript，并加载页面中引用的其他资源（图片、字体等）。
-8. **连接管理**：页面加载完成后，连接根据 keep-alive 策略复用或关闭。
+1. **Parse the URL and check the cache:** The browser parses the URL and checks whether the HTTP cache has a valid copy of the resource.
+2. **Resolve DNS:** The browser uses DNS to find the IP address for the domain.
+3. **Establish a transport connection:** HTTP/1.1 and HTTP/2 usually establish TCP with a three-way handshake. HTTP/3 establishes QUIC over UDP.
+4. **Establish a secure channel (HTTPS):** HTTP/1.1 and HTTP/2 usually perform a TLS handshake after TCP setup. HTTP/3 integrates TLS 1.3 into QUIC setup to negotiate keys and authenticate the server.
+5. **Send the HTTP request:** The browser sends an HTTP request to the server over the connection.
+6. **Process and return a response:** The server processes the request and returns an HTTP response.
+7. **Parse and render the page:** The browser parses HTML and CSS, runs JavaScript, and loads other referenced resources such as images and fonts.
+8. **Manage the connection:** After the page loads, the connection is reused or closed according to keep-alive settings.
 
-下面按这个流程逐一展开。
+Let's go through each step.
 
-## 第一步：解析 URL 与检查缓存
+## Step 1: Parse the URL and Check the Cache
 
-打开浏览器，在地址栏输入 URL 并回车。浏览器做的第一件事不是发请求，而是解析 URL 并检查是否可以直接使用本地缓存。
+When you enter a URL in the browser and press Enter, the browser does not immediately send a request. First, it parses the URL and checks whether it can use a local cached copy.
 
-### URL 是什么
+### What Is a URL?
 
-URL（Uniform Resource Locator，统一资源定位符）是互联网上资源的唯一地址。网络上的每个可访问资源都对应一个 URL，理论上文件和 URL 一一对应。实际上也有例外，比如重定向或 CDN 场景下，多个 URL 可能指向同一份资源。
+A URL (Uniform Resource Locator) is an address for a resource on the internet. In practice, multiple URLs can refer to the same resource, such as through redirects or a CDN.
 
-### URL 的组成结构
+### URL Components
 
-![URL的组成结构](../images/shared/url-parts.png)
+![URL components](../images/shared/url-parts.png)
 
-一个完整的 URL 由以下几部分组成：
+A complete URL contains these components:
 
-1. **协议**（Scheme）：URL 的前缀表示采用的协议，最常见的是 `http` 和 `https`，也有文件传输的 `ftp:` 等。
-2. **域名**（Host）：访问目标的通用名，也可以直接使用 IP 地址。域名本质上是 IP 地址的可读版本。
-3. **端口**（Port）：紧跟域名后面，用冒号隔开。HTTP 默认 80，HTTPS 默认 443，如果使用默认端口可以省略。
-4. **资源路径**（Path）：从第一个 `/` 开始，表示服务器上的资源位置。早期设计中路径对应服务器上的物理文件，现在通常是后端路由映射的虚拟路径。
-5. **查询参数**（Query）：`?` 之后的部分，采用 `key=value` 键值对形式，多个参数用 `&` 隔开。服务器解析请求时会提取这些参数。
-6. **锚点**（Fragment）：`#` 之后的部分，用于定位到页面内的某个位置。锚点**不会**作为请求的一部分发送给服务端，仅由浏览器本地处理。
+1. **Scheme:** The URL prefix identifies the protocol. Common schemes are `http` and `https`; `ftp:` is another example.
+2. **Host:** Usually a domain name, though an IP address can be used directly. A domain name is a human-readable way to refer to an IP address.
+3. **Port:** Follows the host after a colon. HTTP defaults to port 80 and HTTPS to port 443, so the default port can be omitted.
+4. **Path:** Begins with the first `/` and identifies a resource on the server. A path once often referred to a physical file; today it is usually a virtual path mapped by backend routing.
+5. **Query:** Follows `?` and contains `key=value` pairs separated by `&`. The server extracts these parameters when processing the request.
+6. **Fragment:** Follows `#` and identifies a location within the page. The fragment is **not** sent to the server; the browser handles it locally.
 
-### 浏览器缓存检查
+### Browser Cache Check
 
-解析完 URL 之后，浏览器会先检查 HTTP 缓存，看是否已经有该资源的有效副本：
+After parsing the URL, the browser checks the HTTP cache for a valid copy of the resource:
 
-1. **强缓存**：检查 `Cache-Control`（如 `max-age`）或 `Expires` 头，判断缓存是否仍在有效期内。如果有效，直接使用缓存，跳过后续所有网络请求。
-2. **协商缓存**：强缓存未命中时，浏览器向服务器发送验证请求（携带 `If-Modified-Since` 或 `If-None-Match`），服务器判断资源是否变化。如果未变化，返回 `304 Not Modified`，浏览器继续使用本地缓存；如果已变化，返回 `200 OK` 和新资源。
+1. **Freshness check:** The browser checks `Cache-Control` (such as `max-age`) or `Expires` to see whether the cached response is still fresh. If so, it uses the cache without another network request.
+2. **Validation:** If the cached response is stale, the browser sends a validation request with `If-Modified-Since` or `If-None-Match`. If the resource has not changed, the server returns `304 Not Modified` and the browser uses its cached copy. If it has changed, the server returns `200 OK` with the updated resource.
 
-HTTP 缓存命中时，整个访问过程在此结束，无需发起网络请求。
+If the HTTP cache can satisfy the request, the process ends here without a network request.
 
-### 域名解析准备
+### Preparing to Resolve the Domain
 
-如果 HTTP 缓存未命中，浏览器需要向服务器发起网络请求，首先要拿到域名对应的 IP 地址。在正式发起 DNS 查询之前，浏览器还会依次检查：
+If the HTTP cache misses, the browser needs the server's IP address before it can make a network request. Before querying DNS, it checks:
 
-1. **浏览器 DNS 缓存**：浏览器自身维护了一份 DNS 缓存，先看有没有该域名的记录。
-2. **操作系统 DNS 缓存**：浏览器缓存未命中时，查询操作系统的 DNS 缓存。
-3. **hosts 文件**：操作系统会检查本地 `hosts` 文件，看是否有域名到 IP 地址的直接映射。如果有，直接使用该 IP 地址，跳过 DNS 解析。
+1. **Browser DNS cache:** The browser checks whether it already has a record for the domain.
+2. **Operating system DNS cache:** If the browser cache misses, it checks the OS cache.
+3. **hosts file:** The OS checks the local `hosts` file for a direct domain-to-IP mapping. If one exists, it uses that IP and skips DNS resolution.
 
-如果以上都没有命中，浏览器就需要发起完整的 DNS 查询。
+If none of these checks finds an address, the browser performs a DNS lookup.
 
-## 第二步：DNS 解析
+## Step 2: DNS Resolution
 
-DNS（Domain Name System，域名系统）要解决的是**域名和 IP 地址的映射问题**。域名只是便于人类记忆的名字，网络通信真正需要的是 IP 地址。
+DNS (Domain Name System) maps **domain names to IP addresses**. Domain names are easier for people to remember, but network communication uses IP addresses.
 
-### DNS 解析过程
+### How DNS Resolution Works
 
-浏览器拿到域名后，DNS 解析通常按以下步骤进行：
+DNS resolution usually follows these steps:
 
-1. **浏览器 DNS 缓存**：浏览器自身维护了一份 DNS 缓存，先检查缓存中是否有该域名的记录且未过期。
-2. **操作系统 DNS 缓存**：浏览器缓存未命中时，向操作系统发起 DNS 查询请求。操作系统也有自己的 DNS 缓存。
-3. **本地 DNS 服务器**：操作系统配置的本地 DNS 服务器（通常由 ISP 提供，或使用公共 DNS 如 `8.8.8.8`、`114.114.114.114`）。本地 DNS 服务器如果有缓存且未过期，直接返回结果。
-4. **递归/迭代查询**：本地 DNS 服务器缓存未命中时，它会代替客户端发起迭代查询——先问根 DNS 服务器，再问顶级域 DNS 服务器（如 `.com`），最后问权威 DNS 服务器，逐级获取目标 IP 地址。
-5. **返回结果并缓存**：本地 DNS 服务器拿到最终结果后返回给客户端，同时在本地缓存一份，供后续查询使用。
+1. **Browser DNS cache:** The browser checks for a non-expired record for the domain.
+2. **Operating system DNS cache:** If the browser cache misses, it asks the OS to resolve the name. The OS has its own DNS cache.
+3. **Local DNS resolver:** The OS uses a configured resolver, often provided by an ISP or a public DNS service such as `8.8.8.8` or `114.114.114.114`. If the resolver has a fresh cached answer, it returns it.
+4. **Recursive and iterative queries:** If the resolver cache misses, the resolver queries DNS on the client's behalf: first a root server, then a top-level domain server (such as `.com`), and finally the authoritative DNS server.
+5. **Return and cache the result:** The resolver returns the answer to the client and caches it for later queries.
 
-下图展示了一个典型的 DNS 迭代查询过程：
+The diagram below shows a typical iterative DNS query:
 
-![DNS 解析流程](../images/shared/dns-process.png)
+![DNS resolution process](../images/shared/dns-process.png)
 
-实际场景中，本地 DNS 服务器通常已经缓存了大量 TLD 服务器地址，多数查询不需要从根服务器开始，跳过根服务器直接查 TLD 的情况非常普遍。
+In practice, local DNS resolvers often have many TLD server addresses cached. Most queries do not need to start at the root; querying a TLD server directly is common.
 
-> 关于 DNS 的更多细节（DNS 服务器层级、递归/迭代查询的区别、DNS 记录类型、为什么通常用 UDP 等），可以参考 [DNS 域名系统详解（应用层）](https://javaguide.cn/cs-basics/network/dns.html) 这篇文章。
+> For more on DNS server hierarchy, recursive vs. iterative queries, DNS record types, and why DNS usually uses UDP, see [DNS Explained](./dns.md).
 
-## 第三步：建立传输连接
+## Step 3: Establish a Transport Connection
 
-拿到目标服务器的 IP 地址后，浏览器需要与服务器建立传输连接。下面先介绍 HTTP/1.1 和 HTTP/2 常用的 TCP 连接；如果协商使用 HTTP/3，则会改为建立 QUIC 连接，QUIC 构建在 UDP 之上。
+After getting the server's IP address, the browser establishes a transport connection. HTTP/1.1 and HTTP/2 usually use TCP. If HTTP/3 is negotiated, the browser establishes a QUIC connection over UDP instead.
 
-### TCP 三次握手
+### The TCP Three-Way Handshake
 
-TCP 三次握手的目的是**同步双方的初始序列号**，并**确认双方的收发路径是可用的**。
+The TCP three-way handshake **synchronizes both sides' initial sequence numbers** and **confirms that both directions can carry data**.
 
-![TCP 三次握手图解](../images/shared/tcp-shakes-hands-three-times.png)
+![The TCP three-way handshake](../images/shared/tcp-shakes-hands-three-times.png)
 
-1. **第一次握手（SYN）**：客户端发送 SYN 报文段，携带自己的初始序列号 `seq=x`，进入 `SYN_SENT` 状态。
-2. **第二次握手（SYN+ACK）**：服务端收到后回复 SYN+ACK，携带自己的初始序列号 `seq=y`，确认号 `ack=x+1`，进入 `SYN_RCVD` 状态。
-3. **第三次握手（ACK）**：客户端收到后发送 ACK，确认号 `ack=y+1`，双方进入 `ESTABLISHED` 状态，连接建立完成。
+1. **First handshake (SYN):** The client sends a SYN segment with its initial sequence number `seq=x` and enters `SYN_SENT`.
+2. **Second handshake (SYN+ACK):** The server replies with its own initial sequence number `seq=y` and acknowledgment number `ack=x+1`, then enters `SYN_RCVD`.
+3. **Third handshake (ACK):** The client replies with `ack=y+1`. Both sides enter `ESTABLISHED`, and the connection is ready.
 
-三次握手的设计不是为了「多走一次」，而是让双方都能确认：对方能收到自己的数据，自己也能收到对方的数据。两次握手做不到这一点——服务端在第二次握手后，还不知道客户端是否收到了自己的 SYN+ACK。
+The third handshake is not an unnecessary extra step. It lets both sides confirm that they can receive each other's data. Two handshakes are not enough: after the second one, the server does not know whether the client received its SYN+ACK.
 
-> 关于三次握手的详细分析、半连接队列/全连接队列、SYN Flood 防护等内容，可以参考 [TCP 三次握手和四次挥手（传输层）](https://javaguide.cn/cs-basics/network/tcp-connection-and-disconnection.html)。
+> For a detailed explanation of the handshake, SYN and accept queues, and SYN flood defenses, see [TCP's Three-Way Handshake and Four-Way Teardown](./tcp-connection-and-disconnection.md).
 
-### 如果是 HTTPS：TLS 握手
+### TLS Handshake for HTTPS
 
-如果使用基于 TCP 的 HTTPS，TCP 连接建立之后还要进行 TLS 握手。HTTP/3 则在 QUIC 建连过程中集成 TLS 1.3。TLS 的核心目标是三个：**加密**（防窃听）、**认证**（防冒充）、**完整性校验**（防篡改）。
+For HTTPS over TCP, a TLS handshake follows TCP connection setup. HTTP/3 integrates TLS 1.3 into QUIC connection setup. TLS has three main goals: **encryption** (to prevent eavesdropping), **authentication** (to prevent impersonation), and **integrity checks** (to detect tampering).
 
-TLS 握手大致流程（以 TLS 1.2 RSA 密钥交换为例）：
+The following is a simplified TLS handshake using RSA key exchange in TLS 1.2:
 
-1. **Client Hello**：客户端发送支持的 TLS 版本、加密套件列表和一个随机数。
-2. **Server Hello**：服务端从中选择一个加密套件，返回自己的证书、另一个随机数。
-3. **密钥交换**：客户端验证服务端证书的合法性（通过 CA 签名验证），然后生成预主密钥（Pre-Master Secret），用服务端公钥加密后发送给服务端。双方根据预主密钥和之前交换的两个随机数，计算出对称加密的会话密钥。
-4. **完成**：双方用会话密钥加密通信，握手结束。
+1. **ClientHello:** The client sends the TLS versions and cipher suites it supports, along with a random value.
+2. **ServerHello:** The server selects a cipher suite and returns its certificate and another random value.
+3. **Key exchange:** The client validates the server certificate, including its CA signature, then generates a pre-master secret, encrypts it with the server's public key, and sends it to the server. Both sides use the pre-master secret and the two random values to derive a symmetric session key.
+4. **Finish:** The handshake completes, and both sides use the session key to encrypt communication.
 
-需要注意的是，上述流程描述的是 TLS 1.2 中基于 RSA 的密钥交换方式。现代 HTTPS 通常采用 ECDHE 密钥交换，TLS 1.3 也可以在会话恢复等场景使用 PSK 或 PSK+(EC)DHE。ECDHE 的共享秘密由双方通过临时密钥协商得到，不会直接在网络上传输；只获得服务器证书私钥，通常无法解密此前使用临时密钥协商的历史会话。TLS 1.3 进一步简化了握手流程，将完整握手通常压缩到 1-RTT，并移除了静态 RSA 密钥交换。
+The flow above describes RSA key exchange in TLS 1.2. Modern HTTPS usually uses ECDHE; TLS 1.3 can also use PSK or PSK+(EC)DHE for session resumption. With ECDHE, both sides derive a shared secret using temporary keys rather than sending it over the network. A later leak of the server's certificate private key usually cannot decrypt past sessions that used ephemeral key exchange. TLS 1.3 further simplified the handshake, usually completing a full handshake in 1-RTT, and removed static RSA key exchange.
 
-TLS 握手完成后，后续的 HTTP 请求和响应都会使用协商好的对称密钥进行加密传输。HTTPS 的安全性来自 TLS 层，而不是 HTTP 协议本身的改变。
+After the TLS handshake, HTTP requests and responses are encrypted with the negotiated symmetric keys. HTTPS security comes from TLS, not from a change to HTTP itself.
 
-> 关于 TLS 的加密原理（非对称加密、对称加密、数字签名、CA 证书）的详细分析，可以参考 [HTTP vs HTTPS（应用层）](https://javaguide.cn/cs-basics/network/http-vs-https.html)。关于 RSA 和 ECDHE 两种密钥交换方式的区别，可以参考 [HTTPS RSA vs ECDHE 握手过程](https://javaguide.cn/cs-basics/network/https-rsa-vs-ecdhe.html)。
+> For more on TLS encryption, digital signatures, and CA certificates, see [HTTP vs. HTTPS](./http-vs-https.md). For RSA and ECDHE key exchange, see [RSA and ECDHE in the HTTPS Handshake](./https-rsa-vs-ecdhe.md).
 
-## 第四步：发送 HTTP 请求
+## Step 4: Send the HTTP Request
 
-TCP 连接（以及可能的 TLS 通道）建立好之后，浏览器就可以发送 HTTP 请求了。
+After the TCP connection (and, if applicable, TLS channel) is established, the browser can send an HTTP request.
 
-### HTTP 请求报文结构
+### HTTP Request Structure
 
-一个典型的 HTTP/1.1 请求报文如下：
+A typical HTTP/1.1 request looks like this:
 
 ```http
 GET /index.html HTTP/1.1
@@ -152,27 +152,27 @@ Host: www.example.com
 User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)
 Accept: text/html,application/xhtml+xml
 Accept-Encoding: gzip, deflate, br
-Accept-Language: zh-CN,zh;q=0.9,en;q=0.8
+Accept-Language: en-US,en;q=0.9
 Connection: keep-alive
 Cookie: session_id=abc123
 ```
 
-各部分含义：
+The fields mean:
 
-- **请求行**：`GET /index.html HTTP/1.1` —— 请求方法（GET）、资源路径（`/index.html`）、协议版本（HTTP/1.1）。
-- **Host 头**：指定目标主机名。这是 HTTP/1.1 的强制要求，因为同一台服务器（同一个 IP）可能通过虚拟主机托管多个网站。
-- **其他请求头**：`User-Agent`（客户端信息）、`Accept`（可接受的响应类型）、`Accept-Encoding`（支持的压缩方式）、`Cookie`（携带的状态信息）等。
+- **Request line:** `GET /index.html HTTP/1.1` contains the method (`GET`), resource path (`/index.html`), and protocol version (HTTP/1.1).
+- **Host header:** Specifies the target hostname. HTTP/1.1 requires it because one server (one IP address) can host multiple websites.
+- **Other request headers:** `User-Agent` (client information), `Accept` (acceptable response types), `Accept-Encoding` (supported compression), and `Cookie` (state information), among others.
 
-### 服务器处理请求
+### How the Server Processes the Request
 
-服务器收到请求后，经过一系列处理生成响应：
+The server processes the request and creates a response:
 
-1. **接收请求**：Web 服务器（如 Nginx、Tomcat）接收并解析 HTTP 请求报文。
-2. **路由分发**：根据 URL 路径将请求路由到对应的后端处理逻辑（Controller、Servlet 等）。
-3. **业务处理**：执行具体的业务逻辑，可能涉及数据库查询、缓存读取、调用其他服务等。
-4. **构建响应**：将处理结果封装成 HTTP 响应报文。
+1. **Receive:** A web server such as Nginx or Tomcat receives and parses the HTTP request.
+2. **Route:** The URL path determines which backend handler (such as a controller or servlet) receives it.
+3. **Process:** The handler runs business logic, which may query a database, read a cache, or call another service.
+4. **Build the response:** The result is packaged as an HTTP response.
 
-### HTTP 响应报文结构
+### HTTP Response Structure
 
 ```http
 HTTP/1.1 200 OK
@@ -188,155 +188,155 @@ Set-Cookie: session_id=xyz789; Path=/
 </html>
 ```
 
-各部分含义：
+The response contains:
 
-- **状态行**：`HTTP/1.1 200 OK` —— 协议版本、状态码（200）、状态描述。
-- **响应头**：`Content-Type`（响应体类型）、`Content-Encoding`（压缩方式）、`Cache-Control`（缓存策略）、`Set-Cookie`（设置 Cookie）等。
-- **响应体**：请求的实际内容，如 HTML 文档、JSON 数据、图片二进制数据等。
+- **Status line:** `HTTP/1.1 200 OK` contains the protocol version, status code (`200`), and reason phrase.
+- **Response headers:** `Content-Type` (body type), `Content-Encoding` (compression), `Cache-Control` (caching policy), and `Set-Cookie`, among others.
+- **Response body:** The requested content, such as an HTML document, JSON data, or image bytes.
 
-常见的状态码：
+Common status codes:
 
-| 状态码 | 类别       | 常见示例                                      |
-| ------ | ---------- | --------------------------------------------- |
-| 2xx    | 成功       | 200 OK、206 Partial Content                   |
-| 3xx    | 重定向     | 301 永久重定向、302 临时重定向、304 未修改    |
-| 4xx    | 客户端错误 | 400 Bad Request、403 Forbidden、404 Not Found |
-| 5xx    | 服务端错误 | 500 Internal Server Error、502 Bad Gateway    |
+| Status code | Category     | Common examples                                    |
+| ----------- | ------------ | -------------------------------------------------- |
+| 2xx         | Success      | 200 OK, 206 Partial Content                        |
+| 3xx         | Redirection  | 301 Moved Permanently, 302 Found, 304 Not Modified |
+| 4xx         | Client error | 400 Bad Request, 403 Forbidden, 404 Not Found      |
+| 5xx         | Server error | 500 Internal Server Error, 502 Bad Gateway         |
 
-> 关于 HTTP 常见状态码的详细总结，可以参考 [HTTP 常见状态码总结（应用层）](https://javaguide.cn/cs-basics/network/http-status-codes.html)。
+> For more on HTTP status codes, see [Common HTTP Status Codes](./http-status-codes.md).
 
-## 第五步：数据包的封装与转发
+## Step 5: Packet Encapsulation and Forwarding
 
-HTTP 请求从浏览器发出后，数据并不是直接「飞」到服务器的。它需要经过协议栈的逐层封装，在物理网络上一跳一跳地转发到目的地。
+When the browser sends an HTTP request, the data does not travel directly to the server. It is encapsulated at each layer of the protocol stack and forwarded hop by hop across the physical network.
 
-### 数据封装过程
+### Data Encapsulation
 
-应用层的 HTTP 报文，经过传输层、网络层、链路层的逐层封装，最终变成能在物理介质上传输的比特流：
+The application-layer HTTP message is encapsulated by the transport, network, and link layers until it becomes a bit stream that can travel over the physical medium:
 
-![TCP/IP 各层协议概览](../images/shared/network-protocol-overview.png)
+![Protocols in each TCP/IP layer](../images/shared/network-protocol-overview.png)
 
-每一层只关心自己要添加的头部信息，并使用下层提供的服务来传输数据：
+Each layer adds its own header information and uses the layer below it to transmit data:
 
-- **传输层（TCP）**：添加源端口和目的端口，用序列号和确认号保证可靠传输。
-- **网络层（IP）**：添加源 IP 和目的 IP，负责寻址和路由，决定数据包从源到目的经过的路径。
-- **链路层**：添加源 MAC 和目的 MAC 地址，负责在相邻节点之间传输数据帧。
+- **Transport layer (TCP):** Adds source and destination ports and uses sequence and acknowledgment numbers for reliable delivery.
+- **Network layer (IP):** Adds source and destination IP addresses and handles addressing and routing to determine the packet's path.
+- **Link layer:** Adds source and destination MAC addresses and carries frames between adjacent nodes.
 
-### 网络层的路由转发
+### Network-Layer Routing and Forwarding
 
-数据包从源主机到目的主机，通常需要经过多个路由器中转。网络层的核心功能就是**路由与转发**：
+Packets usually pass through multiple routers between the source and destination. The network layer's main functions are **routing and forwarding**:
 
-- **路由**：确定分组从源到目的经过的路径（由路由协议如 OSPF、BGP 等计算）。
-- **转发**：将分组从路由器的输入端口转移到合适的输出端口。
+- **Routing:** Determines the path from source to destination, calculated by routing protocols such as OSPF and BGP.
+- **Forwarding:** Moves a packet from a router's input port to the appropriate output port.
 
-每个路由器维护一张路由表，根据目的 IP 地址查表决定下一跳。数据包在网络中就像快递包裹，每一站只看「下一站发到哪里」，不用关心全程路径。
+Each router maintains a routing table and uses the destination IP address to choose the next hop. Packets are like parcels: each stop only needs to know where to send them next, not the entire route.
 
-### ARP 协议：从 IP 地址到 MAC 地址
+### ARP: From IP Address to MAC Address
 
-数据帧在链路层传输时，需要知道下一跳设备的 MAC 地址，而不能只用 IP 地址。ARP（Address Resolution Protocol，地址解析协议）就是解决「已知 IP 地址，如何获取对应 MAC 地址」的问题。
+To transmit a frame over a link, a host needs the next-hop device's MAC address, not just its IP address. ARP (Address Resolution Protocol) resolves a known IP address to a MAC address.
 
-ARP 的工作方式是**广播问询、单播响应**：
+ARP uses **a broadcast request and a unicast reply**:
 
-1. 主机先查本地 ARP 缓存表，看是否已有目标 IP 对应的 MAC 地址。
-2. 缓存未命中时，在局域网内广播一个 ARP 请求：「谁的 IP 是 xxx.xxx.xxx.xxx？请告诉我你的 MAC 地址。」
-3. 目标设备（或路由器接口）收到后，以单播方式回复自己的 MAC 地址。
-4. 请求方收到响应后，将 IP-MAC 映射存入 ARP 缓存表，后续通信直接使用。
+1. The host checks its local ARP cache for the MAC address associated with the target IP.
+2. On a cache miss, it broadcasts an ARP request on the LAN: “Who has IP xxx.xxx.xxx.xxx? Tell me your MAC address.”
+3. The target device (or router interface) replies with its MAC address using unicast.
+4. The requester stores the IP-to-MAC mapping in its ARP cache for later communication.
 
-如果目标主机不在同一子网，主机不需要知道最终目标的 MAC 地址，只需要知道**本地网关（路由器）的 MAC 地址**即可。数据包先发给网关，网关再逐跳转发到目标网络。
+If the destination host is outside the local subnet, the sender does not need its MAC address. It only needs the **local gateway's (router's) MAC address**. The packet goes to the gateway, which forwards it hop by hop toward the destination network.
 
-> 关于 ARP 的详细工作原理（同子网/跨子网寻址、ARP 表、常见攻击），可以参考 [ARP 协议详解（网络层）](https://javaguide.cn/cs-basics/network/arp.html)。
+> For more on ARP, including same-subnet and cross-subnet addressing, ARP tables, and common attacks, see [ARP](./arp.md).
 
-### 网络地址转换（NAT）
+### Network Address Translation (NAT)
 
-在大多数家庭和企业网络中，内网主机使用的是私有 IP 地址（如 `192.168.x.x`），不能直接在公网上路由。NAT（Network Address Translation）协议负责在内网和公网之间转换 IP 地址。
+In most home and enterprise networks, internal hosts use private IP addresses (such as `192.168.x.x`) that are not routable on the public internet. NAT (Network Address Translation) translates addresses between private and public networks.
 
-当内网主机发送数据包到公网时，NAT 设备（通常是路由器）会将源 IP 地址从私有地址替换为公网地址，并记录端口映射关系。响应数据包返回时，NAT 再根据映射表把目的地址转换回内网主机的私有地址。
+When an internal host sends a packet to the public internet, the NAT device (usually a router) replaces its private source IP with a public address and records the port mapping. When the response returns, NAT uses the mapping to translate the destination back to the host's private address.
 
-## 第六步：浏览器解析与渲染
+## Step 6: Browser Parsing and Rendering
 
-服务器返回 HTML 响应后，浏览器的工作才真正开始。浏览器需要解析 HTML、构建 DOM 树、加载子资源、计算样式、布局并最终渲染到屏幕上。
+After receiving the HTML response, the browser parses it, builds the DOM tree, loads subresources, calculates styles, lays out the page, and renders it on screen.
 
-### HTML 解析与 DOM 构建
+### HTML Parsing and DOM Construction
 
-浏览器拿到 HTML 文档后，从上到下逐行解析：
+The browser parses the HTML document from top to bottom:
 
-1. **构建 DOM 树**：解析 HTML 标签，生成文档对象模型（DOM）树，表示页面的结构。
-2. **构建 CSSOM 树**：遇到 `<link>` 引用的 CSS 文件或 `<style>` 标签时，下载并解析 CSS，生成 CSS 对象模型（CSSOM）树，表示页面的样式规则。
-3. **构建渲染树**：将 DOM 树和 CSSOM 树合并，生成渲染树。渲染树只包含需要显示的节点及其样式信息（`display: none` 的元素不会出现在渲染树中）。
-4. **布局（Layout）**：计算渲染树中每个节点的位置和大小。
-5. **绘制（Paint）**：将布局后的渲染树转换为屏幕上的像素。
-6. **合成（Composite）**：将不同图层合成最终画面显示在屏幕上。
+1. **Build the DOM tree:** Parse HTML tags into a Document Object Model (DOM) tree representing the page structure.
+2. **Build the CSSOM tree:** Download and parse CSS referenced by `<link>` or included in `<style>` tags into a CSS Object Model (CSSOM) tree of style rules.
+3. **Build the render tree:** Combine the DOM and CSSOM trees. It includes only visible nodes and their styles (`display: none` elements are excluded).
+4. **Layout:** Calculate each render-tree node's position and size.
+5. **Paint:** Convert the laid-out render tree into pixels on screen.
+6. **Composite:** Combine layers into the final image displayed on screen.
 
-### 子资源加载
+### Loading Subresources
 
-HTML 文档通常会引用大量外部资源：
+HTML documents often reference many external resources:
 
-- **CSS 文件**（`<link rel="stylesheet">`）：普通阻塞样式表会阻塞渲染，浏览器通常会等 CSS 加载并解析完成后才进行布局和绘制，因为 CSS 可能改变元素的布局。通过 `media` 属性、动态加载或 `preload` 等方式可以改变这一行为。
-- **JavaScript 文件**（`<script>`）：默认会阻塞 HTML 解析，因为 JavaScript 可能修改 DOM。可以通过 `async` 或 `defer` 属性改变加载行为。
-- **图片、字体等**：不会阻塞 HTML 解析，但需要在加载完成后才能显示。
+- **CSS files** (`<link rel="stylesheet">`): Render-blocking stylesheets usually delay layout and painting until CSS is downloaded and parsed because styles can change element layout. The `media` attribute, dynamic loading, or `preload` can change this behavior.
+- **JavaScript files** (`<script>`): By default, scripts block HTML parsing because they may modify the DOM. The `async` or `defer` attributes change how they are loaded.
+- **Images, fonts, and other resources:** These do not block HTML parsing, but cannot be displayed until they finish loading.
 
-这些子资源的加载会触发额外的 HTTP 请求。如果使用 HTTP/1.1，浏览器通常会对同一域名维护最多 6 个并发 TCP 连接来并行下载资源。HTTP/2 的多路复用机制则允许在同一个 TCP 连接上并行传输多个资源。
+Loading these resources triggers additional HTTP requests. With HTTP/1.1, browsers commonly use up to six concurrent TCP connections per domain to download resources in parallel. HTTP/2 multiplexes multiple resources over one TCP connection.
 
-### JavaScript 执行
+### JavaScript Execution
 
-JavaScript 的执行会阻塞 HTML 解析。浏览器遇到 `<script>` 标签时，会暂停 DOM 构建，先下载并执行脚本。如果脚本中有 DOM 操作，可能会触发 DOM 重构和页面重排（Reflow）或重绘（Repaint）。
+JavaScript execution can block HTML parsing. When the browser encounters a `<script>` tag, it pauses DOM construction to download and run the script. DOM operations may rebuild parts of the DOM and trigger reflow or repaint.
 
-现代前端开发中常用的优化手段包括：
+Common frontend optimizations include:
 
-- 将 `<script>` 放在 `<body>` 底部或使用 `defer` 属性，避免阻塞 DOM 解析。
-- 使用 `async` 属性异步加载不影响 DOM 的脚本。
-- 通过 CDN 加速静态资源加载。
-- 利用浏览器缓存减少重复请求。
+- Place `<script>` tags at the end of `<body>` or use `defer` to avoid blocking DOM parsing.
+- Use `async` to load scripts asynchronously when they do not depend on DOM parsing.
+- Use a CDN to serve static resources faster.
+- Use browser caching to reduce repeated requests.
 
-## 第七步：连接管理
+## Step 7: Connection Management
 
-页面和资源加载完成后，连接通常不会立刻断开，如何管理连接取决于 HTTP 版本和配置。下面的 HTTP/1.0、HTTP/1.1 和 HTTP/2 主要讨论 TCP 连接；HTTP/3 管理的是 QUIC 连接和流。
+Connections usually remain open after the page and its resources load. How they are managed depends on the HTTP version and configuration. The sections on HTTP/1.0, HTTP/1.1, and HTTP/2 describe TCP connections; HTTP/3 manages QUIC connections and streams.
 
-### HTTP/1.0 短连接
+### HTTP/1.0 Short-Lived Connections
 
-HTTP/1.0 默认使用短连接：每次请求-响应完成后就关闭 TCP 连接。如果页面引用了 10 个外部资源，浏览器需要建立 10 次独立的 TCP 连接，每次都要经历三次握手和四次挥手，大量时间花在连接的建立和释放上。
+HTTP/1.0 uses short-lived connections by default: the TCP connection closes after each request and response. If a page references ten external resources, the browser may need ten separate TCP connections, each with a three-way handshake and four-way teardown. Much of the time is spent establishing and closing connections.
 
-### HTTP/1.1 长连接（Keep-Alive）
+### HTTP/1.1 Persistent Connections (Keep-Alive)
 
-HTTP/1.1 默认使用长连接（Connection: keep-alive）。一个 TCP 连接建立后可以连续发送多个请求和接收多个响应，不需要每次都重新握手。这样页面中的 CSS、JS、图片等子资源可以复用同一个 TCP 连接来加载。
+HTTP/1.1 uses persistent connections by default (`Connection: keep-alive`). Once a TCP connection is established, it can carry multiple requests and responses without another handshake each time. CSS, JavaScript, images, and other page resources can reuse the same connection.
 
-长连接不是永久的。服务器通常配置了空闲超时时间（如 Apache 的 `KeepAliveTimeout`），如果在超时时间内没有新的请求，服务器才会主动关闭连接。
+Persistent connections are not permanent. Servers usually have an idle timeout, such as Apache's `KeepAliveTimeout`, and close the connection if no new request arrives before it expires.
 
-### HTTP/2 多路复用
+### HTTP/2 Multiplexing
 
-HTTP/2 在长连接的基础上引入了多路复用。同一个 TCP 连接上可以同时传输多个请求和响应，数据被拆分成更小的帧并通过流（Stream）标识来区分归属。这解决了 HTTP/1.1 在应用层面的队头阻塞问题——前面的慢请求不会挡住后面的请求。需要注意的是，HTTP/2 仍然基于 TCP，当 TCP 层发生丢包时，同一连接上的所有流都会受影响（TCP 层队头阻塞）。HTTP/3 基于 QUIC 协议（UDP），才进一步缓解了这个问题。
+HTTP/2 adds multiplexing to persistent connections. Multiple requests and responses can travel over one TCP connection at the same time. Data is split into frames and associated with streams. This solves HTTP/1.1's application-layer head-of-line blocking: a slow request does not hold up later requests. However, HTTP/2 still uses TCP, so packet loss affects every stream on the connection (TCP-level head-of-line blocking). HTTP/3 over QUIC (UDP) further reduces this problem.
 
-### 连接关闭
+### Closing Connections
 
-当连接确实需要关闭时（主动关闭方发起）：
+When a connection needs to close, the active closer initiates the following exchange:
 
-1. 主动关闭方发送 FIN，表示自己没有数据要发了。
-2. 被动关闭方回复 ACK，进入 `CLOSE_WAIT` 状态，但还可以继续发送剩余数据。
-3. 被动关闭方数据发完后也发送 FIN。
-4. 主动关闭方回复最终 ACK，进入 `TIME_WAIT` 状态，等待 2MSL 后彻底关闭。
+1. The active closer sends FIN to indicate that it has no more data to send.
+2. The passive closer replies with ACK and enters `CLOSE_WAIT`, but can still send remaining data.
+3. After sending its remaining data, the passive closer sends FIN.
+4. The active closer replies with the final ACK and enters `TIME_WAIT`; it closes after waiting 2MSL.
 
-`TIME_WAIT` 状态的存在是为了确保最后的 ACK 能到达对端，同时让网络中残留的旧报文消散，避免干扰后续新连接。
+`TIME_WAIT` gives the final ACK a chance to be retransmitted and lets old packets expire from the network so they do not interfere with a new connection.
 
-> 关于 TCP 四次挥手、TIME_WAIT 的影响、CLOSE_WAIT 堆积排查等内容，可以参考 [TCP 三次握手和四次挥手（传输层）](https://javaguide.cn/cs-basics/network/tcp-connection-and-disconnection.html)。
+> For TCP teardown, TIME_WAIT, and troubleshooting a buildup of CLOSE_WAIT sockets, see [TCP's Three-Way Handshake and Four-Way Teardown](./tcp-connection-and-disconnection.md).
 
-## 完整流程总结
+## Summary of the Full Process
 
-把上面的步骤串起来，完整的访问流程可以概括为：
+The full page-loading process can be summarized as follows:
 
-1. **输入 URL** → 浏览器解析 URL 各部分，检查 HTTP 缓存；如需网络请求，再检查 hosts 文件。
-2. **DNS 解析** → 依次查询浏览器缓存、操作系统缓存、本地 DNS 服务器，必要时经根 → TLD → 权威服务器迭代查询，获取目标 IP 地址。
-3. **建立传输连接** → HTTP/1.1 和 HTTP/2 通常建立 TCP 连接；HTTP/3 建立 QUIC 连接。
-4. **建立安全通道（HTTPS）** → 基于 TCP 的 HTTPS 继续进行 TLS 握手；HTTP/3 在 QUIC 建连过程中完成 TLS 1.3 握手。
-5. **HTTP 请求与响应** → 浏览器发送请求，服务器处理并返回 HTML 响应。
-6. **数据封装与转发** → 请求报文经 TCP → IP → 链路层逐层封装，通过路由器、交换机等中间设备一跳一跳转发到服务器；响应沿反方向回到浏览器。
-7. **浏览器渲染** → 解析 HTML 构建 DOM 树，加载 CSS/JS/图片等子资源，构建渲染树，布局并绘制页面。
-8. **连接管理** → 根据 HTTP 版本和配置复用或关闭 TCP 连接。
+1. **Enter a URL** → The browser parses its components and checks the HTTP cache; if it needs a network request, it also checks the hosts file.
+2. **Resolve DNS** → The browser checks its cache, the OS cache, and the local DNS resolver. If needed, the resolver queries root, TLD, and authoritative servers to find the IP address.
+3. **Establish a transport connection** → HTTP/1.1 and HTTP/2 usually establish TCP; HTTP/3 establishes QUIC.
+4. **Establish a secure channel (HTTPS)** → HTTPS over TCP performs a TLS handshake; HTTP/3 completes a TLS 1.3 handshake during QUIC setup.
+5. **Exchange HTTP messages** → The browser sends a request, and the server processes it and returns an HTML response.
+6. **Encapsulate and forward data** → The request is encapsulated through TCP → IP → link layers and forwarded hop by hop through routers and switches. The response travels back to the browser.
+7. **Render in the browser** → The browser parses HTML into a DOM tree, loads CSS, JavaScript, images, and other resources, builds the render tree, lays out, and paints the page.
+8. **Manage the connection** → The connection is reused or closed based on the HTTP version and configuration.
 
-访问一个网页看似简单，实际上串起了计算机网络几乎所有的核心协议。按这个流程去理解，DNS、TCP、TLS、HTTP、IP、ARP 这些协议就不再是孤立的知识点，而是一条完整链路上的不同环节。
+Loading a web page may look simple, but it involves nearly all the core networking protocols. Following the process shows how DNS, TCP, TLS, HTTP, IP, and ARP fit together as steps in one complete flow.
 
-## 参考
+## References
 
-1. 《计算机网络（第 7 版）》
-2. 《图解 HTTP》
+1. _Computer Networks_ (7th edition)
+2. _Illustrated HTTP_
 3. [What really happens when you navigate to a URL](https://stackoverflow.com/questions/2092527/what-really-happens-when-you-navigate-to-a-url)
 4. [How browsers work](https://web.dev/howbrowserswork/)
 

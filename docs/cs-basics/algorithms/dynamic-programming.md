@@ -1,57 +1,57 @@
 ---
-title: 动态规划面试题总结：状态转移、背包、子序列与 Java 模板
-description: 动态规划面试题总结，讲解状态定义、状态转移、初始化、遍历顺序、0-1 背包、完全背包、子序列、区间 DP 和 LeetCode 高频题。
-category: 计算机基础
+title: "Dynamic Programming Interview Guide: State Transitions, Knapsack, Subsequences, and Java Templates"
+description: An interview guide to dynamic programming, covering state definitions, transitions, initialization, iteration order, 0/1 and unbounded knapsack, subsequences, interval DP, and common LeetCode problems.
+category: Computer Science Fundamentals
 tag:
-  - 算法
+  - Algorithms
 head:
   - - meta
     - name: keywords
-      content: 动态规划,DP,状态转移,背包问题,0-1背包,完全背包,子序列,区间DP,Java动态规划,LeetCode动态规划
+      content: dynamic programming,DP,state transition,knapsack,0/1 knapsack,unbounded knapsack,subsequence,interval DP,Java dynamic programming,LeetCode DP
 ---
 
-动态规划难，不是因为代码一定长，而是因为状态定义一旦错了，后面的转移方程、初始化和遍历顺序都会跟着错。
+Dynamic programming is hard not because the code is always long, but because a wrong state definition leads to the wrong transitions, initialization, and iteration order.
 
-面试里不要一上来就背模板。先问自己两个问题：这个问题能不能拆成子问题？当前答案是否依赖前面已经算过的答案？如果这两个问题都成立，再考虑 DP。
+Don't start an interview by reciting a template. First ask: Can this problem be broken into smaller subproblems? Does the current answer depend on answers already computed? If both are true, DP may be a good fit.
 
-## 面试考察重点
+## What Interviewers Look For
 
-- 能说清 `dp[i]` 或 `dp[i][j]` 的含义。
-- 能写出状态转移方程。
-- 能处理初始化和遍历顺序。
-- 能判断是否可以压缩空间。
-- 能区分背包、子序列、区间等常见类型。
+- Explain what `dp[i]` or `dp[i][j]` represents.
+- Write the state transition.
+- Choose the right initialization and iteration order.
+- Decide whether the space can be reduced.
+- Recognize common patterns such as knapsack, subsequences, and interval DP.
 
-## 什么时候考虑动态规划？
+## When to Consider Dynamic Programming
 
-DP 不是看到“最值”就套。更靠谱的判断是看两个条件：
+Don't apply DP just because a problem asks for an optimum. A better starting point is to check two things:
 
-1. 问题能不能拆成规模更小的同类问题。
-2. 子问题会不会被反复计算。
+1. Can the problem be split into smaller problems of the same kind?
+2. Are the same subproblems computed repeatedly?
 
-比如斐波那契数列，`f(n)` 依赖 `f(n - 1)` 和 `f(n - 2)`，而 `f(n - 2)` 会在递归里被反复计算。把这些中间结果存下来，就是 DP。
+For example, Fibonacci number `f(n)` depends on `f(n - 1)` and `f(n - 2)`, and the recursive calculation repeats work for `f(n - 2)`. Store those intermediate answers and you have DP.
 
-面试里可以先从暴力递归说起，再说明哪里重复计算，最后把递归改成记忆化搜索或表格递推。这个过程比直接背 `dp` 数组更容易让面试官相信你真的理解。
+In an interview, you can start with a brute-force recursive solution, explain where it repeats work, and then improve it with memoization or tabulation. This shows your reasoning more clearly than starting with a `dp` array from memory.
 
-## DP 五步法
+## The Five Steps of DP
 
-1. 定义状态：`dp[i]` 到底表示什么。
-2. 写转移：当前状态从哪些状态推出来。
-3. 做初始化：没有前置状态时答案是什么。
-4. 定遍历顺序：先算哪些状态，后算哪些状态。
-5. 检查样例：用一个小输入手推数组。
+1. Define the state: What exactly does `dp[i]` represent?
+2. Write the transition: Which states determine the current state?
+3. Initialize the base cases: What is the answer before any transitions?
+4. Choose the iteration order: Which states must be calculated first?
+5. Check a sample: Work through a small input by hand.
 
-其中最重要的是第 1 步。`dp[i]` 的含义一旦含糊，后面的代码就会变成试出来的。
+The state definition is the most important step. If the meaning of `dp[i]` is vague, the code that follows often becomes guesswork.
 
-一个好的状态定义通常满足：
+A good state definition usually:
 
-- 能覆盖题目要问的答案。
-- 能从更小状态推出来。
-- 维度尽量少，但不要为了省空间把含义写乱。
+- Covers the answer the problem asks for.
+- Can be derived from smaller states.
+- Uses as few dimensions as practical without making the meaning unclear.
 
-## 一维 DP 示例
+## One-Dimensional DP Example
 
-爬楼梯问题：
+Climbing Stairs:
 
 ```java
 int climbStairs(int n) {
@@ -69,19 +69,15 @@ int climbStairs(int n) {
 }
 ```
 
-状态含义：到第 `i` 阶有多少种走法。转移方程：`dp[i] = dp[i - 1] + dp[i - 2]`。
+State meaning: the number of ways to reach step `i`. Transition: `dp[i] = dp[i - 1] + dp[i - 2]`.
 
-这题还可以从递归推出来：
+The recurrence follows from the last move: to reach step `i`, take one step from `i - 1` or two steps from `i - 2`.
 
-```text
-到第 i 阶的最后一步，要么从 i-1 走 1 步上来，要么从 i-2 走 2 步上来。
-```
+Since `dp[i]` depends only on the previous two states, the array can be reduced to two variables. Only compress the space after confirming that older states aren't needed later.
 
-所以 `dp[i]` 只依赖前两个状态，可以把数组压缩成两个变量。空间压缩的前提是你确认旧状态以后不会再用。
+## 0/1 Knapsack Template
 
-## 0-1 背包模板
-
-每个物品只能选一次：
+Each item can be selected at most once:
 
 ```java
 int knapsack01(int[] weights, int[] values, int capacity) {
@@ -95,15 +91,15 @@ int knapsack01(int[] weights, int[] values, int capacity) {
 }
 ```
 
-容量要倒序遍历，避免同一个物品在一轮里被重复使用。
+Iterate through capacities in descending order so the same item isn't used more than once in an iteration.
 
-倒序遍历是 0-1 背包最容易被问的点。假设容量正序遍历，计算 `dp[j]` 时可能用到本轮刚更新过的 `dp[j - weight]`，等于同一个物品被选了多次。这就变成完全背包了。
+This is one of the most common knapsack follow-up questions. If capacities were processed in ascending order, `dp[j]` could use a value updated earlier in the same iteration, effectively selecting the same item multiple times. That would turn it into unbounded knapsack.
 
-0-1 背包的典型问法不一定直接叫背包，像“能否分成两个和相等的子集”，可以转成：能否从数组里选一些数，使它们的和等于总和的一半。
+A 0/1 knapsack problem may not be described as a knapsack problem. For example, “Can the array be split into two subsets with equal sums?” can be reframed as asking whether some values sum to half of the total.
 
-## 完全背包模板
+## Unbounded Knapsack Template
 
-每个物品可以选多次：
+Each item can be selected multiple times:
 
 ```java
 int unboundedKnapsack(int[] weights, int[] values, int capacity) {
@@ -117,62 +113,62 @@ int unboundedKnapsack(int[] weights, int[] values, int capacity) {
 }
 ```
 
-容量正序遍历，允许当前物品被重复使用。
+Iterate through capacities in ascending order to allow reuse of the current item.
 
-完全背包里，正序遍历容量正是为了允许当前物品重复使用。比如零钱兑换，每种硬币可以用多次，计算更大金额时可以基于当前硬币已经参与过的状态继续转移。
+For unbounded knapsack, ascending order is what lets an item be reused. In Coin Change, for example, each coin can be used multiple times, so a larger amount can build on a state already updated using the current coin.
 
-如果题目问的是“组合数”还是“排列数”，遍历顺序也会变：
+The iteration order also changes depending on whether the problem asks for combinations or permutations:
 
-- 组合数：通常先遍历物品，再遍历容量。
-- 排列数：通常先遍历容量，再遍历物品。
+- For combinations, usually iterate over items first, then capacities.
+- For permutations, usually iterate over capacities first, then items.
 
-这块面试不一定问很深，但遇到零钱兑换 II 这类题时很关键。
+This distinction matters in problems such as Coin Change II.
 
-## 常见题型
+## Common DP Patterns
 
-| 题型            | 状态设计                                               | 代表题        |
-| --------------- | ------------------------------------------------------ | ------------- |
-| 爬楼梯/打家劫舍 | `dp[i]` 表示前 `i` 个位置的最优值                      | 70、198       |
-| 背包            | `dp[j]` 表示容量为 `j` 时的最优值或方案数              | 416、518、322 |
-| 子序列          | `dp[i]` 或 `dp[i][j]` 表示以某位置结尾或两个前缀的答案 | 300、1143     |
-| 回文            | `dp[i][j]` 表示区间 `[i, j]` 是否满足条件或最优值      | 647、516      |
-| 路径            | `dp[i][j]` 表示走到格子 `(i, j)` 的答案                | 62、64        |
+| Pattern                        | State design                                                                        | Examples      |
+| ------------------------------ | ----------------------------------------------------------------------------------- | ------------- |
+| Climbing stairs / House Robber | `dp[i]` is the best answer for the first `i` positions.                             | 70, 198       |
+| Knapsack                       | `dp[j]` is the best value or number of ways for capacity `j`.                       | 416, 518, 322 |
+| Subsequences                   | `dp[i]` or `dp[i][j]` describes a subsequence ending at a position or two prefixes. | 300, 1143     |
+| Palindromes                    | `dp[i][j]` describes whether interval `[i, j]` meets a condition or its best value. | 647, 516      |
+| Paths                          | `dp[i][j]` is the answer for reaching cell `(i, j)`.                                | 62, 64        |
 
-## 记忆化搜索和递推怎么选？
+## Memoization or Tabulation?
 
-两种写法都在存子问题答案。
+Both approaches store answers to subproblems.
 
-| 写法       | 特点                         | 适合场景                   |
-| ---------- | ---------------------------- | -------------------------- |
-| 记忆化搜索 | 从目标状态往下递归，按需计算 | 状态转移复杂、递归更自然   |
-| 递推       | 从小状态往大状态填表         | 遍历顺序清楚、方便压缩空间 |
+| Approach    | Characteristics                                               | Useful when                                               |
+| ----------- | ------------------------------------------------------------- | --------------------------------------------------------- |
+| Memoization | Recurse from the target state and calculate states as needed. | Transitions are complex or recursion is more natural.     |
+| Tabulation  | Fill a table from smaller states to larger states.            | The iteration order is clear or you want to reduce space. |
 
-如果一开始想不清遍历顺序，可以先写记忆化搜索。等状态关系清楚后，再改成递推。很多树形 DP、区间 DP，用记忆化搜索更容易写对。
+If the iteration order isn't clear at first, write a memoized solution. Once the state relationships are clear, convert it to tabulation if useful. Memoization can also be easier to get right for tree DP and interval DP.
 
-## 面试手写路径
+## A Good Interview Explanation
 
-DP 题不建议直接从代码开始。面试手写时，可以先把下面 4 句话讲清楚：
+Before coding a DP problem, explain these four points:
 
-1. `dp` 数组的含义是什么，答案最终落在哪个位置。
-2. 当前状态依赖哪些旧状态，为什么这些旧状态已经算过。
-3. 初始化为什么这样写，尤其是 `0`、`1`、无穷大分别代表什么。
-4. 遍历顺序为什么不会提前使用未计算或不该重复使用的状态。
+1. What the `dp` array means and where the final answer is stored.
+2. Which previous states the current state depends on and why they are already available.
+3. Why the initialization is correct, especially what `0`, `1`, or infinity represents.
+4. Why the iteration order doesn't use a state too early or reuse an item when it shouldn't.
 
-如果这 4 句话说不清，代码大概率是靠记忆写出来的，遇到变体就容易散。
+If these points aren't clear, the code may only work because you memorized it, and variations will be harder to handle.
 
-## 代表题精讲：零钱兑换
+## Example: Coin Change
 
-[322. 零钱兑换](https://leetcode.cn/problems/coin-change/) 是完全背包里很适合面试的一题。题目给定硬币面额和目标金额，问凑成目标金额最少需要多少枚硬币，每种硬币可以使用无限次。
+[322. Coin Change](https://leetcode.cn/problems/coin-change/) is a useful unbounded knapsack problem for interviews. Given coin denominations and a target amount, find the fewest coins needed to make that amount. Each coin can be used any number of times.
 
-状态定义可以这样说：
+Define the state as:
 
 ```text
-dp[j] 表示凑成金额 j 所需的最少硬币数。
+dp[j] is the minimum number of coins needed to make amount j.
 ```
 
-初始化是这题的关键。`dp[0] = 0`，表示凑成金额 0 不需要硬币；其他金额先设成一个不可能的较大值，表示暂时不可达。
+Initialization matters. `dp[0] = 0` because no coins are needed to make amount 0. Set all other amounts to a large value that represents “not reachable yet.”
 
-代码里用到 `Arrays.fill`，需要导入 `java.util.Arrays`。
+The code uses `Arrays.fill`, so import `java.util.Arrays`.
 
 ```java
 int coinChange(int[] coins, int amount) {
@@ -191,26 +187,26 @@ int coinChange(int[] coins, int amount) {
 }
 ```
 
-为什么容量正序遍历？因为一枚硬币可以用多次。计算 `dp[j]` 时使用 `dp[j - coin]`，如果 `dp[j - coin]` 已经在本轮被当前硬币更新过，就代表当前硬币可以继续被使用，这正好符合完全背包。
+Why iterate through amounts in ascending order? A coin can be used more than once. When calculating `dp[j]`, the state `dp[j - coin]` may already include the current coin, allowing it to be reused. That's exactly what unbounded knapsack requires.
 
-如果题目变成“每种硬币只能用一次”，容量就要倒序遍历。遍历方向不是格式问题，而是在控制同一件物品能不能重复参与转移。
+If each coin could only be used once, iterate through amounts in descending order. The iteration direction controls whether the same item can be used more than once.
 
-## 状态定义对比
+## Comparing State Definitions
 
-DP 题经常不是不会写转移，而是状态含义选错。下面几组状态看起来接近，但写法完全不同：
+DP problems are often hard because the state is defined incorrectly, not because the transition is difficult. These similar-looking states lead to different solutions:
 
-| 题型           | 状态含义                                 | 常见转移关注点                 |
-| -------------- | ---------------------------------------- | ------------------------------ |
-| 最长递增子序列 | `dp[i]` 表示以 `nums[i]` 结尾的 LIS 长度 | 必须选 `nums[i]`，向前找更小值 |
-| 打家劫舍       | `dp[i]` 表示前 `i` 间房子的最大金额      | 第 `i` 间偷或不偷              |
-| 最长公共子序列 | `dp[i][j]` 表示两个前缀的 LCS 长度       | 比较两个前缀最后一个字符       |
-| 回文子串       | `dp[i][j]` 表示区间 `[i, j]` 是否回文    | 依赖内部区间 `[i + 1, j - 1]`  |
+| Pattern                        | State meaning                                              | What the transition considers                                |
+| ------------------------------ | ---------------------------------------------------------- | ------------------------------------------------------------ |
+| Longest Increasing Subsequence | `dp[i]` is the LIS length ending at `nums[i]`.             | `nums[i]` must be included; look for smaller earlier values. |
+| House Robber                   | `dp[i]` is the maximum amount from the first `i` houses.   | Rob or skip house `i`.                                       |
+| Longest Common Subsequence     | `dp[i][j]` is the LCS length of two prefixes.              | Compare the last character of each prefix.                   |
+| Palindromic substring          | `dp[i][j]` says whether interval `[i, j]` is a palindrome. | Depends on the inner interval `[i + 1, j - 1]`.              |
 
-面试里可以主动说一句：这里的 `dp[i]` 是“以 i 结尾”，不是“前 i 个元素里的最优值”。这句话能避免很多子序列题写错。
+In an interview, clarify whether `dp[i]` means “ending at `i`” or “within the first `i` elements.” That distinction prevents many subsequence mistakes.
 
-## 过程示意和边界样例
+## Walkthrough and Edge Cases
 
-以爬楼梯为例，`n = 5` 时的状态变化如下：
+For Climbing Stairs with `n = 5`, the states change like this:
 
 | `i` | `dp[i - 2]` | `dp[i - 1]` | `dp[i]` |
 | --- | ----------- | ----------- | ------- |
@@ -218,51 +214,51 @@ DP 题经常不是不会写转移，而是状态含义选错。下面几组状�
 | 4   | 2           | 3           | 5       |
 | 5   | 3           | 5           | 8       |
 
-这张表要看的不是数字本身，而是状态只依赖前两个位置，所以可以压缩成两个变量。
+The important point isn't the values: each state depends only on the previous two, so the array can be reduced to two variables.
 
-DP 题建议检查这些边界：
+Check these DP edge cases:
 
-| 输入             | 重点                     |
-| ---------------- | ------------------------ |
-| `n = 0` 或空数组 | 初始化是否覆盖           |
-| 只有 1 个元素    | 是否越界访问 `dp[1]`     |
-| 无法组成目标     | 初始值是否能表达“不可达” |
-| 求方案数         | 初始化和遍历顺序是否正确 |
+| Input                            | What to check                                   |
+| -------------------------------- | ----------------------------------------------- |
+| `n = 0` or empty array           | Does the initialization cover it?               |
+| Only one element                 | Could the code access `dp[1]` out of bounds?    |
+| Target is unreachable            | Can the initial value represent “unreachable”?  |
+| Counting the number of solutions | Are initialization and iteration order correct? |
 
-常见错误写法：
+A common mistake in 0/1 knapsack is to iterate through capacity in ascending order:
 
 ```java
 for (int j = weights[i]; j <= capacity; j++) {
-    dp[j] = Math.max(dp[j], dp[j - weights[i]] + values[i]); // 0-1 背包中是错的
+    dp[j] = Math.max(dp[j], dp[j - weights[i]] + values[i]); // Wrong for 0/1 knapsack.
 }
 ```
 
-0-1 背包中容量要倒序遍历，否则本轮刚更新的状态会被再次使用，相当于同一个物品被选了多次。
+For 0/1 knapsack, capacity must be processed in descending order. Otherwise, an updated state can be reused in the same iteration, selecting the same item multiple times.
 
-## 易错点
+## Common Mistakes
 
-- `dp` 含义不要频繁变化。
-- 初始化不是随便填 0，要看状态含义。
-- 0-1 背包容量倒序，完全背包容量正序。
-- 求方案数和求最值的初始化不同。
-- 子序列题经常需要区分“以 i 结尾”和“前 i 个元素内”。
+- Keep the meaning of `dp` consistent.
+- Choose initialization based on the state meaning; don't fill every state with `0` by default.
+- Iterate through capacity in descending order for 0/1 knapsack and ascending order for unbounded knapsack.
+- The initialization for counting solutions differs from the initialization for optimization problems.
+- In subsequence problems, distinguish “ending at `i`” from “within the first `i` elements.”
 
-## 高频问题自测
+## Questions to Review
 
-- 为什么 DP 的第一步一定是定义状态？
-- 记忆化搜索和递推的区别是什么？什么时候先写记忆化更稳？
-- 0-1 背包为什么容量要倒序遍历？
-- 完全背包为什么容量可以正序遍历？
-- `dp[i]` 表示“以 i 结尾”和表示“前 i 个元素”时，转移有什么区别？
-- 求最少次数、最大价值、方案数时，初始化分别要注意什么？
+- Why is defining the state the first step in DP?
+- How do memoization and tabulation differ? When is memoization a good starting point?
+- Why does 0/1 knapsack iterate through capacity in descending order?
+- Why can unbounded knapsack iterate through capacity in ascending order?
+- How does the transition change when `dp[i]` means “ending at `i`” rather than “within the first `i` elements”?
+- What should you consider when initializing DP for a minimum, maximum, or number of ways?
 
-## 推荐练习题
+## Recommended Practice Problems
 
-- [70. 爬楼梯](https://leetcode.cn/problems/climbing-stairs/)
-- [198. 打家劫舍](https://leetcode.cn/problems/house-robber/)
-- [322. 零钱兑换](https://leetcode.cn/problems/coin-change/)
-- [416. 分割等和子集](https://leetcode.cn/problems/partition-equal-subset-sum/)
-- [300. 最长递增子序列](https://leetcode.cn/problems/longest-increasing-subsequence/)
-- [1143. 最长公共子序列](https://leetcode.cn/problems/longest-common-subsequence/)
+- [70. Climbing Stairs](https://leetcode.cn/problems/climbing-stairs/)
+- [198. House Robber](https://leetcode.cn/problems/house-robber/)
+- [322. Coin Change](https://leetcode.cn/problems/coin-change/)
+- [416. Partition Equal Subset Sum](https://leetcode.cn/problems/partition-equal-subset-sum/)
+- [300. Longest Increasing Subsequence](https://leetcode.cn/problems/longest-increasing-subsequence/)
+- [1143. Longest Common Subsequence](https://leetcode.cn/problems/longest-common-subsequence/)
 
 <!-- @include: @article-footer.snippet.md -->

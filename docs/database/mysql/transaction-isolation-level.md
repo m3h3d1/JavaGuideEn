@@ -1,41 +1,41 @@
 ---
-title: MySQL事务隔离级别详解
-description: 详解MySQL四种事务隔离级别（读未提交、读已提交、可重复读、串行化）的特点与区别，分析脏读、不可重复读、幻读等并发问题，以及InnoDB如何通过MVCC和锁机制解决幻读。
-category: 数据库
+title: MySQL Transaction Isolation Levels Explained
+description: Compare MySQL's four transaction isolation levels and their handling of dirty reads, non-repeatable reads, and phantom reads, including InnoDB's use of MVCC and locks.
+category: Database
 tag:
   - MySQL
 head:
   - - meta
     - name: keywords
-      content: MySQL事务隔离级别,读未提交,读已提交,可重复读,串行化,脏读,不可重复读,幻读,MVCC,间隙锁
+      content: MySQL transaction isolation levels, read uncommitted, read committed, repeatable read, serializable, dirty read, non-repeatable read, phantom read, MVCC, gap lock
 ---
 
-> 本文由 [SnailClimb](https://github.com/Snailclimb) 和 [guang19](https://github.com/guang19) 共同完成。
+> Written by [SnailClimb](https://github.com/Snailclimb) and [guang19](https://github.com/guang19).
 
-关于事务基本概览的介绍，请看这篇文章的介绍：[MySQL 常见知识点&面试题总结](./mysql-questions-01.md#MySQL-事务)
+For an overview of transactions, see [MySQL Interview Questions: Core Concepts](./mysql-questions-01.md#MySQL-Transactions).
 
-## 事务隔离级别总结
+## Transaction Isolation Levels
 
-SQL 标准定义了四种事务隔离级别，用来平衡事务的隔离性（Isolation）和并发性能。级别越高，数据一致性越好，但并发性能可能越低。这四个级别是：
+The SQL standard defines four transaction isolation levels to balance isolation and concurrency. Higher isolation can improve consistency but may reduce concurrency:
 
-- **READ-UNCOMMITTED(读取未提交)** ：最低的隔离级别，允许读取尚未提交的数据变更，可能会导致脏读、幻读或不可重复读。这种级别在实际应用中很少使用，因为它对数据一致性的保证太弱。
-- **READ-COMMITTED(读取已提交)** ：允许读取并发事务已经提交的数据，可以阻止脏读，但是幻读或不可重复读仍有可能发生。这是大多数数据库（如 Oracle, SQL Server）的默认隔离级别。
-- **REPEATABLE-READ(可重复读)** ：对同一字段的多次读取结果都是一致的，除非数据是被本身事务自己所修改，可以阻止脏读和不可重复读，但幻读仍有可能发生。MySQL InnoDB 存储引擎的默认隔离级别正是 REPEATABLE READ。并且，InnoDB 在此级别下通过 MVCC（多版本并发控制） 和 Next-Key Locks（间隙锁+行锁） 机制，在很大程度上解决了幻读问题。
-- **SERIALIZABLE(可串行化)** ：最高的隔离级别，完全服从 ACID 的隔离级别。所有的事务依次逐个执行，这样事务之间就完全不可能产生干扰，也就是说，该级别可以防止脏读、不可重复读以及幻读。
+- **READ UNCOMMITTED**: The lowest level. It allows reads of uncommitted changes, which may cause dirty reads, phantom reads, and non-repeatable reads. It is rarely used because it provides weak consistency guarantees.
+- **READ COMMITTED**: Allows reads of changes committed by concurrent transactions. It prevents dirty reads, but phantom and non-repeatable reads may still occur. This is the default isolation level in many databases, including Oracle and SQL Server.
+- **REPEATABLE READ**: Repeated reads of the same row return the same result unless the transaction itself changed the data. It prevents dirty and non-repeatable reads, though phantom reads may still occur. This is InnoDB's default isolation level. InnoDB also uses MVCC and next-key locks to prevent most phantom reads at this level.
+- **SERIALIZABLE**: The highest isolation level. Transactions execute as if serialized, preventing dirty reads, non-repeatable reads, and phantom reads.
 
-| 隔离级别         | 脏读 (Dirty Read) | 不可重复读 (Non-Repeatable Read) | 幻读 (Phantom Read)    |
-| ---------------- | ----------------- | -------------------------------- | ---------------------- |
-| READ UNCOMMITTED | √                 | √                                | √                      |
-| READ COMMITTED   | ×                 | √                                | √                      |
-| REPEATABLE READ  | ×                 | ×                                | √ (标准) / ≈× (InnoDB) |
-| SERIALIZABLE     | ×                 | ×                                | ×                      |
+| Isolation level  | Dirty read | Non-repeatable read | Phantom read               |
+| ---------------- | ---------- | ------------------- | -------------------------- |
+| READ UNCOMMITTED | √          | √                   | √                          |
+| READ COMMITTED   | ×          | √                   | √                          |
+| REPEATABLE READ  | ×          | ×                   | √ (standard) / ≈× (InnoDB) |
+| SERIALIZABLE     | ×          | ×                   | ×                          |
 
-**默认级别查询：**
+**Checking the default isolation level:**
 
-MySQL InnoDB 存储引擎的默认隔离级别是 **REPEATABLE READ**。可以通过以下命令查看：
+InnoDB's default isolation level is **REPEATABLE READ**. Check it with:
 
-- MySQL 8.0 之前：`SELECT @@tx_isolation;`
-- MySQL 8.0 及之后：`SELECT @@transaction_isolation;`
+- Before MySQL 8.0: `SELECT @@tx_isolation;`
+- MySQL 8.0 and later: `SELECT @@transaction_isolation;`
 
 ```bash
 mysql> SELECT @@transaction_isolation;
@@ -46,80 +46,80 @@ mysql> SELECT @@transaction_isolation;
 +-------------------------+
 ```
 
-**InnoDB 的 REPEATABLE READ 对幻读的处理：**
+**How InnoDB's REPEATABLE READ Handles Phantom Reads:**
 
-标准的 SQL 隔离级别定义里，REPEATABLE READ 是无法防止幻读的。但 InnoDB 的实现通过以下机制很大程度上避免了幻读：
+In the SQL standard, `REPEATABLE READ` does not prevent phantom reads. InnoDB largely avoids them at this level through these mechanisms:
 
-- **快照读 (Snapshot Read)**:普通的 SELECT 语句，通过 **MVCC** 机制实现。事务启动时创建一个数据快照，后续的快照读都读取这个版本的数据，从而避免了看到其他事务新插入的行（幻读）或修改的行（不可重复读）。
-- **当前读 (Current Read)**:像 `SELECT ... FOR UPDATE`, `SELECT ... LOCK IN SHARE MODE`, `INSERT`, `UPDATE`, `DELETE` 这些操作。InnoDB 使用 **Next-Key Lock** 来锁定扫描到的索引记录及其间的范围（间隙），防止其他事务在这个范围内插入新的记录，从而避免幻读。Next-Key Lock 是行锁（Record Lock）和间隙锁（Gap Lock）的组合。
+- **Snapshot reads**: Ordinary `SELECT` statements use **MVCC**. A snapshot is created for the transaction, and subsequent snapshot reads use the same version, so they do not see rows inserted or modified by other transactions afterward.
+- **Current reads**: Statements such as `SELECT ... FOR UPDATE`, `SELECT ... LOCK IN SHARE MODE`, `INSERT`, `UPDATE`, and `DELETE`. InnoDB uses **next-key locks** to lock scanned index records and the gaps between them, preventing other transactions from inserting rows in that range. A next-key lock combines a record lock and a gap lock.
 
-值得注意的是，虽然通常认为隔离级别越高、并发性越差，但 InnoDB 存储引擎通过 MVCC 机制优化了 REPEATABLE READ 级别。对于许多常见的只读或读多写少的场景，其性能**与 READ COMMITTED 相比可能没有显著差异**。不过，在写密集型且并发冲突较高的场景下，RR 的间隙锁机制可能会比 RC 带来更多的锁等待。
+Although higher isolation is often assumed to reduce concurrency, InnoDB uses MVCC to optimize `REPEATABLE READ`. For many read-only or read-heavy workloads, its performance **may not differ significantly from READ COMMITTED**. In write-heavy workloads with high contention, however, RR's gap locks may cause more lock waits than RC.
 
-此外，在某些特定场景下，如需要严格一致性的分布式事务（XA Transactions），InnoDB 可能要求或推荐使用 SERIALIZABLE 隔离级别来确保全局数据的一致性。
+In some cases, such as distributed transactions that require strict consistency (XA transactions), InnoDB may require or recommend `SERIALIZABLE` to ensure global consistency.
 
-《MySQL 技术内幕：InnoDB 存储引擎(第 2 版)》7.7 章这样写到：
+Chapter 7.7 of _MySQL Technology: InnoDB Storage Engine, 2nd Edition_ states:
 
-> InnoDB 存储引擎提供了对 XA 事务的支持，并通过 XA 事务来支持分布式事务的实现。分布式事务指的是允许多个独立的事务资源（transactional resources）参与到一个全局的事务中。事务资源通常是关系型数据库系统，但也可以是其他类型的资源。全局事务要求在其中的所有参与的事务要么都提交，要么都回滚，这对于事务原有的 ACID 要求又有了提高。另外，在使用分布式事务时，InnoDB 存储引擎的事务隔离级别必须设置为 SERIALIZABLE。
+> The InnoDB storage engine supports XA transactions, which can be used to implement distributed transactions. A distributed transaction allows multiple independent transactional resources to participate in a global transaction. These resources are usually relational database systems, but may also be other types of resources. A global transaction requires all participating transactions either to commit or to roll back, extending the original ACID requirements. When using distributed transactions, the InnoDB transaction isolation level must also be set to `SERIALIZABLE`.
 
-## 实际情况演示
+## Demonstration
 
-在下面我会使用 2 个命令行 MySQL ，模拟多线程（多事务）对同一份数据的脏读问题。
+The following example uses two MySQL command-line sessions to demonstrate a dirty read between concurrent transactions accessing the same data.
 
-MySQL 命令行的默认配置中事务都是自动提交的，即执行 SQL 语句后就会马上执行 COMMIT 操作。如果要显式地开启一个事务需要使用命令：`START TRANSACTION`。
+Transactions are enabled for autocommit by default in the MySQL command-line client, so each SQL statement is committed immediately. To start a transaction explicitly, use `START TRANSACTION`.
 
-我们可以通过下面的命令来设置隔离级别。
+Set the isolation level with:
 
 ```sql
 SET [SESSION|GLOBAL] TRANSACTION ISOLATION LEVEL [READ UNCOMMITTED|READ COMMITTED|REPEATABLE READ|SERIALIZABLE]
 ```
 
-我们再来看一下我们在下面实际操作中使用到的一些并发控制语句:
+The following concurrency control statements are used in the examples:
 
-- `START TRANSACTION` |`BEGIN`：显式地开启一个事务。
-- `COMMIT`：提交事务，使得对数据库做的所有修改成为永久性。
-- `ROLLBACK`：回滚会结束用户的事务，并撤销正在进行的所有未提交的修改。
+- `START TRANSACTION` or `BEGIN`: Explicitly starts a transaction.
+- `COMMIT`: Commits the transaction, making its database changes permanent.
+- `ROLLBACK`: Ends the transaction and undoes all uncommitted changes.
 
-### 脏读(读未提交)
+### Dirty Read (READ UNCOMMITTED)
 
 ![](../images/shared/2019-31-1-.png)
 
-### 避免脏读(读已提交)
+### Preventing Dirty Reads (READ COMMITTED)
 
 ![](../images/shared/2019-31-2-.png)
 
-### 不可重复读
+### Non-Repeatable Read
 
-还是刚才上面的读已提交的图，虽然避免了读未提交，但是却出现了，一个事务还没有结束，就发生了 不可重复读问题。
+The preceding `READ COMMITTED` example prevents dirty reads, but a non-repeatable read can still occur before the transaction ends.
 
 ![](../images/shared/2019-32-1-.png)
 
-### 可重复读
+### REPEATABLE READ
 
 ![](../images/shared/2019-33-2-.png)
 
-### 幻读
+### Phantom Read
 
-#### 演示幻读出现的情况
+#### Demonstrating a Phantom Read
 
 ![](../images/shared/phantom_read.png)
 
-SQL 脚本 1 在第一次查询工资为 500 的记录时只有一条，SQL 脚本 2 插入了一条工资为 500 的记录，提交之后；SQL 脚本 1 在同一个事务中再次使用当前读查询发现出现了两条工资为 500 的记录这种就是幻读。
+When Script 1 first queries for records with a salary of 500, it finds one row. Script 2 inserts another row with a salary of 500 and commits. Script 1 then performs a current read in the same transaction and finds two matching rows. This is a phantom read.
 
-注：这个例子本质上是第一次快照读和第二次当前读的读语义不同。RR 下，MVCC 可以保证快照读不出现幻读，Next-Key Lock 可以约束当前读；但同一事务内混用快照读和当前读时，两次读取看到的结果可能不同。
+> Note: This example uses different read semantics: the first read is a snapshot read, while the second is a current read. Under RR, MVCC prevents phantoms in snapshot reads and next-key locks constrain current reads. Mixing snapshot and current reads in one transaction can still produce different results.
 
-#### 解决幻读的方法
+#### Preventing Phantom Reads
 
-解决幻读的方式有很多，但是它们的核心思想就是一个事务在操作某张表数据的时候，另外一个事务不允许新增或者删除这张表中的数据了。解决幻读的方式主要有以下几种：
+There are several ways to prevent phantom reads. The general idea is to prevent other transactions from inserting or deleting rows in the range while a transaction is working with it. Common approaches include:
 
-1. 将事务隔离级别调整为 `SERIALIZABLE` 。
-2. 在可重复读的事务级别下，给事务操作的这张表添加表锁。
-3. 在可重复读的事务级别下，给事务操作的这张表添加 `Next-key Lock（Record Lock+Gap Lock）`。
+1. Set the transaction isolation level to `SERIALIZABLE`.
+2. At `REPEATABLE READ`, acquire a table lock on the table being accessed.
+3. At `REPEATABLE READ`, use `Next-Key Lock` (record lock + gap lock) on the table being accessed.
 
-### 参考
+### References
 
-- 《MySQL 技术内幕：InnoDB 存储引擎》
+- _MySQL Technology: InnoDB Storage Engine_
 - <https://dev.MySQL.com/doc/refman/5.7/en/>
-- [Mysql 锁：灵魂七拷问](https://tech.youzan.com/seven-questions-about-the-lock-of-MySQL/)
-- [Innodb 中的事务隔离级别和锁的关系](https://tech.meituan.com/2014/08/20/innodb-lock.html)
+- [MySQL Locks: Seven Key Questions](https://tech.youzan.com/seven-questions-about-the-lock-of-MySQL/)
+- [Transaction Isolation Levels and Locks in InnoDB](https://tech.meituan.com/2014/08/20/innodb-lock.html)
 
 <!-- @include: @article-footer.snippet.md -->

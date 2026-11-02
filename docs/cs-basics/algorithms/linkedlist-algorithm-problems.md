@@ -1,48 +1,46 @@
 ---
-title: 几道常见的链表算法题
-description: 精选链表高频题的思路与实现，覆盖两数相加、反转、环检测等场景，强调边界处理与复杂度分析。
-category: 计算机基础
+title: Common Linked List Algorithm Problems
+description: A selection of common linked list problems and solutions, covering addition, reversal, cycle detection, and merging, with attention to edge cases and complexity.
+category: Computer Science Fundamentals
 tag:
-  - 算法
+  - Algorithms
 head:
   - - meta
     - name: keywords
-      content: 链表算法,两数相加,反转链表,环检测,合并链表,复杂度分析
+      content: linked list algorithms,add two numbers,reverse linked list,cycle detection,merge linked lists,complexity analysis
 ---
 
 <!-- markdownlint-disable MD024 -->
 
-## 1. 两数相加
+## 1. Add Two Numbers
 
-### 题目描述
+### Problem
 
-> Leetcode:给定两个非空链表来表示两个非负整数。位数按照逆序方式存储，它们的每个节点只存储单个数字。将两数相加返回一个新的链表。
+> LeetCode: You are given two non-empty linked lists representing two non-negative integers. The digits are stored in reverse order, and each node contains a single digit. Add the numbers and return the sum as a linked list.
 >
-> 你可以假设除了数字 0 之外，这两个数字都不会以零开头。
+> You may assume that neither number contains leading zeroes, except for the number 0 itself.
 
-示例：
+Example:
 
 ```plain
-输入：(2 -> 4 -> 3) + (5 -> 6 -> 4)
-输出：7 -> 0 -> 8
-原因：342 + 465 = 807
+Input: (2 -> 4 -> 3) + (5 -> 6 -> 4)
+Output: 7 -> 0 -> 8
+Explanation: 342 + 465 = 807
 ```
 
-### 问题分析
+### Analysis
 
-Leetcode 官方详细解答地址：
+See the [LeetCode solution](https://leetcode-cn.com/problems/add-two-numbers/solution/).
 
-<https://leetcode-cn.com/problems/add-two-numbers/solution/>
+> When an operation may change the head node, create a dummy node and use `dummy.next` as the actual head. This avoids special cases when the list is empty or its head changes.
 
-> 要对头结点进行操作时，考虑创建哑节点 dummy，使用 dummy->next 表示真正的头节点。这样可以避免处理头节点为空的边界问题。
+Track the carry and add corresponding digits, starting at the heads of the lists, which contain the least significant digits.
 
-我们使用变量来跟踪进位，并从包含最低有效位的表头开始模拟逐位相加的过程。
-
-![图1，对两数相加方法的可视化: 342 + 465 = 807， 每个结点都包含一个数字，并且数字按位逆序存储。](../images/shared/34910956.png)
+![Visualization of adding two numbers: 342 + 465 = 807, with each digit stored in reverse order in a linked list.](../images/shared/34910956.png)
 
 ### Solution
 
-**我们首先从最低有效位也就是列表 l1 和 l2 的表头开始相加。注意需要考虑到进位的情况！**
+Start at the least significant digits in `l1` and `l2`, and account for the carry:
 
 ```java
 /**
@@ -53,93 +51,76 @@ Leetcode 官方详细解答地址：
  *     ListNode(int x) { val = x; }
  * }
  */
- //https://leetcode-cn.com/problems/add-two-numbers/description/
+// https://leetcode-cn.com/problems/add-two-numbers/description/
 class Solution {
-public ListNode addTwoNumbers(ListNode l1, ListNode l2) {
-    ListNode dummyHead = new ListNode(0);
-    ListNode p = l1, q = l2, curr = dummyHead;
-    //carry 表示进位数
-    int carry = 0;
-    while (p != null || q != null) {
-        int x = (p != null) ? p.val : 0;
-        int y = (q != null) ? q.val : 0;
-        int sum = carry + x + y;
-        //进位数
-        carry = sum / 10;
-        //新节点的数值为sum % 10
-        curr.next = new ListNode(sum % 10);
-        curr = curr.next;
-        if (p != null) p = p.next;
-        if (q != null) q = q.next;
+    public ListNode addTwoNumbers(ListNode l1, ListNode l2) {
+        ListNode dummyHead = new ListNode(0);
+        ListNode p = l1, q = l2, curr = dummyHead;
+        int carry = 0;
+        while (p != null || q != null) {
+            int x = (p != null) ? p.val : 0;
+            int y = (q != null) ? q.val : 0;
+            int sum = carry + x + y;
+            carry = sum / 10;
+            curr.next = new ListNode(sum % 10);
+            curr = curr.next;
+            if (p != null) p = p.next;
+            if (q != null) q = q.next;
+        }
+        if (carry > 0) {
+            curr.next = new ListNode(carry);
+        }
+        return dummyHead.next;
     }
-    if (carry > 0) {
-        curr.next = new ListNode(carry);
-    }
-    return dummyHead.next;
-}
 }
 ```
 
-## 2. 翻转链表
+## 2. Reverse a Linked List
 
-### 题目描述
+### Problem
 
-> 剑指 offer:输入一个链表，反转链表后，输出链表的所有元素。
+> Sword Offer: Given a linked list, reverse it and return the head of the reversed list.
 
-![翻转链表](../images/shared/81431871.png)
+![Reversing a linked list](../images/shared/81431871.png)
 
-### 问题分析
+### Analysis
 
-这道算法题，说直白点就是：如何让后一个节点指向前一个节点！在下面的代码中定义了一个 next 节点，该节点主要是保存要反转到头的那个节点，防止链表 “断裂”。
+The key is to make each node point to its previous node. Save the next node before changing the link, or the rest of the list will be lost.
 
 ### Solution
 
 ```java
 public class ListNode {
-  int val;
-  ListNode next = null;
-
-  ListNode(int val) {
-    this.val = val;
-  }
-}
-```
-
-```java
-/**
- *
- * @author Snailclimb
- * @date 2018年9月19日
- * @Description: 反转单链表
- */
-public class Solution {
-
-  public ListNode ReverseList(ListNode head) {
-
+    int val;
     ListNode next = null;
-    ListNode pre = null;
 
-    while (head != null) {
-      // 保存要反转到头的那个节点
-      next = head.next;
-      // 要反转的那个节点指向已经反转的上一个节点(备注:第一次反转的时候会指向null)
-      head.next = pre;
-      // 上一个已经反转到头部的节点
-      pre = head;
-      // 一直向链表尾走
-      head = next;
+    ListNode(int val) {
+        this.val = val;
     }
-    return pre;
-  }
-
 }
 ```
 
-测试方法：
+```java
+public class Solution {
+    public ListNode ReverseList(ListNode head) {
+        ListNode next = null;
+        ListNode prev = null;
+
+        while (head != null) {
+            next = head.next;
+            head.next = prev;
+            prev = head;
+            head = next;
+        }
+        return prev;
+    }
+}
+```
+
+Test it with a five-node list:
 
 ```java
-  public static void main(String[] args) {
-
+public static void main(String[] args) {
     ListNode a = new ListNode(1);
     ListNode b = new ListNode(2);
     ListNode c = new ListNode(3);
@@ -151,13 +132,13 @@ public class Solution {
     d.next = e;
     new Solution().ReverseList(a);
     while (e != null) {
-      System.out.println(e.val);
-      e = e.next;
+        System.out.println(e.val);
+        e = e.next;
     }
-  }
+}
 ```
 
-输出：
+Output:
 
 ```plain
 5
@@ -167,98 +148,75 @@ public class Solution {
 1
 ```
 
-## 3. 链表中倒数第 k 个节点
+## 3. Find the Kth Node from the End
 
-### 题目描述
+### Problem
 
-> 剑指 offer: 输入一个链表，输出该链表中倒数第 k 个结点。
+> Sword Offer: Given a linked list, return its kth node from the end.
 
-### 问题分析
+### Analysis
 
-> **链表中倒数第 k 个节点也就是正数第（L-K+1）个节点，知道了这一点，这一题基本就没问题！**
-
-首先两个节点/指针，一个节点 node1 先开始跑，指针 node1 跑到 k-1 个节点后，另一个节点 node2 开始跑，当 node1 跑到最后时，node2 所指的节点就是倒数第 k 个节点也就是正数第（L-K+1）个节点。
+If the list has length `L`, the kth node from the end is the `(L - k + 1)`th node from the beginning. Use two pointers: advance the first pointer by `k` nodes, then move both pointers together. When the first pointer reaches the end, the second points to the answer.
 
 ### Solution
+
+The following implementation returns `null` when the list is empty, `k` is not positive, or the list has fewer than `k` nodes. It runs in `O(n)` time with one traversal.
 
 ```java
 /*
 public class ListNode {
     int val;
     ListNode next = null;
-
-    ListNode(int val) {
-        this.val = val;
-    }
-}*/
-
-// 时间复杂度O(n),一次遍历即可
+    ListNode(int val) { this.val = val; }
+}
+*/
 // https://www.nowcoder.com/practice/529d3ae5a407492994ad2a246518148a?tpId=13&tqId=11167&tPage=1&rp=1&ru=/ta/coding-interviews&qru=/ta/coding-interviews/question-ranking
 public class Solution {
-  public ListNode FindKthToTail(ListNode head, int k) {
-    // 如果链表为空或者k小于等于0
-    if (head == null || k <= 0) {
-      return null;
+    public ListNode FindKthToTail(ListNode head, int k) {
+        if (head == null || k <= 0) {
+            return null;
+        }
+        ListNode first = head, second = head;
+        int count = 0;
+        int originalK = k;
+        while (first != null) {
+            first = first.next;
+            count++;
+            if (k < 1) {
+                second = second.next;
+            }
+            k--;
+        }
+        if (count < originalK) {
+            return null;
+        }
+        return second;
     }
-    // 声明两个指向头结点的节点
-    ListNode node1 = head, node2 = head;
-    // 记录节点的个数
-    int count = 0;
-    // 记录k值，后面要使用
-    int index = k;
-    // p指针先跑，并且记录节点数，当node1节点跑了k-1个节点后，node2节点开始跑，
-    // 当node1节点跑到最后时，node2节点所指的节点就是倒数第k个节点
-    while (node1 != null) {
-      node1 = node1.next;
-      count++;
-      if (k < 1) {
-        node2 = node2.next;
-      }
-      k--;
-    }
-    // 如果节点个数小于所求的倒数第k个节点，则返回空
-    if (count < index)
-      return null;
-    return node2;
-
-  }
 }
 ```
 
-## 4. 删除链表的倒数第 N 个节点
+## 4. Remove the Nth Node from the End
 
-> Leetcode:给定一个链表，删除链表的倒数第 n 个节点，并且返回链表的头结点。
+> LeetCode: Given the head of a linked list, remove the nth node from the end and return the head.
 
-**示例：**
+Example:
 
 ```plain
-给定一个链表: 1->2->3->4->5, 和 n = 2.
-
-当删除了倒数第二个节点后，链表变为 1->2->3->5.
-
+Input: 1 -> 2 -> 3 -> 4 -> 5, n = 2
+After removal: 1 -> 2 -> 3 -> 5
 ```
 
-**说明：**
+The problem guarantees that `n` is valid. Can you solve it in one pass?
 
-给定的 n 保证是有效的。
+### Analysis
 
-**进阶：**
+This is equivalent to removing the `(L - n + 1)`th node from the beginning, where `L` is the list length.
 
-你能尝试使用一趟扫描实现吗？
+![Removing the node at position L - n + 1](../images/shared/94354387.png)
 
-该题在 LeetCode 上有详细解答，具体可参考 LeetCode。
+### Two-Pass Solution
 
-### 问题分析
-
-我们注意到这个问题可以容易地简化成另一个问题：删除从列表开头数起的第（L - n + 1）个结点，其中 L 是列表的长度。只要我们找到列表的长度 L，这个问题就很容易解决。
-
-![图 1. 删除列表中的第 L - n + 1 个元素](../images/shared/94354387.png)
-
-### Solution
-
-**两次遍历法**
-
-首先我们将添加一个 **哑结点** 作为辅助，该结点位于列表头部。哑结点用来简化某些极端情况，例如列表中只含有一个结点，或需要删除列表的头部。在第一次遍历中，我们找出列表的长度 L。然后设置一个指向哑结点的指针，并移动它遍历列表，直至它到达第（L - n）个结点那里。**我们把第（L - n）个结点的 next 指针重新链接至第（L - n + 2）个结点，完成这个算法。**
+Add a dummy node before the head to simplify edge cases, such as a one-node list or removing the head. First find the list length `L`. Then advance from the dummy node to position `L - n` and link that node to the node after the one being removed.
 
 ```java
 /**
@@ -271,37 +229,30 @@ public class Solution {
  */
 // https://leetcode-cn.com/problems/remove-nth-node-from-end-of-list/description/
 public class Solution {
-  public ListNode removeNthFromEnd(ListNode head, int n) {
-    // 哑结点，哑结点用来简化某些极端情况，例如列表中只含有一个结点，或需要删除列表的头部
-    ListNode dummy = new ListNode(0);
-    // 哑结点指向头结点
-    dummy.next = head;
-    // 保存链表长度
-    int length = 0;
-    ListNode len = head;
-    while (len != null) {
-      length++;
-      len = len.next;
+    public ListNode removeNthFromEnd(ListNode head, int n) {
+        ListNode dummy = new ListNode(0);
+        dummy.next = head;
+        int length = 0;
+        ListNode current = head;
+        while (current != null) {
+            length++;
+            current = current.next;
+        }
+        length -= n;
+        ListNode target = dummy;
+        while (length > 0) {
+            target = target.next;
+            length--;
+        }
+        target.next = target.next.next;
+        return dummy.next;
     }
-    length = length - n;
-    ListNode target = dummy;
-    // 找到 L-n 位置的节点
-    while (length > 0) {
-      target = target.next;
-      length--;
-    }
-    // 把第 (L - n)个结点的 next 指针重新链接至第 (L - n + 2)个结点
-    target.next = target.next.next;
-    return dummy.next;
-  }
 }
 ```
 
-**进阶——一次遍历法：**
+### One-Pass Solution
 
-> 链表中倒数第 N 个节点也就是正数第（L - n + 1）个节点。
-
-其实这种方法就和我们上面第四题找“链表中倒数第 k 个节点”所用的思想是一样的。**基本思路就是：** 定义两个节点 node1、node2；node1 节点先跑，node1 节点跑到第 n+1 个节点的时候，node2 节点开始跑。当 node1 节点跑到最后一个节点时，node2 节点所在的位置就是第（L - n）个节点（L 代表总链表长度，也就是倒数第 n + 1 个节点）。
+Use two pointers starting at the dummy node. Advance the first pointer `n + 1` steps, then advance both pointers until the first reaches the end. The second pointer is then immediately before the node to remove.
 
 ```java
 /**
@@ -313,95 +264,74 @@ public class Solution {
  * }
  */
 public class Solution {
-  public ListNode removeNthFromEnd(ListNode head, int n) {
-
-    ListNode dummy = new ListNode(0);
-    dummy.next = head;
-    // 声明两个指向头结点的节点
-    ListNode node1 = dummy, node2 = dummy;
-
-    // node1 节点先跑，node1节点 跑到第 n 个节点的时候,node2 节点开始跑
-    // 当node1 节点跑到最后一个节点时，node2 节点所在的位置就是第 （L-n ） 个节点，也就是倒数第 n+1（L代表总链表长度）
-    while (node1 != null) {
-      node1 = node1.next;
-      if (n < 1 && node1 != null) {
-        node2 = node2.next;
-      }
-      n--;
+    public ListNode removeNthFromEnd(ListNode head, int n) {
+        ListNode dummy = new ListNode(0);
+        dummy.next = head;
+        ListNode first = dummy, second = dummy;
+        for (int i = 0; i <= n; i++) {
+            first = first.next;
+        }
+        while (first != null) {
+            first = first.next;
+            second = second.next;
+        }
+        second.next = second.next.next;
+        return dummy.next;
     }
-
-    node2.next = node2.next.next;
-
-    return dummy.next;
-
-  }
 }
 ```
 
-## 5. 合并两个排序的链表
+## 5. Merge Two Sorted Linked Lists
 
-### 题目描述
+### Problem
 
-> 剑指 offer:输入两个单调递增的链表，输出两个链表合成后的链表，当然我们需要合成后的链表满足单调不减规则。
+> Sword Offer: Given two lists sorted in non-decreasing order, merge them into one sorted list.
 
-### 问题分析
+### Analysis
 
-我们可以这样分析：
+Compare the two head nodes. Link the smaller one to the merged list, advance that list, and repeat. When either list is empty, append the remainder of the other. This can also be implemented recursively.
 
-1. 假设我们有两个链表 A，B；
-2. A 的头节点 A1 的值与 B 的头结点 B1 的值比较，假设 A1 小，则 A1 为头节点；
-3. A2 再和 B1 比较，假设 B1 小，则 A1 指向 B1；
-4. A2 再和 B2 比较
-5. 就这样循环往复就行了，应该还算好理解。
-
-考虑通过递归的方式实现！
-
-### Solution
-
-**递归版本：**
+### Recursive Solution
 
 ```java
 /*
 public class ListNode {
     int val;
     ListNode next = null;
-
-    ListNode(int val) {
-        this.val = val;
-    }
-}*/
-//https://www.nowcoder.com/practice/d8b6b4358f774294a89de2a6ac4d9337?tpId=13&tqId=11169&tPage=1&rp=1&ru=/ta/coding-interviews&qru=/ta/coding-interviews/question-ranking
+    ListNode(int val) { this.val = val; }
+}
+*/
+// https://www.nowcoder.com/practice/d8b6b4358f774294a89de2a6ac4d9337?tpId=13&tqId=11169&tPage=1&rp=1&ru=/ta/coding-interviews&qru=/ta/coding-interviews/question-ranking
 public class Solution {
-  public ListNode Merge(ListNode list1, ListNode list2) {
-    if (list1 == null) {
-      return list2;
+    public ListNode Merge(ListNode list1, ListNode list2) {
+        if (list1 == null) {
+            return list2;
+        }
+        if (list2 == null) {
+            return list1;
+        }
+        if (list1.val <= list2.val) {
+            list1.next = Merge(list1.next, list2);
+            return list1;
+        }
+        list2.next = Merge(list1, list2.next);
+        return list2;
     }
-    if (list2 == null) {
-      return list1;
-    }
-    if (list1.val <= list2.val) {
-      list1.next = Merge(list1.next, list2);
-      return list1;
-    } else {
-      list2.next = Merge(list1, list2.next);
-      return list2;
-    }
-  }
 }
 ```
 
-## 面试复盘重点
+## Interview Review
 
-链表题的代码通常不长，但指针更新顺序很容易写错。面试前至少要掌握 4 个模板：虚拟头节点、反转链表、快慢指针、合并链表。
+Linked list solutions are often short, but pointer update order is easy to get wrong. Be comfortable with four templates: dummy nodes, list reversal, fast and slow pointers, and merging sorted lists.
 
-| 模板       | 适用题型                           | 关键点                           |
-| ---------- | ---------------------------------- | -------------------------------- |
-| 虚拟头节点 | 删除节点、合并链表、头节点可能变化 | 返回 `dummy.next`                |
-| 反转链表   | 整体反转、区间反转、K 个一组反转   | 保存 `next`，再改 `cur.next`     |
-| 快慢指针   | 环检测、倒数第 K 个、中点          | 先判断 `fast` 和 `fast.next`     |
-| 合并链表   | 两个有序链表、K 个有序链表         | 递归或迭代，注意尾部接上剩余链表 |
+| Template               | Use cases                                              | Key point                                                 |
+| ---------------------- | ------------------------------------------------------ | --------------------------------------------------------- |
+| Dummy node             | Deletion, merging, or when the head may change         | Return `dummy.next`.                                      |
+| Reversal               | Full or range reversal, reversing nodes in groups of K | Save `next` before assigning `cur.next`.                  |
+| Fast and slow pointers | Cycle detection, kth node from the end, middle node    | Check `fast != null && fast.next != null`.                |
+| Merge                  | Two or K sorted lists                                  | Use recursion or iteration and attach the remaining list. |
 
-反转链表的迭代模板建议背熟：
+An iterative reversal template is worth knowing well:
 
 ```java
 ListNode reverseList(ListNode head) {
@@ -417,37 +347,37 @@ ListNode reverseList(ListNode head) {
 }
 ```
 
-## 过程示意和边界样例
+## Pointer Walkthrough and Edge Cases
 
-反转链表时，核心是先保存 `next`，再修改 `cur.next`。可以按下面的指针变化来记：
+When reversing a list, save `next` before changing `cur.next`:
 
 ```text
-初始：prev = null, cur = head
+Initial: prev = null, cur = head
 
-每一轮：
+Each iteration:
 next = cur.next
 cur.next = prev
 prev = cur
 cur = next
 
-结束：cur == null，prev 指向新头节点
+End: cur == null, and prev is the new head
 ```
 
-删除节点、合并链表这类题，优先考虑虚拟头节点：
+For deletion and merging, consider using a dummy node:
 
 ```java
 ListNode dummy = new ListNode(0);
 dummy.next = head;
-// 中间统一操作 dummy 后面的链表
+// Perform operations on the list after dummy.
 return dummy.next;
 ```
 
-几个易错点：
+Common edge cases:
 
-- 删除倒数第 N 个节点时，虚拟头节点能统一处理删除头节点的情况。
-- 区间反转要先保存区间前一个节点和区间后一个节点。
-- 判断链表有环时，循环条件是 `fast != null && fast.next != null`。
-- 递归合并链表代码短，但链表很长时可能有递归栈风险。
-- 空链表、单节点链表、删除头节点、删除尾节点都要单独过一遍。
+- A dummy node handles removing the head when deleting the nth node from the end.
+- For range reversal, save the nodes before and after the range first.
+- For cycle detection, use the loop condition `fast != null && fast.next != null`.
+- Recursive merging is concise, but a very long list may cause a stack overflow.
+- Check empty lists, single-node lists, and deletion of the head or tail.
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,111 +1,111 @@
 ---
-title: 有了 HTTP 协议，为什么还要 RPC？HTTP 与 RPC 区别对比
-category: 计算机基础
-description: 深入对比 HTTP 与 RPC 的本质区别，解析微服务通信选型。涵盖序列化性能、连接复用、gRPC、RESTful、服务治理等核心知识点。
+title: Why Use RPC When We Have HTTP? HTTP vs. RPC
+category: Computer Science Basics
+description: Compare HTTP and RPC, and learn how to choose between them for microservice communication, including serialization, connection reuse, gRPC, REST, and service governance.
 head:
   - - meta
     - name: keywords
-      content: HTTP,RPC,HTTP vs RPC区别,微服务通信,RPC协议,TCP通信,序列化协议,RESTful,gRPC,Dubbo,Protobuf,服务调用,远程调用,HTTP协议,微服务选型
+      content: HTTP,RPC,HTTP vs RPC,microservice communication,RPC protocol,TCP communication,serialization,RESTful,gRPC,Dubbo,Protobuf,service calls,remote calls,HTTP protocol,microservice design
 ---
 
-你好，我是小 G。在我大二下学期那年，看黑马的免费课程，第一次接触到 RPC，当时还是挺懵逼的。
+Hi, I'm Xiao G. I first came across RPC in a free course during my second year of college, and I found it confusing.
 
-HTTP 接口不是已经能调了吗？
+Couldn't we already call HTTP APIs?
 
-前端调后端是 HTTP，服务端调服务端也可以用 HTTP。写一个 `/user/getById` 接口，传个用户 ID，返回用户信息，这不也能完成远程调用吗？
+The frontend can call the backend over HTTP, and one server can call another the same way. An endpoint such as `/user/getById` could accept a user ID and return user information. Isn't that already a remote call?
 
-那为什么还要再搞一个 RPC 增加学习成本呢？这不纯闹嘛！
+Why add RPC and another thing to learn? It can seem unnecessary.
 
-更容易让人混乱的是，很多文章特别喜欢把 HTTP 和 RPC 放在一起对比，好像它们是同一层的两个协议。看完之后你可能记住了几句话：**HTTP 面向资源，RPC 面向方法；HTTP 对外，RPC 对内；RPC 性能更好。**
+It is even more confusing when articles compare HTTP and RPC as if they were protocols at the same layer. You may come away remembering claims like: **HTTP is resource-oriented, RPC is method-oriented; HTTP is for external APIs, RPC is for internal services; RPC is faster.**
 
-这些话不是完全错，但太粗了。
+These claims are not entirely wrong, but they oversimplify the subject.
 
-真到项目里，你还是会遇到问题：**用 HTTP 行不行？用 RPC 是不是过度设计？gRPC 明明基于 HTTP/2，为什么又说它是 RPC？**
+In a real project, you still have to ask: **Is HTTP enough? Is RPC overengineering? If gRPC uses HTTP/2, why is it called RPC?**
 
-这篇文章就围绕这个问题聊清楚。
+This article explains how to think about these questions.
 
-## RPC 不是某一个具体协议
+## RPC Is Not a Specific Protocol
 
-这是一个常见的误区，开始后面的文章之前，非常有必要先提一下。
+This is a common misconception, so let's clear it up first.
 
-**HTTP 是协议。而 RPC 不是某一个具体协议，它更像是一种调用方式。**
+**HTTP is a protocol. RPC is not a specific protocol; it is a model for making remote calls.**
 
-RPC 全称是 Remote Procedure Call，翻译过来就是远程过程调用。它想解决的问题很朴素：**让你调用远程服务时，尽量像调用本地方法一样。**
+RPC stands for Remote Procedure Call. Its goal is simple: **make calling a remote service feel as much like calling a local method as possible.**
 
-![RPC 通过本地代理隐藏远程调用细节](../images/shared/rpc-overview.png)
+![RPC uses a local proxy to hide the details of remote calls](../images/shared/rpc-overview.png)
 
-比如本地代码里调用用户服务：
-
-```java
-User user = userService.getUser(1001);
-```
-
-如果 `userService` 就在当前进程里，这只是一次普通方法调用。
-
-但如果用户服务部署在另一台机器上，这件事就复杂了。你要发网络请求，要传方法名和参数，要序列化数据，要处理超时、失败、重试，还要拿到返回结果再反序列化。
-
-RPC 框架想做的事情，就是把这些麻烦尽量封装掉。调用方代码看起来还是：
+For example, local code might call a user service like this:
 
 ```java
 User user = userService.getUser(1001);
 ```
 
-但底下已经完成了网络通信、序列化、服务寻址和结果返回。
+If `userService` is in the current process, this is an ordinary method call.
 
-所以更准确的说法不是“HTTP 和 RPC 谁更强”，而是：
+But if the user service runs on another machine, the call becomes more involved. You need to send a network request, transmit the method name and arguments, serialize data, handle timeouts, failures, and retries, then deserialize the response.
 
-**HTTP 是一种应用层协议，RPC 是一种远程调用模型。**
+An RPC framework aims to hide as much of this complexity as possible. The caller's code can still look like this:
 
-![HTTP：超文本传输协议概览](../images/shared/http-overview.png)
+```java
+User user = userService.getUser(1001);
+```
 
-具体到实现上，RPC 可以有很多种。Dubbo 是 RPC 框架，Thrift 是 RPC 框架，gRPC 也是 RPC 框架。gRPC 官方文档里也说得很直接：客户端可以像调用本地对象一样，调用另一台机器上服务端应用的方法；服务端定义可远程调用的方法以及参数和返回类型。 
+Under the hood, it handles network communication, serialization, service discovery, and returning the result.
 
-![Dubbo3 使用 Triple 协议同时支持 HTTP/1、HTTP/2 和 HTTP/3](../images/shared/image-20220716111545343.png)
+So the more accurate comparison is not “Which is more powerful, HTTP or RPC?” but:
 
-这就解释了一个很容易绕晕的点：**gRPC 是 RPC，但它基于 HTTP/2。**
+**HTTP is an application-layer protocol; RPC is a model for remote calls.**
 
-它不是 HTTP 的反面，只是在 HTTP/2 之上提供 RPC 调用。
+![An overview of HTTP](../images/shared/http-overview.png)
 
-gRPC 的 GitHub 上专门有一篇文章 [gRPC over HTTP2  基于 HTTP2 的 gRPC 协议](https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md) 详细介绍：
+RPC can be implemented in many ways. Dubbo, Thrift, and gRPC are all RPC frameworks. The gRPC documentation describes its model directly: a client can call a method on an application running on another machine as if it were a local object, while the server defines the remotely callable methods, their parameters, and return types.
 
-![gRPC over HTTP2 基于 HTTP2 的 gRPC 协议](../images/shared/grpc-over-http2-github.png)
+![Dubbo 3's Triple protocol supports HTTP/1, HTTP/2, and HTTP/3](../images/shared/image-20220716111545343.png)
 
-## **光有 TCP 还不够**
+This explains a point that often causes confusion: **gRPC is RPC, but it is built on HTTP/2.**
 
-要理解 HTTP 和 RPC 的差别，最好先往下看一层。
+It is not the opposite of HTTP; it provides RPC calls over HTTP/2.
 
-很多同学知道 HTTP 基于 TCP，RPC 也经常基于 TCP，于是会想：那我直接用 TCP 不就行了吗？
+The gRPC project describes this in detail in [gRPC over HTTP/2](https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md):
 
-理论上可以，实际很麻烦。
+![The gRPC over HTTP/2 specification](../images/shared/grpc-over-http2-github.png)
 
-TCP 负责的是可靠传输，它传的是一串连续的字节流。它不关心你的业务消息从哪里开始，到哪里结束。
+## **TCP Alone Is Not Enough**
 
-比如客户端连续发了两次请求：
+To understand the difference between HTTP and RPC, it helps to look one layer lower.
+
+HTTP uses TCP, and RPC often does too. So why not use TCP directly?
+
+You can, in theory, but it is inconvenient in practice.
+
+TCP provides reliable delivery of a continuous byte stream. It does not know where one application message ends and the next begins.
+
+For example, the client sends two requests in a row:
 
 ```text
 getUser:1001
 getOrder:8888
 ```
 
-服务端收到的可能不是两段规规整整的消息，而是一段字节流。你必须自己判断：第一条消息在哪里结束，第二条消息从哪里开始。还要考虑半包、粘包、编码、超时、错误码、请求 ID 等问题。
+The server may receive one byte stream rather than two neatly separated messages. The application must determine where the first message ends and the second begins, and handle partial reads, combined messages, encoding, timeouts, error codes, request IDs, and more.
 
-![TCP 与 UDP 的消息边界](../images/shared/tcp-udp-byte-stream-tcp-udp-message-boundary.png)
+![Message boundaries in TCP and UDP](../images/shared/tcp-udp-byte-stream-tcp-udp-message-boundary.png)
 
-这就是为什么应用层协议一定要定义消息格式。
+That is why application-layer protocols need to define message formats.
 
-HTTP 定义了一套通用格式：请求行、Header、Body、状态码等。MDN 对 HTTP 的定义也很清楚：它是应用层协议，最初用于浏览器和 Web 服务器通信，但也可以用于机器之间通信和 API 访问。 
+HTTP defines a general format with a request line, headers, body, and status codes. MDN describes HTTP as an application-layer protocol originally designed for communication between browsers and web servers, but also used for machine-to-machine communication and APIs.
 
-RPC 框架也会定义自己的消息格式。只不过它通常不会围绕 URL 和资源来设计，而是围绕服务、方法、参数和返回值来设计。
+RPC frameworks also define message formats, usually organized around services, methods, arguments, and return values rather than URLs and resources.
 
-说白了，HTTP 和 RPC 都在解决一个问题：
+In short, HTTP and RPC both address the same question:
 
-**两个进程隔着网络，怎么把一次业务调用说清楚。**
+**How can two processes communicate a business call over a network?**
 
-只是它们的建模方式不一样。
+They model the interaction differently.
 
-## **HTTP 更像访问资源，RPC 更像调用方法**
+## **HTTP Models Resource Access; RPC Models Method Calls**
 
-HTTP / REST 常见写法是这样的：
+A typical HTTP/REST API might look like this:
 
 ```http
 GET /users/1001
@@ -114,15 +114,15 @@ PUT /orders/888/status
 DELETE /comments/9527
 ```
 
-它的心智模型是资源。
+Its mental model is a resource.
 
-`/users/1001` 是一个用户资源，`GET` 表示读取它；`POST /orders` 表示创建订单；`PUT /orders/888/status` 表示修改订单状态。
+`/users/1001` identifies a user resource, and `GET` reads it. `POST /orders` creates an order, while `PUT /orders/888/status` updates an order's status.
 
-这种方式很适合对外开放 API。
+This model works well for public APIs.
 
-因为它通用、好理解、好调试。浏览器能访问，Postman 能调，curl 能测，网关也好处理。你给第三方提供接口时，让对方按 HTTP 文档接入，门槛比较低。
+HTTP is widely understood and easy to debug. Browsers can access it, Postman can call it, `curl` can test it, and gateways can handle it. Third parties can integrate with an API using standard HTTP documentation, so the barrier to entry is low.
 
-RPC 的写法更像这样：
+An RPC call looks more like this:
 
 ```java
 userService.getUser(1001);
@@ -130,245 +130,245 @@ orderService.createOrder(request);
 inventoryService.deductStock(skuId, count);
 ```
 
-它的心智模型是方法调用。
+Its mental model is a method call.
 
-调用方更关心的是：我要调哪个服务？哪个方法？传什么参数？返回什么对象？
+The caller focuses on which service and method to call, what arguments to pass, and what object to expect in return.
 
-![RPC 原理图](../images/shared/rpc-principle.png)
+![How RPC works](../images/shared/rpc-principle.png)
 
-这和 Java 后端平时写代码的习惯更接近。尤其是微服务内部调用时，服务和服务之间本来就是围绕业务方法协作，比如创建订单、扣库存、查询余额、校验权限。RPC 把这种调用关系表达得更直接。
+This is closer to how Java backend developers write code. In microservices, services often collaborate through business operations such as creating orders, deducting inventory, checking balances, or validating permissions. RPC expresses these calls directly.
 
-所以 HTTP 和 RPC 最大的区别，不是一个能不能调通，另一个能不能调通。
+The main difference is not that one can make a call and the other cannot.
 
-两者都能调通。
+Both can make remote calls.
 
-区别在于：**你是把远程交互建模成一次资源访问，还是一次方法调用。**
+The difference is in the model: **is the remote interaction a resource access or a method call?**
 
-## **公司内部为什么更常见 RPC？**
+## **Why Is RPC Common for Internal Services?**
 
-HTTP 当然能做内部服务调用。
+HTTP can certainly be used for internal service calls.
 
-很多公司内部服务全用 HTTP，也跑得好好的。尤其是服务规模不大、调用链不复杂的时候，HTTP 更简单。
+Many companies use HTTP for all their internal services successfully. It is simpler when there are few services and call chains are not complex.
 
-但服务数量上来之后，RPC 的优势会慢慢变明显。
+As the number of services grows, RPC's advantages can become more apparent.
 
-**第一个明显变化是：调用方不想关心对方机器在哪。**
+**First, callers should not need to know where the other service's machines are.**
 
-你写业务代码的时候，最好只关心“我要调用用户服务”，而不是关心用户服务有几台机器、IP 是什么、哪台刚下线、哪台权重高。
+Business code should only need to know “I need to call the user service,” not how many machines it has, their IP addresses, which one just went offline, or which one has a higher weight.
 
-这就需要服务发现。
+This requires service discovery.
 
-Dubbo 官方文档里对服务发现的描述很典型：Provider 把地址注册到注册中心，Consumer 从注册中心读取并订阅地址列表，地址变化时注册中心通知消费者。Dubbo 支持 Nacos、Consul、ZooKeeper 等常见注册中心。
+The Dubbo documentation gives a typical example of service discovery: a provider registers its address with a registry, and a consumer reads and subscribes to the address list. The registry notifies consumers when addresses change. Dubbo supports registries such as Nacos, Consul, and ZooKeeper.
 
-![Dubbo 架构中的核心角色](../images/shared/dubbo-relation.jpg)
+![Core roles in the Dubbo architecture](../images/shared/dubbo-relation.jpg)
 
-这类能力当然也可以用 HTTP 做。你可以用注册中心、网关、负载均衡、SDK 自己拼一套。
+You can build these capabilities around HTTP too, using a service registry, gateway, load balancer, and SDK.
 
-但 RPC 框架通常会把这些东西直接放进服务调用体系里。
+RPC frameworks usually integrate them into the service-call system.
 
-调用方写的是服务接口，底下自动完成服务发现、负载均衡、连接管理、超时控制。业务代码不用到处拼 URL。
+The caller uses a service interface, while the framework handles service discovery, load balancing, connection management, and timeouts. Business code does not need to construct URLs everywhere.
 
-**第二个变化是：接口契约会变得更重要。**
+**Second, interface contracts become more important.**
 
-HTTP + JSON 很灵活，但灵活也意味着容易松散。
+HTTP with JSON is flexible, but that flexibility can make contracts loose.
 
-字段名改了，类型改了，枚举值多了一个，调用方可能到运行时才炸。接口文档如果没及时更新，联调时就会很痛苦。
+If a field name or type changes, or an enum gains a value, the caller may fail only at runtime. If the API documentation is not updated, integration becomes painful.
 
-RPC 框架通常会用更强的契约来约束双方。以 gRPC 为例，它常用 Protocol Buffers 作为接口定义语言和消息交换格式。Protocol Buffers 官方文档也说明，它是一种语言无关、平台无关、可扩展的结构化数据序列化机制，可以通过 `.proto` 定义结构并生成不同语言的代码。
+RPC frameworks often use stronger contracts. For example, gRPC commonly uses Protocol Buffers as an interface definition language and message format. Protocol Buffers is a language- and platform-neutral, extensible mechanism for serializing structured data. A `.proto` file defines the structures and can generate code for different languages.
 
-这带来的好处是，接口变更更容易被代码生成和编译阶段暴露出来。
+This makes it easier for code generation and compilation to catch interface changes.
 
-当然，契约强不代表不会出事故。
+Of course, a strong contract does not prevent every problem.
 
-字段怎么兼容，老版本客户端怎么处理，新字段能不能删，枚举能不能改，这些还是要认真设计。只是相比“大家约定一下 JSON 字段”，IDL 会更硬一点。
+You still need to design field compatibility, behavior for older clients, whether fields can be removed, and whether enum values can change. An IDL simply enforces the contract more strictly than an informal agreement about JSON fields.
 
-**第三个变化是：高频内部调用会更在意机器处理效率。**
+**Third, frequent internal calls put more emphasis on processing efficiency.**
 
-HTTP + JSON 的好处是可读性强，人类看起来舒服。但机器处理时，它不是最省的方式。字段名、文本格式、解析成本，都会带来额外开销。
+HTTP with JSON is readable and convenient for people, but it may not be the most efficient format for machines. Field names, text encoding, and parsing all add overhead.
 
-RPC 框架常用二进制序列化，比如 Protobuf、Thrift。体积更小，解析也更适合机器处理。
+RPC frameworks often use binary serialization such as Protobuf or Thrift. These formats are smaller and can be more efficient for machines to parse.
 
-但这里不能说死。
+But this is not a universal rule.
 
-“RPC 一定比 HTTP 快”这句话不严谨。HTTP/2、连接复用、压缩、不同 JSON 库、不同网络环境，都会影响结果。gRPC 自己也基于 HTTP/2，它的优势并不是一句“不是 HTTP”就能解释完。
+“RPC is always faster than HTTP” is too broad. HTTP/2, connection reuse, compression, JSON libraries, and network conditions all affect performance. gRPC itself uses HTTP/2, so its advantages cannot be explained simply by saying “it is not HTTP.”
 
-更稳的说法是：
+A more accurate way to put it is:
 
-**在高频服务互调场景里，RPC 框架通常会把序列化、连接复用、超时、重试、负载均衡、链路追踪这些能力做得更贴近内部服务调用。**
+**For frequent service-to-service calls, RPC frameworks often provide serialization, connection reuse, timeouts, retries, load balancing, and tracing that are tailored to internal service communication.**
 
-这才是它在公司内部常见的原因。
+That is why RPC is common inside companies.
 
-## **RPC 的价值不只是“调用快一点”**
+## **RPC Is About More Than Faster Calls**
 
-很多人讲 RPC，喜欢把重点放在性能上。
+RPC is often discussed mainly in terms of performance.
 
-性能当然重要，但我觉得 RPC 更大的价值是服务治理。
+Performance matters, but RPC's larger value is service governance.
 
-一个内部调用真正上线后，不只是发请求、拿响应这么简单。你很快会遇到一堆问题：
+Once an internal call goes into production, there is more to it than sending a request and receiving a response. Soon you will have questions such as:
 
-- 这个调用超时时间设多少？失败了要不要重试？重试会不会导致重复扣款？
-- 下游服务挂了，上游要不要降级？
-- 哪个接口最近错误率升高了？
-- 一次用户请求经过了几个服务？
+- What timeout should this call use? Should it retry on failure, and could a retry charge the customer twice?
+- If a downstream service fails, should the upstream service use a fallback?
+- Which API has had a higher error rate recently?
+- How many services did a user request pass through?
 
-这些问题如果全靠业务代码处理，很快就会乱。
+If every business service handles these concerns itself, the code quickly becomes messy.
 
-RPC 框架通常会和治理能力绑在一起，比如超时控制、负载均衡、服务发现、熔断降级、链路追踪、调用统计等。gRPC 官方介绍里也提到，它支持负载均衡、Tracing、健康检查和认证等可插拔能力。 
+RPC frameworks often integrate governance features such as timeout control, load balancing, service discovery, circuit breaking, fallback, tracing, and call metrics. The gRPC documentation also describes pluggable support for load balancing, tracing, health checks, and authentication.
 
-HTTP 也能做这些。
+HTTP can support these features too.
 
-很多公司会用 API Gateway、服务网格、HTTP SDK、拦截器、链路追踪组件来补齐。做得好也没问题。
+Many companies provide them through API gateways, service meshes, HTTP SDKs, interceptors, and tracing components. That works when implemented well.
 
-所以不要把 RPC 理解成“比 HTTP 高级的东西”。它更像是把内部服务调用里常见的一堆问题，按“远程方法调用”这条路径整理了一遍。
+Do not think of RPC as “more advanced than HTTP.” It is a way to organize common internal service-call concerns around the remote method call model.
 
-## **那 HTTP 就不适合内部调用吗？**
+## **Is HTTP Unsuitable for Internal Calls?**
 
-并不是的哈。如果服务规模不大，团队人数也不多，反而用 HTTP 更省心。
+Not at all. HTTP may be simpler when the system and team are small.
 
-比如一个后台管理系统，拆了几个服务，调用频率也不高。你用 Spring Boot 写几个 REST 接口，配合 OpenAPI 文档、统一错误码、网关鉴权、日志追踪，完全够用。
+For example, an admin system split into a few services with low call volume may work well with Spring Boot REST APIs, OpenAPI documentation, standard error codes, gateway authentication, and tracing.
 
-强上 RPC 可能还会带来额外成本，没意义。
+Adding RPC may only add cost without a clear benefit.
 
-你要引入注册中心，要维护 IDL，要处理代码生成，要培训团队，还要解决本地调试和网关转发问题。服务没几个，调用链也不复杂的时候，这些成本不一定值得。
+You may need to add a registry, maintain an IDL, handle code generation, train the team, and solve local debugging and gateway routing issues. These costs may not be worthwhile when there are few services and simple call chains.
 
-HTTP 适合这些场景：
+HTTP is a good fit when:
 
-- 对外开放 API，比如 Web、App、第三方合作方接入；
-- 团队更看重通用性和调试方便；
-- 服务调用频率不高；
-- 没有成熟 RPC 基础设施；
-- 已经有统一 HTTP 网关、SDK、限流、鉴权和监控体系。
+- Exposing APIs to web clients, mobile apps, or third-party partners.
+- The team values interoperability and easy debugging.
+- Service calls are not frequent.
+- There is no mature RPC infrastructure.
+- The organization already has a shared HTTP gateway, SDK, rate limiting, authentication, and monitoring.
 
-这里有个很简单的判断，分享给大家：
+Here is a simple rule of thumb:
 
-**如果你的系统用 HTTP 已经稳定跑着，也没有明显的调用治理痛点，就没必要为了“微服务味更浓”换 RPC。**
+**If your system runs reliably on HTTP and has no clear service-governance problems, do not switch to RPC just to make it look more like a microservice architecture.**
 
-技术选型不是贴标签。
+Technology choices are not labels.
 
-能稳定解决问题更重要。
+What matters is solving the problem reliably.
 
-## **gRPC 为什么容易把人绕晕？**
+## **Why Is gRPC Confusing?**
 
-gRPC 经常让人混乱，就是因为它同时踩在两个概念上。
+gRPC can be confusing because it combines two concepts.
 
-**一方面，它是 RPC 框架。**
+**First, it is an RPC framework.**
 
-你定义服务和方法，生成客户端和服务端代码，然后像调用方法一样调用远程服务。
+You define services and methods, generate client and server code, and call the remote service like a method.
 
-**另一方面，它基于 HTTP/2 传输。**
+**Second, it uses HTTP/2 for transport.**
 
-![gRPC over HTTP2 基于 HTTP2 的 gRPC 协议](../images/shared/grpc-over-http2-github.png)
+![The gRPC over HTTP/2 specification](../images/shared/grpc-over-http2-github.png)
 
-所以你不能把它简单理解成“HTTP 的对立面”。
+So it is not simply “the opposite of HTTP.”
 
-更准确地说： **gRPC 用 HTTP/2 做传输，默认使用 Protobuf 作为 IDL 和消息序列化格式，再用 RPC 模型组织调用。**
+More precisely: **gRPC uses HTTP/2 for transport, commonly uses Protobuf as its IDL and message serialization format, and organizes calls using the RPC model.**
 
-这里要注意，Protobuf 是 gRPC 最常见的默认搭配，但不是 gRPC 的定义本身。gRPC 协议层允许 `application/grpc+proto`、`application/grpc+json` 或自定义编码。
+Note that Protobuf is the most common default for gRPC, but it does not define gRPC itself. The protocol allows `application/grpc+proto`, `application/grpc+json`, and custom encodings.
 
-还有一点经常被忽略：正常 gRPC 响应里，HTTP 层通常是 `:status: 200`，真正的调用结果放在 HTTP/2 Trailers 里的 `grpc-status`、`grpc-message`。
+Another often-overlooked detail: a normal gRPC response usually has HTTP `:status: 200`; the actual RPC result is carried in HTTP/2 trailers such as `grpc-status` and `grpc-message`.
 
-这会带来一个很实际的排查差异。
+This matters when troubleshooting.
 
-看 HTTP 接口时，我们习惯先看 HTTP 状态码。`200` 基本代表请求成功，`404` 代表资源不存在，`500` 代表服务端异常。
+For an HTTP API, we often start with the HTTP status code: `200` usually means success, `404` means the resource was not found, and `500` indicates a server error.
 
-但看 gRPC 时，不能只看 HTTP 状态码。HTTP 是 200，不代表这次 RPC 业务调用一定成功，还要继续看 `grpc-status`。
+For gRPC, the HTTP status alone is not enough. HTTP `200` does not guarantee the RPC call succeeded; check `grpc-status` too.
 
-这也带来一个工程问题：网关、负载均衡、代理、Service Mesh 是否正确支持 HTTP/2 Trailers，会直接影响 gRPC 调用。如果链路里有组件处理不好 Trailers，问题会很隐蔽。
+This creates an operational concern: gateways, load balancers, proxies, and service meshes must correctly support HTTP/2 trailers. If an intermediary mishandles them, the failure can be hard to spot.
 
-所以，gRPC 不是“HTTP/2 + Protobuf”这么简单。
+So gRPC is more than “HTTP/2 + Protobuf.”
 
-HTTP 这一层，它跑在 HTTP/2 上。
+At the transport level, it runs over HTTP/2.
 
-编码上，默认搭配 Protobuf，但协议允许其他编码。
+It commonly uses Protobuf encoding, but the protocol allows others.
 
-调用体验上，它让你像调本地方法一样调远程服务。
+For developers, it makes remote services feel like local method calls.
 
-状态返回上，它又用了 HTTP/2 Trailers 承载 RPC 调用结果。
+For call status, it carries the RPC result in HTTP/2 trailers.
 
-这些东西叠在一起，才是它容易把人绕晕的原因。
+The combination of these pieces is what makes it confusing.
 
-## **真实选型时，别问哪个更高级**
+## **Choose Based on the Use Case, Not Which Is “More Advanced”**
 
-我更建议你按调用关系选：
+Choose based on the relationship between caller and service:
 
-- 如果是浏览器、移动端、第三方系统调用，优先 HTTP。原因很简单：通用，接入成本低，调试工具多。对外接口最怕别人接不动。HTTP 在这方面优势太明显了。
-- 如果是公司内部微服务高频互调，可以考虑 RPC。尤其是服务数量多、接口数量多、调用链复杂，对超时、重试、注册发现、链路追踪、负载均衡要求都比较高的时候，RPC 框架会省掉很多重复工作。
-- 如果团队已经有成熟 HTTP 基础设施，也没必要强上 RPC。比如统一网关、服务发现、SDK、链路追踪、限流熔断都有了，大家也习惯用 HTTP，那继续用 HTTP 没问题。
+- For browsers, mobile clients, and third-party systems, prefer HTTP. It is widely supported, easy to integrate, and has many debugging tools. External APIs should be easy for others to use.
+- For frequent internal microservice calls, consider RPC, especially when there are many services and interfaces, complex call chains, and strong needs for timeouts, retries, service discovery, tracing, and load balancing.
+- If the team already has mature HTTP infrastructure, there may be no reason to switch. A shared gateway, service discovery, SDKs, tracing, rate limiting, and circuit breaking can all work well with HTTP.
 
-如果要用 gRPC，要提前想清楚几个问题：
+If you choose gRPC, consider:
 
-- 浏览器不能像后端服务一样直接使用标准 gRPC，通常需要 gRPC-Web 或代理层；
-- 网关和负载均衡是否支持；本地调试是不是方便；
-- 团队是否接受 `.proto` 和代码生成；
-- 线上排查时二进制消息是否会增加理解成本。
+- Browsers cannot use standard gRPC directly like backend services; gRPC-Web or a proxy is usually needed.
+- Do the gateway and load balancer support it? Is local debugging convenient?
+- Is the team comfortable with `.proto` files and generated code?
+- Will binary messages make production troubleshooting harder?
 
-gRPC 很强，但不是零成本。
+gRPC is capable, but it is not free of operational costs.
 
-这点要提前说清楚。
+Account for these costs before adopting it.
 
-## 几个常见误解
+## Common Misconceptions
 
-### HTTP 和 RPC 谁性能更好？
+### Which Performs Better, HTTP or RPC?
 
-不能一刀切。
+There is no universal answer.
 
-如果拿 HTTP/1.1 + JSON 去和基于 HTTP/2 + Protobuf 的 gRPC 比，在高频内部调用场景里，后者通常更省。
+In frequent internal calls, gRPC over HTTP/2 with Protobuf will often use fewer resources than HTTP/1.1 with JSON.
 
-但换个实现，结果就可能不一样。
+But different implementations can produce different results.
 
-消息大小、序列化方式、连接复用、压缩、框架实现、网络环境都会影响结果。真正要比，应该拿你自己的接口、数据量和部署环境压测，而不是背一句“RPC 更快”。
+Message size, serialization, connection reuse, compression, framework implementation, and network conditions all affect performance. Benchmark your own APIs, payloads, and deployment instead of relying on “RPC is faster.”
 
-### RPC 是不是只能走 TCP？
+### Does RPC Have to Use TCP?
 
-不是。
+No.
 
-RPC 是调用模型，不是传输协议。它可以基于 TCP，也可以基于 HTTP/2。gRPC 就是一个很典型的例子。
+RPC is a call model, not a transport protocol. It can use TCP or HTTP/2; gRPC is a common example.
 
-### REST 和 RPC 是不是互斥？
+### Are REST and RPC Mutually Exclusive?
 
-不完全互斥。
+No.
 
-REST 更偏资源建模，RPC 更偏方法调用。实际项目里经常混用：外部接口走 REST，内部服务走 RPC。这很正常。
+REST focuses on resource modeling, while RPC focuses on method calls. Projects often use both: REST for external APIs and RPC for internal services.
 
-### 有了 HTTP/2，还需要 RPC 吗？
+### Do We Still Need RPC If We Have HTTP/2?
 
-HTTP/2 在 HTTP 这一层引入了帧、流、多路复用、头部压缩等能力，提高了同一条 TCP 连接上的并发利用率。
+HTTP/2 adds frames, streams, multiplexing, and header compression, improving concurrent use of a single TCP connection.
 
-但它不会自动帮你定义服务接口，不会自动生成客户端代码，也不会自动解决服务发现、超时重试、调用治理和版本契约。
+But it does not define service interfaces, generate client code, or solve service discovery, timeout and retry policies, call governance, or versioned contracts for you.
 
-还有一个很容易被忽略的差异：调用模式。
+Another often-overlooked difference is the call pattern.
 
-普通 HTTP API 大多是一问一答。gRPC 除了最常见的 Unary 调用，还原生支持服务端流、客户端流和双向流。gRPC 官方文档也明确列出了 Unary、Server streaming、Client streaming、Bidirectional streaming 这四种调用模式。 
+Most HTTP APIs use a request-response pattern. Besides the common unary call, gRPC natively supports server streaming, client streaming, and bidirectional streaming. The gRPC documentation lists these four call types: unary, server streaming, client streaming, and bidirectional streaming.
 
-比如日志订阅、长任务进度推送、批量上传、实时同步这类场景，用 streaming 会更自然。你当然也可以用 SSE、WebSocket，或者自己基于 HTTP/2 封装，但那就相当于又在补 RPC 框架已经做好的那部分能力。
+Streaming can be a natural fit for log subscriptions, long-running task progress, bulk uploads, and real-time synchronization. You can also use SSE, WebSocket, or build on HTTP/2 yourself, but then you are implementing capabilities that an RPC framework already provides.
 
-所以 HTTP/2 很重要，但它不是 RPC 框架的全部。
+HTTP/2 is important, but it is not the whole RPC framework.
 
-### gRPC 是不是等于 HTTP/2 + Protobuf？
+### Is gRPC Just HTTP/2 + Protobuf?
 
-不是。
+No.
 
-这句话只能用来帮助初学者快速建立印象，不能当严格定义。
+That phrase can help beginners form a quick mental model, but it is not a precise definition.
 
-更准确的说法是：gRPC 基于 HTTP/2 承载 RPC 调用，默认使用 Protobuf 描述接口和消息，但协议本身允许 JSON 或自定义编码；同时，它还定义了请求路径、Content-Type、Length-Prefixed-Message、Trailers 里的 `grpc-status` 等一整套规则。
+A more accurate description is that gRPC carries RPC calls over HTTP/2 and uses Protobuf by default to describe interfaces and messages, while also allowing JSON or custom encodings. It defines a complete set of rules for request paths, content types, length-prefixed messages, and trailer fields such as `grpc-status`.
 
-所以 gRPC 不是单纯换了一个序列化格式，它是一套 RPC 调用协议和工程约定。
+gRPC is not just a different serialization format; it is an RPC protocol and a set of engineering conventions.
 
-## 最后
+## In Closing
 
-HTTP 和 RPC 不是谁取代谁的关系，也不是谁更高级的问题。
+HTTP and RPC do not replace one another, and one is not inherently more advanced than the other.
 
-HTTP 能调服务，RPC 也能调服务。真正的区别在于，你是想把远程调用当成一次“资源访问”，还是当成一次“方法调用”。
+Both can call services. The key difference is whether you model a remote call as “resource access” or “method invocation.”
 
-如果是对外接口，比如 Web、App、第三方系统接入，HTTP 通常更合适。它通用、好调试、接入成本低，别人拿 Postman、curl 就能测。
-如果是公司内部服务互调，尤其是服务多、调用链长、接口频繁调用，还要考虑服务发现、超时、重试、负载均衡、链路追踪这些问题，RPC 会更顺手一些。它不是单纯为了快，而是把内部服务调用里的很多麻烦事一起处理掉。
+For external APIs used by websites, apps, or third-party systems, HTTP is often a better fit. It is widely supported, easy to debug, and inexpensive to adopt; clients can test it with Postman or `curl`.
+For internal service calls, especially with many services, long call chains, frequent requests, and needs for discovery, timeouts, retries, load balancing, and tracing, RPC may be more convenient. Its purpose is not just speed; it also handles many common problems in internal service communication.
 
-所以，别再简单背“HTTP 对外，RPC 对内”了。
+Do not reduce the choice to “HTTP for external APIs, RPC for internal services.”
 
-这句话可以帮助入门，但真做项目时，还得看你的调用对象、团队基础设施、排查成本、性能要求和后续维护成本。
+That rule of thumb can help beginners, but a real decision should account for the caller, team infrastructure, troubleshooting, performance needs, and long-term maintenance.
 
-系统规模不大，用 HTTP 已经跑得很稳，就别为了“看起来更微服务”强上 RPC。
+If the system is small and HTTP works reliably, do not add RPC just to make it look more like a microservice architecture.
 
-内部调用越来越复杂，HTTP SDK、网关、监控、重试这些东西越补越多，那就可以认真考虑 RPC。
+If internal calls are getting more complex and require more HTTP SDKs, gateway features, monitoring, and retry logic, consider RPC.
 
-一句话：**HTTP 没那么弱，RPC 也没那么神。选哪个，主要看它能不能用更低成本解决你现在的问题。**
+In short: **HTTP is capable, and RPC is not magic. Choose the one that solves your current problem at lower overall cost.**

@@ -1,76 +1,76 @@
 ---
-title: NAT 协议详解（网络层）
-description: 解析 NAT 的地址转换与端口映射机制，结合 LAN/WAN 通信与转换表，理解家庭与企业网络的实践细节。
-category: 计算机基础
+title: "NAT Explained: Network Address Translation"
+description: Learn how NAT translates addresses and ports, how its mapping table works, and how it affects communication between LANs and WANs.
+category: Computer Science Fundamentals
 tag:
-  - 计算机网络
+  - Computer Networking
 head:
   - - meta
     - name: keywords
-      content: NAT,地址转换,端口映射,LAN,WAN,连接跟踪,DHCP
+      content: NAT, address translation, port mapping, LAN, WAN, connection tracking, DHCP
 ---
 
-很多设备在家用网络、公司内网里使用的都是私有 IP 地址，比如 `192.168.x.x`、`10.x.x.x`。这些地址不能直接在公网中路由，但内网设备依然可以访问互联网。
+Devices on home and corporate networks often use private IP addresses such as `192.168.x.x` and `10.x.x.x`. These addresses aren't routed directly over the public internet, but devices on private networks can still access the internet.
 
-这背后通常就有 NAT 在工作。NAT 会在内网地址和公网地址之间做转换，让多个内网设备共享一个或少量公网 IP 对外通信。
+NAT usually makes this possible. It translates between private and public addresses so multiple devices can share one or a small number of public IP addresses when communicating externally.
 
-这篇文章主要回答几个问题：
+This article answers four questions:
 
-1. NAT 主要解决什么问题？
-2. NAT 转换表是如何记录内外网地址和端口映射的？
-3. 内网主机访问公网时，源 IP 和端口会发生什么变化？
-4. NAT 会带来哪些限制，比如外部主动访问内网主机为什么更麻烦？
+1. What problem does NAT solve?
+2. How does a NAT mapping table record address and port mappings?
+3. What happens to a source IP address and port when a host accesses the internet?
+4. What limitations does NAT introduce, and why is it harder for an external host to initiate a connection to a private host?
 
-## 应用场景
+## Use Cases
 
-**NAT 协议（Network Address Translation）** 的应用场景如同它的名称——网络地址转换，应用于内部网到外部网的地址转换过程中。具体地说，在一个小的子网（局域网，Local Area Network，LAN）内，各主机使用的是同一个 LAN 下的 IP 地址，但在该 LAN 以外，在广域网（Wide Area Network，WAN）中，需要一个统一的 IP 地址来标识该 LAN 在整个 Internet 上的位置。
+**Network Address Translation (NAT)** translates addresses between an internal network and an external network. Within a small subnet, or **local area network (LAN)**, hosts use addresses that are meaningful on that LAN. Outside the LAN, on a **wide area network (WAN)**, a shared public IP address identifies the network's connection to the internet.
 
-这个场景其实不难理解。随着一个个小型办公室、家庭办公室（Small Office, Home Office, SOHO）的出现，为了管理这些 SOHO，一个个子网被设计出来，从而在整个 Internet 中的主机数量将非常庞大。如果每个主机都有一个“绝对唯一”的 IP 地址，那么 IPv4 地址的表达能力可能很快达到上限（$2^{32}$）。因此，实际上，SOHO 子网中的 IP 地址是“相对的”，这在一定程度上也缓解了 IPv4 地址的分配压力。
+This is easy to understand in the context of small offices and home offices (SOHOs). A subnet lets an organization manage its local devices, while also avoiding the need to assign a globally unique IPv4 address to every host. IPv4 has only $2^{32}$ addresses, so private addressing helps reduce demand for public addresses.
 
-SOHO 子网的“代理人”，也就是和外界的窗口，通常由路由器扮演。路由器的 LAN 一侧管理着一个小子网，而它的 WAN 接口才是真正参与到 Internet 中的接口，也就有一个“绝对唯一的地址”。NAT 协议，正是在 LAN 中的主机在与 LAN 外界通信时，起到了地址转换的关键作用。
+A router usually acts as the SOHO network's gateway. Its LAN interface connects to the private subnet, while its WAN interface connects to the ISP and uses a public address. NAT translates addresses as hosts on the LAN communicate with systems outside it.
 
-## 细节
+## How It Works
 
-![NAT 将内网私有地址转换为公网地址的过程](../images/shared/nat-demo.png)
+![NAT translating a private address to a public address](../images/shared/nat-demo.png)
 
-假设当前场景如上图。中间是一个路由器，它的右侧组织了一个 LAN，网络号为 `10.0.0/24`。LAN 侧接口的 IP 地址为 `10.0.0.4`，并且该子网内有至少三台主机，分别是 `10.0.0.1`、`10.0.0.2` 和 `10.0.0.3`。路由器的左侧连接的是 WAN，WAN 侧接口的 IP 地址为 `138.76.29.7`。
+Suppose the diagram shows a router with a LAN on its right and a WAN on its left. The LAN uses network `10.0.0.0/24`, and the router's LAN interface is `10.0.0.4`. At least three hosts are on the subnet: `10.0.0.1`, `10.0.0.2`, and `10.0.0.3`. The router's WAN interface has address `138.76.29.7`.
 
-首先，针对以上信息，我们有如下事实需要说明：
+Keep these details in mind:
 
-1. 路由器右侧子网的网络地址为 `10.0.0.0/24`（网络前缀 24 位，主机号占 8 位），三台主机地址以及路由器的 LAN 侧接口地址，均由 DHCP 协议规定。而且，该 DHCP 运行在路由器内部（路由器自维护一个小 DHCP 服务器），从而为子网内提供 DHCP 服务。
-2. 路由器的 WAN 侧接口地址同样由 DHCP 协议规定，但该地址是路由器从 ISP（网络服务提供商）处获得，也就是该 DHCP 通常运行在路由器所在区域的 DHCP 服务器上。
+1. The LAN's network address is `10.0.0.0/24`: the prefix is 24 bits, leaving 8 bits for host addresses. DHCP assigns addresses to the three hosts and the router's LAN interface. The router often runs a small DHCP server for the subnet.
+2. DHCP also assigns the router's WAN address, but the router obtains it from the ISP. That DHCP service is usually provided by a server in the ISP's network.
 
-现在，路由器内部还运行着 NAT 协议，从而为 LAN-WAN 间通信提供地址转换服务。为此，一个很重要的结构是 **NAT 转换表**。为了说明 NAT 的运行细节，假设有以下请求发生：
+The router also runs NAT to translate addresses for LAN-to-WAN communication. A key component is the **NAT mapping table**. Suppose the following request is sent:
 
-1. 主机 `10.0.0.1` 向 IP 地址为 `128.119.40.186` 的 Web 服务器（端口 80）发送了 HTTP 请求（如请求页面）。此时，主机 `10.0.0.1` 将随机指派一个端口，如 `3345`，作为本次请求的源端口号，将该请求发送到路由器中（目的地址将是 `128.119.40.186`，但会先到达 `10.0.0.4`）。
-2. `10.0.0.4` 即路由器的 LAN 接口收到 `10.0.0.1` 的请求。路由器将为该请求指派一个新的源端口号，如 `5001`，并将请求报文发送给 WAN 接口 `138.76.29.7`。同时，在 NAT 转换表中记录一条转换记录 **138.76.29.7:5001——10.0.0.1:3345**。
-3. 请求报文到达 WAN 接口，继续向目的主机 `128.119.40.186` 发送。
+1. Host `10.0.0.1` sends an HTTP request to a web server at `128.119.40.186` on port 80. Host `10.0.0.1` selects a source port, such as `3345`, and sends the request to the router. The destination IP remains `128.119.40.186`; the packet first reaches the router's LAN interface at `10.0.0.4`.
+2. The router receives the request on `10.0.0.4`, assigns a new source port such as `5001`, and forwards the packet through its WAN interface at `138.76.29.7`. It records the mapping **138.76.29.7:5001 — 10.0.0.1:3345** in the NAT table.
+3. The packet leaves the WAN interface and continues to `128.119.40.186`.
 
-之后，将会有如下响应发生：
+The response follows this path:
 
-1. 主机 `128.119.40.186` 收到请求，构造响应报文，并将其发送给目的地 `138.76.29.7:5001`。
-2. 响应报文到达路由器的 WAN 接口。路由器查询 NAT 转换表，发现 `138.76.29.7:5001` 在转换表中有记录，从而将其目的地址和目的端口转换成为 `10.0.0.1:3345`，再发送到 `10.0.0.4` 上。
-3. 被转换的响应报文到达路由器的 LAN 接口，继而被转发至目的地 `10.0.0.1`。
+1. The server at `128.119.40.186` sends its response to `138.76.29.7:5001`.
+2. The response reaches the router's WAN interface. The router finds `138.76.29.7:5001` in its NAT table, translates the destination to `10.0.0.1:3345`, and forwards the packet toward its LAN interface at `10.0.0.4`.
+3. The router forwards the translated response from its LAN interface to host `10.0.0.1`.
 
-![LAN-WAN 间通信提供地址转换](../images/shared/nat-demo2.png)
+![Address translation between a LAN and a WAN](../images/shared/nat-demo2.png)
 
-🐛 修正（参见：[issue#2009](https://github.com/Snailclimb/JavaGuide/issues/2009)）：上图第四步的 Dest 值应该为 `10.0.0.1:3345` 而不是~~`138.76.29.7:5001`~~，这里笔误了。
+🐛 **Correction** (see [issue #2009](https://github.com/Snailclimb/JavaGuide/issues/2009)): In step 4 of the diagram above, the destination should be `10.0.0.1:3345`, not ~~`138.76.29.7:5001`~~. The original diagram contained a typo.
 
-## 划重点
+## Key Points
 
-针对以上过程，有以下几个重点需要强调：
+Keep these points in mind:
 
-1. 端口字段为 16 位，并不能推出一个 NAT 后面最多只能有约 65500 台主机。端口空间限制的是特定外部地址、传输协议、映射行为和映射生命周期下可同时维持的转换映射数量，而不是内网主机总数。一个主机可以创建多个映射，NAT 也可以使用多个公网地址。
-2. 对于目的服务器来说，从来不知道“到底是哪个主机给我发送的请求”，它只知道是来自 `138.76.29.7:5001` 的路由器转发的请求。因此，可以说，**路由器在 WAN 和 LAN 之间起到了屏蔽作用**，所有内部主机发送到外部的报文，都具有同一个 IP 地址（不同的端口号），所有外部发送到内部的报文，也都只有一个目的地（不同端口号），是经过了 NAT 转换后，外部报文才得以正确地送达内部主机。
-3. NAT 是否复用已有映射不能只看内网 IP。映射至少需要区分传输协议、内部 IP 和内部端口；是否还与远端地址和端口相关，取决于 NAT 的具体映射行为。只有报文与已有映射匹配时，NAT 才能复用相应的外部地址和端口。
+1. A 16-bit port field doesn't mean a NAT can support only about 65,500 hosts. Port space limits the number of simultaneous mappings available for a particular external address, transport protocol, mapping behavior, and mapping lifetime. A host can create multiple mappings, and a NAT can use multiple public addresses.
+2. The destination server sees a request from the router's public endpoint, such as `138.76.29.7:5001`, rather than the original private host. **The router therefore hides internal addresses from external hosts.** Outbound requests share the public IP address and use different ports; responses are forwarded to internal hosts using the NAT mappings.
+3. Whether NAT can reuse a mapping can't be determined from the private IP address alone. A mapping must at least distinguish the transport protocol, internal IP, and internal port. Whether the remote address and port also matter depends on the NAT's mapping behavior. NAT can reuse an external address and port only when the packet matches an existing mapping.
 
-总结 NAT 协议的特点，有以下几点：
+NAT has several practical benefits:
 
-1. NAT 协议通过对 WAN 屏蔽 LAN，有效地缓解了 IPv4 地址分配压力。
-2. LAN 主机 IP 地址的变更，无需通告 WAN。
-3. WAN 的 ISP 变更接口地址时，无需通告 LAN 内主机。
-4. NAT 会隐藏内部地址和拓扑；许多 NAT 设备的过滤行为还会使没有既有映射的外部流量难以直接到达内部主机。不过，决定哪些入站报文可以通过的是过滤策略，而不是地址转换本身。NAT 不能替代状态防火墙、访问控制和主机安全措施。
+1. By hiding LAN addresses from the WAN, NAT helps conserve IPv4 addresses.
+2. Changing a LAN host's IP address doesn't require notifying the WAN.
+3. When the ISP changes the router's WAN address, LAN hosts don't need to be notified.
+4. NAT hides internal addresses and topology. Filtering behavior on many NAT devices also makes it difficult for unsolicited external traffic to reach an internal host. However, filtering policy—not address translation itself—determines which inbound packets are allowed. NAT isn't a replacement for a stateful firewall, access controls, or host security.
 
-然而，NAT 协议由于其独特性，存在着一些争议。比如，可能你已经注意到了，**NAT 协议在 LAN 以外，标识一个内部主机时，使用的是端口号，因为 IP 地址都是相同的**。这种将端口号作为主机寻址的行为，可能会引发一些误会。此外，路由器作为网络层的设备，修改了传输层的分组内容（修改了源 IP 地址和端口号），同样是不规范的行为。但是，尽管如此，NAT 协议作为 IPv4 时代的产物，极大地方便了一些本来棘手的问题，一直被沿用至今。
+NAT also has tradeoffs. **Outside the LAN, the router uses port numbers to distinguish internal hosts that share the same public IP address.** This can make ports appear to serve as host identifiers. NAT also modifies packet headers, including source addresses and ports, even though routers are network-layer devices. Despite these concerns, NAT has remained widely used as a practical way to address IPv4 scarcity and connect private networks to the internet.
 
 <!-- @include: @article-footer.snippet.md -->

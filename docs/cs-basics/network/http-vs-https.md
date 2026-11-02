@@ -1,160 +1,154 @@
 ---
-title: HTTP vs HTTPS：区别在哪里、HTTPS 为什么更安全（应用层）
-description: 对比 HTTP 与 HTTPS 的协议与安全机制，解析 SSL/TLS 工作原理与握手流程，明确应用层安全落地细节。
-category: 计算机基础
+title: "HTTP vs. HTTPS: What Is the Difference, and Why Is HTTPS More Secure?"
+description: Compare HTTP and HTTPS, and learn how SSL/TLS protects communications, how the handshake works, and what to consider when deploying HTTPS.
+category: Computer Science Fundamentals
 tag:
-  - 计算机网络
+  - Computer Networking
 head:
   - - meta
     - name: keywords
-      content: HTTP,HTTPS,SSL,TLS,加密,认证,端口,安全性,握手流程
+      content: HTTP, HTTPS, SSL, TLS, encryption, authentication, ports, security, handshake
 ---
 
-HTTP 能传输网页内容，但默认是明文传输。请求和响应如果在网络中被监听、篡改或冒充，HTTP 本身没有足够的保护能力。
+HTTP can transfer web content, but it sends data in plaintext unless another security layer is used. HTTP alone doesn't adequately protect requests and responses from eavesdropping, tampering, or impersonation.
 
-HTTPS 不是一个全新的应用层协议，而是使用 TLS 保护 HTTP 通信。在 HTTP/1.1 和常见的 HTTP/2 场景中，TLS 通常运行在 TCP 之上；HTTP/3 则把 HTTP 语义映射到基于 UDP 的 QUIC，并在 QUIC 中集成 TLS 1.3。
+HTTPS isn't a new application-layer protocol. It uses TLS to protect HTTP communication. HTTP/1.1 and common HTTP/2 deployments usually run TLS over TCP. HTTP/3 maps HTTP semantics onto QUIC, which is built on UDP and integrates TLS 1.3.
 
-这篇文章主要回答几个问题：
+This article answers four questions:
 
-1. HTTP 和 HTTPS 的核心区别是什么？
-2. HTTPS 如何防止窃听、篡改和冒充？
-3. SSL/TLS 握手大致做了哪些事情？
-4. 为什么使用 HTTPS 后，证书、混合内容和性能优化仍然需要关注？
+1. What are the key differences between HTTP and HTTPS?
+2. How does HTTPS protect against eavesdropping, tampering, and impersonation?
+3. What happens during an SSL/TLS handshake?
+4. Why do certificates, mixed content, and performance still matter when using HTTPS?
 
-## HTTP 协议
+## HTTP
 
-### HTTP 协议介绍
+### What Is HTTP?
 
-HTTP 协议，全称超文本传输协议（Hypertext Transfer Protocol）。顾名思义，HTTP 协议就是用来规范超文本的传输，超文本，也就是网络上的包括文本在内的各式各样的消息，具体来说，主要是来规范浏览器和服务器端的行为的。
+HTTP stands for **Hypertext Transfer Protocol**. It defines how hypertext and other messages are transferred, and specifies the behavior of browsers and servers that exchange them.
 
-并且，HTTP 是一个无状态（stateless）协议，也就是说服务器不维护任何有关客户端过去所发请求的消息。这其实是一种懒政，有状态协议会更加复杂，需要维护状态（历史信息），而且如果客户或服务器失效，会产生状态的不一致，解决这种不一致的代价更高。
+HTTP is also a **stateless** protocol: the server doesn't inherently maintain a record of the client's past requests. This keeps the protocol simpler. Stateful protocols need to track history and can face inconsistent state when a client or server fails, which can be costly to resolve.
 
-![HTTP：超文本传输协议概览](../images/shared/http-overview.png)
+![Overview of HTTP, the Hypertext Transfer Protocol](../images/shared/http-overview.png)
 
-### HTTP 协议通信过程
+### How HTTP Communication Works
 
-HTTP 是应用层协议。下面以基于 TCP 的 HTTP/1.1 为例说明通信过程，`http` URL 的默认端口为 80：
+HTTP is an application-layer protocol. This example uses HTTP/1.1 over TCP. An `http` URL uses port 80 by default:
 
-1. 服务器在 80 端口等待客户的请求。
-2. 浏览器发起到服务器的 TCP 连接（创建套接字 Socket）。
-3. 服务器接收来自浏览器的 TCP 连接。
-4. 浏览器（HTTP 客户端）与 Web 服务器（HTTP 服务器）交换 HTTP 消息。
-5. 关闭 TCP 连接。
+1. The server waits for requests on port 80.
+2. The browser opens a TCP connection to the server, creating a socket.
+3. The server accepts the TCP connection.
+4. The browser (HTTP client) and web server (HTTP server) exchange HTTP messages.
+5. The TCP connection closes when the exchange is done, unless it is kept open for reuse.
 
-### HTTP 协议优点
+### Benefits of HTTP
 
-扩展性强、速度快、跨平台支持性好。
+HTTP is extensible, fast, and widely supported across platforms.
 
-## HTTPS 协议
+## HTTPS
 
-### HTTPS 协议介绍
+### What Is HTTPS?
 
-HTTPS（Hypertext Transfer Protocol Secure）使用 TLS 为 HTTP 提供机密性、完整性和身份认证，默认端口号是 443。HTTP/1.1 和 HTTP/2 通常使用 TLS over TCP；HTTP/3 使用集成 TLS 1.3 的 QUIC，QUIC 构建在 UDP 之上。
+HTTPS (Hypertext Transfer Protocol Secure) uses TLS to provide confidentiality, integrity, and authentication for HTTP communication. Its default port is 443. HTTP/1.1 and HTTP/2 usually use TLS over TCP; HTTP/3 uses QUIC, which integrates TLS 1.3 and runs over UDP.
 
-HTTPS 中，TLS 握手完成后，通信数据使用 AES-GCM、ChaCha20-Poly1305 等对称 AEAD 算法保护。握手可以使用 (EC)DHE 协商共享秘密，也可以在会话恢复等场景使用 PSK；旧版 TLS 还曾支持 RSA 密钥传输。ECDH/ECDHE 是密钥协商算法，不是使用公钥加密一把预先生成的对称密钥。
+After the TLS handshake, algorithms such as AES-GCM and ChaCha20-Poly1305 protect application data using symmetric authenticated encryption with associated data (AEAD). The handshake can establish a shared secret with (EC)DHE or, for session resumption, use a pre-shared key (PSK). Older TLS versions also supported RSA key transport. ECDH and ECDHE are key-agreement algorithms; they don't encrypt a pre-generated symmetric key with a public key.
 
-### HTTPS 协议优点
+### Benefits of HTTPS
 
-保密性好、信任度高。
+HTTPS protects data in transit and helps users verify the identity of the service they're connecting to.
 
-## HTTPS 的核心—SSL/TLS 协议
+## SSL and TLS
 
-HTTPS 的安全能力来自 TLS。TLS 对通信数据提供机密性和完整性保护，并通过证书等机制认证通信对端。接下来重点介绍 TLS 的工作原理。
+HTTPS security comes from TLS. TLS protects communication confidentiality and integrity and authenticates the peer using certificates or other mechanisms. The sections below explain the main ideas.
 
-### SSL 和 TLS 的区别？
+### SSL vs. TLS
 
-**SSL 和 TLS 没有太大的区别。**
+**SSL and TLS are related protocol versions, but SSL is obsolete.** Secure Sockets Layer (SSL) 3.0 was published in 1996. SSL 1.0 was never released, and SSL 2.0 had serious weaknesses, including the DROWN attack (Decrypting RSA with Obsolete and Weakened eNcryption). In 1999, the next version was published as **TLS 1.0**. People still sometimes say “SSL/TLS,” but modern HTTPS uses TLS; SSL has been retired. TLS 1.2 and TLS 1.3 are the versions used by modern HTTPS.
 
-SSL 指安全套接层协议（Secure Sockets Layer），首次发布于 1996 年（SSL 3.0）。SSL 1.0 从未面世，SSL 2.0 则具有较大的缺陷（DROWN 缺陷——Decrypting RSA with Obsolete and Weakened eNcryption）。很快，在 1999 年，SSL 3.0 进一步升级，**新版本被命名为 TLS 1.0**。因此，TLS 是基于 SSL 之上的，但由于习惯叫法，通常把 HTTPS 中的核心加密协议混称为 SSL/TLS。目前 SSL 已完全废弃，TLS 1.2 和 TLS 1.3 是现代 HTTPS 的实际标准。
+### How SSL/TLS Works
 
-### SSL/TLS 的工作原理
+#### Asymmetric Cryptography
 
-#### 非对称加密
+TLS uses asymmetric cryptography for authentication and/or key agreement, then uses symmetric keys to protect application data. Asymmetric cryptography has more than one use: digital signatures use a private key to sign and a public key to verify, while ECDHE lets two parties agree on a shared secret using temporary key pairs. The mailbox analogy below illustrates basic public-key encryption, such as RSA; it doesn't describe every TLS handshake.
 
-TLS 会使用非对称密码机制完成身份认证和/或密钥协商，再使用对称密钥保护业务数据。非对称密码并不只有“公钥加密、私钥解密”这一种用途：数字签名使用私钥签名、公钥验证，ECDHE 则通过双方的临时密钥协商共享秘密。下面的邮箱比喻只用于说明 RSA 等公钥加密方案的基本概念，不能代表所有 TLS 握手。
-
-> 在某个自助邮局，每个通信信道都是一个邮箱，每一个邮箱所有者都在旁边立了一个牌子，上面挂着一把钥匙：这是我的公钥，发送者请将信件放入我的邮箱，并用公钥锁好。
+> Imagine a self-service post office where each communication channel is a mailbox. The owner displays a public key and invites anyone to put a letter in the mailbox and lock it with that key.
 >
-> 但是公钥只能加锁，并不能解锁。解锁只能由邮箱的所有者——因为只有他保存着私钥。
+> The public key can lock the mailbox but can't unlock it. Only the owner can unlock it because only the owner has the private key.
 >
-> 这样，通信信息就不会被其他人截获了，这依赖于私钥的保密性。
+> The message is protected as long as the private key remains secret.
 
-![非对称加密中公钥加密和私钥解密的过程](./images/http-vs-https/public-key-cryptography.png)
+![Public-key encryption and private-key decryption](./images/http-vs-https/public-key-cryptography.png)
 
-非对称加密的公钥和私钥需要采用一种复杂的数学机制生成（密码学认为，为了较高的安全性，尽量不要自己创造加密方案）。公私钥对的生成算法依赖于单向陷门函数。
+Public and private keys are generated with mathematical algorithms. Don't invent your own cryptographic scheme. Key-pair generation relies on one-way trapdoor functions.
 
-> 单向函数：已知单向函数 f，给定任意一个输入 x，易计算输出 y=f(x)；而给定一个输出 y，假设存在 f(x)=y，很难根据 f 来计算出 x。
+> **One-way function:** Given a function `f` and an input `x`, it's easy to compute `y = f(x)`. Given `y`, it is difficult to find an `x` such that `f(x) = y`.
 >
-> 单向陷门函数：一个较弱的单向函数。已知单向陷门函数 f，陷门 h，给定任意一个输入 x，易计算出输出 y=f(x;h)；而给定一个输出 y，假设存在 f(x;h)=y，很难根据 f 来计算出 x，但可以根据 f 和 h 来推导出 x。
+> **Trapdoor one-way function:** It's easy to compute `y = f(x; h)` for an input `x` and trapdoor `h`. Given `y`, recovering `x` is difficult without the trapdoor, but possible when the trapdoor is known.
 
-![单向函数](./images/http-vs-https/OWF.png)
+![A one-way function](./images/http-vs-https/OWF.png)
 
-上图就是一个单向函数（不是单项陷门函数），假设有一个绝世秘籍，任何知道了这个秘籍的人都可以把苹果汁榨成苹果，那么这个秘籍就是“陷门”了吧。
+The figure illustrates a one-way function, not a trapdoor one-way function. Imagine a secret method that turns apple juice into apples. Anyone who knows the method can reverse the process; the secret method is the trapdoor.
 
-在这里，函数 f 的计算方法相当于公钥，陷门 h 相当于私钥。公钥 f 是公开的，任何人对已有输入，都可以用 f 加密，而要想根据加密信息还原出原信息，必须要有私钥才行。
+Here, the public function `f` is analogous to the public key, and the trapdoor `h` is analogous to the private key. Anyone can use the public key for its intended operation, but reversing the operation requires the private key.
 
-#### 对称加密
+#### Symmetric Encryption
 
-TLS 不会使用非对称密码算法直接加密大量业务数据。握手阶段完成身份认证和密钥建立后，记录层使用对称 AEAD 算法保护 HTTP 请求和响应。
+TLS doesn't use asymmetric cryptography to encrypt large amounts of application data. After the handshake authenticates the peer and establishes keys, the record layer uses symmetric AEAD algorithms to protect HTTP requests and responses.
 
-> 对称加密：通信双方共享唯一密钥 k，加解密算法已知，加密方利用密钥 k 加密，解密方利用密钥 k 解密，保密性依赖于密钥 k 的保密性。
+> **Symmetric encryption:** Both parties share a secret key `k`. The encryption and decryption algorithms are known; confidentiality depends on keeping `k` secret.
 
-![对称加密中双方使用共享密钥加密通信](./images/http-vs-https/symmetric-encryption.png)
+![Two parties communicating with a shared symmetric key](./images/http-vs-https/symmetric-encryption.png)
 
-通信双方需要在不安全的网络上建立只有彼此知道的流量密钥。TLS 1.2 的静态 RSA 密钥交换会由客户端生成 `PreMasterSecret`，再用服务器 RSA 公钥加密发送；现代 TLS 更常使用 ECDHE，让双方交换临时公钥并各自计算出同一个共享秘密。TLS 1.3 已移除静态 RSA 密钥交换，允许 (EC)DHE、PSK 或 PSK+(EC)DHE 等密钥建立方式。无论使用哪种方式，最终都会派生出对称流量密钥来保护后续数据；任何密码方案都不能称为“绝对安全”。
+The parties need to establish shared traffic keys over an insecure network. With static RSA key exchange in TLS 1.2, the client generated a `PreMasterSecret` and encrypted it with the server's RSA public key. Modern TLS commonly uses ECDHE: the parties exchange temporary public keys and independently derive the same shared secret. TLS 1.3 removed static RSA key exchange. It allows key establishment using (EC)DHE, PSK, or PSK+(EC)DHE. In each case, symmetric traffic keys are derived to protect subsequent data. No cryptographic scheme should be described as absolutely secure.
 
-#### 公钥传输的信赖性
+#### Trusting the Server's Public Key
 
-SSL/TLS 介绍到这里，了解信息安全的朋友又会想到一个安全隐患。设想下面的场景：
+There is another security problem: how can a client trust that a public key really belongs to the server?
 
-> 客户端 C 和服务器 S 想要使用 SSL/TLS 通信，由上述 SSL/TLS 通信原理，C 需要先知道 S 的公钥，而 S 公钥的唯一获取途径，就是把 S 公钥在网络信道中传输。要注意网络信道通信中有几个前提：
+> Suppose client C and server S want to communicate using SSL/TLS. C needs S's public key, which must be delivered over the network. Assume that anyone can capture packets, that confidentiality depends on the sender's design, and that the algorithms are public while the keys are secret.
 >
-> 1. 任何人都可以捕获通信包
-> 2. 通信包的保密性由发送者设计
-> 3. 保密算法设计方案默认为公开，而（解密）密钥默认是安全的
+> If S sends its public key without authentication, an attacker A could send C a forged packet containing the public key of a server controlled by A (AS). C might accept AS's key as S's key. C would then encrypt data with AS's public key and send it over the network. A could decrypt it with AS's private key, while C and S remain unaware of the attack.
 >
-> 因此，假设 S 公钥不做加密，在信道中传输，那么很有可能存在一个攻击者 A，发送给 C 一个诈包，假装是 S 公钥，其实是诱饵服务器 AS 的公钥。当 C 收获了 AS 的公钥（却以为是 S 的公钥），C 后续就会使用 AS 公钥对数据进行加密，并在公开信道传输，那么 A 将捕获这些加密包，用 AS 的私钥解密，就截获了 C 本要给 S 发送的内容，而 C 和 S 二人全然不知。
+> Encrypting the public key alone doesn't solve this trust problem. C could still be tricked into trusting AS.
+
+![A man-in-the-middle attack that substitutes the server's public key](./images/http-vs-https/attack1.png)
+
+Certificate authorities (CAs) address this key-authentication problem. A CA is a third party trusted by the client. It issues certificates to servers, which store and present those certificates. A certificate includes the CA's **digital signature**, described below.
+
+When a server authenticates with a certificate, the client receives a certificate chain and verifies that the signatures lead to a locally trusted root. It also checks the host name, validity period, key usage, and path constraints. Only if these checks pass can the client associate the certificate's public key with the server's identity. PSK authentication and other certificate-free methods are separate cases.
+
+#### Digital Signatures
+
+Digital signatures help prevent certificate forgery and tampering. CAs are trusted in part because of this mechanism.
+
+A digital signature detects changes to certificate content and demonstrates that the signature was produced by a party holding the CA's private key. The accurate description is **sign with the private key and verify with the public key**, not “encrypt with the private key and decrypt with the public key.” The process is:
+
+> After validating an application, the CA uses its private key to sign the certificate's signed data and attaches the signature to the certificate.
 >
-> 同样的，S 公钥即使做加密，也难以避免这种信任性问题，C 被 AS 拐跑了！
-
-![中间人替换服务器公钥导致客户端误信攻击者公钥](./images/http-vs-https/attack1.png)
-
-为了公钥传输的信赖性问题，第三方机构应运而生——证书颁发机构（CA，Certificate Authority）。CA 默认是受信任的第三方。CA 会给各个服务器颁发证书，证书存储在服务器上，并附有 CA 的**电子签名**（见下节）。
-
-当服务器使用证书认证时，客户端会获取服务器提供的证书链，并验证签名链是否能连接到本地信任的根，同时检查目标主机名、有效期、密钥用途和路径约束等信息。只有这些检查通过，客户端才能把证书中的公钥与目标服务身份绑定起来。PSK 等不使用证书的认证方式属于另一类场景。
-
-#### 数字签名
-
-好，到这一小节，已经是 SSL/TLS 的尾声了。上一小节提到了数字签名，数字签名要解决的问题，是防止证书被伪造。第三方信赖机构 CA 之所以能被信赖，就是 **靠数字签名技术**。
-
-数字签名用于检测证书内容是否被篡改，并证明签名由持有 CA 私钥的一方生成。应当把这个过程描述为“私钥签名、公钥验证”，而不是普遍意义上的“私钥加密、公钥解密”。具体行为如下：
-
-> CA 核验申请信息后，使用自己的私钥对证书待签名部分生成数字签名，并把签名附在证书中。
+> The server sends its certificate chain to the client. The client uses the issuer's public key to verify each certificate's signature, then continues up the chain to a locally trusted root.
 >
-> 服务器将证书链发送给客户端。客户端使用签发者证书中的公钥验证当前证书的签名，并逐级验证到本地信任的根。
->
-> 签名验证只是证书验证的一部分。客户端还需要检查目标主机名、有效期、用途、基本约束和名称约束等条件，全部通过后才接受服务器身份。
+> Signature verification is only one part of certificate validation. The client must also check the host name, validity period, key usage, basic constraints, and name constraints.
 
-![CA 通过数字签名证明证书未被篡改](./images/http-vs-https/digital-signature.png)
+![A CA uses a digital signature to show that a certificate hasn't been altered](./images/http-vs-https/digital-signature.png)
 
-总结来说，带有证书的公钥传输机制如下：
+The public-key delivery process with certificates works like this:
 
-1. 设有服务器 S，客户端 C，和第三方信赖机构 CA。
-2. CA 核验 S 的申请信息，为包含 S 公钥和身份信息的证书生成数字签名。
-3. S 获得 CA 颁发的证书，将该证书传递给 C。
-4. C 获得 S 的证书链，使用各级签发者公钥验证签名，并确认该链最终锚定到本地信任的根。
-5. C 继续检查域名、有效期、用途和证书约束。全部通过后，才接受证书中公钥与目标服务身份的绑定关系。
+1. Server S, client C, and a trusted CA are involved.
+2. The CA verifies S's application and signs a certificate containing S's public key and identity.
+3. S obtains the certificate and sends it to C.
+4. C receives S's certificate chain, verifies signatures with issuer public keys, and confirms the chain ends at a locally trusted root.
+5. C checks the domain name, validity period, key usage, and certificate constraints. Only then does C accept the binding between the certificate's public key and the server's identity.
 
-![HTTPS 通过 CA 证书可信传递服务器公钥](./images/http-vs-https/public-key-transmission.png)
+![A CA certificate provides a trusted way to deliver a server's public key](./images/http-vs-https/public-key-transmission.png)
 
-对于数字签名，我这里讲的比较简单，如果你没有搞清楚的话，强烈推荐你看看[数字签名及数字证书原理](https://www.bilibili.com/video/BV18N411X7ty/)这个视频，这是我看过最清晰的讲解。
+For a simpler explanation of digital signatures and certificates, see this [video on digital signatures and certificates](https://www.bilibili.com/video/BV18N411X7ty/).
 
-![数字签名及数字证书原理视频讲解截图](../images/shared/image-20220321121814946.png)
+![A video explaining digital signatures and certificates](../images/shared/image-20220321121814946.png)
 
-## 总结
+## Summary
 
-- **端口号**：HTTP 默认是 80，HTTPS 默认是 443。
-- **URL 前缀**：HTTP 的 URL 前缀是 `http://`，HTTPS 的 URL 前缀是 `https://`。
-- **安全性和传输方式**：未使用 TLS 的 HTTP 默认不提供机密性、完整性和对端身份认证。HTTPS 使用 TLS 保护 HTTP；HTTP/1.1 和 HTTP/2 通常使用 TLS over TCP，HTTP/3 使用集成 TLS 1.3 的 QUIC。TLS 握手负责认证对端并建立流量密钥，后续数据由对称 AEAD 算法保护。证书主要用于身份认证，不能笼统地说“证书加密了对称密钥”。
+- **Port:** HTTP defaults to port 80; HTTPS defaults to port 443.
+- **URL scheme:** HTTP uses `http://`; HTTPS uses `https://`.
+- **Security and transport:** HTTP without TLS doesn't provide confidentiality, integrity, or peer authentication by default. HTTPS uses TLS to protect HTTP. HTTP/1.1 and HTTP/2 usually run TLS over TCP; HTTP/3 uses QUIC with integrated TLS 1.3. The handshake authenticates the peer and establishes traffic keys, and symmetric AEAD algorithms protect later data. Certificates help authenticate identity; it isn't accurate to say that a certificate “encrypts the symmetric key.”
 
 <!-- @include: @article-footer.snippet.md -->

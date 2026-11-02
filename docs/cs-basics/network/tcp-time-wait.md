@@ -1,192 +1,192 @@
 ---
-title: TCP TIME_WAIT 详解：为什么要等、会不会出问题、能不能复用？
-description: 深入分析 TCP TIME_WAIT 状态的两个存在原因（最后 ACK 补救机会 + 防旧包混入新连接），大量 TIME_WAIT 的危害边界与粗略估算，tcp_tw_reuse 的正确使用姿势，以及 TIME_WAIT 与 CLOSE_WAIT 的区分与线上排查思路。
-category: 计算机基础
+title: "TCP TIME_WAIT Explained: Why Wait, Is It a Problem, and Can It Be Reused?"
+description: Learn why TCP TIME_WAIT exists, when many TIME_WAIT sockets become a problem, how to assess tcp_tw_reuse, and how to distinguish TIME_WAIT from CLOSE_WAIT during troubleshooting.
+category: Computer Science Basics
 tag:
-  - 计算机网络
+  - Computer Networking
 head:
   - - meta
     - name: keywords
-      content: TCP,TIME_WAIT,CLOSE_WAIT,2MSL,tcp_tw_reuse,tcp_tw_recycle,四次挥手,端口耗尽,连接复用,MSL,PAWS
+      content: TCP,TIME_WAIT,CLOSE_WAIT,2MSL,tcp_tw_reuse,tcp_tw_recycle,four-way teardown,port exhaustion,connection reuse,MSL,PAWS
 ---
 
-TCP 四次挥手的最后一步，主动关闭方发完 ACK 后不是立刻关闭，而是进入 `TIME_WAIT` 状态，默认要等上 60 秒。
+After sending the final ACK in TCP's four-way teardown, the active closer does not close immediately. It enters `TIME_WAIT`, which commonly lasts 60 seconds by default.
 
-这 60 秒经常被误解：有人觉得是浪费资源，有人想着用内核参数强行关掉，有人把 `CLOSE_WAIT` 和 `TIME_WAIT` 混着排查。
+These 60 seconds are often misunderstood. Some consider them wasted resources, some try to disable them with kernel settings, and some confuse `CLOSE_WAIT` with `TIME_WAIT` during troubleshooting.
 
-这篇文章回答线上最常见的几个问题：
+This article answers a few common production questions:
 
-1. `TIME_WAIT` 到底在等什么？
-2. `TIME_WAIT` 大量堆积会不会真的出问题？
-3. `tcp_tw_reuse` 能不能随便开？
-4. `TIME_WAIT` 和 `CLOSE_WAIT` 怎么区分？
+1. Why Does TCP Enter the `TIME_WAIT` State?
+2. Can a large number of `TIME_WAIT` sockets cause problems?
+3. Is it safe to enable `tcp_tw_reuse`?
+4. How do you distinguish `TIME_WAIT` from `CLOSE_WAIT`?
 
-## TIME_WAIT 不只是“等一会儿再关”
+## TIME_WAIT Is More Than “Wait a Bit Before Closing”
 
-ACK 都已经发出去了，为什么还要占着端口等几十秒？
+Why keep the port occupied for tens of seconds after the ACK has already been sent?
 
-主动关闭方发出最后一个 ACK 后，不会立刻释放连接，而是进入 `TIME_WAIT`。RFC 9293 的连接状态图里也能看到，`TIME_WAIT` 会在 2MSL 超时后删除 TCB，并进入 `CLOSED`。
+After sending the final ACK, the active closer does not release the connection immediately; it enters `TIME_WAIT`. RFC 9293's connection state diagram shows that the TCB is removed and the connection enters `CLOSED` after a 2MSL timeout.
 
-这里要注意一个细节：不是“谁收到 FIN 谁就一定进入 TIME_WAIT”。被动关闭方收到 FIN 后，通常会先进入 `CLOSE_WAIT`，等待本端应用处理完剩余数据并调用 `close()` 或 `shutdown()`。更常见的情况是，主动关闭方收到对端最后的 FIN，并回复最后一个 ACK 后，进入 `TIME_WAIT`。
+One detail matters: receiving FIN does not always mean entering `TIME_WAIT`. The passive closer usually enters `CLOSE_WAIT` and waits for its application to handle remaining data and call `close()` or `shutdown()`. More commonly, the active closer enters `TIME_WAIT` after receiving the peer's final FIN and replying with the last ACK.
 
-**谁主动关闭连接，谁就更容易进入 TIME_WAIT。** 比如客户端主动断开 HTTP 短连接，`TIME_WAIT` 往往出现在客户端；如果服务端主动断开连接，服务端也可能堆出大量 `TIME_WAIT`。
+**The side that actively closes a connection is more likely to enter TIME_WAIT.** For example, if a client closes a short-lived HTTP connection, `TIME_WAIT` usually appears on the client. If the server closes the connection, the server can accumulate `TIME_WAIT` sockets too.
 
-看起来像是多等了一会儿，实际上是在解决两个问题。
+This extra wait addresses two problems.
 
-## 第一个原因：让最后一个 ACK 有补救机会
+## Reason 1: Allow the Final ACK to Be Retried
 
-主动关闭方发送最后一个 ACK 后，如果这个 ACK 在网络中丢了，被动关闭方会以为自己的 FIN 没被确认，于是重发 FIN。主动关闭方还在 `TIME_WAIT` 里，就能再次回复 ACK；如果它已经进入 `CLOSED`，就可能回 RST，让对端感知为异常关闭或连接被重置。
+If the final ACK is lost, the passive closer may assume its FIN was not acknowledged and retransmit it. While the active closer remains in `TIME_WAIT`, it can send another ACK. If it has already entered `CLOSED`, it may reply with RST, making the peer see an abnormal close or reset.
 
 ```mermaid
 sequenceDiagram
-  participant A as 主动关闭方
-  participant B as 被动关闭方
+  participant A as Active closer
+  participant B as Passive closer
 
   B->>A: FIN
-  A-->>B: ACK 丢失
-  Note over A: A 进入 TIME_WAIT<br/>没有立刻释放连接
-  B->>A: 重传 FIN
-  A-->>B: 再次 ACK
-  Note over B: B 收到 ACK 后进入 CLOSED
+  A-->>B: ACK lost
+  Note over A: A enters TIME_WAIT<br/>and keeps the connection state
+  B->>A: Retransmit FIN
+  A-->>B: Send ACK again
+  Note over B: B enters CLOSED after receiving ACK
 ```
 
-**MSL（Maximum Segment Lifetime）** 是报文段在网络中的最大生存时间。2MSL 不是一次请求-响应的最大 RTT，而是一个保守等待窗口：既给最后 ACK 丢失后的 FIN 重传留出处理机会，也尽量保证旧连接中的延迟报文从网络中消失。
+**MSL (Maximum Segment Lifetime)** is the maximum time a segment can remain in the network. 2MSL is not the maximum request-response RTT. It is a conservative waiting period that allows for a retransmitted FIN if the final ACK is lost and gives delayed segments from the old connection time to disappear.
 
-需要注意，RFC 里的 MSL 是协议层概念，具体系统实现可能不同。Linux 常见实现中，`TIME_WAIT` 保留时间通常是 60 秒。还有一个常见误区：`tcp_fin_timeout` 控制的是 orphaned connection 的 `FIN_WAIT_2` 超时，不是 `TIME_WAIT`。想缓解 `TIME_WAIT` 带来的端口压力，优先看连接复用、端口范围、主动关闭方和 `tcp_tw_reuse` 条件，而不是试图用 `tcp_fin_timeout` 缩短 `TIME_WAIT`。
+The MSL in RFCs is a protocol concept, and implementations can differ. Linux commonly keeps `TIME_WAIT` sockets for 60 seconds. Another common misconception is that `tcp_fin_timeout` controls `TIME_WAIT`; it controls the `FIN_WAIT_2` timeout for orphaned connections. To reduce port pressure from `TIME_WAIT`, first consider connection reuse, the port range, which side actively closes, and whether `tcp_tw_reuse` is appropriate. Do not use `tcp_fin_timeout` to shorten `TIME_WAIT`.
 
-## 第二个原因：别让旧连接的包混进新连接
+## Reason 2: Keep Old Connection Packets Out of New Connections
 
-TCP 连接靠四元组定位：源 IP、源端口、目的 IP、目的端口。如果旧连接刚关闭，立刻用同一个四元组建立新连接，旧连接里延迟到达的数据包可能刚好落在新连接接收窗口里，被当成新连接的数据处理。
+TCP connections are identified by a four-tuple: source IP, source port, destination IP, and destination port. If a new connection immediately reuses the same four-tuple after the old one closes, delayed packets from the old connection could fall within the new connection's receive window and be treated as new data.
 
-举个例子：
+For example:
 
 ```text
-旧连接：client:50000 -> server:443
-服务端发出的 SEQ=301 数据包在网络里绕了一圈，迟迟没到。
+Old connection: client:50000 -> server:443
+The server's SEQ=301 packet is delayed in the network.
 
-旧连接关闭后，客户端很快复用了同一个源端口：
-新连接：client:50000 -> server:443
+After the old connection closes, the client quickly reuses the same source port:
+New connection: client:50000 -> server:443
 
-这时旧的 SEQ=301 抵达客户端。
-如果它刚好落在新连接接收窗口里，就有可能被误收。
+The old SEQ=301 packet then reaches the client.
+If it falls within the new connection's receive window, it could be accepted by mistake.
 ```
 
-TCP 序列号空间是 0 到 2^32 - 1，会按模 2^32 回绕，所以不能只靠序列号永久区分新老报文。实际系统还有时间戳、PAWS（Protection Against Wrapped Sequences）、随机 ISN 等保护，但它们不是“完全替代 TIME_WAIT”的万能方案。RFC 1337 也讨论过旧重复报文导致的 TIME_WAIT 风险。
+TCP sequence numbers range from 0 to 2^32 - 1 and wrap modulo 2^32, so sequence numbers alone cannot distinguish old and new segments forever. Systems also use timestamps, PAWS (Protection Against Wrapped Sequences), and randomized ISNs. These are not universal replacements for `TIME_WAIT`. RFC 1337 also discusses risks from old duplicate segments.
 
-## 大量 TIME_WAIT 到底有没有问题？
+## Are Many TIME_WAIT Sockets a Problem?
 
-`TIME_WAIT` 本身是正常状态。真正的问题通常出现在主动关闭方短时间内创建大量到同一个目标 IP + 目标端口的连接，导致本地临时端口被占住。
+`TIME_WAIT` is a normal state. Problems usually arise when the active closer creates many connections to the same destination IP and port in a short time, occupying local ephemeral ports.
 
-Linux 本地临时端口范围可通过 `net.ipv4.ip_local_port_range` 查看和调整。上游内核文档里的默认范围是 `32768 60999`，实际环境以本机输出为准：
+On Linux, inspect and adjust the local ephemeral port range with `net.ipv4.ip_local_port_range`. The upstream kernel documentation lists `32768 60999` as the default; check the local system for its actual range:
 
 ```bash
 cat /proc/sys/net/ipv4/ip_local_port_range
 ```
 
-如果客户端短时间内反复连接同一个目标 IP + 目标端口，旧连接又都停在 `TIME_WAIT`，本地可用临时端口可能被占满，导致新连接无法分配源端口，常见报错如：
+If a client repeatedly connects to the same destination IP and port while old connections remain in `TIME_WAIT`, it may run out of local ephemeral ports and be unable to assign a source port to a new connection. A common error is:
 
 ```text
 Cannot assign requested address
 ```
 
-可以按这个思路判断：
+Use these observations to guide your investigation:
 
-- **如果服务端上看到很多 TIME_WAIT**：先看是不是服务端主动关闭了连接，比如服务端主动断开短连接、网关主动关闭上游连接、连接池主动淘汰连接。
-- **如果客户端或网关上看到很多 TIME_WAIT**：重点看是否存在短连接风暴、连接池未复用、HTTP keep-alive 没打开、上游频繁断连。
+- **Many TIME_WAIT sockets on a server:** Check whether the server actively closes connections, such as short-lived connections, upstream connections closed by a gateway, or connections evicted by a pool.
+- **Many TIME_WAIT sockets on a client or gateway:** Check for a surge of short-lived connections, ineffective connection pooling, disabled HTTP keep-alive, or frequent disconnects from the upstream service.
 
-还可以做一个粗略估算：
+You can also make a rough estimate:
 
 ```text
-同一目标 IP:Port 的短连接上限 ≈ 可用临时端口数 / TIME_WAIT 保留时间
+Approximate short-lived connections per destination IP:port ≈ available ephemeral ports / TIME_WAIT duration
 ```
 
-比如默认端口范围 `32768~60999`，大约 2.8 万个端口。如果 `TIME_WAIT` 保留约 60 秒，那么同一目标 IP:Port 上持续新建短连接的上限大约是数百 QPS 量级。实际结果还会受到连接复用、端口保留、NAT、内核策略和不同远端四元组复用规则影响，不能只看 `TIME_WAIT` 总数就下结论。
+For example, the default port range `32768–60999` contains about 28,000 ports. If `TIME_WAIT` lasts about 60 seconds, the rough limit for continuously creating short-lived connections to one destination IP and port is a few hundred QPS. The actual limit also depends on connection reuse, reserved ports, NAT, kernel policy, and how four-tuples can be reused for different destinations. Do not draw conclusions from the total `TIME_WAIT` count alone.
 
-## 为什么不建议随便开 tcp_tw_reuse？
+## Why Shouldn't You Enable tcp_tw_reuse Casually?
 
-`tcp_tw_reuse` 允许在协议认为安全的条件下，为新的主动连接复用 `TIME_WAIT` socket。它看起来像是缓解端口压力的捷径，但这类参数改变的是 TCP 对旧连接报文的等待策略，不能当成通用开关。
+`tcp_tw_reuse` allows a new active connection to reuse a `TIME_WAIT` socket when the protocol considers it safe. It may look like a shortcut for reducing port pressure, but it changes TCP's handling of packets from old connections and is not a general-purpose switch.
 
-这里要分三层看：
+Consider three points:
 
-1. **它依赖时间戳等条件判断“新报文是否足够新”**。时间戳可以过滤一部分旧报文，但不是所有异常都能覆盖。RFC 1337 重点讨论过 `TIME_WAIT` 状态被旧 RST 等报文提前终止的风险。旧数据段如果落入新连接可接受窗口，可能造成新旧数据混淆；旧 ACK 的影响则依赖序列号、窗口和实现细节，不宜和旧 RST 直接并列成同一种断连风险。
-2. **当前上游 Linux 文档中，`tcp_tw_reuse` 可取 0/1/2，默认值为 2**，表示仅允许 loopback 流量复用；`1` 才是全局开启。但旧版内核文档、发行版 man page 或历史资料可能仍写作“默认关闭”，实际机器必须以 `sysctl net.ipv4.tcp_tw_reuse` 为准。内核文档也明确提示，不要在没有专家建议或明确需求时修改。
-3. **不要把 `tcp_tw_reuse` 和已经废弃的 `tcp_tw_recycle` 搞混**。`tcp_tw_recycle` 在 NAT 环境下会导致时间戳冲突，大量连接被异常丢弃，Linux 4.12 之后已经被移除。网上很多老文章仍然会建议同时打开 `tcp_tw_reuse` 和 `tcp_tw_recycle`，这类配置不要照搬。
+1. **It uses timestamps and other conditions to decide whether a new segment is recent enough.** Timestamps filter some old segments, but they do not cover every failure mode. RFC 1337 discusses the risk of an old RST prematurely ending `TIME_WAIT`. An old data segment within a new connection's receive window could also cause confusion. The effects of an old ACK depend on sequence numbers, windows, and implementation details, so it should not be treated as the same reset risk as an old RST.
+2. **Current upstream Linux documentation allows `tcp_tw_reuse` values of 0, 1, or 2, with a default of 2**, which permits reuse only for loopback traffic; `1` enables it globally. Older kernel documentation, distribution man pages, and historical sources may still say it is disabled by default. Check the actual system with `sysctl net.ipv4.tcp_tw_reuse`. The kernel documentation also advises against changing it without expert advice or a clear need.
+3. **Do not confuse `tcp_tw_reuse` with the obsolete `tcp_tw_recycle`.** In NAT environments, `tcp_tw_recycle` could cause timestamp conflicts and drop many connections. It was removed after Linux 4.12. Older articles may still recommend enabling both settings; do not copy those configurations.
 
-一句话：`tcp_tw_reuse` 可以讨论，但必须结合 Linux 版本、是否 loopback、是否经过 NAT、是否启用时间戳、是否真的存在端口耗尽来判断。能在应用层解决的，优先在应用层解决。
+In short, evaluate `tcp_tw_reuse` based on the Linux version, whether traffic is loopback or passes through NAT, whether timestamps are enabled, and whether port exhaustion is actually occurring. If the problem can be solved in the application, start there.
 
-## TIME_WAIT 和 CLOSE_WAIT：一个正常等待，一个更像应用没收尾
+## TIME_WAIT and CLOSE_WAIT: One Is Normal Waiting; the Other Often Points to Application Cleanup
 
-排查连接状态时，`CLOSE_WAIT` 通常比 `TIME_WAIT` 更值得警惕。
+When investigating connection states, `CLOSE_WAIT` is usually more concerning than `TIME_WAIT`.
 
-收到对端 FIN 后，本端内核会回 ACK，然后进入 `CLOSE_WAIT`，等待应用处理完剩余数据并调用 `close()` 或 `shutdown()`。在 Java 服务里，`CLOSE_WAIT` 堆积经常和连接没有正确关闭有关。比如手写 Socket、HTTP 客户端响应体没有 close、异常分支提前 return、连接池连接没有归还，都可能让内核已经 ACK 了对端 FIN，但应用迟迟不调用 close。
+After receiving the peer's FIN, the local kernel replies with ACK and enters `CLOSE_WAIT`, waiting for the application to process remaining data and call `close()` or `shutdown()`. In Java services, a buildup of `CLOSE_WAIT` often means connections are not being closed correctly. For example, a manually managed socket, an HTTP response body that is not closed, an early return from an error path, or a connection not returned to its pool can leave the kernel's ACK sent while the application never calls `close()`.
 
-可以先按这个思路判断：
+Use this distinction as a starting point:
 
-- **TIME_WAIT**：主动关闭方在等 2MSL，通常是协议设计的一部分。
-- **CLOSE_WAIT**：被动关闭方已经知道对端不发了，但本端应用还没关闭 socket。大量堆积时，优先怀疑应用代码没释放连接、线程卡住、连接池归还异常、读写流程没有走到 finally。
+- **TIME_WAIT:** The active closer is waiting for 2MSL, usually as part of normal protocol behavior.
+- **CLOSE_WAIT:** The passive closer knows the peer has stopped sending, but the local application has not closed the socket. If many accumulate, check whether application code releases connections, threads are blocked, pool returns are failing, or execution skips cleanup in `finally` blocks.
 
-| 状态       | 常见出现方 | 含义                                | 排查方向                                          |
-| ---------- | ---------- | ----------------------------------- | ------------------------------------------------- |
-| TIME_WAIT  | 主动关闭方 | 等最后 ACK 重传机会，也等旧报文消失 | 短连接、连接池、keep-alive、端口范围              |
-| CLOSE_WAIT | 被动关闭方 | 对端已关闭，本端应用还没 close      | 代码是否释放 socket、线程是否卡住、连接池是否泄漏 |
+| State      | Usually appears on | Meaning                                                           | Where to investigate                                   |
+| ---------- | ------------------ | ----------------------------------------------------------------- | ------------------------------------------------------ |
+| TIME_WAIT  | Active closer      | Waits for a retransmitted final ACK and for old packets to expire | Short-lived connections, pools, keep-alive, port range |
+| CLOSE_WAIT | Passive closer     | Peer has closed; local application has not closed the socket      | Socket cleanup, blocked threads, connection-pool leaks |
 
-## 排查时别只盯着数量，要先看谁在主动关闭
+## Check Which Side Closes First, Not Just the Count
 
-![TIME_WAIT 与 CLOSE_WAIT 问题的排查流程](../images/shared/tcp-time-wait-close-wait-troubleshooting-flowchart.png)
+![Troubleshooting TIME_WAIT and CLOSE_WAIT](../images/shared/tcp-time-wait-close-wait-troubleshooting-flowchart.png)
 
-看到大量 `TIME_WAIT` 或 `CLOSE_WAIT`，可以先用下面几条命令定位方向：
+If you see many `TIME_WAIT` or `CLOSE_WAIT` sockets, use these commands to narrow down the cause:
 
-`ss` 是 Linux 上 `iproute2` 提供的命令，macOS 默认没有。如果你的开发环境是 macOS，可以用 `netstat` 和 `lsof` 替代。
+`ss` is provided by `iproute2` on Linux and is not included with macOS by default. On macOS, use `netstat` and `lsof` instead.
 
 ```bash
-# Linux：查看各 TCP 状态数量
+# Linux: count sockets in each TCP state
 ss -ant | awk 'NR>1 {cnt[$1]++} END {for (s in cnt) print s, cnt[s]}'
 
-# macOS：查看各 TCP 状态数量
+# macOS: count sockets in each TCP state
 netstat -anp tcp | awk '$1 ~ /^tcp/ {cnt[$NF]++} END {for (s in cnt) print s, cnt[s]}'
 
-# Linux：查看 TIME-WAIT 主要集中在哪些目标
+# Linux: find destinations with the most TIME-WAIT sockets
 ss -ant state time-wait | awk 'NR>1 {print $5}' | sort | uniq -c | sort -nr | head
 
-# macOS：查看 TIME-WAIT 主要集中在哪些远端
+# macOS: find remote hosts with the most TIME-WAIT sockets
 netstat -anp tcp | awk '$1 ~ /^tcp/ && $NF=="TIME_WAIT" {print $(NF-1)}' | sort | uniq -c | sort -nr | head
 
-# Linux：查看 CLOSE-WAIT 对应哪个进程（需要 sudo 才能看到进程信息）
+# Linux: find the process for CLOSE-WAIT sockets (sudo is needed to see process details)
 sudo ss -tanp state close-wait
 
-# macOS：查看 CLOSE-WAIT 对应哪个进程
+# macOS: find the process for CLOSE-WAIT sockets
 sudo lsof -nP -iTCP -sTCP:CLOSE_WAIT
 
-# Linux：查看监听 socket 的 accept queue 情况
+# Linux: inspect accept queues on listening sockets
 ss -ltn
 ```
 
-![macOS：查看各 TCP 状态数量和 TIME-WAIT 主要集中在哪些远端](../images/shared/macos-check-tcp-state-count-and-time-wait-remote-distribution.png)
+![Checking TCP state counts and TIME-WAIT remote hosts on macOS](../images/shared/macos-check-tcp-state-count-and-time-wait-remote-distribution.png)
 
-命令背后的判断：
+Use the results to guide your investigation:
 
-- **TIME_WAIT 集中在某个远端服务**：检查是否短连接太多、HTTP 连接复用没生效、连接池配置过小、连接池被频繁销毁，或者对端频繁主动断开。
-- **CLOSE_WAIT 集中在某个本地进程**：优先查应用代码，尤其是异常分支有没有关闭响应体、socket 或连接对象。
-- **LISTEN socket 的 Recv-Q 长时间接近 Send-Q**：重点排查 accept queue 堆积，看看应用 accept 是否及时、线程池是否卡住、backlog 配置是否过小。
-- 如果是网关、代理、爬虫、压测客户端，`TIME_WAIT` 更常见；如果是 Java 服务端内部依赖调用泄漏，`CLOSE_WAIT` 更常见。
+- **TIME_WAIT sockets cluster around one remote service:** Check for too many short-lived connections, ineffective HTTP connection reuse, a pool that is too small or frequently destroyed, or frequent active closes by the peer.
+- **CLOSE_WAIT sockets cluster in one local process:** Inspect the application, especially error paths that may fail to close response bodies, sockets, or connection objects.
+- **Recv-Q stays close to Send-Q on a LISTEN socket:** Investigate accept-queue buildup, delayed application accepts, blocked thread pools, or a backlog that is too small.
+- `TIME_WAIT` is more common on gateways, proxies, crawlers, and load-test clients. `CLOSE_WAIT` is more common when a Java service fails to release connections to its dependencies.
 
-## 克制的优化建议
+## Practical Tuning, in Order
 
-按优先级排查：
+Investigate in this order:
 
-1. **优先减少不必要的短连接**：开启 HTTP keep-alive，复用连接池。
-2. **确认谁在主动关闭连接**：服务端、客户端、网关、连接池都有可能成为主动关闭方。
-3. **检查应用侧资源释放**：尤其是 HTTP 响应体、Socket、数据库连接、连接池连接归还。
-4. **扩大本地端口范围**：在客户端短连接确实很高、且存在端口耗尽证据时，再考虑调整 `ip_local_port_range`。
-5. **最后才看内核参数**：`tcp_tw_reuse`、`tcp_abort_on_overflow`、`tcp_syncookies` 都要结合 Linux 版本、业务连接模型、是否经过 NAT、是否被攻击、是否有真实观测数据来判断，不建议直接照抄网上配置。
+1. **Reduce unnecessary short-lived connections:** Enable HTTP keep-alive and reuse connection pools.
+2. **Identify which side actively closes:** It could be the server, client, gateway, or connection pool.
+3. **Check application resource cleanup:** Pay particular attention to HTTP response bodies, sockets, database connections, and returning connections to pools.
+4. **Expand the local port range:** Consider changing `ip_local_port_range` only when a client has a high rate of short-lived connections and there is evidence of port exhaustion.
+5. **Review kernel settings last:** Evaluate `tcp_tw_reuse`, `tcp_abort_on_overflow`, and `tcp_syncookies` based on the Linux version, connection model, NAT, possible attacks, and observed data. Do not copy configurations from the internet without checking them.
 
-`TIME_WAIT` 多，不一定是故障；`CLOSE_WAIT` 多，通常要先看代码。这两个状态看起来都像“连接没关干净”，但问题方向完全不同。
+Many `TIME_WAIT` sockets do not necessarily indicate a fault; many `CLOSE_WAIT` sockets usually call for an application-code review. They can both look like connections that were not closed cleanly, but point to different causes.
 
-## 参考
+## References
 
 - RFC 9293: Transmission Control Protocol（TCP）：<https://www.rfc-editor.org/rfc/rfc9293>
 - RFC 1337: TIME-WAIT Assassination Hazards in TCP：<https://www.rfc-editor.org/rfc/rfc1337>
-- Linux 内核 ip-sysctl 文档：<https://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt>
-- SoByte - 为什么 TCP 需要 TIME_WAIT 状态：<https://www.sobyte.net/post/2022-10/tcp-time-wait/>
+- Linux kernel ip-sysctl documentation: <https://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt>
+- SoByte - Why TCP Needs the TIME_WAIT State: <https://www.sobyte.net/post/2022-10/tcp-time-wait/>
 
 <!-- @include: @article-footer.snippet.md -->

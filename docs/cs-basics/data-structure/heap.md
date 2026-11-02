@@ -1,242 +1,242 @@
 ---
-title: 堆详解（最大堆、最小堆、优先队列）
-description: 解析堆的性质与操作，理解优先队列实现与堆排序性能优势，掌握插入/删除的复杂度与实践场景。
-category: 计算机基础
+title: "Heaps: Max-Heaps, Min-Heaps, and Priority Queues"
+description: Learn heap properties and operations, how priority queues are implemented, and how heap sort works, including operation complexity and practical uses.
+category: Computer Science Basics
 tag:
-  - 数据结构
+  - Data Structures
 head:
   - - meta
     - name: keywords
-      content: 堆,最大堆,最小堆,优先队列,堆化,上浮,下沉,堆排序
+      content: heaps,max-heaps,min-heaps,priority queues,heapify,sift up,sift down,heap sort
 ---
 
-## 什么是堆
+## What Is a Heap?
 
-堆是一种满足以下条件的树：
+A heap is a tree that satisfies the following property:
 
-堆中的每一个节点值都大于等于（或小于等于）子树中所有节点的值。或者说，任意一个节点的值都大于等于（或小于等于）所有子节点的值。
+Each node is greater than or equal to every node in its subtree, or less than or equal to every node in its subtree. Equivalently, each node is greater than or equal to, or less than or equal to, its children.
 
-> 大家可以把堆（最大堆）理解为一个公司，这个公司很公平，谁能力强谁就当老大，不存在弱的人当老大，老大手底下的人一定不会比他强。这样有助于理解后续堆的操作。
+> Think of a max-heap as a company where the strongest person is always at the top. No one below the leader is stronger than the leader. This analogy can help explain heap operations.
 
-**!!!特别提示：**
+**Important:**
 
-- 很多博客说堆是完全二叉树，其实并非如此，**堆不一定是完全二叉树**，只是为了方便存储和索引，我们通常用完全二叉树的形式来表示堆，事实上，广为人知的斐波那契堆和二项堆就不是完全二叉树，它们甚至都不是二叉树。
-- （**二叉**）堆是一个数组，它可以被看成是一个 **近似的完全二叉树**。——《算法导论》第三版
+- Some articles say that a heap is a complete binary tree, but **a heap is not necessarily a complete binary tree**. We often represent binary heaps as complete binary trees because that makes storage and indexing convenient. Well-known Fibonacci heaps and binomial heaps are not complete binary trees; in fact, they are not binary trees.
+- A (**binary**) heap is an array that can be viewed as an **almost complete binary tree**. — _Introduction to Algorithms_, 3rd edition
 
-大家可以尝试判断下面给出的图是否是堆？
+Which of the diagrams below satisfy the heap property?
 
-![判断是否满足堆性质的示例](../images/shared/heap-1.png)
+![Examples for checking the heap property](../images/shared/heap-1.png)
 
-第 1 个和第 2 个是堆。第 1 个是最大堆，每个节点都比子树中所有节点大。第 2 个是最小堆，每个节点都比子树中所有节点小。
+The first and second diagrams are heaps. The first is a max-heap, where each node is greater than every node in its subtree. The second is a min-heap, where each node is smaller than every node in its subtree.
 
-第 3 个不是，第三个中，根结点 1 比 2 和 15 小，而 15 却比 3 大，19 比 5 大，不满足堆的性质。
+The third diagram is not a heap: its root, 1, is smaller than 2 and 15, while 15 is greater than 3 and 19 is greater than 5. It does not satisfy the heap property.
 
-## 堆的用途
+## When to Use a Heap
 
-当我们只关心所有数据中的最大值或者最小值，存在多次获取最大值或者最小值，多次插入或删除数据时，就可以使用堆。
+Use a heap when you need to repeatedly retrieve the minimum or maximum value and insert or remove elements.
 
-有小伙伴可能会想到用有序数组，初始化一个有序数组时间复杂度是 `O(nlog(n))`，查找最大值或者最小值时间复杂度都是 `O(1)`，但是，涉及到更新（插入或删除）数据时，时间复杂度为 `O(n)`，即使是使用复杂度为 `O(log(n))` 的二分法找到要插入或者删除的数据，在移动数据时也需要 `O(n)` 的时间复杂度。
+A sorted array is another option. Sorting it takes `O(n log n)`, and reading the minimum or maximum takes `O(1)`. However, inserting or deleting an element takes `O(n)` because elements must be shifted, even if binary search finds the position in `O(log n)`.
 
-**相对于有序数组而言，堆的主要优势在于插入和删除数据效率较高。** 因为堆是基于完全二叉树实现的，所以在插入和删除数据时，只需要在二叉树中上下移动节点，时间复杂度为 `O(log(n))`，相比有序数组的 `O(n)`，效率更高。
+**Compared with a sorted array, a heap's main advantage is faster insertion and deletion.** Because a binary heap is represented as a complete binary tree, these operations move a node up or down the tree in `O(log n)` time, compared with `O(n)` for a sorted array.
 
-不过，需要注意的是：使用 Floyd 建堆法，从最后一个非叶节点开始依次执行下沉，时间复杂度为 `O(n)`；如果从空堆开始逐个插入 n 个元素，时间复杂度则为 `O(nlogn)`。
+Note that Floyd's bottom-up build-heap algorithm starts sifting down from the last non-leaf node and takes `O(n)` time. Inserting n elements one by one into an empty heap takes `O(n log n)`.
 
-## 堆的分类
+## Types of Heaps
 
-堆分为 **最大堆** 和 **最小堆**。二者的区别在于节点的排序方式。
+The two common types are **max-heaps** and **min-heaps**. They differ in how node values are ordered.
 
-- **最大堆**：堆中的每一个节点的值都大于等于子树中所有节点的值
-- **最小堆**：堆中的每一个节点的值都小于等于子树中所有节点的值
+- **Max-heap:** Every node is greater than or equal to every node in its subtree.
+- **Min-heap:** Every node is less than or equal to every node in its subtree.
 
-如下图所示，图 1 是最大堆，图 2 是最小堆
+In the diagram below, figure 1 is a max-heap and figure 2 is a min-heap.
 
-![最大堆和最小堆示例](../images/shared/heap-2.png)
+![Examples of a max-heap and a min-heap](../images/shared/heap-2.png)
 
-## 堆的存储
+## Heap Representation
 
-之前介绍树的时候说过，由于完全二叉树的优秀性质，利用数组存储二叉树即节省空间，又方便索引（若根结点的序号为 1，那么对于树中任意节点 i，其左子节点序号为 `2*i`，右子节点序号为 `2*i+1`）。
+As discussed in the section on trees, a complete binary tree can be stored compactly in an array. If the root is at index 1, then for any node at index i, its left child is at `2*i` and its right child is at `2*i+1`.
 
-为了方便存储和索引，（二叉）堆可以用完全二叉树的形式进行存储。存储的方式如下图所示：
+A binary heap is commonly stored as a complete binary tree to simplify storage and indexing, as shown below:
 
-![堆的数组顺序存储示意图](../images/shared/heap-storage.png)
+![Array representation of a heap](../images/shared/heap-storage.png)
 
-## 堆的操作
+## Heap Operations
 
-堆的更新操作主要包括两种：**插入元素** 和 **删除堆顶元素**。操作过程需要着重掌握和理解。
+The two main heap update operations are **inserting an element** and **removing the root**. Make sure you understand how both work.
 
-> 在进入正题之前，再重申一遍，堆是一个公平的公司，有能力的人自然会走到与他能力所匹配的位置
+> Remember the company analogy: a capable employee moves to a position that matches their ability.
 
-### 插入元素
+### Inserting an Element
 
-> 插入元素，作为一个新入职的员工，初来乍到，这个员工需要从基层做起
+> When a new employee joins the company, they start at the bottom.
 
-**1. 将要插入的元素放到最后**
+**1. Add the new element at the end.**
 
-![堆插入元素：新元素放到数组末尾](../images/shared/heap-insert-1.png)
+![Heap insertion: add the new element at the end of the array](../images/shared/heap-insert-1.png)
 
-> 有能力的人会逐渐升职加薪，是金子总会发光的！！！
+> A capable person gradually moves up. Good work gets noticed!
 
-**2. 从底向上，如果父结点比该元素小，则该节点和父结点交换，直到无法交换**
+**2. Sift up.** For a max-heap, if the parent is smaller than the new element, swap them. Repeat until no further swap is needed.
 
-![堆插入元素：新元素与父节点比较并上浮](../images/shared/heap-insert-2.png)
+![Heap insertion: compare the new element with its parent and sift it up](../images/shared/heap-insert-2.png)
 
-![堆插入元素：上浮后恢复堆性质](../images/shared/heap-insert-3.png)
+![Heap insertion: the heap property is restored after sifting up](../images/shared/heap-insert-3.png)
 
-### 删除堆顶元素
+### Removing the Root
 
-根据堆的性质可知，最大堆的堆顶元素为所有元素中最大的，最小堆的堆顶元素是所有元素中最小的。当我们需要多次查找最大元素或者最小元素的时候，可以利用堆来实现。
+By the heap property, the root of a max-heap is its largest element, and the root of a min-heap is its smallest. A heap is useful when you need to retrieve the minimum or maximum repeatedly.
 
-删除堆顶元素后，为了保持堆的性质，需要对堆的结构进行调整，我们将这个过程称之为“**堆化**”。常见调整方向有两种：
+After removing the root, adjust the heap to restore its property. This process is called **heapifying**. There are two common directions:
 
-- 自底向上堆化：插入元素时，新元素从末尾向上移动，也叫上浮。
-- 自顶向下堆化：删除堆顶时，末尾元素移到堆顶后向下移动，也叫下沉。
+- **Bottom-up heapify:** During insertion, the new element moves up from the end of the array; this is also called sifting up.
+- **Top-down heapify:** After removing the root, the last element moves down from the root; this is also called sifting down.
 
-#### 一个不完整的空穴上移过程
+#### An Incomplete Hole-Moving Approach
 
-> 在堆这个公司中，会出现老大离职的现象，老大离职之后，他的位置就空出来了
+> Imagine the leader of the company leaving. Their position is now empty.
 
-下面先看一种容易想到但不完整的做法：直接删除堆顶元素，使数组中下标为 1 的位置空出。
+First, consider an intuitive but incomplete approach: remove the root directly, leaving index 1 of the array empty.
 
-![删除堆顶元素：移除根节点](../images/shared/heap-delete-top-1.png)
+![Remove the root from the heap](../images/shared/heap-delete-top-1.png)
 
-> 那么他的位置由谁来接替呢，当然是他的直接下属了，谁能力强就让谁上呗
+> Who takes their place? One of their direct reports, whichever is more capable.
 
-比较根结点的左子节点和右子节点，也就是下标为 2,3 的数组元素，将较大的元素填充到根结点（下标为 1）的位置。
+Compare the root's left and right children, at array indexes 2 and 3, and move the larger one to the root at index 1.
 
-![删除堆顶元素：较大的子节点上移到根节点](../images/shared/heap-delete-top-2.png)
+![Move the larger child to the root](../images/shared/heap-delete-top-2.png)
 
-> 这个时候又空出一个位置了，老规矩，谁有能力谁上
+> This leaves another empty position. As before, move up the stronger child.
 
-一直循环比较空出位置的左右子节点，并将较大者移至空位，直到堆的最底部。
+Continue comparing the children of the empty position and move the larger one up until reaching the bottom of the heap.
 
-![删除堆顶元素：自底向上堆化后留下空位](../images/shared/heap-delete-top-3.png)
+![The incomplete approach leaves a hole after moving children upward](../images/shared/heap-delete-top-3.png)
 
-此时虽然较大的子节点沿路径上移了，但数组内部留下了空位，已经不再满足完全二叉树的结构，因此不能算作一次完整、有效的堆顶删除。标准做法是先用末尾元素填补堆顶，再让它向下调整。
+Although the larger children have moved up, the array now has an empty position and no longer represents a complete binary tree. This is not a complete root removal. The standard approach moves the last element to the root, then sifts it down.
 
-#### 自顶向下堆化
+#### Top-Down Heapify
 
-自顶向下的堆化用一个词形容就是“石沉大海”，那么第一件事情，就是把石头抬起来，从海面扔下去。这个石头就是堆的最后一个元素，我们将最后一个元素移动到堆顶。
+Top-down heapify is like a stone sinking to the bottom. First lift the stone—the last element in the heap—to the surface by moving it to the root.
 
-![删除堆顶元素：将末尾元素移动到堆顶](../images/shared/heap-delete-top-4.png)
+![Move the last element to the root](../images/shared/heap-delete-top-4.png)
 
-然后开始将这个石头沉入海底，不停与左右子节点的值进行比较，和较大的子节点交换位置，直到无法交换位置。
+Now let the element sink: compare it with its children and swap it with the larger child until no further swap is needed.
 
-![删除堆顶元素：堆顶元素向下调整](../images/shared/heap-delete-top-5.png)
+![Sift the root downward](../images/shared/heap-delete-top-5.png)
 
-![删除堆顶元素：自顶向下堆化完成](../images/shared/heap-delete-top-6.png)
+![Top-down heapify is complete](../images/shared/heap-delete-top-6.png)
 
-### 堆的操作总结
+### Summary of Heap Operations
 
-- **插入元素**：先将元素放至数组末尾，再自底向上堆化，将末尾元素上浮
-- **删除堆顶元素**：将堆顶元素与末尾元素交换，缩小堆的大小，再从堆顶开始向下调整，直到恢复堆的性质。
+- **Insert:** Add the element at the end of the array, then sift it up to restore the heap property.
+- **Remove the root:** Swap the root with the last element, reduce the heap size, and sift the new root down until the heap property is restored.
 
-## 堆排序
+## Heap Sort
 
-堆排序的过程分为两步：
+Heap sort has two steps:
 
-- 第一步是建堆，将一个无序的数组建立为一个堆
-- 第二步是排序，将堆顶元素取出，然后对剩下的元素进行堆化，反复迭代，直到所有元素被取出为止。
+- **Build a heap** from the unsorted array.
+- **Sort the elements** by removing the root, heapifying the remaining elements, and repeating until all elements have been removed.
 
-### 建堆
+### Building a Heap
 
-如果你已经足够了解堆化的过程，那么建堆的过程掌握起来就比较容易了。建堆的过程就是一个对所有非叶节点的自顶向下堆化过程。
+Once you understand heapify, building a heap is straightforward: sift down each non-leaf node, working from the bottom upward.
 
-首先要了解哪些是非叶节点，最后一个节点的父结点及它之前的元素，都是非叶节点。也就是说，如果节点个数为 n，那么我们需要对 n/2 到 1 的节点进行自顶向下（沉底）堆化。
+The parent of the last node and every node before it are non-leaf nodes. If there are n nodes, sift down the nodes from `n/2` to 1.
 
-具体过程如下图：
+The process is shown below:
 
-![建堆过程：初始无序数组对应的完全二叉树](../images/shared/heap-build-1.png)
+![Build a heap: complete binary tree for the initial unsorted array](../images/shared/heap-build-1.png)
 
-将初始的无序数组抽象为一棵树，图中的节点个数为 6，所以 4,5,6 节点为叶节点，1,2,3 节点为非叶节点，所以要对 1-3 号节点进行自顶向下（沉底）堆化，注意，顺序是从后往前堆化，从 3 号节点开始，一直到 1 号节点。
+Represent the initial array as a tree. The diagram has 6 nodes: nodes 4, 5, and 6 are leaves, while nodes 1, 2, and 3 are non-leaf nodes. Sift down nodes 1 through 3 in reverse order, starting at node 3 and ending at node 1.
 
-3 号节点堆化结果：
+After sifting down node 3:
 
-![建堆过程：3 号节点完成下沉](../images/shared/heap-build-2.png)
+![Build a heap: node 3 has been sifted down](../images/shared/heap-build-2.png)
 
-2 号节点堆化结果：
+After sifting down node 2:
 
-![建堆过程：2 号节点完成下沉](../images/shared/heap-build-3.png)
+![Build a heap: node 2 has been sifted down](../images/shared/heap-build-3.png)
 
-1 号节点堆化结果：
+After sifting down node 1:
 
-![建堆过程：1 号节点完成下沉并形成最大堆](../images/shared/heap-build-4.png)
+![Build a heap: node 1 has been sifted down to form a max-heap](../images/shared/heap-build-4.png)
 
-至此，数组所对应的树已经成为了一个最大堆，建堆完成！
+The tree represented by the array is now a max-heap, so heap construction is complete.
 
-### 排序
+### Sorting
 
-由于堆顶元素是所有元素中最大的，所以我们重复取出堆顶元素，将这个最大的堆顶元素放至数组末尾，并对剩下的元素进行堆化即可。
+Because the root is the largest element, repeatedly move it to the end of the array and heapify the remaining elements.
 
-现在思考两个问题：
+Consider two questions:
 
-- 删除堆顶元素后需要执行自顶向下（沉底）堆化还是自底向上（上浮）堆化？
-- 取出的堆顶元素存在哪，新建一个数组存？
+- After removing the root, should we sift down or sift up?
+- Where should the removed root go? Do we need a separate array?
 
-先回答第一个问题，我们需要执行自顶向下（沉底）堆化，这个堆化一开始要将末尾元素移动至堆顶，这个时候末尾的位置就空出来了，由于堆中元素已经减小，这个位置不会再被使用，所以我们可以将取出的元素放在末尾。
+First, the heap needs to be sifted down. This operation begins by moving the last element to the root, leaving the last array position free. Since the heap has become smaller, that position is outside the heap, so we can store the removed root there.
 
-机智的小伙伴已经发现了，这其实是做了一次交换操作，将堆顶和末尾元素调换位置，从而将取出堆顶元素和堆化的第一步（将末尾元素放至根结点位置）进行合并。
+This is simply a swap: exchange the root and the last element. It combines removing the root with the first step of heapifying, which moves the last element to the root.
 
-详细过程如下图所示：
+The steps are shown below:
 
-取出第一个元素并堆化：
+Remove the first element and heapify:
 
-![堆排序过程：第 1 轮取出堆顶元素并堆化](../images/shared/heap-sort-1.png)
+![Heap sort: remove the root and heapify in round 1](../images/shared/heap-sort-1.png)
 
-取出第二个元素并堆化：
+Remove the second element and heapify:
 
-![堆排序过程：第 2 轮取出堆顶元素并堆化](../images/shared/heap-sort-2.png)
+![Heap sort: remove the root and heapify in round 2](../images/shared/heap-sort-2.png)
 
-取出第三个元素并堆化：
+Remove the third element and heapify:
 
-![堆排序过程：第 3 轮取出堆顶元素并堆化](../images/shared/heap-sort-3.png)
+![Heap sort: remove the root and heapify in round 3](../images/shared/heap-sort-3.png)
 
-取出第四个元素并堆化：
+Remove the fourth element and heapify:
 
-![堆排序过程：第 4 轮取出堆顶元素并堆化](../images/shared/heap-sort-4.png)
+![Heap sort: remove the root and heapify in round 4](../images/shared/heap-sort-4.png)
 
-取出第五个元素并堆化：
+Remove the fifth element and heapify:
 
-![堆排序过程：第 5 轮取出堆顶元素并堆化](../images/shared/heap-sort-5.png)
+![Heap sort: remove the root and heapify in round 5](../images/shared/heap-sort-5.png)
 
-取出第六个元素并堆化：
+Remove the sixth element and heapify:
 
-![堆排序过程：所有元素完成排序](../images/shared/heap-sort-6.png)
+![Heap sort: all elements are sorted](../images/shared/heap-sort-6.png)
 
-堆排序完成！
+Heap sort is complete.
 
-## 面试复盘重点
+## Interview Review
 
-堆在面试里常和优先队列、Top K、定时任务、延迟队列放在一起问。
+Heaps often come up in interviews alongside priority queues, Top K problems, scheduled tasks, and delay queues.
 
-| 操作     | 时间复杂度 | 说明                           |
-| -------- | ---------- | ------------------------------ |
-| 查看堆顶 | `O(1)`     | 最大堆堆顶最大，最小堆堆顶最小 |
-| 插入元素 | `O(logn)`  | 插入末尾后上浮                 |
-| 删除堆顶 | `O(logn)`  | 末尾元素换到堆顶后下沉         |
-| 建堆     | `O(n)`     | 从最后一个非叶子节点开始下沉   |
-| 堆排序   | `O(nlogn)` | 原地排序，但不稳定             |
+| Operation    | Time complexity | Notes                                                                |
+| ------------ | --------------- | -------------------------------------------------------------------- |
+| Peek at root | `O(1)`          | The root is the maximum in a max-heap and the minimum in a min-heap. |
+| Insert       | `O(log n)`      | Add at the end, then sift up.                                        |
+| Remove root  | `O(log n)`      | Move the last element to the root, then sift down.                   |
+| Build heap   | `O(n)`          | Sift down from the last non-leaf node.                               |
+| Heap sort    | `O(n log n)`    | In-place, but not stable.                                            |
 
-Java 里的 `PriorityQueue` 默认是小顶堆：
+Java's `PriorityQueue` is a min-heap by default:
 
 ```java
 PriorityQueue<Integer> minHeap = new PriorityQueue<>();
 PriorityQueue<Integer> maxHeap = new PriorityQueue<>((a, b) -> Integer.compare(b, a));
 ```
 
-不要写成 `b - a`，极端整数值下可能溢出，导致比较结果错误。
+Avoid writing `b - a`; it can overflow for extreme integer values and produce an incorrect comparison.
 
-Top K 问题常见选择：
+Common approaches to Top K problems:
 
-- 通用场景或数据流中求第 K 大：维护大小为 K 的小顶堆，时间复杂度为 `O(nlogk)`，空间复杂度为 `O(k)`。
-- 一次性数组中求第 K 大，且要求线性时间：使用快速选择，平均时间复杂度为 `O(n)`。
-- 求前 K 高频：先用哈希表计数，再用小顶堆保留 K 个高频元素。
-- 数据流中位数：一个大顶堆维护较小的一半，一个小顶堆维护较大的一半。
+- For the Kth largest element in a general setting or stream, maintain a min-heap of size K. Time is `O(n log k)` and space is `O(k)`.
+- For the Kth largest element in a one-time array when linear time is required, use quickselect, which takes `O(n)` time on average.
+- To find the K most frequent elements, count with a hash table, then use a min-heap to retain the K most frequent.
+- To find the median of a stream, use a max-heap for the lower half and a min-heap for the upper half.
 
-需要注意的是，小顶堆是求第 K 大的通用解法，但不满足所有题目的复杂度要求。例如，[LeetCode 215. 数组中的第 K 个最大元素](https://leetcode.cn/problems/kth-largest-element-in-an-array/) 要求使用 `O(n)` 时间复杂度的算法，通常应采用随机化快速选择，其期望时间复杂度为 `O(n)`；如果严格要求最坏时间复杂度为 `O(n)`，则需要使用 BFPRT 算法。具体的方案对比可以参考 [Top K 问题面试题总结](../algorithms/top-k.md#快排分区思路)。
+Note that a min-heap is a general solution for finding the Kth largest element, but it does not meet every problem's complexity requirement. For example, [LeetCode 215. Kth Largest Element in an Array](https://leetcode.cn/problems/kth-largest-element-in-an-array/) requires an `O(n)` algorithm. Randomized quickselect is the usual choice, with expected `O(n)` time; BFPRT is needed for a strict worst-case `O(n)` guarantee. See [Top K Interview Questions](../algorithms/top-k.md#quick-sort-partition) for a comparison of approaches.
 
-## Java 代码模板
+## Java Templates
 
-第 K 大问题可以用大小为 K 的小顶堆。堆顶始终是当前前 K 大里最小的那个元素，如果新元素比堆顶大，就替换堆顶。这种写法的时间复杂度为 `O(nlogk)`，空间复杂度为 `O(k)`，适合通用 Top K 和数据流场景。
+Use a min-heap of size K to find the Kth largest element. The root is the smallest among the current K largest values. If a new value is larger than the root, replace it. This takes `O(n log k)` time and `O(k)` space, and works for general Top K and streaming problems.
 
 ```java
 int findKthLargest(int[] nums, int k) {
@@ -253,7 +253,7 @@ int findKthLargest(int[] nums, int k) {
 }
 ```
 
-前 K 高频元素通常是“哈希表计数 + 小顶堆”：
+For the K most frequent elements, combine hash table counting with a min-heap:
 
 ```java
 int[] topKFrequent(int[] nums, int k) {
@@ -276,29 +276,29 @@ int[] topKFrequent(int[] nums, int k) {
 }
 ```
 
-## 过程示意和边界样例
+## Walkthrough and Edge Cases
 
-维护大小为 K 的小顶堆时，可以把堆理解成“候选池”：
+Think of a size-K min-heap as a pool of candidates:
 
 ```text
-1. 候选池没满：直接放入。
-2. 候选池已满，新元素 <= 堆顶：进不了前 K，跳过。
-3. 候选池已满，新元素 > 堆顶：弹出堆顶，放入新元素。
-4. 遍历结束后，堆顶就是第 K 大。
+1. If the pool is not full, add the element.
+2. If the pool is full and the new element is less than or equal to the root, skip it; it cannot enter the top K.
+3. If the pool is full and the new element is greater than the root, remove the root and add the new element.
+4. After processing all values, the root is the Kth largest.
 ```
 
-几个边界样例建议先过一遍：
+Check these edge cases:
 
-- `k == 1`：求最大值。
-- `k == nums.length`：求最小值。
-- 数组里有重复元素：第 K 大通常按排序位置算，不是第 K 个不同元素。
-- 比较器不要写 `b - a`，极端值可能溢出。
+- `k == 1`: Find the maximum.
+- `k == nums.length`: Find the minimum.
+- If the array contains duplicates, the Kth largest is based on sorted position, not the Kth distinct value.
+- Do not write a comparator as `b - a`; it can overflow for extreme values.
 
-## 推荐练习题
+## Practice Problems
 
-- [215. 数组中的第 K 个最大元素](https://leetcode.cn/problems/kth-largest-element-in-an-array/)（题目要求 `O(n)` 时间复杂度，优先练习快速选择）
-- [347. 前 K 个高频元素](https://leetcode.cn/problems/top-k-frequent-elements/)
-- [703. 数据流中的第 K 大元素](https://leetcode.cn/problems/kth-largest-element-in-a-stream/)
-- [295. 数据流的中位数](https://leetcode.cn/problems/find-median-from-data-stream/)
+- [215. Kth Largest Element in an Array](https://leetcode.cn/problems/kth-largest-element-in-an-array/) (the problem requires `O(n)` time; practice quickselect first)
+- [347. Top K Frequent Elements](https://leetcode.cn/problems/top-k-frequent-elements/)
+- [703. Kth Largest Element in a Stream](https://leetcode.cn/problems/kth-largest-element-in-a-stream/)
+- [295. Find Median from Data Stream](https://leetcode.cn/problems/find-median-from-data-stream/)
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,146 +1,146 @@
 ---
-title: 数据结构知识体系：数组、链表、哈希表、树、图、堆与面试
-description: 数据结构面试复习路线，涵盖数组、链表、栈、队列、哈希表、树、图、堆、Trie、并查集、跳表、红黑树、布隆过滤器、LRU、复杂度分析和 Java 后端工程场景。
-category: 计算机基础
+title: "Data Structures: Arrays, Linked Lists, Hash Tables, Trees, Graphs, Heaps, and Interview Prep"
+description: A data structures interview review covering arrays, linked lists, stacks, queues, hash tables, trees, graphs, heaps, tries, union-find, skip lists, red-black trees, Bloom filters, LRU caches, complexity analysis, and Java backend use cases.
+category: Computer Science Basics
 tag:
-  - 数据结构
-  - 算法
-  - 面试
+  - Data Structures
+  - Algorithms
+  - Interview Preparation
 sitemap:
   changefreq: weekly
   priority: 0.9
 head:
   - - meta
     - name: keywords
-      content: 数据结构,数据结构面试题,数据结构复习路线,数组,链表,栈,队列,哈希表,HashMap,树,图,堆,Trie,并查集,跳表,红黑树,布隆过滤器,LRU,Java集合,Redis,MySQL索引,后端面试
+      content: data structures,data structure interview questions,review roadmap,arrays,linked lists,stacks,queues,hash tables,HashMap,trees,graphs,heaps,tries,union-find,skip lists,red-black trees,Bloom filters,LRU,Java collections,Redis,MySQL indexes,backend interviews
 ---
 
-这份 **数据结构知识体系** 按面试和 Java 后端场景组织内容：先理解数据怎么存，再看常见操作复杂度，最后把结构和 Java 集合、MySQL 索引、Redis、缓存、消息队列这些工程问题连起来。
+This **data structures guide** is organized around interviews and Java backend work. Start with how data is stored, review the complexity of common operations, then connect each structure to practical topics such as Java collections, MySQL indexes, Redis, caches, and message queues.
 
-面试里问数据结构，很少只停在“数组是什么”。更常见的是追问：数组和链表为什么一个查询快、一个插入删除方便？`HashMap` 为什么需要扩容？B+ 树为什么适合索引？布隆过滤器为什么会误判？这些问题背后都在考同一件事：你是否理解结构选择带来的复杂度和场景取舍。
+Data structure interviews rarely stop at “What is an array?” Common follow-up questions include: Why are arrays fast to query while linked lists can be easier to insert into and delete from? Why does `HashMap` resize? Why are B+ trees useful for indexes? Why can a Bloom filter produce false positives? These questions test whether you understand the complexity and tradeoffs behind choosing a structure.
 
-准备数据结构时，不建议只背定义。更有效的方式是把每个结构拆成 4 个问题：怎么存、怎么查、怎么改、适合什么场景。能把这 4 个问题讲清楚，再去刷对应的算法题，效率会高很多。
+Do not just memorize definitions. For each structure, ask four questions: How is data stored? How is it queried? How is it updated? What is it suited for? Once you can answer those, practice related algorithm problems.
 
-## 适合谁看
+## Who Should Read This?
 
-- 正在补数据结构基础，准备校招或社招后端面试的同学。
-- 刷算法题时经常卡在数组、链表、树、图、堆等结构上的读者。
-- 想把数据结构和 Java 集合、Redis、MySQL、缓存系统联系起来的工程师。
-- 已经看过概念，但回答面试题时容易停在定义层面的开发者。
+- Developers reviewing data structure fundamentals for entry-level or experienced backend interviews.
+- Readers who struggle with arrays, linked lists, trees, graphs, heaps, or other structures while solving algorithm problems.
+- Engineers who want to connect data structures to Java collections, Redis, MySQL, and caching systems.
+- Developers who know the definitions but want to give more complete interview answers.
 
-## 数据结构面试考什么
+## What Do Data Structure Interviews Cover?
 
-| 考察点     | 常见问法                                                   | 复习重点                     |
-| ---------- | ---------------------------------------------------------- | ---------------------------- |
-| 存储方式   | 顺序存储和链式存储有什么区别？                             | 内存连续性、指针、缓存友好性 |
-| 操作复杂度 | 为什么数组查询是 O(1)，链表查询是 O(n)？                   | 查询、插入、删除、遍历复杂度 |
-| 结构对比   | 红黑树和 AVL 树怎么选？B 树和 B+ 树有什么区别？            | 对比表 + 适用场景            |
-| 工程关联   | HashMap、TreeMap、PriorityQueue、Redis ZSet 用了什么结构？ | Java/数据库/缓存中的真实应用 |
-| 算法承接   | 树遍历、图搜索、Top K、LRU 怎么写？                        | 和算法模板一起复习           |
+| Topic       | Common question                                                                         | Review focus                                             |
+| ----------- | --------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Storage     | How do sequential and linked storage differ?                                            | Contiguous memory, pointers, and cache locality          |
+| Complexity  | Why is array lookup `O(1)` while linked-list lookup is `O(n)`?                          | Complexity of lookup, insertion, deletion, and traversal |
+| Comparisons | When would you choose a red-black tree or AVL tree? How do B-trees and B+ trees differ? | Compare properties and use cases                         |
+| Engineering | Which structures do `HashMap`, `TreeMap`, `PriorityQueue`, and Redis ZSet use?          | Real uses in Java, databases, and caches                 |
+| Algorithms  | How do you implement tree traversal, graph search, Top K, or LRU?                       | Review alongside algorithm patterns                      |
 
-## 面试回答框架
+## A Framework for Interview Answers
 
-数据结构题的回答不要只停在“是什么”。面试里更稳的表达方式是按下面这条线展开：
+Do not stop at defining a data structure. A clear answer can follow this sequence:
 
 ```text
-定义 -> 存储方式 -> 常见操作复杂度 -> 优缺点 -> 适用场景 -> Java/Redis/MySQL 中的应用
+Definition -> storage method -> common operation complexity -> tradeoffs -> use cases -> applications in Java, Redis, and MySQL
 ```
 
-以哈希表为例，一个完整回答可以这样组织：
+For example, a complete answer about hash tables might cover:
 
-1. 哈希表通过哈希函数把 key 映射到数组下标。
-2. 查询、插入、删除平均是 `O(1)`，但冲突严重时会退化。
-3. 冲突可以用拉链法、开放寻址法等方式处理。
-4. Java `HashMap` 使用数组 + 链表 + 红黑树，扩容用于控制负载因子。
-5. 它适合快速查找、计数、去重、缓存索引等场景，但会消耗额外空间。
+1. A hash table uses a hash function to map a key to an array index.
+2. Lookup, insertion, and deletion are `O(1)` on average, but performance can degrade when collisions are frequent.
+3. Collisions can be handled with techniques such as chaining or open addressing.
+4. Java `HashMap` uses an array, linked lists, and red-black trees. It resizes to control the load factor.
+5. Hash tables are useful for fast lookup, counting, deduplication, and cache indexes, but use additional memory.
 
-这种回答比“哈希表查询是 O(1)”更耐追问，因为它同时交代了原理、复杂度和工程落点。
+This answer is more robust than simply saying “hash table lookup is `O(1)`” because it explains the mechanism, complexity, and practical use.
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [线性数据结构详解](./linear-data-structure.md)：先掌握数组、链表、栈、队列，理解顺序存储和链式存储。
-2. [哈希表面试题总结](./hash-table.md)：理解哈希函数、冲突、扩容，并和 `HashMap` 连起来。
-3. [树结构详解](./tree.md)：掌握二叉树、二叉搜索树、AVL、B 树、B+ 树，以及 MySQL 索引关联。
-4. [堆详解](./heap.md)：理解优先队列、Top K、堆排序和 `PriorityQueue`。
-5. [图详解](./graph.md)：理解图的存储、DFS、BFS、拓扑排序和最短路径入口。
-6. [Trie 前缀树面试题总结](./trie.md)、[并查集面试题总结](./union-find.md)：补齐字符串集合和连通性问题。
-7. [跳表面试题总结](./skip-list.md)、[红黑树详解](./red-black-tree.md)、[布隆过滤器详解](./bloom-filter.md)、[LRU 缓存面试题总结](./lru-cache.md)：面向 Java 集合、Redis、缓存和数据库场景复盘。
+1. [Linear Data Structures](./linear-data-structure.md): Start with arrays, linked lists, stacks, and queues; compare sequential and linked storage.
+2. [Hash Table Interview Questions](./hash-table.md): Learn about hash functions, collisions, resizing, and `HashMap`.
+3. [Trees](./tree.md): Review binary trees, binary search trees, AVL trees, B-trees, B+ trees, and MySQL indexes.
+4. [Heaps](./heap.md): Study priority queues, Top K, heap sort, and `PriorityQueue`.
+5. [Graphs](./graph.md): Learn graph representations, DFS, BFS, topological sorting, and shortest paths.
+6. [Tries](./trie.md) and [Union-Find](./union-find.md): Cover string collections and connectivity problems.
+7. [Skip Lists](./skip-list.md), [Red-Black Trees](./red-black-tree.md), [Bloom Filters](./bloom-filter.md), and [LRU Caches](./lru-cache.md): Review structures used in Java collections, Redis, caches, and databases.
 
-## 核心文章
+## Core Articles
 
-| 文章                                           | 重点                          | 常见关联                            |
-| ---------------------------------------------- | ----------------------------- | ----------------------------------- |
-| [线性数据结构详解](./linear-data-structure.md) | 数组、链表、栈、队列          | `ArrayList`、`LinkedList`、消息队列 |
-| [哈希表面试题总结](./hash-table.md)            | 哈希函数、冲突、扩容          | `HashMap`、缓存、去重               |
-| [树结构详解](./tree.md)                        | 二叉树、BST、AVL、B 树、B+ 树 | MySQL 索引、表达式树                |
-| [图详解](./graph.md)                           | 邻接表、邻接矩阵、DFS、BFS    | 依赖关系、路由、推荐关系            |
-| [堆详解](./heap.md)                            | 最大堆、最小堆、堆排序        | `PriorityQueue`、Top K、延迟队列    |
-| [红黑树详解](./red-black-tree.md)              | 近似平衡、旋转、变色          | `TreeMap`、`HashMap` 树化           |
-| [布隆过滤器详解](./bloom-filter.md)            | 位数组、哈希、误判            | 缓存穿透、去重、黑名单              |
-| [跳表面试题总结](./skip-list.md)               | 多级索引、范围查询            | Redis ZSet                          |
-| [LRU 缓存面试题总结](./lru-cache.md)           | 哈希表 + 双向链表             | 本地缓存、页面置换                  |
+| Article                                              | Focus                                      | Related topics                               |
+| ---------------------------------------------------- | ------------------------------------------ | -------------------------------------------- |
+| [Linear Data Structures](./linear-data-structure.md) | Arrays, linked lists, stacks, queues       | `ArrayList`, `LinkedList`, message queues    |
+| [Hash Table Interview Questions](./hash-table.md)    | Hash functions, collisions, resizing       | `HashMap`, caching, deduplication            |
+| [Trees](./tree.md)                                   | Binary trees, BSTs, AVL, B-trees, B+ trees | MySQL indexes, expression trees              |
+| [Graphs](./graph.md)                                 | Adjacency lists and matrices, DFS, BFS     | Dependencies, routing, recommendations       |
+| [Heaps](./heap.md)                                   | Max-heaps, min-heaps, heap sort            | `PriorityQueue`, Top K, delay queues         |
+| [Red-Black Trees](./red-black-tree.md)               | Balance, rotations, recoloring             | `TreeMap`, tree bins in `HashMap`            |
+| [Bloom Filters](./bloom-filter.md)                   | Bit arrays, hashing, false positives       | Cache penetration, deduplication, blocklists |
+| [Skip Lists](./skip-list.md)                         | Multi-level indexes, range queries         | Redis ZSet                                   |
+| [LRU Cache Interview Questions](./lru-cache.md)      | Hash table and doubly linked list          | Local caches, page replacement               |
 
-## 结构选型速查
+## Quick Guide to Choosing a Structure
 
-很多数据结构问题，实际是在问“这个场景为什么选它，而不是另一个结构”。下面这张表适合面试前快速复盘：
+Many data structure questions are really asking why one structure fits a scenario better than another. Use this table for a quick review before an interview:
 
-| 场景                      | 优先考虑            | 取舍点                                             |
-| ------------------------- | ------------------- | -------------------------------------------------- |
-| 按下标频繁随机访问        | 数组、`ArrayList`   | 查询快，插入删除中间元素成本高                     |
-| 频繁在两端插入删除        | 双端队列、链表      | 指针操作灵活，但随机访问慢                         |
-| 快速判断元素是否存在      | 哈希表、布隆过滤器  | 哈希表准确但占空间，布隆过滤器省空间但可能误判     |
-| 维护有序集合和范围查询    | 红黑树、跳表、B+ 树 | 红黑树适合内存有序集合，跳表适合范围查询和工程实现 |
-| 处理最大值、最小值、Top K | 堆、优先队列        | 只关心局部最值，不适合全量有序遍历                 |
-| 判断连通性和分组          | 并查集              | 合并和查询很快，但不适合频繁删除关系               |
-| 前缀匹配、搜索提示        | Trie                | 查询与字符串长度相关，但节点数量可能较多           |
-| 缓存淘汰                  | LRU、LFU            | LRU 看最近访问，LFU 看访问频率                     |
+| Scenario                                   | Consider                           | Tradeoff                                                                                         |
+| ------------------------------------------ | ---------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Frequent random access by index            | Array, `ArrayList`                 | Fast lookup; inserting or deleting in the middle is costly                                       |
+| Frequent insertion or removal at both ends | Deque, linked list                 | Flexible pointer updates; slow random access                                                     |
+| Fast membership checks                     | Hash table, Bloom filter           | Hash tables are exact but use more memory; Bloom filters save space but can have false positives |
+| Ordered collections and range queries      | Red-black tree, skip list, B+ tree | Red-black trees suit in-memory ordering; skip lists are practical for range queries              |
+| Maximum, minimum, or Top K                 | Heap, priority queue               | Efficient for selected extrema, not for fully ordered traversal                                  |
+| Connectivity and grouping                  | Union-Find                         | Fast union and lookup; not suited to frequent edge deletion                                      |
+| Prefix matching and autocomplete           | Trie                               | Lookup depends on string length, but the structure may use many nodes                            |
+| Cache eviction                             | LRU, LFU                           | LRU tracks recency; LFU tracks frequency                                                         |
 
-复习时可以反过来问自己：如果不用这个结构，会慢在哪里？会多占多少空间？边界条件是什么？这几个问题想清楚，面试追问通常就能接住。
+As you review, ask: What would become slower without this structure? How much extra space does it use? What are its edge cases? Answering these questions helps with interview follow-ups.
 
-## 7 天复习路线
+## 7-Day Review Plan
 
-| 天数    | 重点                     | 建议动作                                      |
-| ------- | ------------------------ | --------------------------------------------- |
-| 第 1 天 | 数组、链表               | 写复杂度表，手写反转链表和删除节点            |
-| 第 2 天 | 栈、队列、哈希表         | 写括号匹配、用栈实现队列、两数之和            |
-| 第 3 天 | 树                       | 写二叉树遍历、最近公共祖先，复盘 B+ 树        |
-| 第 4 天 | 堆                       | 写 Top K、前 K 高频元素，理解 `PriorityQueue` |
-| 第 5 天 | 图                       | 写 DFS/BFS、岛屿数量、课程表                  |
-| 第 6 天 | 红黑树、跳表、布隆过滤器 | 重点准备工程场景追问                          |
-| 第 7 天 | LRU 和综合复盘           | 手写 LRU，整理所有结构的复杂度和应用场景      |
+| Day | Focus                                          | Suggested practice                                                        |
+| --- | ---------------------------------------------- | ------------------------------------------------------------------------- |
+| 1   | Arrays and linked lists                        | Make a complexity table; implement list reversal and node deletion        |
+| 2   | Stacks, queues, and hash tables                | Solve valid parentheses, implement a queue with stacks, and solve Two Sum |
+| 3   | Trees                                          | Implement traversals and lowest common ancestor; review B+ trees          |
+| 4   | Heaps                                          | Solve Top K and K most frequent elements; study `PriorityQueue`           |
+| 5   | Graphs                                         | Implement DFS/BFS; solve Number of Islands and Course Schedule            |
+| 6   | Red-black trees, skip lists, and Bloom filters | Focus on engineering use cases                                            |
+| 7   | LRU and review                                 | Implement LRU; summarize complexity and use cases for each structure      |
 
-## 30 天复习路线
+## 30-Day Review Plan
 
-| 阶段     | 时间           | 目标                                               |
-| -------- | -------------- | -------------------------------------------------- |
-| 第一阶段 | 第 1 到 6 天   | 线性结构和哈希表，能说清复杂度和 Java 集合关联     |
-| 第二阶段 | 第 7 到 13 天  | 树、堆、图，配合 DFS/BFS 和 Top K 刷题             |
-| 第三阶段 | 第 14 到 20 天 | Trie、并查集、跳表、红黑树，补齐进阶结构           |
-| 第四阶段 | 第 21 到 25 天 | 布隆过滤器、LRU、工程场景题，连接 Redis/MySQL/缓存 |
-| 第五阶段 | 第 26 到 30 天 | 做错题复盘和面试口述练习，每个结构准备 2 个追问    |
+| Phase | Schedule   | Goal                                                                                                 |
+| ----- | ---------- | ---------------------------------------------------------------------------------------------------- |
+| 1     | Days 1–6   | Review linear structures and hash tables; explain complexity and Java collection use cases           |
+| 2     | Days 7–13  | Study trees, heaps, and graphs; practice DFS/BFS and Top K problems                                  |
+| 3     | Days 14–20 | Cover tries, union-find, skip lists, and red-black trees                                             |
+| 4     | Days 21–25 | Review Bloom filters, LRU, and engineering scenarios involving Redis, MySQL, and caches              |
+| 5     | Days 26–30 | Review mistakes and practice verbal explanations; prepare two follow-up questions for each structure |
 
-## 高频问题自测
+## Self-Test: Common Interview Questions
 
-- 数组和链表的内存布局有什么区别？为什么数组随机访问快？
-- `ArrayList` 和 `LinkedList` 在 Java 里怎么选？
-- 栈和队列分别适合哪些场景？单调栈、单调队列解决什么问题？
-- 哈希冲突有哪些解决方式？`HashMap` 为什么要扩容？
-- 二叉搜索树、AVL 树、红黑树有什么区别？
-- B 树和 B+ 树为什么适合数据库索引？
-- 堆和普通二叉树有什么区别？Top K 为什么常用堆？
-- 图的邻接表和邻接矩阵怎么选？DFS 和 BFS 复杂度是多少？
-- 跳表为什么适合范围查询？Redis 为什么使用跳表？
-- 布隆过滤器为什么会误判？为什么删除困难？
-- LRU 为什么常用哈希表加双向链表实现？
+- How do arrays and linked lists differ in memory layout? Why are arrays fast for random access?
+- When should you choose `ArrayList` or `LinkedList` in Java?
+- What are stacks and queues suited for? What problems do monotonic stacks and queues solve?
+- How can hash collisions be handled? Why does `HashMap` resize?
+- How do binary search trees, AVL trees, and red-black trees differ?
+- Why are B-trees and B+ trees used for database indexes?
+- How does a heap differ from a regular binary tree? Why are heaps common for Top K problems?
+- When should you use an adjacency list or matrix? What are the complexities of DFS and BFS?
+- Why are skip lists useful for range queries? Why does Redis use one?
+- Why can Bloom filters produce false positives? Why is deletion difficult?
+- Why is LRU commonly implemented with a hash table and doubly linked list?
 
-## 相关专题
+## Related Topics
 
-- [计算机基础知识体系](../)
-- [算法专题](../algorithms/)
-- [常见数据结构经典 LeetCode 题目推荐](../algorithms/common-data-structures-leetcode-recommendations.md)
-- [Java 集合](../../java/collection/java-collection-questions-01.md)
-- [MySQL 索引详解](../../database/mysql/mysql-index.md)
-- [Redis 常见面试题总结](../../database/redis/redis-questions-01.md)
-- [面试准备](../../interview-preparation/)
+- [Computer Science Basics](../)
+- [Algorithms](../algorithms/)
+- [Recommended LeetCode Problems for Common Data Structures](../algorithms/common-data-structures-leetcode-recommendations.md)
+- [Java Collections](../../java/collection/java-collection-questions-01.md)
+- [MySQL Indexes](../../database/mysql/mysql-index.md)
+- [Redis Interview Questions](../../database/redis/redis-questions-01.md)
+- [Interview Preparation](../../interview-preparation/)
 
 <!-- @include: @article-footer.snippet.md -->

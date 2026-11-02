@@ -1,150 +1,150 @@
 ---
-title: MySQL三大日志(binlog、redo log和undo log)详解
-description: 深入解析MySQL三大日志binlog、redo log和undo log的作用与原理，详解两阶段提交保证数据一致性的机制，以及日志在崩溃恢复和主从复制中的应用。
-category: 数据库
+title: "MySQL's Three Main Logs: Binlog, Redo Log, and Undo Log"
+description: Learn how MySQL's binlog, redo log, and undo log work, how two-phase commit keeps them consistent, and how they support crash recovery and replication.
+category: Database
 tag:
   - MySQL
 head:
   - - meta
     - name: keywords
-      content: MySQL日志,binlog,redo log,undo log,两阶段提交,崩溃恢复,主从复制,WAL,事务日志
+      content: MySQL logs, binlog, redo log, undo log, two-phase commit, crash recovery, replication, WAL, transaction log
 ---
 
-> 本文来自公号程序猿阿星投稿，JavaGuide 对其做了补充完善。
+> Contributed by Programmer A Xing. JavaGuide has added clarifications and further details.
 
-## 前言
+## Introduction
 
-MySQL 日志 主要包括错误日志、查询日志、慢查询日志、事务日志、二进制日志几大类。其中，比较重要的还要属二进制日志 binlog（归档日志）和事务日志 redo log（重做日志）和 undo log（回滚日志）。
+MySQL logs include error logs, general query logs, slow query logs, transaction logs, and binary logs. The key logs are the binary log (`binlog`) and InnoDB's transaction logs: the redo log and undo log.
 
 ![](../images/shared/01.png)
 
-今天就来聊聊 redo log（重做日志）、binlog（归档日志）、两阶段提交、undo log（回滚日志）。
+This article covers the redo log, binlog, two-phase commit, and undo log.
 
-## redo log
+## Redo log
 
-redo log（重做日志）是 InnoDB 存储引擎独有的，它让 MySQL 拥有了崩溃恢复能力。
+The redo log is specific to InnoDB and enables crash recovery.
 
-比如 MySQL 实例挂了或宕机了，重启时，InnoDB 存储引擎会使用 redo log 恢复数据，保证数据的持久性与完整性。
+If a MySQL instance crashes, InnoDB uses the redo log during restart to recover data and preserve durability and integrity.
 
 ![](../images/shared/02.png)
 
-MySQL 中数据是以页为单位，你查询一条记录，会从硬盘把一页的数据加载出来，加载出来的数据叫数据页，会放入到 `Buffer Pool` 中。
+MySQL stores data in pages. Reading a row loads its page from disk into the `Buffer Pool`.
 
-后续的查询都是先从 `Buffer Pool` 中找，没有命中再去硬盘加载，减少硬盘 IO 开销，提升性能。
+Subsequent reads check the `Buffer Pool` first and load from disk only on a cache miss, reducing disk I/O.
 
-更新表数据的时候，也是如此，发现 `Buffer Pool` 里存在要更新的数据，就直接在 `Buffer Pool` 里更新。
+Updates work similarly: if the page is in the `Buffer Pool`, InnoDB updates it there.
 
-然后会把“在某个数据页上做了什么修改”记录到重做日志缓存（`redo log buffer`）里，接着刷盘到 redo log 文件里。
+InnoDB records the change to the page in the redo log buffer (`redo log buffer`), then flushes it to the redo log file.
 
 ![](../images/shared/03.png)
 
-> 图片笔误提示：第 4 步 “清空 redo log buffe 刷盘到 redo 日志中”这句话中的 buffe 应该是 buffer。
+> Figure correction: In step 4, “flush the redo log buffe to the redo log” should read “buffer.”
 
-理想情况，事务一提交就会进行刷盘操作，但实际上，刷盘的时机是根据策略来进行的。
+Ideally, the log would be flushed when a transaction commits, but the actual timing depends on the configured policy.
 
-> 小贴士：每条 redo 记录由“表空间号+数据页号+偏移量+修改数据长度+具体修改的数据”组成
+> Tip: Each redo record contains the tablespace ID, page number, offset, length of the change, and changed data.
 
-### 刷盘时机
+### When the redo log is flushed
 
-在 InnoDB 存储引擎中，**redo log buffer**（重做日志缓冲区）是一块用于暂存 redo log 的内存区域。为了确保事务的持久性和数据的一致性，InnoDB 会在特定时机将这块缓冲区中的日志数据刷新到磁盘上的 redo log 文件中。这些时机可以归纳为以下六种：
+The **redo log buffer** is an in-memory area for staging redo log records. InnoDB flushes its contents to disk at specific times to preserve durability and consistency:
 
-1. **事务提交时（最核心）**：当事务提交时，log buffer 里的 redo log 会被刷新到磁盘（可以通过`innodb_flush_log_at_trx_commit`参数控制，后文会提到）。
-2. **redo log buffer 空间不足时**：这是 InnoDB 的一种主动容量管理策略，旨在避免因缓冲区写满而导致用户线程阻塞。
-   - 当 redo log buffer 的已用空间超过其总容量的**一半 (50%)** 时，后台线程会**主动**将这部分日志刷新到磁盘，为后续的日志写入腾出空间，这是一种“未雨绸缪”的优化。
-   - 如果因为大事务或 I/O 繁忙导致 buffer 被**完全写满**，那么所有试图写入新日志的用户线程都会被**阻塞**，并强制进行一次同步刷盘，直到有可用空间为止。这种情况会影响数据库性能，应尽量避免。
-3. **触发检查点 (Checkpoint) 时**：Checkpoint 是 InnoDB 为了缩短崩溃恢复时间而设计的核心机制。当 Checkpoint 被触发时，InnoDB 需要将在此检查点之前的所有脏页刷写到磁盘。根据 **Write-Ahead Logging (WAL)** 原则，数据页写入磁盘前，其对应的 redo log 必须先落盘。因此，执行 Checkpoint 操作必然会确保相关的 redo log 也已经被刷新到了磁盘。
-4. **后台线程周期性刷新**：InnoDB 有一个后台的 master thread，它会大约每秒执行一次例行任务，其中就包括将 redo log buffer 中的日志刷新到磁盘。这个机制是 `innodb_flush_log_at_trx_commit` 设置为 0 或 2 时的主要持久化保障。
-5. **正常关闭服务器**：在 MySQL 服务器正常关闭的过程中，为了确保所有已提交事务的数据都被完整保存，InnoDB 会执行一次最终的刷盘操作，将 redo log buffer 中剩余的全部日志都清空并写入磁盘文件。
-6. **binlog 切换时**：当开启 binlog 后，在 MySQL 采用 `innodb_flush_log_at_trx_commit=1` 和 `sync_binlog=1` 的 双一配置下，为了保证 redo log 和 binlog 之间状态的一致性（用于崩溃恢复或主从复制），在 binlog 文件写满或者手动执行 flush logs 进行切换时，会触发 redo log 的刷盘动作。
+1. **At transaction commit**: The log buffer is flushed when a transaction commits. This behavior is controlled by `innodb_flush_log_at_trx_commit`.
+2. **When the redo log buffer is low on space**: InnoDB flushes logs proactively to avoid blocking user threads.
+   - When more than **50%** of the buffer is used, a background thread can flush records to free space.
+   - If a large transaction or heavy I/O fills the buffer, threads writing new logs block until a synchronous flush frees space. Avoid this condition where possible.
+3. **At a checkpoint**: Checkpoints shorten crash recovery by flushing dirty pages created before the checkpoint. Under **Write-Ahead Logging (WAL)**, the corresponding redo log must reach disk before its data page, so checkpoint processing also ensures the related redo log is flushed.
+4. **Periodic background flush**: InnoDB's master thread performs routine work about once per second, including flushing the redo log buffer. This is the main durability mechanism when `innodb_flush_log_at_trx_commit` is 0 or 2.
+5. **During a clean shutdown**: InnoDB flushes the remaining redo log buffer to disk.
+6. **When rotating binlog files**: With binlogging enabled and both `innodb_flush_log_at_trx_commit=1` and `sync_binlog=1`, filling a binlog file or running `FLUSH LOGS` can trigger a redo log flush to keep redo log and binlog state consistent for recovery and replication.
 
-总之，InnoDB 在多种情况下会刷新重做日志，以保证数据的持久性和一致性。
+InnoDB flushes redo logs at several points to preserve durability and consistency.
 
-我们要注意设置正确的刷盘策略`innodb_flush_log_at_trx_commit` 。根据 MySQL 配置的刷盘策略的不同，MySQL 宕机之后可能会存在轻微的数据丢失问题。
+Configure `innodb_flush_log_at_trx_commit` carefully. Depending on the setting, a crash may lose recent transactions.
 
-`innodb_flush_log_at_trx_commit` 的值有 3 种，也就是共有 3 种刷盘策略：
+`innodb_flush_log_at_trx_commit` has three settings:
 
-- **0**：设置为 0 的时候，表示每次事务提交时不进行刷盘操作。这种方式性能最高，但是也最不安全，因为如果 MySQL 挂了或宕机了，可能会丢失最近 1 秒内的事务。
-- **1**：设置为 1 的时候，表示每次事务提交时都将进行刷盘操作。这种方式性能最低，但是也最安全，因为只要事务提交成功，redo log 记录就一定在磁盘里，不会有任何数据丢失。
-- **2**：设置为 2 的时候，表示每次事务提交时都只把 log buffer 里的 redo log 内容写入 page cache（文件系统缓存）。page cache 是专门用来缓存文件的，这里被缓存的文件就是 redo log 文件。这种方式的性能和安全性都介于前两者中间。
+- **0**: No flush is performed at commit. This offers the highest performance but is least safe; a crash may lose about one second of transactions.
+- **1**: Flush at each commit. This offers the strongest durability; a committed transaction's redo log is on disk.
+- **2**: At commit, write the redo log from the buffer to the filesystem page cache. Performance and durability fall between settings 0 and 1.
 
-刷盘策略`innodb_flush_log_at_trx_commit` 的默认值为 1，设置为 1 的时候才不会丢失任何数据。为了保证事务的持久性，我们必须将其设置为 1。
+The default is 1. Use this setting for the strongest transaction durability.
 
-另外，InnoDB 存储引擎有一个后台线程，每隔`1` 秒，就会把 `redo log buffer` 中的内容写到文件系统缓存（`page cache`），然后调用 `fsync` 刷盘。
+InnoDB also has a background thread that writes the `redo log buffer` to the filesystem page cache and calls `fsync` about once per second.
 
 ![](../images/shared/04.png)
 
-也就是说，一个没有提交事务的 redo log 记录，也可能会刷盘。
+This means redo log records for uncommitted transactions may also be flushed.
 
-**为什么呢？**
+**Why?**
 
-因为在事务执行过程 redo log 记录是会写入`redo log buffer` 中，这些 redo log 记录会被后台线程刷盘。
+Redo log records are written to the `redo log buffer` during transaction execution, and the background thread may flush them.
 
 ![](../images/shared/05.png)
 
-除了后台线程每秒`1`次的轮询操作，还有一种情况，当 `redo log buffer` 占用的空间即将达到 `innodb_log_buffer_size` 一半的时候，后台线程会主动刷盘。
+Besides its periodic flush, the background thread may flush when the `redo log buffer` is about to reach half of `innodb_log_buffer_size`.
 
-下面是不同刷盘策略的流程图。
+The following diagrams show the flush behavior for each setting.
 
 #### innodb_flush_log_at_trx_commit=0
 
 ![](../images/shared/06.png)
 
-为`0`时，如果 MySQL 挂了或宕机可能会有`1`秒数据的丢失。
+With value `0`, a crash may lose about one second of data.
 
 #### innodb_flush_log_at_trx_commit=1
 
 ![](../images/shared/07.png)
 
-为`1`时， 只要事务提交成功，redo log 记录就一定在硬盘里，不会有任何数据丢失。
+With value `1`, a committed transaction's redo log is on disk.
 
-如果事务执行期间 MySQL 挂了或宕机，这部分日志丢了，但是事务并没有提交，所以日志丢了也不会有损失。
+If MySQL crashes during a transaction, its uncommitted logs may be lost, but the transaction was not committed.
 
 #### innodb_flush_log_at_trx_commit=2
 
 ![](../images/shared/09.png)
 
-为`2`时， 只要事务提交成功，`redo log buffer`中的内容只写入文件系统缓存（`page cache`）。
+With value `2`, a committed transaction's redo log is written to the filesystem page cache.
 
-如果仅仅只是 MySQL 挂了不会有任何数据丢失，但是宕机可能会有`1`秒数据的丢失。
+If only MySQL crashes, data is not lost; a machine failure may lose about one second of data.
 
-### 日志文件组
+### Redo Log File Groups
 
-硬盘上存储的 redo log 日志文件不只一个，而是以一个**日志文件组**的形式出现的，每个的`redo`日志文件大小都是一样的。
+Redo logs are stored in a **log file group** containing multiple files of the same size.
 
-比如可以配置为一组`4`个文件，每个文件的大小是 `1GB`，整个 redo log 日志文件组可以记录`4G`的内容。
+For example, a group of four 1 GB files can store 4 GB of redo logs.
 
-它采用的是环形数组形式，从头开始写，写到末尾又回到头循环写，如下图所示。
+The group works like a circular buffer: writing starts at the beginning and loops back when it reaches the end.
 
 ![](../images/shared/10.png)
 
-在这个**日志文件组**中还有两个重要的属性，分别是 `write pos、checkpoint`
+The **log file group** has two important positions: `write pos` and `checkpoint`.
 
-- **write pos** 是当前记录的位置，一边写一边后移
-- **checkpoint** 是当前要擦除的位置，也是往后推移
+- **`write pos`** is the current write position; it moves forward as records are written.
+- **`checkpoint`** is the position that can be cleared; it also moves forward.
 
-每次刷盘 redo log 记录到**日志文件组**中，`write pos` 位置就会后移更新。
+Each time redo log records are flushed to the **log file group**, `write pos` advances.
 
-每次 MySQL 加载**日志文件组**恢复数据时，会清空加载过的 redo log 记录，并把 `checkpoint` 后移更新。
+When MySQL loads the **log file group** to recover data, it clears the redo log records it has applied and advances `checkpoint`.
 
-`write pos` 和 `checkpoint` 之间的还空着的部分可以用来写入新的 redo log 记录。
+The unused space between `write pos` and `checkpoint` is available for new redo log records.
 
 ![](../images/shared/11.png)
 
-如果 `write pos` 追上 `checkpoint` ，表示**日志文件组**满了，这时候不能再写入新的 redo log 记录，MySQL 得停下来，清空一些记录，把 `checkpoint` 推进一下。
+If `write pos` catches up with `checkpoint`, the **log file group** is full. MySQL cannot write new redo log records until it clears some records and advances `checkpoint`.
 
 ![](../images/shared/12.png)
 
-注意从 MySQL 8.0.30 开始，日志文件组有了些许变化：
+The log file group changed in MySQL 8.0.30:
 
 > The innodb_redo_log_capacity variable supersedes the innodb_log_files_in_group and innodb_log_file_size variables, which are deprecated. When the innodb_redo_log_capacity setting is defined, the innodb_log_files_in_group and innodb_log_file_size settings are ignored; otherwise, these settings are used to compute the innodb_redo_log_capacity setting (innodb_log_files_in_group \* innodb_log_file_size = innodb_redo_log_capacity). If none of those variables are set, redo log capacity is set to the innodb_redo_log_capacity default value, which is 104857600 bytes (100MB). The maximum redo log capacity is 128GB.
 
 > Redo log files reside in the #innodb_redo directory in the data directory unless a different directory was specified by the innodb_log_group_home_dir variable. If innodb_log_group_home_dir was defined, the redo log files reside in the #innodb_redo directory in that directory. There are two types of redo log files, ordinary and spare. Ordinary redo log files are those being used. Spare redo log files are those waiting to be used. InnoDB tries to maintain 32 redo log files in total, with each file equal in size to 1/32 \* innodb_redo_log_capacity; however, file sizes may differ for a time after modifying the innodb_redo_log_capacity setting.
 
-意思是在 MySQL 8.0.30 之前可以通过 `innodb_log_files_in_group` 和 `innodb_log_file_size` 配置日志文件组的文件数和文件大小，但在 MySQL 8.0.30 及之后的版本中，这两个变量已被废弃，即使被指定也是用来计算 `innodb_redo_log_capacity` 的值。而日志文件组的文件数则固定为 32，文件大小则为 `innodb_redo_log_capacity / 32` 。
+Before MySQL 8.0.30, `innodb_log_files_in_group` and `innodb_log_file_size` configured the number and size of files in the log group. From MySQL 8.0.30 onward, these variables are deprecated and used only to calculate `innodb_redo_log_capacity` if specified. The group maintains 32 files, each sized at `innodb_redo_log_capacity / 32`.
 
-关于这一点变化，我们可以验证一下。
+You can verify this change as follows.
 
-首先创建一个配置文件，里面配置一下 `innodb_log_files_in_group` 和 `innodb_log_file_size` 的值：
+First, create a configuration file and set `innodb_log_files_in_group` and `innodb_log_file_size`:
 
 ```properties
 [mysqld]
@@ -152,36 +152,36 @@ innodb_log_file_size = 10485760
 innodb_log_files_in_group = 64
 ```
 
-docker 启动一个 MySQL 8.0.32 的容器：
+Start a MySQL 8.0.32 container with Docker:
 
 ```bash
 docker run -d -p 3312:3309 -e MYSQL_ROOT_PASSWORD=your-password -v /path/to/your/conf:/etc/mysql/conf.d --name
 MySQL830 mysql:8.0.32
 ```
 
-现在我们来看一下启动日志：
+Check the startup log:
 
 ```plain
 2023-08-03T02:05:11.720357Z 0 [Warning] [MY-013907] [InnoDB] Deprecated configuration parameters innodb_log_file_size and/or innodb_log_files_in_group have been used to compute innodb_redo_log_capacity=671088640. Please use innodb_redo_log_capacity instead.
 ```
 
-这里也表明了 `innodb_log_files_in_group` 和 `innodb_log_file_size` 这两个变量是用来计算 `innodb_redo_log_capacity` ，且已经被废弃。
+This confirms that `innodb_log_files_in_group` and `innodb_log_file_size` are deprecated and used to calculate `innodb_redo_log_capacity`.
 
-我们再看下日志文件组的文件数是多少：
+Now check the number of files in the log group:
 
 ![](./images/redo-log.png)
 
-可以看到刚好是 32 个，并且每个日志文件的大小是 `671088640 / 32 = 20971520`
+There are 32 files, each sized `671088640 / 32 = 20971520` bytes.
 
-所以在使用 MySQL 8.0.30 及之后的版本时，推荐使用 `innodb_redo_log_capacity` 变量配置日志文件组
+For MySQL 8.0.30 and later, configure the log group with `innodb_redo_log_capacity`.
 
-### redo log 小结
+### Redo Log Summary
 
-相信大家都知道 redo log 的作用和它的刷盘时机、存储形式。
+The preceding sections covered the purpose, flush timing, and storage format of the redo log.
 
-现在我们来思考一个问题：**只要每次把修改后的数据页直接刷盘不就好了，还有 redo log 什么事？**
+Consider this question: **Why use a redo log instead of flushing each modified data page directly to disk?**
 
-它们不都是刷盘么？差别在哪里？
+Both involve flushing data, so what is the difference?
 
 ```java
 1 Byte = 8bit
@@ -191,163 +191,162 @@ MySQL830 mysql:8.0.32
 1 TB = 1024 GB
 ```
 
-实际上，数据页大小是`16KB`，刷盘比较耗时，可能就修改了数据页里的几 `Byte` 数据，有必要把完整的数据页刷盘吗？
+Data pages are `16 KB`, and flushing one can take time. If only a few bytes changed, is it necessary to flush the entire page?
 
-而且数据页刷盘是随机写，因为一个数据页对应的位置可能在硬盘文件的随机位置，所以性能是很差。
+Flushing data pages also involves random writes because each page may be at a different location in the disk file, which can be slow.
 
-如果是写 redo log，一行记录可能就占几十 `Byte`，只包含表空间号、数据页号、磁盘文件偏移
-量、更新值，再加上是顺序写，所以刷盘速度很快。
+A redo log record may take only a few dozen bytes. It contains the tablespace ID, page number, file offset, and updated value. Since the log is written sequentially, flushing it is faster.
 
-所以用 redo log 形式记录修改内容，性能会远远超过刷数据页的方式，这也让数据库的并发能力更强。
+Recording changes in the redo log is much faster than flushing whole data pages, which also improves database concurrency.
 
-> 其实内存的数据页在一定时机也会刷盘，我们把这称为页合并，讲 `Buffer Pool`的时候会对这块细说
+> In-memory data pages are also flushed to disk at certain times. This is called page flushing and is covered in more detail in the `Buffer Pool` section.
 
-## binlog
+## The Binlog
 
-redo log 它是物理日志，记录内容是“在某个数据页上做了什么修改”，属于 InnoDB 存储引擎。
+The redo log is a physical log that records changes made to data pages. It belongs to the InnoDB storage engine.
 
-而 binlog 是逻辑日志，记录内容是语句的原始逻辑，类似于“给 ID=2 这一行的 c 字段加 1”，属于`MySQL Server` 层。
+The binlog is a logical log that records the original operation, such as “increment column `c` for the row with ID 2.” It belongs to the `MySQL Server` layer.
 
-不管用什么存储引擎，只要发生了表数据更新，都会产生 binlog 日志。
+Regardless of the storage engine, changes to table data are recorded in the binlog.
 
-那 binlog 到底是用来干嘛的？
+What is the binlog used for?
 
-可以说 MySQL 数据库的**数据备份、主备、主主、主从**都离不开 binlog，需要依靠 binlog 来同步数据，保证数据一致性。
+MySQL **backups and replication** rely on the binlog to synchronize data and maintain consistency.
 
 ![](../images/shared/01-20220305234724956.png)
 
-binlog 会记录所有涉及更新数据的逻辑操作，并且是顺序写。
+The binlog records logical operations that modify data and is written sequentially.
 
-### 记录格式
+### Binlog Formats
 
-binlog 日志有三种格式，可以通过`binlog_format`参数指定。
+The binlog has three formats, selected with the `binlog_format` parameter:
 
 - **statement**
 - **row**
 - **mixed**
 
-指定`statement`，记录的内容是`SQL`语句原文，比如执行一条`update T set update_time=now() where id=1`，记录的内容如下。
+With `statement`, the binlog records the original `SQL` statement. For example, running `update T set update_time=now() where id=1` produces the following record.
 
 ![](../images/shared/02-20220305234738688.png)
 
-同步数据时，会执行记录的`SQL`语句，但是有个问题，`update_time=now()`这里会获取当前系统时间，直接执行会导致与原库的数据不一致。
+When synchronizing data, the recorded `SQL` statement is executed. However, `update_time=now()` uses the current system time, which may differ from the time on the source server and cause inconsistent data.
 
-为了解决这种问题，我们需要指定为`row`，记录的内容不再是简单的`SQL`语句了，还包含操作的具体数据，记录内容如下。
+To avoid this problem, use `row`. The binlog then records the affected data rather than only the `SQL` statement:
 
 ![](../images/shared/03-20220305234742460.png)
 
-`row`格式记录的内容看不到详细信息，要通过`mysqlbinlog`工具解析出来。
+The details in a `row` format record are not immediately readable; use the `mysqlbinlog` tool to decode them.
 
-`update_time=now()`变成了具体的时间`update_time=1627112756247`，条件后面的@1、@2、@3 都是该行数据第 1 个~3 个字段的原始值（**假设这张表只有 3 个字段**）。
+`update_time=now()` becomes a specific value, such as `update_time=1627112756247`. The `@1`, `@2`, and `@3` values in the condition are the original values of the row's first three columns (**assuming the table has only three columns**).
 
-这样就能保证同步数据的一致性，通常情况下都是指定为`row`，这样可以为数据库的恢复与同步带来更好的可靠性。
+This preserves consistency during synchronization. `row` is commonly used because it makes recovery and replication more reliable.
 
-但是这种格式，需要更大的容量来记录，比较占用空间，恢复与同步时会更消耗 IO 资源，影响执行速度。
+However, this format requires more storage and more I/O during recovery and synchronization, which can affect performance.
 
-所以就有了一种折中的方案，指定为`mixed`，记录的内容是前两者的混合。
+`mixed` is a compromise that combines the other two formats.
 
-MySQL 会判断这条`SQL`语句是否可能引起数据不一致，如果是，就用`row`格式，否则就用`statement`格式。
+MySQL uses `row` format if an `SQL` statement could cause inconsistent data; otherwise, it uses `statement` format.
 
-### 写入机制
+### Write Process
 
-binlog 的写入时机也非常简单，事务执行过程中，先把日志写到`binlog cache`，事务提交的时候，再把`binlog cache`写到 binlog 文件中。
+During a transaction, MySQL first writes binlog records to the `binlog cache`. When the transaction commits, it writes the cache to the binlog file.
 
-因为一个事务的 binlog 不能被拆开，无论这个事务多大，也要确保一次性写入，所以系统会给每个线程分配一个块内存作为`binlog cache`。
+The binlog records for a transaction must be written together, regardless of the transaction's size. The system therefore allocates a block of memory as a `binlog cache` for each thread.
 
-我们可以通过`binlog_cache_size`参数控制单个线程 binlog cache 大小，如果存储内容超过了这个参数，就要暂存到磁盘（`Swap`）。
+The `binlog_cache_size` parameter controls the size of each thread's binlog cache. If the records exceed this size, they are temporarily stored on disk (`Swap`).
 
-binlog 日志刷盘流程如下
+The binlog flush process is shown below.
 
 ![](../images/shared/04-20220305234747840.png)
 
-- **上图的 write，是指把日志写入到文件系统的 page cache，并没有把数据持久化到磁盘，所以速度比较快**
-- **上图的 fsync，才是将数据持久化到磁盘的操作**
+- **`write` writes the log to the filesystem's page cache; it does not persist the data to disk, so it is relatively fast.**
+- **`fsync` persists the data to disk.**
 
-`write`和`fsync`的时机，可以由参数`sync_binlog`控制，默认是`1`。
+The `sync_binlog` parameter controls when `write` and `fsync` occur. Its default value is `1`.
 
-为`0`的时候，表示每次提交事务都只`write`，由系统自行判断什么时候执行`fsync`。
+At `0`, each transaction commit performs only `write`; the operating system decides when to perform `fsync`.
 
 ![](../images/shared/05-20220305234754405.png)
 
-虽然性能得到提升，但是机器宕机，`page cache`里面的 binlog 会丢失。
+This improves performance, but a machine crash may lose binlog data in the `page cache`.
 
-为了安全起见，可以设置为`1`，表示每次提交事务都会执行`fsync`，就如同 **redo log 日志刷盘流程** 一样。
+For stronger durability, set it to `1`. Each transaction commit then performs `fsync`, as with the **redo log flush process**.
 
-最后还有一种折中方式，可以设置为`N(N>1)`，表示每次提交事务都`write`，但累积`N`个事务后才`fsync`。
+Another compromise is `N` (`N > 1`): each transaction performs `write`, but `fsync` occurs only after every `N` transactions.
 
 ![](../images/shared/06-20220305234801592.png)
 
-在出现 IO 瓶颈的场景里，将`sync_binlog`设置成一个比较大的值，可以提升性能。
+When I/O is a bottleneck, a larger `sync_binlog` value can improve performance.
 
-同样的，如果机器宕机，会丢失最近`N`个事务的 binlog 日志。
+If the machine crashes, the binlog may lose the most recent `N` transactions.
 
-## 两阶段提交
+## Two-Phase Commit
 
-redo log（重做日志）让 InnoDB 存储引擎拥有了崩溃恢复能力。
+The redo log gives the InnoDB storage engine crash recovery.
 
-binlog（归档日志）保证了 MySQL 集群架构的数据一致性。
+The binlog keeps data consistent across a MySQL cluster.
 
-虽然它们都属于持久化的保证，但是侧重点不同。
+Both logs support persistence, but they serve different purposes.
 
-在执行更新语句过程，会记录 redo log 与 binlog 两块日志，以基本的事务为单位，redo log 在事务执行过程中可以不断写入，而 binlog 只有在提交事务时才写入，所以 redo log 与 binlog 的写入时机不一样。
+An update writes to both the redo log and the binlog. The redo log can be written as the transaction runs, while the binlog is written only when the transaction commits. Their write timings therefore differ.
 
 ![](../images/shared/01-20220305234816065.png)
 
-回到正题，redo log 与 binlog 两份日志之间的逻辑不一致，会出现什么问题？
+What happens if the redo log and binlog become inconsistent?
 
-我们以`update`语句为例，假设`id=2`的记录，字段`c`值是`0`，把字段`c`值更新成`1`，`SQL`语句为`update T set c=1 where id=2`。
+Consider an `update` statement. Suppose row `id=2` has a `c` value of `0`, and the statement `update T set c=1 where id=2` changes it to `1`.
 
-假设执行过程中写完 redo log 日志后，binlog 日志写期间发生了异常，会出现什么情况呢？
+What if an error occurs while writing the binlog, after the redo log has been written?
 
 ![](../images/shared/02-20220305234828662.png)
 
-由于 binlog 没写完就异常，这时候 binlog 里面没有对应的修改记录。因此，之后用 binlog 日志恢复数据时，就会少这一次更新，恢复出来的这一行`c`值是`0`，而原库因为 redo log 日志恢复，这一行`c`值是`1`，最终数据不一致。
+Because the binlog write failed, there is no corresponding update in the binlog. A later recovery from the binlog would leave `c` at `0`, while redo log recovery on the original database would restore it to `1`. The databases would become inconsistent.
 
 ![](../images/shared/03-20220305235104445.png)
 
-为了解决两份日志之间的逻辑一致问题，InnoDB 存储引擎使用**两阶段提交**方案。
+To keep the two logs consistent, InnoDB uses **two-phase commit**.
 
-原理很简单，将 redo log 的写入拆成了两个步骤`prepare`和`commit`，这就是**两阶段提交**。
+The process is simple: redo log writing has two stages, `prepare` and `commit`. This is **two-phase commit**.
 
 ![](../images/shared/04-20220305234956774.png)
 
-使用**两阶段提交**后，写入 binlog 时发生异常也不会有影响，因为 MySQL 根据 redo log 日志恢复数据时，发现 redo log 还处于`prepare`阶段，并且没有对应 binlog 日志，就会回滚该事务。
+With **two-phase commit**, an error during the binlog write does not leave inconsistent data. During redo log recovery, MySQL rolls back a transaction that is still in the `prepare` stage and has no matching binlog entry.
 
 ![](../images/shared/05-20220305234937243.png)
 
-再看一个场景，redo log 设置`commit`阶段发生异常，那会不会回滚事务呢？
+Consider another case: what if an error occurs while setting the redo log to the `commit` stage? Is the transaction rolled back?
 
 ![](../images/shared/06-20220305234907651.png)
 
-并不会回滚事务，它会执行上图框住的逻辑，虽然 redo log 是处于`prepare`阶段，但是能通过事务`id`找到对应的 binlog 日志，所以 MySQL 认为是完整的，就会提交事务恢复数据。
+No. MySQL follows the logic highlighted above. Although the redo log is still in the `prepare` stage, MySQL can find the matching binlog entry using the transaction `id`. It treats the transaction as complete and commits it during recovery.
 
-## undo log
+## Undo Log
 
-> 这部分内容为 JavaGuide 的补充：
+> This section was added by JavaGuide.
 
-每一个事务对数据的修改都会被记录到 undo log ，当执行事务过程中出现错误或者需要执行回滚操作的话，MySQL 可以利用 undo log 将数据恢复到事务开始之前的状态。
+Each transaction's data changes are recorded in the undo log. If an error occurs or the transaction must be rolled back, MySQL uses the undo log to restore data to its state before the transaction began.
 
-undo log 属于逻辑日志，记录的是 SQL 语句，比如说事务执行一条 DELETE 语句，那 undo log 就会记录一条相对应的 INSERT 语句。同时，undo log 的信息也会被记录到 redo log 中，因为 undo log 也要实现持久性保护。并且，undo-log 本身是会被删除清理的，例如 INSERT 操作，在事务提交之后就可以清除掉了；UPDATE/DELETE 操作在事务提交不会立即删除，会加入 history list，由后台线程 purge 进行清理。
+The undo log is a logical log. For example, if a transaction executes a `DELETE`, the undo log records a corresponding `INSERT`. Undo log information is also recorded in the redo log to ensure durability. Undo log records are eventually purged: records for `INSERT` operations can be removed after commit, while records for `UPDATE` and `DELETE` operations are added to the history list and later removed by a background purge thread.
 
-undo log 是采用 segment（段）的方式来记录的，每个 undo 操作在记录的时候占用一个 **undo log segment**（undo 日志段），undo log segment 包含在 **rollback segment**（回滚段）中。事务开始时，需要为其分配一个 rollback segment。每个 rollback segment 有 1024 个 undo log segment，这有助于管理多个并发事务的回滚需求。
+The undo log is organized into segments. Each undo operation uses an **undo log segment**, which is part of a **rollback segment**. A rollback segment is allocated when a transaction starts. Each rollback segment has 1024 undo log segments to support rollback for concurrent transactions.
 
-通常情况下， **rollback segment header**（通常在回滚段的第一个页）负责管理 rollback segment。rollback segment header 是 rollback segment 的一部分，通常在回滚段的第一个页。**history list** 是 rollback segment header 的一部分，它的主要作用是记录所有已经提交但还没有被清理（purge）的事务的 undo log。这个列表使得 purge 线程能够找到并清理那些不再需要的 undo log 记录。
+The **rollback segment header**, usually on the first page of the rollback segment, manages the rollback segment. The **history list** is part of this header. It tracks undo logs for committed transactions that have not yet been purged, allowing the purge thread to find and remove records that are no longer needed.
 
-另外，`MVCC` 的实现依赖于：**隐藏字段、Read View、undo log**。在内部实现中，InnoDB 通过数据行的 `DB_TRX_ID` 和 `Read View` 来判断数据的可见性，如不可见，则通过数据行的 `DB_ROLL_PTR` 找到 undo log 中的历史版本。每个事务读到的数据版本可能是不一样的，在同一个事务中，用户只能看到该事务创建 `Read View` 之前已经提交的修改和该事务本身做的修改
+The implementation of `MVCC` relies on **hidden columns, a Read View, and the undo log**. InnoDB uses a row's `DB_TRX_ID` and the Read View to determine whether the row is visible. If it is not visible, InnoDB follows `DB_ROLL_PTR` to find an earlier version in the undo log. Transactions may see different versions of data. Within a transaction, a user sees changes committed before its Read View was created, along with changes made by that transaction.
 
-## 总结
+## Summary
 
-> 这部分内容为 JavaGuide 的补充：
+> This section was added by JavaGuide.
 
-MySQL InnoDB 引擎使用 **redo log(重做日志)** 保证事务的**持久性**，使用 **undo log(回滚日志)** 来保证事务的**原子性**。
+The MySQL InnoDB engine uses the **redo log** to ensure transaction **durability** and the **undo log** to ensure **atomicity**.
 
-MySQL 数据库的**数据备份、主备、主主、主从**都离不开 binlog，需要依靠 binlog 来同步数据，保证数据一致性。
+MySQL **backups and replication** rely on the binlog to synchronize data and maintain consistency.
 
-## 参考
+## References
 
-- 《MySQL 实战 45 讲》
-- 《从零开始带你成为 MySQL 实战优化高手》
-- 《MySQL 是怎样运行的：从根儿上理解 MySQL》
-- 《MySQL 技术 Innodb 存储引擎》
+- _MySQL in Practice: 45 Lectures_
+- _From Zero to MySQL Performance Tuning Expert_
+- _How MySQL Works: Understanding MySQL from the Ground Up_
+- _MySQL Technology: InnoDB Storage Engine_
 
 <!-- @include: @article-footer.snippet.md -->

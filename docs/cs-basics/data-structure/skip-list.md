@@ -1,46 +1,46 @@
 ---
-title: 跳表面试题总结：多级索引、范围查询与 Redis ZSet
-description: 跳表面试题总结，讲解 SkipList 多级索引、查询、插入、删除、复杂度、范围查询、红黑树对比和 Redis ZSet 底层实现。
-category: 计算机基础
+title: "Skip List Interview Questions: Multi-Level Indexes, Range Queries, and Redis ZSet"
+description: Learn how skip lists use multi-level indexes for lookup, insertion, deletion, and range queries, and how they compare with red-black trees and support Redis ZSet.
+category: Computer Science Basics
 tag:
-  - 数据结构
+  - Data Structures
 head:
   - - meta
     - name: keywords
-      content: 跳表,SkipList,Redis ZSet,有序集合,范围查询,多级索引,红黑树对比,Redis面试题,数据结构面试题
+      content: skip lists,SkipList,Redis ZSet,sorted sets,range queries,multi-level indexes,red-black trees,Redis interview questions,data structure interview questions
 ---
 
-跳表可以理解为“带多级索引的有序链表”。普通有序链表查询需要从头扫到尾，时间复杂度是 `O(n)`；跳表在链表上方加了多层索引，查询时可以从高层快速跳过一批节点，再逐层下降。
+A skip list is a sorted linked list with multiple levels of indexes. Looking up an item in a regular sorted linked list takes `O(n)` because it may require scanning from the head. A skip list adds index levels above the list, allowing a lookup to skip over nodes before descending to lower levels.
 
-Redis 的有序集合 ZSet 底层就使用了跳表和哈希表的组合，所以跳表在后端面试里经常和 Redis 一起出现。
+Redis sorted sets (ZSets) use a combination of skip lists and hash tables, so skip lists often come up alongside Redis in backend interviews.
 
-文章内容概览：
+This article covers:
 
-1. 什么是跳表？
-2. 跳表为什么能把查询从 `O(n)` 降到平均 `O(logn)`？
-3. 跳表如何查找、插入和删除？
-4. 跳表和红黑树应该怎么对比？
-5. Redis ZSet 为什么会用到跳表？
+1. What is a skip list?
+2. How does a skip list reduce average lookup time from `O(n)` to `O(log n)`?
+3. How does a skip list support lookup, insertion, and deletion?
+4. How do skip lists compare with red-black trees?
+5. Why does Redis ZSet use a skip list?
 
-![跳表在有序链表上建立多级索引以加速查找](../images/shared/skip-list.png)
+![A skip list adds multiple index levels to a sorted linked list to speed up lookup](../images/shared/skip-list.png)
 
-## 什么是跳表？
+## What Is a Skip List?
 
-跳表（Skip List）是一种基于有序链表的数据结构。它的底层仍然是一条完整的有序链表，所有元素都会出现在最底层；在底层链表之上，跳表再建立若干层更稀疏的索引。
+A **skip list** is a data structure built on a sorted linked list. The bottom level contains every element. Above it, the skip list builds several sparser index levels.
 
-可以把它想成一本书的目录：
+Think of it like a book with a table of contents:
 
-- 最底层链表像正文页码，信息最完整，但从第一页翻到最后一页很慢。
-- 上层索引像目录，信息更少，但能快速跳到接近目标的位置。
-- 查询时先从最高层索引往右跳，跳不动了就下降一层，直到最底层。
+- The bottom-level list is like the pages of the book: it contains everything, but finding a page by scanning from the beginning is slow.
+- The upper indexes are like the table of contents: they contain less detail, but help you jump close to the target.
+- A lookup starts at the highest level, moves right while possible, then drops down a level until it reaches the bottom.
 
-跳表和普通链表最大的区别就在这里：普通链表每次只能向后走一步；跳表可以在高层索引中一次跳过多个节点。
+That is the main difference between a skip list and a regular linked list: a regular list moves one node at a time, while a skip list can jump over several nodes at higher levels.
 
-## 跳表的节点长什么样？
+## What Does a Skip List Node Look Like?
 
-普通链表节点通常只有一个 `next` 指针，而跳表节点会有多个前进指针。一个节点如果出现在第 3 层，就意味着它在第 0、1、2 层都有对应指针。
+A regular linked list node usually has one `next` pointer. A skip list node can have several forward pointers. A node at level 3 has pointers for levels 0, 1, and 2 as well.
 
-抽象来看，跳表节点可以理解成这样：
+At a high level, a skip list node can look like this:
 
 ```java
 class SkipListNode {
@@ -49,126 +49,126 @@ class SkipListNode {
 }
 ```
 
-这里的 `forward[i]` 表示当前节点在第 `i` 层指向的下一个节点。真实工程实现里还可能保存 score、member、backward 指针、span 等信息，用来支持排名、反向遍历和范围查询。
+Here, `forward[i]` points to the next node at level `i`. Production implementations may also store a score, member, backward pointer, or span to support ranking, reverse traversal, and range queries.
 
-## 层数是怎么来的？
+## How Are Levels Chosen?
 
-跳表并不通过旋转、变色来维持平衡，它依赖随机层数。
+Skip lists do not use rotations or recoloring to stay balanced. Instead, they assign node levels randomly.
 
-插入一个新节点时，通常会用随机函数决定它能升到多少层。可以把这个过程想成抛硬币：节点一定会出现在最底层；如果第一次抛到正面，就升一层；再抛到正面，再升一层；直到抛到反面或达到最大层数。
+When a new node is inserted, a random function determines how many levels it occupies. Think of flipping a coin: the node always appears at the bottom level; each heads moves it up one level, until tails appears or it reaches the maximum level.
 
-这样做的结果是：越高层的节点越少，越低层的节点越密。理想情况下，第 1 层大约保留一半节点，第 2 层再保留一半，第 3 层继续减少。虽然不是严格平衡，但从概率上看，高度会维持在 `O(logn)` 级别。
+As a result, higher levels contain fewer nodes, while lower levels are denser. Ideally, each level contains about half as many nodes as the level below it. The structure is not strictly balanced, but its expected height is `O(log n)`.
 
-这也是跳表名字里“跳”的来源：高层索引允许查询过程跳过一段又一段元素。
+These upper indexes are what let a skip list “skip” over ranges of elements during lookup.
 
-## 面试考察重点
+## Interview Topics
 
-- 能说清跳表为什么比普通链表查询快。
-- 能描述查找、插入、删除的大致过程。
-- 能说明跳表平均查询、插入、删除是 `O(logn)`。
-- 能解释跳表和红黑树的取舍。
-- 能关联 Redis ZSet 的范围查询场景。
+- Explain why lookups are faster than in a regular linked list.
+- Describe the basic lookup, insertion, and deletion operations.
+- State that lookup, insertion, and deletion take `O(log n)` time on average.
+- Explain the tradeoffs between skip lists and red-black trees.
+- Connect skip lists to range queries in Redis ZSet.
 
-## 跳表怎么查找？
+## How Does Lookup Work?
 
-查找时从最高层索引开始：
+Lookup starts at the highest index level:
 
-1. 如果当前节点的下一个节点小于目标值，就向右走。
-2. 如果下一个节点大于目标值或为空，就下降一层。
-3. 到最底层后继续查找目标节点。
+1. If the next node is smaller than the target, move right.
+2. If the next node is greater than the target or is empty, move down one level.
+3. Continue until reaching the bottom level and determine whether the target exists.
 
-这个过程有点像在有序数组里二分，但跳表底层仍然是链表结构。
+This resembles binary search in a sorted array, although the bottom level of a skip list remains a linked list.
 
-更准确地说，跳表每一层都是有序链表。查询时始终遵循一个原则：能往右走就往右走，不能往右走就往下走。
+More precisely, each skip list level is a sorted linked list. The rule is simple: move right when possible; otherwise, move down.
 
-假设要查找 `26`：
+Suppose we want to find `26`:
 
-1. 从最高层头节点开始。
-2. 如果右侧节点值小于 `26`，说明目标还在右边，可以继续右移。
-3. 如果右侧节点值大于 `26`，说明再往右就越过目标了，于是下降一层。
-4. 重复这个过程，最后在最底层确认目标是否存在。
+1. Start at the head node on the highest level.
+2. If the next node is less than `26`, the target may be farther right, so continue moving right.
+3. If the next node is greater than `26`, moving right would pass the target, so move down a level.
+4. Repeat until reaching the bottom level, where you can confirm whether the target exists.
 
-如果目标不存在，跳表也能找到它应该插入的位置：最底层中小于目标值的最后一个节点，就是插入位置的前驱节点。
+If the target does not exist, the search still identifies where it belongs: the last node on the bottom level with a value smaller than the target is its predecessor.
 
-## 插入和删除
+## Insertion and Deletion
 
-插入一个节点时，需要先找到每一层中它的前驱节点，然后把新节点接进去。新节点能提升到多少层，通常由随机函数决定。
+To insert a node, first find its predecessor at each level, then link in the new node. A random function usually determines how many levels the new node occupies.
 
-删除节点时，也要找到各层前驱节点，再把指针绕过目标节点。
+To delete a node, find its predecessors at each level and update their pointers to skip over the target.
 
-跳表不靠旋转维持平衡，而是靠随机层数让索引高度保持在合理范围内。这也是它实现起来比红黑树更容易的地方。
+Skip lists rely on random levels rather than rotations to keep index height within a reasonable range. This also makes them simpler to implement than red-black trees.
 
-实际写插入代码时，经常会维护一个 `update` 数组：`update[i]` 表示第 `i` 层中新节点应该插入在哪个节点后面。查找插入位置的过程中顺手把这些前驱节点记录下来，拿到随机层数后，就能逐层修改指针。
+Insertion code often maintains an `update` array: `update[i]` stores the predecessor of the new node at level `i`. Record each predecessor while searching for the insertion point. Once the new node's random height is known, update the pointers at each level.
 
-删除也是类似思路：先找到每一层的前驱节点，如果这一层的下一个节点正好是目标节点，就把前驱节点的 `forward` 指向目标节点的下一个节点。
+Deletion follows a similar process: find the predecessor at each level, and if its next node is the target, point its `forward` reference to the target's next node.
 
-因此，跳表的插入和删除并不是只改底层链表，还要同步维护目标节点出现过的那些索引层。
+Insertion and deletion must update not only the bottom list but also every index level that contains the target node.
 
-## 复杂度
+## Complexity
 
-| 操作     | 平均复杂度    | 说明                            |
-| -------- | ------------- | ------------------------------- |
-| 查找     | `O(logn)`     | 通过多级索引跳过节点            |
-| 插入     | `O(logn)`     | 查找位置后更新多层指针          |
-| 删除     | `O(logn)`     | 查找前驱后断开指针              |
-| 范围查询 | `O(logn + k)` | 先定位起点，再顺序返回 k 个元素 |
+| Operation   | Average complexity | Notes                                                       |
+| ----------- | ------------------ | ----------------------------------------------------------- |
+| Lookup      | `O(log n)`         | Skip over nodes using multiple index levels.                |
+| Insertion   | `O(log n)`         | Find the position, then update pointers at multiple levels. |
+| Deletion    | `O(log n)`         | Find predecessors and bypass the target.                    |
+| Range query | `O(log n + k)`     | Find the starting point, then return k elements in order.   |
 
-空间复杂度是 `O(n)` 级别，但会比普通链表多一些索引指针。
+Space complexity is `O(n)`, with additional index pointers compared with a regular linked list.
 
-这里的 `O(logn)` 是平均意义上的复杂度，依赖随机层数带来的概率平衡。跳表不像红黑树那样提供严格的最坏情况平衡约束，但在随机函数正常、参数设置合理的情况下，性能通常很稳定。
+The `O(log n)` complexity is an average-case bound based on the probabilistic balance provided by random levels. Unlike red-black trees, skip lists do not guarantee strict worst-case balance, but they are usually stable when the random-level function and parameters are reasonable.
 
-范围查询是跳表很舒服的场景：先用 `O(logn)` 定位到范围起点，再沿着最底层链表顺序向后遍历 `k` 个结果即可。
+Range queries are a good fit for skip lists: find the start in `O(log n)`, then traverse the bottom-level list to return k results.
 
-## 跳表和红黑树怎么选？
+## Skip Lists vs. Red-Black Trees
 
-| 对比点     | 跳表                   | 红黑树                         |
-| ---------- | ---------------------- | ------------------------------ |
-| 平衡方式   | 随机层数               | 旋转和变色                     |
-| 实现难度   | 相对更直接             | 插入删除修复更复杂             |
-| 范围查询   | 顺着底层链表扫，很方便 | 中序遍历也可以，但实现更绕     |
-| 最坏复杂度 | 依赖随机性             | 有严格平衡约束                 |
-| 工程代表   | Redis ZSet             | Java `TreeMap`、`HashMap` 树化 |
+| Comparison          | Skip list                          | Red-black tree                                    |
+| ------------------- | ---------------------------------- | ------------------------------------------------- |
+| Balancing           | Randomly assigned levels           | Rotations and recoloring                          |
+| Implementation      | Relatively straightforward         | Insertion and deletion fixes are more complex     |
+| Range queries       | Easy to scan the bottom-level list | Possible with in-order traversal, but less direct |
+| Worst-case bound    | Depends on randomness              | Strict balance constraints                        |
+| Production examples | Redis ZSet                         | Java `TreeMap` and tree bins in `HashMap`         |
 
-## Redis ZSet 为什么用跳表？
+## Why Does Redis ZSet Use a Skip List?
 
-ZSet 需要支持：
+ZSet needs to support:
 
-- 按 member 快速查 score。
-- 按 score 排序。
-- 按 score 范围查询。
-- 获取排名。
+- Fast score lookup by member.
+- Sorting by score.
+- Range queries by score.
+- Retrieving ranks.
 
-哈希表适合按 member 查 score，跳表适合按 score 排序和范围查询。两者组合后，ZSet 能同时支持快速查找和有序遍历。
+A hash table efficiently looks up a score by member, while a skip list maintains score order and supports range queries. Together, they provide both fast lookup and ordered traversal.
 
-更具体一点：
+More specifically:
 
-- 通过哈希表，可以根据 member 直接找到对应 score。
-- 通过跳表，可以按 score 从小到大维护顺序。
-- 做 `ZRANGE`、`ZRANGEBYSCORE` 这类范围查询时，跳表可以先定位起点，再沿链表连续返回结果。
-- 如果跳表节点维护 span 信息，还可以支持排名相关操作。
+- The hash table finds a member's score directly.
+- The skip list orders members by score.
+- For range queries such as `ZRANGE` and `ZRANGEBYSCORE`, the skip list finds the starting point and returns consecutive results by traversing the list.
+- Span information in skip list nodes can support rank-related operations.
 
-需要注意，Redis 会根据数据规模和配置使用不同的内部编码来节省内存。面试里说“ZSet 使用哈希表 + 跳表”通常是在讨论它面向较大有序集合时的核心结构。
+Redis may use different internal encodings depending on the data size and configuration to save memory. In interviews, saying “ZSet uses a hash table and a skip list” usually refers to its core structure for larger sorted sets.
 
-## 易错点
+## Common Pitfalls
 
-- 跳表不是数组，也不是二叉树，它的底层是链表。
-- 跳表平均复杂度是 `O(logn)`，不是靠严格平衡保证。
-- 范围查询是跳表的强项，先定位起点，再沿底层链表遍历。
-- Redis ZSet 不是只用跳表，还配合了哈希表。
+- A skip list is neither an array nor a binary tree; its bottom level is a linked list.
+- Its average complexity is `O(log n)` and is not guaranteed by strict balance.
+- Range queries are a strength: find the start, then traverse the bottom-level list.
+- Redis ZSet combines a skip list with a hash table.
 
-## 高频问题自测
+## Review Questions
 
-- 跳表为什么查询快？
-- 跳表和红黑树有什么区别？
-- Redis ZSet 为什么不用红黑树？
-- 跳表的层数怎么决定？
-- 跳表范围查询复杂度是多少？
+- Why are skip list lookups fast?
+- How do skip lists differ from red-black trees?
+- Why does Redis ZSet use a skip list instead of a red-black tree?
+- How are skip list levels chosen?
+- What is the complexity of a skip list range query?
 
-## 参考资料
+## References
 
 - [Skip Lists: A Probabilistic Alternative to Balanced Trees](https://dl.acm.org/doi/10.1145/78973.78977)
-- [William Pugh：A Skip List Cookbook](https://drum.lib.umd.edu/bitstreams/17176ef8-8330-4a6c-8b75-4cd18c570bec/download)
-- [Redis Docs：Sorted Sets](https://redis.io/docs/latest/develop/data-types/sorted-sets/)
-- [Redis 源码：t_zset.c](https://github.com/redis/redis/blob/unstable/src/t_zset.c)
+- [William Pugh: A Skip List Cookbook](https://drum.lib.umd.edu/bitstreams/17176ef8-8330-4a6c-8b75-4cd18c570bec/download)
+- [Redis documentation: Sorted sets](https://redis.io/docs/latest/develop/data-types/sorted-sets/)
+- [Redis source: t_zset.c](https://github.com/redis/redis/blob/unstable/src/t_zset.c)
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,140 +1,140 @@
 ---
-title: 线性数据结构详解（数组、链表、栈、队列）
-description: 总结数组/链表/栈/队列的特性与操作，配合复杂度分析与典型应用，掌握线性结构的选型与实现。
-category: 计算机基础
+title: "Linear Data Structures: Arrays, Linked Lists, Stacks, and Queues"
+description: Review the properties and operations of arrays, linked lists, stacks, and queues, with complexity analysis and common applications.
+category: Computer Science Basics
 tag:
-  - 数据结构
+  - Data Structures
 head:
   - - meta
     - name: keywords
-      content: 数组,链表,栈,队列,双端队列,复杂度分析,随机访问,插入删除
+      content: arrays,linked lists,stacks,queues,deques,complexity analysis,random access,insertion,deletion
 ---
 
-# 线性数据结构
+# Linear Data Structures
 
-## 1. 数组
+## 1. Arrays
 
-**数组（Array）** 是一种很常见的数据结构。它由相同类型的元素（element）组成，并且是使用一块连续的内存来存储。
+An **array** is a common data structure made up of elements of the same type, stored in a contiguous block of memory.
 
-我们直接可以利用元素的索引（index）可以计算出该元素对应的存储地址。
+An element's index can be used to calculate its memory address directly.
 
-数组的特点是：**提供随机访问** 并且容量有限。
-
-```java
-假如数组的长度为 n。
-访问：O(1) //访问特定位置的元素
-插入：O(n) //最坏的情况发生在插入发生在数组的首部并需要移动所有元素时
-删除：O(n) //最坏的情况发生在删除数组的开头发生并需要移动第一元素后面所有的元素时
-```
-
-![数组](../images/shared/array.png)
-
-## 2. 链表
-
-### 2.1. 链表简介
-
-**链表（LinkedList）** 虽然是一种线性表，但是并不会按线性的顺序存储数据，使用的不是连续的内存空间来存储数据。
-
-链表的插入和删除操作的复杂度为 O(1)，只需要知道目标位置元素的上一个元素即可。但是，在查找一个节点或者访问特定位置的节点的时候复杂度为 O(n)。
-
-使用链表结构可以克服数组需要预先知道数据大小的缺点，链表结构可以充分利用计算机内存空间，实现灵活的内存动态管理。但链表不会节省空间，相比于数组会占用更多的空间，因为链表中每个节点存放的还有指向其他节点的指针。除此之外，链表不具有数组随机读取的优点。
-
-### 2.2. 链表分类
-
-**常见链表分类：**
-
-1. 单链表
-2. 双向链表
-3. 循环链表
-4. 双向循环链表
+Arrays provide **random access**, but their capacity is fixed.
 
 ```java
-假如链表中有n个元素。
-访问：O(n) //访问特定位置的元素
-插入删除：O(1) //必须要要知道插入元素的位置
+Assume the array has n elements.
+Access: O(1) // access an element at a specific index
+Insertion: O(n) // worst case: insert at the beginning and shift all elements
+Deletion: O(n) // worst case: delete the first element and shift all following elements
 ```
 
-#### 2.2.1. 单链表
+![Array](../images/shared/array.png)
 
-**单链表** 单向链表只有一个方向，结点只有一个后继指针 next 指向后面的节点。因此，链表这种数据结构通常在物理内存上是不连续的。我们习惯性地把第一个结点叫作头结点，链表通常有一个不保存任何值的 head 节点（头结点），通过头结点我们可以遍历整个链表。尾结点通常指向 null。
+## 2. Linked Lists
 
-![单链表](../images/shared/single-linkedlist.png)
+### 2.1. Introduction
 
-#### 2.2.2. 循环链表
+Although a **linked list** is a linear data structure, its elements are not stored in sequence in memory. They occupy separate, non-contiguous memory locations.
 
-**循环链表** 其实是一种特殊的单链表，和单链表不同的是循环链表的尾结点不是指向 null，而是指向链表的头结点。
+Insertion and deletion take `O(1)` if you already have a reference to the node before the target position. Finding a node or accessing an element by index takes `O(n)`.
 
-![循环链表](../images/shared/circular-linkedlist.png)
+Linked lists do not require the data size to be known in advance, so they can grow dynamically. However, they do not save space: each node also stores pointers to other nodes. Linked lists also lack the random access that arrays provide.
 
-#### 2.2.3. 双向链表
+### 2.2. Types of Linked Lists
 
-**双向链表** 包含两个指针，一个 prev 指向前一个节点，一个 next 指向后一个节点。
+**Common types of linked lists:**
 
-![双向链表](../images/shared/bidirectional-linkedlist.png)
-
-#### 2.2.4. 双向循环链表
-
-**双向循环链表** 最后一个节点的 next 指向 head，而 head 的 prev 指向最后一个节点，构成一个环。
-
-![双向循环链表](../images/shared/bidirectional-circular-linkedlist.png)
-
-### 2.3. 应用场景
-
-- 如果需要支持随机访问的话，链表没办法做到。
-- 如果需要存储的数据元素的个数不确定，并且需要经常添加和删除数据的话，使用链表比较合适。
-- 如果需要存储的数据元素的个数确定，并且不需要经常添加和删除数据的话，使用数组比较合适。
-
-### 2.4. 数组 vs 链表
-
-- 数组支持随机访问，而链表不支持。
-- 数组使用的是连续内存空间对 CPU 的缓存机制友好，链表则相反。
-- 数组的大小固定，而链表则天然支持动态扩容。如果声明的数组过小，需要另外申请一个更大的内存空间存放数组元素，然后将原数组拷贝进去，这个操作是比较耗时的！
-
-## 3. 栈
-
-### 3.1. 栈简介
-
-**栈（Stack）** 只允许在有序的线性数据集合的一端（称为栈顶 top）进行加入数据（push）和移除数据（pop）。因而按照 **后进先出（LIFO, Last In First Out）** 的原理运作。**在栈中，push 和 pop 的操作都发生在栈顶。**
-
-栈常用一维数组或链表来实现，用数组实现的栈叫作 **顺序栈**，用链表实现的栈叫作 **链式栈**。
+1. Singly linked list
+2. Doubly linked list
+3. Circular linked list
+4. Doubly circular linked list
 
 ```java
-假设堆栈中有n个元素。
-访问：O(n) //最坏情况
-插入删除：O(1) //顶端插入和删除元素
+Assume the linked list has n elements.
+Access: O(n) // access an element at a specific position
+Insertion and deletion: O(1) // assumes the target position is already known
 ```
 
-![栈的后进先出结构示意图](../images/shared/stack.png)
+#### 2.2.1. Singly Linked Lists
 
-### 3.2. 栈的常见应用场景
+A **singly linked list** has one direction: each node has a `next` pointer to the following node. Nodes are usually not contiguous in physical memory. The first node is called the head. A list may use a `head` node that stores no value as an entry point for traversing the list. The tail usually points to `null`.
 
-当我们我们要处理的数据只涉及在一端插入和删除数据，并且满足 **后进先出（LIFO, Last In First Out）** 的特性时，我们就可以使用栈这个数据结构。
+![Singly linked list](../images/shared/single-linkedlist.png)
 
-#### 3.2.1. 实现浏览器的回退和前进功能
+#### 2.2.2. Circular Linked Lists
 
-我们只需要使用两个栈（Stack1 和 Stack2）就能实现这个功能。比如你按顺序查看了 1,2,3,4 这四个页面，我们依次把 1,2,3,4 这四个页面压入 Stack1 中。当你想回头看 2 这个页面的时候，你点击回退按钮，我们依次把 4,3 这两个页面从 Stack1 弹出，然后压入 Stack2 中。假如你又想回到页面 3，你点击前进按钮，我们将 3 页面从 Stack2 弹出，然后压入到 Stack1 中。示例图如下：
+A **circular linked list** is a type of singly linked list whose tail points to the head instead of `null`.
 
-![使用两个栈实现浏览器后退和前进功能](../images/shared/stack-browser-back-forward.png)
+![Circular linked list](../images/shared/circular-linkedlist.png)
 
-#### 3.2.2. 检查符号是否成对出现
+#### 2.2.3. Doubly Linked Lists
 
-> 给定一个只包括 `'('`，`')'`，`'{'`，`'}'`，`'['`，`']'` 的字符串，判断该字符串是否有效。
+A **doubly linked list** has two pointers: `prev` points to the previous node and `next` points to the following node.
+
+![Doubly linked list](../images/shared/bidirectional-linkedlist.png)
+
+#### 2.2.4. Doubly Circular Linked Lists
+
+In a **doubly circular linked list**, the tail's `next` points to the head, and the head's `prev` points to the tail, forming a cycle.
+
+![Doubly circular linked list](../images/shared/bidirectional-circular-linkedlist.png)
+
+### 2.3. Use Cases
+
+- Linked lists do not support random access.
+- A linked list may be suitable when the number of elements is unknown and elements are frequently added or removed.
+- An array may be suitable when the number of elements is known and additions or removals are infrequent.
+
+### 2.4. Arrays vs. Linked Lists
+
+- Arrays support random access; linked lists do not.
+- Arrays use contiguous memory, which works well with CPU caches. Linked lists have poorer cache locality.
+- Arrays have a fixed size, while linked lists grow dynamically. If an array is too small, a larger one must be allocated and the elements copied, which takes time.
+
+## 3. Stacks
+
+### 3.1. Introduction
+
+A **stack** allows elements to be added (`push`) and removed (`pop`) at one end, called the **top**. It follows the **last in, first out (LIFO)** principle. **Both push and pop operate on the top of the stack.**
+
+Stacks are commonly implemented with an array or linked list. An array-based stack is called a **sequential stack**, and a linked-list-based stack is called a **linked stack**.
+
+```java
+Assume the stack has n elements.
+Access: O(n) // worst case
+Insertion and deletion: O(1) // push and pop at the top
+```
+
+![Last-in, first-out stack](../images/shared/stack.png)
+
+### 3.2. Common Uses of Stacks
+
+Use a stack when data is added and removed at one end and follows the **last in, first out (LIFO)** rule.
+
+#### 3.2.1. Browser Back and Forward Navigation
+
+Two stacks, `Stack1` and `Stack2`, can implement this feature. Suppose you visit pages 1, 2, 3, and 4 in order, pushing each onto `Stack1`. To return to page 2, press Back and move pages 4 and 3 from `Stack1` to `Stack2`. To go forward to page 3, pop it from `Stack2` and push it onto `Stack1`. The diagram below illustrates the process:
+
+![Implement browser back and forward navigation with two stacks](../images/shared/stack-browser-back-forward.png)
+
+#### 3.2.2. Checking Whether Brackets Are Balanced
+
+> Given a string containing only `'('`, `')'`, `'{'`, `'}'`, `'['`, and `']'`, determine whether it is valid.
 >
-> 有效字符串需满足：
+> A valid string must satisfy these conditions:
 >
-> 1. 左括号必须用相同类型的右括号闭合。
-> 2. 左括号必须以正确的顺序闭合。
+> 1. Each opening bracket is closed by a bracket of the same type.
+> 2. Brackets are closed in the correct order.
 >
-> 比如 "()"、"()[]{}"、"{[]}" 都是有效字符串，而 "(]"、"([)]" 则不是。
+> For example, `"()"`, `"()[]{}"`, and `"{[]}"` are valid, while `"(]"` and `"([)]"` are not.
 
-这个问题实际是 Leetcode 的一道题目，我们可以利用栈 `Stack` 来解决这个问题。
+This is a LeetCode problem that can be solved with a stack.
 
-1. 首先我们将括号间的对应规则存放在 `Map` 中，这一点应该毋容置疑；
-2. 创建一个栈。遍历字符串，如果字符是左括号就直接加入 `stack` 中，否则将 `stack` 的栈顶元素与这个括号做比较，如果不相等就直接返回 false。遍历结束，如果 `stack` 为空，返回 `true`。
+1. Store the matching bracket pairs in a `Map`.
+2. Create a stack and iterate over the string. Push each opening bracket. For a closing bracket, compare it with the top of the stack; if they do not match, return `false`. After the iteration, return `true` if the stack is empty.
 
 ```java
 public boolean isValid(String s){
-    // 括号之间的对应规则
+    // Map each closing bracket to its matching opening bracket
     HashMap<Character, Character> mappings = new HashMap<Character, Character>();
     mappings.put(')', '(');
     mappings.put('}', '{');
@@ -155,42 +155,41 @@ public boolean isValid(String s){
 }
 ```
 
-#### 3.2.3. 反转字符串
+#### 3.2.3. Reversing a String
 
-将字符串中的每个字符先入栈再出栈就可以了。
+Push each character onto a stack, then pop them to produce the reversed string.
 
-#### 3.2.4. 维护函数调用
+#### 3.2.4. Managing Function Calls
 
-最后一个被调用的函数必须先完成执行，符合栈的 **后进先出（LIFO, Last In First Out）** 特性。
-例如递归函数调用可以通过栈来实现，每次递归调用都会将参数和返回地址压栈。
+The most recently called function must finish first, which follows the stack's **last in, first out (LIFO)** behavior. Recursive calls can be managed with a stack; each call pushes its parameters and return address.
 
-#### 3.2.5 深度优先遍历（DFS）
+#### 3.2.5. Depth-First Search (DFS)
 
-在深度优先搜索过程中，栈被用来保存搜索路径，以便回溯到上一层。
+During depth-first search, a stack stores the current path so the algorithm can backtrack to the previous level.
 
-### 3.3. 栈的实现
+### 3.3. Implementing a Stack
 
-栈既可以通过数组实现，也可以通过链表来实现。不管基于数组还是链表，入栈、出栈的时间复杂度都为 O(1)。
+A stack can be implemented with an array or a linked list. In either case, push and pop take `O(1)` time.
 
-下面我们使用数组来实现一个栈，并且这个栈具有 `push()`、`pop()`（返回栈顶元素并出栈）、`peek()`（返回栈顶元素不出栈）、`isEmpty()`、`size()` 这些基本的方法。
+The following array-based implementation provides `push()`, `pop()` (return and remove the top element), `peek()` (return the top element without removing it), `isEmpty()`, and `size()`.
 
-> 提示：每次入栈之前先判断栈的容量是否够用，如果不够用就用 `Arrays.copyOf()` 进行扩容；
+> Before each push, check that the stack has enough capacity. If not, resize it with `Arrays.copyOf()`.
 
 ```java
 public class MyStack {
-    private int[] storage;//存放栈中元素的数组
-    private int capacity;//栈的容量
-    private int count;//栈中元素数量
+    private int[] storage; // array storing the stack elements
+    private int capacity; // stack capacity
+    private int count; // number of elements in the stack
     private static final int GROW_FACTOR = 2;
 
-    //不带初始容量的构造方法。默认容量为8
+    // Constructor without an initial capacity; defaults to 8
     public MyStack() {
         this.capacity = 8;
         this.storage=new int[8];
         this.count = 0;
     }
 
-    //带初始容量的构造方法
+    // Constructor with an initial capacity
     public MyStack(int initialCapacity) {
         if (initialCapacity < 1)
             throw new IllegalArgumentException("Capacity too small.");
@@ -200,7 +199,7 @@ public class MyStack {
         this.count = 0;
     }
 
-    //入栈
+    // Push an element
     public void push(int value) {
         if (count == capacity) {
             ensureCapacity();
@@ -208,14 +207,14 @@ public class MyStack {
         storage[count++] = value;
     }
 
-    //确保容量大小
+    // Ensure the stack has enough capacity
     private void ensureCapacity() {
         int newCapacity = capacity * GROW_FACTOR;
         storage = Arrays.copyOf(storage, newCapacity);
         capacity = newCapacity;
     }
 
-    //返回栈顶元素并出栈
+    // Return and remove the top element
     public int pop() {
         if (count == 0)
             throw new IllegalArgumentException("Stack is empty.");
@@ -223,7 +222,7 @@ public class MyStack {
         return storage[count];
     }
 
-    //返回栈顶元素不出栈
+    // Return the top element without removing it
     public int peek() {
         if (count == 0){
             throw new IllegalArgumentException("Stack is empty.");
@@ -232,12 +231,12 @@ public class MyStack {
         }
     }
 
-    //判断栈是否为空
+    // Check whether the stack is empty
     public boolean isEmpty() {
         return count == 0;
     }
 
-    //返回栈中元素的个数
+    // Return the number of elements in the stack
     public int size() {
         return count;
     }
@@ -245,7 +244,7 @@ public class MyStack {
 }
 ```
 
-验证：
+Example:
 
 ```java
 MyStack myStack = new MyStack(3);
@@ -257,114 +256,114 @@ myStack.push(5);
 myStack.push(6);
 myStack.push(7);
 myStack.push(8);
-System.out.println(myStack.peek());//8
-System.out.println(myStack.size());//8
+System.out.println(myStack.peek());// 8
+System.out.println(myStack.size());// 8
 for (int i = 0; i < 8; i++) {
     System.out.println(myStack.pop());
 }
-System.out.println(myStack.isEmpty());//true
-myStack.pop();//报错：java.lang.IllegalArgumentException: Stack is empty.
+System.out.println(myStack.isEmpty());// true
+myStack.pop();// throws java.lang.IllegalArgumentException: Stack is empty.
 ```
 
-## 4. 队列
+## 4. Queues
 
-### 4.1. 队列简介
+### 4.1. Introduction
 
-**队列（Queue）** 是 **先进先出（FIFO，First In, First Out）** 的线性表。在具体应用中通常用链表或者数组来实现，用数组实现的队列叫作 **顺序队列**，用链表实现的队列叫作 **链式队列**。**队列只允许在后端（rear）进行插入操作也就是入队 enqueue，在前端（front）进行删除操作也就是出队 dequeue。**
+A **queue** is a linear data structure that follows **first in, first out (FIFO)**. It is commonly implemented with an array or linked list; these are called an **array-based queue** and a **linked queue**, respectively. **Elements are enqueued at the rear and dequeued from the front.**
 
-队列的操作方式和堆栈类似，唯一的区别在于队列只允许新数据在后端进行添加。
+Queue operations resemble stack operations, but a queue only allows new elements to be added at the rear.
 
 ```java
-假设队列中有n个元素。
-访问：O(n) //最坏情况
-插入删除：O(1) //后端插入前端删除元素
+Assume the queue has n elements.
+Access: O(n) // worst case
+Insertion and deletion: O(1) // enqueue at rear and dequeue from front
 ```
 
-![队列](../images/shared/queue.png)
+![Queue](../images/shared/queue.png)
 
-### 4.2. 队列分类
+### 4.2. Types of Queues
 
-#### 4.2.1. 单队列
+#### 4.2.1. Simple Queues
 
-单队列就是常见的队列，每次添加元素时，都是添加到队尾。单队列又分为 **顺序队列（数组实现）** 和 **链式队列（链表实现）**。
+A simple queue adds each new element at the rear. It can be implemented as an **array-based queue** or a **linked queue**.
 
-**顺序队列存在“假溢出”的问题也就是明明有位置却不能添加的情况。**
+**An array-based queue can suffer from “false overflow,” where the queue cannot accept an element even though the array has unused positions.**
 
-假设下图是一个顺序队列，我们将前两个元素 1,2 出队，并入队两个元素 7,8。当进行入队、出队操作的时候，front 和 rear 都会持续往后移动，当 rear 移动到最后的时候，我们无法再往队列中添加数据，即使数组中还有空余空间，这种现象就是 **“假溢出”**。除了假溢出问题之外，如下图所示，当添加元素 8 的时候，rear 指针移动到数组之外（越界）。
+Suppose the array-based queue below dequeues its first two elements, 1 and 2, then enqueues 7 and 8. Both `front` and `rear` keep moving forward. When `rear` reaches the end, no more elements can be added even though the array has free space at the beginning. This is **false overflow**. As shown below, adding 8 can also move `rear` past the end of the array.
 
-> 为了避免当只有一个元素的时候，队头和队尾重合使处理变得麻烦，所以引入两个指针，front 指针指向对头元素，rear 指针指向队列最后一个元素的下一个位置，这样当 front 等于 rear 时，此队列不是还剩一个元素，而是空队列。——From 《大话数据结构》
+> To avoid ambiguity when the queue has one element and the front and rear coincide, use two pointers: `front` points to the first element, and `rear` points to the position after the last element. Then, when `front` equals `rear`, the queue is empty. — _Data Structures Illustrated_
 
-![顺序队列假溢出](../images/shared/seq-queue-false-overflow.png)
+![False overflow in an array-based queue](../images/shared/seq-queue-false-overflow.png)
 
-#### 4.2.2. 循环队列
+#### 4.2.2. Circular Queues
 
-循环队列可以解决顺序队列的假溢出和越界问题。解决办法就是：从头开始，这样也就会形成头尾相接的循环，这也就是循环队列名字的由来。
+A circular queue avoids false overflow and out-of-bounds movement by wrapping the rear pointer back to the beginning of the array.
 
-还是用上面的图，我们将 rear 指针指向数组下标为 0 的位置就不会有越界问题了。当我们再向队列中添加元素的时候，rear 向后移动。
+In the diagram below, point `rear` to array index 0 after it reaches the end. As elements are added, `rear` moves forward again.
 
-![循环队列](../images/shared/circular-queue.png)
+![Circular queue](../images/shared/circular-queue.png)
 
-顺序队列中，我们说 `front==rear` 的时候队列为空，循环队列中则不一样，也可能为满，如上图所示。解决办法有两种：
+In a simple array-based queue, `front == rear` means the queue is empty. In a circular queue, it could also mean the queue is full, as shown above. There are two ways to distinguish the cases:
 
-1. 可以设置一个标志变量 `flag`，当 `front==rear` 并且 `flag=0` 的时候队列为空，当 `front==rear` 并且 `flag=1` 的时候队列为满。
-2. 队列为空的时候就是 `front==rear`，队列满的时候，我们保证数组还有一个空闲的位置，rear 就指向这个空闲位置，如下图所示，那么现在判断队列是否为满的条件就是：`(rear+1) % QueueSize==front`。
+1. Keep a flag variable: when `front == rear`, `flag = 0` means the queue is empty and `flag = 1` means it is full.
+2. Reserve one empty array slot. Then `front == rear` means empty, and the queue is full when `(rear + 1) % QueueSize == front`.
 
-#### 4.2.3 双端队列
+#### 4.2.3. Deques
 
-**双端队列（Deque）** 是一种在队列的两端都可以进行插入和删除操作的队列，相比单队列来说更加灵活。
+A **deque** (double-ended queue) allows insertion and deletion at both ends, making it more flexible than a simple queue.
 
-一般来说，我们可以对双端队列进行 `addFirst`、`addLast`、`removeFirst` 和 `removeLast` 操作。
+Common deque operations include `addFirst`, `addLast`, `removeFirst`, and `removeLast`.
 
-#### 4.2.4 优先队列
+#### 4.2.4. Priority Queues
 
-**优先队列（Priority Queue）** 从底层结构上来讲并非线性的数据结构，它一般是由堆来实现的。
+A **priority queue** is not a linear data structure internally; it is usually implemented with a heap.
 
-1. 在每个元素入队时，优先队列会将新元素插入堆中并调整堆。
-2. 在队头出队时，优先队列会返回堆顶元素并调整堆。
+1. When an element is enqueued, the priority queue inserts it into the heap and restores the heap property.
+2. When the head is dequeued, the priority queue returns the root and restores the heap property.
 
-关于堆的具体实现可以看 [堆](https://javaguide.cn/cs-basics/data-structure/heap.html) 这一节。
+For details on heaps, see [Heaps](https://javaguide.cn/cs-basics/data-structure/heap.html).
 
-优先队列只保证队头是当前优先级最高（或最低）的元素，不保证底层数组、迭代器或整个集合全局有序。每次取出队头后，下一优先级的元素才会成为新的队头。
+A priority queue only guarantees that its head has the highest (or lowest) current priority. It does not guarantee that its backing array, iterator, or entire collection is globally sorted. After the head is removed, the next-highest-priority element becomes the new head.
 
-虽然优先队列通常由堆这种非线性结构实现，但它通过队列接口向使用者提供按优先级出队的能力。这里的“优先”只描述出队顺序，不能理解成集合中的所有元素会自动排好序。
+Although a priority queue is usually implemented with a non-linear structure such as a heap, its queue interface provides removal by priority. “Priority” describes the removal order; it does not mean that all elements in the collection are automatically sorted.
 
-### 4.3. 队列的常见应用场景
+### 4.3. Common Uses of Queues
 
-当我们需要按照一定顺序来处理数据的时候可以考虑使用队列这个数据结构。
+Use a queue when data needs to be processed in a particular order.
 
-- **阻塞队列：** 阻塞队列可以看成在队列基础上加了阻塞操作的队列。当队列为空的时候，出队操作阻塞，当队列满的时候，入队操作阻塞。使用阻塞队列我们可以很容易实现“生产者 - 消费者”模型。
-- **线程池中的请求/任务队列：** 当线程池中没有空闲线程时，新的任务请求线程资源会被如何处理呢？答案是这些任务会被放入任务队列中，等待线程池中的线程空闲后再从队列中取出任务执行。任务队列分为无界队列（基于链表实现）和有界队列（基于数组实现）。无界队列的特点是队列容量理论上没有限制，任务可以持续入队，直到系统资源耗尽。例如：`FixedThreadPool` 使用的阻塞队列 `LinkedBlockingQueue`，其默认容量为 `Integer.MAX_VALUE`，因此可以被视为“无界队列”。而有界队列则不同，当队列已满时，如果再有新任务提交，由于队列无法继续容纳任务，线程池会拒绝这些任务，并抛出 `java.util.concurrent.RejectedExecutionException` 异常。
-- **栈：** 双端队列可以实现栈的全部功能（`push`、`pop` 和 `peek`），并且在 `Deque` 接口中已经定义了相关方法。`Stack` 没有被标记为废弃，但它是较早的 `Vector` 子类，JDK 文档建议优先使用 `Deque` 及其实现（如 `ArrayDeque`）完成栈操作。
-- **广度优先搜索（BFS）：** 在图的广度优先搜索过程中，队列被用于存储待访问的节点，保证按照层次顺序遍历图的节点。
-- Linux 内核进程队列（按优先级排队）
-- 现实生活中的派对，播放器上的播放列表；
-- 消息队列
-- 等等……
+- **Blocking queues:** These add blocking operations to a queue. Dequeue waits while the queue is empty, and enqueue waits while it is full. Blocking queues are useful for implementing the producer-consumer pattern.
+- **Thread-pool task queues:** When no worker thread is free, a thread pool can place new tasks in a queue until a worker becomes available. Queues may be unbounded (often linked-list-based) or bounded (often array-based). An unbounded queue can keep accepting tasks until system resources run out. For example, `FixedThreadPool` uses a `LinkedBlockingQueue` with a default capacity of `Integer.MAX_VALUE`, so it is effectively unbounded. With a bounded queue, the thread pool rejects new tasks when the queue is full and throws `java.util.concurrent.RejectedExecutionException`.
+- **Stacks:** A deque supports stack operations such as `push`, `pop`, and `peek`, which are defined by the `Deque` interface. `Stack` is not deprecated, but it is an older subclass of `Vector`; the JDK documentation recommends using `Deque` implementations such as `ArrayDeque` for stack operations.
+- **Breadth-first search (BFS):** A queue stores nodes to visit and ensures graph nodes are traversed level by level.
+- Linux kernel process queues, where processes can be scheduled by priority.
+- Real-world lines, such as a party queue or a media player's playlist.
+- Message queues.
+- And more.
 
-## 面试复盘重点
+## Interview Review
 
-线性结构是算法题和 Java 集合的基础，面试里常把数组、链表、栈、队列放在一起对比。
+Linear data structures are fundamental to algorithm problems and Java collections. Interviews often compare arrays, linked lists, stacks, and queues.
 
-| 结构 | 查询          | 插入/删除         | 典型 Java 类型         | 高频题型                     |
-| ---- | ------------- | ----------------- | ---------------------- | ---------------------------- |
-| 数组 | 按下标 `O(1)` | 中间位置 `O(n)`   | `ArrayList` 底层数组   | 二分、双指针、前缀和         |
-| 链表 | `O(n)`        | 已知节点时 `O(1)` | `LinkedList`           | 反转链表、快慢指针、合并链表 |
-| 栈   | 栈顶 `O(1)`   | 栈顶 `O(1)`       | `ArrayDeque`           | 括号匹配、单调栈、DFS        |
-| 队列 | 队头 `O(1)`   | 入队/出队 `O(1)`  | `ArrayDeque`、阻塞队列 | BFS、生产者消费者、任务排队  |
+| Structure   | Lookup           | Insertion/deletion            | Common Java type              | Common problem types                      |
+| ----------- | ---------------- | ----------------------------- | ----------------------------- | ----------------------------------------- |
+| Array       | By index: `O(1)` | Middle: `O(n)`                | `ArrayList` backing array     | Binary search, two pointers, prefix sums  |
+| Linked list | `O(n)`           | `O(1)` when the node is known | `LinkedList`                  | Reversal, fast and slow pointers, merging |
+| Stack       | Top: `O(1)`      | Top: `O(1)`                   | `ArrayDeque`                  | Bracket matching, monotonic stack, DFS    |
+| Queue       | Head: `O(1)`     | Enqueue/dequeue: `O(1)`       | `ArrayDeque`, blocking queues | BFS, producer-consumer, task scheduling   |
 
-几个回答面试题时很有用的点：
+A few useful points for interviews:
 
-- 数组随机访问快，是因为内存连续，可以通过基地址和下标直接计算地址。
-- 链表插入删除快有前提：已经拿到要操作位置的节点；如果还要先查找，整体仍然是 `O(n)`。
-- Java 中不推荐继续使用 `Stack`，更常见的选择是 `Deque`，比如 `ArrayDeque`。
-- 队列在工程里不只用于算法 BFS，也用于线程池任务队列、消息队列、限流削峰等场景。
-- 循环队列的关键是区分队空和队满，常见做法是浪费一个位置或单独维护元素数量。
+- Arrays support fast random access because contiguous memory lets the address be calculated from the base address and index.
+- Linked-list insertion and deletion are fast only when the target node is already known. Finding it first still takes `O(n)` overall.
+- In Java, `Deque` implementations such as `ArrayDeque` are generally preferred over `Stack`.
+- Queues are used beyond BFS, including thread-pool task queues, message queues, and traffic shaping.
+- Circular queues must distinguish empty from full, often by reserving one array slot or tracking the element count separately.
 
-## 推荐练习题
+## Practice Problems
 
-- 数组：[704. 二分查找](https://leetcode.cn/problems/binary-search/)、[26. 删除有序数组中的重复项](https://leetcode.cn/problems/remove-duplicates-from-sorted-array/)
-- 链表：[206. 反转链表](https://leetcode.cn/problems/reverse-linked-list/)、[19. 删除链表的倒数第 N 个结点](https://leetcode.cn/problems/remove-nth-node-from-end-of-list/)
-- 栈：[20. 有效的括号](https://leetcode.cn/problems/valid-parentheses/)、[739. 每日温度](https://leetcode.cn/problems/daily-temperatures/)
-- 队列：[102. 二叉树的层序遍历](https://leetcode.cn/problems/binary-tree-level-order-traversal/)、[239. 滑动窗口最大值](https://leetcode.cn/problems/sliding-window-maximum/)
+- Arrays: [704. Binary Search](https://leetcode.cn/problems/binary-search/), [26. Remove Duplicates from Sorted Array](https://leetcode.cn/problems/remove-duplicates-from-sorted-array/)
+- Linked lists: [206. Reverse Linked List](https://leetcode.cn/problems/reverse-linked-list/), [19. Remove Nth Node From End of List](https://leetcode.cn/problems/remove-nth-node-from-end-of-list/)
+- Stacks: [20. Valid Parentheses](https://leetcode.cn/problems/valid-parentheses/), [739. Daily Temperatures](https://leetcode.cn/problems/daily-temperatures/)
+- Queues: [102. Binary Tree Level Order Traversal](https://leetcode.cn/problems/binary-tree-level-order-traversal/), [239. Sliding Window Maximum](https://leetcode.cn/problems/sliding-window-maximum/)
 
 <!-- @include: @article-footer.snippet.md -->

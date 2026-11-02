@@ -1,55 +1,55 @@
 ---
-title: Top K 问题面试题总结：堆、快排分区、桶计数与数据流
-description: Top K 问题面试题总结，讲解第 K 大、前 K 高频、小顶堆、快排分区、桶计数、数据流中位数、PriorityQueue 和 LeetCode 高频题。
-category: 计算机基础
+title: "Top K Interview Guide: Heaps, Quickselect, Buckets, and Streaming Data"
+description: An interview guide to Top K problems, covering kth largest, top-k frequency, min-heaps, Quickselect, bucket sort, streaming medians, Java PriorityQueue, and common LeetCode problems.
+category: Computer Science Fundamentals
 tag:
-  - 算法
+  - Algorithms
 head:
   - - meta
     - name: keywords
-      content: TopK,Top K,第K大,前K高频,堆,小顶堆,快排分区,桶计数,PriorityQueue,数据流中位数,LeetCode
+      content: Top K,kth largest,top-k frequency,heap,min-heap,Quickselect,bucket sort,PriorityQueue,streaming median,LeetCode
 ---
 
-Top K 问题在后端面试里很常见，因为它既能考算法，也能自然追问工程场景：排行榜、热词统计、数据流中位数、日志里最常见的错误码，都能落到 Top K。
+Top K problems are common in backend interviews because they test algorithms and connect naturally to engineering scenarios. Leaderboards, trending terms, streaming medians, and the most common error codes in logs can all be framed as Top K problems.
 
-这类题不要只记一种写法。面试官常会追问：如果数据量很大怎么办？如果是数据流怎么办？如果要求前 K 高频怎么办？不同条件下方案会变。
+Don't memorize just one solution. Interviewers may ask how to handle a large dataset, a data stream, or a top-k frequency query. The right approach depends on those requirements.
 
-## 面试考察重点
+## What Interviewers Look For
 
-- 能用堆解决第 K 大和前 K 高频。
-- 能说清小顶堆和大顶堆怎么选。
-- 能对比堆、快排分区、桶计数的复杂度。
-- 能处理数据流场景。
-- 能写出 Java `PriorityQueue` 比较器。
+- Use a heap to find the kth largest value or the k most frequent values.
+- Explain when to use a min-heap or a max-heap.
+- Compare the complexity of heaps, Quickselect, and bucket sort.
+- Handle streaming data.
+- Write a comparator for Java `PriorityQueue`.
 
-## Top K 题怎么选方案？
+## Choosing an Approach
 
-先看 3 个条件：
+Check three things first:
 
-1. 是否只需要第 K 个元素，还是要完整的前 K 个元素？
-2. 数据是一次性给出，还是持续到来的数据流？
-3. 是否需要结果有序？
+1. Do you need only the kth element, or the complete top-k elements?
+2. Is the input a fixed collection or a stream that keeps arriving?
+3. Does the result need to be sorted?
 
-如果只是一次性数组里找第 K 大，快排分区平均更快；如果数据持续到来，维护一个大小为 K 的堆更自然；如果题目问前 K 高频，要先做频率统计，再对频率做 Top K。
+For a one-time kth-largest query, Quickselect is often faster on average. For a stream, maintaining a heap of size `k` is more natural. For top-k frequency, count each value first, then select by frequency.
 
-## 方案对比
+## Comparing Approaches
 
-| 方案     | 适合场景                 | 时间复杂度         | 空间复杂度          |
-| -------- | ------------------------ | ------------------ | ------------------- |
-| 排序     | 数据量不大，代码简单优先 | `O(nlogn)`         | 取决于排序实现      |
-| 小顶堆   | 找前 K 大或第 K 大       | `O(nlogk)`         | `O(k)`              |
-| 快排分区 | 找第 K 大，平均效率高    | 平均 `O(n)`        | `O(1)` 到 `O(logn)` |
-| 桶计数   | 频率范围有限，前 K 高频  | `O(n)`             | `O(n)`              |
-| 双堆     | 数据流中位数             | 每次插入 `O(logn)` | `O(n)`              |
+| Approach    | Suitable for                                     | Time complexity         | Space complexity                      |
+| ----------- | ------------------------------------------------ | ----------------------- | ------------------------------------- |
+| Sorting     | Small inputs or when simplicity matters          | `O(nlogn)`              | Depends on the sorting implementation |
+| Min-heap    | Top k largest or kth largest                     | `O(nlogk)`              | `O(k)`                                |
+| Quickselect | One-time kth-largest selection                   | Average `O(n)`          | `O(1)` to `O(logn)`                   |
+| Bucket sort | Top-k frequencies with a bounded frequency range | `O(n)`                  | `O(n)`                                |
+| Two heaps   | Median of a data stream                          | `O(logn)` per insertion | `O(n)`                                |
 
-面试里可以这样回答取舍：
+You can explain the trade-offs in an interview like this:
 
-- 排序最简单，适合数据量不大或不追求最优复杂度。
-- 堆适合 K 比 n 小很多的场景，空间只需要 `O(k)`。
-- 快排分区适合一次性找第 K 大，平均 `O(n)`，但最坏会退化。
-- 桶计数适合频率类问题，尤其是频率范围不超过 `n`。
+- Sorting is simplest and works when the input isn't large or optimal complexity isn't required.
+- A heap is useful when `k` is much smaller than `n`, and uses `O(k)` space.
+- Quickselect finds the kth largest element in average `O(n)` time, but its worst case can degrade.
+- Bucket sort works well for frequency-based problems, especially when frequencies are bounded by `n`.
 
-## 小顶堆求第 K 大
+## Find the Kth Largest with a Min-Heap
 
 ```java
 int findKthLargest(int[] nums, int k) {
@@ -64,22 +64,22 @@ int findKthLargest(int[] nums, int k) {
 }
 ```
 
-堆里始终保留当前最大的 K 个数，堆顶就是这 K 个数里最小的，也就是整体第 K 大。
+The heap keeps the largest `k` values seen so far. Its root is the smallest of those values, which is the kth largest overall.
 
-为什么是小顶堆？因为堆里要保留最大的 K 个元素。当新元素进来后，如果堆大小超过 K，就应该淘汰这 K + 1 个元素里最小的那个。小顶堆的堆顶正好是最小值。
+Why a min-heap? When adding a new value makes the heap larger than `k`, discard the smallest value among those `k + 1`. The min-heap root gives that value directly.
 
-如果求第 K 小，思路反过来：维护大小为 K 的大顶堆，超过 K 时弹出最大值。
+To find the kth smallest, reverse the approach: maintain a max-heap of size `k` and remove the largest value whenever the heap exceeds that size.
 
-## 代表题精讲：前 K 高频元素
+## Example: Top K Frequent Elements
 
-[347. 前 K 个高频元素](https://leetcode.cn/problems/top-k-frequent-elements/) 是 Top K 里最常见的频率题。题目给定一个整数数组和整数 `k`，要求返回出现频率最高的 `k` 个元素，结果顺序通常不重要。
+[347. Top K Frequent Elements](https://leetcode.cn/problems/top-k-frequent-elements/) is a common frequency-based Top K problem. Given an integer array and `k`, return the `k` most frequent values. The result can usually be in any order.
 
-这题不要直接对原数组排序，因为要比较的是“频率”，不是元素值。更稳的拆法是两步：
+Don't sort the original array, because the ranking is based on frequency, not value. Instead:
 
-1. 用 `HashMap` 统计每个元素出现次数。
-2. 维护一个按频率升序的小顶堆，堆里只保留当前频率最高的 `k` 个元素。
+1. Use a `HashMap` to count each value.
+2. Keep a min-heap ordered by frequency and limited to `k` entries.
 
-为什么还是小顶堆？因为堆满以后，新元素进来时，只要堆大小超过 `k`，就弹出当前频率最低的元素。这样遍历完所有不同元素后，堆里剩下的就是前 `k` 高频。
+Again, the min-heap lets you remove the least frequent candidate when its size exceeds `k`. After processing every distinct value, it contains the `k` most frequent values.
 
 ```java
 int[] topKFrequent(int[] nums, int k) {
@@ -102,77 +102,79 @@ int[] topKFrequent(int[] nums, int k) {
 }
 ```
 
-这里堆按频率升序，堆大小超过 K 时弹出频率最小的元素。
+The heap is ordered by ascending frequency, so when it exceeds `k`, the least frequent element is removed.
 
-以 `nums = [1,1,1,2,2,3]`、`k = 2` 为例，频率表是 `{1=3, 2=2, 3=1}`。堆先放入 `1` 和 `2`，再放入 `3` 时大小超过 2，会弹出频率最低的 `3`，最终保留 `1` 和 `2`。
+For `nums = [1,1,1,2,2,3]` and `k = 2`, the frequencies are `{1=3, 2=2, 3=1}`. After adding `3`, the heap exceeds size 2, so `3` is removed. The remaining values are `1` and `2`.
 
-如果 `k` 等于不同元素个数，堆最后会保留全部元素；如果面试官要求输出按频率降序排列，最后还需要对结果额外排序。
+If `k` equals the number of distinct values, the heap retains all values. If the interviewer requires output in descending frequency order, sort the result afterward.
 
-如果面试官要求相同频率时按元素大小或字典序排序，比较器就要把第二排序规则写进去。比如前 K 高频单词通常要求频率高的在前，频率相同时字典序小的在前。
+If ties must be resolved by numeric value or lexicographic order, include that secondary rule in the comparator. Top K Frequent Words, for example, orders higher frequencies first and words lexicographically when frequencies tie.
 
-## 快排分区思路
+## Quickselect
 
-快排分区适合找第 K 大，不要求输出有序的前 K 个元素。思路是每次把数组按 pivot 分成两边，根据 pivot 的排名决定继续搜索哪一边。平均时间复杂度是 `O(n)`，但最坏可能退化到 `O(n^2)`，实际写法通常会随机选 pivot。
+Quickselect is useful for finding the kth largest value when the first `k` values don't need to be returned in sorted order. Partition the array around a pivot, then use the pivot's rank to choose which side to search next.
 
-快排分区的优势是不用维护堆，平均时间复杂度低；局限是它更适合内存中的一次性数据。如果数据流不断到来，或者数据太大不能一次性放进内存，堆方案更容易落地。
+Its average time complexity is `O(n)`, but the worst case can be `O(n^2)`. Implementations often choose a random pivot to reduce the chance of a bad partition sequence.
 
-## 数据流场景
+Quickselect avoids maintaining a heap and is fast on average. It is best suited to a one-time query on data in memory. For a continuous stream or data too large to fit in memory, a heap is easier to maintain.
 
-数据流题不能每来一个元素就重新排序。常见做法是持续维护一个数据结构：
+## Streaming Data
 
-- 数据流第 K 大：维护大小为 K 的小顶堆。
-- 数据流中位数：维护两个堆，左边大顶堆放较小的一半，右边小顶堆放较大的一半。
-- 滑动窗口中位数：还要处理过期元素，普通堆删除任意元素不方便，通常需要延迟删除或有序集合。
+Don't sort all the data again whenever a new value arrives. Maintain a suitable data structure as values arrive:
 
-## 过程示意和边界样例
+- Kth largest in a stream: maintain a min-heap of size `k`.
+- Median of a stream: use two heaps, a max-heap for the smaller half and a min-heap for the larger half.
+- Sliding window median: also remove expired values. Since a normal heap doesn't support efficient removal of arbitrary elements, use lazy deletion or an ordered set.
 
-以数组 `[3, 2, 1, 5, 6, 4]` 求第 2 大为例，维护大小为 2 的小顶堆。表中为了方便阅读，按值升序展示堆中的元素，不代表 Java `PriorityQueue` 的内部数组顺序。
+## Walkthrough and Edge Cases
 
-| 读入元素 | 候选元素    | 超过 K 后处理         |
-| -------- | ----------- | --------------------- |
-| 3        | `[3]`       | 不处理                |
-| 2        | `[2, 3]`    | 不处理                |
-| 1        | `[1, 2, 3]` | 弹出 1，保留 `[2, 3]` |
-| 5        | `[2, 3, 5]` | 弹出 2，保留 `[3, 5]` |
-| 6        | `[3, 5, 6]` | 弹出 3，保留 `[5, 6]` |
-| 4        | `[4, 5, 6]` | 弹出 4，保留 `[5, 6]` |
+For the second-largest value in `[3, 2, 1, 5, 6, 4]`, maintain a min-heap of size 2. The table shows heap values in ascending order for readability; this isn't the internal array order of Java's `PriorityQueue`.
 
-最后堆顶是 `5`，也就是第 2 大。
+| Value read | Candidates  | After exceeding K       |
+| ---------- | ----------- | ----------------------- |
+| 3          | `[3]`       | No action               |
+| 2          | `[2, 3]`    | No action               |
+| 1          | `[1, 2, 3]` | Remove 1; keep `[2, 3]` |
+| 5          | `[2, 3, 5]` | Remove 2; keep `[3, 5]` |
+| 6          | `[3, 5, 6]` | Remove 3; keep `[5, 6]` |
+| 4          | `[4, 5, 6]` | Remove 4; keep `[5, 6]` |
 
-常见错误写法：
+The heap root is `5`, the second-largest value.
+
+Avoid a comparator that subtracts values, because it can overflow for extreme integers:
 
 ```java
 PriorityQueue<Integer> heap = new PriorityQueue<>((a, b) -> b - a);
 ```
 
-这个比较器在极端整数值下可能溢出。更稳妥的写法是：
+Use `Integer.compare` instead:
 
 ```java
 PriorityQueue<Integer> heap = new PriorityQueue<>((a, b) -> Integer.compare(b, a));
 ```
 
-## 易错点
+## Common Mistakes
 
-- 找前 K 大通常用小顶堆，找前 K 小通常用大顶堆。
-- `PriorityQueue` 默认是小顶堆。
-- 前 K 高频要先统计频率，再对频率做 Top K。
-- 如果要输出有序结果，堆或快排分区后还需要额外排序。
-- 数据流场景不能把所有数据每次重新排序。
+- Use a min-heap for the top `k` largest values and a max-heap for the top `k` smallest values.
+- Java `PriorityQueue` is a min-heap by default.
+- Count frequencies before selecting the top-k frequent values.
+- If the result must be sorted, sort it after using a heap or Quickselect.
+- For streaming data, don't sort the full dataset after each new value.
 
-## 高频问题自测
+## Questions to Review
 
-- 找第 K 大为什么通常维护大小为 K 的小顶堆？
-- 小顶堆和大顶堆分别适合哪些 Top K 场景？
-- 堆方案和快排分区方案的时间复杂度、空间复杂度有什么区别？
-- 前 K 高频元素为什么要先做频率统计？
-- 数据流中位数为什么适合用两个堆维护？
+- Why maintain a min-heap of size `k` to find the kth largest value?
+- Which Top K problems call for a min-heap or a max-heap?
+- How do heap and Quickselect approaches compare in time and space complexity?
+- Why count frequencies before selecting the most frequent values?
+- Why use two heaps to maintain a streaming median?
 
-## 推荐练习题
+## Recommended Practice Problems
 
-- [215. 数组中的第 K 个最大元素](https://leetcode.cn/problems/kth-largest-element-in-an-array/)
-- [347. 前 K 个高频元素](https://leetcode.cn/problems/top-k-frequent-elements/)
-- [692. 前 K 个高频单词](https://leetcode.cn/problems/top-k-frequent-words/)
-- [703. 数据流中的第 K 大元素](https://leetcode.cn/problems/kth-largest-element-in-a-stream/)
-- [295. 数据流的中位数](https://leetcode.cn/problems/find-median-from-data-stream/)
+- [215. Kth Largest Element in an Array](https://leetcode.cn/problems/kth-largest-element-in-an-array/)
+- [347. Top K Frequent Elements](https://leetcode.cn/problems/top-k-frequent-elements/)
+- [692. Top K Frequent Words](https://leetcode.cn/problems/top-k-frequent-words/)
+- [703. Kth Largest Element in a Stream](https://leetcode.cn/problems/kth-largest-element-in-a-stream/)
+- [295. Find Median from Data Stream](https://leetcode.cn/problems/find-median-from-data-stream/)
 
 <!-- @include: @article-footer.snippet.md -->

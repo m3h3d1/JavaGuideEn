@@ -1,37 +1,37 @@
 ---
-title: LRU 缓存面试题总结：哈希表、双向链表与 LinkedHashMap
-description: LRU 缓存面试题总结，讲解 LRU 淘汰策略、哈希表加双向链表实现、Java LinkedHashMap 写法、复杂度和缓存场景。
-category: 计算机基础
+title: "LRU Cache Interview Questions: Hash Tables, Doubly Linked Lists, and LinkedHashMap"
+description: Learn the LRU eviction policy, its hash table and doubly linked list implementation, a Java LinkedHashMap solution, complexity, and caching use cases.
+category: Computer Science Basics
 tag:
-  - 数据结构
+  - Data Structures
 head:
   - - meta
     - name: keywords
-      content: LRU缓存,LRU,缓存淘汰,哈希表,双向链表,LinkedHashMap,Java LRU,页面置换,数据结构面试题
+      content: LRU cache,LRU,cache eviction,hash tables,doubly linked lists,LinkedHashMap,Java LRU,page replacement,data structure interview questions
 ---
 
-LRU 是 Least Recently Used 的缩写，意思是最近最少使用。当缓存容量满了，需要淘汰最久没有被访问的数据。
+LRU stands for **Least Recently Used**. When a cache reaches capacity, it evicts the data that has not been accessed for the longest time.
 
-面试里手写 LRU 很高频，因为它把哈希表和双向链表结合在一起：哈希表负责 `O(1)` 查找节点，双向链表负责 `O(1)` 移动节点和删除尾节点。
+Implementing an LRU cache is a common interview problem because it combines a hash table and a doubly linked list: the hash table finds a node in `O(1)`, and the list moves nodes or removes the tail in `O(1)`.
 
-文章内容概览：
+This article covers:
 
-1. 什么是 LRU 缓存？
-2. LRU 为什么适合做缓存淘汰？
-3. 为什么需要哈希表 + 双向链表？
-4. 如何手写 `get` 和 `put`？
-5. Java `LinkedHashMap` 如何实现 LRU？
-6. 真实工程里的 LRU 还要考虑什么？
+1. What is an LRU cache?
+2. Why is LRU useful for cache eviction?
+3. Why combine a hash table and a doubly linked list?
+4. How do you implement `get` and `put`?
+5. How can Java `LinkedHashMap` implement LRU?
+6. What else must a production LRU cache consider?
 
-![LRU 缓存通过哈希表和双向链表维护最近访问顺序](../images/shared/lru-cache.png)
+![An LRU cache uses a hash table and doubly linked list to maintain access order](../images/shared/lru-cache.png)
 
-## 什么是 LRU 缓存？
+## What Is an LRU Cache?
 
-缓存的核心矛盾是：空间有限，但希望尽量把“未来还会被访问”的数据留在内存里。
+A cache has limited space, but ideally keeps data that is likely to be accessed again in memory.
 
-问题是，程序并不知道未来。LRU 的做法是用“最近访问过”去近似预测“接下来还可能访问”。如果一个数据刚刚被访问过，它很可能还会再被访问；如果一个数据很久没被访问，缓存满的时候就优先淘汰它。
+A program cannot know the future. LRU uses recent access as a rough predictor: recently accessed data may be accessed again, while data that has not been used for a long time is a candidate for eviction when the cache is full.
 
-举个例子，容量为 2 的缓存按顺序访问：
+For example, consider a cache with capacity 2 and these operations:
 
 ```text
 put(1, 1)
@@ -40,102 +40,102 @@ get(1)
 put(3, 3)
 ```
 
-在 `put(3, 3)` 之前，缓存里有 `1` 和 `2`。虽然 `1` 更早插入，但它刚被 `get(1)` 访问过，所以最近最少使用的是 `2`，最终应该淘汰 `2`。
+Before `put(3, 3)`, the cache contains `1` and `2`. Although `1` was inserted first, it was just accessed by `get(1)`, so `2` is the least recently used and should be evicted.
 
-这个例子也说明了一点：LRU 看的不是“谁最早插入”，而是“谁最久没被访问”。
+This example shows that LRU tracks which item was accessed least recently, not which one was inserted first.
 
-## 为什么需要缓存淘汰策略？
+## Why Do Caches Need an Eviction Policy?
 
-缓存不是无限大的。无论是本地内存缓存、Redis、数据库 Buffer Pool，还是操作系统里的页面缓存，都要面对容量上限。
+Caches are finite. In-memory caches, Redis, database buffer pools, and operating system page caches all have capacity limits.
 
-容量满了之后，如果没有淘汰策略，就只能拒绝新数据或者随机删数据。随机删当然简单，但可能把刚好很热的数据删掉，导致命中率变差。LRU 则利用访问时间顺序做了一个经验判断：长期没被碰过的数据，短期内再次访问的概率通常更低。
+When a cache is full and has no eviction policy, it can only reject new data or remove something at random. Random eviction may remove frequently used data and reduce the hit rate. LRU uses access order as a heuristic: data that has not been accessed for a long time is often less likely to be needed soon.
 
-常见淘汰策略可以简单对比一下：
+Here is a brief comparison of common eviction policies:
 
-| 策略 | 淘汰依据             | 特点                                         |
-| ---- | -------------------- | -------------------------------------------- |
-| FIFO | 最早进入缓存的数据   | 实现简单，但不关心数据后来是否被频繁访问     |
-| LRU  | 最久没有被访问的数据 | 适合有时间局部性的访问模式                   |
-| LFU  | 访问次数最少的数据   | 适合长期热点明显的场景，但需要维护频率信息   |
-| TTL  | 过期时间             | 适合数据有明确有效期的场景，不等同于容量淘汰 |
+| Policy | Eviction criterion                    | Characteristics                                                                   |
+| ------ | ------------------------------------- | --------------------------------------------------------------------------------- |
+| FIFO   | The item that entered the cache first | Simple, but ignores how often the item is accessed later.                         |
+| LRU    | The item least recently accessed      | Fits workloads with temporal locality.                                            |
+| LFU    | The item accessed least often         | Fits workloads with long-term hot items, but requires tracking frequencies.       |
+| TTL    | Expiration time                       | Fits data with a defined lifetime; it is not the same as capacity-based eviction. |
 
-LRU 之所以常被拿来面试，是因为它既有真实工程背景，又能很好地考察数据结构组合。
+LRU is a common interview problem because it has practical applications and tests how well you combine data structures.
 
-## 面试考察重点
+## Interview Topics
 
-- 能说清为什么只用哈希表或只用链表都不够。
-- 能写 `get` 和 `put`。
-- 能解释双向链表头尾分别代表什么。
-- 能处理容量满、更新已有 key、删除尾节点等边界。
-- 能知道 Java `LinkedHashMap` 可以实现 LRU。
+- Explain why a hash table or linked list alone is not sufficient.
+- Implement `get` and `put`.
+- Explain what the head and tail of the doubly linked list represent.
+- Handle a full cache, updates to existing keys, and tail removal.
+- Know that Java `LinkedHashMap` can implement LRU.
 
-## LRU 的访问顺序怎么维护？
+## How Does LRU Maintain Access Order?
 
-LRU 缓存里，每一次访问都会改变数据的新旧程度。
+Every access changes the recency of an item in an LRU cache.
 
-通常我们会约定：
+Use these conventions:
 
-- 链表头部表示最近使用的数据。
-- 链表尾部表示最久未使用的数据。
-- `get(key)` 命中后，把对应节点移动到头部。
-- `put(key, value)` 如果是新 key，把新节点插入头部。
-- `put(key, value)` 如果是已有 key，更新 value 后也要移动到头部。
-- 容量超过上限时，删除尾部节点。
+- The head of the list represents the most recently used item.
+- The tail represents the least recently used item.
+- On a successful `get(key)`, move the node to the head.
+- For a new key in `put(key, value)`, insert the node at the head.
+- For an existing key, update its value and move it to the head.
+- When the cache exceeds capacity, remove the tail node.
 
-这里最容易漏的是 `get()`。很多同学会觉得 `get()` 只是读数据，不该改结构。但对 LRU 来说，读也是一次访问；只要命中缓存，这个 key 的“最近使用时间”就变新了。
+It is easy to overlook `get()`. A read still counts as an access, so a cache hit makes that key the most recently used.
 
-## 数据结构设计
+## Data Structure Design
 
-| 组件                     | 作用                                             |
-| ------------------------ | ------------------------------------------------ |
-| `HashMap<Integer, Node>` | 根据 key 快速找到链表节点                        |
-| 双向链表                 | 按访问时间排序，头部是最近使用，尾部是最久未使用 |
-| 虚拟头尾节点             | 简化插入和删除边界                               |
+| Component                 | Purpose                                                                        |
+| ------------------------- | ------------------------------------------------------------------------------ |
+| `HashMap<Integer, Node>`  | Find a list node quickly by key.                                               |
+| Doubly linked list        | Order nodes by access time: most recent at the head, least recent at the tail. |
+| Dummy head and tail nodes | Simplify insertion and deletion at the boundaries.                             |
 
-访问一个 key 后，需要把它移动到链表头部。插入新 key 时，也放到头部。容量超限时，删除尾部前一个节点。
+After accessing a key, move its node to the head. Insert new keys at the head too. When capacity is exceeded, remove the node immediately before the tail.
 
-为什么必须两个结构配合？
+Why combine the two structures?
 
-只用哈希表，可以 `O(1)` 找到 value，但不知道哪个 key 最久没用。你还得额外维护访问顺序。
+A hash table alone can find a value in `O(1)`, but it does not track which key was used least recently. You would still need to maintain access order.
 
-只用链表，可以维护访问顺序，尾部就是该淘汰的节点。但每次根据 key 查找节点都要从头扫到尾，复杂度是 `O(n)`。
+A linked list alone can maintain access order, with the tail as the eviction candidate. But finding a node by key requires scanning the list in `O(n)`.
 
-哈希表 + 双向链表刚好补齐彼此短板：
+The hash table and doubly linked list complement each other:
 
-- 哈希表让我们能根据 key 直接定位链表节点。
-- 双向链表让我们能快速移动节点、删除尾部节点。
-- 节点里同时存 key 和 value，是为了淘汰尾节点时能从哈希表里删除对应 key。
+- The hash table locates a list node directly by key.
+- The doubly linked list moves nodes and removes the tail efficiently.
+- Each node stores both its key and value so the key can be removed from the hash table when the tail is evicted.
 
-## 面试手写路径
+## A Step-by-Step Implementation
 
-LRU 的代码细节多，建议不要一上来就写完整类。面试时可以先把操作拆开：
+LRU has several moving parts, so do not start by writing the entire class. Break the implementation into steps:
 
-1. 先定义链表顺序：头部表示最近使用，尾部表示最久未使用。
-2. 再定义 `get`：查不到返回 `-1`，查到后移动到头部。
-3. 再定义 `put`：已有 key 更新值并移动到头部；新 key 插入头部。
-4. 最后处理淘汰：超过容量后删除尾部前一个节点，并从哈希表删除。
-5. 把链表操作封装成 `addToHead`、`remove`、`moveToHead`、`removeTail`。
+1. Define the list order: the head is most recently used and the tail is least recently used.
+2. Implement `get`: return `-1` if the key is missing; otherwise move its node to the head.
+3. Implement `put`: update an existing key and move it to the head, or insert a new key at the head.
+4. Handle eviction: when over capacity, remove the node before the tail and delete its key from the hash table.
+5. Encapsulate list operations in `addToHead`, `remove`, `moveToHead`, and `removeTail`.
 
-这样写的好处是，`get` 和 `put` 都只组合几个基础链表操作，不会在主流程里反复改指针，出错概率低很多。
+This keeps `get` and `put` focused on combining basic list operations instead of repeatedly changing pointers in the main logic, which reduces mistakes.
 
-## 为什么用双向链表？
+## Why Use a Doubly Linked List?
 
-把一个节点移动到头部，需要先把它从原位置摘下来，再插到头节点后面。
+To move a node to the head, first unlink it from its current position, then insert it after the head node.
 
-如果用单向链表，删除当前节点时必须知道它的前驱节点。哈希表里即使能直接找到当前节点，也找不到它前面的节点，还是要从头遍历。
+With a singly linked list, removing a node requires its predecessor. Even if the hash table locates the node directly, it cannot locate the predecessor without scanning from the head.
 
-双向链表的节点同时有 `prev` 和 `next`，删除任意节点只需要改四个指针：
+A doubly linked list stores both `prev` and `next`, so removing any node requires updating only four pointers:
 
 ```java
 node.prev.next = node.next;
 node.next.prev = node.prev;
 ```
 
-这就是 LRU 要用双向链表的关键原因：它不只是要删除尾节点，还要在 `get()` 命中和 `put()` 更新已有 key 时，把任意节点移动到头部。
+This is why LRU uses a doubly linked list: it must remove the tail and move arbitrary nodes to the head when `get()` succeeds or `put()` updates an existing key.
 
-虚拟头尾节点也很重要。有了 `head` 和 `tail` 两个哨兵节点，插入头部、删除尾部、处理空链表时都能走同一套代码，不需要到处写 `null` 判断。
+Dummy `head` and `tail` nodes are also useful. They let head insertion, tail deletion, and empty-list handling share the same code without repeated `null` checks.
 
-## 手写 LRU
+## Implementing LRU
 
 ```java
 class LRUCache {
@@ -212,11 +212,11 @@ class LRUCache {
 }
 ```
 
-`get` 和 `put` 的时间复杂度都是 `O(1)`，空间复杂度是 `O(capacity)`。
+Both `get` and `put` take `O(1)` time, and the space complexity is `O(capacity)`.
 
-## 操作过程示意
+## Walkthrough
 
-假设容量为 2，按顺序执行：
+Suppose the cache has capacity 2 and performs these operations in order:
 
 ```text
 put(1, 1)
@@ -225,21 +225,21 @@ get(1)
 put(3, 3)
 ```
 
-链表状态变化如下，左侧表示最近使用：
+The list changes as follows; the left side represents the most recently used item:
 
-| 操作        | 链表状态 | 说明                     |
-| ----------- | -------- | ------------------------ |
-| 初始状态    | 空       | 虚拟头尾相连，缓存为空   |
-| `put(1, 1)` | `1`      | 新节点插入头部           |
-| `put(2, 2)` | `2 -> 1` | `2` 是最近使用           |
-| `get(1)`    | `1 -> 2` | 访问 `1` 后移动到头部    |
-| `put(3, 3)` | `3 -> 1` | 容量超限，淘汰尾部的 `2` |
+| Operation     | List state | Description                                         |
+| ------------- | ---------- | --------------------------------------------------- |
+| Initial state | Empty      | Dummy head and tail are linked; the cache is empty. |
+| `put(1, 1)`   | `1`        | Insert the new node at the head.                    |
+| `put(2, 2)`   | `2 -> 1`   | `2` is the most recently used.                      |
+| `get(1)`      | `1 -> 2`   | Move `1` to the head after access.                  |
+| `put(3, 3)`   | `3 -> 1`   | Capacity is exceeded, so evict the tail item, `2`.  |
 
-这张表能帮助检查两个点：访问已有节点要更新使用顺序；淘汰节点时，删除的是最久未使用的尾部节点，而不是刚插入的新节点。
+This table highlights two points: accessing an existing node updates its recency, and eviction removes the least recently used tail node, not the newly inserted node.
 
-## LinkedHashMap 实现
+## Implementing LRU with LinkedHashMap
 
-Java 的 `LinkedHashMap` 支持按访问顺序维护元素：
+Java's `LinkedHashMap` can maintain elements in access order:
 
 ```java
 class LRUCacheWithLinkedHashMap extends LinkedHashMap<Integer, Integer> {
@@ -257,74 +257,74 @@ class LRUCacheWithLinkedHashMap extends LinkedHashMap<Integer, Integer> {
 }
 ```
 
-构造函数里的第三个参数 `accessOrder` 设置为 `true`，表示按照访问顺序排序，而不是插入顺序。
+Set the constructor's third parameter, `accessOrder`, to `true` to use access order instead of insertion order.
 
-`LinkedHashMap` 官方文档里也专门提到过这种 access-order 模式适合构建 LRU 缓存。这里有两个点要记住：
+The `LinkedHashMap` documentation notes that access-order mode is suitable for building LRU caches. Keep two points in mind:
 
-1. `accessOrder = false` 时，遍历顺序是插入顺序；`accessOrder = true` 时，遍历顺序是访问顺序。
-2. `removeEldestEntry()` 会在插入新映射后被调用，返回 `true` 时删除最旧的 entry。
+1. With `accessOrder = false`, iteration follows insertion order; with `accessOrder = true`, it follows access order.
+2. `removeEldestEntry()` is called after a new mapping is inserted. Returning `true` removes the eldest entry.
 
-不过，`LinkedHashMap` 不是线程安全的。如果要在多线程环境里直接用它做本地缓存，需要自己加锁，或者选择成熟缓存库。
+However, `LinkedHashMap` is not thread-safe. For a local cache used by multiple threads, add synchronization or choose a mature caching library.
 
-## LRU 和 Redis 有什么关系？
+## How Does LRU Relate to Redis?
 
-Redis 作为缓存使用时，也需要在内存达到 `maxmemory` 上限后执行淘汰策略。Redis 支持 `allkeys-lru`、`volatile-lru` 等策略：
+When Redis is used as a cache, it applies an eviction policy after memory reaches the `maxmemory` limit. Redis supports policies such as `allkeys-lru` and `volatile-lru`:
 
-- `allkeys-lru`：从所有 key 里淘汰最近最少使用的 key。
-- `volatile-lru`：只从设置了过期时间的 key 里淘汰最近最少使用的 key。
+- `allkeys-lru`: Evict the least recently used key from all keys.
+- `volatile-lru`: Evict the least recently used key only among keys with an expiration set.
 
-不过 Redis 的 LRU 不是面试手写题里的“精确 LRU”。为了节省内存和 CPU，Redis 使用的是近似 LRU：随机采样一小批 key，从中挑出最久没访问的 key 淘汰。采样数量可以通过 `maxmemory-samples` 调整。
+Redis's LRU is not the exact LRU used in an interview implementation. To save memory and CPU, Redis uses an approximation: it samples a small set of keys and evicts the least recently accessed one. The sample size can be adjusted with `maxmemory-samples`.
 
-这也能帮助我们理解真实工程和面试题的区别：面试题通常要求用哈希表 + 双向链表实现精确 LRU；工程系统会根据内存、吞吐、并发和命中率做折中。
+This illustrates the difference between an interview problem and a production system: interview solutions usually implement exact LRU with a hash table and doubly linked list, while production systems balance memory, throughput, concurrency, and hit rate.
 
-## 工程场景
+## Production Use Cases
 
-- 本地缓存淘汰。
-- 操作系统页面置换。
-- 热点数据缓存。
-- 网关、客户端 SDK 或中间件里的小容量结果缓存。
+- Local cache eviction.
+- Operating system page replacement.
+- Caching frequently accessed data.
+- Small result caches in gateways, client SDKs, or middleware.
 
-真实工程里还要考虑线程安全、过期时间、最大内存、统计指标和淘汰回调。面试手写 LRU 主要考数据结构组合，不需要把这些都写进代码。
+Production systems must also consider thread safety, expiration, memory limits, metrics, and eviction callbacks. A handwritten LRU interview problem mainly tests how data structures are combined; these concerns do not need to be added to that implementation.
 
-如果是 Java 项目里的本地缓存，很多时候不会自己手写 LRU，而是直接用 Caffeine 这类缓存库。原因也很现实：工程缓存不只要容量淘汰，还要处理过期、并发、加载、统计、异步刷新、不同 entry 的权重等问题。Caffeine 官方文档里就把淘汰分成基于大小、基于时间、基于引用等多类。
+For a local cache in a Java project, it is often better to use a library such as Caffeine instead of implementing LRU yourself. A production cache needs more than capacity-based eviction: it may also need expiration, concurrency, loading, statistics, asynchronous refresh, and per-entry weights. Caffeine supports eviction based on size, time, and references.
 
-## 面试追问
+## Interview Follow-Up Questions
 
-| 追问                           | 回答重点                                                               |
-| ------------------------------ | ---------------------------------------------------------------------- |
-| 为什么不用单独的 `HashMap`？   | `HashMap` 能查值，但不知道谁最久没被使用                               |
-| 为什么不用单独的链表？         | 链表能维护顺序，但按 key 查找节点需要 `O(n)`                           |
-| 为什么要用双向链表？           | 删除任意节点时需要同时连接前驱和后继，单向链表无法 `O(1)` 找到前驱     |
-| 为什么要用虚拟头尾节点？       | 统一空链表、头节点、尾节点的插入删除逻辑，减少分支判断                 |
-| `LinkedHashMap` 怎么实现 LRU？ | 构造时开启 `accessOrder`，重写 `removeEldestEntry` 控制容量            |
-| 真实缓存还要考虑什么？         | 线程安全、过期时间、最大内存、淘汰回调、命中率统计和缓存击穿等工程问题 |
+| Question                                | Key point                                                                                                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Why not use only a `HashMap`?           | It can look up values, but does not track which key was used least recently.                                                                |
+| Why not use only a linked list?         | It can maintain order, but finding a node by key takes `O(n)`.                                                                              |
+| Why use a doubly linked list?           | Removing an arbitrary node requires reconnecting its predecessor and successor; a singly linked list cannot find the predecessor in `O(1)`. |
+| Why use dummy head and tail nodes?      | They simplify insertions and removals for empty lists and at either end.                                                                    |
+| How does `LinkedHashMap` implement LRU? | Enable `accessOrder` in the constructor and override `removeEldestEntry` to enforce capacity.                                               |
+| What else does a production cache need? | Thread safety, expiration, memory limits, eviction callbacks, hit-rate metrics, and protection against cache stampedes.                     |
 
-## 易错点
+## Common Pitfalls
 
-- 更新已有 key 时，也要移动到头部。
-- 删除尾节点后，别忘了从哈希表里删除 key。
-- 双向链表删除节点时要同时改前后两个指针。
-- 虚拟头尾节点可以减少空链表边界判断。
-- `LinkedHashMap` 的 `accessOrder` 要设为 `true`。
+- Move an existing key to the head when updating it.
+- Remove the key from the hash table after deleting the tail node.
+- Update both pointers when removing a node from a doubly linked list.
+- Dummy head and tail nodes simplify empty-list boundary cases.
+- Set `LinkedHashMap`'s `accessOrder` to `true`.
 
-## 高频问题自测
+## Review Questions
 
-- LRU 为什么需要哈希表和双向链表配合？
-- `get` 操作为什么也要移动节点？
-- 更新已有 key 时，为什么不能只改 value？
-- 淘汰尾节点后，为什么还要从哈希表删除 key？
-- `LinkedHashMap` 的插入顺序和访问顺序有什么区别？
+- Why does LRU combine a hash table with a doubly linked list?
+- Why does `get` move a node?
+- Why must an update to an existing key also change its list position?
+- Why remove the key from the hash table after evicting the tail?
+- How do insertion order and access order differ in `LinkedHashMap`?
 
-## 推荐练习题
+## Practice Problems
 
-- [146. LRU 缓存](https://leetcode.cn/problems/lru-cache/)
-- [460. LFU 缓存](https://leetcode.cn/problems/lfu-cache/)
+- [146. LRU Cache](https://leetcode.cn/problems/lru-cache/)
+- [460. LFU Cache](https://leetcode.cn/problems/lfu-cache/)
 
-## 参考资料
+## References
 
-- [Java SE 17 API：LinkedHashMap](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/LinkedHashMap.html)
-- [Redis Docs：Key eviction](https://redis.io/docs/latest/develop/reference/eviction/)
+- [Java SE 17 API: LinkedHashMap](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/LinkedHashMap.html)
+- [Redis documentation: Key eviction](https://redis.io/docs/latest/develop/reference/eviction/)
 - [Operating Systems: Three Easy Pieces](https://pages.cs.wisc.edu/~remzi/OSTEP/)
-- [Caffeine Wiki：Eviction](https://github.com/ben-manes/caffeine/wiki/Eviction)
+- [Caffeine Wiki: Eviction](https://github.com/ben-manes/caffeine/wiki/Eviction)
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,42 +1,42 @@
 ---
-title: 双指针与滑动窗口面试题总结：数组、链表、字符串高频模板
-description: 双指针与滑动窗口面试题总结，讲解左右指针、快慢指针、读写指针、固定窗口、可变窗口、Java 模板和 LeetCode 高频题。
-category: 计算机基础
+title: "Two Pointers and Sliding Window Interview Guide: Common Array, List, and String Templates"
+description: An interview guide to two-pointer and sliding-window techniques, covering left and right pointers, fast and slow pointers, read and write pointers, fixed and variable windows, Java templates, and common LeetCode problems.
+category: Computer Science Fundamentals
 tag:
-  - 算法
+  - Algorithms
 head:
   - - meta
     - name: keywords
-      content: 双指针,滑动窗口,快慢指针,左右指针,读写指针,固定窗口,可变窗口,数组算法,链表算法,字符串算法,LeetCode
+      content: two pointers,sliding window,fast and slow pointers,left and right pointers,read and write pointers,fixed window,variable window,array algorithms,linked list algorithms,string algorithms,LeetCode
 ---
 
-双指针和滑动窗口经常放在一起复习，但它们解决的问题不完全一样。双指针更像一种移动策略，滑动窗口则强调维护一个连续区间里的状态。
+Two pointers and sliding windows are often studied together, but they don't solve exactly the same problems. Two pointers describe a way to move two positions through data; a sliding window maintains state for a contiguous range.
 
-一个实用判断：如果题目关心两个位置之间的关系，先想双指针；如果题目关心连续子数组或连续子串，并且窗口内有条件要维护，先想滑动窗口。
+A useful rule of thumb: if the problem depends on the relationship between two positions, consider two pointers. If it concerns a contiguous subarray or substring and requires maintaining a condition within that range, consider a sliding window.
 
-## 面试考察重点
+## What Interviewers Look For
 
-- 能区分左右指针、快慢指针、读写指针。
-- 能维护滑动窗口里的计数、和、最大值或匹配情况。
-- 能解释为什么指针只向一个方向移动，时间复杂度是 `O(n)`。
-- 能处理空数组、单元素、重复元素和窗口收缩边界。
+- Distinguish left/right pointers, fast/slow pointers, and read/write pointers.
+- Maintain counts, sums, maxima, or match state inside a sliding window.
+- Explain why pointers move in one direction and the total time is `O(n)`.
+- Handle empty arrays, single elements, duplicates, and window boundaries.
 
-## 两者到底有什么区别？
+## How Are They Different?
 
-双指针是一种更宽泛的写法，只要用两个指针协作推进，都可以叫双指针。滑动窗口更具体，它维护的是一个连续区间 `[left, right]`，窗口里通常有一组状态，比如字符计数、元素和、最大值、匹配数量。
+Two pointers is a broad technique: any approach where two pointers advance together or independently can fit. A sliding window is more specific. It maintains a contiguous range `[left, right]` and usually tracks state such as character counts, a sum, a maximum, or the number of matches.
 
-| 问题特征                            | 更可能使用 |
-| ----------------------------------- | ---------- |
-| 有序数组里找两个数                  | 左右指针   |
-| 链表找环、找中点、找倒数第 K 个节点 | 快慢指针   |
-| 原地删除或覆盖元素                  | 读写指针   |
-| 连续子数组/子串的最长、最短、计数   | 滑动窗口   |
+| Problem clue                                                | Likely technique        |
+| ----------------------------------------------------------- | ----------------------- |
+| Find two values in a sorted array                           | Left and right pointers |
+| Find a cycle, midpoint, or kth node in a linked list        | Fast and slow pointers  |
+| Remove or overwrite elements in place                       | Read and write pointers |
+| Find, count, or optimize a contiguous subarray or substring | Sliding window          |
 
-面试时先把指针含义说出来，比直接写代码更稳。比如“`left` 表示窗口左边界，`right` 表示正在尝试加入窗口的字符”，后面收缩窗口就不会乱。
+In an interview, state what each pointer means before coding. For example, “`left` is the left boundary of the window, and `right` is the character I'm trying to add.” This makes it easier to reason about when to shrink the window.
 
-## 左右指针
+## Left and Right Pointers
 
-左右指针常用于有序数组或两端收缩问题：
+Left and right pointers are common in sorted arrays and problems that shrink toward the center:
 
 ```java
 int[] twoSumSorted(int[] nums, int target) {
@@ -56,18 +56,18 @@ int[] twoSumSorted(int[] nums, int target) {
 }
 ```
 
-如果数组无序，通常先排序，再用左右指针。排序后要记得复杂度变成 `O(nlogn)`。
+For an unsorted array, you may need to sort it first. Account for the sorting cost: the total complexity then becomes `O(nlogn)`.
 
-左右指针能工作的原因，是每次比较后可以排除一部分答案。以有序数组两数之和为例：
+This technique works because each comparison can rule out some candidates. For Two Sum in a sorted array:
 
-- 当前和太小，说明左指针指向的数太小，右指针再往左只会更小，所以只能左指针右移。
-- 当前和太大，说明右指针指向的数太大，左指针再往右只会更大，所以只能右指针左移。
+- If the sum is too small, the left value is too small. Moving the right pointer left would make the sum even smaller, so move the left pointer right.
+- If the sum is too large, the right value is too large. Moving the left pointer right would make the sum even larger, so move the right pointer left.
 
-三数之和也是同一个思路，只是先固定一个数，再在剩余区间里做两数之和。难点在去重：固定数要去重，左右指针找到答案后也要跳过重复值。
+3Sum follows the same idea: fix one value, then solve Two Sum in the remaining range. Handle duplicates by skipping repeated fixed values and repeated matches found by the two pointers.
 
-## 快慢指针
+## Fast and Slow Pointers
 
-快慢指针常用于链表：
+Fast and slow pointers are common in linked list problems:
 
 ```java
 boolean hasCycle(ListNode head) {
@@ -84,18 +84,18 @@ boolean hasCycle(ListNode head) {
 }
 ```
 
-链表题的重点不是代码长，而是指针含义稳定。`fast != null && fast.next != null` 的顺序也不能反。
+Keep each pointer's meaning clear, and preserve the order in the loop condition: check `fast != null` before `fast.next`.
 
-快慢指针常见有两种速度差：
+Two common speed gaps are:
 
-- `fast` 每次走 2 步，`slow` 每次走 1 步：用于环检测和找链表中点。
-- 一个指针先走 `k` 步，另一个指针再一起走：用于找倒数第 `k` 个节点。
+- `fast` advances two nodes and `slow` one: detect a cycle or find the middle of a list.
+- One pointer advances `k` nodes first, then both advance together: find the kth node from the end.
 
-找倒数第 `k` 个节点时，两个指针之间保持 `k` 个节点的距离。当前面的指针走到链表末尾，后面的指针刚好停在目标位置。删除倒数第 `N` 个节点时，通常会加虚拟头节点，避免删除头节点时单独处理。
+For the kth node from the end, maintain a gap of `k` nodes between the pointers. When the first pointer reaches the end, the second points to the target. When removing the nth node from the end, a dummy node makes it easier to handle removal of the head.
 
-## 读写指针
+## Read and Write Pointers
 
-读写指针常用于原地修改数组：
+Read and write pointers are useful for modifying an array in place:
 
 ```java
 int removeDuplicates(int[] nums) {
@@ -113,15 +113,15 @@ int removeDuplicates(int[] nums) {
 }
 ```
 
-`read` 负责扫描原数组，`write` 指向下一个可写入位置。面试里最好先把这两个变量的含义说出来。
+`read` scans the input; `write` points to the next position to fill. State what each variable represents before coding.
 
-读写指针的核心是“读完整个数组，只把需要保留的内容写回前面”。这类题经常要求原地修改，返回新长度，而不是创建新数组。
+The idea is to scan the whole array while writing only the values that should be kept into the beginning of the same array. These problems often ask for an in-place update and a new length, not a separate result array.
 
-判断写入时机时，可以问自己：当前 `read` 指向的元素是否应该保留？如果应该保留，就写到 `write`，然后 `write++`；如果不应该保留，只移动 `read`。
+For each `read` position, decide whether its value should remain. If so, write it at `write` and increment `write`; otherwise, advance only `read`.
 
-## 可变滑动窗口
+## Variable-Size Sliding Window
 
-以“无重复字符的最长子串”为例：
+Here is the Longest Substring Without Repeating Characters pattern:
 
 ```java
 int lengthOfLongestSubstring(String s) {
@@ -142,24 +142,24 @@ int lengthOfLongestSubstring(String s) {
 }
 ```
 
-这个模板里，右指针负责扩大窗口，左指针负责在窗口不合法时收缩。每个字符最多进窗口一次、出窗口一次，所以时间复杂度是 `O(n)`。
+The right pointer expands the window. When the window becomes invalid, the left pointer shrinks it. Each character enters and leaves the window at most once, so the time complexity is `O(n)`.
 
-可变窗口一般有一个固定节奏：
+A variable window usually follows this sequence:
 
-1. 右指针加入新元素，更新窗口状态。
-2. 当窗口不满足条件时，不断移动左指针，并同步更新状态。
-3. 在窗口满足题意的位置更新答案。
+1. Add a new element with the right pointer and update the window state.
+2. While the window doesn't satisfy the condition, advance the left pointer and update the state.
+3. Update the answer at the point that matches the problem's requirements.
 
-最长问题和最短问题的更新时机不一样：
+The update timing differs between longest and shortest problems:
 
-- 求最长合法窗口：通常在窗口恢复合法后更新答案。
-- 求最短满足条件窗口：通常在窗口已经满足条件时更新答案，然后继续收缩左边界。
+- For the longest valid window, update the answer after restoring validity.
+- For the shortest window that satisfies a condition, update the answer while the condition is satisfied, then keep shrinking from the left.
 
-比如“最小覆盖子串”里，窗口一旦覆盖了目标字符，就要先更新答案，再尝试缩小窗口；“最长无重复子串”里，窗口有重复字符时要先缩到合法，再更新答案。
+For Minimum Window Substring, once the window covers the target characters, record the answer before shrinking. For Longest Substring Without Repeating Characters, first remove duplicates to make the window valid, then update the answer.
 
-## 固定滑动窗口
+## Fixed-Size Sliding Window
 
-固定窗口适合“长度为 k 的子数组/子串”：
+A fixed window is useful for problems about a subarray or substring of length `k`:
 
 ```java
 int maxSum(int[] nums, int k) {
@@ -177,39 +177,39 @@ int maxSum(int[] nums, int k) {
 }
 ```
 
-固定窗口的重点是右侧进一个元素，左侧出一个元素。
+At each step, add one element on the right and remove one element on the left.
 
-固定窗口不用 `while` 收缩，因为窗口长度始终固定。它更像一个滚动统计：
+A fixed-size window doesn't need a `while` loop to shrink; its length never changes. Treat it as a rolling aggregate:
 
-- 新元素进入窗口。
-- 离开窗口的旧元素被移除。
-- 更新当前窗口答案。
+- Add the new element.
+- Remove the element that leaves the window.
+- Update the answer.
 
-如果窗口里还要维护最大值或最小值，普通变量不够用，通常要用单调队列。比如“滑动窗口最大值”中，队列里存可能成为最大值的下标，队首就是当前窗口最大值。
+If you need to maintain a maximum or minimum in the window, a regular variable isn't enough. A monotonic queue is often appropriate. For Sliding Window Maximum, for example, store the indexes that could still be the maximum; the index at the front identifies the current maximum.
 
-## 面试手写路径
+## A Reliable Interview Workflow
 
-双指针和滑动窗口题，面试里最怕指针含义写到一半变了。建议按这个顺序写：
+The main risk in these problems is changing what a pointer means halfway through. Use this order:
 
-1. 先判断题型：是两端收缩、快慢追赶、原地覆盖，还是连续窗口。
-2. 明确指针含义：`left`、`right`、`slow`、`fast`、`write` 分别指向哪里。
-3. 明确窗口状态：窗口内维护的是和、计数、最大值，还是匹配数量。
-4. 明确移动条件：什么时候右指针扩张，什么时候左指针收缩。
-5. 明确答案更新时机：合法后更新最长，满足条件时更新最短。
+1. Identify the pattern: inward-moving pointers, fast/slow pointers, in-place overwrite, or a contiguous window.
+2. Define each pointer: where do `left`, `right`, `slow`, `fast`, and `write` point?
+3. Define the window state: a sum, counts, a maximum, or a match count?
+4. State the move conditions: when does the right pointer expand and when does the left pointer shrink?
+5. State when to update the answer: after restoring validity for longest windows, or while the condition holds for shortest windows.
 
-一句话区分最长和最短：**最长题通常先修复窗口再更新答案，最短题通常先记录答案再继续收缩。**
+In short: **longest-window problems usually restore validity before updating the answer; shortest-window problems usually record the answer before shrinking further.**
 
-## 代表题精讲：最小覆盖子串
+## Example: Minimum Window Substring
 
-[76. 最小覆盖子串](https://leetcode.cn/problems/minimum-window-substring/) 是滑动窗口里最能考细节的一题。题目要求在 `s` 中找到最短子串，使它覆盖 `t` 中所有字符和对应次数。
+[76. Minimum Window Substring](https://leetcode.cn/problems/minimum-window-substring/) tests the details of sliding windows. Find the shortest substring of `s` containing every character in `t`, including the required number of occurrences.
 
-这题的关键不是会不会用窗口，而是能不能说清两个计数：
+Track three things:
 
-- `need`：目标字符串 `t` 里每个字符需要多少个。
-- `window`：当前窗口里每个字符已经有多少个。
-- `valid`：有多少种字符已经满足所需次数。
+- `need`: the number of times each character occurs in `t`.
+- `window`: the number of times each character occurs in the current window.
+- `valid`: the number of distinct characters that have reached their required counts.
 
-当 `valid == need.size()` 时，说明当前窗口已经覆盖 `t`，这时要更新答案，并尝试收缩左边界。
+When `valid == need.size()`, the window covers `t`. Update the answer, then try to shrink the window from the left.
 
 ```java
 String minWindow(String s, String t) {
@@ -253,63 +253,63 @@ String minWindow(String s, String t) {
 }
 ```
 
-这里有两个容易写错的点：
+Two easy-to-miss details:
 
-- `valid--` 要发生在减少 `window[out]` 之前，因为此时窗口还刚好满足条件。
-- 更新答案要放在 `while (valid == need.size())` 里面，因为只有当前窗口已经覆盖 `t`，才有资格参与最短答案比较。
+- Decrement `valid` before reducing `window[out]`, because the window still exactly meets the requirement at that point.
+- Update the answer inside `while (valid == need.size())`, since only a window that covers `t` is a candidate.
 
-## 过程示意和边界样例
+## Walkthrough and Edge Cases
 
-以“无重复字符的最长子串”为例，字符串 `abba` 的窗口变化如下：
+For Longest Substring Without Repeating Characters, the window for `abba` changes like this:
 
-| 右指针字符 | 加入后窗口 | 是否合法 | 左指针怎么动                          | 当前最长 |
-| ---------- | ---------- | -------- | ------------------------------------- | -------- |
-| `a`        | `a`        | 合法     | 不动                                  | 1        |
-| `b`        | `ab`       | 合法     | 不动                                  | 2        |
-| `b`        | `abb`      | 不合法   | 移走 `a` 后仍不合法，再移走第一个 `b` | 2        |
-| `a`        | `ba`       | 合法     | 不动                                  | 2        |
+| Right character | Window after adding | Valid? | Left pointer movement          | Longest so far |
+| --------------- | ------------------- | ------ | ------------------------------ | -------------- |
+| `a`             | `a`                 | Yes    | No movement                    | 1              |
+| `b`             | `ab`                | Yes    | No movement                    | 2              |
+| `b`             | `abb`               | No     | Remove `a`, then the first `b` | 2              |
+| `a`             | `ba`                | Yes    | No movement                    | 2              |
 
-滑动窗口建议至少检查这些边界：
+Check these edge cases for sliding windows:
 
-| 输入                 | 重点                     |
-| -------------------- | ------------------------ |
-| 空字符串或空数组     | 是否直接返回 0           |
-| 全部字符相同         | 左边界是否持续收缩       |
-| 没有重复字符         | 答案是否能更新到整个长度 |
-| 最优窗口在开头或结尾 | 更新答案的时机是否正确   |
+| Input                                  | What to check                                 |
+| -------------------------------------- | --------------------------------------------- |
+| Empty string or array                  | Should the answer immediately be 0?           |
+| All characters are the same            | Does the left boundary keep advancing?        |
+| No repeated characters                 | Can the answer grow to the full input length? |
+| Best window is at the beginning or end | Is the answer updated at the right time?      |
 
-常见错误写法：
+A common mistake is to move the left pointer only once:
 
 ```java
 if (count.get(c) > 1) {
-    left++; // 错：只移动一次不一定能恢复合法窗口
+    left++; // Wrong: one step may not restore a valid window.
 }
 ```
 
-可变窗口收缩时通常要用 `while`，直到窗口重新满足条件。只移动一次，遇到 `abba`、`aaabc` 这类输入就容易错。
+Variable windows usually need `while` to shrink until the condition is restored. One step may not be enough for inputs such as `abba` or `aaabc`.
 
-## 易错点
+## Common Mistakes
 
-- 双指针题先明确两个指针的含义，不要边写边猜。
-- 滑动窗口里，更新答案的时机要看题目问的是最长还是最短。
-- 窗口收缩时，窗口内的计数、和、匹配数都要同步更新。
-- 链表快慢指针要先判断 `fast` 和 `fast.next`。
-- 三数之和这类题，排序后的去重要单独处理。
+- Define both pointer meanings before coding.
+- Update the answer at the right time for a longest or shortest window.
+- Update window counts, sums, and match counts whenever the left pointer moves.
+- Check `fast` and `fast.next` before dereferencing them in linked list problems.
+- Handle duplicate values explicitly in problems such as 3Sum.
 
-## 高频问题自测
+## Questions to Review
 
-- 为什么双指针题通常是 `O(n)`，而不是两层循环的 `O(n^2)`？
-- 三数之和为什么需要排序？去重分别发生在哪几个位置？
-- 快慢指针找链表中点时，偶数长度返回前中点还是后中点？
-- 滑动窗口什么时候用 `if` 收缩，什么时候必须用 `while` 收缩？
-- 最长窗口和最短窗口的答案更新时机有什么区别？
+- Why do many two-pointer solutions run in `O(n)` rather than `O(n^2)`?
+- Why does 3Sum usually sort the input, and where does it need deduplication?
+- For an even-length linked list, does a fast/slow solution return the first or second middle node?
+- When is a single `if` enough to shrink a window, and when is a `while` necessary?
+- How does answer-update timing differ for longest and shortest windows?
 
-## 推荐练习题
+## Recommended Practice Problems
 
-- [26. 删除有序数组中的重复项](https://leetcode.cn/problems/remove-duplicates-from-sorted-array/)
-- [15. 三数之和](https://leetcode.cn/problems/3sum/)
-- [141. 环形链表](https://leetcode.cn/problems/linked-list-cycle/)
-- [3. 无重复字符的最长子串](https://leetcode.cn/problems/longest-substring-without-repeating-characters/)
-- [76. 最小覆盖子串](https://leetcode.cn/problems/minimum-window-substring/)
+- [26. Remove Duplicates from Sorted Array](https://leetcode.cn/problems/remove-duplicates-from-sorted-array/)
+- [15. 3Sum](https://leetcode.cn/problems/3sum/)
+- [141. Linked List Cycle](https://leetcode.cn/problems/linked-list-cycle/)
+- [3. Longest Substring Without Repeating Characters](https://leetcode.cn/problems/longest-substring-without-repeating-characters/)
+- [76. Minimum Window Substring](https://leetcode.cn/problems/minimum-window-substring/)
 
 <!-- @include: @article-footer.snippet.md -->

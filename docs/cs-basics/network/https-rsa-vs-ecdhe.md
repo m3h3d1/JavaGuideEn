@@ -1,73 +1,73 @@
 ---
-title: HTTPS 握手里的 RSA 和 ECDHE，到底差在哪？（应用层）
-description: 对比 TLS 握手中 RSA 密钥交换与 ECDHE 密钥交换的核心差异，讲清前向安全、密码套件命名、TLS 1.3 变化及面试要点。
-category: 计算机基础
+title: "RSA and ECDHE in the HTTPS Handshake: What's the Difference?"
+description: Compare RSA and ECDHE key exchange in TLS, including forward secrecy, cipher-suite names, TLS 1.3 changes, and key interview points.
+category: Computer Science Basics
 tag:
-  - 计算机网络
+  - Computer Networking
 head:
   - - meta
     - name: keywords
-      content: HTTPS,RSA,ECDHE,TLS,握手,前向安全,密钥交换,密码套件,TLS 1.3,PreMasterSecret
+      content: HTTPS,RSA,ECDHE,TLS,handshake,forward secrecy,key exchange,cipher suite,TLS 1.3,PreMasterSecret
 ---
 
-很多人第一次学 HTTPS，脑子里会留下一个很粗的印象：
+When people first learn HTTPS, they often come away with a rough idea:
 
-**HTTPS = HTTP + 加密，加密 = RSA。所以，HTTPS = RSA 加密。**
+**HTTPS = HTTP + encryption, encryption = RSA. So HTTPS = RSA encryption.**
 
-这个理解不是凭空来的。早期很多 HTTPS 部署确实大量使用 RSA 相关的密码套件，很多入门讲解也喜欢拿 RSA 举例。
+This idea did not come from nowhere. Many early HTTPS deployments used RSA cipher suites, and introductory explanations often use RSA as an example.
 
-但严格说，HTTPS 从来不等于 RSA 加密。即使在 TLS 1.0、TLS 1.1 时代，RSA 也只是可选方案之一，协议里还存在 DHE 这类密钥交换方式。到了 TLS 1.3，静态 RSA 密钥交换已经被移除，RSA 更多出现在证书签名、身份认证这类位置。
+Strictly speaking, HTTPS has never meant RSA encryption. Even in TLS 1.0 and TLS 1.1, RSA was only one option; the protocols also supported key exchange methods such as DHE. TLS 1.3 removed static RSA key exchange. RSA is now more commonly used for certificate signatures and authentication.
 
-所以，这篇文章真正要对比的不是“RSA 和 ECDHE 谁更高级”。
+So this article is not about which is “more advanced,” RSA or ECDHE.
 
-**RSA 握手里，会话密钥材料是客户端生成后加密发给服务端；ECDHE 握手里，会话密钥材料不是直接传过去的，而是客户端和服务端各自算出来的。**
+**In an RSA handshake, the client generates the session-key material, encrypts it, and sends it to the server. In an ECDHE handshake, the client and server derive the shared material locally instead of transmitting it.**
 
-这篇文章主要回答几个问题：
+This article answers a few questions:
 
-1. HTTPS 为什么不等于 RSA 加密？
-2. RSA 握手和 ECDHE 握手的会话密钥材料分别是怎么来的？
-3. ECDHE 为什么能提供前向安全性？
-4. TLS 1.3 为什么移除静态 RSA 密钥交换？
+1. Why is HTTPS not the same as RSA encryption?
+2. How does each handshake derive session-key material?
+3. Why does ECDHE provide forward secrecy?
+4. Why did TLS 1.3 remove static RSA key exchange?
 
-把这些问题讲清楚了，`PreMasterSecret`、`Server Key Exchange`、前向安全、TLS 1.3 为什么移除静态 RSA，后面都能顺着理解。
+Once these points are clear, it is easier to understand `PreMasterSecret`, `Server Key Exchange`, forward secrecy, and why TLS 1.3 removed static RSA.
 
-![RSA 与 ECDHE 密钥交换：核心差异](../images/shared/https-rsa-ecdhe-rsa-and-ecdhe-key-exchange-core-differences.png)
+![The core difference between RSA and ECDHE key exchange](../images/shared/https-rsa-ecdhe-rsa-and-ecdhe-key-exchange-core-differences.png)
 
-## TLS 握手的两个核心问题
+## Two Core Problems Solved by the TLS Handshake
 
-HTTPS 仍然使用 HTTP 语义。在本文重点讨论的 TLS 1.2 场景中，HTTP 报文通过 TLS over TCP 传输；HTTP/3 则运行在集成 TLS 1.3 的 QUIC 之上，不再使用 TCP。
+HTTPS still uses HTTP semantics. In the TLS 1.2 scenarios discussed here, HTTP messages travel over TLS over TCP. HTTP/3 runs over QUIC, which integrates TLS 1.3 and does not use TCP.
 
-握手完成后，真正保护业务数据的通常是 AES-GCM 这类对称加密算法，而不是拿 RSA 去加密完整的请求和响应。
+After the handshake, application data is usually protected by a symmetric cipher such as AES-GCM. RSA is not used to encrypt the entire request and response.
 
-这里有两个问题。
+The handshake addresses two problems.
 
-**第一个问题：浏览器和服务器需要协商出一份会话密钥。**
+**First, the browser and server need to establish a session key.**
 
-后面传输 HTTP 请求、Cookie、响应体时，就用这份会话密钥做对称加密。对称加密更适合处理大量数据；非对称加密计算成本高，一般不拿来直接加密完整网页内容。
+This key is used for symmetric encryption of HTTP requests, cookies, and response bodies. Symmetric encryption is better suited to large amounts of data; public-key encryption is more expensive and is not generally used to encrypt an entire web page.
 
-**第二个问题：浏览器需要确认对面真的是目标网站。**
+**Second, the browser needs to verify that the server is the intended website.**
 
-如果只是“服务器发一个公钥给浏览器”，那中间人也可以发自己的公钥。浏览器以为那是目标网站的公钥，后面就把秘密信息加密给了攻击者。证书、CA、数字签名解决的是这件事：证明这个公钥确实和这个域名绑定，而不是路上某个人塞进来的。
+If the server simply sends a public key to the browser, an attacker in the middle could send their own key instead. The browser might mistake it for the website's key and encrypt secrets for the attacker. Certificates, CAs, and digital signatures address this by verifying that the public key is associated with the domain and was not substituted in transit.
 
-RSA 握手和 ECDHE 握手都会面对这两个问题。只是它们解决“会话密钥怎么来”的方式不同。
+Both RSA and ECDHE handshakes address these two problems. They differ in how they establish the session key.
 
-## RSA 握手：密钥材料加密发送
+## RSA Handshake: Encrypt and Send the Key Material
 
-### 完整握手流程
+### Full Handshake Flow
 
-先看 TLS 1.2 里的 RSA 密钥交换。
+First, consider RSA key exchange in TLS 1.2.
 
-浏览器先发 `ClientHello`。这里面会带上客户端支持的 TLS 版本、支持的密码套件、一个随机数 `Client Random`。
+The browser sends `ClientHello`, which includes the TLS versions and cipher suites it supports, along with a random value called `Client Random`.
 
-服务器收到之后，回 `ServerHello`，选定 TLS 版本和密码套件，也给出一个随机数 `Server Random`，然后把自己的证书发给客户端。
+The server responds with `ServerHello`, selects a TLS version and cipher suite, provides another random value called `Server Random`, and sends its certificate to the client.
 
-到这里，客户端拿到了服务器证书。它会验证证书链、域名、有效期、签名这些信息。证书验证通过后，客户端就从证书里取出服务器的 RSA 公钥。
+The client validates the certificate chain, domain name, validity period, and signatures. If validation succeeds, the client obtains the server's RSA public key from the certificate.
 
-接下来是关键步骤：客户端生成一个新的随机值，也就是 `PreMasterSecret`。在 TLS 1.2 的 RSA 密钥交换里，这个值是 **48 字节**。客户端会用服务器证书里的 RSA 公钥加密 `PreMasterSecret`，再把加密结果放进 `Client Key Exchange` 发给服务器。
+Next comes the key step: the client generates a random value called `PreMasterSecret`. In TLS 1.2 RSA key exchange, it is **48 bytes**. The client encrypts it with the RSA public key from the server's certificate and sends the encrypted result in `ClientKeyExchange`.
 
-服务器收到后，用自己的 RSA 私钥解密，拿到同一份 `PreMasterSecret`。
+The server decrypts it with its RSA private key and obtains the same `PreMasterSecret`.
 
-这时，客户端和服务端手里都有三份材料：
+At this point, both client and server have three values:
 
 ```text
 Client Random
@@ -75,313 +75,313 @@ Server Random
 PreMasterSecret
 ```
 
-双方再根据这三份材料派生出 `Master Secret`，后续的会话密钥也会从这里继续派生出来。真正传 HTTP 请求和响应时，用的是这些派生出来的对称密钥。
+Both sides derive the `Master Secret` from these values, then derive the session keys from it. The HTTP requests and responses are protected with these symmetric keys.
 
-用一句话压缩：
+In short:
 
-**RSA 握手的会话密钥材料，是客户端生成后“包起来”寄给服务器的。**
+**In an RSA handshake, the client generates the session-key material, encrypts it, and sends it to the server.**
 
-这里的“包起来”，靠的就是服务器 RSA 公钥。只有持有对应 RSA 私钥的服务器，才能拆开这个包。
+The server's RSA public key does the “wrapping.” Only a server with the matching RSA private key can decrypt it.
 
-看起来挺合理。客户端生成秘密，服务器私钥解密，双方得到同一份材料，再结合两个随机数派生出后续会话密钥。
+This seems straightforward: the client generates a secret, the server decrypts it, and both sides combine it with the two random values to derive the session keys.
 
-但问题也在这里。
+But this is also where the problem begins.
 
-### 没有前向安全：长期私钥太值钱
+### No Forward Secrecy: The Long-Term Private Key Is Too Valuable
 
-假设攻击者今天抓到了一段 HTTPS 流量，但当时没有服务器私钥，所以看不懂里面的内容。这时他可以先把流量保存下来。
+Suppose an attacker captures HTTPS traffic today but cannot read it because they do not have the server's private key. They can save the traffic for later.
 
-一年后，如果服务器 RSA 私钥泄漏了，会发生什么？
+What happens if the server's RSA private key leaks a year later?
 
-在 RSA 密钥交换里，客户端当年发出的 `PreMasterSecret` 是用服务器 RSA 公钥加密的。如果攻击者完整捕获了握手阶段的明文随机数，也就是 `Client Random`、`Server Random`，同时保存了加密后的 `PreMasterSecret`，再结合后来泄漏的服务器私钥，就可能解开当时的 `PreMasterSecret`，继续派生出那次连接用过的会话密钥。
+With RSA key exchange, the client encrypted `PreMasterSecret` using the server's RSA public key. If the attacker captured the handshake's plaintext random values (`Client Random` and `Server Random`) and the encrypted `PreMasterSecret`, the later-leaked private key could decrypt it. The attacker could then derive the session keys used for that connection.
 
-旧数据就有机会被翻出来。
+Past data may then be exposed.
 
-这里要注意条件：不是“只要私钥泄漏，所有历史流量必然能解”。攻击者至少得拿到足够完整的握手数据和应用数据。如果只有单向片段，或者握手日志不完整，即使有私钥，也未必能把那次会话还原出来。
+There are conditions: a private-key leak does not automatically expose all historical traffic. The attacker needs sufficiently complete handshake and application data. If only one direction was captured or the handshake is incomplete, the session may not be recoverable even with the key.
 
-但从安全设计上看，这个风险已经足够麻烦。长期私钥一旦变成打开历史流量的总钥匙，它的影响就不再只覆盖未来连接，也会波及过去已经发生过的通信。
+From a security-design perspective, this risk is serious. If the long-term private key can unlock past traffic, a compromise affects not only future connections but also previous communications.
 
-这里批评的不是 RSA 算法本身“不能用”。RSA 仍然可以用于签名认证，也可以出现在证书体系里。问题出在“用长期不变的服务器私钥去解密历史握手里的密钥材料”。
+This does not mean the RSA algorithm itself is unusable. RSA can still be used for signatures and certificates. The problem is using a long-term server private key to decrypt key material from past handshakes.
 
-服务器私钥一旦泄漏，代价太大。
+A leak of the server's private key has too high a cost.
 
-![静态 RSA 缺少前向安全：完整抓包 + 私钥泄漏可回溯历史流量](../images/shared/https-rsa-ecdhe-static-rsa-lacks-forward-secrecy.png)
+![Static RSA lacks forward secrecy: a full packet capture and private-key leak can expose past traffic](../images/shared/https-rsa-ecdhe-static-rsa-lacks-forward-secrecy.png)
 
-### 另一个历史包袱：填充预言机攻击
+### Another Historical Problem: Padding Oracle Attacks
 
-RSA 密钥交换还有一个工程层面的麻烦：`PreMasterSecret` 不是直接裸加密，而是按 RSAES-PKCS1-v1_5 这类格式封装后再加密。
+RSA key exchange also had an implementation challenge: `PreMasterSecret` was not encrypted directly, but encoded using a format such as RSAES-PKCS1-v1_5 before encryption.
 
-这个细节曾经引出过 Bleichenbacher 这类填充预言机攻击。
+This detail led to padding oracle attacks such as Bleichenbacher's.
 
-它的大致思路是：攻击者不一定要马上拿到服务器私钥，而是反复构造不同的密文发给服务器，观察服务器对“填充错误、版本错误、长度错误”的处理差异。如果服务端在错误码、响应时间、日志行为、连接关闭方式上露出差别，攻击者就可能一点点逼近明文。
+The general idea is that an attacker does not need to obtain the server's private key immediately. They repeatedly send different ciphertexts and observe how the server handles padding, version, or length errors. Differences in error codes, response times, logging, or connection closure can help the attacker gradually recover plaintext.
 
-这类攻击麻烦的地方在于，它不是单纯的数学问题，而是实现问题。
+These attacks are difficult because they exploit implementation behavior, not just mathematics.
 
-TLS 1.2 对这类情况做过防御要求：服务端即使解密失败，也不要把具体失败原因暴露出去，而是继续用随机值走完整个流程，避免攻击者通过差异行为判断密文是否接近正确格式。
+TLS 1.2 includes defenses for this class of issue: even if decryption fails, the server should not reveal the specific reason. It should continue with a random value to avoid giving the attacker different signals about whether the ciphertext was well-formed.
 
-可规范要求不等于实现可靠。2017 年的 ROBOT 攻击再次说明，一些服务端仍然可能因为细小的行为差异暴露出 RSA 解密 oracle。错误码、耗时、日志、分支路径，只要有一处表现不一致，都可能变成侧信道。
+However, a specification requirement does not guarantee a correct implementation. The 2017 ROBOT attack showed that subtle behavior differences could still expose an RSA decryption oracle. Inconsistent error codes, timing, logs, or code paths can become side channels.
 
-所以，静态 RSA 密钥交换被淘汰，不只是因为它没有前向安全，也因为它把太多风险压到了实现细节上。
+Static RSA key exchange was phased out not only because it lacks forward secrecy, but also because it places too much risk on implementation details.
 
-### 能否被降级回 RSA？
+### Can a Connection Be Downgraded to RSA?
 
-这里还要补一个容易误解的点。
+One more point is easy to misunderstand.
 
-TLS 1.2 里，客户端会在 `ClientHello` 里带上自己支持的密码套件列表，服务端从里面选一个双方都支持的套件。理论上，如果服务端仍然开放 `TLS_RSA_*` 这类静态 RSA 密钥交换套件，老客户端就可能继续用 RSA 握手。
+In TLS 1.2, the client lists the cipher suites it supports in `ClientHello`, and the server selects one that both support. If the server still enables static RSA suites such as `TLS_RSA_*`, older clients may continue to use RSA key exchange.
 
-但这不等于“中间人随便把 ClientHello 里的 ECDHE 删掉，就能让连接悄悄降级到 RSA”。握手最后的 `Finished` 会校验握手 transcript，简单篡改 `ClientHello` 通常会导致校验失败，连接建立不起来。
+This does not mean that an attacker can simply remove ECDHE from `ClientHello` and silently force an RSA downgrade. The final `Finished` message verifies the handshake transcript, so a simple `ClientHello` modification will usually fail validation and prevent the connection from being established.
 
-历史上确实发生过降级相关攻击，比如 FREAK 和 Logjam。它们利用的是当时一些客户端、服务端仍然支持出口级弱密码套件，再结合实现和配置问题，把连接压到更弱的 RSA_EXPORT 或 DHE_EXPORT 路径上，而不是“随便删掉 ECDHE 就能静默成功”。TLS 1.3 在 `ServerHello.random` 里加入降级保护值，也是在提醒我们：协议本身一直在补这类历史攻击面。
+Downgrade attacks such as FREAK and Logjam did occur. They exploited clients and servers that still supported weak export-grade cipher suites, along with implementation and configuration flaws, to force connections onto weaker RSA_EXPORT or DHE_EXPORT paths. They did not simply remove ECDHE and silently succeed. TLS 1.3 added downgrade protection values to `ServerHello.random`, reflecting the protocol's ongoing effort to address this class of attack.
 
-真正需要关注的是服务端配置本身：如果已经不需要兼容很老的客户端，就应该关闭静态 RSA 密钥交换套件，只保留支持前向安全的套件。否则，环境里仍然可能存在客户端或错误配置走到 RSA 握手。
+The main thing to check is the server configuration. If very old clients do not need support, disable static RSA key-exchange suites and keep suites that provide forward secrecy. Otherwise, some clients or misconfigured systems may still use RSA handshakes.
 
-这也是排查 TLS 配置时要看密码套件实际协商结果的原因。只看“服务器支持 ECDHE”不够，还要看它是否同时保留了 `TLS_RSA_*` 这类旧套件。
+That is why you should inspect the cipher suite actually negotiated when troubleshooting TLS. It is not enough to know that the server supports ECDHE; check whether it also enables old suites such as `TLS_RSA_*`.
 
-## ECDHE 握手：密钥材料双方协商
+## ECDHE Handshake: Both Sides Derive the Key Material
 
-### DH 的核心思路
+### The Core Idea Behind DH
 
-ECDHE 里的 `DHE` 来自 Diffie-Hellman Ephemeral，意思是临时 Diffie-Hellman。前面的 `EC` 是 Elliptic Curve，表示基于椭圆曲线。
+In ECDHE, `DHE` stands for Diffie-Hellman Ephemeral. The `EC` prefix means Elliptic Curve, indicating that it uses elliptic-curve cryptography.
 
-别被名字吓住。先不看椭圆曲线，先看 DH 想解决什么问题。
+Do not let the name intimidate you. First, ignore the elliptic-curve part and look at what DH is designed to do.
 
-DH 的目标很有意思：通信双方不直接传输共享秘密，却能各自算出同一个共享秘密。
+DH lets two parties derive the same shared secret without sending the secret itself over the network.
 
-可以粗略理解成这样：
+The basic idea is:
 
-客户端生成一个临时私钥，只留在本地，再算出一个临时公钥发给服务器。服务器也生成一个临时私钥，只留在本地，再算出一个临时公钥发给客户端。
+The client generates a temporary private key, keeps it locally, calculates a temporary public key, and sends that public key to the server. The server does the same and sends its temporary public key to the client.
 
-双方交换的都是公钥。攻击者在网络里能看到这些公钥，但看不到双方各自的临时私钥。
+Both sides exchange public keys. An attacker can see these keys on the network but cannot see either temporary private key.
 
-接着，客户端用“自己的临时私钥 + 服务器临时公钥”算出共享秘密；服务器用“自己的临时私钥 + 客户端临时公钥”也算出同一个共享秘密。
+The client combines its temporary private key with the server's temporary public key to derive a shared secret. The server combines its temporary private key with the client's temporary public key and derives the same secret.
 
-共享秘密没有在网络上传输过。
+The shared secret is never transmitted over the network.
 
-ECDHE 只是把这个过程放到椭圆曲线体系里做。椭圆曲线的数学理论更抽象，但在同等安全强度下，它通常能用更短的密钥达到相近的安全级别，运算和传输成本也比传统有限域 DHE 更低。对理解 TLS 握手来说，先记住一句话就够了：
+ECDHE performs this process using elliptic curves. The mathematics is more abstract, but at comparable security levels, elliptic curves generally use shorter keys and less computation and bandwidth than traditional finite-field DHE. For understanding TLS, remember this:
 
-**ECDHE 的会话密钥材料不是某一方生成后发给另一方，而是双方通过临时密钥协商出来的。**
+**With ECDHE, neither side generates and sends the session-key material; both sides derive it through ephemeral key exchange.**
 
-### 完整握手流程
+### Full Handshake Flow
 
-再看 TLS 1.2 里常见的 `ECDHE_RSA` 握手。
+Now consider the common `ECDHE_RSA` handshake in TLS 1.2.
 
-客户端还是先发 `ClientHello`，里面有 TLS 版本、支持的密码套件、`Client Random`。服务器回 `ServerHello`，选择一个密码套件，比如：
+The client sends `ClientHello` with its TLS version, supported cipher suites, and `Client Random`. The server replies with `ServerHello` and selects a cipher suite, for example:
 
 ```text
 TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 ```
 
-这个密码套件名要拆开看，不能看到 RSA 就以为它还在用 RSA 加密会话密钥。
+Read the cipher-suite name carefully; seeing RSA does not mean it encrypts the session key.
 
-- `ECDHE` 表示密钥交换方式。
-- `RSA` 表示认证签名方式。
-- `AES_256_GCM` 表示后续记录数据使用 AES，密钥长度 256 位，模式是 GCM。
-- `SHA384` 指定 TLS 1.2 PRF 和 `Finished` 消息使用的哈希算法。
+- `ECDHE` is the key-exchange method.
+- `RSA` is the authentication and signature algorithm.
+- `AES_256_GCM` means record data is protected with 256-bit AES in GCM mode.
+- `SHA384` is the hash used by the TLS 1.2 PRF and `Finished` message.
 
-GCM 本身已经提供记录层的完整性保护，所以这里的 `SHA384` 不再表示记录层 MAC，而是主要参与握手阶段的密钥派生和验证。
+GCM already provides record-layer integrity, so `SHA384` here does not indicate a record-layer MAC. It is mainly used for handshake key derivation and verification.
 
-服务端接着发证书。以 `ECDHE_RSA` 为例，证书里的 RSA 公钥主要用于验证服务端签名，而不是让客户端拿它加密 `PreMasterSecret`。
+The server then sends its certificate. In `ECDHE_RSA`, the RSA public key in the certificate is mainly used to verify the server's signature, not to encrypt a `PreMasterSecret`.
 
-然后，ECDHE 和 RSA 握手开始分叉。
+This is where the ECDHE and RSA handshakes differ.
 
-在 ECDHE 握手里，服务端会发送 `Server Key Exchange`。这个消息里会包含服务端选择的椭圆曲线参数，以及服务端临时 ECDHE 公钥。
+In an ECDHE handshake, the server sends `ServerKeyExchange`, which contains the selected elliptic-curve parameters and the server's temporary ECDHE public key.
 
-**问题来了：客户端怎么知道这份临时 ECDHE 公钥没有被中间人换掉？**
+**How does the client know that a man-in-the-middle has not replaced this temporary ECDHE public key?**
 
-**答案是签名。**
+**The answer is a signature.**
 
-服务端会用证书对应的私钥，对握手参数做签名。客户端收到后，用证书里的公钥验证签名。如果签名验证通过，客户端就能确认：这份临时 ECDHE 公钥确实来自持有证书私钥的服务器，不是路上被人替换的。
+The server signs the handshake parameters with the private key corresponding to its certificate. The client verifies the signature with the public key in the certificate. If verification succeeds, the client knows the temporary ECDHE key came from the server holding that private key and was not replaced in transit.
 
-随后客户端也生成自己的临时 ECDHE 私钥和公钥，把客户端临时公钥通过 `Client Key Exchange` 发给服务器。
+The client then generates its own temporary ECDHE key pair and sends its temporary public key to the server in `ClientKeyExchange`.
 
-到这一步，双方都有了计算共享秘密需要的材料。
+At this point, both sides have the material needed to calculate the shared secret.
 
-客户端手里有：
+The client has:
 
 ```text
-客户端临时私钥
-服务端临时公钥
+Client's ephemeral private key
+Server's ephemeral public key
 Client Random
 Server Random
 ```
 
-服务端手里有：
+The server has:
 
 ```text
-服务端临时私钥
-客户端临时公钥
+Server's ephemeral private key
+Client's ephemeral public key
 Client Random
 Server Random
 ```
 
-两边各自计算出同一个共享秘密，再派生出后续使用的会话密钥。
+Each side calculates the same shared secret and derives the session keys from it.
 
-这里再强调一次：
+To emphasize:
 
-**ECDHE_RSA 里的 RSA，不是用来加密传输会话密钥的。它负责证明“这份 ECDHE 临时参数确实是服务器发的”。**
+**In `ECDHE_RSA`, RSA does not encrypt or transport the session key. It proves that the ECDHE parameters came from the server.**
 
-这也是很多人看到密码套件名字后最容易误会的地方。
+This is one of the most common misunderstandings about cipher-suite names.
 
-![TLS 1.2 使用 ECDHE RSA 完成握手和密钥协商](../images/shared/https-rsa-ecdhe-tls-1-2-ecdhe-rsa-handshake-process.png)
+![TLS 1.2 handshake and key exchange using ECDHE_RSA](../images/shared/https-rsa-ecdhe-tls-1-2-ecdhe-rsa-handshake-process.png)
 
-### 密码套件名怎么读
+### How to Read a Cipher-Suite Name
 
-TLS 1.2 的密码套件名字通常可以按这条线拆：
+TLS 1.2 cipher-suite names can often be read using this pattern:
 
 ```text
-TLS_密钥交换算法_认证算法_WITH_对称加密算法_哈希算法
+TLS_<key exchange>_<authentication>_WITH_<symmetric cipher>_<hash>
 ```
 
-例如：
+For example:
 
 ```text
 TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
 ```
 
-可以拆成：
+This breaks down as follows:
 
 ```text
-ECDHE：密钥交换
-RSA：身份认证，也就是服务端签名
-AES_128_GCM：后续记录层加密算法
-SHA256：TLS 1.2 PRF 和 Finished 消息使用的哈希算法；如果是 GCM 套件，它不再充当记录层 MAC
+ECDHE: key exchange
+RSA: server authentication through signatures
+AES_128_GCM: record-layer encryption
+SHA256: hash used by the TLS 1.2 PRF and Finished message; with a GCM suite, it is not the record-layer MAC
 ```
 
-再看另一个：
+Consider another example:
 
 ```text
 TLS_RSA_WITH_AES_128_GCM_SHA256
 ```
 
-这里的 `RSA` 出现在 `WITH` 前面，而且没有 `ECDHE`，表示密钥交换和身份认证都和 RSA 绑定。这类就是典型的静态 RSA 密钥交换套件。
+Here, `RSA` appears before `WITH` and there is no `ECDHE`, which means RSA is used for both key exchange and authentication. This is a typical static RSA key-exchange suite.
 
-到了 TLS 1.3，密码套件命名变了，比如：
+TLS 1.3 changed the cipher-suite naming scheme. For example:
 
 ```text
 TLS_AES_128_GCM_SHA256
 ```
 
-你会发现，它不再把密钥交换和认证方式写进密码套件名里。TLS 1.3 把这些信息拆到其他扩展和握手消息中，密码套件名主要描述记录层 AEAD 算法和 HKDF 使用的哈希算法。
+The name no longer includes the key-exchange or authentication method. TLS 1.3 carries that information in other extensions and handshake messages; the cipher-suite name mainly describes the record-layer AEAD algorithm and the hash used by HKDF.
 
-所以，看到 TLS 1.3 的 `TLS_AES_128_GCM_SHA256`，不要误以为它“没有密钥交换”。密钥交换还在，只是不用 TLS 1.2 那套命名方式写出来了。
+So do not assume that `TLS_AES_128_GCM_SHA256` means TLS 1.3 has no key exchange. Key exchange still happens; it is simply not encoded in the cipher-suite name as it was in TLS 1.2.
 
-![密码套件名拆解](../images/shared/https-rsa-ecdhe-cipher-suite-name-decomposition.png)
+![Cipher-suite name breakdown](../images/shared/https-rsa-ecdhe-cipher-suite-name-decomposition.png)
 
-## 前向安全与性能代价
+## Forward Secrecy and Performance Costs
 
-### ECDHE 为什么有前向安全
+### Why ECDHE Provides Forward Secrecy
 
-关键在 `E`，也就是 `Ephemeral`，临时。
+The key is the `E` in ECDHE: `Ephemeral`, or temporary.
 
-ECDHE 握手里的私钥不是服务器证书那把长期私钥，而是握手过程中使用的临时私钥。连接结束后，正常情况下不应该再依赖这份临时材料。
+The private keys in an ECDHE handshake are temporary keys generated during the handshake, not the server's long-term certificate private key. They should no longer be needed after the connection ends.
 
-这带来的结果是：攻击者今天抓包，未来某天拿到了服务器证书私钥，也不能仅靠这把长期私钥还原过去每次握手里的临时共享秘密。因为当时真正参与密钥协商的是那次握手里的 ECDHE 临时私钥，而不是证书私钥。
+As a result, if an attacker captures traffic today and later obtains the server's certificate private key, that key alone cannot recover the ephemeral shared secret from past handshakes. The key exchange used temporary ECDHE private keys, not the certificate key.
 
-证书私钥在这里更像“签字笔”，不是“保险柜钥匙”。
+The certificate private key is more like a “signing pen” than a “safe key.”
 
-RSA 密钥交换里，服务器私钥可以直接打开客户端发来的 `PreMasterSecret`；ECDHE 里，服务器私钥只是给临时参数签名，证明身份。它不直接参与每次连接共享秘密的计算。
+In RSA key exchange, the server's private key decrypts the client's `PreMasterSecret`. In ECDHE, the server's private key signs temporary parameters to prove its identity; it does not directly calculate the shared secret for each connection.
 
-这个角色变化，决定了两者在历史流量保护上的差异。
+This change in role explains the difference in how the methods protect past traffic.
 
-![ECDHE 前向安全原理：长期密钥 vs 临时密钥](../images/shared/https-rsa-ecdhe-ecdhe-forward-secrecy-principle-long-term-key-vs-ephemeral-key.png)
+![ECDHE forward secrecy: long-term keys vs. ephemeral keys](../images/shared/https-rsa-ecdhe-ecdhe-forward-secrecy-principle-long-term-key-vs-ephemeral-key.png)
 
-不过，前向安全不是免死金牌。
+Forward secrecy is not a cure-all.
 
-如果服务端随机数质量很差，临时私钥被日志记录下来，或者实现里出现内存泄漏，ECDHE 也救不了你。工程实现里，为了降低握手成本，部分实现还可能短时间复用临时 DH/ECDH 私密材料：有限域 DH 场景常说“指数复用”，ECDH 场景更常说“临时私钥/标量复用”。如果复用时间过长，前向安全的粒度就会变粗。
+ECDHE cannot help if the server's random-number generation is weak, temporary private keys are logged, or the implementation leaks memory. Some implementations may also reuse ephemeral DH/ECDH secrets briefly to reduce handshake costs: finite-field DH often calls this “exponent reuse,” while ECDH uses terms such as “ephemeral private-key” or “scalar reuse.” Reusing them for too long weakens the granularity of forward secrecy.
 
-还有一类风险来自参数校验。比如服务端没有正确校验客户端发来的椭圆曲线点是否在合法曲线上，就可能给无效曲线攻击留下空间。正常开发者不一定会直接写这层代码，但它提醒我们：密码学协议不只是“选对算法”就结束了，TLS 库实现和配置同样重要。
+Another risk comes from parameter validation. If a server does not correctly check whether a client's elliptic-curve point is valid, it may be vulnerable to invalid-curve attacks. Most developers do not write this code themselves, but it is a reminder that choosing the right algorithm is not enough; the TLS library and its configuration matter too.
 
-### 会话恢复的影响
+### How Session Resumption Affects It
 
-还有一个容易被忽略的点：**会话恢复。**
+Another easy-to-miss point is **session resumption**.
 
-完整 ECDHE 握手要做临时密钥协商，成本不低。为了减少握手开销，TLS 支持会话恢复。客户端下次访问同一个站点时，可以尝试复用之前协商过的会话状态，避免每次都完整走一遍握手。
+A full ECDHE handshake requires ephemeral key exchange, which has a cost. TLS supports session resumption to reduce handshake overhead. When a client returns to the same site, it can reuse prior session state instead of performing the full handshake again.
 
-问题在于，会话恢复也有自己的安全边界。
+Session resumption has its own security boundaries.
 
-以 TLS 1.2 的会话票据为例，服务端会用一把票据加密密钥保护会话状态，客户端后续带着票据回来，服务端解开票据后恢复会话。如果这把票据加密密钥长期不轮换，一旦它泄漏，攻击者就可能解开过去收集到的票据，并进一步还原相关恢复会话的密钥材料。
+For example, with TLS 1.2 session tickets, the server protects session state with a ticket-encryption key. When the client returns with a ticket, the server decrypts it and resumes the session. If the ticket key is not rotated for a long time and is later compromised, an attacker may decrypt captured tickets and recover key material for the resumed sessions.
 
-这时，前向安全的窗口就不再是“一次连接”，而会被拉长到“票据加密密钥的生命周期”。
+In this case, the forward-secrecy window is tied not only to one connection but also to the lifetime of the ticket-encryption key.
 
-所以线上配置不能只看“是否启用了 ECDHE”。会话票据密钥怎么生成、怎么轮换、是否在多台机器间共享、泄漏后影响多大，也要算进去。
+Production configuration should consider more than whether ECDHE is enabled. It should also account for how ticket keys are generated and rotated, whether they are shared across machines, and the impact of a key leak.
 
-### 性能不是免费的
+### Performance Has a Cost
 
-ECDHE 带来了前向安全，但它也有成本。
+ECDHE provides forward secrecy, but it also has a cost.
 
-RSA 密钥交换的主路径，是服务端用长期 RSA 私钥解开客户端发来的 `PreMasterSecret`。ECDHE_RSA 则需要完成临时 ECDH 协商，还要对服务端临时参数做签名。
+In RSA key exchange, the server mainly uses its long-term RSA private key to decrypt the client's `PreMasterSecret`. `ECDHE_RSA` performs an ephemeral ECDH exchange and signs the server's temporary parameters.
 
-对高并发服务来说，TLS 握手会消耗 CPU，尤其是短连接多、会话恢复命中率低的时候。
+TLS handshakes consume CPU on high-concurrency services, especially when there are many short-lived connections and session resumption rarely succeeds.
 
-这里不能简单写成“ECDHE 一定比 RSA 慢”。实际开销取决于 RSA 密钥长度、椭圆曲线选择、签名算法、TLS 库实现、CPU 指令集、会话恢复命中率等因素。比如 X25519、P-256、RSA 2048、RSA 3072 在不同 CPU 和不同 TLS 库上的表现都不一样。
+It is not accurate to say “ECDHE is always slower than RSA.” Costs depend on RSA key size, the selected curve, signature algorithm, TLS library, CPU instruction set, and session-resumption rate. X25519, P-256, RSA 2048, and RSA 3072 can perform differently across CPUs and TLS libraries.
 
-如果真要判断成本，最靠谱的方法不是引用别人的固定数字，而是在目标机器上压测。至少要区分三件事：
+To assess the cost, benchmark on the target machines instead of relying on fixed numbers from elsewhere. At minimum, distinguish:
 
 ```text
-1. 单次密码学操作耗时
-2. 完整 TLS 握手耗时
-3. 业务请求端到端耗时
+1. Time for an individual cryptographic operation.
+2. Time for a complete TLS handshake.
+3. End-to-end time for a business request.
 ```
 
-第一项可以用 `openssl speed` 粗看数量级，比如测试 RSA、ECDH、X25519 的运算能力；第二项要看 TLS 库和服务端配置；第三项还会受网络、连接复用、应用逻辑影响。
+Use `openssl speed` to get a rough idea of individual operations such as RSA, ECDH, and X25519. The second measure depends on the TLS library and server configuration. The third also depends on the network, connection reuse, and application logic.
 
-所以线上不会只靠“换成 ECDHE”解决所有问题。更常见的做法是配合 TLS 1.3、会话恢复、合理的证书算法和曲线选择，必要时再用硬件加速。
+Production systems do not solve every performance problem simply by switching to ECDHE. Common approaches include using TLS 1.3, session resumption, suitable certificate algorithms and curves, and hardware acceleration when needed.
 
-安全性和性能不是二选一，但也不能假装没有成本。
+Security and performance are not mutually exclusive, but security choices still have costs.
 
-## TLS 1.3 的变化
+## What Changed in TLS 1.3?
 
-如果只看 TLS 1.2，RSA 和 ECDHE 可以作为两种密钥交换方式来对比。
+In TLS 1.2, RSA and ECDHE can be compared as two key-exchange methods.
 
-但到了 TLS 1.3，静态 RSA 密钥交换已经被移除，握手结构也改了。
+TLS 1.3 removed static RSA key exchange and changed the handshake structure.
 
-TLS 1.2 完整握手通常需要 2 个 RTT。客户端先发 `ClientHello`，服务端回 `ServerHello`、证书和相关握手消息，客户端再发密钥交换和 `Finished`，服务端最后回 `Finished`。
+A full TLS 1.2 handshake usually takes 2 RTTs. The client sends `ClientHello`; the server responds with `ServerHello`, its certificate, and other handshake messages; then the client sends key-exchange data and `Finished`, and the server sends its `Finished` message.
 
-TLS 1.3 则把密钥交换参数提前放进 `ClientHello` 的 `key_share`。服务端第一轮响应就能返回自己的 `key_share`，完整握手通常压到 1 个 RTT。
+TLS 1.3 puts key-exchange parameters in the `key_share` extension in `ClientHello`. The server can return its own `key_share` in its first response, so a full handshake usually takes 1 RTT.
 
-2 RTT 变 1 RTT 能省多少毫秒，取决于网络环境。同机房可能只是几毫秒；跨地域、移动网络、高丢包场景下，少一个 RTT 才更容易被感知。
+The time saved by reducing 2 RTTs to 1 depends on the network. It may be only a few milliseconds within one data center, but the improvement is more noticeable across regions, mobile networks, or high-loss links.
 
-不过，TLS 1.3 也不是任何情况下都稳稳 1 RTT。如果客户端带的 `key_share` 和服务端支持的曲线不匹配，服务端会返回 `HelloRetryRequest`，要求客户端换一组参数再来一次。这时握手可能重新接近 2 RTT。
+TLS 1.3 does not guarantee 1 RTT in every case. If the client's `key_share` does not match a curve supported by the server, the server sends `HelloRetryRequest` and asks the client to try another set of parameters. The handshake may then take close to 2 RTTs.
 
-所以生产环境里，客户端和服务端对常见密钥协商组的支持要尽量对齐，比如 `X25519`、`secp256r1` 这类常见选择。否则 TLS 1.3 的 1 RTT 优势可能打折。
+In production, align the client's and server's support for common key-exchange groups such as `X25519` and `secp256r1`. Otherwise, TLS 1.3 may not achieve its 1-RTT advantage.
 
-![TLS 1.2 vs TLS 1.3 握手 RTT 对比](../images/shared/https-rsa-ecdhe-tls-1-2-vs-tls-1-3-handshake-rtt-comparison.png)
+![Handshake RTT comparison between TLS 1.2 and TLS 1.3](../images/shared/https-rsa-ecdhe-tls-1-2-vs-tls-1-3-handshake-rtt-comparison.png)
 
-至于后量子混合密钥交换、0-RTT、PSK-only、mTLS，这些都属于另一条线，本文不展开。
+Post-quantum hybrid key exchange, 0-RTT, PSK-only, and mTLS are related topics, but are outside this article's scope.
 
-## RSA vs ECDHE 核心差异速查
+## RSA vs. ECDHE: Quick Comparison
 
-放到一起看，差异就很清楚了。
+The differences are easier to see side by side:
 
-| 对比项             | RSA 密钥交换                                            | ECDHE 密钥交换                                         |
-| ------------------ | ------------------------------------------------------- | ------------------------------------------------------ |
-| 常见版本背景       | TLS 1.2 及更早版本可见                                  | TLS 1.2 常见，TLS 1.3 延续临时密钥协商方向             |
-| 会话密钥材料怎么来 | 客户端生成 `PreMasterSecret`，用服务器 RSA 公钥加密发送 | 双方各自生成临时密钥对，通过 ECDHE 算出共享秘密        |
-| 服务器私钥的作用   | 解密客户端发来的 `PreMasterSecret`                      | 对临时 ECDHE 参数签名，证明参数来自真实服务端          |
-| 网络上传了什么     | 加密后的 `PreMasterSecret`                              | 双方临时公钥和签名后的参数                             |
-| 是否支持前向安全   | 不支持                                                  | 支持，前提是临时密钥正确生成、使用后不再保留           |
-| 私钥泄漏后的影响   | 在握手数据完整捕获的情况下，历史流量可能被解密          | 仅靠证书私钥，通常无法解开历史流量                     |
-| 典型问题           | 长期私钥价值过高，存在 PKCS#1 v1.5 填充预言机历史包袱   | 握手有额外计算成本，参数校验和临时密钥管理依赖实现质量 |
-| TLS 1.3 情况       | 静态 RSA 密钥交换已移除                                 | 临时密钥协商成为主线                                   |
+| Aspect                            | RSA key exchange                                                                    | ECDHE key exchange                                                                                    |
+| --------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| **Common versions**               | Seen in TLS 1.2 and earlier                                                         | Common in TLS 1.2; TLS 1.3 continues using ephemeral key exchange                                     |
+| **How key material is derived**   | Client generates `PreMasterSecret` and encrypts it with the server's RSA public key | Both sides generate ephemeral key pairs and derive a shared secret with ECDHE                         |
+| **Role of server's private key**  | Decrypts the client's `PreMasterSecret`                                             | Signs temporary ECDHE parameters to prove they came from the server                                   |
+| **What is sent over the network** | Encrypted `PreMasterSecret`                                                         | Both sides' ephemeral public keys and signed parameters                                               |
+| **Forward secrecy**               | No                                                                                  | Yes, if ephemeral keys are generated correctly and not retained                                       |
+| **Impact of a private-key leak**  | Past traffic may be decrypted if the full handshake was captured                    | The certificate private key alone usually cannot decrypt past traffic                                 |
+| **Typical concerns**              | High value of long-term private key; history of PKCS#1 v1.5 padding-oracle attacks  | Additional handshake computation; security depends on parameter validation and ephemeral-key handling |
+| **TLS 1.3**                       | Static RSA key exchange removed                                                     | Ephemeral key exchange is the main approach                                                           |
 
-![RSA vs ECDHE 对比速查](../images/shared/https-rsa-ecdhe-rsa-vs-ecdhe-quick-reference.png)
+![Quick comparison of RSA and ECDHE](../images/shared/https-rsa-ecdhe-rsa-vs-ecdhe-quick-reference.png)
 
-### 常见误读：ECDHE_RSA 不是两种算法都加密
+### Common Misreading: ECDHE_RSA Does Not Mean Both Algorithms Encrypt Data
 
-`ECDHE_RSA` 这个名字很容易让人误以为两种算法都在加密。以这个密码套件为例：
+The name `ECDHE_RSA` can make it seem as if both algorithms encrypt data. Consider this cipher suite:
 
 ```text
 TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
 ```
 
-这里的分工是：ECDHE 负责密钥交换，RSA 负责身份认证签名，AES-256-GCM 负责保护记录层数据，SHA384 用于 TLS 1.2 的 PRF 和 `Finished` 验证。RSA 证书签名和 RSA 密钥交换是两件事；前者在现代 HTTPS 中仍然常见，后者已经从 TLS 1.3 中移除。
+The roles are: ECDHE handles key exchange, RSA signs for authentication, AES-256-GCM protects record data, and SHA384 is used by the TLS 1.2 PRF and `Finished` verification. RSA certificate signatures and RSA key exchange are different things. The former remains common in modern HTTPS; the latter was removed in TLS 1.3.
 
-## 面试怎么回答：HTTPS 握手里的 RSA 和 ECDHE，到底差在哪？
+## Interview Answer: RSA vs. ECDHE in the HTTPS Handshake
 
-RSA 和 ECDHE 的核心区别在于，会话密钥材料是“传过去的”，还是“协商出来的”。
+The core difference is whether session-key material is sent to the other side or derived by both sides.
 
-在 TLS 1.2 的静态 RSA 握手里，客户端生成 `PreMasterSecret`，用服务器证书里的 RSA 公钥加密后发给服务端，服务端再用 RSA 私钥解密。问题是，如果攻击者保存了当年的握手流量，后来服务器私钥又泄漏，就可能回头解出历史会话密钥，所以它没有前向安全。
+In a TLS 1.2 static RSA handshake, the client generates `PreMasterSecret`, encrypts it with the RSA public key in the server certificate, and sends it to the server. The server decrypts it with its RSA private key. If an attacker saves the handshake traffic and later obtains the server's private key, they may recover past session keys, so static RSA does not provide forward secrecy.
 
-ECDHE 不直接传输共享秘密。客户端和服务端各自生成临时密钥对，交换临时公钥后，双方本地算出同一个共享秘密。服务器证书私钥主要用于签名认证，证明临时参数没被中间人替换，而不是用来解密会话密钥。
+ECDHE does not transmit the shared secret. The client and server generate ephemeral key pairs, exchange public keys, and independently derive the same shared secret. The server's certificate private key is mainly used to sign and authenticate the parameters, not to decrypt the session key.
 
-面试时可以这样回答：TLS 1.2 的静态 RSA 握手由客户端生成 `PreMasterSecret`，再使用服务器 RSA 公钥加密发送；如果攻击者保存了完整握手流量并在以后获得服务器私钥，历史会话可能被解密，因此它不具备前向安全。ECDHE 不直接传输共享秘密，双方交换临时公钥后各自在本地算出相同秘密；证书私钥主要用于签名认证，而不直接解密会话密钥。TLS 1.3 已移除静态 RSA 密钥交换，并使用 (EC)DHE、PSK 或两者结合的方式建立密钥。
+In an interview, you can say: TLS 1.2 static RSA has the client generate `PreMasterSecret` and encrypt it with the server's RSA public key. If an attacker records the full handshake and later obtains the server's private key, past sessions may be decrypted, so static RSA lacks forward secrecy. ECDHE does not transmit the shared secret; both sides exchange ephemeral public keys and derive the same secret locally. The certificate private key is used mainly for signature-based authentication, not to decrypt the session key. TLS 1.3 removed static RSA key exchange and establishes keys using (EC)DHE, PSK, or a combination.

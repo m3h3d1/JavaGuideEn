@@ -1,144 +1,136 @@
 ---
-title: SQL语句在MySQL中的执行过程
-description: 详解SQL语句在MySQL中的完整执行流程，从连接器身份认证、查询缓存、分析器语法解析、优化器生成执行计划到执行器调用存储引擎的全过程。
-category: 数据库
+title: How MySQL Executes SQL Statements
+description: A guide to the MySQL statement lifecycle, from connection authentication and parsing through optimization and execution by the storage engine.
+category: Databases
 tag:
   - MySQL
 head:
   - - meta
     - name: keywords
-      content: MySQL执行流程,SQL执行过程,连接器,解析器,优化器,执行器,Server层,存储引擎,InnoDB
+      content: MySQL execution flow,SQL execution,connection handler,parser,optimizer,executor,Server layer,storage engine,InnoDB
 ---
 
-> 本文来自[木木匠](https://github.com/kinglaw1204)投稿。
+> Contributed by [Mumujiang](https://github.com/kinglaw1204).
 
-本篇文章会分析下一个 SQL 语句在 MySQL 中的执行流程，包括 SQL 的查询在 MySQL 内部会怎么流转，SQL 语句的更新是怎么完成的。
+This article explains how MySQL processes SQL queries and updates. First, we'll review the MySQL architecture and the role of each component; then we'll follow queries and updates through the system.
 
-在分析之前我会先带着你看看 MySQL 的基础架构，知道了 MySQL 由那些组件组成以及这些组件的作用是什么，可以帮助我们理解和解决这些问题。
+## 1. MySQL Architecture
 
-## 一 MySQL 基础架构分析
+### 1.1 Overview
 
-### 1.1 MySQL 基本架构概览
+The diagram below gives a high-level view of MySQL and shows how a client SQL statement flows through the server.
 
-下图是 MySQL 的一个简要架构图，从下图你可以很清晰的看到用户的 SQL 语句在 MySQL 内部是如何执行的。
+The components are introduced briefly here and covered in more detail in Section 1.2:
 
-先简单介绍一下下图涉及的一些组件的基本作用帮助大家理解这幅图，在 1.2 节中会详细介绍到这些组件的作用。
-
-- **连接器：** 身份认证和权限相关(登录 MySQL 的时候)。
-- **查询缓存：** 执行查询语句的时候，会先查询缓存（MySQL 8.0 版本后移除，因为这个功能不太实用）。
-- **分析器：** 没有命中缓存的话，SQL 语句就会经过分析器，分析器说白了就是要先看你的 SQL 语句要干嘛，再检查你的 SQL 语句语法是否正确。
-- **优化器：** 按照 MySQL 认为最优的方案去执行。
-- **执行器：** 执行语句，然后从存储引擎返回数据。 -
+- **Connection handler:** Authenticates users and handles permissions when they connect.
+- **Query cache:** Checks for cached results before executing a query. Removed in MySQL 8.0 because it had limited practical value.
+- **Parser:** Identifies what the SQL statement does and checks its syntax when there is no cache hit.
+- **Optimizer:** Chooses an execution plan that MySQL estimates to be efficient.
+- **Executor:** Runs the statement and gets results from the storage engine.
 
 ![](../images/shared/13526879-3037b144ed09eb88.png)
 
-简单来说 MySQL 主要分为 Server 层和存储引擎层：
+MySQL has two main layers: the **Server layer** and the **storage engine layer**.
 
-- **Server 层**：主要包括连接器、查询缓存、分析器、优化器、执行器等，所有跨存储引擎的功能都在这一层实现，比如存储过程、触发器、视图，函数等，还有一个通用的日志模块 binlog 日志模块。
-- **存储引擎**：主要负责数据的存储和读取，采用可以替换的插件式架构，支持 InnoDB、MyISAM、Memory 等多个存储引擎，其中 InnoDB 引擎有自有的日志模块 redolog 模块。**现在最常用的存储引擎是 InnoDB，它从 MySQL 5.5 版本开始就被当做默认存储引擎了。**
+- **Server layer:** Includes the connection handler, query cache, parser, optimizer, and executor. It also implements features shared across storage engines, such as stored procedures, triggers, views, functions, and the binary log (`binlog`).
+- **Storage engines:** Handle data storage and retrieval through a pluggable architecture. MySQL supports InnoDB, MyISAM, Memory, and other engines. InnoDB has its own redo log. **InnoDB has been the default storage engine since MySQL 5.5.**
 
-### 1.2 Server 层基本组件介绍
+### 1.2 Server Components
 
-#### 1) 连接器
+#### 1) Connection Handler
 
-连接器主要和身份认证和权限相关的功能相关，就好比一个级别很高的门卫一样。
+The connection handler is responsible for authentication and permissions. Think of it as a high-level gatekeeper.
 
-主要负责用户登录数据库，进行用户的身份认证，包括校验账户密码，权限等操作，如果用户账户密码已通过，连接器会到权限表中查询该用户的所有权限，之后在这个连接里的权限逻辑判断都是会依赖此时读取到的权限数据，也就是说，后续只要这个连接不断开，即使管理员修改了该用户的权限，该用户也是不受影响的。
+It logs users in and verifies account credentials and permissions. After authentication, it reads the user's privileges from the privilege tables. Permission checks for that connection then use the privileges read at that time. If the connection remains open, changing the user's privileges later doesn't affect that connection.
 
-#### 2) 查询缓存(MySQL 8.0 版本后移除)
+#### 2) Query Cache (Removed in MySQL 8.0)
 
-查询缓存主要用来缓存我们所执行的 SELECT 语句以及该语句的结果集。
+The query cache stores `SELECT` statements and their result sets.
 
-连接建立后，执行查询语句的时候，会先查询缓存，MySQL 会先校验这个 SQL 是否执行过，以 Key-Value 的形式缓存在内存中，Key 是查询语句，Value 是结果集。如果缓存 key 被命中，就会直接返回给客户端，如果没有命中，就会执行后续的操作，完成后也会把结果缓存起来，方便下一次调用。当然在真正执行缓存查询的时候还是会校验用户的权限，是否有该表的查询条件。
+After a connection is established, MySQL checks whether the exact SQL statement has been executed before. It uses the statement as a key and the result set as the value. On a cache hit, MySQL can return the result directly; otherwise, it continues processing the query and may cache the result. MySQL still checks whether the user has permission to query the table.
 
-MySQL 查询不建议使用缓存，因为查询缓存失效在实际业务场景中可能会非常频繁，假如你对一个表更新的话，这个表上的所有的查询缓存都会被清空。对于不经常更新的数据来说，使用缓存还是可以的。
+The query cache was often a poor fit for real workloads because an update to a table invalidated all cached queries for that table. It could help with data that rarely changes, but was generally not recommended.
 
-所以，一般在大多数情况下我们都是不推荐去使用查询缓存的。
+MySQL 8.0 removed the query cache because it had limited use in practice.
 
-MySQL 8.0 版本后删除了缓存的功能，官方也是认为该功能在实际的应用场景比较少，所以干脆直接删掉了。
+#### 3) Parser
 
-#### 3) 分析器
+If the query doesn't hit the cache, it goes to the parser, which analyzes the SQL statement in two steps:
 
-MySQL 没有命中缓存，那么就会进入分析器，分析器主要是用来分析 SQL 语句是来干嘛的，分析器也会分为几步：
+1. **Lexical analysis:** Break the statement into tokens, identifying keywords such as `SELECT`, table names, column names, and conditions.
+2. **Syntax analysis:** Check whether the statement follows MySQL's SQL grammar.
 
-**第一步，词法分析**，一条 SQL 语句有多个字符串组成，首先要提取关键字，比如 select，提出查询的表，提出字段名，提出查询条件等等。做完这些操作后，就会进入第二步。
+After parsing, MySQL knows what the statement means. The optimizer then chooses how to execute it.
 
-**第二步，语法分析**，主要就是判断你输入的 SQL 是否正确，是否符合 MySQL 的语法。
+#### 4) Optimizer
 
-完成这 2 步之后，MySQL 就准备开始执行了，但是如何执行，怎么执行是最好的结果呢？这个时候就需要优化器上场了。
+The optimizer chooses an execution plan it estimates to be efficient. For example, it selects an index when multiple indexes are available or chooses a join order for a multi-table query. The chosen plan determines how the statement will be executed, though the estimate isn't always optimal.
 
-#### 4) 优化器
+#### 5) Executor
 
-优化器的作用就是它认为的最优的执行方案去执行（有时候可能也不是最优，这篇文章涉及对这部分知识的深入讲解），比如多个索引的时候该如何选择索引，多表查询的时候如何选择关联顺序等。
+Once a plan is selected, the executor checks the user's permissions. If the user is authorized, it calls the storage engine's API and returns the engine's result.
 
-可以说，经过了优化器之后可以说这个语句具体该如何执行就已经定下来。
+## 2. Statement Walkthroughs
 
-#### 5) 执行器
+### 2.1 Query
 
-当选择了执行方案后，MySQL 就准备开始执行了，首先执行前会校验该用户有没有权限，如果没有权限，就会返回错误信息，如果有权限，就会去调用引擎的接口，返回接口执行的结果。
-
-## 二 语句分析
-
-### 2.1 查询语句
-
-说了以上这么多，那么究竟一条 SQL 语句是如何执行的呢？其实我们的 SQL 可以分为两种，一种是查询，一种是更新（增加，修改，删除）。我们先分析下查询语句，语句如下：
+SQL statements can be grouped into queries and updates (inserts, modifications, and deletes). Consider this query:
 
 ```sql
-select * from tb_student  A where A.age='18' and A.name=' 张三 ';
+SELECT * FROM tb_student A WHERE A.age = '18' AND A.name = ' Alice ';
 ```
 
-结合上面的说明，我们分析下这个语句的执行流程：
+Its execution proceeds as follows:
 
-- 先通过连接器进行身份认证和权限获取（若认证失败则直接拒绝），在 MySQL8.0 版本以前，认证通过后会先查询缓存，以这条 SQL 语句为 key 在内存中查询是否有结果，如果有直接缓存，如果没有，执行下一步。
-- 通过分析器进行词法分析，提取 SQL 语句的关键元素，比如提取上面这个语句是查询 select，提取需要查询的表名为 tb_student，需要查询所有的列，查询条件是这个表的 id='1'。然后判断这个 SQL 语句是否有语法错误，比如关键词是否正确等等，如果检查没问题就执行下一步。
-- 接下来就是优化器进行确定执行方案，上面的 SQL 语句，可以有两种执行方案：a.先查询学生表中姓名为“张三”的学生，然后判断是否年龄是 18。b.先找出学生中年龄 18 岁的学生，然后再查询姓名为“张三”的学生。那么优化器根据自己的优化算法进行选择执行效率最好的一个方案（优化器认为，有时候不一定最好）。那么确认了执行计划后就准备开始执行了。
+- The connection handler authenticates the user and loads permissions. Before MySQL 8.0, the server then checked the query cache, using the SQL statement as the key. On a cache hit, it returned the cached result; otherwise, it continued.
+- The parser performs lexical analysis to identify `SELECT`, the `tb_student` table, all columns, and the conditions on `age` and `name`. It then checks the statement's syntax.
+- The optimizer chooses an execution plan. For example, it might use an index on `name` and then check `age`, or use an index on `age` and then check `name`. It estimates which plan is more efficient, though the estimate isn't always best.
+- The executor checks permissions and, if allowed, calls the storage engine and returns its result.
 
-- 进行权限校验，如果没有权限就会返回错误信息，如果有权限就会调用数据库引擎接口，返回引擎的执行结果。
+### 2.2 Update
 
-### 2.2 更新语句
+An update follows a similar path, but it also needs to be logged. MySQL's server layer writes the binary log (`binlog`), which is available to all storage engines. InnoDB also writes its own redo log. This walkthrough follows an update using InnoDB:
 
-以上就是一条查询 SQL 的执行流程，那么接下来我们看看一条更新语句如何执行的呢？SQL 语句如下：
-
-```plain
-update tb_student A set A.age='19' where A.name=' 张三 ';
+```sql
+UPDATE tb_student A SET A.age = '19' WHERE A.name = ' Alice ';
 ```
 
-我们来给张三修改下年龄，在实际数据库肯定不会设置年龄这个字段的，不然要被技术负责人打的。其实这条语句也基本上会沿着上一个查询的流程走，只不过执行更新的时候肯定要记录日志啦，这就会引入日志模块了，MySQL 自带的日志模块是 **binlog（归档日志）** ，所有的存储引擎都可以使用，我们常用的 InnoDB 引擎还自带了一个日志模块 **redo log（重做日志）**，我们就以 InnoDB 模式下来探讨这个语句的执行流程。流程如下：
+The update proceeds as follows:
 
-- 先查询到张三这一条数据，不会走查询缓存，因为查询缓存的设计规则就是只服务于查询类语句。
-- 然后拿到查询的语句，把 age 改为 19，然后调用引擎 API 接口，写入这一行数据，InnoDB 引擎把数据保存在内存中，同时记录 redo log，此时 redo log 进入 prepare 状态，然后告诉执行器，执行完成了，随时可以提交。
-- 执行器收到通知后记录 binlog，然后清空该表的查询缓存。此时清空能保证后续的 SELECT 不会读到旧缓存 —— 因为事务马上就要最终提交，数据即将变成最新状态，缓存失效的时机刚好匹配数据的实际更新。
-- 执行器调用引擎接口 ，提交 redo log 为 commit 状态。
-- 更新完成。
+- MySQL finds the row for Alice. It doesn't use the query cache, which was designed for query statements.
+- The executor changes `age` to 19 and calls the storage engine API. InnoDB updates the row in memory and writes to the redo log, which enters the `prepare` state. InnoDB then reports that it is ready to commit.
+- The executor writes the `binlog` and invalidates the table's query-cache entries. Invalidating the cache before commit prevents later `SELECT` statements from reading stale results.
+- The executor asks InnoDB to mark the redo log as `commit`.
+- The update is complete.
 
-**这里肯定有同学会问，为什么要用两个日志模块，用一个日志模块不行吗?**
+**Why use two logs instead of one?**
 
-这是因为最开始 MySQL 并没有 InnoDB 引擎（InnoDB 引擎是其他公司以插件形式插入 MySQL 的），MySQL 自带的引擎是 MyISAM，但是我们知道 redo log 是 InnoDB 引擎特有的，其他存储引擎都没有，这就导致会没有 crash-safe 的能力(crash-safe 的能力即使数据库发生异常重启，之前提交的记录都不会丢失)，binlog 日志只能用来归档。
+MySQL originally shipped with MyISAM, before InnoDB was integrated as a storage engine. The `redo log` is specific to InnoDB, while the `binlog` is available to all storage engines. The `redo log` provides InnoDB crash recovery; the `binlog` supports archiving and replication.
 
-并不是说只用一个日志模块不可以，只是 InnoDB 引擎就是通过 redo log 来支持事务的。那么，又会有同学问，我用两个日志模块，但是不要这么复杂行不行，为什么 redo log 要引入 prepare 预提交状态？这里我们用反证法来说明下为什么要这么做？
+In principle, one log could be enough, but InnoDB uses the redo log for transaction processing. The `prepare` state in a two-phase commit helps keep the redo log and `binlog` consistent. Consider what could go wrong without it:
 
-- **先写 redo log 直接提交，然后写 binlog**，假设写完 redo log 后，机器挂了，binlog 日志没有被写入，那么机器重启后，这台机器会通过 redo log 恢复数据，但是这个时候 binlog 并没有记录该数据，后续进行机器备份的时候，就会丢失这一条数据，同时主从同步也会丢失这一条数据。
-- **先写 binlog，然后写 redo log**，假设写完了 binlog，机器异常重启了，由于没有 redo log，本机是无法恢复这一条记录的，但是 binlog 又有记录，那么和上面同样的道理，就会产生数据不一致的情况。
+- **Commit redo log, then write `binlog`:** If the server crashes after the redo log commits but before the `binlog` is written, local recovery includes the update, but the `binlog` doesn't. Backups or replicas can then miss the row.
+- **Write `binlog`, then commit redo log:** If the server crashes after writing the `binlog` but before committing the redo log, local recovery omits the update even though the `binlog` contains it. This also creates inconsistency.
 
-如果采用 redo log 两阶段提交的方式就不一样了，先写完 redo log，标记为 prepare，紧接着写完 binlog 后，然后再将 redo log 标记为 commit 就可以防止出现上述的问题，从而保证了数据的一致性。
-那么问题来了，有没有一个极端的情况呢？假设 redo log 处于 prepare 状态，binlog 也已经写完了，这个时候发生了异常重启会怎么样呢？
-这个就要依赖于 MySQL 的处理机制了，MySQL 的处理过程如下：
+With two-phase commit, InnoDB first marks the redo log as `prepare`, then MySQL writes the `binlog`, and finally InnoDB marks the redo log as `commit`.
 
-- 判断 redo log 是否为 commit 状态，如果是，说明 binlog 一定已完成刷盘，就立即提交。
-- 如果 redo log 只是 prepare 状态但不是 commit 状态，这个时候就会拿着事物的XID，去 binlog 判断该事物是否完成刷盘，如果是就提交 redo log, 否则就回滚事务。
+What if the server crashes after the redo log enters `prepare` and the `binlog` is written? MySQL uses the transaction ID (XID) to decide how to recover:
 
-这样就解决了数据一致性的问题。
+- If the redo log is already `commit`, MySQL commits it.
+- If the redo log is only `prepare`, MySQL checks the `binlog` for the transaction's XID. If the transaction is present, MySQL commits the redo log; otherwise, it rolls back the transaction.
 
-## 三 总结
+This recovery process preserves consistency between the logs.
 
-- MySQL 主要分为 Server 层和引擎层，Server 层主要包括连接器、查询缓存、分析器、优化器、执行器，同时还有一个日志模块（binlog），这个日志模块所有执行引擎都可以共用，redolog 只有 InnoDB 有。
-- 引擎层是插件式的，目前主要包括，MyISAM,InnoDB,Memory 等。
-- 查询语句的执行流程如下：权限校验（如果命中缓存）--->查询缓存--->分析器--->优化器--->权限校验--->执行器--->引擎
-- 更新语句执行流程如下：分析器---->权限校验---->执行器--->引擎---redo log(prepare 状态)--->binlog--->redo log(commit 状态)
+## 3. Summary
 
-## 四 参考
+- MySQL has a Server layer and a storage engine layer. The Server layer includes the connection handler, query cache, parser, optimizer, executor, and `binlog`. The InnoDB engine also has a `redo log`.
+- MySQL uses a pluggable storage engine architecture that includes InnoDB, MyISAM, and Memory.
+- A query goes through permission checks, the query cache (if enabled and applicable), the parser, optimizer, executor, and storage engine.
+- An InnoDB update goes through the parser, permission checks, executor, storage engine, redo log `prepare`, `binlog`, and redo log `commit`.
 
-- 《MySQL 实战 45 讲》
-- MySQL 5.6 参考手册:<https://dev.MySQL.com/doc/refman/5.6/en/>
+## 4. References
+
+- _MySQL: A Hands-On Guide to Database Internals_
+- [MySQL 5.6 Reference Manual](https://dev.mysql.com/doc/refman/5.6/en/)
 
 <!-- @include: @article-footer.snippet.md -->

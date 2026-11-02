@@ -1,112 +1,112 @@
 ---
-title: MySQL数据同步到Elasticsearch详解：常见方案与一致性处理
-description: MySQL数据同步到Elasticsearch方案详解，对比应用层双写、定时同步、Canal、Debezium和Flink CDC，并介绍全量同步、增量同步、消息乱序、幂等、删除、重建和数据对账。
-category: 数据库
+title: "Syncing MySQL Data to Elasticsearch: Approaches and Consistency"
+description: Compare application-level dual writes, scheduled sync, Canal, Debezium, and Flink CDC. Learn about full and incremental sync, out-of-order events, idempotency, deletes, index rebuilds, and data reconciliation.
+category: Database
 tag:
   - MySQL
   - Elasticsearch
-  - 数据同步
+  - Data Synchronization
 head:
   - - meta
     - name: keywords
-      content: MySQL同步Elasticsearch,MySQL同步ES,MySQL ES同步,Canal同步ES,Flink CDC同步ES,Debezium,CDC,binlog,全量同步,增量同步,数据一致性
+      content: MySQL to Elasticsearch synchronization, MySQL ES sync, Canal, Flink CDC, Debezium, CDC, binlog, full synchronization, incremental synchronization, data consistency
 ---
 
-MySQL 擅长事务处理，Elasticsearch 擅长全文检索和复杂搜索。很多系统会把 MySQL 作为权威数据源，再把搜索需要的字段整理成文档写入 Elasticsearch。
+MySQL is well suited to transaction processing, while Elasticsearch is designed for full-text and complex searches. Many systems use MySQL as the authoritative data source, then organize the fields needed for search into documents in Elasticsearch.
 
-这样做之后，麻烦会集中在以下环节：
+This approach raises several questions:
 
-- 第一次上线时，MySQL 里的存量数据怎么导入？
-- MySQL 后续发生新增、修改和删除，怎样持续更新 ES？
-- 同步任务重复消费、乱序或者中断时，怎样避免旧数据覆盖新数据？
-- 索引结构调整或数据不一致时，怎样重建并平滑切换？
+- How should existing MySQL data be imported during the initial deployment?
+- How should inserts, updates, and deletes in MySQL continue to update Elasticsearch?
+- How can the sync process prevent old data from overwriting new data when messages are redelivered, arrive out of order, or processing is interrupted?
+- How can an index be rebuilt and switched over smoothly when its structure changes or data becomes inconsistent?
 
-一套可用的同步方案通常要同时考虑 **全量同步、增量同步、失败恢复和数据校验**。只解决其中一个环节，很容易在上线或故障恢复时卡住。
+A practical sync design must account for **full synchronization, incremental synchronization, failure recovery, and data validation**. Addressing only one part can cause problems during deployment or recovery.
 
-## 先明确同步目标
+## Define the Synchronization Goal
 
-MySQL 到 Elasticsearch 的同步通常分成两类：
+Synchronization from MySQL to Elasticsearch usually has two parts:
 
-- **全量同步**：读取 MySQL 中已有的数据，构建一份完整的 ES 索引。常用于首次上线、索引重建和数据修复。
-- **增量同步**：持续捕获 MySQL 提交后的 `INSERT`、`UPDATE`、`DELETE`，更新对应的 ES 文档。
+- **Full synchronization**: Read existing MySQL data and build a complete Elasticsearch index. This is common during initial deployment, index rebuilds, and data repair.
+- **Incremental synchronization**: Continuously capture committed MySQL `INSERT`, `UPDATE`, and `DELETE` operations and update the corresponding Elasticsearch documents.
 
-两者经常组合使用。比如，先全量导入 1000 万条历史数据，再从全量任务开始时记录的 binlog 位点继续消费增量，直到追上最新数据。
+These approaches are often combined. For example, first import ten million historical records, then continue consuming changes from the binlog position recorded when the full import began until the sync catches up.
 
-还要注意，ES 写入成功不代表数据已经立刻可以被搜索到。Elasticsearch 通过 `refresh` 让新写入的文档对搜索可见，因此端到端延迟至少包含变更捕获、消息排队、数据处理、ES 写入和 `refresh` 等环节。官方将这种搜索可见性称为[近实时搜索](https://www.elastic.co/docs/manage-data/data-store/near-real-time-search)。
+An acknowledged Elasticsearch write does not mean the document is immediately searchable. Elasticsearch uses `refresh` to make new documents visible to searches, so end-to-end latency includes change capture, message queuing, processing, the Elasticsearch write, and `refresh`. Elasticsearch calls this [near real-time search](https://www.elastic.co/docs/manage-data/data-store/near-real-time-search).
 
-![MySQL 到 ES 全量与增量衔接](../images/shared/mysql-es-full-incremental-sync.webp)
+![How full and incremental MySQL-to-Elasticsearch synchronization fit together](../images/shared/mysql-es-full-incremental-sync.webp)
 
-## 选型前先定义同步契约
+## Define the Synchronization Contract Before Choosing a Tool
 
-同一个同步工具，放到不同的数据模型和一致性要求下，结果可能完全不同。开始选型前，先把下面这些约定写清楚：
+The same synchronization tool can behave differently depending on the data model and consistency requirements. Before choosing a tool, define the following:
 
-- **权威数据源**：通常以 MySQL 为准，ES 只保存可重建的搜索视图。业务不能绕开 MySQL 直接修改 ES 中的权威字段。
-- **文档生成规则**：明确哪些表和字段组成一份 ES 文档，文档 `_id` 从哪里取，多表变更分别会重建哪些文档。
-- **删除语义**：物理删除、逻辑删除和业务失效分别对应 ES delete、保留删除标记，还是重新生成文档。
-- **顺序与版本**：确定同一文档的分区键和版本来源，避免重试、并发和多条链路让旧值覆盖新值。
-- **延迟与恢复目标**：约定正常情况下允许多大延迟，链路中断后多久追平，超过 binlog 或 MQ 保留时间后怎样重新初始化。
-- **字段类型与空值**：明确金额、无符号整数、日期时间、枚举和空字符串怎样写入 ES，区分字段缺失、`null` 和空值。
-- **源库资源预算**：评估全量扫描的连接数、并发度和磁盘 I/O，确定读主库还是只读副本，并给同步任务设置限速和暂停条件。
-- **Schema 变更流程**：字段新增、类型修改、分词器调整时，由谁更新 mapping，应用、同步任务和索引模板按什么顺序发布。
+- **Authoritative data source**: MySQL is usually authoritative, while Elasticsearch stores a rebuildable search view. Business services should not bypass MySQL to modify authoritative fields in Elasticsearch.
+- **Document construction rules**: Specify which tables and columns make up each document, where its `_id` comes from, and which documents must be rebuilt after changes to each table.
+- **Delete semantics**: Decide whether physical deletes, logical deletes, and business-level invalidation should delete the Elasticsearch document, preserve a deletion marker, or rebuild the document.
+- **Ordering and versions**: Choose the partition key and version source for each document to prevent retries, concurrency, or multiple pipelines from letting stale values overwrite newer ones.
+- **Latency and recovery targets**: Define the acceptable normal delay, how quickly the pipeline should catch up after an outage, and how to reinitialize if required binlogs or MQ messages have expired.
+- **Field types and null values**: Define how amounts, unsigned integers, dates, enums, and empty strings are written to Elasticsearch. Distinguish missing fields, `null`, and empty values.
+- **Source database resource limits**: Estimate connections, concurrency, and disk I/O for full scans. Decide whether to read from the primary or a read replica, and set throttling and pause conditions for sync jobs.
+- **Schema change process**: Decide who updates mappings when fields, types, or analyzers change, and in what order the application, sync job, and index template are deployed.
 
-验收也不能只检查“全量条数相等”。至少要覆盖新增、修改、物理删除、逻辑删除、重复消息和乱序消息；还要主动暂停 ES 或同步任务，观察恢复后能否追平。新索引全量回灌、增量追平、数据校验、别名切换和回滚也要完整走一遍。同步契约里的每一项都应该能对应到一个测试用例或监控指标。
+Acceptance testing should check more than whether the total row counts match. Cover inserts, updates, physical and logical deletes, duplicate and out-of-order messages. Also pause Elasticsearch or the sync job and verify that it catches up after recovery. Exercise the full process of loading a new index, catching up on incremental changes, validating data, switching aliases, and rolling back. Each part of the synchronization contract should map to a test case or monitoring metric.
 
-## 常见方案对比
+## Comparing Common Approaches
 
-| 方案             | 全量同步   | 增量同步       | 主要优点                             | 主要问题                             | 适用场景                               |
-| ---------------- | ---------- | -------------- | ------------------------------------ | ------------------------------------ | -------------------------------------- |
-| 应用层同步双写   | 不支持     | 支持           | 实现直观、链路短                     | 无法原子提交、侵入业务、容易乱序     | 数据量小、允许短暂不一致的简单业务     |
-| 本地消息表 + MQ  | 不支持     | 支持           | 业务更新与事件落库可以放进同一事务   | 仍需补全量导入、投递和消费组件       | 应用已经采用事件驱动架构               |
-| 定时同步         | 支持       | 支持按条件扫描 | 简单、运维成本低                     | 延迟较高，删除和扫描窗口需要额外处理 | 数据量小、更新频率低                   |
-| Canal + 消费端   | 需单独处理 | 支持           | 生态成熟、便于接入 MQ 和自定义消费者 | 需要维护位点、消费端和全量衔接       | 已有 Java/MQ 基础设施的增量同步        |
-| Debezium + Kafka | 支持快照   | 支持           | Kafka Connect 生态完善、事件格式统一 | 组件较多，依赖 Kafka Connect         | 已有 Kafka Connect 或多数据源 CDC 平台 |
-| Flink CDC        | 支持       | 支持           | 全量与增量自动衔接，适合复杂转换     | 部署和状态管理成本较高               | 数据量大、需要流式处理或多表转换       |
+| Approach                      | Full sync                  | Incremental sync  | Advantages                                                                            | Challenges                                                           | Suitable for                                                 |
+| ----------------------------- | -------------------------- | ----------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Application-level dual writes | No                         | Yes               | Simple implementation and a short pipeline                                            | No atomic commit, changes to business code, and out-of-order writes  | Simple, low-volume systems that tolerate brief inconsistency |
+| Transactional outbox + MQ     | No                         | Yes               | Business updates and event records share a transaction                                | Still requires full import, delivery, and consumer components        | Applications already using event-driven architecture         |
+| Scheduled sync                | Yes                        | Conditional scans | Simple and low operational cost                                                       | Higher latency; deletes and scan windows need extra handling         | Low-volume data with infrequent updates                      |
+| Canal + consumer              | Must be handled separately | Yes               | Mature ecosystem; integrates with MQ and custom consumers                             | Requires managing positions, consumers, and full/incremental handoff | Incremental sync with existing Java/MQ infrastructure        |
+| Debezium + Kafka              | Snapshot support           | Yes               | Mature Kafka Connect ecosystem and a consistent event format                          | More components; depends on Kafka Connect                            | Existing Kafka Connect or multi-source CDC platforms         |
+| Flink CDC                     | Yes                        | Yes               | Automatically coordinates full and incremental sync; supports complex transformations | Higher deployment and state-management costs                         | Large datasets, streaming, or multi-table transformations    |
 
-表中的“支持”只表示工具提供了对应能力，不代表接入后天然满足业务的一致性要求。最终效果还取决于 ES 写入方式、消息顺序、Checkpoint、重试策略和索引设计。
+“Supported” in the table means only that the tool provides the capability; it does not guarantee the application's consistency requirements. The result also depends on the Elasticsearch write method, message ordering, checkpoints, retry policy, and index design.
 
-## 应用层双写
+## Application-Level Dual Writes
 
-应用层双写是在业务代码更新 MySQL 后，再调用 Elasticsearch API 更新索引。
+With application-level dual writes, business code updates MySQL and then calls the Elasticsearch API to update the index.
 
-![应用层同步双写](../images/shared/es-mq-synchronization-synchronous-double-write.png)
+![Synchronous application-level dual writes](../images/shared/es-mq-synchronization-synchronous-double-write.png)
 
-假设写入顺序是“先 MySQL，后 ES”，常见结果如下：
+Assuming the writes happen in this order—MySQL first, then Elasticsearch—the outcomes may be:
 
-| 场景                    | MySQL | Elasticsearch | 结果               |
-| ----------------------- | ----- | ------------- | ------------------ |
-| 两次写入都成功          | 成功  | 成功          | 数据一致           |
-| MySQL 写入失败          | 回滚  | 不执行        | 数据一致           |
-| MySQL 成功后应用崩溃    | 成功  | 未执行        | 数据不一致         |
-| MySQL 成功、ES 写入失败 | 成功  | 失败          | 数据不一致         |
-| ES 已写入但客户端超时   | 成功  | 结果未知      | 重试时必须保证幂等 |
+| Scenario                                          | MySQL       | Elasticsearch | Outcome                    |
+| ------------------------------------------------- | ----------- | ------------- | -------------------------- |
+| Both writes succeed                               | Success     | Success       | Consistent                 |
+| MySQL write fails                                 | Rolled back | Not attempted | Consistent                 |
+| Application crashes after MySQL succeeds          | Success     | Not attempted | Inconsistent               |
+| MySQL succeeds, Elasticsearch write fails         | Success     | Failure       | Inconsistent               |
+| Elasticsearch write succeeds but client times out | Success     | Unknown       | Retries must be idempotent |
 
-MySQL 事务无法回滚已经提交到 Elasticsearch 的写入，Elasticsearch 也不能和 MySQL 组成一个常规的本地事务。因此，同步双写通常只能追求最终一致性。
+A MySQL transaction cannot roll back a write already committed to Elasticsearch, and Elasticsearch cannot participate in a regular local transaction with MySQL. Dual writes therefore usually provide only eventual consistency.
 
-直接双写还有两个容易遗漏的问题。
+Direct dual writes also have two commonly overlooked problems.
 
-第一个是性能和可用性。业务请求要多等待一次 ES 调用，ES 抖动也会影响主链路。如果改成线程池、`CompletableFuture` 或普通 MQ 异步发送，请求延迟会下降，但“MySQL 已提交、消息还没发出时进程崩溃”的缺口仍然存在。
+The first is performance and availability. Each business request must wait for an additional Elasticsearch call, and Elasticsearch instability affects the main request path. Sending updates asynchronously through a thread pool, `CompletableFuture`, or a regular MQ can reduce request latency, but a process can still crash after the MySQL commit and before sending the message.
 
-第二个是并发乱序。假设同一条商品记录先后更新为 `v2`、`v3`，两次 ES 请求的到达顺序可能反过来，最终让旧的 `v2` 覆盖 `v3`。仅仅把写入改成异步，并不会自动解决顺序问题。
+The second is out-of-order concurrent updates. Suppose a product record is updated to `v2` and then `v3`; the Elasticsearch requests may arrive in the opposite order, allowing stale `v2` to overwrite `v3`. Making writes asynchronous does not solve ordering by itself.
 
-### 用本地消息表补上事务缺口
+### Use a Transactional Outbox to Close the Transaction Gap
 
-对同步可靠性要求较高时，可以使用 **Transactional Outbox（本地消息表）**：
+For more reliable synchronization, use a **Transactional Outbox**:
 
-1. 在同一个 MySQL 事务里更新业务表，并插入一条 outbox 事件。
-2. 独立投递程序或 CDC 组件读取 outbox 表，把事件发送到 MQ。
-3. ES 消费端处理消息，成功后记录消费结果；失败则重试或进入死信队列。
+1. Update the business table and insert an outbox event in the same MySQL transaction.
+2. A separate delivery process or CDC component reads the outbox table and sends events to an MQ.
+3. The Elasticsearch consumer processes each message and records the result on success. On failure, it retries or sends the message to a dead-letter queue.
 
-这样可以保证“业务数据更新”和“待发送事件落库”同时成功或同时回滚。Debezium 也提供了专门的 [Outbox Event Router](https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html) 来捕获并转换 outbox 事件。
+This ensures that the business data update and the pending event are either both committed or both rolled back. Debezium also provides an [Outbox Event Router](https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html) to capture and transform outbox events.
 
-本地消息表解决了事件丢失问题，但仍然需要处理重复消费、同一业务主键的消息顺序、全量初始化和数据对账。
+An outbox prevents events from being lost, but duplicate consumption, message ordering for the same business key, initial full loading, and data reconciliation still need to be handled.
 
-## 定时同步
+## Scheduled Synchronization
 
-如果数据量不大、更新频率低，并且业务可以接受分钟级甚至天级延迟，定时任务往往已经够用。个人博客、内部知识库、小型后台搜索都是比较典型的场景。
+For small datasets with infrequent updates, a scheduled job may be sufficient if the business can tolerate delays of minutes or even days. Personal blogs, internal knowledge bases, and small administrative search systems are typical use cases.
 
-![定时同步](../images/shared/es-mq-synchronization-scheduled-task.png)
+![Scheduled synchronization](../images/shared/es-mq-synchronization-scheduled-task.png)
 
-定时同步不一定每次都要全量扫描，也可以按更新时间做增量查询：
+Scheduled synchronization does not need to scan the entire table every time. It can query incrementally by update time:
 
 ```sql
 SELECT id, title, content, updated_at
@@ -120,28 +120,28 @@ ORDER BY updated_at, id
 LIMIT :batch_size;
 ```
 
-任务开始时先固定 `task_cutoff`，每批处理完再保存由 `last_updated_at` 和 `last_id` 组成的复合游标。下一批继续使用同一个截止时间，直到这轮数据全部处理完成。这样既能避开深分页，也不会因为多条记录的 `updated_at` 相同而漏数。
+Set `task_cutoff` at the start of the job, then save a composite cursor of `last_updated_at` and `last_id` after each batch. Keep using the same cutoff until the current run is complete. This avoids deep pagination and prevents records with identical `updated_at` values from being skipped.
 
-物理删除不会留下 `updated_at`，所以定时增量同步通常要配合逻辑删除字段、删除记录表，或者定期做全量校验。否则 MySQL 中已经删除的数据可能长期留在 ES。
+Physical deletes leave no `updated_at` value, so scheduled incremental sync usually needs a logical-delete field, a deletion table, or periodic full validation. Otherwise, deleted MySQL data may remain in Elasticsearch indefinitely.
 
-使用 Spring Task 时，每周一零点执行一次任务可以这样写：
+With Spring Task, run a job every Monday at midnight as follows:
 
 ```java
 @Scheduled(cron = "0 0 0 ? * MON", zone = "Asia/Shanghai")
 public void rebuildArticleIndex() {
-    // 分页读取 MySQL，批量写入新的 ES 索引
+    // Read MySQL in pages and write batches to a new Elasticsearch index
 }
 ```
 
-### 全量重建时使用索引别名
+### Use Index Aliases for Full Rebuilds
 
-不要在用户正在查询的旧索引上边删边写。更稳妥的做法是：
+Avoid deleting and rewriting the old index while users are querying it. A safer approach is:
 
-1. 创建带版本号的新索引，例如 `articles_v2`，提前配置好 `settings` 和 `mappings`。
-2. 把 MySQL 全量数据写入新索引，并完成数量、抽样内容和查询结果校验。
-3. 补齐全量任务执行期间产生的增量变更。
-4. 使用 `_aliases` API 把业务别名从旧索引原子切换到新索引。
-5. 保留旧索引一段时间，确认无误后再清理。
+1. Create a versioned index, such as `articles_v2`, and configure its `settings` and `mappings` in advance.
+2. Load all MySQL data into the new index, then validate counts, sampled documents, and query results.
+3. Apply incremental changes that occurred while the full load was running.
+4. Atomically switch the application alias from the old index to the new one using the `_aliases` API.
+5. Keep the old index for a while and remove it after verification.
 
 ```http
 POST /_aliases
@@ -153,194 +153,194 @@ POST /_aliases
 }
 ```
 
-Elasticsearch 的 [Aliases API](https://www.elastic.co/guide/en/elasticsearch/reference/current/aliases.html) 可以在一个原子操作中执行多项别名变更。不过，别名切换只解决读流量的平滑迁移；如果重建期间仍有业务写入，还必须通过 binlog 回放、双索引写入或暂停写入等方式补齐这段变更。
+Elasticsearch's [Aliases API](https://www.elastic.co/guide/en/elasticsearch/reference/current/aliases.html) can apply multiple alias changes atomically. However, an alias switch only migrates read traffic smoothly. If writes continue during the rebuild, capture them through binlog replay, dual writes, or a write pause.
 
-## 基于 binlog 的 CDC
+## Binlog-Based CDC
 
-CDC（Change Data Capture，变更数据捕获）方案会读取 MySQL binlog，把已经提交的数据变化转换为下游可消费的事件。这类方案不需要在每个业务接口里维护 ES 写入逻辑，也是目前更常见的增量同步方式。
+Change Data Capture (CDC) reads the MySQL binlog and converts committed data changes into events for downstream consumers. This avoids maintaining Elasticsearch write logic in every business endpoint and is a common approach to incremental synchronization.
 
-接入前要核对以下配置：
+Check these settings before connecting a CDC tool:
 
-- MySQL 已开启 binlog，并为 CDC 账号配置必要的复制和表读取权限。
-- 使用工具支持的 binlog 格式。Canal、Debezium、Flink CDC 这类行级变更工具通常要求 `binlog_format=ROW`；Debezium 还明确要求 `binlog_row_image=FULL`，其他工具也要按所用版本核对这一配置。MySQL 8.4 的 `binlog_format` 默认是 `ROW`，旧环境和云数据库仍应以实际配置为准。
-- binlog 保留时间覆盖最长故障恢复窗口。任务停得太久、所需 binlog 已被清理时，通常只能重新做快照或全量同步。
-- 每个 CDC 客户端使用唯一的 `server_id`；高可用切换时还要核对 GTID、位点恢复和所连接副本的 binlog 配置。
-- CDC 账号只授予工具文档要求的复制、元数据和目标表读取权限，ES 账号限制在目标索引或别名的写入范围；凭据不要直接写进提交到代码库的任务配置。
+- Enable the MySQL binlog and grant the CDC account the required replication and table-read permissions.
+- Use a binlog format supported by the tool. Row-level change tools such as Canal, Debezium, and Flink CDC usually require `binlog_format=ROW`. Debezium explicitly requires `binlog_row_image=FULL`; check the required setting for the specific version of other tools. MySQL 8.4 defaults to `ROW`, but verify the actual configuration on older installations and managed database services.
+- Set binlog retention to cover the longest expected recovery window. If a job is stopped until its required binlog has been purged, a new snapshot or full synchronization is usually required.
+- Give each CDC client a unique `server_id`. For high availability failover, also verify GTID handling, position recovery, and the binlog configuration of the replica it connects to.
+- Grant the CDC account only the replication, metadata, and table-read permissions required by the tool. Restrict the Elasticsearch account to writing to the target index or alias. Do not put credentials directly in task configuration committed to the repository.
 
 ### Canal
 
-[Canal](https://github.com/alibaba/canal) 会模拟 MySQL Replica 的交互协议，向 MySQL 请求 binlog 并解析为结构化变更事件。
+[Canal](https://github.com/alibaba/canal) emulates the MySQL Replica protocol, requests the binlog from MySQL, and parses it into structured change events.
 
-![Canal 工作原理](../images/shared/canal-overview.png)
+![How Canal works](../images/shared/canal-overview.png)
 
-Canal Server 的核心职责是增量日志订阅和解析。下游可以使用 Canal Client 直接消费，也可以让 Canal 把消息投递到 Kafka、RocketMQ 等 MQ，再由同步服务更新 ES。
+Canal Server's main role is to subscribe to and parse incremental logs. A downstream service can consume events directly through Canal Client, or Canal can send them to an MQ such as Kafka or RocketMQ for a synchronization service to update Elasticsearch.
 
-![Canal 通过 MQ 同步数据](../images/shared/es-mq-synchronization-canal-with-mq.png)
+![Canal synchronizing data through an MQ](../images/shared/es-mq-synchronization-canal-with-mq.png)
 
-引入 MQ 主要有几个作用：
+An MQ provides several benefits:
 
-- Canal 与 ES 消费端解耦，ES 短暂不可用时变更可以先积压在 MQ。
-- 同一业务主键可以路由到同一个分区，便于维持局部顺序。
-- 消费端可以合并消息并调用 ES Bulk API，减少请求开销。
-- 保留一定时间的消息后，可以重放失败数据或重新构建下游。
+- It decouples Canal from the Elasticsearch consumer. Changes can accumulate in the MQ during a brief Elasticsearch outage.
+- Events with the same business key can be routed to one partition to preserve ordering for that key.
+- The consumer can combine messages and use the Elasticsearch Bulk API to reduce request overhead.
+- Retaining messages allows failed data to be replayed or downstream systems to be rebuilt.
 
-MQ 并不会自动带来一致性。消费端仍然要确认消息何时提交、失败如何重试、重试是否幂等，以及死信数据由谁修复。
+An MQ does not guarantee consistency by itself. The consumer must still define when to acknowledge messages, how to retry failures, whether retries are idempotent, and who repairs dead-letter data.
 
-Canal Server 主要负责增量订阅。初始全量数据可以通过自研分页任务或经过兼容性验证的批量同步工具导入。[DataX 开源版](https://github.com/alibaba/DataX/tree/master/elasticsearchwriter)虽然提供 ElasticsearchWriter，但官方 README 仍注明只在 Elasticsearch 5.x 上测试，接入 ES 7/8 前必须验证 mapping type、客户端协议和写入参数。Canal Client Adapter 也提供过针对部分下游的 ETL 能力，是否适合当前 ES 版本和复杂映射，同样要按实际版本验证。全量和增量由两套任务完成时，最关键的是记录并衔接正确的 binlog 位点。
+Canal Server primarily handles incremental subscriptions. Load the initial dataset with a custom paginated job or a bulk synchronization tool whose compatibility has been verified. The open-source [DataX](https://github.com/alibaba/DataX/tree/master/elasticsearchwriter) includes an ElasticsearchWriter, but its README says it was tested only with Elasticsearch 5.x. Before using it with Elasticsearch 7 or 8, verify mapping types, the client protocol, and write parameters. Canal Client Adapter has also provided ETL support for some downstream systems; verify that it supports the Elasticsearch version and mappings in use. When separate jobs handle full and incremental sync, recording and correctly bridging the binlog position is essential.
 
 ### Flink CDC
 
-Flink CDC 的 MySQL Source 可以先读取表快照，再继续消费 binlog。它会按分片键把表拆成多个 Chunk，并行读取快照；每个 Chunk 读取前后记录 binlog 的 `LOW`、`HIGH` 位点，再合并这段时间内发生的变更，得到一致的 Chunk 结果。
+Flink CDC's MySQL Source can read a table snapshot and then continue consuming the binlog. It splits a table into chunks by a partition key and reads the snapshot in parallel. For each chunk, it records the `LOW` and `HIGH` binlog positions before and after the read, then merges changes from that interval to produce a consistent chunk result.
 
-这种增量快照算法具有几个特点：
+This incremental snapshot algorithm has several characteristics:
 
-- 快照阶段可以并行读取。
-- 以 Chunk 为粒度执行 Checkpoint，失败后可以从已完成的进度恢复。
-- 不需要在整个快照阶段持有 `FLUSH TABLES WITH READ LOCK` 获取的全局读锁。
-- 全量快照结束后自动继续读取 binlog，减少手工衔接位点的工作。
+- Snapshot reads can run in parallel.
+- Checkpoints are taken per chunk, allowing recovery from completed progress after a failure.
+- It does not need to hold the global read lock acquired by `FLUSH TABLES WITH READ LOCK` throughout the snapshot.
+- Binlog consumption continues automatically after the full snapshot, reducing the work needed to bridge positions manually.
 
-![Flink CDC 增量快照衔接 binlog](../images/shared/flink-cdc-incremental-snapshot.webp)
+![Flink CDC incremental snapshot connected to the binlog](../images/shared/flink-cdc-incremental-snapshot.webp)
 
-截至 Flink CDC 3.6，官方提供了 [MySQL Pipeline Connector](https://nightlies.apache.org/flink/flink-cdc-docs-release-3.6/docs/connectors/pipeline-connectors/mysql/) 和 [Elasticsearch Pipeline Connector](https://nightlies.apache.org/flink/flink-cdc-docs-release-3.6/docs/connectors/pipeline-connectors/elasticsearch/)，可以直接描述 MySQL 到 ES 的 Pipeline。ES Sink 不会自动创建索引，使用前仍要准备索引、mapping 和相关模板。
+As of Flink CDC 3.6, the official [MySQL Pipeline Connector](https://nightlies.apache.org/flink/flink-cdc-docs-release-3.6/docs/connectors/pipeline-connectors/mysql/) and [Elasticsearch Pipeline Connector](https://nightlies.apache.org/flink/flink-cdc-docs-release-3.6/docs/connectors/pipeline-connectors/elasticsearch/) can describe a MySQL-to-Elasticsearch pipeline. The Elasticsearch sink does not create indexes automatically, so prepare the index, mappings, and templates first.
 
-Flink CDC 文档中的 exactly-once 主要描述 Source 在快照和 binlog 读取阶段的处理语义。Flink 官方 Elasticsearch Sink 文档给出的基础交付保证是 at-least-once：Checkpoint 会等待已经提交的 ES 请求完成，但故障恢复后仍可能重放请求。使用固定文档 ID 和幂等的 index/upsert，可以让重复写入落到同一份文档；如果同一文档还可能乱序，则要再配合源端版本号。Source 的 exactly-once 不能直接推导出 MySQL 到 ES 端到端 exactly-once。
+The exactly-once semantics described in Flink CDC documentation mainly apply to the Source during snapshot and binlog reads. The Flink Elasticsearch Sink documentation provides at-least-once delivery: a checkpoint waits for submitted Elasticsearch requests to complete, but requests may be replayed after recovery. A fixed document ID and idempotent `index` or upsert operations direct duplicate writes to the same document. If events for a document can also arrive out of order, use source-side version numbers. Source-level exactly-once does not imply end-to-end exactly-once delivery from MySQL to Elasticsearch.
 
 ### Debezium
 
-Debezium 的 MySQL Connector 通常运行在 Kafka Connect 上。首次启动时，它可以先执行一致性快照，再从快照对应的 binlog 位点持续发送行级变更事件到 Kafka Topic。后续还可以按需触发分块的增量快照。
+Debezium's MySQL Connector usually runs on Kafka Connect. On its first start, it can take a consistent snapshot, then continuously publish row-level change events to Kafka topics from the binlog position corresponding to that snapshot. Chunked incremental snapshots can also be triggered later as needed.
 
-如果团队已经使用 Kafka Connect，或者准备把多种数据库的变更统一接入 Kafka，Debezium 比自研 binlog 解析和事件格式更省事。写入 ES 时还需要 Elasticsearch Sink Connector 或自定义消费者，删除事件、Topic 压缩、Schema 变更和消息转换规则都要单独设计。
+If the team already uses Kafka Connect or plans to route changes from multiple databases through Kafka, Debezium is simpler than building custom binlog parsing and event formats. Writing to Elasticsearch still requires an Elasticsearch Sink Connector or a custom consumer. Delete events, topic compaction, schema changes, and message transformations need separate design.
 
-具体快照流程和配置项可以参考 [Debezium MySQL Connector 官方文档](https://debezium.io/documentation/reference/stable/connectors/mysql.html)。
+For details about snapshots and configuration, see the [Debezium MySQL Connector documentation](https://debezium.io/documentation/reference/stable/connectors/mysql.html).
 
-## 生产环境必须处理的问题
+## Production Considerations
 
-工具选型只决定了变更怎么到达下游。数据能否保持正确，还取决于下面这些实现细节。
+Tool selection determines how changes reach downstream systems. Data correctness also depends on these implementation details.
 
-![MySQL 同步 ES 的一致性保障](../images/shared/mysql-es-consistency-guardrails.webp)
+![Consistency safeguards for MySQL-to-Elasticsearch synchronization](../images/shared/mysql-es-consistency-guardrails.webp)
 
-### 1. 把 MySQL 主键作为 ES 文档 ID
+### 1. Use the MySQL Primary Key as the Elasticsearch Document ID
 
-同步时应使用稳定、唯一的业务主键作为 ES `_id`。同一条数据重复执行 `index` 或 upsert 时会更新同一份文档，消费者因此更容易实现幂等。
+Use a stable, unique business key as the Elasticsearch `_id`. Repeating an `index` or upsert operation for the same record updates the same document, making idempotent consumers easier to implement.
 
-如果让 ES 自动生成 `_id`，消息重试可能写出多份重复文档，删除时也很难找到准确目标。
+If Elasticsearch generates `_id` values, retried messages may create duplicate documents, and deletes may not target the right document.
 
-### 2. 保证同一文档的事件顺序
+### 2. Preserve Event Order for Each Document
 
-全局有序通常成本很高，MySQL 同步 ES 多数只需要保证同一个文档 ID 的事件有序。常用做法是按业务主键选择 MQ 分区，让同一主键的事件进入同一分区并串行处理。
+Global ordering is usually expensive. Most MySQL-to-Elasticsearch pipelines need only to preserve the order of events for each document ID. A common approach is to partition the MQ by business key so that events for the same key go to one partition and are processed sequentially.
 
-即便如此，重平衡、失败重试和多条同步链路仍可能制造乱序。对不能容忍旧值覆盖新值的场景，可以在事件和 ES 文档中携带单调递增的业务版本号，在写入前丢弃旧版本。版本号必须来自可靠的顺序来源，不能直接用多台机器各自生成的本地时间代替。
+Rebalancing, retries, and multiple sync pipelines can still cause out-of-order events. If stale values must not overwrite newer ones, include a monotonically increasing business version in the event and Elasticsearch document, then discard stale versions before writing. The version must come from a reliable ordering source; local timestamps generated by different machines are not a safe substitute.
 
-如果源端版本可以表示成非负 `long`，[ES Bulk API](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-bulk) 的 `index` 和 `delete` 操作支持设置 `version` 和 `version_type=external`：只有版本号更高的写入才能覆盖已有文档。删除事件也要携带同一套版本，否则延迟到达的旧更新仍可能把已删除文档重新写回来。GTID、binlog 文件名和位点通常不能不经转换就直接当作 ES 外部版本号，落地前要先定义稳定的比较规则。
+If the source version can be represented as a non-negative `long`, the Elasticsearch [Bulk API](https://www.elastic.co/docs/api/doc/elasticsearch/operation/operation-bulk) supports `version` and `version_type=external` for `index` and `delete` operations. Only a higher version can overwrite an existing document. Delete events must use the same version scheme; otherwise, a delayed update may recreate a deleted document. GTIDs, binlog filenames, and positions usually cannot be used directly as Elasticsearch external versions. Define a stable comparison rule before using them.
 
-### 3. 正确处理删除
+### 3. Handle Deletes Correctly
 
-`INSERT` 和 `UPDATE` 最终可以统一为 upsert，`DELETE` 则必须显式转换成 ES delete 操作。若业务使用逻辑删除，还要统一约定是删除 ES 文档，还是保留文档并写入 `deleted=true`。
+`INSERT` and `UPDATE` can usually be handled as upserts, but `DELETE` must be converted explicitly to an Elasticsearch delete operation. For logical deletes, decide whether to delete the document or keep it with `deleted=true`.
 
-如果同步任务会按 `status`、`is_deleted` 等可变字段过滤数据，还要处理“原来符合条件，更新后不再符合”的情况。普通过滤只会丢弃新的更新事件，不会自动为 ES 中的旧文档补一条 delete。可以保留状态字段并在查询时过滤，也可以识别状态迁移并显式生成删除事件。
+If the sync job filters on mutable fields such as `status` or `is_deleted`, handle records that matched before an update but no longer match afterward. A simple filter drops the new update event but does not delete the old Elasticsearch document. Either retain the state field and filter at query time, or detect the state transition and generate a delete event explicitly.
 
-多表聚合文档尤其容易漏删。例如商品文档包含商品表、品牌表和类目表字段，删除一个类目后，不能只删除“类目 ID 对应的 ES 文档”，而要找出受影响的商品并重新构建它们的文档。
+Aggregated documents built from multiple tables are especially easy to leave stale. For example, if a product document contains fields from product, brand, and category tables, deleting a category requires finding affected products and rebuilding their documents; deleting only the Elasticsearch document for the category ID is not enough.
 
-### 4. 处理多表文档
+### 4. Handle Documents Built from Multiple Tables
 
-binlog 记录的是表中行的变化，而 ES 常用的是反范式文档。一份商品文档可能组合商品、品牌、库存和标签等多张表的数据。
+The binlog records row changes, while Elasticsearch commonly stores denormalized documents. A product document may combine data from product, brand, inventory, and tag tables.
 
-CDC 捕获到品牌名称变化时，需要知道哪些商品引用了这个品牌。常见处理方式有三种：
+When CDC captures a brand-name change, the pipeline needs to identify which products reference that brand. Common approaches include:
 
-- 消费端根据变更事件查询 MySQL，重新组装受影响的完整文档。
-- 先在 MySQL 中维护适合搜索的宽表，再同步宽表。
-- 使用 Flink 等流处理引擎维护关联状态并生成下游文档。
+- Have the consumer query MySQL based on the change event and rebuild each affected document.
+- Maintain a denormalized table in MySQL for search, then synchronize that table.
+- Use a stream-processing engine such as Flink to maintain join state and generate downstream documents.
 
-第一种实现容易，但要控制回查 MySQL 的并发和缓存；第二种增加了宽表维护成本；第三种适合数据量和关联逻辑较复杂的场景，但状态、Checkpoint 和作业升级都需要专门运维。
+The first approach is straightforward, but MySQL lookup concurrency and caching need to be managed. The second adds the cost of maintaining a denormalized table. The third suits larger datasets and more complex joins, but state, checkpoints, and job upgrades require dedicated operations.
 
-### 5. 批量写入也要检查单条结果
+### 5. Check Individual Results in Bulk Writes
 
-Elasticsearch [Bulk API](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html) 能在一次请求中执行多条 index、update 和 delete，减少网络和请求处理开销。
+The Elasticsearch [Bulk API](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html) can perform multiple `index`, `update`, and `delete` operations in one request, reducing network and request-processing overhead.
 
-一次 Bulk 请求中可能只有部分文档失败。消费者不能只检查 HTTP 状态码，还要逐条检查 `items`，只重试网络超时、429、部分 5xx 等暂时性错误。mapping 冲突、字段格式错误等问题继续重试通常没有意义，应记录原始消息并转入死信队列或人工修复流程。
+Some documents may fail even when the overall Bulk request succeeds. Consumers must inspect each item in `items`, not only the HTTP status code. Retry only transient errors such as network timeouts, 429, and some 5xx responses. Retrying mapping conflicts or invalid field formats is usually pointless; record the original message and send it to a dead-letter queue or a manual repair process.
 
-Bulk 批次也没有适用于所有系统的固定大小。批次数量、字节数、并发度和刷新频率要结合文档大小、分片数量、ES 写入队列和压测结果调整。
+There is no batch size that suits every system. Tune the number of documents, byte size, concurrency, and refresh frequency based on document size, shard count, Elasticsearch write queues, and load-test results.
 
-ES 写入速度低于上游变更速度时，要让压力沿链路向上游传递：限制在途 Bulk 请求和消费者并发，必要时暂停消费或降低 Source 读取速率。不要用无界内存队列吸收积压；它只会把 ES 的写入瓶颈变成同步进程的内存故障。使用 MQ 时，还要保证消息保留时间覆盖预期的最长积压时间。
+When Elasticsearch writes more slowly than upstream changes arrive, propagate backpressure upstream: limit in-flight Bulk requests and consumer concurrency, and pause consumption or reduce the Source read rate if needed. Do not absorb the backlog in an unbounded in-memory queue; this only turns an Elasticsearch write bottleneck into an out-of-memory failure in the sync process. With an MQ, ensure message retention covers the longest expected backlog period.
 
-### 6. 管理 mapping 和 DDL 变更
+### 6. Manage Mappings and DDL Changes
 
-MySQL 新增字段，不代表 ES mapping 应该自动新增同名字段。动态 mapping 可能把日期、数字或字符串识别成错误类型，也可能因为字段数量失控引发 mapping explosion。
+Adding a column to MySQL does not mean that the Elasticsearch mapping should automatically gain a field with the same name. Dynamic mapping may infer the wrong type for a date, number, or string, or cause a mapping explosion if the number of fields grows without control.
 
-字段映射要按查询方式设计，不能只按 MySQL 类型机械转换：
+Design field mappings for the intended queries rather than mechanically converting MySQL types:
 
-- 需要全文检索的名称、标题和描述使用 `text`；还要排序、聚合或精确过滤时，再增加 `keyword` 子字段。状态码、标签、邮箱等结构化字符串通常直接使用 `keyword`。
-- 金额不要无条件转成 `float` 或 `double`。可以保留最小货币单位的整数，也可以根据允许的精度使用 `scaled_float`；两种方式都要在同步契约里固定换算规则。
-- MySQL `BIGINT UNSIGNED` 的上限超过 ES `long`，大值要使用 `unsigned_long` 或转换为 `keyword`，不能在序列化过程中静默溢出。
-- MySQL `TIMESTAMP` 会根据会话时区和 UTC 互转，`DATETIME` 不做同样的自动转换。同步链路应固定源端会话时区和 ES 日期格式，并用跨时区、夏令时附近的样例验证结果。
-- 区分字段缺失、`null`、空字符串和空数组。它们是否参与 `exists` 查询、排序、聚合以及局部更新，需要在写入前统一处理。
+- Use `text` for names, titles, and descriptions that need full-text search. Add a `keyword` subfield when sorting, aggregation, or exact filtering is also required. Structured strings such as status codes, tags, and email addresses usually use `keyword` directly.
+- Do not automatically convert amounts to `float` or `double`. Store integer values in the smallest currency unit, or use `scaled_float` with an appropriate precision. Define the conversion rule in the synchronization contract.
+- MySQL `BIGINT UNSIGNED` can exceed the range of Elasticsearch `long`. Use `unsigned_long` or convert large values to `keyword`; do not allow silent overflow during serialization.
+- MySQL `TIMESTAMP` is converted between the session time zone and UTC; `DATETIME` does not undergo the same automatic conversion. Fix the source session time zone and Elasticsearch date format, then test values across time zones and around daylight-saving transitions.
+- Distinguish missing fields, `null`, empty strings, and empty arrays. Define how each is handled for `exists` queries, sorting, aggregations, and partial updates before writing the data.
 
-生产环境更适合使用显式 mapping 和索引模板。字段类型或分词器发生不兼容变更时，创建新索引并全量重建，再通过别名切换。CDC 任务还要明确如何处理 MySQL 的 DDL 事件，以及代码、索引模板和同步任务的发布顺序。
+Explicit mappings and index templates are usually better for production. When an incompatible field type or analyzer change is needed, create a new index, rebuild it, and switch the alias. CDC jobs must also define how to handle MySQL DDL events and the deployment order for code, index templates, and synchronization jobs.
 
-### 7. 监控延迟、失败和 binlog 保留时间
+### 7. Monitor Lag, Failures, and Binlog Retention
 
-至少应关注这些指标：
+At a minimum, monitor:
 
-- 当前消费位点与 MySQL 最新 binlog 位点的差距。
-- MQ 消息积压量和最老消息等待时间。
-- ES Bulk 成功率、单条失败原因、重试次数和死信数量。
-- 全量任务读取速率、写入速率和剩余数据量。
-- binlog 剩余保留时间是否大于当前积压和故障恢复时间。
-- ES 集群状态、写入拒绝、磁盘水位和 refresh 延迟。
+- The gap between the current consumer position and the latest MySQL binlog position.
+- MQ backlog size and the age of the oldest message.
+- Elasticsearch Bulk success rate, individual failure reasons, retry count, and dead-letter count.
+- Full-load read and write rates and remaining data volume.
+- Whether remaining binlog retention exceeds the current backlog and recovery window.
+- Elasticsearch cluster health, write rejections, disk watermarks, and refresh latency.
 
-告警阈值应该根据业务的延迟目标和压测基线设置。把“延迟超过 60 秒”“失败率超过 1%”写成所有系统通用阈值，通常没有实际依据。
+Set alert thresholds based on business latency targets and load-test baselines. Universal thresholds such as “lag over 60 seconds” or “failure rate over 1%” usually have no sound basis.
 
-### 8. 定期对账，并保留重建能力
+### 8. Reconcile Data Regularly and Keep Rebuild Capability
 
-消息不积压不代表数据一定一致。同步规则错误、漏处理删除、mapping 冲突和人工修改 ES 都可能造成静默偏差。
+No message backlog does not guarantee consistent data. Incorrect synchronization rules, missed deletes, mapping conflicts, and manual Elasticsearch edits can all cause silent discrepancies.
 
-对账可以分层进行：
+Reconciliation can be done in stages:
 
-1. 比较 MySQL 和 ES 的有效记录总数，快速发现明显差异。
-2. 按主键范围或业务分区统计数量和摘要，缩小问题范围。
-3. 抽样比较关键字段，或对规范化后的文档计算哈希。
-4. 把差异主键交给修复任务重新生成对应文档，避免直接人工修改 ES。
+1. Compare the number of active records in MySQL and Elasticsearch to find obvious differences.
+2. Compare counts and summaries by primary key range or business partition to narrow down discrepancies.
+3. Compare key fields in samples or hash normalized documents.
+4. Pass differing keys to a repair job that rebuilds the corresponding documents instead of editing Elasticsearch manually.
 
-无论日常增量链路多可靠，都应该保留“一键创建新索引、全量回灌、追平增量、校验、切换别名”的能力。它既用于修复数据，也用于 mapping 和分词器升级。
+Regardless of how reliable the incremental pipeline is, keep a process that can create a new index, perform a full load, catch up on incremental changes, validate the data, and switch the alias. This is useful both for data repair and for mapping or analyzer upgrades.
 
-### 9. 为故障恢复准备操作手册
+### 9. Prepare a Recovery Runbook
 
-告警触发后再临时判断“该重试还是该重建”，很容易扩大故障。上线前应为常见故障写好恢复动作，并通过演练确认位点、Checkpoint、MQ Offset 和索引别名都能按预期工作。
+Deciding whether to retry or rebuild only after an alert fires can make an incident worse. Before deployment, document recovery steps for common failures and test that positions, checkpoints, MQ offsets, and index aliases work as expected.
 
-| 故障场景                    | 处理方式                                                                | 不应直接做的事                               |
-| --------------------------- | ----------------------------------------------------------------------- | -------------------------------------------- |
-| ES 短暂不可用或返回 429/5xx | 暂停或限速写入，保留未确认消息，按退避策略重试，恢复后观察积压是否下降  | 未写入成功就提交消费位点                     |
-| mapping 冲突或字段格式错误  | 停止无效重试，记录原始事件和失败原因，修复模板或转换规则后定向重放      | 无限重试同一条确定性错误                     |
-| CDC 任务重启且状态仍可用    | 从已保存的 Checkpoint、binlog 位点或 MQ Offset 恢复，并依靠幂等写入去重 | 清空状态后直接从最新位点启动                 |
-| 所需 binlog 或消息已经过期  | 重新执行一致性快照或全量重建，并重新建立全量与增量的衔接                | 跳到最新位点后继续运行并宣称数据已经一致     |
-| ES 索引损坏或规则整体变更   | 创建新索引，全量回灌、追平增量并校验，再切换别名                        | 在旧索引上边删边补，且不给查询流量保留回退点 |
+| Failure scenario                                                    | Response                                                                                                                           | Avoid                                                                    |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Elasticsearch is briefly unavailable or returns 429/5xx             | Pause or throttle writes, retain unacknowledged messages, retry with backoff, and check that the backlog shrinks after recovery.   | Commit the consumer position before a successful write.                  |
+| Mapping conflict or invalid field format                            | Stop ineffective retries, record the original event and error, fix the template or transformation, then replay the affected event. | Retry the same deterministic error forever.                              |
+| CDC job restarts and state is available                             | Recover from the saved checkpoint, binlog position, or MQ offset, and use idempotent writes to handle duplicates.                  | Clear state and start directly from the latest position.                 |
+| Required binlog or messages have expired                            | Run a consistent snapshot or full rebuild and establish the full/incremental handoff again.                                        | Jump to the latest position and claim the data is consistent.            |
+| Elasticsearch index is corrupted or sync rules change substantially | Create a new index, reload all data, catch up on changes, validate, and switch the alias.                                          | Patch the old index in place without a rollback point for query traffic. |
 
-操作手册还要记录负责人、所需权限、状态文件或 Checkpoint 的位置、死信重放入口以及回滚条件。演练结束后，检查恢复过程中是否出现源库压力突增、ES 写入拒绝、binlog 再次过期或同一批数据反复重放。
+The runbook should also list owners, required permissions, the location of state files or checkpoints, how to replay dead-letter messages, and rollback conditions. After each drill, check for spikes in source database load, Elasticsearch write rejections, binlog expiration during recovery, or repeated replay of the same data.
 
-## 如何选择？
+## Choosing an Approach
 
-- 数据量小、更新不频繁、允许较长延迟：优先考虑定时增量同步，配合周期性全量重建。
-- 业务已经有可靠的领域事件和 MQ：可以使用本地消息表 + MQ，同步服务消费事件更新 ES。
-- 主要需求是稳定获取 MySQL 增量变更，团队熟悉 Java 和 MQ：Canal + MQ + 自定义消费者通常比较合适，全量部分单独设计。
-- 已有 Kafka Connect 平台，或者需要统一接入多种数据库：可以考虑 Debezium。
-- 数据量较大，希望全量和增量自动衔接，或者需要流式清洗、多表转换：可以考虑 Flink CDC。
+- **Small dataset, infrequent updates, and high latency tolerance**: Use scheduled incremental sync with periodic full rebuilds.
+- **Reliable domain events and MQ already in place**: Use a transactional outbox and MQ, then have a synchronization service consume events and update Elasticsearch.
+- **Need reliable incremental MySQL changes, with Java and MQ expertise**: Canal + MQ + a custom consumer is often a good fit; design the full-load process separately.
+- **Kafka Connect already in place, or multiple databases need a shared pipeline**: Consider Debezium.
+- **Large dataset, automatic full/incremental handoff, streaming transformations, or complex multi-table conversion**: Consider Flink CDC.
 
-最终选型不要只比较工具吞吐量。先确定业务能接受的搜索延迟、故障恢复时间、部署组件数量、多表文档复杂度和团队运维能力，再通过接近生产的数据量和文档结构做压测。
+Do not choose based only on tool throughput. First define acceptable search latency, recovery time, deployment complexity, document construction complexity, and the team's operational capacity. Then load-test with production-like data volumes and document structures.
 
-## 参考资料
+## References
 
-- [MySQL 8.4：设置二进制日志格式](https://dev.mysql.com/doc/refman/8.4/en/binary-log-setting.html)
-- [Canal 项目文档](https://github.com/alibaba/canal)
+- [MySQL 8.4: Setting the Binary Log Format](https://dev.mysql.com/doc/refman/8.4/en/binary-log-setting.html)
+- [Canal documentation](https://github.com/alibaba/canal)
 - [Flink CDC 3.6：MySQL Pipeline Connector](https://nightlies.apache.org/flink/flink-cdc-docs-release-3.6/docs/connectors/pipeline-connectors/mysql/)
 - [Flink CDC 3.6：Elasticsearch Pipeline Connector](https://nightlies.apache.org/flink/flink-cdc-docs-release-3.6/docs/connectors/pipeline-connectors/elasticsearch/)
-- [Flink：Elasticsearch Sink 的故障恢复语义](https://nightlies.apache.org/flink/flink-docs-stable/docs/connectors/datastream/elasticsearch/)
+- [Flink: Elasticsearch Sink fault-tolerance semantics](https://nightlies.apache.org/flink/flink-docs-stable/docs/connectors/datastream/elasticsearch/)
 - [Debezium MySQL Connector](https://debezium.io/documentation/reference/stable/connectors/mysql.html)
 - [Debezium Outbox Event Router](https://debezium.io/documentation/reference/stable/transformations/outbox-event-router.html)
 - [Elasticsearch Bulk API](https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-bulk.html)
 - [Elasticsearch Aliases](https://www.elastic.co/guide/en/elasticsearch/reference/current/aliases.html)
-- [Elasticsearch 字段类型](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/field-data-types)
-- [Elasticsearch 数值字段类型](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/number)
-- [MySQL 8.4：DATE、DATETIME 和 TIMESTAMP 类型](https://dev.mysql.com/doc/refman/8.4/en/datetime.html)
-- [Spring Framework：Task Execution and Scheduling](https://docs.spring.io/spring-framework/reference/integration/scheduling.html)
+- [Elasticsearch field data types](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/field-data-types)
+- [Elasticsearch numeric field types](https://www.elastic.co/docs/reference/elasticsearch/mapping-reference/number)
+- [MySQL 8.4: DATE, DATETIME, and TIMESTAMP types](https://dev.mysql.com/doc/refman/8.4/en/datetime.html)
+- [Spring Framework: Task Execution and Scheduling](https://docs.spring.io/spring-framework/reference/integration/scheduling.html)
 
 <!-- @include: @article-footer.snippet.md -->

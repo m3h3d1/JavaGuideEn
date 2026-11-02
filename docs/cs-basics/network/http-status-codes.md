@@ -1,46 +1,46 @@
 ---
-title: HTTP 常见状态码总结（应用层）
-description: 汇总常见 HTTP 状态码含义与使用场景，强调 201/204 等易混淆点，提升接口设计与调试效率。
-category: 计算机基础
+title: Common HTTP Status Codes Explained
+description: A guide to common HTTP status codes and their use, clarifying easy-to-confuse codes such as 201 and 204 to help with API design and debugging.
+category: Computer Science Fundamentals
 tag:
-  - 计算机网络
+  - Computer Networking
 head:
   - - meta
     - name: keywords
-      content: HTTP 状态码,2xx,3xx,4xx,5xx,重定向,错误码,201 Created,204 No Content
+      content: HTTP status codes, 2xx, 3xx, 4xx, 5xx, redirects, error codes, 201 Created, 204 No Content
 ---
 
-HTTP 状态码是服务端返回给客户端的处理结果摘要。看到一个状态码，基本就能判断请求是成功、重定向、客户端出错，还是服务端出错。
+An HTTP status code summarizes how the server handled a request. It tells you whether the request succeeded, was redirected, failed because of the client, or failed because of the server.
 
-状态码看起来只是数字，但很多码很容易混淆：比如 301 和 302、401 和 403、500 和 502、201 和 204。
+Some codes are easy to confuse, including 301 and 302, 401 and 403, 500 and 502, and 201 and 204.
 
-这篇文章主要回答几个问题：
+This article answers four questions:
 
-1. 1xx、2xx、3xx、4xx、5xx 分别代表什么类型的结果？
-2. 常见成功状态码如 200、201、204 有什么区别？
-3. 常见客户端错误如 400、401、403、404 应该怎么理解？
-4. 常见服务端错误如 500、502、503、504 通常意味着什么？
+1. What kinds of outcomes do the 1xx, 2xx, 3xx, 4xx, and 5xx classes represent?
+2. How do successful responses such as 200, 201, and 204 differ?
+3. How should you interpret common client errors such as 400, 401, 403, and 404?
+4. What do common server errors such as 500, 502, 503, and 504 usually mean?
 
-![常见 HTTP 状态码](../images/shared/http-status-code.png)
+![Common HTTP status codes](../images/shared/http-status-code.png)
 
-### 1xx Informational（信息性状态码）
+### 1xx Informational
 
-相比于其他类别状态码来说，1xx 你平时你大概率不会碰到，所以这里直接跳过。
+You probably won't encounter 1xx responses often in everyday development, so we'll skip them here.
 
-### 2xx Success（成功状态码）
+### 2xx Success
 
-- **200 OK**：请求被成功处理。例如，发送一个查询用户数据的 HTTP 请求到服务端，服务端正确返回了用户数据。这个是我们平时最常见的一个 HTTP 状态码。
-- **201 Created**：请求被成功处理并且在服务端创建了~~一个新的资源~~。例如，通过 POST 请求创建一个新的用户。
-- **202 Accepted**：服务端已经接收到了请求，但是还未处理。例如，发送一个需要服务端花费较长时间处理的请求（如报告生成、Excel 导出），服务端接收了请求但尚未处理完毕。
-- **204 No Content**：服务端已经成功处理了请求，但是没有返回任何内容。例如，发送请求删除一个用户，服务器成功处理了删除操作但没有返回任何内容。
+- **200 OK:** The request was handled successfully. For example, the server returns the requested user data. This is the HTTP status code you'll see most often.
+- **201 Created:** The request succeeded and created one or more resources on the server. For example, a POST request creates a user.
+- **202 Accepted:** The server accepted the request but hasn't finished processing it. For example, a report-generation or spreadsheet-export request may take a long time to complete.
+- **204 No Content:** The server handled the request successfully and has no response content to return. For example, a server may successfully delete a user without returning a response body.
 
-🐛 修正（参见：[issue#2458](https://github.com/Snailclimb/JavaGuide/issues/2458)）：201 Created 状态码更准确点来说是创建一个或多个新的资源，可以参考：<https://httpwg.org/specs/rfc9110.html#status.201>。
+🐛 **Correction** (see [issue #2458](https://github.com/Snailclimb/JavaGuide/issues/2458)): More precisely, `201 Created` indicates that one or more resources were created. See [RFC 9110](https://httpwg.org/specs/rfc9110.html#status.201).
 
-![RFC 9110 中 201 Created 状态码的定义](../images/shared/rfc9110-201-created.png)
+![The definition of 201 Created in RFC 9110](../images/shared/rfc9110-201-created.png)
 
-这里格外提一下 204 状态码，平时学习/工作中见到的次数并不多。
+It's worth taking a closer look at `204`, which many developers don't encounter often.
 
-[HTTP RFC 2616 对 204 状态码的描述](https://tools.ietf.org/html/rfc2616#section-10.2.5)如下：
+[RFC 2616's description of 204](https://tools.ietf.org/html/rfc2616#section-10.2.5) says:
 
 > The server has fulfilled the request but does not need to return an
 > entity-body, and might want to return updated metainformation. The
@@ -58,32 +58,30 @@ HTTP 状态码是服务端返回给客户端的处理结果摘要。看到一个
 > The 204 response MUST NOT include a message-body, and thus is always
 > terminated by the first empty line after the header fields.
 
-简单来说，204 状态码描述的是我们向服务端发送 HTTP 请求之后，只关注处理结果是否成功的场景。也就是说我们需要的就是一个结果：true/false。
+In short, `204` is useful when the client only needs to know whether an action succeeded. The response communicates an outcome without returning a body.
 
-举个例子：你要追一个女孩子，你问女孩子：“我能追你吗？”，女孩子回答：“好！”。我们把这个女孩子当做是服务端就很好理解 204 状态码了。
+### 3xx Redirection
 
-### 3xx Redirection（重定向状态码）
+- **301 Moved Permanently:** The resource has moved permanently, such as when a website changes its URL.
+- **302 Found:** The resource is temporarily available at another URL.
 
-- **301 Moved Permanently**：资源被永久重定向了。比如你的网站的网址更换了。
-- **302 Found**：资源被临时重定向了。比如你的网站的某些资源被暂时转移到另外一个网址。
+### 4xx Client Error
 
-### 4xx Client Error（客户端错误状态码）
+- **400 Bad Request:** The request is invalid, perhaps because its parameters are malformed or its method isn't supported for that request.
+- **401 Unauthorized:** The client hasn't authenticated but is requesting a resource that requires authentication.
+- **403 Forbidden:** The server understood the request but refuses to fulfill it, often because the client isn't allowed to access the resource.
+- **404 Not Found:** The server couldn't find the requested resource, such as a user record that doesn't exist.
+- **409 Conflict:** The request conflicts with the current state of the resource and can't be processed as submitted.
 
-- **400 Bad Request**：发送的 HTTP 请求存在问题。比如请求参数不合法、请求方法错误。
-- **401 Unauthorized**：未认证却请求需要认证之后才能访问的资源。
-- **403 Forbidden**：直接拒绝 HTTP 请求，不处理。一般用来针对非法请求。
-- **404 Not Found**：你请求的资源未在服务端找到。比如你请求某个用户的信息，服务端并没有找到指定的用户。
-- **409 Conflict**：表示请求的资源与服务端当前的状态存在冲突，请求无法被处理。
+### 5xx Server Error
 
-### 5xx Server Error（服务端错误状态码）
+- **500 Internal Server Error:** The server encountered an unexpected condition, such as an unhandled exception.
+- **502 Bad Gateway:** A gateway or proxy received an invalid response from an upstream server.
 
-- **500 Internal Server Error**：服务端出问题了（通常是服务端出 Bug 了）。比如你服务端处理请求的时候突然抛出异常，但是异常并未在服务端被正确处理。
-- **502 Bad Gateway**：我们的网关将请求转发到服务端，但是服务端返回的却是一个错误的响应。
-
-### 参考
+### References
 
 - <https://www.restapitutorial.com/httpstatuscodes.html>
-- <https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Status>
+- <https://developer.mozilla.org/en-US/docs/Web/HTTP/Status>
 - <https://en.wikipedia.org/wiki/List_of_HTTP_status_codes>
 - <https://segmentfault.com/a/1190000018264501>
 
