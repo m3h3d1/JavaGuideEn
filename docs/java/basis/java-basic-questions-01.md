@@ -116,14 +116,14 @@ We touched on this when discussing bytecode, but it is important enough to revis
 
 High-level programming languages can be grouped by how they execute programs:
 
-- **Compiled languages** translate source code into machine code for a target platform before execution. They generally run faster, while development can take longer. Common examples include C, C++, Go, and Rust.
-- **Interpreted languages** use an interpreter to translate and execute code one statement at a time. They can be quicker to develop with, but generally run more slowly. Common examples include Python, JavaScript, and PHP.
+- **[Compiled languages](https://zh.wikipedia.org/wiki/%E7%B7%A8%E8%AD%AF%E8%AA%9E%E8%A8%80)** use a [compiler](https://zh.wikipedia.org/wiki/%E7%B7%A8%E8%AD%AF%E5%99%A8) to translate source code into machine code for a target platform before execution. They generally run faster, while development can take longer. Common examples include C, C++, Go, and Rust.
+- **[Interpreted languages](https://zh.wikipedia.org/wiki/%E7%9B%B4%E8%AD%AF%E8%AA%9E%E8%A8%80)** use an [interpreter](https://zh.wikipedia.org/wiki/%E7%9B%B4%E8%AD%AF%E5%99%A8) to translate and execute code one statement at a time. They can be quicker to develop with, but generally run more slowly. Common examples include Python, JavaScript, and PHP.
 
 ![Compiled and interpreted languages](../images/shared/compiled-and-interpreted-languages.png)
 
 According to Wikipedia:
 
-> Just-in-time compilation, developed to improve the performance of interpreted languages, has narrowed the gap between the two approaches. It combines advantages of compiled and interpreted languages: like a compiled language, it first compiles source code into bytecode; at runtime, the bytecode is interpreted and executed. Java and LLVM are examples of this approach.
+> [Just-in-time compilation](https://zh.wikipedia.org/wiki/%E5%8D%B3%E6%99%82%E7%B7%A8%E8%AD%AF), developed to improve the performance of interpreted languages, has narrowed the gap between the two approaches. It combines advantages of compiled and interpreted languages: like a compiled language, it first compiles source code into [bytecode](https://zh.wikipedia.org/wiki/%E5%AD%97%E8%8A%82%E7%A0%81); at runtime, the bytecode is interpreted and executed. [Java](https://zh.wikipedia.org/wiki/Java) and [LLVM](https://zh.wikipedia.org/wiki/LLVM) are examples of this approach.
 >
 > Related reading: [How the Java JIT compiler works: concepts and practice](https://mp.weixin.qq.com/s/7PH8o1tbjLsM4-nOnjbwLw)
 
@@ -147,7 +147,7 @@ The comparison below uses HotSpot JIT and GraalVM Native Image as examples. AOT 
 | **Dynamic features**         | Supports runtime loading, reflection, and bytecode generation   | Closed-world tools often need metadata or build-time processing                   |
 | **Common use cases**         | Long-running services that need sustained throughput            | CLI tools, Serverless, rapid scaling, and cold-start-sensitive services           |
 
-<img src="https://oss.javaguide.cn/github/javaguide/java/basis/jit-vs-aot.png" alt="JIT vs AOT" style="zoom: 25%;" />
+<img src="../images/shared/jit-vs-aot.jpg" alt="JIT vs AOT" style="zoom: 25%;" />
 
 AOT's main advantages are faster startup and lower runtime memory use. It can suit applications with frequent cold starts, short-lived instances, or rapid scaling needs. JIT can optimize hot code using information collected while the program runs, which often benefits long-running services. Compilation strategy alone does not determine throughput or latency; test the actual toolchain under a representative workload.
 

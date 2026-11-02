@@ -121,7 +121,7 @@ Restarting a node can also reorganize memory. In a highly available Redis cluste
 ## References
 
 - [Redis Memory Optimization](https://redis.io/topics/memory-optimization)
-- _Redis Core Technology and Practice_: “Why Does Memory Usage Remain High After Deleting Data?”
+- [_Redis Core Technology and Practice_: “Why Does Memory Usage Remain High After Deleting Data?”](https://time.geekbang.org/column/article/289140)
 - [Redis Source Code Analysis: Memory Allocation](https://shinerio.cc/2020/05/17/redis/Redis)
 
 <!-- @include: @article-footer.snippet.md -->

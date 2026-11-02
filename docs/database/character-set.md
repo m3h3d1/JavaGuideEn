@@ -271,6 +271,10 @@ UTF-8 is generally a good default character encoding, but MySQL has an important
 - **`utf8`:** MySQL's `utf8` supports only one to three bytes per character. Chinese characters use three bytes; many digits, English letters, and symbols use one byte. Emoji and some complex or traditional characters need four bytes.
 - **`utf8mb4`:** MySQL's complete UTF-8 implementation, supporting up to four bytes per character, including emoji.
 
+The following source image describes how MySQL's earlier three-byte UTF-8 implementation predates the later UTF-8 standard and how `utf8mb4` was introduced in MySQL 5.5 to support supplementary characters:
+
+![History of MySQL utf8 and utf8mb4](./images/shared/image-20211008164542347.png)
+
 If you need to store emoji, complex characters, or traditional Chinese characters, use `utf8mb4` rather than `utf8`; otherwise, inserts may fail.
 
 For example, this table uses `utf8` (MySQL 5.7 or later):

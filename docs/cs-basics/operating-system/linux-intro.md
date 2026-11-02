@@ -15,7 +15,9 @@ head:
 
 Linux is a free and open-source operating system kernel first released by Linus Torvalds in 1991. It is used in servers, embedded systems, mobile devices, and desktop computers. Strictly speaking, Linux is the kernel; the complete operating system combines it with user-space tools, libraries, and applications.
 
-![Linux's family tree](../images/shared/linux-father.png)
+Torvalds also started the Git project and was one of its principal developers.
+
+![Linux creator Linus Torvalds](../images/shared/linux-father.png)
 
 ### The Origins of Linux
 
@@ -88,7 +90,7 @@ Hard links and symbolic links work differently on Linux and Unix-like systems. A
 **1. Hard links**
 
 - A hard link has the same inode number as the original name; both names are equal from the filesystem's perspective.
-- Removing one name does not affect the other. File data is removed only after the original name and all hard links are deleted and no open references remain.
+- Removing one name does not affect the other, so a hard link can preserve access if another name is deleted accidentally. File data is removed only after the original name and all hard links are deleted and no open references remain.
 - Ordinary hard links cannot be created for directories or nonexistent files, and they cannot cross filesystem boundaries.
 - Use `ln` to create a hard link.
 
@@ -181,7 +183,7 @@ For quick command lookup, see [Linux Command](https://wangchujiang.com/linux-com
 - `rmdir [options] directory`: Remove an empty directory. `rmdir -p my_directory` also removes empty parent directories until it reaches a nonempty directory or the root.
 - `rm [options] file-or-directory`: Remove a file or directory. `rm -r my_directory` recursively removes the directory and its contents.
 - `cp [options] source destination`: Copy a file or directory. `cp file.txt /home/file.txt` copies a file; `cp -r source destination` recursively copies a directory tree.
-- `mv [options] source destination`: Move or rename a file or directory. Unlike `cp`, moving does not create another copy of the file.
+- `mv [options] source destination`: Move or rename a file or directory. For example, `mv file.txt /home/file.txt` moves the file to `/home`. Unlike `cp`, moving does not create another copy of the file.
 
 ### File Operations
 

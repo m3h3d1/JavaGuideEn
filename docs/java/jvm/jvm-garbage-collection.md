@@ -545,13 +545,13 @@ ZGC behavior depends on the JDK version. In early versions, processing thread st
 
 #### ZGC Versions and How to Enable Them
 
-| JDK version | ZGC changes                                                                     | Enable option                                          |
-| ----------- | ------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| JDK 11–14   | Introduced as an experimental feature ([JEP 333](https://openjdk.org/jeps/333)) | `-XX:+UnlockExperimentalVMOptions -XX:+UseZGC`         |
-| JDK 15–20   | Became a standard feature; non-generational mode                                | `-XX:+UseZGC`                                          |
-| JDK 21–22   | Generational mode added; non-generational mode remained the default             | `-XX:+UseZGC -XX:+ZGenerational` for generational mode |
-| JDK 23      | Generational mode became the default when ZGC is enabled                        | `-XX:+UseZGC`                                          |
-| JDK 24+     | Non-generational mode removed                                                   | `-XX:+UseZGC`                                          |
+| JDK version | ZGC changes                                                                                | Enable option                                          |
+| ----------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| JDK 11–14   | Introduced as an experimental feature ([JEP 333](https://openjdk.org/jeps/333))            | `-XX:+UnlockExperimentalVMOptions -XX:+UseZGC`         |
+| JDK 15–20   | Became a standard feature ([JEP 377](https://openjdk.org/jeps/377)); non-generational mode | `-XX:+UseZGC`                                          |
+| JDK 21–22   | Generational mode added; non-generational mode remained the default                        | `-XX:+UseZGC -XX:+ZGenerational` for generational mode |
+| JDK 23      | Generational mode became the default when ZGC is enabled                                   | `-XX:+UseZGC`                                          |
+| JDK 24+     | Non-generational mode removed                                                              | `-XX:+UseZGC`                                          |
 
 **ZGC using generational mode by default does not mean that the JVM uses ZGC by default.** In typical server-class environments, HotSpot still selects G1 by default. You must enable ZGC explicitly. For example, on JDK 17:
 

@@ -142,6 +142,8 @@ To approximate the ideal distribution, generate the node height randomly:
 
 Each additional level has half the probability of the previous one: 50% for level 1, 25% for level 2, 12.5% for level 3, and so on.
 
+In this example, the random algorithm gives node 7 a height of 2: the base node and one index level.
+
 ![](../images/shared/202401222005505.png)
 
 ### Deletion
@@ -165,6 +167,8 @@ A skip-list node stores:
 
 The forward-pointer array stores the next node at each level. Index 0 is the base list; higher array indexes correspond to higher skip-list levels.
 
+In the diagram, the array has five entries: index 0 points to the next base node, and indexes 1–4 point to the next nodes at the four index levels.
+
 ![](../images/shared/202401222005347.png)
 
 The implementation below uses a maximum height of 16. The head node is a sentinel, and levelCount tracks the current height of the list.
@@ -182,6 +186,16 @@ class Node {
 ### Adding Elements
 
 Generate a random height for the new node. Then search from the highest level down, storing the predecessor at each level that the new node will occupy. Update those forward pointers to insert the node.
+
+Each level has a 50% promotion probability: `randomLevel()` returns level 1 with probability 50%, level 2 with probability 25%, level 3 with probability 12.5%, and so on, up to `MAX_LEVEL`.
+
+For example, to insert value 5 with height 4, record the predecessor at each level in an array. The illustrated predecessors for the node and its first two index levels are 4; the third index level is empty:
+
+![Finding predecessors for insertion](../images/shared/202401222005299.png)
+
+Use those predecessors to find successors at each level. Point the new node to those successors, then update the predecessors to point to 5:
+
+![Updating forward pointers for insertion](../images/shared/202401222005369.png)
 
 ```java
 private static final float PROB = 0.5f;
@@ -234,6 +248,15 @@ public void add(int value) {
 
 Search from the highest level down. At each level, move forward while the next value is less than the target. At the base level, check whether the next node is the target.
 
+![Searching for value 8](../images/shared/202401222005323.png)
+
+In the illustrated search for 8:
+
+1. **Highest index level:** Start at the head. Its `forwards[2]` points to 5, which is less than 8, so move to 5. Its next pointer at this level is `null` or points beyond 8. Stay at 5 and descend.
+2. **Second index level:** The next pointer, `forwards[1]`, points to 8. Because 8 is not less than the target, stay at 5 and descend again.
+3. **Lowest index level:** Continue right through values less than 8, reaching 7. Stop when the next node is 8, since `8 < 8` is false.
+4. **Final check:** The search has reached the base-level predecessor, 7. Its `forwards[0]` points to 8, and that node's value matches the target, so the search succeeds.
+
 ```java
 public Node get(int value) {
     Node current = head;
@@ -256,6 +279,10 @@ public Node get(int value) {
 ### Deleting Elements
 
 Record the predecessor at each level. If the target exists at the base level, bypass it at every level that points to it. Reduce levelCount if the top level becomes empty.
+
+For example, when deleting 10, the predecessor search finds 5 at the highest index level, 8 at the next two levels, and 9 at the base level. Check each predecessor's next pointer; where it points to 10, redirect it to 10's successor. The removed node and its indexes can then be garbage-collected.
+
+![Deleting value 10 from each level](../images/shared/202401222005350.png)
 
 ```java
 public void delete(int value) {
@@ -443,6 +470,8 @@ AVL trees can support range queries through in-order traversal. However, inserti
 
 Skip lists use probabilistic rather than strict balancing. Their insertion and deletion algorithms are simpler and can be faster than equivalent balanced-tree operations. See William Pugh's paper, [“Skip Lists: A Probabilistic Alternative to Balanced Trees”](https://15721.courses.cs.cmu.edu/spring2018/papers/08-oltpindexes1/pugh-skiplists-cacm1990.pdf).
 
+![Excerpt from the skip-list paper](../images/shared/skiplist-a-probabilistic-alternative-to-balanced-trees.png)
+
 > Skip lists can be used instead of balanced trees. They use probabilistic balancing instead of strictly enforced balancing, which makes insertion and deletion algorithms simpler and often faster.
 
 The following AVL insertion excerpt illustrates the balance checks and rotations required after inserting a node:
@@ -545,13 +574,15 @@ B+ trees reduce disk I/O by locating many index entries in each page. That advan
 
 Redis's author gave several reasons for choosing skip lists:
 
-> 1. They are not very memory intensive. Their memory use can be adjusted by changing the probability that a node has a given number of levels.
-> 2. Sorted Sets often serve ZRANGE and ZREVRANGE operations, which traverse the skip list as a linked list. Skip-list cache locality is at least as good as that of other balanced trees for this operation.
-> 3. They are simpler to implement and debug. This simplicity made it easier to add augmented skip lists for O(log N) ZRANK.
+1. Their memory use can be adjusted through the probability of adding levels; the author noted that this can make them use less memory than B-trees.
+2. Sorted Sets often serve ZRANGE and ZREVRANGE operations, which traverse the skip list as a linked list. The author considered their cache locality at least as good as that of other balanced trees for these operations.
+3. They are simpler to implement and debug. The author cited a patch, already in Redis master at the time, that added augmented skip lists for O(log N) ZRANK with few code changes.
 
 ## Summary
 
 This guide explained how skip lists work and how they compare with balanced trees, red-black trees, and B+ trees. To study skip-list basics, see [Skip Lists: Interview Questions](../../cs-basics/data-structure/skip-list.md). Related guides include [Red-Black Trees](../../cs-basics/data-structure/red-black-tree.md) and [Hash Tables: Interview Questions](../../cs-basics/data-structure/hash-table.md).
+
+Try drawing the insertion, search, and deletion steps by hand to understand how the pointers change.
 
 ## References
 

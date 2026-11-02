@@ -23,9 +23,9 @@ This article reviews common backend interview topics, including TCP and UDP, TCP
    - UDP is connectionless. It sends datagrams without first establishing a connection.
 2. **Reliability:**
    - TCP provides reliable delivery using sequence numbers, acknowledgments (ACKs), retransmission, flow control, and congestion control. It delivers data in order without duplication to the receiving application.
-   - UDP provides best-effort delivery. It does not guarantee delivery or ordering and does not retransmit packets automatically.
+   - UDP provides best-effort delivery. It does not guarantee delivery or ordering, retransmit packets automatically, or acknowledge received datagrams.
 3. **State:**
-   - TCP maintains connection state at both ends, including sequence numbers and window sizes.
+   - TCP maintains connection state at both ends, including sequence numbers, window sizes, and which data has been sent and acknowledged.
    - UDP does not maintain connection state, so it has less overhead.
 4. **Efficiency:** TCP has more overhead for connection setup, acknowledgments, and retransmissions. UDP has a simpler structure and lower overhead.
 5. **Data model:** TCP is a byte stream and may split or combine application writes. UDP preserves datagram boundaries.
@@ -108,7 +108,7 @@ TCP is a byte stream. Data written by an application enters the kernel buffer, a
 
 UDP is message-oriented. Each application write is sent as a UDP datagram, and the receiver reads datagrams, so message boundaries are preserved. UDP does not guarantee delivery or ordering.
 
-To handle message boundaries over TCP, the application protocol must define them. Common approaches include fixed-length messages, delimiters, and length prefixes. Length prefixes are common in binary protocols and variable-length messages, but require handling byte order, maximum lengths, partial data, and malformed connections.
+To handle message boundaries over TCP, the application protocol must define them. Common approaches include fixed-length messages, delimiters, and length prefixes. Length prefixes are common in binary protocols and variable-length messages, but require handling byte order, maximum lengths, partial-data buffering, and unexpected connection closures.
 
 ![How an application protocol can define message boundaries](../images/shared/tcp-udp-byte-stream-tcp-message-boundary-solutions.png)
 
@@ -127,7 +127,7 @@ TCP (Transmission Control Protocol) and UDP (User Datagram Protocol) are the Int
 | FTP      | File Transfer Protocol             | File transfer                          | Traditional FTP sends data in plaintext. Prefer **SFTP (SSH File Transfer Protocol)** or **FTPS (FTP over TLS)**. |
 | SMTP     | Simple Mail Transfer Protocol      | Sending email                          | Sends mail from clients to servers and between mail servers. STARTTLS can upgrade the connection to TLS.          |
 | POP3     | Post Office Protocol version 3     | Receiving email                        | Usually downloads mail to a device; retaining server copies can be configured. POP3S uses TLS.                    |
-| IMAP     | Internet Message Access Protocol   | Receiving and managing email           | Keeps mail on the server and supports synchronization across devices. IMAPS uses TLS.                             |
+| IMAP     | Internet Message Access Protocol   | Receiving and managing email           | Keeps mail on the server; supports device sync, folders, and online search. IMAPS uses TLS.                       |
 | Telnet   | Teletype Network                   | Remote terminal access                 | Sends all data, including passwords, in plaintext. SSH is the secure alternative.                                 |
 | SSH      | Secure Shell                       | Secure remote access and file transfer | Provides encrypted login, command execution, and file transfer such as SFTP.                                      |
 
@@ -195,11 +195,11 @@ For details, see [How Do TCP Keepalive and HTTP Keep-Alive Differ?](./tcp-keepal
 
 **Answers:** [TCP Three-Way Handshake and Four-Way Teardown (Transport Layer)](https://javaguide.cn/cs-basics/network/tcp-connection-and-disconnection.html).
 
-### What Is TCP TIME_WAIT Waiting For, and Why?
+### Why Does TCP Enter the TIME_WAIT State?
 
 **Related interview questions:**
 
-1. What does `TIME_WAIT` wait for?
+1. Why does TCP enter the `TIME_WAIT` state?
 2. Can a large number of `TIME_WAIT` sockets cause problems?
 3. Is it safe to enable `tcp_tw_reuse` without checking first?
 4. How do `TIME_WAIT` and `CLOSE_WAIT` differ?

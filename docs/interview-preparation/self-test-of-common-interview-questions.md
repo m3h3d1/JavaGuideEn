@@ -15,7 +15,7 @@ In the **Technical Interview Self-Assessment** section of **[The Java Interview 
 
 ![Technical Interview Self-Assessment section of The Java Interview Guide](../zhuanlan/images/shared/self-test.png)
 
-Each question comes with **hints and an approach**, and ⭐ markers show its importance. The more stars a question has, the more often it tends to come up in interviews, so it's worth spending more time on.
+Each question comes with **hints and an approach**, and ⭐ markers show its importance. The more ⭐ markers a question has, the more often it tends to come up in interviews, so it's worth spending more time on.
 
 ![](../zhuanlan/images/shared/self-test-key-points.png)
 

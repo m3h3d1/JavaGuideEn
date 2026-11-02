@@ -121,6 +121,7 @@ public class Main {
 
     public static void main(String[] args) {
         String[] strs = {"customer", "car", "cat"};
+        // Other examples: {"customer", "car", null}, {}, or null.
         System.out.println(longestCommonPrefix(strs)); // c
     }
 }
@@ -143,6 +144,8 @@ Explanation: One longest palindrome is "dccaccd".
 ```
 
 Every character pair can be used. At most one unpaired character can be placed in the center. A set can track whether a character has appeared an odd or even number of times:
+
+For the discussion of using pairs and one odd-count character, see [issue 665](https://github.com/Snailclimb/JavaGuide/issues/665).
 
 ```java
 // https://leetcode-cn.com/problems/longest-palindrome/description/
@@ -207,6 +210,17 @@ class Solution {
 ### 4.3. Longest Palindromic Substring
 
 > LeetCode: Given a string `s`, find its longest palindromic substring. Assume `s` has a maximum length of 1000.
+
+Examples:
+
+```plain
+Input: "babad"
+Output: "bab"
+Note: "aba" is also a valid answer.
+
+Input: "cbbd"
+Output: "bb"
+```
 
 Expand around each possible center. A palindrome may have one center character or a gap between two characters, so check both odd and even centers.
 
@@ -273,6 +287,10 @@ class Solution {
 
 > iQIYI 2018 autumn recruitment, Java: A valid parentheses sequence is built from the empty string, concatenation of valid sequences, and wrapping a valid sequence in parentheses. Its depth is the maximum number of nested pairs. For example, `()()()` has depth 1 and `((()))` has depth 3. Given a valid sequence, calculate its depth.
 
+More precisely, the empty string is valid; if `X` and `Y` are valid, both `XY` and `(X)` are valid; and every valid sequence can be built from these rules. Examples include `""`, `"()"`, `"()()"`, and `"((()))"`.
+
+The empty string has depth 0. If `X` and `Y` have depths `x` and `y`, then `XY` has depth `max(x, y)` and `(X)` has depth `x + 1`.
+
 The input contains only `(` and `)` and has a length from 2 to 50. Return a positive integer equal to its depth.
 
 Example:
@@ -283,6 +301,8 @@ Output: 2
 ```
 
 Count open parentheses and track the maximum count:
+
+The original example credits SnailClimb (September 6, 2018) and links to the [Nowcoder problem](https://www.nowcoder.com/test/8246651/summary).
 
 ```java
 import java.util.Scanner;

@@ -22,7 +22,7 @@ Redis transactions are rarely used in application development and should not be 
 
 ### How Do You Use Redis Transactions?
 
-Redis transactions use MULTI, EXEC, DISCARD, and WATCH.
+Redis transactions use [`MULTI`](https://redis.io/commands/multi), [`EXEC`](https://redis.io/commands/exec), [`DISCARD`](https://redis.io/commands/discard), and [`WATCH`](https://redis.io/commands/watch).
 
 ```bash
 > MULTI
@@ -121,6 +121,8 @@ QUEUED
 ```
 
 See the [Redis transactions documentation](https://redis.io/docs/latest/develop/using-commands/transactions/).
+
+![Redis transactions documentation](../images/shared/redis-transactions.png)
 
 ### Do Redis Transactions Support Atomicity?
 
@@ -287,6 +289,12 @@ Sampled 5 keys in the keyspace!
 Total key length in bytes is 264 (avg len 52.80)
 Biggest list found '"my-list"' has 17 items
 Biggest string found '"example:key"' has 4437 bytes
+1 lists with 17 items (20.00% of keys, avg size 17.00)
+0 hashs with 0 fields (00.00% of keys, avg size 0.00)
+4 strings with 4831 bytes (80.00% of keys, avg size 1207.75)
+0 streams with 0 entries (00.00% of keys, avg size 0.00)
+0 sets with 0 members (00.00% of keys, avg size 0.00)
+0 zsets with 0 members (00.00% of keys, avg size 0.00)
 ```
 
 This scans the keyspace and can affect Redis performance. It reports the largest String and largest collection by element count, not necessarily the key using the most memory. On production systems, use the -i option to throttle scanning, for example redis-cli -p 6379 --bigkeys -i 3.
@@ -349,6 +357,14 @@ redis-cli --hotkeys scans keys and reads OBJECT FREQ to find keys with high LFU 
 
 The instance must use allkeys-lfu or volatile-lfu. Do not change a production eviction policy just to run this diagnostic; doing so changes behavior at the maxmemory limit.
 
+Without an LFU policy, the command reports:
+
+```text
+Error: ERR An LFU maxmemory policy is not selected, access frequency not tracked. Please note that when switching between policies at runtime LRU and LFU data will take some time to adjust.
+```
+
+`volatile-lfu` selects eviction candidates from keys with expiration times; `allkeys-lfu` selects from the entire keyspace when memory is needed for new data.
+
 ```bash
 redis-cli -h 127.0.0.1 -p 6379 --hotkeys -i 0.1
 ```
@@ -362,7 +378,18 @@ See [OBJECT FREQ](https://redis.io/docs/latest/commands/object-freq/), [LFU evic
 MONITOR streams commands processed by the server. It can help count key accesses during a short observation window, but it is not a complete audit log and can affect performance. Do not leave it running for long in production.
 
 ```bash
-redis-cli MONITOR
+# redis-cli
+127.0.0.1:6379> MONITOR
+OK
+1683638260.637378 [0 172.17.0.1:61516] "ping"
+1683638267.144236 [0 172.17.0.1:61518] "smembers" "mySet"
+1683638268.941863 [0 172.17.0.1:61518] "smembers" "mySet"
+1683638269.551671 [0 172.17.0.1:61518] "smembers" "mySet"
+1683638270.646256 [0 172.17.0.1:61516] "ping"
+1683638270.849551 [0 172.17.0.1:61518] "smembers" "mySet"
+1683638271.926945 [0 172.17.0.1:61518] "smembers" "mySet"
+1683638274.276599 [0 172.17.0.1:61518] "smembers" "mySet2"
+1683638276.327234 [0 172.17.0.1:61518] "smembers" "mySet"
 ```
 
 Limit the capture duration and output size, then analyze the data offline. It only shows commands observed during collection and may expose application parameters. See the [MONITOR documentation](https://redis.io/docs/latest/commands/monitor/).
@@ -554,9 +581,13 @@ A Bloom filter can efficiently test whether an element may be present in a large
 
 The filter maps each value to bit positions and sets those bits to 1. When checking a value, a zero at any mapped position means the value is definitely absent; if all are one, it may be present.
 
+For example, a bit array with one million positions uses 1,000,000 bits, or 125,000 bytes (approximately 122 KiB).
+
 ![Bloom filter bit array](../../cs-basics/images/shared/bloom-filter-bit-table.png)
 
 Use the filter before querying the cache or database. If an element is definitely absent, reject the request. See [Bloom Filters](https://javaguide.cn/cs-basics/data-structure/bloom-filter.html) for false positives, deletion limits, and Guava and RedisBloom usage.
+
+![Cache request flow with a Bloom filter](../images/shared/redis-cache-penetration-bloom-filter.png)
 
 **3. Rate-limit requests**
 

@@ -320,7 +320,7 @@ A Redis Set is an unordered collection of unique elements, similar to Java's Has
 Common use cases include:
 
 - Unique values, such as website UV counts (HyperLogLog is more suitable at very large scale), article likes, and activity likes.
-- Set operations across data sources, such as mutual friends, followers, and follows (intersection), or friend and music recommendations (difference).
+- Set operations across data sources, such as mutual friends, followers, and follows (intersection); friend and music recommendations (difference); or subscription-account recommendations (difference and intersection).
 - Random selection, such as prize draws or random name selection.
 
 ### How Do You Build a Prize Draw with Set?

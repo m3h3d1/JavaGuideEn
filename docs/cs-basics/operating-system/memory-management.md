@@ -173,6 +173,10 @@ LRU evicts the page that has gone the longest without an access. It relies on lo
 
 These are textbook algorithms for understanding the tradeoffs. The Linux kernel does not simply pick one of OPT, FIFO, LRU, or CLOCK. It uses mechanisms such as active and inactive LRU lists, workingset detection, and refault tracking. Reclaim also differs for file and anonymous pages and is affected by NUMA, cgroups, and memory watermarks. Saying “Linux uses CLOCK” is not accurate.
 
+Newer kernels can also use Multi-Gen LRU, which groups pages into generations based on access recency. The reclaim path depends on the kernel version and configuration; its mechanisms combine working-set protection, hot and cold page identification, and memory watermarks.
+
+![Linux page reclaim](../images/shared/memory-page-reclaim.webp)
+
 ## Swap, Working Sets, and Thrashing
 
 Swap is not “extra memory”; it is a slower backing area. Anonymous pages have no file from which to reload them, so when memory is tight, the kernel may write them to Swap before reclaiming them. If they are accessed again, the kernel reads them back.

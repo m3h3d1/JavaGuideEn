@@ -113,7 +113,7 @@ For more detail, see [Common Application-Layer Protocols](./application-layer-pr
 
 Here is an illustration from _Illustrated HTTP_:
 
-<img src="https://oss.javaguide.cn/github/javaguide/url%E8%BE%93%E5%85%A5%E5%88%B0%E5%B1%95%E7%A4%BA%E5%87%BA%E6%9D%A5%E7%9A%84%E8%BF%87%E7%A8%8B.jpg" alt="The full process from entering a URL to displaying a web page" style="zoom:50%" />
+<img src="../images/shared/url-to-page-loading-process.jpg" alt="The full process from entering a URL to displaying a web page" style="zoom:50%" />
 
 One correction to the diagram: the protocol is OSPF, not OPSF. OSPF (Open Shortest Path First) is a routing protocol developed by the Internet Engineering Task Force.
 
@@ -216,7 +216,7 @@ If internal calls are getting more complex and require more HTTP SDKs, gateway f
 
 In short: **HTTP is capable, and RPC is not magic. Choose the one that solves your current problem at lower overall cost.**
 
-For more, see [Why Use RPC When We Have HTTP?](./http-vs-rpc.md).
+For more, see [⭐️ Why Use RPC When We Have HTTP?](./http-vs-rpc.md).
 
 ### What Is the Difference Between HTTP/1.0 and HTTP/1.1?
 
@@ -411,7 +411,7 @@ Their main differences are:
 
 - WebSocket supports real-time, two-way communication. HTTP follows a request-response model initiated by the client; the server cannot send an unsolicited response over an ordinary HTTP request.
 - WebSocket uses the `ws://` or `wss://` scheme (`wss` is protected by TLS), while HTTP uses `http://` or `https://`.
-- WebSocket supports extensions and subprotocols, for example for compression.
+- WebSocket supports extensions and subprotocols, for example for compression or encryption.
 - WebSocket frames have relatively small protocol overhead. HTTP requests carry headers, though HTTP/2 uses binary frames and header compression to reduce overhead.
 
 ### How Does a WebSocket Connection Work?
@@ -439,13 +439,13 @@ All three approaches help a client receive new server data without a page refres
 
 - **How it works:** If no new data is available, the server keeps the request open until data arrives or the request times out. The client then sends another request.
 - **Advantages:** New data can be delivered without waiting for the next polling interval; fewer responses contain no data.
-- **Disadvantages:** The server must keep many requests open, and the client still needs to reconnect after each response.
+- **Disadvantages:** The server must keep many requests open, consuming connection or thread resources. The client still needs to send another request after each response, using HTTP's request-response model.
 
 **3. WebSocket**
 
 - **How it works:** The client and server establish a persistent TCP connection through an HTTP Upgrade handshake, then either side can send data at any time.
 - **Advantages:** Low latency, two-way communication, and no repeated request setup.
-- **Disadvantages:** Both sides must support WebSocket. Applications need to manage connection health and reconnection.
+- **Disadvantages:** Both sides must support WebSocket. Applications need to manage connection health and reconnection, making it more complex to implement than polling.
 
 ![WebSocket compared with short and long polling](../images/shared/1460000042192394.png)
 
@@ -454,12 +454,12 @@ All three approaches help a client receive new server data without a page refres
 Server-Sent Events (SSE) and WebSocket can both deliver real-time updates to a browser. Their main differences are:
 
 1. **Direction:** SSE is one-way: the server sends events to the client. The client needs a separate HTTP request to send data. WebSocket supports two-way communication.
-2. **Protocol:** SSE uses a long-lived HTTP or HTTPS response stream, so it works with standard HTTP infrastructure. WebSocket uses `ws://` or `wss://` and requires a server that supports the WebSocket protocol.
-3. **Complexity:** Browsers provide the `EventSource` API for SSE. WebSocket requires handling the connection and, as needed, heartbeats and reconnection.
+2. **Protocol:** SSE uses a long-lived HTTP or HTTPS response stream, so it works with standard HTTP infrastructure. WebSocket uses `ws://` or `wss://`, is established through an HTTP Upgrade request, and requires a server that supports the WebSocket protocol.
+3. **Complexity:** SSE mainly requires server-side handling, and browsers provide the `EventSource` API. WebSocket requires server-side connection handling and a client API, plus heartbeats and reconnection where needed.
 4. **Reconnection:** `EventSource` reconnects automatically. WebSocket reconnection is usually implemented by the application.
-5. **Data:** SSE is designed for UTF-8 text. WebSocket supports both text and binary data.
+5. **Data:** SSE is designed for UTF-8 text; binary data needs an encoding such as Base64. WebSocket supports both text and binary data directly.
 
-SSE is a common choice for streaming responses from large language model APIs because it uses standard HTTP and is relatively simple to deploy.
+SSE is a common choice for streaming responses from large language model APIs such as OpenAI and DeepSeek because it uses standard HTTP and is relatively simple to deploy.
 
 For example, a request to DeepSeek can be inspected in the browser's developer tools:
 

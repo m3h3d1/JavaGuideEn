@@ -169,6 +169,8 @@ public String replaceSpace(StringBuffer str) {
 
 Use exponentiation by squaring. Handle a zero base with a negative exponent, and convert the exponent to `long` before negating it so `Integer.MIN_VALUE` doesn't overflow. The algorithm takes `O(log n)` time.
 
+Use `base == 0.0` for the exact zero check; an epsilon comparison could treat a small nonzero base as zero. On each iteration, multiply the result by the current base if the current exponent bit is 1, then square the base and shift the exponent right.
+
 ```java
 public class Solution {
     public double Power(double base, int exponent) {
@@ -376,6 +378,8 @@ A stack is last-in, first-out (LIFO), while a queue is first-in, first-out (FIFO
 
 ![Common methods of the Java Stack class](../images/shared/5985000.jpg)
 
+The following solution is from Zuo Chengyun's _Programmer's Code Interview Guide_.
+
 ```java
 import java.util.Stack;
 
@@ -406,6 +410,8 @@ public class Solution {
 **Problem:** Given two integer sequences, determine whether the second can be a pop sequence for a stack pushed in the order of the first. All pushed values are distinct, and the sequences have equal length. For example, push order `1, 2, 3, 4, 5` can produce `4, 5, 3, 2, 1`, but not `4, 3, 5, 1, 2`.
 
 Use an auxiliary stack. Push each value from the input sequence, and after every push, pop while the top matches the next requested output. The pop sequence is valid if the auxiliary stack is empty after all input values have been processed.
+
+The source credits [Alias's solution](https://www.nowcoder.com/questionTerminal/d77d11405cc7470d82554cb392585106) for this approach.
 
 For push order `1, 2, 3, 4, 5` and pop order `4, 5, 3, 2, 1`, push `1`, `2`, `3`, and `4`. The top now matches `4`, so pop it. Continue with `5`, then pop `5`, `3`, `2`, and `1` as each becomes the top. The auxiliary stack ends empty.
 

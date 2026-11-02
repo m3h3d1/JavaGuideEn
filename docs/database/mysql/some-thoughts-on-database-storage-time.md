@@ -183,7 +183,7 @@ There is no single best choice. Numeric timestamps can be efficient and portable
 
 The authors of _High Performance MySQL_ recommend `TIMESTAMP` because numeric timestamps are not easy to read. The passage is shown below:
 
-<img src="https://oss.javaguide.cn/github/javaguide/%E9%AB%98%E6%80%A7%E8%83%BDmysql-%E4%B8%8D%E6%8E%A8%E8%8D%90%E7%94%A8%E6%95%B0%E5%80%BC%E6%97%B6%E9%97%B4%E6%88%B3.jpg" style="zoom:50%;" />
+<img src="../images/shared/mysql-timestamp-readability.jpg" alt="A passage about timestamp readability from High Performance MySQL" style="zoom:50%;" />
 
 Each option has advantages. Choose based on your use case. The table below compares them:
 

@@ -37,7 +37,7 @@ Java backend interview topics can seem endless, but the highest-priority materia
 
 ## How to prepare technical interview topics effectively
 
-<img src="https://oss.javaguide.cn/github/javaguide/interview-preparation/preparation-for%20eight-part%20essay.png" alt="How to prepare technical interview topics" style="zoom:50%;" />
+<img src="./images/shared/interview-topics-preparation.png" alt="How to prepare technical interview topics" style="zoom:50%;" />
 
 Try not to memorize technical answers word for word. That can be tedious and does little to build practical skill. At the same time, some recall is necessary; connect key terms to real use cases and hands-on practice.
 

@@ -90,7 +90,7 @@ B allocates kernel resources to maintain half-open connections. An attacker can 
 
 SYN floods are commonly categorized as:
 
-1. **Direct attack:** The attacker uses a real source IP and prevents the source from responding to SYN-ACK, leaving connections half-open. Since the source is visible, it may be easier to block, although attacks can also come from botnets such as [Mirai](https://www.cloudflare.com/learning/ddos/glossary/mirai-botnet/).
+1. **Direct attack:** The attacker uses a real source IP and prevents the source from responding to SYN-ACK, leaving connections half-open. This can be done by filtering incoming SYN-ACK packets or blocking outgoing packets other than SYN. Since the source is visible, it may be easier to block, although attacks can also come from botnets such as [Mirai](https://www.cloudflare.com/learning/ddos/glossary/mirai-botnet/).
 2. **Spoofed-source attack:** The attacker forges the source IP in SYN packets, making attribution and source-based filtering harder. Tracing spoofed traffic is difficult, but upstream providers may help.
 3. **Distributed attack (DDoS):** A botnet can generate traffic from many devices, making mitigation and attribution more difficult. Attackers may also spoof the source addresses.
 
@@ -150,13 +150,13 @@ Attackers may use a botnet of malware-infected devices to generate a high volume
 Two common forms are:
 
 - **HTTP GET flood:** Multiple devices coordinate requests for images, files, or other resources. The volume of requests and responses can prevent the server from handling legitimate users.
-- **HTTP POST flood:** Form submissions may require significant application and database work. Attackers send many POST requests to consume those resources and saturate the server.
+- **HTTP POST flood:** Form submissions may require significant application and database work compared with the resources needed to send a request. Attackers send many POST requests to consume those resources and saturate the server.
 
 ### How Can HTTP Floods Be Mitigated?
 
 Layer 7 attacks often require several defenses. One approach is to challenge request sources to determine whether they are automated, for example with CAPTCHA or JavaScript challenges.
 
-Other defenses include a Web Application Firewall (WAF), IP reputation data to identify and selectively block malicious traffic, and real-time analysis by security engineers. Large providers can analyze traffic from many sources and update WAF rules and other protections to mitigate application-layer DDoS traffic.
+Other defenses include a Web Application Firewall (WAF), IP reputation data to identify and selectively block malicious traffic, and real-time analysis by security engineers. Large providers such as Cloudflare can analyze traffic from many sources and update WAF rules and other protections to mitigate application-layer DDoS traffic.
 
 ## DNS Flood
 
@@ -170,7 +170,7 @@ DNS servers act like an Internet directory, helping devices find the addresses f
 
 DNS maps readable names such as `example.com` to server addresses such as `192.168.0.1`. An attack on DNS infrastructure can therefore make many services unreachable. High-bandwidth [Internet of Things (IoT)](https://www.cloudflare.com/learning/ddos/glossary/internet-of-things-iot/) [botnets](https://www.cloudflare.com/learning/ddos/what-is-a-ddos-botnet/), such as [Mirai](https://www.cloudflare.com/learning/ddos/glossary/mirai-botnet/), can use compromised cameras, DVRs, and other devices to send large numbers of requests directly to DNS providers, preventing legitimate users from reaching their resolvers.
 
-A DNS flood differs from a [DNS amplification attack](https://www.cloudflare.com/learning/ddos/dns-amplification-ddos-attack/). Amplification attacks reflect traffic through misconfigured DNS servers to hide the source and increase the volume of traffic sent to a victim. Attackers send small requests for large DNS records with a spoofed source address, causing the servers to send larger responses to the target.
+A DNS flood differs from a [DNS amplification attack](https://www.cloudflare.com/learning/ddos/dns-amplification-ddos-attack/). Amplification attacks reflect traffic through misconfigured DNS servers to hide the source and increase the volume of traffic sent to a victim. Attackers send small requests for large DNS records with a spoofed source address, causing the servers to send larger responses to the target. This lets devices with limited bandwidth generate a larger volume of traffic toward the victim.
 
 ### How Can DNS Floods Be Mitigated?
 
@@ -249,7 +249,7 @@ In the original program, enabling the send call and running it alongside the loc
 
 > Further observations
 
-1. In an isolated lab, observe how changing the candidate sequence number affects whether the endpoint accepts a reset.
+1. In an isolated lab, increase or decrease the candidate sequence number by 1 and observe whether the endpoint accepts the reset.
 2. Use `Wireshark` on the loopback interface with the filter `ip.src == 127.0.0.1 && ip.dst == 127.0.0.1 && tcp.port == 8000` to inspect the test connection.
 3. Observe how the timing and rate of data exchange affect the demonstration.
 
@@ -347,7 +347,7 @@ Symmetric encryption uses the same key at both ends. Asymmetric cryptography use
 
 ![Asymmetric cryptography uses public and private keys](../images/shared/153cf04a0ecc43c38003f3a1ab198cc0-tplv-k3u1fbpfcp-zoom-1.png)
 
-Asymmetric cryptography is used in systems such as SSH, where public keys can be distributed to allow secure login across multiple servers. It is also used in secure cluster communication.
+Asymmetric cryptography is used in systems such as SSH, where public keys can be distributed to allow secure login across multiple servers, including in Hadoop deployments. It is also used in secure cluster communication, such as Docker clusters.
 
 Common asymmetric algorithms include:
 
