@@ -79,15 +79,15 @@ I have reviewed many resumes recently and found few that were strong. Here are s
 
 **1. The personal summary does not provide useful information.**
 
-![](images/shared/format-png.png)
+![](./images/shared/format-png.png)
 
 Add your technical blog, GitHub profile, and notable awards if you have them. You can adapt the template below:
 
-![](images/shared/format-png-20230309224235808.png)
+![](./images/shared/format-png-20230309224235808.png)
 
 **2. Project descriptions are too brief and lack substance.**
 
-![](images/shared/format-png-20230309224240305.png)
+![](./images/shared/format-png-20230309224240305.png)
 
 Can each project really be described in only one or two sentences? Perhaps the candidate does not want to add more, or perhaps they did not build the project and cannot explain it.
 
@@ -102,11 +102,11 @@ In a technical interview, the first question is often “Tell me about your proj
 
 **3. A Level 2 Computer Programmer certificate is not worth listing for a computer science graduate; it carries little weight.**
 
-![](images/shared/format-png-20230309224247261.png)
+![](./images/shared/format-png-20230309224247261.png)
 
 **4. The skills section has serious problems.**
 
-![](images/shared/93da1096fb02e19071ba13b4f6a7471c.png)
+![](./images/shared/93da1096fb02e19071ba13b4f6a7471c.png)
 
 - Use standard capitalization for technical terms, such as `Java` rather than `java` and `Spring Boot` rather than `spring boot`. Some interviewers care about this detail.
 - The skills list is unfocused and has no clear strength. You do not need to be good at everything; show where you are strong.

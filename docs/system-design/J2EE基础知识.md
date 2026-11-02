@@ -131,7 +131,7 @@ JSP 页面会由 JSP 容器转换为 Servlet 实现类并编译。对于 HTTP，
 工程 JspLoginDemo 下有一个名为 login.jsp 的 Jsp 文件，把工程第一次部署到服务器上后访问这个 Jsp 文件，我们发现这个目录下多了下图这两个东东。
 .class 文件便是 JSP 对应的 Servlet。编译完毕后再运行 class 文件来响应客户端请求。以后客户端访问 login.jsp 的时候，Tomcat 将不再重新编译 JSP 文件，而是直接调用 class 文件来响应客户端请求。
 
-![JSP工作原理](images/shared/1.jpg)
+![JSP工作原理](./images/shared/1.jpg)
 
 在按需编译模式下，首次请求需要完成转换和编译，通常会比后续请求慢。如果删除容器生成的 class 文件，容器在需要该页面时会重新编译 JSP。
 

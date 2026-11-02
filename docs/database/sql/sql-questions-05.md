@@ -1,27 +1,27 @@
 ---
-title: SQL常见面试题总结（5）
-description: SQL常见面试题总结第五篇，详解NULL空值处理技巧，包括IFNULL、COALESCE函数，以及使用CASE WHEN进行条件统计和完成率计算。
-category: 数据库
+title: SQL Interview Questions (5)
+description: The fifth set of SQL interview questions covers NULL handling with IFNULL and COALESCE, plus conditional counts and completion rates with CASE WHEN.
+category: Database
 tag:
-  - 数据库基础
+  - Database Fundamentals
   - SQL
 head:
   - - meta
     - name: keywords
-      content: SQL面试题,NULL空值处理,IFNULL,COALESCE,CASE WHEN,条件统计,完成率计算
+      content: SQL interview questions, NULL handling, IFNULL, COALESCE, CASE WHEN, conditional counts, completion rates
 ---
 
-> 题目来源于：[牛客题霸 - SQL 进阶挑战](https://www.nowcoder.com/exam/oj?page=1&tab=SQL%E7%AF%87&topicId=240)
+> Questions are from [Nowcoder - Advanced SQL Challenges](https://www.nowcoder.com/exam/oj?page=1&tab=SQL%E7%AF%87&topicId=240).
 
-较难或者困难的题目可以根据自身实际情况和面试需要来决定是否要跳过。
+Depending on your experience and interview needs, you may choose to skip the harder problems.
 
-## 空值处理
+## Handling NULL Values
 
-### 统计有未完成状态的试卷的未完成数和未完成率
+### Count Incomplete Attempts and Their Rate for Each Exam
 
-**描述**：
+**Description:**
 
-现有试卷作答记录表 `exam_record`（`uid` 用户 ID, `exam_id` 试卷 ID, `start_time` 开始作答时间, `submit_time` 交卷时间, `score` 得分），数据如下：
+Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score  |
 | --- | ---- | ------- | ------------------- | ------------------- | ------ |
@@ -29,21 +29,21 @@ head:
 | 2   | 1001 | 9001    | 2021-05-02 10:01:01 | 2021-05-02 10:30:01 | 81     |
 | 3   | 1001 | 9001    | 2021-09-02 12:01:01 | (NULL)              | (NULL) |
 
-请统计有未完成状态的试卷的未完成数 incomplete_cnt 和未完成率 incomplete_rate。由示例数据结果输出如下：
+For each exam with incomplete attempts, calculate the number of incomplete attempts (`incomplete_cnt`) and their rate (`incomplete_rate`). The sample output is:
 
 | exam_id | incomplete_cnt | complete_rate |
 | ------- | -------------- | ------------- |
 | 9001    | 1              | 0.333         |
 
-解释：试卷 9001 有 3 次被作答的记录，其中两次完成，1 次未完成，因此未完成数为 1，未完成率为 0.333（保留 3 位小数）
+Explanation: Exam 9001 has three attempts: two complete and one incomplete. Its incomplete count is 1 and its incomplete rate is 0.333 (rounded to three decimal places).
 
-**思路**：
+**Approach:**
 
-这题只需要注意一个是有条件限制，一个是没条件限制的；要么分别查询条件，然后合并；要么直接在 select 里面进行条件判断。
+The query needs both an unconditional count and a conditional count. You can calculate them in separate queries and combine the results, or handle the condition directly in `SELECT`.
 
-**答案**：
+**Answer:**
 
-写法 1：
+Option 1:
 
 ```sql
 SELECT
@@ -58,9 +58,9 @@ HAVING
     (COUNT(*) - COUNT(submit_time)) > 0;
 ```
 
-利用 `COUNT(*)`统计分组内的总记录数，`COUNT(submit_time)` 只统计 `submit_time` 字段不为 NULL 的记录数（即已完成数）。两者相减，就是未完成数。
+`COUNT(*)` counts all rows in each group. `COUNT(submit_time)` counts only rows where `submit_time` is not `NULL` (completed attempts). Their difference is the number of incomplete attempts.
 
-写法 2：
+Option 2:
 
 ```sql
 SELECT
@@ -75,9 +75,9 @@ HAVING
     COUNT(CASE WHEN submit_time IS NULL THEN 1 END) > 0;
 ```
 
-使用 `CASE` 表达式，当条件满足时返回一个非 `NULL` 值（例如 1），否则返回 `NULL`。然后用 `COUNT` 函数来统计非 `NULL` 值的数量。
+The `CASE` expression returns a non-`NULL` value (such as 1) when the condition is true, and `NULL` otherwise. `COUNT` then counts the non-`NULL` values.
 
-写法 3：
+Option 3:
 
 ```sql
 SELECT
@@ -92,20 +92,20 @@ HAVING
     incomplete_cnt > 0;
 ```
 
-利用 `SUM` 函数对一个表达式求和。当 `submit_time` 为 `NULL` 时，表达式 `(submit_time IS NULL)` 的值为 1 (TRUE)，否则为 0 (FALSE)。将这些 1 和 0 加起来，就得到了未完成的数量。
+`SUM` adds the results of an expression. `(submit_time IS NULL)` is 1 (TRUE) when `submit_time` is `NULL`, and 0 (FALSE) otherwise. Summing these values gives the number of incomplete attempts.
 
-### 0 级用户高难度试卷的平均用时和平均得分
+### Average Time and Score on Hard Exams for Level 0 Users
 
-**描述**：
+**Description:**
 
-现有用户信息表 `user_info`（`uid` 用户 ID，`nick_name` 昵称, `achievement` 成就值, `level` 等级, `job` 职业方向, `register_time` 注册时间），数据如下：
+Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
 | id  | uid  | nick_name | achievement | level | job  | register_time       |
 | --- | ---- | --------- | ----------- | ----- | ---- | ------------------- |
 | 1   | 1001 | 牛客 1 号 | 10          | 0     | 算法 | 2020-01-01 10:00:00 |
 | 2   | 1002 | 牛客 2 号 | 2100        | 6     | 算法 | 2020-01-01 10:00:00 |
 
-试卷信息表 `examination_info`（`exam_id` 试卷 ID, `tag` 试卷类别, `difficulty` 试卷难度, `duration` 考试时长, `release_time` 发布时间），数据如下：
+Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
 | id  | exam_id | tag  | difficulty | duration | release_time        |
 | --- | ------- | ---- | ---------- | -------- | ------------------- |
@@ -113,7 +113,7 @@ HAVING
 | 2   | 9002    | SQL  | easy       | 60       | 2020-01-01 10:00:00 |
 | 3   | 9004    | 算法 | medium     | 80       | 2020-01-01 10:00:00 |
 
-试卷作答记录表 `exam_record`（`uid` 用户 ID, `exam_id` 试卷 ID, `start_time` 开始作答时间, `submit_time` 交卷时间, `score` 得分），数据如下：
+Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score  |
 | --- | ---- | ------- | ------------------- | ------------------- | ------ |
@@ -125,17 +125,17 @@ HAVING
 | 6   | 1001 | 9002    | 2021-09-01 12:01:01 | (NULL)              | (NULL) |
 | 7   | 1002 | 9002    | 2021-05-05 18:01:01 | 2021-05-05 18:59:02 | 90     |
 
-请输出每个 0 级用户所有的高难度试卷考试平均用时和平均得分，未完成的默认试卷最大考试时长和 0 分处理。由示例数据结果输出如下：
+For each level 0 user, return the average time and score for all hard exam attempts. Treat incomplete attempts as taking the full exam duration and scoring 0. The sample output is:
 
 | uid  | avg_score | avg_time_took |
 | ---- | --------- | ------------- |
 | 1001 | 33        | 36.7          |
 
-解释：0 级用户有 1001，高难度试卷有 9001，1001 作答 9001 的记录有 3 条，分别用时 20 分钟、未完成（试卷时长 60 分钟）、30 分钟（未满 31 分钟），分别得分为 80 分、未完成（0 分处理）、20 分。因此他的平均用时为 110/3=36.7（保留一位小数），平均得分为 33 分（取整）
+Explanation: User 1001 is the only level 0 user, and exam 9001 is the only hard exam. User 1001 has three attempts on it: 20 minutes, incomplete (use the full 60-minute duration), and 30 minutes. Their scores are 80, incomplete (treat as 0), and 20. The average time is 110/3 = 36.7 minutes (rounded to one decimal place), and the average score is 33 (rounded to an integer).
 
-**思路**：这题用`IF`是判断的最方便的，因为涉及到 NULL 值的判断。当然 `case when`也可以，大同小异。这题的难点就在于空值的处理，其他的这些查询条件什么的，我相信难不倒大家。
+**Approach:** `IF` is convenient here because the query checks for `NULL` values. `CASE WHEN` would also work. The main challenge is handling `NULL`; the other query conditions are straightforward.
 
-**答案**：
+**Answer:**
 
 ```sql
 SELECT UID,
@@ -153,13 +153,13 @@ GROUP BY UID
 ORDER BY UID
 ```
 
-## 高级条件语句
+## Advanced Conditional Queries
 
-### 筛选限定昵称成就值活跃日期的用户（较难）
+### Filter Users by Nickname, Achievement Points, and Recent Activity (Advanced)
 
-**描述**：
+**Description:**
 
-现有用户信息表 `user_info`（`uid` 用户 ID，`nick_name` 昵称, `achievement` 成就值, `level` 等级, `job` 职业方向, `register_time` 注册时间）：
+Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
 | id  | uid  | nick_name   | achievement | level | job  | register_time       |
 | --- | ---- | ----------- | ----------- | ----- | ---- | ------------------- |
@@ -169,7 +169,7 @@ ORDER BY UID
 | 4   | 1004 | 牛客 4 号   | 2500        | 6     | 算法 | 2020-01-01 10:00:00 |
 | 5   | 1005 | 牛客 5 号   | 3000        | 7     | C++  | 2020-01-01 10:00:00 |
 
-试卷作答记录表 `exam_record`（`uid` 用户 ID, `exam_id` 试卷 ID, `start_time` 开始作答时间, `submit_time` 交卷时间, `score` 得分）：
+Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score  |
 | --- | ---- | ------- | ------------------- | ------------------- | ------ |
@@ -192,7 +192,7 @@ ORDER BY UID
 | 14  | 1005 | 9001    | 2021-02-01 11:01:01 | 2021-02-01 11:31:01 | 84     |
 | 15  | 1006 | 9001    | 2021-02-01 11:01:01 | 2021-02-01 11:31:01 | 84     |
 
-题目练习记录表 `practice_record`（`uid` 用户 ID, `question_id` 题目 ID, `submit_time` 提交时间, `score` 得分）：
+Sample data from `practice_record` (`uid`: user ID, `question_id`: question ID, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | question_id | submit_time         | score |
 | --- | ---- | ----------- | ------------------- | ----- |
@@ -202,31 +202,31 @@ ORDER BY UID
 | 4   | 1002 | 8002        | 2021-09-02 19:38:01 | 70    |
 | 5   | 1003 | 8002        | 2021-09-01 19:38:01 | 80    |
 
-请找到昵称以『牛客』开头『号』结尾、成就值在 1200~2500 之间，且最近一次活跃（答题或作答试卷）在 2021 年 9 月的用户信息。
+Find users whose nicknames start with "牛客" and end with "号", whose achievement points are between 1,200 and 2,500, and whose most recent activity (question or exam attempt) was in September 2021.
 
-由示例数据结果输出如下：
+The sample output is:
 
 | uid  | nick_name | achievement |
 | ---- | --------- | ----------- |
 | 1002 | 牛客 2 号 | 1200        |
 
-**解释**：昵称以『牛客』开头『号』结尾且成就值在 1200~2500 之间的有 1002、1004；
+**Explanation:** Users 1002 and 1004 have nicknames that start with "牛客" and end with "号", and achievement points between 1,200 and 2,500.
 
-1002 最近一次试卷区活跃为 2021 年 9 月，最近一次题目区活跃为 2021 年 9 月；1004 最近一次试卷区活跃为 2021 年 8 月，题目区未活跃。
+User 1002's most recent exam and question activity was in September 2021. User 1004's most recent exam activity was in August 2021, and they have no question activity.
 
-因此最终满足条件的只有 1002。
+Therefore, only user 1002 meets all the conditions.
 
-**思路**：
+**Approach:**
 
-先根据条件列出主要查询语句
+Start by writing the main query conditions:
 
-昵称以『牛客』开头『号』结尾: `nick_name LIKE "牛客%号"`
+Nicknames that start with "牛客" and end with "号": `nick_name LIKE '牛客%号'`.
 
-成就值在 1200~2500 之间：`achievement BETWEEN 1200 AND 2500`
+Achievement points between 1,200 and 2,500: `achievement BETWEEN 1200 AND 2500`.
 
-第三个条件因为限定了为 9 月，所以直接写就行：`( date_format( record.submit_time, '%Y%m' )= 202109 OR date_format( pr.submit_time, '%Y%m' )= 202109 )`
+The final condition requires activity in September: `(DATE_FORMAT(record.submit_time, '%Y%m') = '202109' OR DATE_FORMAT(pr.submit_time, '%Y%m') = '202109')`.
 
-**答案**：
+**Answer:**
 
 ```sql
 SELECT DISTINCT u_info.uid,
@@ -243,11 +243,11 @@ WHERE u_info.nick_name LIKE "牛客%号"
 GROUP BY u_info.uid
 ```
 
-### 筛选昵称规则和试卷规则的作答记录（较难）
+### Filter Attempts by Nickname and Exam Category (Advanced)
 
-**描述**：
+**Description:**
 
-现有用户信息表 `user_info`（`uid` 用户 ID，`nick_name` 昵称, `achievement` 成就值, `level` 等级, `job` 职业方向, `register_time` 注册时间）：
+Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
 | id  | uid  | nick_name    | achievement | level | job  | register_time       |
 | --- | ---- | ------------ | ----------- | ----- | ---- | ------------------- |
@@ -258,7 +258,7 @@ GROUP BY u_info.uid
 | 5   | 1005 | 牛客 555 号  | 2000        | 7     | C++  | 2020-01-01 10:00:00 |
 | 6   | 1006 | 666666       | 3000        | 6     | C++  | 2020-01-01 10:00:00 |
 
-试卷信息表 `examination_info`（`exam_id` 试卷 ID, `tag` 试卷类别, `difficulty` 试卷难度, `duration` 考试时长, `release_time` 发布时间）：
+Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
 | id  | exam_id | tag | difficulty | duration | release_time        |
 | --- | ------- | --- | ---------- | -------- | ------------------- |
@@ -266,7 +266,7 @@ GROUP BY u_info.uid
 | 2   | 9002    | c#  | hard       | 80       | 2020-01-01 10:00:00 |
 | 3   | 9003    | SQL | medium     | 70       | 2020-01-01 10:00:00 |
 
-试卷作答记录表 `exam_record`（`uid` 用户 ID, `exam_id` 试卷 ID, `start_time` 开始作答时间, `submit_time` 交卷时间, `score` 得分）：
+Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score  |
 | --- | ---- | ------- | ------------------- | ------------------- | ------ |
@@ -289,7 +289,7 @@ GROUP BY u_info.uid
 | 14  | 1005 | 9001    | 2021-02-01 11:01:01 | 2021-02-01 11:31:01 | 84     |
 | 15  | 1006 | 9001    | 2021-02-01 11:01:01 | 2021-09-01 11:31:01 | 84     |
 
-找到昵称以"牛客"+纯数字+"号"或者纯数字组成的用户对于字母 c 开头的试卷类别（如 C,C++,c#等）的已完成的试卷 ID 和平均得分，按用户 ID、平均分升序排序。由示例数据结果输出如下：
+For users whose nicknames are either "牛客" followed by digits and "号", or digits only, find the completed exam IDs and average scores for categories beginning with the letter C (such as C, C++, or c#). Sort by user ID and then average score in ascending order. The sample output is:
 
 | uid  | exam_id | avg_score |
 | ---- | ------- | --------- |
@@ -298,25 +298,25 @@ GROUP BY u_info.uid
 | 1005 | 9001    | 84        |
 | 1006 | 9001    | 84        |
 
-解释：昵称满足条件的用户有 1002、1004、1005、1006；
+Explanation: Users 1002, 1004, 1005, and 1006 have matching nicknames.
 
-c 开头的试卷有 9001、9002；
+Exams 9001 and 9002 have categories beginning with C.
 
-满足上述条件的作答记录中，1002 完成 9001 的得分有 81、80，平均分为 81（80.5 取整四舍五入得 81）；
+Among the matching attempts, user 1002 completed exam 9001 with scores of 81 and 80. Their average is 81 after rounding 80.5 to the nearest integer.
 
-1002 完成 9002 的得分有 90、82、83，平均分为 85；
+User 1002 completed exam 9002 with scores of 90, 82, and 83, for an average of 85.
 
-**思路**：
+**Approach:**
 
-还是老样子，既然给出了条件，就先把各个条件先写出来
+As before, start by writing each condition from the prompt.
 
-找到昵称以"牛客"+纯数字+"号"或者纯数字组成的用户： 我最开始是这么写的：`nick_name LIKE '牛客%号' OR nick_name REGEXP '^[0-9]+$'`，如果表中有个 “牛客 H 号” ，那也能通过。
+To match nicknames consisting of "牛客" + digits + "号", or digits only, a first attempt might be `nick_name LIKE '牛客%号' OR nick_name REGEXP '^[0-9]+$'`. However, this would also match a nickname such as "牛客 H 号".
 
-所以这里还得用正则： `nick_name LIKE '^牛客[0-9]+号'`
+Use a regular expression instead: `nick_name LIKE '^牛客[0-9]+号'`.
 
-对于字母 c 开头的试卷类别： `e_info.tag LIKE 'c%'` 或者 `tag regexp '^c|^C'` 第一个也能匹配到大写 C
+For exam categories beginning with C, use `e_info.tag LIKE 'c%'` or `tag REGEXP '^[cC]'`. The first pattern may also match uppercase C depending on the collation.
 
-**答案**：
+**Answer:**
 
 ```sql
 SELECT UID,
@@ -337,11 +337,11 @@ GROUP BY UID,exam_id
 ORDER BY UID,avg_score;
 ```
 
-### 根据指定记录是否存在输出不同情况（困难）
+### Return Different Results Depending on Whether Matching Rows Exist (Advanced)
 
-**描述**：
+**Description:**
 
-现有用户信息表 `user_info`（`uid` 用户 ID，`nick_name` 昵称, `achievement` 成就值, `level` 等级, `job` 职业方向, `register_time` 注册时间）：
+Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
 | id  | uid  | nick_name   | achievement | level | job  | register_time       |
 | --- | ---- | ----------- | ----------- | ----- | ---- | ------------------- |
@@ -352,7 +352,7 @@ ORDER BY UID,avg_score;
 | 5   | 1005 | 牛客 555 号 | 2000        | 7     | C++  | 2020-01-01 10:00:00 |
 | 6   | 1006 | 666666      | 3000        | 6     | C++  | 2020-01-01 10:00:00 |
 
-试卷作答记录表 `exam_record`（`uid` 用户 ID, `exam_id` 试卷 ID, `start_time` 开始作答时间, `submit_time` 交卷时间, `score` 得分）：
+Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score  |
 | --- | ---- | ------- | ------------------- | ------------------- | ------ |
@@ -370,9 +370,9 @@ ORDER BY UID,avg_score;
 | 12  | 1003 | 9003    | 2021-02-06 12:01:01 | (NULL)              | (NULL) |
 | 13  | 1003 | 9001    | 2021-09-07 10:01:01 | 2021-09-07 10:31:01 | 89     |
 
-请你筛选表中的数据，当有任意一个 0 级用户未完成试卷数大于 2 时，输出每个 0 级用户的试卷未完成数和未完成率（保留 3 位小数）；若不存在这样的用户，则输出所有有作答记录的用户的这两个指标。结果按未完成率升序排序。
+If any level 0 user has more than two incomplete exam attempts, return the incomplete count and rate (rounded to three decimal places) for every level 0 user. If no such user exists, return these metrics for every user with an exam attempt. Sort by incompletion rate in ascending order.
 
-由示例数据结果输出如下：
+The sample output is:
 
 | uid  | incomplete_cnt | incomplete_rate |
 | ---- | -------------- | --------------- |
@@ -380,17 +380,17 @@ ORDER BY UID,avg_score;
 | 1003 | 1              | 0.500           |
 | 1001 | 4              | 0.667           |
 
-**解释**：0 级用户有 1001、1003、1004；他们作答试卷数和未完成数分别为：6:4、2:1、0:0；
+**Explanation:** The level 0 users are 1001, 1003, and 1004. Their total and incomplete attempt counts are 6:4, 2:1, and 0:0.
 
-存在 1001 这个 0 级用户未完成试卷数大于 2，因此输出这三个用户的未完成数和未完成率（1004 未作答过试卷，未完成率默认填 0，保留 3 位小数后是 0.000）；
+User 1001 has more than two incomplete attempts, so return metrics for all three users. User 1004 has no attempts, so their incompletion rate defaults to 0.000.
 
-结果按照未完成率升序排序。
+Sort the results by incompletion rate in ascending order.
 
-附：如果 1001 不满足『未完成试卷数大于 2』，则需要输出 1001、1002、1003 的这两个指标，因为试卷作答记录表里只有这三个用户的作答记录。
+Note: If user 1001 did not have more than two incomplete attempts, return metrics for users 1001, 1002, and 1003, since these are the only users with exam records.
 
-**思路**：
+**Approach:**
 
-先把可能满足条件**“0 级用户未完成试卷数大于 2”**的 SQL 写出来
+First, write a query to find whether any level 0 user has more than two incomplete attempts:
 
 ```sql
 SELECT ui.uid UID
@@ -406,9 +406,9 @@ GROUP BY ui.uid
 HAVING sum(IF(er.submit_time IS NULL, 1, 0)) > 2
 ```
 
-然后再分别写出两种情况的 SQL 查询语句：
+Then write a query for each of the two cases.
 
-情况 1. 查询存在条件要求的 0 级用户的试卷未完成率
+Case 1: Calculate the incompletion rate for level 0 users when the condition is met.
 
 ```sql
 SELECT
@@ -440,7 +440,7 @@ ORDER BY
 	incomplete_rate
 ```
 
-情况 2. 查询不存在条件要求时所有有作答记录的 yong 用户的试卷未完成率
+Case 2: If the condition is not met, calculate the incompletion rate for all users with exam attempts.
 
 ```sql
 SELECT
@@ -461,7 +461,7 @@ ORDER BY
 	incomplete_rate
 ```
 
-拼在一起，就是答案
+Combine the two cases:
 
 ```sql
 WITH host_user AS
@@ -519,15 +519,15 @@ UNION ALL
    WHERE t2.uid IS NULL)
 ```
 
-V2 版本（根据上面做出的改进，答案缩短了，逻辑更强）：
+Version 2 (a shorter solution with clearer logic):
 
 ```sql
 SELECT
 	ui.uid,
 	SUM(
 	IF
-	( start_time IS NOT NULL AND score IS NULL, 1, 0 )) AS incomplete_cnt,#3.试卷未完成数
-	ROUND( AVG( IF ( start_time IS NOT NULL AND score IS NULL, 1, 0 )), 3 ) AS incomplete_rate #4.未完成率
+	( start_time IS NOT NULL AND score IS NULL, 1, 0 )) AS incomplete_cnt, #3. Incomplete exam count
+	ROUND( AVG( IF ( start_time IS NOT NULL AND score IS NULL, 1, 0 )), 3 ) AS incomplete_rate #4. Incompletion rate
 
 FROM
 	user_info ui
@@ -535,7 +535,7 @@ FROM
 WHERE
 CASE
 
-		WHEN (#1.当有任意一个0级用户未完成试卷数大于2时
+		WHEN (#1. When any level 0 user has more than two incomplete exams
 		SELECT
 			MAX( lv0_incom_cnt )
 		FROM
@@ -553,21 +553,21 @@ CASE
 				uid
 			) table1
 			)> 2 THEN
-			uid IN ( #1.1找出每个0级用户
-			SELECT uid FROM user_info WHERE LEVEL = 0 ) ELSE uid IN ( #2.若不存在这样的用户，找出有作答记录的用户
+			uid IN ( #1.1 Find all level 0 users
+			SELECT uid FROM user_info WHERE LEVEL = 0 ) ELSE uid IN ( #2. Otherwise, find users with exam attempts
 			SELECT DISTINCT uid FROM exam_record )
 		END
 		GROUP BY
 			ui.uid
 	ORDER BY
-	incomplete_rate #5.结果按未完成率升序排序
+	incomplete_rate #5. Sort by incompletion rate in ascending order
 ```
 
-### 各用户等级的不同得分表现占比（较难）
+### Score Grade Distribution by User Level (Advanced)
 
-**描述**：
+**Description:**
 
-现有用户信息表 `user_info`（`uid` 用户 ID，`nick_name` 昵称, `achievement` 成就值, `level` 等级, `job` 职业方向, `register_time` 注册时间）：
+Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
 | id  | uid  | nick_name    | achievement | level | job  | register_time       |
 | --- | ---- | ------------ | ----------- | ----- | ---- | ------------------- |
@@ -578,7 +578,7 @@ CASE
 | 5   | 1005 | 牛客 555 号  | 2000        | 7     | C++  | 2020-01-01 10:00:00 |
 | 6   | 1006 | 666666       | 3000        | 6     | C++  | 2020-01-01 10:00:00 |
 
-试卷作答记录表 exam_record（uid 用户 ID, exam_id 试卷 ID, start_time 开始作答时间, submit_time 交卷时间, score 得分）：
+Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score  |
 | --- | ---- | ------- | ------------------- | ------------------- | ------ |
@@ -594,53 +594,53 @@ CASE
 | 10  | 1002 | 9003    | 2020-02-01 12:01:01 | 2020-02-01 12:31:01 | 82     |
 | 11  | 1002 | 9003    | 2020-02-02 12:11:01 | 2020-02-02 12:41:01 | 76     |
 
-为了得到用户试卷作答的定性表现，我们将试卷得分按分界点[90,75,60]分为优良中差四个得分等级（分界点划分到左区间），请统计不同用户等级的人在完成过的试卷中各得分等级占比（结果保留 3 位小数），未完成过试卷的用户无需输出，结果按用户等级降序、占比降序排序。
+Classify exam scores into four grades at the thresholds [90, 75, 60]: excellent, good, fair, and poor. A score equal to a threshold belongs to the higher grade. For each user level, calculate the proportion of completed exams in each grade, rounded to three decimal places. Exclude users with no completed exams. Sort by user level and then proportion in descending order.
 
-由示例数据结果输出如下：
+The sample output is:
 
 | level | score_grade | ratio |
 | ----- | ----------- | ----- |
-| 3     | 良          | 0.667 |
-| 3     | 优          | 0.333 |
-| 0     | 良          | 0.500 |
-| 0     | 中          | 0.167 |
-| 0     | 优          | 0.167 |
-| 0     | 差          | 0.167 |
+| 3     | Good        | 0.667 |
+| 3     | Excellent   | 0.333 |
+| 0     | Good        | 0.500 |
+| 0     | Fair        | 0.167 |
+| 0     | Excellent   | 0.167 |
+| 0     | Poor        | 0.167 |
 
-解释：完成过试卷的用户有 1001、1002；完成了的试卷对应的用户等级和分数等级如下：
+Explanation: Users 1001 and 1002 have completed exams. Their levels and score grades are:
 
 | uid  | exam_id | score | level | score_grade |
 | ---- | ------- | ----- | ----- | ----------- |
-| 1001 | 9001    | 80    | 0     | 良          |
-| 1001 | 9002    | 75    | 0     | 良          |
-| 1001 | 9002    | 60    | 0     | 中          |
-| 1001 | 9003    | 90    | 0     | 优          |
-| 1001 | 9001    | 20    | 0     | 差          |
-| 1001 | 9002    | 89    | 0     | 良          |
-| 1002 | 9001    | 99    | 3     | 优          |
-| 1002 | 9003    | 82    | 3     | 良          |
-| 1002 | 9003    | 76    | 3     | 良          |
+| 1001 | 9001    | 80    | 0     | Good        |
+| 1001 | 9002    | 75    | 0     | Good        |
+| 1001 | 9002    | 60    | 0     | Fair        |
+| 1001 | 9003    | 90    | 0     | Excellent   |
+| 1001 | 9001    | 20    | 0     | Poor        |
+| 1001 | 9002    | 89    | 0     | Good        |
+| 1002 | 9001    | 99    | 3     | Excellent   |
+| 1002 | 9003    | 82    | 3     | Good        |
+| 1002 | 9003    | 76    | 3     | Good        |
 
-因此 0 级用户（只有 1001）的各分数等级比例为：优 1/6，良 1/6，中 1/6，差 3/6；3 级用户（只有 1002）各分数等级比例为：优 1/3，良 2/3。结果保留 3 位小数。
+Therefore, level 0 (user 1001) has grade proportions of 1/6 excellent, 1/6 good, 1/6 fair, and 3/6 poor. Level 3 (user 1002) has proportions of 1/3 excellent and 2/3 good. Results are rounded to three decimal places.
 
-**思路**：
+**Approach:**
 
-先把 **“将试卷得分按分界点[90,75,60]分为优良中差四个得分等级”**这个条件写出来，这里可以用到`case when`
+First, classify exam scores into four grades using the thresholds [90, 75, 60]. Use `CASE WHEN`:
 
 ```sql
 CASE
 		WHEN a.score >= 90 THEN
-		'优'
+		'Excellent'
 		WHEN a.score < 90 AND a.score >= 75 THEN
-		'良'
+		'Good'
 		WHEN a.score < 75 AND a.score >= 60 THEN
-	'中' ELSE '差'
+	'Fair' ELSE 'Poor'
 END
 ```
 
-这题的关键点就在于这，其他剩下的就是条件拼接了
+This is the key part; the remaining work is combining the query conditions.
 
-**答案**：
+**Answer:**
 
 ```sql
 SELECT a.LEVEL,
@@ -649,12 +649,12 @@ SELECT a.LEVEL,
 FROM
   (SELECT b.LEVEL AS LEVEL,
           (CASE
-               WHEN a.score >= 90 THEN '优'
+               WHEN a.score >= 90 THEN 'Excellent'
                WHEN a.score < 90
-                    AND a.score >= 75 THEN '良'
+                    AND a.score >= 75 THEN 'Good'
                WHEN a.score < 75
-                    AND a.score >= 60 THEN '中'
-               ELSE '差'
+                    AND a.score >= 60 THEN 'Fair'
+               ELSE 'Poor'
            END) AS score_grade,
           count(1) AS cur_count
    FROM exam_record a
@@ -673,13 +673,13 @@ ORDER BY a.LEVEL DESC,
          ratio DESC
 ```
 
-## 限量查询
+## Limiting Results
 
-### 注册时间最早的三个人
+### Three Earliest Registrants
 
-**描述**：
+**Description:**
 
-现有用户信息表 `user_info`（`uid` 用户 ID，`nick_name` 昵称, `achievement` 成就值, `level` 等级, `job` 职业方向, `register_time` 注册时间）：
+Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
 | id  | uid  | nick_name    | achievement | level | job  | register_time       |
 | --- | ---- | ------------ | ----------- | ----- | ---- | ------------------- |
@@ -690,7 +690,7 @@ ORDER BY a.LEVEL DESC,
 | 5   | 1005 | 牛客 555 号  | 4000        | 7     | C++  | 2020-01-11 10:00:00 |
 | 6   | 1006 | 666666       | 3000        | 6     | C++  | 2020-11-01 10:00:00 |
 
-请从中找到注册时间最早的 3 个人。由示例数据结果输出如下：
+Find the three users with the earliest registration times. The sample output is:
 
 | uid  | nick_name    | register_time       |
 | ---- | ------------ | ------------------- |
@@ -698,9 +698,9 @@ ORDER BY a.LEVEL DESC,
 | 1003 | 牛客 3 号 ♂ | 2020-01-02 10:00:00 |
 | 1004 | 牛客 4 号    | 2020-01-02 11:00:00 |
 
-解释：按注册时间排序后选取前三名，输出其用户 ID、昵称、注册时间。
+Explanation: Sort by registration time, then return the first three users' IDs, nicknames, and registration times.
 
-**答案**：
+**Answer:**
 
 ```sql
 SELECT uid, nick_name, register_time
@@ -709,9 +709,9 @@ SELECT uid, nick_name, register_time
     LIMIT 3
 ```
 
-### 注册当天就完成了试卷的名单第三页（较难）
+### Page Three of Users Who Completed an Exam on Their Registration Date (Advanced)
 
-**描述**：现有用户信息表 `user_info`（`uid` 用户 ID，`nick_name` 昵称, `achievement` 成就值, `level` 等级, `job` 职业方向, `register_time` 注册时间）：
+**Description:** Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
 | id  | uid  | nick_name    | achievement | level | job  | register_time       |
 | --- | ---- | ------------ | ----------- | ----- | ---- | ------------------- |
@@ -727,7 +727,7 @@ SELECT uid, nick_name, register_time
 | 10  | 1010 | 牛客 10 号   | 25          | 0     | 算法 | 2020-01-02 11:00:00 |
 | 11  | 1011 | 666666       | 3000        | 6     | C++  | 2020-01-02 10:00:00 |
 
-试卷信息表 examination_info（exam_id 试卷 ID, tag 试卷类别, difficulty 试卷难度, duration 考试时长, release_time 发布时间）：
+Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
 | id  | exam_id | tag  | difficulty | duration | release_time        |
 | --- | ------- | ---- | ---------- | -------- | ------------------- |
@@ -735,7 +735,7 @@ SELECT uid, nick_name, register_time
 | 2   | 9002    | 算法 | hard       | 80       | 2020-01-01 10:00:00 |
 | 3   | 9003    | SQL  | medium     | 70       | 2020-01-01 10:00:00 |
 
-试卷作答记录表 `exam_record`（`uid` 用户 ID, `exam_id` 试卷 ID, `start_time` 开始作答时间, `submit_time` 交卷时间, `score` 得分）：
+Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score |
 | --- | ---- | ------- | ------------------- | ------------------- | ----- |
@@ -755,9 +755,9 @@ SELECT uid, nick_name, register_time
 
 ![](../images/shared/D2B491866B85826119EE3474F10D3636.png)
 
-找到求职方向为算法工程师，且注册当天就完成了算法类试卷的人，按参加过的所有考试最高得分排名。排名榜很长，我们将采用分页展示，每页 3 条，现在需要你取出第 3 页（页码从 1 开始）的人的信息。
+Find users with a career path in Algorithms who completed an Algorithms exam on their registration date. Rank them by their highest score across all exams. The ranking is paginated with three rows per page; return the third page (page numbering starts at 1).
 
-由示例数据结果输出如下：
+The sample output is:
 
 | uid  | level | register_time       | max_score |
 | ---- | ----- | ------------------- | --------- |
@@ -765,9 +765,9 @@ SELECT uid, nick_name, register_time
 | 1003 | 0     | 2020-01-01 10:00:00 | 75        |
 | 1004 | 0     | 2020-01-01 11:00:00 | 60        |
 
-解释：除了 1011 其他用户的求职方向都为算法工程师；算法类试卷有 9001 和 9002，11 个用户注册当天都完成了算法类试卷；计算他们的所有考试最大分时，只有 1002 和 1008 完成了两次考试，其他人只完成了一场考试，1002 两场考试最高分为 81，1008 最高分为 99。
+Explanation: Every user except 1011 has a career path in Algorithms. Exams 9001 and 9002 are Algorithms exams, and 11 users completed an Algorithms exam on their registration date. When finding each user's maximum score across all exams, only users 1002 and 1008 completed two exams; the others completed one. User 1002's highest score is 81, and user 1008's is 99.
 
-按最高分排名如下：
+Ranking by highest score:
 
 | uid  | level | register_time       | max_score |
 | ---- | ----- | ------------------- | --------- |
@@ -782,15 +782,15 @@ SELECT uid, nick_name, register_time
 | 1004 | 0     | 2020-01-01 11:00:00 | 60        |
 | 1006 | 0     | 2020-01-02 11:00:00 | 20        |
 
-每页 3 条，第三页也就是第 7~9 条，返回 1010、1003、1004 的行记录即可。
+With three rows per page, the third page contains rows 7–9. Return the rows for users 1010, 1003, and 1004.
 
-**思路**：
+**Approach:**
 
-1. 每页三条，即需要取出第三页的人的信息，要用到`limit`
+1. Use `LIMIT` to retrieve the third page, with three rows per page.
 
-2. 统计求职方向为算法工程师且注册当天就完成了算法类试卷的人的**信息和每次记录的得分**，先求满足条件的用户，后用 left join 做连接查找信息和每次记录的得分
+2. Find users with a career path in Algorithms who completed an Algorithms exam on their registration date. Then join their user information and exam scores.
 
-**答案**：
+**Answer:**
 
 ```sql
 SELECT t1.uid,
@@ -810,11 +810,11 @@ ORDER BY max_score DESC
 LIMIT 6,3
 ```
 
-## 文本转换函数
+## String Functions
 
-### 修复串列了的记录
+### Fix Records with Misaligned Columns
 
-**描述**：现有试卷信息表 `examination_info`（`exam_id` 试卷 ID, `tag` 试卷类别, `difficulty` 试卷难度, `duration` 考试时长, `release_time` 发布时间）：
+**Description:** Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
 | id  | exam_id | tag            | difficulty | duration | release_time        |
 | --- | ------- | -------------- | ---------- | -------- | ------------------- |
@@ -823,63 +823,63 @@ LIMIT 6,3
 | 3   | 9003    | SQL            | medium     | 70       | 2021-01-01 10:00:00 |
 | 4   | 9004    | 算法,medium,80 |            | 0        | 2021-01-01 10:00:00 |
 
-录题同学有一次手误将部分记录的试题类别 tag、难度、时长同时录入到了 tag 字段，请帮忙找出这些录错了的记录，并拆分后按正确的列类型输出。
+Some exam data was entered incorrectly: the category (`tag`), difficulty, and duration were all entered into the `tag` column. Find these rows, split the values, and return them under the correct columns.
 
-由示例数据结果输出如下：
+The sample output is:
 
 | exam_id | tag  | difficulty | duration |
 | ------- | ---- | ---------- | -------- |
 | 9004    | 算法 | medium     | 80       |
 
-**思路**：
+**Approach:**
 
-先来学习下本题要用到的函数
+First, review the function used in this problem.
 
-`SUBSTRING_INDEX` 函数用于提取字符串中指定分隔符的部分。它接受三个参数：原始字符串、分隔符和指定要返回的部分的数量。
+`SUBSTRING_INDEX` extracts part of a string using a specified delimiter. It takes three arguments: the source string, the delimiter, and the number of parts to return.
 
-以下是 `SUBSTRING_INDEX` 函数的语法：
+Syntax:
 
 ```sql
 SUBSTRING_INDEX(str, delimiter, count)
 ```
 
-- `str`：要进行分割的原始字符串。
-- `delimiter`：用作分割的字符串或字符。
-- `count`：指定要返回的部分的数量。
-  - 如果 `count` 大于 0，则返回从左边开始的前 `count` 个部分（以分隔符为界）。
-  - 如果 `count` 小于 0，则返回从右边开始的前 `count` 个部分（以分隔符为界），即从右侧向左计数。
+- `str`: the source string to split.
+- `delimiter`: the string or character used as the separator.
+- `count`: the number of parts to return.
+  - If `count` is positive, return the first `count` parts from the left, separated by the delimiter.
+  - If `count` is negative, return the last `count` parts from the right.
 
-下面是一些示例，演示了 `SUBSTRING_INDEX` 函数的使用：
+Examples of `SUBSTRING_INDEX`:
 
-1. 提取字符串中的第一个部分：
+1. Extract the first part of a string:
 
    ```sql
    SELECT SUBSTRING_INDEX('apple,banana,cherry', ',', 1);
-   -- 输出结果：'apple'
+   -- Output: 'apple'
    ```
 
-2. 提取字符串中的最后一个部分：
+2. Extract the last part of a string:
 
    ```sql
    SELECT SUBSTRING_INDEX('apple,banana,cherry', ',', -1);
-   -- 输出结果：'cherry'
+   -- Output: 'cherry'
    ```
 
-3. 提取字符串中的前两个部分：
+3. Extract the first two parts of a string:
 
    ```sql
    SELECT SUBSTRING_INDEX('apple,banana,cherry', ',', 2);
-   -- 输出结果：'apple,banana'
+   -- Output: 'apple,banana'
    ```
 
-4. 提取字符串中的最后两个部分：
+4. Extract the last two parts of a string:
 
    ```sql
    SELECT SUBSTRING_INDEX('apple,banana,cherry', ',', -2);
-   -- 输出结果：'banana,cherry'
+   -- Output: 'banana,cherry'
    ```
 
-**答案**：
+**Answer:**
 
 ```sql
 SELECT
@@ -893,9 +893,9 @@ WHERE
 	difficulty = ''
 ```
 
-### 对过长的昵称截取处理
+### Truncate Overly Long Nicknames
 
-**描述**：现有用户信息表 `user_info`（`uid` 用户 ID，`nick_name` 昵称, `achievement` 成就值, `level` 等级, `job` 职业方向, `register_time` 注册时间）：
+**Description:** Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
 | id  | uid  | nick_name              | achievement | level | job  | register_time       |
 | --- | ---- | ---------------------- | ----------- | ----- | ---- | ------------------- |
@@ -906,38 +906,38 @@ WHERE
 | 5   | 1005 | 牛客 5678901234 号     | 4000        | 7     | 算法 | 2020-01-11 10:00:00 |
 | 6   | 1006 | 牛客 67890123456789 号 | 25          | 0     | 算法 | 2020-01-02 11:00:00 |
 
-有的用户的昵称特别长，在一些展示场景会导致样式混乱，因此需要将特别长的昵称转换一下再输出，请输出字符数大于 10 的用户信息，对于字符数大于 13 的用户输出前 10 个字符然后加上三个点号：『...』。
+Some users have long nicknames that can disrupt the layout. Return users whose nicknames have more than 10 characters. For nicknames longer than 13 characters, return the first 10 characters followed by an ellipsis (`...`).
 
-由示例数据结果输出如下：
+The sample output is:
 
 | uid  | nick_name          |
 | ---- | ------------------ |
 | 1005 | 牛客 5678901234 号 |
 | 1006 | 牛客 67890123...   |
 
-解释：字符数大于 10 的用户有 1005 和 1006，长度分别为 13、17；因此需要对 1006 的昵称截断输出。
+Explanation: Users 1005 and 1006 have nicknames longer than 10 characters, with lengths of 13 and 17. Therefore, user 1006's nickname is truncated.
 
-**思路**：
+**Approach:**
 
-这题涉及到字符的计算，要计算字符串的字符数（即字符串的长度），可以使用 `LENGTH` 函数或 `CHAR_LENGTH` 函数。这两个函数的区别在于对待多字节字符的方式。
+This problem requires counting characters in a string. Use `LENGTH` or `CHAR_LENGTH`; they differ in how they handle multibyte characters.
 
-1. `LENGTH` 函数：它返回给定字符串的字节数。对于包含多字节字符的字符串，每个字符都会被当作一个字节来计算。
+1. `LENGTH` returns the number of bytes in a string. A multibyte character contributes multiple bytes.
 
-示例：
-
-```sql
-SELECT LENGTH('你好'); -- 输出结果：6，因为 '你好' 中的每个汉字每个占3个字节
-```
-
-1. `CHAR_LENGTH` 函数：它返回给定字符串的字符数。对于包含多字节字符的字符串，每个字符会被当作一个字符来计算。
-
-示例：
+Example:
 
 ```sql
-SELECT CHAR_LENGTH('你好'); -- 输出结果：2，因为 '你好' 中有两个字符，即两个汉字
+SELECT LENGTH('你好'); -- Returns 6 because each Chinese character uses 3 bytes.
 ```
 
-**答案**：
+2. `CHAR_LENGTH` returns the number of characters in a string. Each multibyte character counts as one character.
+
+Example:
+
+```sql
+SELECT CHAR_LENGTH('你好'); -- Returns 2 because the string has two characters.
+```
+
+**Answer:**
 
 ```sql
 SELECT
@@ -955,11 +955,11 @@ GROUP BY
 	uid;
 ```
 
-### 大小写混乱时的筛选统计（较难）
+### Filter and Count Tags with Inconsistent Capitalization (Advanced)
 
-**描述**：
+**Description:**
 
-现有试卷信息表 `examination_info`（`exam_id` 试卷 ID, `tag` 试卷类别, `difficulty` 试卷难度, `duration` 考试时长, `release_time` 发布时间）：
+Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
 | id  | exam_id | tag  | difficulty | duration | release_time        |
 | --- | ------- | ---- | ---------- | -------- | ------------------- |
@@ -974,7 +974,7 @@ GROUP BY
 | 9   | 9009    | SQL  | medium     | 70       | 2021-01-01 10:00:00 |
 | 10  | 9010    | SQL  | medium     | 70       | 2021-01-01 10:00:00 |
 
-试卷作答信息表 `exam_record`（`uid` 用户 ID, `exam_id` 试卷 ID, `start_time` 开始作答时间, `submit_time` 交卷时间, `score` 得分）：
+Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score  |
 | --- | ---- | ------- | ------------------- | ------------------- | ------ |
@@ -992,17 +992,17 @@ GROUP BY
 | 12  | 1010 | 9001    | 2020-01-02 12:11:01 | (NULL)              | (NULL) |
 | 13  | 1010 | 9001    | 2020-02-02 12:01:01 | 2020-01-02 10:31:01 | 89     |
 
-试卷的类别 tag 可能出现大小写混乱的情况，请先筛选出试卷作答数小于 3 的类别 tag，统计将其转换为大写后对应的原本试卷作答数。
+Exam category tags may have inconsistent capitalization. First find tags with fewer than three attempts, then report the original attempt count for each tag after converting it to uppercase.
 
-如果转换后 tag 并没有发生变化，不输出该条结果。
+Do not return tags that are unchanged by the conversion.
 
-由示例数据结果输出如下：
+The sample output is:
 
 | tag | answer_cnt |
 | --- | ---------- |
 | C++ | 6          |
 
-解释：被作答过的试卷有 9001、9002、9003、9004，他们的 tag 和被作答次数如下：
+Explanation: Exams 9001, 9002, 9003, and 9004 have attempts. Their tags and attempt counts are:
 
 | exam_id | tag  | answer_cnt |
 | ------- | ---- | ---------- |
@@ -1011,21 +1011,21 @@ GROUP BY
 | 9003    | c++  | 2          |
 | 9004    | sql  | 2          |
 
-作答次数小于 3 的 tag 有 c++和 sql，而转为大写后只有 C++本来就有作答数，于是输出 c++转化大写后的作答次数为 6。
+The tags with fewer than three attempts are `c++` and `sql`. After conversion to uppercase, only `C++` has an existing count, so the result reports six attempts for `c++` after conversion.
 
-**思路**：
+**Approach:**
 
-首先，这题有点混乱，9004 根据示例数据查出来只有 1 次，这里显示有 2 次。
+The example is inconsistent: exam 9004 appears only once in the sample data, but the explanation reports two attempts.
 
-先看一下大小写转换函数：
+String case-conversion functions:
 
-1.`UPPER(s)`或`UCASE(s)`函数可以将字符串 s 中的字母字符全部转换成大写字母；
+1. `UPPER(s)` or `UCASE(s)` converts letters in string `s` to uppercase.
 
-2.`LOWER(s)`或者`LCASE(s)`函数可以将字符串 s 中的字母字符全部转换成小写字母。
+2. `LOWER(s)` or `LCASE(s)` converts letters in string `s` to lowercase.
 
-难点在于相同表做连接要查询不同的值
+The challenge is joining a table to itself to compare different values.
 
-**答案**：
+**Answer:**
 
 ```sql
 WITH a AS
@@ -1037,7 +1037,7 @@ WITH a AS
 SELECT a.tag,
        b.answer_cnt
 FROM a
-INNER JOIN a AS b ON UPPER(a.tag)= b.tag #a小写 b大写
+INNER JOIN a AS b ON UPPER(a.tag)= b.tag # a is lowercase; b is uppercase
 AND a.tag != b.tag
 WHERE a.answer_cnt < 3;
 ```

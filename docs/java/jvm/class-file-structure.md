@@ -129,7 +129,7 @@ The two bytes after the constant pool contain the access flags. They identify cl
 
 Class access and modifier flags:
 
-![Class access and modifier flags](./images/shared/-.png)
+![Class access flag values](./images/shared/basic-data-type-default-values.png)
 
 Suppose we define an `Employee` class:
 

@@ -1,226 +1,222 @@
 ---
-title: 缓存基础常见面试题总结
-description: 深入讲解缓存的核心思想、本地缓存与分布式缓存的区别、多级缓存架构设计。涵盖Caffeine、Redis等主流缓存方案，以及缓存一致性的解决方案。适合Java开发者学习缓存架构设计。
-category: 数据库
+title: "Cache Fundamentals: Common Interview Questions"
+description: Learn core caching concepts, local and distributed caches, multilevel cache design, and cache consistency. Covers Caffeine, Redis, and common cache failure modes for Java developers.
+category: Database
 tag:
   - Redis
 head:
   - - meta
     - name: keywords
-      content: 缓存,本地缓存,分布式缓存,多级缓存,Caffeine,Redis,缓存一致性,系统设计,Java缓存,Guava Cache
+      content: Caching,Local Cache,Distributed Cache,Multilevel Cache,Caffeine,Redis,Cache Consistency,System Design,Java Cache,Guava Cache
 ---
 
-> **相关面试题** ：
+> **Related interview questions:**
 >
-> - 为什么要用缓存？
-> - 本地缓存应该怎么做？
-> - 为什么要有分布式缓存?/为什么不直接用本地缓存?
-> - 为什么要用多级缓存？
-> - 多级缓存适合哪些业务场景？
+> - Why use a cache?
+> - How should you implement a local cache?
+> - Why use a distributed cache instead of a local cache?
+> - Why use a multilevel cache?
+> - Which workloads suit multilevel caching?
 
-## 缓存的基本思想
+## The Basic Idea Behind Caching
 
-很多同学只知道缓存可以提高系统性能以及减少请求 **响应时间**（Response Time），但是，不太清楚缓存的本质思想是什么。
+Many developers know that caching improves system performance and reduces **response time**, but may not know the core idea behind it.
 
-缓存的基本思想其实很简单，就是我们非常熟悉的 **空间换时间** 这一经典性能优化策略的运用。所谓空间换时间，也就是用更多的存储空间来存储一些可能重复使用或计算的数据，从而减少数据的重新获取或计算的时间。
+Caching is a classic performance optimization that trades **space for time**. It stores data that may be reused or recomputed in additional storage, reducing the time needed to fetch or calculate it again.
 
-说到空间换时间，除了缓存之外，你还能想到什么其他的例子吗？这里再列举几个常见的：
+Other examples of this trade-off include:
 
-- **索引**：索引是一种将数据库表中的某些列或字段按照一定的排序规则组织成一个单独的数据结构，虽然需要额外占用空间，但可以大大提高检索效率，降低数据排序成本。
-- **数据库表字段冗余**：将经常联合查询的数据冗余存储在同一张表中，以减少对多张表的关联查询，进而提升查询性能，减轻数据库压力。
-- **CDN（内容分发网络）**：将静态资源分发到多个边缘节点以实现就近访问，进而加快静态资源的访问速度，减轻源站服务器以及带宽的负担。
+- **Indexes:** An index stores selected table columns in a separate data structure. It takes extra space but speeds up lookups and reduces sorting work.
+- **Database denormalization:** Frequently joined data can be stored together to reduce joins and improve query performance.
+- **CDNs (Content Delivery Networks):** Static resources are distributed to edge nodes for faster access and to reduce load and bandwidth use at the origin server.
 
-编程需要要学会归纳总结，将自己学到的东西串联起来！假如你在面试的时候，能聊到这些，面试官一定会对你有一个好印象的。
+These examples illustrate a useful design principle: connect related ideas when reasoning about performance. Explaining these trade-offs in an interview can also help show how you think about system design.
 
-不要把缓存想的太高大上，虽然，它的确对系统的性能提升的性价比非常高。当我们在学习并应用缓存的时候，你会发现缓存的思想实际在 CPU、操作系统或者其他很多地方都被大量用到。
+Caching is a common and cost-effective way to improve performance, but the idea is not limited to application systems. CPUs, operating systems, and many other systems use it.
 
-比如，**CPU Cache** 缓存的是内存数据，用于解决 **CPU** 处理速度与内存访问速度不匹配的问题；内存缓存的是硬盘数据，用于解决硬盘 **I/O** 速度过慢的问题。
+For example, **CPU caches** store copies of memory data to bridge the speed gap between the CPU and main memory. Main memory also caches disk data to reduce the cost of slow disk **I/O**.
 
-![CPU 缓存模型示意图](../images/shared/cpu-cache.png)
+![CPU cache model](../images/shared/cpu-cache.png)
 
-再比如，为了提高虚拟地址到物理地址的转换速度，操作系统在页表方案基础之上引入了 **转址旁路缓存**（Translation Lookaside Buffer，**TLB**，也被称为快表）。
+Similarly, operating systems use a **Translation Lookaside Buffer (TLB)**, also called a page-translation cache, to speed up virtual-to-physical address translation on top of page tables.
 
-![加入 TLB 之后的地址翻译](../images/shared/physical-virtual-address-translation-mmu.png)
+![Address translation with a TLB](../images/shared/physical-virtual-address-translation-mmu.png)
 
-拿日常使用的浏览器来说，它会对访问过的图片或静态文件进行缓存（浏览器缓存），这样下次访问相同页面时加载速度会显著提升。
+Web browsers cache previously accessed images and static files, so revisiting a page can load faster.
 
 ![](../images/shared/chrome-clear-cache.png)
 
-我们日常开发中用到的缓存，其中的数据通常存储于 **RAM**（内存）中，访问速度极快。为了避免内存数据在重启或宕机后丢失，许多缓存中间件（如 **Redis**）提供了磁盘持久化机制。相比于关系型数据库（如 **MySQL**），缓存的访问速度和并发支持量都要高出几个数量级。在数据库之上增加一层缓存，是保护底层存储、提升系统吞吐量的核心手段。
+Application caches usually store data in **RAM**, which provides fast access. To protect against data loss after a restart or crash, many cache systems, including **Redis**, support disk persistence. Compared with relational databases such as **MySQL**, caches can provide much higher throughput and lower access latency. Adding a cache above a database can protect the underlying storage and increase system throughput.
 
-## 缓存的分类
+## Types of Caches
 
-接下来，我们来看看日常开发中用到的缓存通常被分为哪几种。
+Application caches generally fall into a few categories.
 
-### 本地缓存
+### Local Cache
 
-#### 什么是本地缓存?
+#### What Is a Local Cache?
 
-这个实际在很多项目中用的蛮多，特别是单体架构的时候。数据量不大，并且没有分布式要求的话，使用本地缓存还是可以的。
+Local caches are common, especially in monolithic applications. They can work well when the data set is small and the application does not need to share cached data across a distributed deployment.
 
-本地缓存位于应用内部，其最大的优点是应用存在于同一个进程内部，请求本地缓存的速度非常快，不存在额外的网络开销。
+A local cache runs inside the application process. Because requests do not incur network overhead, access is very fast.
 
-常见的单体架构图如下，我们使用 **Nginx** 来做**负载均衡**，部署两个相同的应用到服务器，两个服务使用同一个数据库，并且使用的是本地缓存。
+The diagram below shows a common setup: Nginx load balances requests across two instances of the same application. Both instances use the same database and maintain their own local caches.
 
-![本地缓存示意图](../images/shared/local-cache.png)
+![Local cache architecture](../images/shared/local-cache.png)
 
-**注意：** 在集群模式下使用本地缓存，必须考虑**负载均衡策略**。如果 Nginx 使用默认的**轮询（Round-Robin）**，同一个用户的请求会随机落在不同机器，导致本地缓存命中率极低。解决方案如下：
+**Note:** A clustered deployment that uses local caches must account for its load-balancing strategy. With Nginx's default **round-robin** strategy, a user's requests may reach different instances, reducing the local cache hit rate. Options include:
 
-1. **网关层**：使用一致性哈希或 Sticky Session，保证同一用户的请求固定打到同一台机器。
-2. **应用层**：仅将本地缓存用于**“全局几乎不变”**的数据（如配置字典），而非用户维度数据。
+1. **At the gateway:** Use consistent hashing or sticky sessions to route a user's requests to the same instance.
+2. **In the application:** Use local caches only for data that is nearly global and immutable, such as configuration dictionaries, rather than user-specific data.
 
-#### 本地缓存的方案有哪些？
+#### Local Cache Options
 
-**1、JDK 自带的 `HashMap` 和 `ConcurrentHashMap` 了。**
+**1. JDK `HashMap` and `ConcurrentHashMap`**
 
-`ConcurrentHashMap` 可以看作是线程安全版本的 `HashMap` ，两者都是存放 key/value 形式的键值对。但是，大部分场景来说不会使用这两者当做缓存，因为只提供了缓存的功能，并没有提供其他诸如过期时间之类的功能。一个稍微完善一点的缓存框架至少要提供：**过期时间**、**淘汰机制**、**命中率统计**这三点。
+`ConcurrentHashMap` is a thread-safe alternative to `HashMap`. Both store key-value pairs, but neither is commonly used as a complete cache because they lack features such as expiration. A practical cache library should provide at least **expiration**, **eviction**, and **hit-rate statistics**.
 
-**2、 `Ehcache` 、 `Guava Cache` 、 `Spring Cache` 这三者是使用的比较多的本地缓存框架。**
+**2. `Ehcache`, `Guava Cache`, and `Spring Cache`**
 
-- `Ehcache` 的话相比于其他两者更加重量。不过，相比于 `Guava Cache` 、 `Spring Cache` 来说， `Ehcache` 支持可以嵌入到 hibernate 和 mybatis 作为多级缓存，并且可以将缓存的数据持久化到本地磁盘中、同时也提供了集群方案（比较鸡肋，可忽略）。
-- `Guava Cache` 和 `Spring Cache` 两者的话比较像。`Guava` 相比于 `Spring Cache` 的话使用的更多一点，它提供了 API 非常方便我们使用，同时也提供了设置缓存有效时间等功能。它的内部实现也比较干净，很多地方都和 `ConcurrentHashMap` 的思想有异曲同工之妙。
-- 使用 `Spring Cache` 的注解实现缓存的话，代码会看着很干净和优雅，但是很容易出现问题比如缓存穿透、内存溢出。
+- `Ehcache` is heavier than the other options. It can be integrated with Hibernate and MyBatis for multilevel caching, persist cached data to local disk, and provide clustering support. Its clustering feature is often not useful in practice.
+- `Guava Cache` and `Spring Cache` have similar use cases. `Guava Cache` is widely used and provides a convenient API, including expiration settings. Its implementation shares some design ideas with `ConcurrentHashMap`.
+- `Spring Cache` annotations keep application code concise, but do not by themselves prevent cache penetration or memory exhaustion.
 
-**3、后起之秀 Caffeine。**
+**3. Caffeine**
 
-相比于 `Guava` 来说 `Caffeine` 在各个方面比如性能都要更加优秀，一般建议使用其来替代 `Guava` 。并且， `Guava` 和 `Caffeine` 的使用方式很像！
+`Caffeine` generally offers better performance than `Guava Cache` and is often a good replacement. Its API is similar to Guava's.
 
-使用 `Caffeine` 创建本地缓存的代码示例，用到了建造者模式：
+The following example uses the builder pattern to create a Caffeine local cache:
 
 ```java
-// 使用 Caffeine 创建本地缓存示例
+// Create a local cache with Caffeine
 Cache<String, String> cache = Caffeine.newBuilder()
-        // 设置写入后 60 天过期
+        // Expire 60 days after each write
         .expireAfterWrite(60, TimeUnit.DAYS)
-        // 初始容量
+        // Initial capacity
         .initialCapacity(100)
-        // 最大条数限制
+        // Maximum number of entries
         .maximumSize(500)
-        // 开启统计功能
+        // Enable statistics
         .recordStats()
         .build();
 ```
 
-#### 本地缓存有什么痛点？
+#### Limitations of Local Caches
 
-本地的缓存的优势非常明显：**低依赖**、**轻量**、**简单**、**成本低**。
+Local caches are **lightweight**, **simple**, **inexpensive**, and have few external dependencies.
 
-但是，本地缓存存在下面这些缺陷：
+They also have limitations:
 
-- **本地缓存应用耦合，对分布式架构支持不友好**，比如同一个相同的服务部署在多台机器上的时候，各个服务之间的缓存是无法共享的，因为本地缓存只在当前机器上有。
-- **本地缓存容量受服务部署所在的机器限制明显。** 如果当前系统服务所耗费的内存多，那么本地缓存可用的容量就很少。
+- **They are not shared across application instances.** If the same service runs on multiple machines, each instance has its own cache.
+- **Their capacity is limited by the host's available memory.** If the service uses a lot of memory, less remains available for the cache.
 
-### 分布式缓存
+### Distributed Cache
 
-#### 什么是分布式缓存？
+#### What Is a Distributed Cache?
 
-我们可以把分布式缓存（Distributed Cache） 看作是一种内存数据库的服务，它的最终作用就是提供缓存数据的服务。
+A distributed cache is an independent in-memory data service that provides cached data to applications.
 
-分布式缓存脱离于应用独立存在，多个应用可直接的共同使用同一个分布式缓存服务。
+It runs outside the application, so multiple applications can use the same cache service.
 
-如下图所示，就是一个简单的使用分布式缓存的架构图。我们使用 Nginx 来做负载均衡，部署两个相同的应用到服务器，两个服务使用同一个数据库和缓存。
+The diagram below shows a basic setup: Nginx load balances requests across two application instances, which share a database and a cache.
 
-![分布式缓存](../images/shared/distributed-cache.png)
+![Distributed cache](../images/shared/distributed-cache.png)
 
-使用分布式缓存之后，缓存服务可以部署在一台单独的服务器上，即使同一个相同的服务部署在多台机器上，也是使用的同一份缓存。 并且，单独的分布式缓存服务的性能、容量和提供的功能都要更加强大。
+With a distributed cache, the cache service can run on a separate server. Multiple instances of the same service can share the same cache. A dedicated distributed cache can also provide greater capacity and more features.
 
-**软件系统设计中没有银弹，往往任何技术的引入都像是把双刃剑。** 你使用的方式得当，就能为系统带来很大的收益。否则，只是费了精力不讨好。
+**There is no silver bullet in system design; introducing any technology involves trade-offs.** Used well, a distributed cache can provide substantial benefits. Used poorly, it adds cost and operational work.
 
-简单来说，为系统引入分布式缓存之后往往会带来下面这些问题：
+Adding a distributed cache can introduce these costs:
 
-- **系统复杂性增加** ：引入缓存之后，你要维护缓存和数据库的数据一致性、维护热点缓存、保证缓存服务的高可用等等。
-- **系统开发成本往往会增加** ：引入缓存意味着系统需要一个单独的缓存服务，这是需要花费相应的成本的，并且这个成本还是很贵的，毕竟耗费的是宝贵的内存。
+- **More system complexity:** You must maintain cache/database consistency, manage hot keys, and keep the cache highly available.
+- **Higher development and infrastructure costs:** The cache requires a separate service and consumes memory, which is often expensive.
 
-#### 分布式缓存的方案有哪些？
+#### Distributed Cache Options
 
-分布式缓存的话，比较老牌同时也是使用的比较多的还是 **Memcached** 和 **Redis**。不过，现在基本没有看过还有项目使用 **Memcached** 来做缓存，都是直接用 **Redis**。
+**Memcached** and **Redis** are established distributed caches. Memcached was widely used before Redis became popular, but Redis is now more common in many projects.
 
-Memcached 是分布式缓存最开始兴起的那会，比较常用的。后来，随着 Redis 的发展，大家慢慢都转而使用更加强大的 Redis 了。
+Some companies have also released high-performance distributed key-value stores similar to Redis. Tencent's open-source [Tendis](https://github.com/Tencent/Tendis), for example, uses [RocksDB](https://github.com/facebook/rocksdb) as its storage engine and supports the Redis protocol and Redis 4.0 data models. Tencent published an overview comparing the systems: [Redis vs. Tendis: An Overview of the Hybrid Hot/Cold Storage Architecture](https://mp.weixin.qq.com/s/MeYkfOIdnU6LYlsGb24KjQ).
 
-有一些大厂也开源了类似于 Redis 的分布式高性能 KV 存储数据库，例如，腾讯开源的 [Tendis](https://github.com/Tencent/Tendis) 。Tendis 基于知名开源项目 [RocksDB](https://github.com/facebook/rocksdb) 作为存储引擎 ，100% 兼容 Redis 协议和 Redis4.0 所有数据模型。关于 Redis 和 Tendis 的对比，腾讯官方曾经发过一篇文章：[Redis vs Tendis：冷热混合存储版架构揭秘](https://mp.weixin.qq.com/s/MeYkfOIdnU6LYlsGb24KjQ) ，可以简单参考一下。
+However, Tendis's open-source edition appears to receive little maintenance, has limited adoption, and is not a recommended choice for a distributed cache.
 
-不过，从 Tendis 这个项目的 Github 提交记录可以看出，Tendis 开源版几乎已经没有被维护更新了，加上其关注度并不高，使用的公司也比较少。因此，不建议你使用 Tendis 来实现分布式缓存。
+Two other open-source distributed caches positioned as Redis alternatives are:
 
-目前，比较业界认可的 Redis 替代品还是下面这两个开源分布式缓存（都是通过碰瓷 Redis 火的）：
+- [Dragonfly](https://github.com/dragonflydb/dragonfly): An in-memory data store built for modern application workloads. It supports the Redis and Memcached APIs and aims to offer high performance.
+- [KeyDB](https://github.com/Snapchat/KeyDB): A high-performance Redis fork focused on multithreading, memory efficiency, and throughput.
 
-- [Dragonfly](https://github.com/dragonflydb/dragonfly)：一种针对现代应用程序负荷需求而构建的内存数据库，完全兼容 Redis 和 Memcached 的 API，迁移时无需修改任何代码，号称全世界最快的内存数据库。
-- [KeyDB](https://github.com/Snapchat/KeyDB)： Redis 的一个高性能分支，专注于多线程、内存效率和高吞吐量。
+Redis remains a strong default for distributed caching because of its production track record, ecosystem, and extensive documentation.
 
-不过，个人还是建议分布式缓存首选 Redis ，毕竟经过这么多年的生产考验，生态也这么优秀，资料也很全面。
+### Multilevel Cache
 
-### 多级缓存
+#### What Is a Multilevel Cache, and Why Use One?
 
-#### 什么是多级缓存？为什么要用？
+This section focuses on the common combination of a **local cache and a distributed cache**.
 
-我们这里只来简单聊聊 **本地缓存 + 分布式缓存** 的多级缓存方案，这也是最常用的多级缓存实现方式。
+Why use a local cache if a distributed cache is already available? Local cache access is faster because it does not require a network request.
 
-这个时候估计有很多小伙伴就会问了：**既然用了分布式缓存，为什么还要用本地缓存呢？** 。
+In most cases, multilevel caching is unnecessary. It increases operational complexity, including the work required to keep the L1 and L2 caches consistent, and often provides little benefit for typical workloads.
 
-本地缓存和分布式缓存虽然都属于缓存，但本地缓存的访问速度要远大于分布式缓存，这是因为访问本地缓存不存在额外的网络开销，我们在上面也提到了。
+Multilevel caching may suit workloads where:
 
-不过，一般情况下，我们也是不建议使用多级缓存的，这会增加维护负担（比如你需要保证一级缓存和二级缓存的数据一致性）。而且，其实际带来的提升效果对于绝大部分业务场景来说其实并不是很大。
+- Cached data changes infrequently and remains relatively stable.
+- Read volume is extremely high, such as during a flash sale.
 
-这里简单总结一下适合多级缓存的两种业务场景：
+In a multilevel cache, **L1** is usually local memory (such as Caffeine), while **L2** is a distributed cache (such as Redis).
 
-- 缓存的数据不会频繁修改，比较稳定；
-- 数据访问量特别大比如秒杀场景。
+![Multilevel cache](../images/shared/multilevel-cache.png)
 
-多级缓存方案中，第一级缓存（L1）使用本地内存（比如 Caffeine)），第二级缓存（L2）使用分布式缓存（比如 Redis）。
+On a read, check L1 first. If it misses, check L2. If L2 hits, populate the current instance's L1 before returning the result; otherwise, later L1 misses would repeatedly access L2. If L2 also misses, query the database and populate both caches. This reduces reads against L2.
 
-![多级缓存](../images/shared/multilevel-cache.png)
+Open-source multilevel cache options include:
 
-读取缓存数据的时候，我们先从 L1 中读取，命中后直接返回；L1 未命中时再去 L2 读取。如果 L2 命中，应先将数据回填到当前实例的 L1，再返回结果，避免后续每次 L1 未命中都重复访问 L2。如果 L2 也没有此数据，再去数据库查询，查询成功后将数据写入到 L1 和 L2 中。这样可以减少 L2 的读次数，降低 L2 的压力。
+- [J2Cache](https://gitee.com/ld/J2Cache): A two-level Java cache based on local memory and Redis.
+- [JetCache](https://github.com/alibaba/jetcache): An Alibaba open-source caching framework with multilevel caching and automatic refresh for distributed caches, among other features.
 
-多级缓存开源实现推荐：
+#### How to Maintain Consistency Across Cache Levels
 
-- [J2Cache](https://gitee.com/ld/J2Cache)：基于本地内存和 Redis 的两级 Java 缓存框架。
-- [JetCache](https://github.com/alibaba/jetcache)：阿里开源的缓存框架，支持多级缓存、分布式缓存自动刷新、 TTL 等功能。
+Multilevel caches usually aim for eventual consistency. Handle changes between **the database and Redis**, and between **Redis and each instance's L1 cache**. Deleting a Redis key alone does not invalidate local copies in other JVMs. A short L1 TTL limits how long stale data may be served, but does not replace invalidation notifications.
 
-#### 多级缓存一致性如何保证？
+An invalidation mechanism must account for both delivery scope and recovery from failures:
 
-多级缓存通常按最终一致性设计，需要分别处理 **DB → Redis** 和 **Redis → 各实例 L1** 的变化。只删除 Redis 中的 key，其他 JVM 中的本地副本仍可能被读取；给 L1 设置较短 TTL 能缩短陈旧读取时间，但不能代替失效通知。
+- **Redis Pub/Sub** can broadcast invalidation messages, but it provides at-most-once delivery. Messages published while a subscriber is disconnected are not replayed after reconnect. Use an L1 TTL and clear affected local caches when the notification connection is lost or its state is uncertain. See [Redis Pub/Sub delivery semantics](https://redis.io/docs/latest/develop/pubsub/#delivery-semantics).
+- **Redis Streams or a message queue** can retain messages and support retries, but must be configured to reach every instance. Consumers in the same Stream consumer group share messages, so putting every JVM in one group will not notify every L1 cache. Each instance can maintain an independent offset or use its own consumer group. Also account for restarts, backlog, and message retention. See [XREADGROUP consumer group semantics](https://redis.io/docs/latest/commands/xreadgroup/).
+- **Redis client-side caching (Client Tracking)** can notify clients when tracked Redis keys change, but it cannot detect database updates that have not yet reached Redis. Clients must also handle the ordering of invalidation messages and read responses to avoid placing a late stale response into L1 after invalidation. See the [Redis client-side caching reference](https://redis.io/docs/latest/develop/reference/client-side-caching/).
 
-通知机制要同时考虑送达范围和失败恢复：
+Zhengcaiyun Technology uses Canal with broadcast messages. The general flow is:
 
-- **Redis Pub/Sub** 可以广播失效通知，但采用至多一次投递语义，订阅断开时的消息不会在重连后补发。应配合 L1 TTL，并在通知连接断开或状态不可信时清理相关本地缓存。详见 [Redis Pub/Sub 投递语义](https://redis.io/docs/latest/develop/pubsub/#delivery-semantics)。
-- **Redis Stream 或消息队列** 可以保留消息、支持重试，但需要正确配置广播范围。例如，同一个 Stream 消费组内的多个消费者会分担消息，不能靠把所有 JVM 放进同一个组来通知每份 L1。可以让各实例维护独立消费进度或使用独立消费组，同时处理重启、积压与消息保留期限。详见 [XREADGROUP 的消费组语义](https://redis.io/docs/latest/commands/xreadgroup/)。
-- **Redis 客户端缓存跟踪（Client Tracking）** 可以在所跟踪的 Redis key 变化时通知客户端失效，但它无法感知尚未同步到 Redis 的数据库更新。客户端还要正确处理失效通知与读取响应的先后顺序，避免“先收到失效通知，后把迟到的旧响应放进 L1”。详见 [Redis 客户端缓存参考](https://redis.io/docs/latest/develop/reference/client-side-caching/)。
+1. Update the database.
+2. Listen for Canal change events and trigger cache updates.
+3. Update Redis. Since the Redis cluster shares the cache data, update the shared cache.
+4. Invalidate or update local caches by broadcasting a message to all application instances through a message queue.
 
-政采云技术的方案是 Canal + 广播消息，这里简单介绍一下：
+More detail: [Design and Implementation of a Distributed Multilevel Cache](https://juejin.cn/post/7225634879152570405).
 
-1. DB 修改数据：首先在数据库中进行数据修改。
-2. 通过监听 Canal 消息，触发缓存的更新：使用 Canal 监听数据库的变更操作，当检测到数据变化时，触发缓存更新。
-3. 同步 Redis 缓存：对于 Redis 缓存，因为集群中只共享一份数据，所以直接同步缓存即可。
-4. 同步本地缓存：由于本地缓存分布在不同的 JVM 实例中，需要借助广播消息队列（MQ）机制，将更新通知广播到各个业务实例，从而同步本地缓存。
+The flow must also define message ordering and cache population behavior. If L1 is invalidated while Redis still contains stale data, a read may repopulate L1 with that stale value. If messages carry full data, a delayed older version may overwrite a newer one. Version checks, invalidation retries, and TTLs can help address these cases; receiving a notification does not mean every cache level is already synchronized.
 
-详细介绍：[分布式多级缓存系统设计与实战](https://juejin.cn/post/7225634879152570405)
+#### What If Writers Delete Cache Entries but Readers Only Wait for Scheduled Refreshes?
 
-这类流程也需要约定消息顺序和回填行为：如果 L1 先失效、Redis 中仍是旧值，读请求可能再次把旧值加载到 L1；若消息携带完整数据进行更新，还要防止迟到的旧版本覆盖新版本。可以围绕业务版本号校验、失效重试和 TTL 设计补偿，不能把“收到通知”等同于各层已完成同步。
+With **Cache Aside**, deleting a cache entry and loading from the source on a cache miss are complementary parts of the read/write contract. If readers only check the cache, deletion can make data temporarily unavailable to the application.
 
-#### 写端删除缓存，读端只等待定时刷新，会有什么问题？
+For example, an activity display service stores configuration in L1 and Redis, while a background job refreshes Redis periodically. After an administrator changes the configuration, the old Redis value is deleted. If the display service returns an empty result when both cache levels miss, the page may report that the activity does not exist until the next refresh, even though the database still contains it.
 
-采用 Cache Aside 时，**删除缓存与未命中后回源是配套的读写约定**。如果读端只读取缓存，删除就可能直接造成业务数据暂时不可用。
+Define what readers should do on a cache miss:
 
-例如，活动展示服务使用 L1 和 Redis 保存活动配置，由后台任务定时刷新 Redis。管理端修改配置后删除 Redis 中的旧值，但展示服务在两层缓存都未命中时直接返回空结果。这样，即使数据库里始终有这条配置，从 L1 过期到下一次刷新完成之间，页面仍可能显示“活动不存在”。
+- **Allow a source read:** When both L1 and Redis miss, the display service or a shared data service queries the database and rebuilds the cache. Coalesce concurrent loads for the same hot key to avoid a burst of database requests.
+- **Disallow a source read:** Design reliable refreshes, retries after refresh failures, and fallback behavior for missing entries. If stale configuration is acceptable, retain an old copy with a maximum staleness period. Waiting for the next scheduled refresh after deletion is not a complete strategy.
 
-这种情况要先补齐缓存缺失时的处理方式：
+Also distinguish a **cache miss**, a **database-confirmed absence**, and a **cache access failure**. Write a short-lived negative cache entry only after the database confirms that the data does not exist. Treating a Redis timeout or cache miss as proof of absence can turn a temporary failure into a cached result.
 
-- **允许按需回源**：L1、Redis 都未命中时，由展示服务或统一的数据服务查询 DB 并重建缓存；对同一个热点 key 合并并发加载请求，避免大量请求同时回源。
-- **明确禁止请求回源**：就要设计可靠的主动刷新、刷新失败重试和缺失时的降级行为。如果业务允许短暂使用旧配置，可以保留有最大陈旧期限的旧副本；不能把“删除后等下一轮任务”当成完整方案。
+Applications that share a cache should use consistent instances, logical databases, key prefixes, serialization formats, and update ownership. To investigate recurring failures, correlate error times with scheduled jobs, TTLs, deletion events, and cache population logs. See [Three Common Cache Read/Write Strategies](./3-commonly-used-cache-read-and-write-strategies.md) for read/write ordering and failure recovery.
 
-还要区分**缓存未命中、数据库确认不存在、缓存访问异常**。只有数据库查询确认不存在时，才适合写入短 TTL 的空值标记；把 Redis 超时或缓存缺失直接当成“业务数据不存在”，可能把临时故障继续缓存下去。
+## Related Data Structure Guides
 
-多个应用共享缓存时，应统一实例、逻辑库、key 前缀、序列化格式和更新职责。排查周期性故障时，可以把报错时间与定时任务、TTL、删除和回填日志对齐。具体读写顺序及失败补偿见 [3 种常用的缓存读写策略详解](./3-commonly-used-cache-read-and-write-strategies.md)。
+Cache questions often involve specific data structures:
 
-## 数据结构延伸阅读
+- [Bloom Filter](../../cs-basics/data-structure/bloom-filter.md): Learn about cache penetration, false-positive rates, and the difficulty of deletion.
+- [LRU Cache: Interview Questions](../../cs-basics/data-structure/lru-cache.md): Learn about local cache eviction, `LinkedHashMap`, and page replacement.
+- [Hash Tables: Interview Questions](../../cs-basics/data-structure/hash-table.md): Learn about cache key mapping, hash collisions, and resizing.
 
-缓存问题经常会追到具体数据结构：
+## References
 
-- [布隆过滤器详解](../../cs-basics/data-structure/bloom-filter.md)：理解缓存穿透、误判率和删除困难。
-- [LRU 缓存面试题总结](../../cs-basics/data-structure/lru-cache.md)：理解本地缓存淘汰策略、`LinkedHashMap` 写法和页面置换思想。
-- [哈希表面试题总结](../../cs-basics/data-structure/hash-table.md)：理解缓存 key 映射、哈希冲突和扩容。
-
-## 参考
-
-- 缓存那些事：https://tech.meituan.com/2017/03/17/cache-about.html
-- 解析分布式系统的缓存设计：https://segmentfault.com/a/1190000041689802
+- [All About Caching](https://tech.meituan.com/2017/03/17/cache-about.html)
+- [Cache Design in Distributed Systems](https://segmentfault.com/a/1190000041689802)

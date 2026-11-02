@@ -15,6 +15,6 @@ head:
 
 **《设计模式》PDF 电子书内容概览**：
 
-![《设计模式》PDF文档概览](images/shared/design-pattern-pdf.png)
+![《设计模式》PDF文档概览](./images/shared/design-pattern-pdf.png)
 
 <!-- @include: @article-footer.snippet.md -->

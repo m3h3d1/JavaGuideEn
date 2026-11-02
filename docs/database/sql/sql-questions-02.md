@@ -1,36 +1,36 @@
 ---
-title: SQL常见面试题总结（2）
-description: SQL常见面试题总结第二篇，详解INSERT、UPDATE、DELETE等DML数据操作语句，包括批量插入、从其他表导入、带更新的插入等实战技巧。
-category: 数据库
+title: SQL Interview Questions (2)
+description: The second set of SQL interview questions covers DML statements such as INSERT, UPDATE, and DELETE, including bulk inserts, importing rows from other tables, and upserts.
+category: Database
 tag:
-  - 数据库基础
+  - Database Fundamentals
   - SQL
 head:
   - - meta
     - name: keywords
-      content: SQL面试题,INSERT插入,UPDATE更新,DELETE删除,批量插入,REPLACE INTO,数据操作
+      content: SQL interview questions, INSERT, UPDATE, DELETE, bulk insert, REPLACE INTO, data manipulation
 ---
 
-> 题目来源于：[牛客题霸 - SQL 进阶挑战](https://www.nowcoder.com/exam/oj?page=1&tab=SQL%E7%AF%87&topicId=240)
+> Questions are from [Nowcoder - Advanced SQL Challenges](https://www.nowcoder.com/exam/oj?page=1&tab=SQL%E7%AF%87&topicId=240).
 
-## 增删改操作
+## INSERT, UPDATE, and DELETE
 
-SQL 插入记录的方式汇总：
+Common ways to insert rows in SQL:
 
-- **普通插入（全字段）** ：`INSERT INTO table_name VALUES (value1, value2, ...)`
-- **普通插入（限定字段）** ：`INSERT INTO table_name (column1, column2, ...) VALUES (value1, value2, ...)`
-- **多条一次性插入** ：`INSERT INTO table_name (column1, column2, ...) VALUES (value1_1, value1_2, ...), (value2_1, value2_2, ...), ...`
-- **从另一个表导入** ：`INSERT INTO table_name SELECT * FROM table_name2 [WHERE key=value]`
-- **带更新的插入** ：`REPLACE INTO table_name VALUES (value1, value2, ...)`（注意这种原理是检测到主键或唯一性索引键重复就删除原记录后重新插入）
+- **Insert all columns:** `INSERT INTO table_name VALUES (value1, value2, ...)`
+- **Insert selected columns:** `INSERT INTO table_name (column1, column2, ...) VALUES (value1, value2, ...)`
+- **Insert multiple rows:** `INSERT INTO table_name (column1, column2, ...) VALUES (value1_1, value1_2, ...), (value2_1, value2_2, ...), ...`
+- **Import from another table:** `INSERT INTO table_name SELECT * FROM table_name2 [WHERE key=value]`
+- **Insert with replacement:** `REPLACE INTO table_name VALUES (value1, value2, ...)` (If a primary key or unique index conflicts, this deletes the existing row and inserts a new one.)
 
-### 插入记录（一）
+### Insert Rows (1)
 
-**描述**：牛客后台会记录每个用户的试卷作答记录到 `exam_record` 表，现在有两个用户的作答记录详情如下：
+**Description:** Nowcoder stores each user's exam attempts in the `exam_record` table. Two users have the following records:
 
-- 用户 1001 在 2021 年 9 月 1 日晚上 10 点 11 分 12 秒开始作答试卷 9001，并在 50 分钟后提交，得了 90 分；
-- 用户 1002 在 2021 年 9 月 4 日上午 7 点 1 分 2 秒开始作答试卷 9002，并在 10 分钟后退出了平台。
+- User 1001 started exam 9001 at 10:11:12 PM on September 1, 2021, submitted it 50 minutes later, and scored 90.
+- User 1002 started exam 9002 at 7:01:02 AM on September 4, 2021, then left the platform 10 minutes later.
 
-试卷作答记录表`exam_record`中，表已建好，其结构如下，请用一条语句将这两条记录插入表中。
+The `exam_record` table already exists with the schema below. Insert both records with one statement.
 
 | Filed       | Type       | Null | Key | Extra          | Default | Comment  |
 | ----------- | ---------- | ---- | --- | -------------- | ------- | -------- |
@@ -41,20 +41,20 @@ SQL 插入记录的方式汇总：
 | submit_time | datetime   | YES  |     |                | (NULL)  | 提交时间 |
 | score       | tinyint(4) | YES  |     |                | (NULL)  | 得分     |
 
-**答案**：
+**Answer:**
 
 ```sql
-// 存在自增主键，无需手动赋值
+-- The primary key is auto-incremented, so it does not need a value.
 INSERT INTO exam_record (uid, exam_id, start_time, submit_time, score) VALUES
 (1001, 9001, '2021-09-01 22:11:12', '2021-09-01 23:01:12', 90),
 (1002, 9002, '2021-09-04 07:01:02', NULL, NULL);
 ```
 
-### 插入记录（二）
+### Insert Rows (2)
 
-**描述**：现有一张试卷作答记录表`exam_record`，结构如下表，其中包含多年来的用户作答试卷记录，由于数据越来越多，维护难度越来越大，需要对数据表内容做精简，历史数据做备份。
+**Description:** The `exam_record` table contains users' exam attempts from many years. As the data grows and becomes harder to maintain, reduce the table size and back up historical records.
 
-表`exam_record`：
+`exam_record`:
 
 | Filed       | Type       | Null | Key | Extra          | Default | Comment  |
 | ----------- | ---------- | ---- | --- | -------------- | ------- | -------- |
@@ -65,9 +65,9 @@ INSERT INTO exam_record (uid, exam_id, start_time, submit_time, score) VALUES
 | submit_time | datetime   | YES  |     |                | (NULL)  | 提交时间 |
 | score       | tinyint(4) | YES  |     |                | (NULL)  | 得分     |
 
-我们已经创建了一张新表`exam_record_before_2021`用来备份 2021 年之前的试题作答记录，结构和`exam_record`表一致，请将 2021 年之前的已完成了的试题作答纪录导入到该表。
+The `exam_record_before_2021` table has been created to back up completed exam attempts from before 2021. It has the same schema as `exam_record`. Import the completed attempts from before 2021 into it.
 
-**答案**：
+**Answer:**
 
 ```sql
 INSERT INTO exam_record_before_2021 (uid, exam_id, start_time, submit_time, score)
@@ -76,11 +76,11 @@ FROM exam_record
 WHERE YEAR(submit_time) < 2021;
 ```
 
-### 插入记录（三）
+### Insert Rows (3)
 
-**描述**：现在有一套 ID 为 9003 的高难度 SQL 试卷，时长为一个半小时，请你将 2021-01-01 00:00:00 作为发布时间插入到试题信息表`examination_info`，不管该 ID 试卷是否存在，都要插入成功，请尝试插入它。
+**Description:** A difficult SQL exam with ID 9003 lasts 90 minutes. Insert it into `examination_info` with a release time of `2021-01-01 00:00:00`. The insert must succeed whether or not an exam with this ID already exists.
 
-试题信息表`examination_info`：
+`examination_info`:
 
 | Filed        | Type        | Null | Key | Extra          | Default | Comment      |
 | ------------ | ----------- | ---- | --- | -------------- | ------- | ------------ |
@@ -91,16 +91,16 @@ WHERE YEAR(submit_time) < 2021;
 | duration     | int(11)     | NO   |     |                | (NULL)  | 时长(分钟数) |
 | release_time | datetime    | YES  |     |                | (NULL)  | 发布时间     |
 
-**答案**：
+**Answer:**
 
 ```sql
 REPLACE INTO examination_info VALUES
  (NULL, 9003, "SQL", "hard", 90, "2021-01-01 00:00:00");
 ```
 
-### 更新记录（一）
+### Update Rows (1)
 
-**描述**：现在有一张试卷信息表 `examination_info`, 表结构如下图所示：
+**Description:** The `examination_info` table has the following schema:
 
 | Filed        | Type     | Null | Key | Extra          | Default | Comment  |
 | ------------ | -------- | ---- | --- | -------------- | ------- | -------- |
@@ -111,28 +111,28 @@ REPLACE INTO examination_info VALUES
 | duration     | int(11)  | NO   |     |                | (NULL)  | 时长     |
 | release_time | datetime | YES  |     |                | (NULL)  | 发布时间 |
 
-请把**examination_info**表中`tag`为`PYTHON`的`tag`字段全部修改为`Python`。
+Change every `tag` value of `PYTHON` to `Python` in `examination_info`.
 
-**思路**：这题有两种解题思路，最容易想到的是直接`update + where`来指定条件更新，第二种就是根据要修改的字段进行查找替换
+**Approach:** There are two ways to solve this. The most direct is to update rows with `UPDATE` and `WHERE`. Another option is to use `REPLACE` on the column being changed.
 
-**答案一**：
+**Answer 1:**
 
 ```sql
 UPDATE examination_info SET tag = 'Python' WHERE tag='PYTHON'
 ```
 
-**答案二**：
+**Answer 2:**
 
 ```sql
 UPDATE examination_info
 SET tag = REPLACE(tag,'PYTHON','Python')
 
-# REPLACE (目标字段，"查找内容","替换内容")
+# REPLACE (target_column, "search_value", "replacement_value")
 ```
 
-### 更新记录（二）
+### Update Rows (2)
 
-**描述**：现有一张试卷作答记录表 exam_record，其中包含多年来的用户作答试卷记录，结构如下表：作答记录表 `exam_record`： **`submit_time`** 为 完成时间 （注意这句话）
+**Description:** The `exam_record` table contains users' exam attempts from many years. Its schema is shown below. In this table, **`submit_time`** is the completion time.
 
 | Filed       | Type       | Null | Key | Extra          | Default | Comment  |
 | ----------- | ---------- | ---- | --- | -------------- | ------- | -------- |
@@ -143,21 +143,21 @@ SET tag = REPLACE(tag,'PYTHON','Python')
 | submit_time | datetime   | YES  |     |                | (NULL)  | 提交时间 |
 | score       | tinyint(4) | YES  |     |                | (NULL)  | 得分     |
 
-**题目要求**：请把 `exam_record` 表中 2021 年 9 月 1 日==之前==开始作答的==未完成==记录全部改为被动完成，即：将完成时间改为'2099-01-01 00:00:00'，分数改为 0。
+**Task:** Mark all incomplete attempts in `exam_record` that started **before** September 1, 2021 as completed. Set the completion time to `2099-01-01 00:00:00` and the score to 0.
 
-**思路**：注意题干中的关键字(已经高亮) `" xxx 时间 "`之前这个条件， 那么这里马上就要想到要进行时间的比较 可以直接 `xxx_time < "2021-09-01 00:00:00",` 也可以采用`date()`函数来进行比较；第二个条件就是 `"未完成"`， 即完成时间为 NULL，也就是题目中的提交时间 ----- `submit_time 为 NULL`。
+**Approach:** The key condition is that the attempt started before a given time. Compare timestamps directly, such as `xxx_time < '2021-09-01 00:00:00'`, or use the `DATE()` function. The second condition is that the attempt is incomplete, meaning its completion time is `NULL`; here, `submit_time` is `NULL`.
 
-**答案**：
+**Answer:**
 
 ```sql
 UPDATE exam_record SET submit_time = '2099-01-01 00:00:00', score = 0 WHERE DATE(start_time) < "2021-09-01" AND submit_time IS null
 ```
 
-### 删除记录（一）
+### Delete Rows (1)
 
-**描述**：现有一张试卷作答记录表 `exam_record`，其中包含多年来的用户作答试卷记录，结构如下表：
+**Description:** The `exam_record` table contains users' exam attempts from many years. Its schema is shown below.
 
-作答记录表`exam_record：` **`start_time`** 是试卷开始时间`submit_time` 是交卷，即结束时间。
+In `exam_record`, **`start_time`** is when the attempt began, and **`submit_time`** is when it was submitted, or completed.
 
 | Filed       | Type       | Null | Key | Extra          | Default | Comment  |
 | ----------- | ---------- | ---- | --- | -------------- | ------- | -------- |
@@ -168,40 +168,41 @@ UPDATE exam_record SET submit_time = '2099-01-01 00:00:00', score = 0 WHERE DATE
 | submit_time | datetime   | YES  |     |                | (NULL)  | 提交时间 |
 | score       | tinyint(4) | YES  |     |                | (NULL)  | 得分     |
 
-**要求**：请删除`exam_record`表中作答时间小于 5 分钟整且分数不及格（及格线为 60 分）的记录；
+**Task:** Delete rows from `exam_record` for attempts lasting less than five minutes with a failing score (below 60).
 
-**思路**：这一题虽然是练习删除，仔细看确是考察对时间函数的用法，这里提及的分钟数比较，常用的函数有 **`TIMEDIFF`**和**`TIMESTAMPDIFF`** ，两者用法稍有区别，后者更为灵活，这都是看个人习惯。
+**Approach:** Although this is a deletion exercise, it tests date and time functions. Common functions for comparing elapsed minutes are **`TIMEDIFF`** and **`TIMESTAMPDIFF`**. They differ slightly; `TIMESTAMPDIFF` is more flexible. Choose the one you prefer.
 
-1.　 `TIMEDIFF`：两个时间之间的差值
+1. `TIMEDIFF`: the difference between two times.
 
 ```sql
 TIMEDIFF(time1, time2)
 ```
 
-两者参数都是必须的，都是一个时间或者日期时间表达式。如果指定的参数不合法或者是 NULL，那么函数将返回 NULL。
+Both arguments are required and must be time or datetime expressions. If either argument is invalid or `NULL`, the function returns `NULL`.
 
-对于这题而言，可以用在 minute 函数里面，因为 TIMEDIFF 计算出来的是时间的差值，在外面套一个 MINUTE 函数，计算出来的就是分钟数。
+For this problem, pass the `TIMEDIFF` result to `MINUTE`. `TIMEDIFF` returns a time difference, and `MINUTE` extracts its minute component.
 
-2. `TIMESTAMPDIFF`：用于计算两个日期的时间差
+2. `TIMESTAMPDIFF`: calculates the difference between two dates or times.
 
 ```sql
 TIMESTAMPDIFF(unit,datetime_expr1,datetime_expr2)
-# 参数说明
-#unit: 日期比较返回的时间差单位，常用可选值如下:
-SECOND：秒
-MINUTE：分钟
-HOUR：小时
-DAY：天
-WEEK：星期
-MONTH：月
-QUARTER：季度
-YEAR：年
-# TIMESTAMPDIFF函数返回datetime_expr2 - datetime_expr1的结果（人话： 后面的 - 前面的  即2-1），其中datetime_expr1和datetime_expr2可以是DATE或DATETIME类型值（人话：可以是“2023-01-01”， 也可以是“2023-01-01- 00:00:00”）
+-- Parameters:
+-- unit: the unit returned for the difference. Common values:
+SECOND: seconds
+MINUTE: minutes
+HOUR: hours
+DAY: days
+WEEK: weeks
+MONTH: months
+QUARTER: quarters
+YEAR: years
+-- TIMESTAMPDIFF returns datetime_expr2 - datetime_expr1 (the second value minus the first).
+-- Both expressions can be DATE or DATETIME values, such as '2023-01-01' or '2023-01-01 00:00:00'.
 ```
 
-这题需要进行分钟的比较，那么就是 TIMESTAMPDIFF(MINUTE, 开始时间， 结束时间) < 5
+For this problem, compare minutes with `TIMESTAMPDIFF(MINUTE, start_time, submit_time) < 5`.
 
-**答案**：
+**Answer:**
 
 ```sql
 DELETE FROM exam_record WHERE MINUTE (TIMEDIFF(submit_time , start_time)) < 5 AND score < 60
@@ -211,11 +212,11 @@ DELETE FROM exam_record WHERE MINUTE (TIMEDIFF(submit_time , start_time)) < 5 AN
 DELETE FROM exam_record WHERE TIMESTAMPDIFF(MINUTE, start_time, submit_time) < 5 AND score < 60
 ```
 
-### 删除记录（二）
+### Delete Rows (2)
 
-**描述**：现有一张试卷作答记录表`exam_record`，其中包含多年来的用户作答试卷记录，结构如下表：
+**Description:** The `exam_record` table contains users' exam attempts from many years. Its schema is shown below.
 
-作答记录表`exam_record`：`start_time` 是试卷开始时间，`submit_time` 是交卷时间，即结束时间，如果未完成的话，则为空。
+In `exam_record`, `start_time` is when the attempt began, and `submit_time` is when it was submitted, or completed. It is `NULL` if the attempt is incomplete.
 
 | Filed       | Type       | Null | Key | Extra          | Default | Comment  |
 | ----------- | ---------- | :--: | --- | -------------- | ------- | -------- |
@@ -226,24 +227,24 @@ DELETE FROM exam_record WHERE TIMESTAMPDIFF(MINUTE, start_time, submit_time) < 5
 | submit_time | datetime   | YES  |     |                | (NULL)  | 提交时间 |
 | score       | tinyint(4) | YES  |     |                | (NULL)  | 分数     |
 
-**要求**：请删除`exam_record`表中未完成作答==或==作答时间小于 5 分钟整的记录中，开始作答时间最早的 3 条记录。
+**Task:** Among attempts that are incomplete **or** lasted less than five minutes, delete the three rows with the earliest start times.
 
-**思路**：这题比较简单，但是要注意题干中给出的信息，结束时间，如果未完成的话，则为空，这个其实就是一个条件
+**Approach:** Note that the task states the completion time is empty when an attempt is incomplete. This gives one condition.
 
-还有一个条件就是小于 5 分钟，跟上题类似，但是这里是**或**，即两个条件满足一个就行；另外就是稍微考察到了排序和 limit 的用法。
+The other condition is a duration under five minutes, as in the previous problem. Here the conditions are joined by **OR**, so either one is sufficient. The query also uses sorting and `LIMIT`.
 
-**答案**：
+**Answer:**
 
 ```sql
 DELETE FROM exam_record WHERE submit_time IS null OR TIMESTAMPDIFF(MINUTE, start_time, submit_time) < 5
 ORDER BY start_time
 LIMIT 3
-# 默认就是asc， desc是降序排列
+# Ascending order is the default; DESC sorts in descending order.
 ```
 
-### 删除记录（三）
+### Delete Rows (3)
 
-**描述**：现有一张试卷作答记录表 exam_record，其中包含多年来的用户作答试卷记录，结构如下表：
+**Description:** The `exam_record` table contains users' exam attempts from many years. Its schema is shown below.
 
 | Filed       | Type       | Null | Key | Extra          | Default | Comment  |
 | ----------- | ---------- | :--: | --- | -------------- | ------- | -------- |
@@ -254,47 +255,33 @@ LIMIT 3
 | submit_time | datetime   | YES  |     |                | (NULL)  | 提交时间 |
 | score       | tinyint(4) | YES  |     |                | (NULL)  | 分数     |
 
-**要求**：请删除`exam_record`表中所有记录，==并重置自增主键==
+**Task:** Delete all rows from `exam_record` **and reset the auto-incrementing primary key**.
 
-**思路**：这题考察对三种删除语句的区别，注意高亮部分，要求重置主键；
+**Approach:** This problem tests the differences among three deletion statements. Note that the task requires resetting the primary key.
 
-- `DROP`: 清空表，删除表结构，不可逆
-- `TRUNCATE`: 格式化表，不删除表结构，不可逆
-- `DELETE`：删除数据，可逆
+- `DROP`: removes the table and its schema; this cannot be undone.
+- `TRUNCATE`: removes all rows but keeps the table schema; this cannot be undone.
+- `DELETE`: removes rows and can be rolled back.
 
-这里选用`TRUNCATE`的原因是：TRUNCATE 只能作用于表；`TRUNCATE`会清空表中的所有行，但表结构及其约束、索引等保持不变；`TRUNCATE`会重置表的自增值；使用`TRUNCATE`后会使表和索引所占用的空间会恢复到初始大小。
+Use `TRUNCATE` here because it operates on a table, removes all rows while preserving the schema, constraints, and indexes, and resets the auto-increment value. It also returns the space used by the table and its indexes to their initial size.
 
-这题也可以采用`DELETE`来做，但是在删除后，还需要手动`ALTER`表结构来设置主键初始值；
+You can also use `DELETE`, but then you must use `ALTER` to reset the primary key's initial value.
 
-同理也可以采用`DROP`来做，直接删除整张表，包括表结构，然后再新建表即可。
+You could also use `DROP` to remove the entire table, including its schema, and then create it again.
 
-**答案**：
+**Answer:**
 
 ```sql
 TRUNCATE  exam_record;
 ```
 
-## 表与索引操作
+## Tables and Indexes
 
-### 创建一张新表
+### Create a Table
 
-**描述**：现有一张用户信息表，其中包含多年来在平台注册过的用户信息，随着牛客平台的不断壮大，用户量飞速增长，为了高效地为高活跃用户提供服务，现需要将部分用户拆分出一张新表。
+**Description:** A user information table contains details of users who have registered over the years. As the Nowcoder platform and its user base grow, move some users into a new table to serve highly active users efficiently.
 
-原来的用户信息表：
-
-| Filed         | Type        | Null | Key | Default           | Extra          | Comment  |
-| ------------- | ----------- | ---- | --- | ----------------- | -------------- | -------- |
-| id            | int(11)     | NO   | PRI | (NULL)            | auto_increment | 自增 ID  |
-| uid           | int(11)     | NO   | UNI | (NULL)            |                | 用户 ID  |
-| nick_name     | varchar(64) | YES  |     | (NULL)            |                | 昵称     |
-| achievement   | int(11)     | YES  |     | 0                 |                | 成就值   |
-| level         | int(11)     | YES  |     | (NULL)            |                | 用户等级 |
-| job           | varchar(32) | YES  |     | (NULL)            |                | 职业方向 |
-| register_time | datetime    | YES  |     | CURRENT_TIMESTAMP |                | 注册时间 |
-
-作为数据分析师，请**创建一张优质用户信息表 user_info_vip**，表结构和用户信息表一致。
-
-你应该返回的输出如下表格所示，请写出建表语句将表格中所有限制和说明记录到表里。
+The original user information table:
 
 | Filed         | Type        | Null | Key | Default           | Extra          | Comment  |
 | ------------- | ----------- | ---- | --- | ----------------- | -------------- | -------- |
@@ -306,15 +293,29 @@ TRUNCATE  exam_record;
 | job           | varchar(32) | YES  |     | (NULL)            |                | 职业方向 |
 | register_time | datetime    | YES  |     | CURRENT_TIMESTAMP |                | 注册时间 |
 
-**思路**：如果这题给出了旧表的名称，可直接`create table 新表 as select * from 旧表;` 但是这题并没有给出旧表名称，所以需要自己创建，注意默认值和键的创建即可，比较简单。（注意：如果是在牛客网上面执行，请注意 comment 中要和题目中的 comment 保持一致，包括大小写，否则不通过，还有字符也要设置）
+As a data analyst, **create a premium user information table named `user_info_vip`** with the same schema as the user information table.
 
-答案：
+The expected output is shown below. Write a `CREATE TABLE` statement that includes all constraints and comments shown in the table.
+
+| Filed         | Type        | Null | Key | Default           | Extra          | Comment  |
+| ------------- | ----------- | ---- | --- | ----------------- | -------------- | -------- |
+| id            | int(11)     | NO   | PRI | (NULL)            | auto_increment | 自增 ID  |
+| uid           | int(11)     | NO   | UNI | (NULL)            |                | 用户 ID  |
+| nick_name     | varchar(64) | YES  |     | (NULL)            |                | 昵称     |
+| achievement   | int(11)     | YES  |     | 0                 |                | 成就值   |
+| level         | int(11)     | YES  |     | (NULL)            |                | 用户等级 |
+| job           | varchar(32) | YES  |     | (NULL)            |                | 职业方向 |
+| register_time | datetime    | YES  |     | CURRENT_TIMESTAMP |                | 注册时间 |
+
+**Approach:** If the old table's name were given, you could use `CREATE TABLE new_table AS SELECT * FROM old_table;`. Since it is not provided, create the table yourself and specify its defaults and keys. (On Nowcoder, the comments must match the problem exactly, including capitalization, and the character set must also be set.)
+
+Answer:
 
 ```sql
 CREATE TABLE IF NOT EXISTS user_info_vip(
-    id INT(11) PRIMARY KEY AUTO_INCREMENT COMMENT'自增ID',
+    id INT(11) PRIMARY KEY AUTO_INCREMENT COMMENT '自增ID',
     uid INT(11) UNIQUE NOT NULL COMMENT '用户ID',
-    nick_name VARCHAR(64) COMMENT'昵称',
+    nick_name VARCHAR(64) COMMENT '昵称',
     achievement INT(11) DEFAULT 0 COMMENT '成就值',
     `level` INT(11) COMMENT '用户等级',
     job VARCHAR(32) COMMENT '职业方向',
@@ -322,11 +323,11 @@ CREATE TABLE IF NOT EXISTS user_info_vip(
 )CHARACTER SET UTF8
 ```
 
-### 修改表
+### Alter a Table
 
-**描述**： 现有一张用户信息表`user_info`，其中包含多年来在平台注册过的用户信息。
+**Description:** The `user_info` table contains details of users who have registered over the years.
 
-**用户信息表 `user_info`：**
+**User information table `user_info`:**
 
 | Filed         | Type        | Null | Key | Default           | Extra          | Comment  |
 | ------------- | ----------- | ---- | --- | ----------------- | -------------- | -------- |
@@ -338,22 +339,22 @@ CREATE TABLE IF NOT EXISTS user_info_vip(
 | job           | varchar(32) | YES  |     | (NULL)            |                | 职业方向 |
 | register_time | datetime    | YES  |     | CURRENT_TIMESTAMP |                | 注册时间 |
 
-**要求：**请在用户信息表，字段 `level` 的后面增加一列最多可保存 15 个汉字的字段 `school`；并将表中 `job` 列名改为 `profession`，同时 `varchar` 字段长度变为 10；`achievement` 的默认值设置为 0。
+**Task:** Add a `school` column after `level` that can store up to 15 characters. Rename `job` to `profession` and change its `VARCHAR` length to 10. Set the default value of `achievement` to 0.
 
-**思路**：首先做这题之前，需要了解 ALTER 语句的基本用法：
+**Approach:** First, review the basic syntax of `ALTER TABLE`:
 
-- 添加一列：`ALTER TABLE 表名 ADD COLUMN 列名 类型 【first | after 字段名】;`（first ： 在某列之前添加，after 反之）
-- 修改列的类型或约束：`ALTER TABLE 表名 MODIFY COLUMN 列名 新类型 【新约束】;`
-- 修改列名：`ALTER TABLE 表名 change COLUMN 旧列名 新列名 类型;`
-- 删除列：`ALTER TABLE 表名 drop COLUMN 列名;`
-- 修改表名：`ALTER TABLE 表名 rename 【to】 新表名;`
-- 将某一列放到第一列：`ALTER TABLE 表名 MODIFY COLUMN 列名 类型 first;`
+- Add a column: `ALTER TABLE table_name ADD COLUMN column_name type [FIRST | AFTER column_name];` (`FIRST` places it first; `AFTER` places it after the specified column.)
+- Change a column's type or constraints: `ALTER TABLE table_name MODIFY COLUMN column_name new_type [new_constraints];`
+- Rename a column: `ALTER TABLE table_name CHANGE COLUMN old_name new_name type;`
+- Drop a column: `ALTER TABLE table_name DROP COLUMN column_name;`
+- Rename a table: `ALTER TABLE table_name RENAME [TO] new_table_name;`
+- Move a column to the first position: `ALTER TABLE table_name MODIFY COLUMN column_name type FIRST;`
 
-`COLUMN` 关键字其实可以省略不写，这里基于规范还是罗列出来了。
+The `COLUMN` keyword is optional, but it is included here for clarity.
 
-在修改时，如果有多个修改项，可以写到一起，但要注意格式
+You can combine multiple changes in one statement, but take care with the syntax.
 
-**答案**：
+**Answer:**
 
 ```sql
 ALTER TABLE user_info
@@ -362,15 +363,15 @@ ALTER TABLE user_info
     MODIFY achievement INT(11) DEFAULT 0;
 ```
 
-### 删除表
+### Drop Tables
 
-**描述**：现有一张试卷作答记录表 `exam_record`，其中包含多年来的用户作答试卷记录。一般每年都会为 `exam_record` 表建立一张备份表 `exam_record_{YEAR}，{YEAR}` 为对应年份。
+**Description:** The `exam_record` table contains users' exam attempts from many years. A backup table named `exam_record_{YEAR}` is usually created for each year, where `{YEAR}` is the corresponding year.
 
-现在随着数据越来越多，存储告急，请你把很久前的（2011 到 2014 年）备份表都删掉（如果存在的话）。
+As the data grows, storage is running low. Drop the old backup tables from 2011 through 2014, if they exist.
 
-**思路**：这题很简单，直接删就行，如果嫌麻烦，可以将要删除的表用逗号隔开，写到一行；这里肯定会有小伙伴问：如果要删除很多张表呢？放心，如果要删除很多张表，可以写脚本来进行删除。
+**Approach:** Drop the tables directly. You can list multiple tables separated by commas in one statement. If there are many tables, you can write a script to drop them.
 
-**答案**：
+**Answer:**
 
 ```sql
 DROP TABLE IF EXISTS exam_record_2011;
@@ -379,13 +380,13 @@ DROP TABLE IF EXISTS exam_record_2013;
 DROP TABLE IF EXISTS exam_record_2014;
 ```
 
-### 创建索引
+### Create Indexes
 
-**描述**：现有一张试卷信息表 `examination_info`，其中包含各种类型试卷的信息。为了对表更方便快捷地查询，需要在 `examination_info` 表创建以下索引，
+**Description:** The `examination_info` table contains information about different exams. Create the following indexes to make queries more efficient.
 
-规则如下：在 `duration` 列创建普通索引 `idx_duration`、在 `exam_id` 列创建唯一性索引 `uniq_idx_exam_id`、在 `tag` 列创建全文索引 `full_idx_tag`。
+Create a regular index named `idx_duration` on `duration`, a unique index named `uniq_idx_exam_id` on `exam_id`, and a full-text index named `full_idx_tag` on `tag`.
 
-根据题意，将返回如下结果：
+The expected output is:
 
 | examination_info | 0   | PRIMARY          | 1   | id       | A   | 0   |     |     |     | BTREE    |
 | ---------------- | --- | ---------------- | --- | -------- | --- | --- | --- | --- | --- | -------- |
@@ -393,32 +394,32 @@ DROP TABLE IF EXISTS exam_record_2014;
 | examination_info | 1   | idx_duration     | 1   | duration | A   | 0   |     |     |     | BTREE    |
 | examination_info | 1   | full_idx_tag     | 1   | tag      |     | 0   |     |     | YES | FULLTEXT |
 
-备注：后台会通过 `SHOW INDEX FROM examination_info` 语句来对比输出结果
+Note: The platform compares the output of `SHOW INDEX FROM examination_info`.
 
-**思路**：做这题首先需要了解常见的索引类型：
+**Approach:** First, understand these common index types:
 
-- B-Tree 索引：B-Tree（或称为平衡树）索引是最常见和默认的索引类型。它适用于各种查询条件，可以快速定位到符合条件的数据。B-Tree 索引适用于普通的查找操作，支持等值查询、范围查询和排序。
-- 唯一索引：唯一索引与普通的 B-Tree 索引类似，不同之处在于它要求被索引的列的值是唯一的。这意味着在插入或更新数据时，MySQL 会验证索引列的唯一性。
-- 主键索引：主键索引是一种特殊的唯一索引，它用于唯一标识表中的每一行数据。每个表只能有一个主键索引，它可以帮助提高数据的访问速度和数据完整性。
-- 全文索引：全文索引用于在文本数据中进行全文搜索。它支持在文本字段中进行关键字搜索，而不仅仅是简单的等值或范围查找。全文索引适用于需要进行全文搜索的应用场景。
+- **B-tree index:** The most common and default index type. It can quickly locate matching data and supports equality searches, range searches, and sorting.
+- **Unique index:** Similar to a regular B-tree index, but values in the indexed column must be unique. MySQL enforces this when rows are inserted or updated.
+- **Primary key index:** A special unique index that identifies each row. A table can have only one primary key, which helps improve data access and integrity.
+- **Full-text index:** Used for full-text searches in text data. It supports keyword searches rather than only equality or range searches.
 
 ```sql
--- 示例：
--- 添加B-Tree索引：
-	CREATE INDEX idx_name(索引名) ON 表名 (字段名);   -- idx_name为索引名，以下都是
--- 创建唯一索引：
-	CREATE UNIQUE INDEX idx_name ON 表名 (字段名);
--- 创建一个主键索引：
-	ALTER TABLE 表名 ADD PRIMARY KEY (字段名);
--- 创建一个全文索引
-	ALTER TABLE 表名 ADD FULLTEXT INDEX idx_name (字段名);
+-- Examples:
+-- Add a B-tree index:
+    CREATE INDEX idx_name ON table_name (column_name); -- idx_name is the index name used below.
+-- Create a unique index:
+    CREATE UNIQUE INDEX idx_name ON table_name (column_name);
+-- Create a primary key index:
+    ALTER TABLE table_name ADD PRIMARY KEY (column_name);
+-- Create a full-text index:
+    ALTER TABLE table_name ADD FULLTEXT INDEX idx_name (column_name);
 
--- 通过以上示例，可以看出create 和 alter 都可以添加索引
+-- Both CREATE and ALTER can add indexes.
 ```
 
-有了以上的基础知识之后，该题答案也就浮出水面了。
+With these basics, the solution is:
 
-**答案**：
+**Answer:**
 
 ```sql
 ALTER TABLE examination_info
@@ -427,25 +428,25 @@ ALTER TABLE examination_info
     ADD FULLTEXT INDEX full_idx_tag(tag);
 ```
 
-### 删除索引
+### Drop Indexes
 
-**描述**：请删除`examination_info`表上的唯一索引 uniq_idx_exam_id 和全文索引 full_idx_tag。
+**Description:** Drop the unique index `uniq_idx_exam_id` and the full-text index `full_idx_tag` from `examination_info`.
 
-**思路**：该题考察删除索引的基本语法：
+**Approach:** This problem tests the basic syntax for dropping indexes:
 
 ```sql
--- 使用 DROP INDEX 删除索引
-DROP INDEX idx_name ON 表名;
+-- Drop an index with DROP INDEX.
+DROP INDEX idx_name ON table_name;
 
--- 使用 ALTER TABLE 删除索引
+-- Drop an index with ALTER TABLE.
 ALTER TABLE employees DROP INDEX idx_email;
 ```
 
-这里需要注意的是：在 MySQL 中，一次删除多个索引的操作是不支持的。每次删除索引时，只能指定一个索引名称进行删除。
+Note that MySQL does not support dropping multiple indexes in one operation. Specify one index name each time you drop an index.
 
-而且 **DROP** 命令需要慎用！！！
+Use the **DROP** command with care.
 
-**答案**：
+**Answer:**
 
 ```sql
 DROP INDEX uniq_idx_exam_id ON examination_info;

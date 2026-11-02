@@ -43,7 +43,7 @@ Overview of the guide's **Technical Interview Question Self-Test**:
 
 See the section in the [Java Interview Guide](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html).
 
-![Technical Interview Question Self-Test](images/shared/technical-interview-questions-self-test.png)
+![Technical Interview Question Self-Test](./images/shared/technical-interview-questions-self-test.png)
 
 ### Practice explaining your thoughts
 

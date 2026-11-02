@@ -90,7 +90,7 @@ The main purpose of symbolic reference verification is to ensure that resolution
 
 **Default values of primitive types** (image from section 7.3.3 of _Understanding the JVM_, 3rd edition):
 
-![Default values of primitive types](../images/shared/basic-data-type-default-values.png)
+![Default values of primitive types](../images/shared/-.png)
 
 ### Resolution
 

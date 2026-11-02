@@ -1,330 +1,330 @@
 ---
-title: MongoDB常见面试题总结（上）
-description: MongoDB常见面试题总结上篇，详解MongoDB基础概念、存储结构、数据类型、副本集高可用、分片集群水平扩展等核心知识点，助力后端面试准备。
-category: 数据库
+title: MongoDB Interview Questions (Part 1)
+description: The first set of MongoDB interview questions covers fundamentals, storage structure, data types, replica set availability, and horizontal scaling with sharded clusters.
+category: Database
 tag:
   - NoSQL
   - MongoDB
 head:
   - - meta
     - name: keywords
-      content: MongoDB面试题,文档数据库,BSON,副本集,分片集群,MongoDB索引,WiredTiger,聚合管道
+      content: MongoDB interview questions,document database,BSON,replica set,sharded cluster,MongoDB indexes,WiredTiger,aggregation pipeline
 ---
 
-> 少部分内容参考了 MongoDB 官方文档的描述，在此说明一下。
+> Some descriptions in this article are based on the MongoDB documentation.
 
-## MongoDB 基础
+## MongoDB Fundamentals
 
-### MongoDB 是什么？
+### What Is MongoDB?
 
-MongoDB 是一个基于 **分布式文件存储** 的开源 NoSQL 数据库系统，由 **C++** 编写的。MongoDB 提供了 **面向文档** 的存储方式，操作起来比较简单和容易，支持“**无模式**”的数据建模，可以存储比较复杂的数据类型，是一款非常流行的 **文档类型数据库** 。
+MongoDB is an open-source NoSQL database written in **C++** and based on **distributed file storage**. It uses a **document-oriented** storage model that is easy to work with, supports **schema-flexible** data modeling, and can store complex data types. It is a widely used **document database**.
 
-在高负载的情况下，MongoDB 天然支持水平扩展和高可用，可以很方便地添加更多的节点/实例，以保证服务性能和可用性。在许多场景下，MongoDB 可以用于代替传统的关系型数据库或键/值存储方式，皆在为 Web 应用提供可扩展的高可用高性能数据存储解决方案。
+Under heavy workloads, MongoDB supports horizontal scaling and high availability. You can add nodes or instances to maintain performance and availability. In some scenarios, MongoDB can replace a relational database or key-value store as a scalable, highly available, high-performance data store for web applications.
 
-### MongoDB 的存储结构是什么？
+### How Is MongoDB Data Organized?
 
-MongoDB 的存储结构区别于传统的关系型数据库，主要由如下三个单元组成：
+Unlike a traditional relational database, MongoDB organizes data into three main units:
 
-- **文档（Document）**：MongoDB 中最基本的单元，由 BSON 键值对（key-value）组成，类似于关系型数据库中的行（Row）。
-- **集合（Collection）**：一个集合可以包含多个文档，类似于关系型数据库中的表（Table）。
-- **数据库（Database）**：一个数据库中可以包含多个集合，可以在 MongoDB 中创建多个数据库，类似于关系型数据库中的数据库（Database）。
+- **Document**: The basic unit in MongoDB. A document consists of BSON key-value pairs and is similar to a row in a relational database.
+- **Collection**: A collection contains multiple documents and is similar to a table in a relational database.
+- **Database**: A database contains multiple collections. MongoDB can host multiple databases, similar to a relational database server.
 
-也就是说，MongoDB 将数据记录存储为文档 （更具体来说是[BSON 文档](https://www.mongodb.com/docs/manual/core/document/#std-label-bson-document-format)），这些文档在集合中聚集在一起，数据库中存储一个或多个文档集合。
+MongoDB stores records as documents (specifically, [BSON documents](https://www.mongodb.com/docs/manual/core/document/#std-label-bson-document-format)). Documents are grouped into collections, and a database stores one or more collections.
 
-**SQL 与 MongoDB 常见术语对比**：
+**Common SQL and MongoDB terminology:**
 
-| SQL                      | MongoDB                         |
-| ------------------------ | ------------------------------- |
-| 表（Table）              | 集合（Collection）              |
-| 行（Row）                | 文档（Document）                |
-| 列（Col）                | 字段（Field）                   |
-| 主键（Primary Key）      | 对象 ID（Objectid）             |
-| 索引（Index）            | 索引（Index）                   |
-| 嵌套表（Embedded Table） | 嵌入式文档（Embedded Document） |
-| 数组（Array）            | 数组（Array）                   |
+| SQL            | MongoDB           |
+| -------------- | ----------------- |
+| Table          | Collection        |
+| Row            | Document          |
+| Column         | Field             |
+| Primary key    | ObjectId          |
+| Index          | Index             |
+| Embedded table | Embedded document |
+| Array          | Array             |
 
-#### 文档
+#### Documents
 
-MongoDB 中的记录就是一个 BSON 文档，它是由键值对组成的数据结构，类似于 JSON 对象，是 MongoDB 中的基本数据单元。字段的值可能包括其他文档、数组和文档数组。
+A MongoDB record is a BSON document: a key-value data structure similar to a JSON object and the basic data unit in MongoDB. Field values can include other documents, arrays, and arrays of documents.
 
-![MongoDB 文档](../images/shared/crud-annotated-document..png)
+![MongoDB document](../images/shared/crud-annotated-document..png)
 
-文档的键是字符串。除了少数例外情况，键可以使用任意 UTF-8 字符。
+Document keys are strings and can contain any UTF-8 character, with a few exceptions:
 
-- 键不能含有 `\0`(空字符）。这个字符用来表示键的结尾。
-- `.` 和 `$` 有特别的意义，只有在特定环境下才能使用。
-- 以下划线`_`开头的键是保留的(不是严格要求的)。
+- Keys cannot contain `\0` (the null character), which marks the end of a key.
+- `.` and `$` have special meanings and can be used only in specific contexts.
+- Keys beginning with an underscore (`_`) are reserved, though this is not strictly enforced.
 
-**BSON [bee·sahn]** 是 Binary [JSON](http://json.org/)的简称，是 JSON 文档的二进制表示，支持将文档和数组嵌入到其他文档和数组中，还包含允许表示不属于 JSON 规范的数据类型的扩展。有关 BSON 规范的内容，可以参考 [bsonspec.org](http://bsonspec.org/)，另见[BSON 类型](https://www.mongodb.com/docs/manual/reference/bson-types/)。
+**BSON [bee·sahn]** is short for Binary [JSON](http://json.org/) and is a binary representation of JSON documents. It supports embedding documents and arrays within other documents and arrays, and extends JSON with additional data types. See the [BSON specification](http://bsonspec.org/) and [BSON types](https://www.mongodb.com/docs/manual/reference/bson-types/).
 
-根据维基百科对 BJSON 的介绍，BJSON 的遍历速度优于 JSON，这也是 MongoDB 选择 BSON 的主要原因，但 BJSON 需要更多的存储空间。
+According to the cited Wikipedia description of BSON, BSON can be traversed faster than JSON, which is one reason MongoDB uses it. BSON may require more storage space.
 
-> 与 JSON 相比，BSON 着眼于提高存储和扫描效率。BSON 文档中的大型元素以长度字段为前缀以便于扫描。在某些情况下，由于长度前缀和显式数组索引的存在，BSON 使用的空间会多于 JSON。
+> Compared with JSON, BSON is designed to improve storage and scan efficiency. Large elements in BSON documents are prefixed with their length to make scanning easier. In some cases, BSON uses more space than JSON because it stores length prefixes and explicit array indexes.
 
-![BSON 官网首页](../images/shared/bsonspec.org.png)
+![BSON specification website](../images/shared/bsonspec.org.png)
 
-#### 集合
+#### Collections
 
-MongoDB 集合存在于数据库中，**没有固定的结构**，也就是 **无模式** 的，这意味着可以往集合插入不同格式和类型的数据。不过，通常情况下，插入集合中的数据都会有一定的关联性。
+MongoDB collections belong to a database and have **no fixed structure**; they are **schema-flexible**. This means documents with different fields and types can be inserted into one collection, though they are usually related in some way.
 
-![MongoDB 集合](../images/shared/crud-annotated-collection.png)
+![MongoDB collection](../images/shared/crud-annotated-collection.png)
 
-集合不需要事先创建，当第一个文档插入或者第一个索引创建时，如果该集合不存在，则会创建一个新的集合。
+You do not need to create a collection in advance. If it does not exist, MongoDB creates it when the first document is inserted or the first index is created.
 
-集合名可以是满足下列条件的任意 UTF-8 字符串：
+Collection names can be any UTF-8 string that meets these conditions:
 
-- 集合名不能是空字符串`""`。
-- 集合名不能含有 `\0` （空字符)，这个字符表示集合名的结尾。
-- 集合名不能以"system."开头，这是为系统集合保留的前缀。例如 `system.users` 这个集合保存着数据库的用户信息，`system.namespaces` 集合保存着所有数据库集合的信息。
-- 集合名必须以下划线或者字母符号开始，并且不能包含 `$`。
+- A collection name cannot be an empty string (`""`).
+- It cannot contain `\0` (the null character), which marks the end of a collection name.
+- It cannot begin with `system.`; this prefix is reserved for system collections. For example, `system.users` stores database user information, and `system.namespaces` stores information about database collections.
+- It must begin with an underscore or a letter and cannot contain `$`.
 
-#### 数据库
+#### Databases
 
-数据库用于存储所有集合，而集合又用于存储所有文档。一个 MongoDB 中可以创建多个数据库，每一个数据库都有自己的集合和权限。
+Databases store collections, which in turn store documents. A MongoDB deployment can contain multiple databases, each with its own collections and permissions.
 
-MongoDB 预留了几个特殊的数据库。
+MongoDB reserves several databases for special purposes:
 
-- **admin** : admin 数据库主要是保存 root 用户和角色。例如，system.users 表存储用户，system.roles 表存储角色。一般不建议用户直接操作这个数据库。将一个用户添加到这个数据库，且使它拥有 admin 库上的名为 dbAdminAnyDatabase 的角色权限，这个用户自动继承所有数据库的权限。一些特定的服务器端命令也只能从这个数据库运行，比如关闭服务器。
-- **local** : local 数据库是不会被复制到其他分片的，因此可以用来存储本地单台服务器的任意 collection。一般不建议用户直接使用 local 库存储任何数据，也不建议进行 CRUD 操作，因为数据无法被正常备份与恢复。
-- **config** : 当 MongoDB 使用分片设置时，config 数据库可用来保存分片的相关信息。
-- **test** : 默认创建的测试库，连接 [mongod](https://mongoing.com/docs/reference/program/mongod.html) 服务时，如果不指定连接的具体数据库，默认就会连接到 test 数据库。
+- **admin**: Primarily stores root users and roles. For example, `system.users` stores users and `system.roles` stores roles. Directly modifying this database is generally not recommended. A user added here with the `dbAdminAnyDatabase` role on the admin database inherits permissions across all databases. Some server-side commands, such as shutting down the server, can only be run from this database.
+- **local**: This database is not replicated to other shards, so it can store collections local to a single server. Direct use for application data and CRUD operations is generally discouraged because its data cannot be backed up and restored normally.
+- **config**: When MongoDB is configured for sharding, this database stores sharding metadata.
+- **test**: The default test database. If you connect to a [mongod](https://mongoing.com/docs/reference/program/mongod.html) server without specifying a database, the connection defaults to `test`.
 
-数据库名可以是满足以下条件的任意 UTF-8 字符串：
+Database names can be any UTF-8 string that meets these conditions:
 
-- 不能是空字符串`""`。
-- 不得含有`' '`（空格)、`.`、`$`、`/`、`\`和 `\0` (空字符)。
-- 应全部小写。
-- 最多 64 字节。
+- It cannot be an empty string (`""`).
+- It cannot contain a space, `.`, `$`, `/`, `\`, or `\0` (the null character).
+- It must be lowercase.
+- It can be at most 64 bytes long.
 
-数据库名最终会变成文件系统里的文件，这也就是有如此多限制的原因。
+Database names eventually become file names in the file system, which explains these restrictions.
 
-### MongoDB 有什么特点？
+### What Are MongoDB's Features?
 
-- **数据记录被存储为文档**：MongoDB 中的记录就是一个 BSON 文档，它是由键值对组成的数据结构，类似于 JSON 对象，是 MongoDB 中的基本数据单元。
-- **模式自由**：集合的概念类似 MySQL 里的表，但它不需要定义任何模式，能够用更少的数据对象表现复杂的领域模型对象。
-- **支持多种查询方式**：MongoDB 查询 API 支持读写操作 (CRUD)以及数据聚合、文本搜索和地理空间查询。
-- **支持 ACID 事务**：NoSQL 数据库通常不支持事务，为了可扩展和高性能进行了权衡。不过，也有例外，MongoDB 就支持事务。与关系型数据库一样，MongoDB 事务同样具有 ACID 特性。MongoDB 单文档原生支持原子性，也具备事务的特性。MongoDB 4.0 加入了对多文档事务的支持，但只支持复制集部署模式下的事务，也就是说事务的作用域限制为一个副本集内。MongoDB 4.2 引入了分布式事务，增加了对分片集群上多文档事务的支持，并合并了对副本集上多文档事务的现有支持。
-- **高效的二进制存储**：存储在集合中的文档，是以键值对的形式存在的。键用于唯一标识一个文档，一般是 ObjectId 类型，值是以 BSON 形式存在的。BSON = Binary JSON， 是在 JSON 基础上加了一些类型及元数据描述的格式。
-- **自带数据压缩功能**：存储同样的数据所需的资源更少。
-- **支持 mapreduce**：通过分治的方式完成复杂的聚合任务。不过，从 MongoDB 5.0 开始，map-reduce 已经不被官方推荐使用了，替代方案是 [聚合管道](https://www.mongodb.com/docs/manual/core/aggregation-pipeline/)。聚合管道提供比 map-reduce 更好的性能和可用性。
-- **支持多种类型的索引**：MongoDB 支持多种类型的索引，包括单字段索引、复合索引、多键索引、哈希索引、文本索引、 地理位置索引等，每种类型的索引有不同的使用场合。
-- **支持 failover**：提供自动故障恢复的功能，主节点发生故障时，自动从从节点中选举出一个新的主节点，确保集群的正常使用，这对于客户端来说是无感知的。
-- **支持分片集群**：MongoDB 支持集群自动切分数据，让集群存储更多的数据，具备更强的性能。在数据插入和更新时，能够自动路由和存储。
-- **支持存储大文件**：MongoDB 的单文档存储空间要求不超过 16MB。对于超过 16MB 的大文件，MongoDB 提供了 GridFS 来进行存储，通过 GridFS，可以将大型数据进行分块处理，然后将这些切分后的小文档保存在数据库中。
+- **Documents store records**: A MongoDB record is a BSON document, a key-value structure similar to a JSON object and the basic data unit in MongoDB.
+- **Flexible schema**: A collection is similar to a MySQL table, but does not require a fixed schema. This can represent complex domain models with fewer data objects.
+- **Multiple query methods**: The MongoDB query API supports CRUD operations, data aggregation, text search, and geospatial queries.
+- **ACID transactions**: NoSQL databases often trade transaction support for scalability and performance, but MongoDB supports ACID transactions. Single-document operations are atomic. MongoDB 4.0 added multi-document transactions for replica sets; MongoDB 4.2 added support for multi-document transactions on sharded clusters.
+- **Binary storage**: Documents in a collection are stored as key-value pairs. A key, usually an `ObjectId`, uniquely identifies a document, and values are stored in BSON (Binary JSON), which extends JSON with additional types and metadata.
+- **Built-in compression**: Compression reduces the resources needed to store the same data.
+- **Map-reduce support**: Map-reduce can perform complex aggregation tasks using a divide-and-conquer approach. However, it has not been recommended since MongoDB 5.0. The [aggregation pipeline](https://www.mongodb.com/docs/manual/core/aggregation-pipeline/) is the replacement and offers better performance and usability.
+- **Multiple index types**: MongoDB supports single-field, compound, multikey, hashed, text, and geospatial indexes, each suited to different use cases.
+- **Failover**: If the primary fails, a new primary is automatically elected from the secondary members, keeping the cluster available to clients.
+- **Sharded clusters**: MongoDB can automatically distribute data across a cluster to increase storage capacity and performance, routing inserts and updates to the appropriate shards.
+- **Large file support**: A MongoDB document cannot exceed 16 MB. For larger files, GridFS splits the data into smaller chunks and stores them in the database.
 
-### MongoDB 适合什么应用场景？
+### Which Use Cases Suit MongoDB?
 
-**MongoDB 的优势在于其数据模型和存储引擎的灵活性、架构的可扩展性以及对强大的索引支持。**
+**MongoDB's strengths include a flexible data model and storage engine, a scalable architecture, and broad index support.**
 
-选用 MongoDB 应该充分考虑 MongoDB 的优势，结合实际项目的需求来决定：
+Choose MongoDB based on the project's requirements and how well its strengths fit:
 
-- 随着项目的发展，使用类 JSON 格式（BSON）保存数据是否满足项目需求？MongoDB 中的记录就是一个 BSON 文档，它是由键值对组成的数据结构，类似于 JSON 对象，是 MongoDB 中的基本数据单元。
-- 是否需要大数据量的存储？是否需要快速水平扩展？MongoDB 支持分片集群，可以很方便地添加更多的节点（实例），让集群存储更多的数据，具备更强的性能。
-- 是否需要更多类型索引来满足更多应用场景？MongoDB 支持多种类型的索引，包括单字段索引、复合索引、多键索引、哈希索引、文本索引、 地理位置索引等，每种类型的索引有不同的使用场合。
+- As the project grows, will BSON's JSON-like data model meet its needs? MongoDB records are BSON documents made up of key-value pairs, similar to JSON objects.
+- Is large-scale storage or rapid horizontal scaling needed? MongoDB sharded clusters let you add nodes to increase storage capacity and performance.
+- Are different index types needed for varied query patterns? MongoDB supports single-field, compound, multikey, hashed, text, and geospatial indexes.
 - ……
 
-## MongoDB 存储引擎
+## MongoDB Storage Engines
 
-### MongoDB 支持哪些存储引擎？
+### Which Storage Engines Does MongoDB Support?
 
-存储引擎（Storage Engine）是数据库的核心组件，负责管理数据在内存和磁盘中的存储方式。
+A storage engine is a core database component that manages how data is stored in memory and on disk.
 
-与 MySQL 一样，MongoDB 采用的也是 **插件式的存储引擎架构** ，支持不同类型的存储引擎，不同的存储引擎解决不同场景的问题。在创建数据库或集合时，可以指定存储引擎。
+Like MySQL, MongoDB uses a **pluggable storage engine architecture**. Different engines address different needs, and you can specify a storage engine when creating a database or collection.
 
-> 插件式的存储引擎架构可以实现 Server 层和存储引擎层的解耦，可以支持多种存储引擎，如 MySQL 既可以支持 B-Tree 结构的 InnoDB 存储引擎，还可以支持 LSM 结构的 RocksDB 存储引擎。
+> A pluggable storage engine architecture decouples the server layer from the storage engine and allows multiple engines. For example, MySQL supports the B-Tree-based InnoDB engine and the LSM-based RocksDB engine.
 
-在存储引擎刚出来的时候，默认是使用 MMAPV1 存储引擎，MongoDB4.x 版本不再支持 MMAPv1 存储引擎。
+MMAPv1 was the default storage engine in earlier releases, but MongoDB 4.x no longer supports it.
 
-现在主要有下面这两种存储引擎：
+The main storage engines are:
 
-- **WiredTiger 存储引擎**：自 MongoDB 3.2 以后，默认的存储引擎为 [WiredTiger 存储引擎](https://www.mongodb.com/docs/manual/core/wiredtiger/) 。非常适合大多数工作负载，建议用于新部署。WiredTiger 提供文档级并发模型、检查点和数据压缩（后文会介绍到）等功能。
-- **In-Memory 存储引擎**：[In-Memory 存储引擎](https://www.mongodb.com/docs/manual/core/inmemory/)在 MongoDB Enterprise 中可用。它不是将文档存储在磁盘上，而是将它们保留在内存中以获得更可预测的数据延迟。
+- **WiredTiger**: Since MongoDB 3.2, [WiredTiger](https://www.mongodb.com/docs/manual/core/wiredtiger/) has been the default storage engine. It suits most workloads and is recommended for new deployments. Features include document-level concurrency, checkpoints, and data compression.
+- **In-Memory**: Available in MongoDB Enterprise, the [In-Memory engine](https://www.mongodb.com/docs/manual/core/inmemory/) keeps documents in memory rather than on disk for more predictable data latency.
 
-此外，MongoDB 3.0 提供了 **可插拔的存储引擎 API** ，允许第三方为 MongoDB 开发存储引擎，这点和 MySQL 也比较类似。
+MongoDB 3.0 also introduced a **pluggable storage engine API**, allowing third parties to develop storage engines for MongoDB, much like MySQL.
 
-### WiredTiger 基于 LSM Tree 还是 B+ Tree？
+### Does WiredTiger Use an LSM Tree or a B+ Tree?
 
-目前绝大部分流行的数据库存储引擎都是基于 B/B+ Tree 或者 LSM(Log Structured Merge) Tree 来实现的。对于 NoSQL 数据库来说，绝大部分（比如 HBase、Cassandra、RocksDB）都是基于 LSM 树，MongoDB 不太一样。
+Most popular database storage engines are based on B/B+ trees or LSM (Log-Structured Merge) trees. Many NoSQL databases, such as HBase, Cassandra, and RocksDB, use LSM trees; MongoDB differs.
 
-上面也说了，自 MongoDB 3.2 以后，默认的存储引擎为 WiredTiger 存储引擎。在 WiredTiger 引擎官网上，我们发现 WiredTiger 使用的是 B+ 树作为其存储结构：
+As noted above, WiredTiger has been MongoDB's default storage engine since version 3.2. The WiredTiger documentation describes its storage structure as a B+ tree:
 
 ```plain
 WiredTiger maintains a table's data in memory using a data structure called a B-Tree ( B+ Tree to be specific), referring to the nodes of a B-Tree as pages. Internal pages carry only keys. The leaf pages store both keys and values.
 ```
 
-此外，WiredTiger 还支持 [LSM(Log Structured Merge)](https://source.wiredtiger.com/3.1.0/lsm.html) 树作为存储结构，MongoDB 在使用 WiredTiger 作为存储引擎时，默认使用的是 B+ 树。
+WiredTiger also supports [LSM (Log-Structured Merge) trees](https://source.wiredtiger.com/3.1.0/lsm.html), but MongoDB uses B+ trees by default with WiredTiger.
 
-如果想要了解 MongoDB 使用 B+ 树的原因，可以看看这篇文章：[【驳斥八股文系列】别瞎分析了，MongoDB 使用的是 B+ 树，不是你们以为的 B 树](https://zhuanlan.zhihu.com/p/519658576)。
+For more on why MongoDB uses B+ trees, see [MongoDB Uses B+ Trees, Not B-Trees](https://zhuanlan.zhihu.com/p/519658576).
 
-使用 B+ 树时，WiredTiger 以 **page** 为基本单位往磁盘读写数据。B+ 树的每个节点为一个 page，共有三种类型的 page：
+With B+ trees, WiredTiger reads and writes data to disk in units called **pages**. Each B+ tree node is a page. There are three types:
 
-- **root page（根节点）**：B+ 树的根节点。
-- **internal page（内部节点）**：不实际存储数据的中间索引节点。
-- **leaf page（叶子节点）**：真正存储数据的叶子节点，包含一个页头（page header）、块头（block header）和真正的数据（key/value），其中页头定义了页的类型、页中实际载荷数据的大小、页中记录条数等信息；块头定义了此页的 checksum、块在磁盘上的寻址位置等信息。
+- **Root page**: The root node of the B+ tree.
+- **Internal page**: An intermediate index node that does not store data records.
+- **Leaf page**: A data-bearing leaf node. It contains a page header, a block header, and the key-value data. The page header describes the page type, payload size, and record count; the block header stores the page checksum and its disk address.
 
-其整体结构如下图所示：
+The overall structure is shown below:
 
-![WiredTiger B+树整体结构](../images/shared/mongodb-b-plus-tree-integral-structure.png)
+![WiredTiger B+ tree structure](../images/shared/mongodb-b-plus-tree-integral-structure.png)
 
-如果想要深入研究学习 WiredTiger 存储引擎，推荐阅读 MongoDB 中文社区的 [WiredTiger 存储引擎系列](https://mongoing.com/archives/category/wiredtiger%e5%ad%98%e5%82%a8%e5%bc%95%e6%93%8e%e7%b3%bb%e5%88%97)。
+For an in-depth look at WiredTiger, see the MongoDB Chinese community's [WiredTiger storage engine series](https://mongoing.com/archives/category/wiredtiger%e5%ad%98%e5%82%a8%e5%bc%95%e6%93%8e%e7%b3%bb%e5%88%97).
 
-## MongoDB 聚合
+## MongoDB Aggregation
 
-### MongoDB 聚合有什么用？
+### What Is MongoDB Aggregation Used For?
 
-实际项目中，我们经常需要将多个文档甚至是多个集合汇总到一起计算分析（比如求和、取最大值）并返回计算后的结果，这个过程被称为 **聚合操作** 。
+In practice, you may need to combine data from multiple documents or collections, analyze it (for example, calculate a sum or maximum), and return the result. This process is called **aggregation**.
 
-根据官方文档介绍，我们可以使用聚合操作来：
+According to the MongoDB documentation, aggregation can be used to:
 
-- 将来自多个文档的值组合在一起。
-- 对集合中的数据进行的一系列运算。
-- 分析数据随时间的变化。
+- Combine values from multiple documents.
+- Perform a series of operations on collection data.
+- Analyze how data changes over time.
 
-### MongoDB 提供了哪几种执行聚合的方法？
+### Which Aggregation Methods Does MongoDB Provide?
 
-MongoDB 提供了两种执行聚合的方法：
+MongoDB provides two ways to perform aggregation:
 
-- **聚合管道（Aggregation Pipeline）**：执行聚合操作的首选方法。
-- **单一目的聚合方法（Single purpose aggregation methods）**：也就是单一作用的聚合函数比如 `count()`、`distinct()`、`estimatedDocumentCount()`。
+- **Aggregation pipeline**: The preferred method for aggregation.
+- **Single-purpose aggregation methods**: Methods that perform one task, such as `count()`, `distinct()`, and `estimatedDocumentCount()`.
 
-绝大部分文章中还提到了 **map-reduce** 这种聚合方法。不过，从 MongoDB 5.0 开始，map-reduce 已经不被官方推荐使用了，替代方案是 [聚合管道](https://www.mongodb.com/docs/manual/core/aggregation-pipeline/)。聚合管道提供比 map-reduce 更好的性能和可用性。
+Many articles also mention **map-reduce** as an aggregation method. However, it has not been recommended since MongoDB 5.0. The replacement is the [aggregation pipeline](https://www.mongodb.com/docs/manual/core/aggregation-pipeline/), which offers better performance and usability.
 
-MongoDB 聚合管道由多个阶段组成，每个阶段在文档通过管道时转换文档。每个阶段接收前一个阶段的输出，进一步处理数据，并将其作为输入数据发送到下一个阶段。
+An aggregation pipeline consists of stages that transform documents as they pass through the pipeline. Each stage receives the previous stage's output, processes it, and sends the result to the next stage.
 
-每个管道的工作流程是：
+The pipeline works as follows:
 
-1. 接受一系列原始数据文档
-2. 对这些文档进行一系列运算
-3. 结果文档输出给下一个阶段
+1. Accept a sequence of source documents.
+2. Apply a series of operations to those documents.
+3. Pass the resulting documents to the next stage.
 
-![管道的工作流程](../images/shared/mongodb-aggregation-stage.png)
+![Aggregation pipeline workflow](../images/shared/mongodb-aggregation-stage.png)
 
-**常用阶段操作符**：
+**Common pipeline stages:**
 
-| 操作符    | 简述                                                                                                 |
+| Operator  | Description                                                                                          |
 | --------- | ---------------------------------------------------------------------------------------------------- |
-| \$match   | 匹配操作符，用于对文档集合进行筛选                                                                   |
-| \$project | 投射操作符，用于重构每一个文档的字段，可以提取字段，重命名字段，甚至可以对原有字段进行操作后新增字段 |
-| \$sort    | 排序操作符，用于根据一个或多个字段对文档进行排序                                                     |
-| \$limit   | 限制操作符，用于限制返回文档的数量                                                                   |
-| \$skip    | 跳过操作符，用于跳过指定数量的文档                                                                   |
-| \$count   | 统计操作符，用于统计文档的数量                                                                       |
-| \$group   | 分组操作符，用于对文档集合进行分组                                                                   |
-| \$unwind  | 拆分操作符，用于将数组中的每一个值拆分为单独的文档                                                   |
-| \$lookup  | 连接操作符，用于连接同一个数据库中另一个集合，并获取指定的文档，类似于 populate                      |
+| \$match   | Filters the document stream.                                                                         |
+| \$project | Reshapes documents by including, renaming, or transforming fields, or adding new fields.             |
+| \$sort    | Sorts documents by one or more fields.                                                               |
+| \$limit   | Limits the number of documents returned.                                                             |
+| \$skip    | Skips a specified number of documents.                                                               |
+| \$count   | Counts the documents.                                                                                |
+| \$group   | Groups documents in a collection.                                                                    |
+| \$unwind  | Deconstructs an array field, outputting one document for each array value.                           |
+| \$lookup  | Joins another collection in the same database and retrieves matching documents, similar to populate. |
 
-更多操作符介绍详见官方文档：<https://docs.mongodb.com/manual/reference/operator/aggregation/>
+For more pipeline stages, see the [MongoDB documentation](https://docs.mongodb.com/manual/reference/operator/aggregation/).
 
-阶段操作符用于 `db.collection.aggregate` 方法里面，数组参数中的第一层。
+Stage operators are specified at the top level of the array passed to `db.collection.aggregate`.
 
 ```sql
-db.collection.aggregate( [ { 阶段操作符：表述 }, { 阶段操作符：表述 }, ... ] )
+db.collection.aggregate( [ { stageOperator: expression }, { stageOperator: expression }, ... ] )
 ```
 
-下面是 MongoDB 官方文档中的一个例子：
+Here is an example from the MongoDB documentation:
 
 ```sql
 db.orders.aggregate([
-   # 第一阶段：$match阶段按status字段过滤文档，并将status等于"A"的文档传递到下一阶段。
+   # Stage 1: $match filters documents by status and passes documents with status "A" to the next stage.
     { $match: { status: "A" } },
-  # 第二阶段：$group阶段按cust_id字段将文档分组，以计算每个cust_id唯一值的金额总和。
+  # Stage 2: $group groups documents by cust_id and calculates the total amount for each distinct cust_id.
     { $group: { _id: "$cust_id", total: { $sum: "$amount" } } }
 ])
 ```
 
-## MongoDB 事务
+## MongoDB Transactions
 
-> MongoDB 事务想要搞懂原理还是比较花费时间的，我自己也没有搞太明白。因此，我这里只是简单介绍一下 MongoDB 事务，想要了解原理的小伙伴，可以自行搜索查阅相关资料。
+> MongoDB transaction internals take time to understand, and I have not fully worked them out myself. This section provides a brief overview; consult additional resources for implementation details.
 >
-> 这里推荐几篇文章，供大家参考：
+> The following resources may be helpful:
 >
-> - [技术干货| MongoDB 事务原理](https://mongoing.com/archives/82187)
-> - [MongoDB 一致性模型设计与实现](https://developer.aliyun.com/article/782494)
-> - [MongoDB 官方文档对事务的介绍](https://www.mongodb.com/docs/upcoming/core/transactions/)
+> - [MongoDB Transaction Internals](https://mongoing.com/archives/82187)
+> - [Design and Implementation of MongoDB's Consistency Model](https://developer.aliyun.com/article/782494)
+> - [MongoDB Transactions Documentation](https://www.mongodb.com/docs/upcoming/core/transactions/)
 
-我们在介绍 NoSQL 数据的时候也说过，NoSQL 数据库通常不支持事务，为了可扩展和高性能进行了权衡。不过，也有例外，MongoDB 就支持事务。
+As discussed in the NoSQL guide, NoSQL databases often trade transaction support for scalability and performance. MongoDB is an exception and supports transactions.
 
-与关系型数据库一样，MongoDB 事务同样具有 ACID 特性：
+Like relational database transactions, MongoDB transactions have ACID properties:
 
-- **原子性**（`Atomicity`）：事务是最小的执行单位，不允许分割。事务的原子性确保动作要么全部完成，要么完全不起作用；
-- **一致性**（`Consistency`）：执行事务前后，数据保持一致，例如转账业务中，无论事务是否成功，转账者和收款人的总额应该是不变的；
-- **隔离性**（`Isolation`）：并发访问数据库时，一个用户的事务不被其他事务所干扰，各并发事务之间数据库是独立的。WiredTiger 存储引擎支持读未提交（ read-uncommitted ）、读已提交（ read-committed ）和快照（ snapshot ）隔离，MongoDB 启动时默认选快照隔离。在不同隔离级别下，一个事务的生命周期内，可能出现脏读、不可重复读、幻读等现象。
-- **持久性**（`Durability`）：一个事务被提交之后。它对数据库中数据的改变是持久的，即使数据库发生故障也不应该对其有任何影响。
+- **Atomicity**: A transaction is an indivisible unit of work. Either all of its operations complete, or none take effect.
+- **Consistency**: Data remains consistent before and after a transaction. For example, the total balance across two accounts remains unchanged by a transfer, whether it succeeds or fails.
+- **Isolation**: Concurrent transactions do not interfere with one another. WiredTiger supports read-uncommitted, read-committed, and snapshot isolation; MongoDB uses snapshot isolation by default. Depending on the isolation level, dirty reads, non-repeatable reads, or phantom reads may occur during a transaction.
+- **Durability**: Once committed, a transaction's changes persist even if the database fails.
 
-关于事务的详细介绍这篇文章就不多说了，感兴趣的可以看看我写的[MySQL 常见面试题总结](../mysql/mysql-questions-01.md)这篇文章，里面有详细介绍到。
+For a more detailed discussion of transactions, see [MySQL Interview Questions](../mysql/mysql-questions-01.md).
 
-MongoDB 单文档原生支持原子性，也具备事务的特性。当谈论 MongoDB 事务的时候，通常指的是 **多文档** 。MongoDB 4.0 加入了对多文档 ACID 事务的支持，但只支持复制集部署模式下的 ACID 事务，也就是说事务的作用域限制为一个副本集内。MongoDB 4.2 引入了 **分布式事务** ，增加了对分片集群上多文档事务的支持，并合并了对副本集上多文档事务的现有支持。
+MongoDB provides atomicity for single-document operations. References to MongoDB transactions usually mean **multi-document transactions**. MongoDB 4.0 added multi-document ACID transactions for replica sets. MongoDB 4.2 introduced **distributed transactions**, extending multi-document transaction support to sharded clusters while retaining support for replica sets.
 
-根据官方文档介绍：
+The MongoDB documentation states:
 
-> 从 MongoDB 4.2 开始，分布式事务和多文档事务在 MongoDB 中是一个意思。分布式事务是指分片集群和副本集上的多文档事务。从 MongoDB 4.2 开始，多文档事务（无论是在分片集群还是副本集上）也称为分布式事务。
+> Starting in MongoDB 4.2, “distributed transaction” and “multi-document transaction” refer to the same concept. A distributed transaction is a multi-document transaction on a sharded cluster or replica set. Both are called distributed transactions from MongoDB 4.2 onward.
 
-在大多数情况下，多文档事务比单文档写入会产生更大的性能成本。对于大部分场景来说， [非规范化数据模型（嵌入式文档和数组）](https://www.mongodb.com/docs/upcoming/core/data-model-design/#std-label-data-modeling-embedding) 依然是最佳选择。也就是说，适当地对数据进行建模可以最大限度地减少对多文档事务的需求。
+In most cases, multi-document transactions have greater performance costs than single-document writes. For many use cases, a [denormalized data model with embedded documents and arrays](https://www.mongodb.com/docs/upcoming/core/data-model-design/#std-label-data-modeling-embedding) remains the best choice. Proper data modeling can minimize the need for multi-document transactions.
 
-**注意**：
+**Notes:**
 
-- 从 MongoDB 4.2 开始，多文档事务支持副本集和分片集群，其中：主节点使用 WiredTiger 存储引擎，同时从节点使用 WiredTiger 存储引擎或 In-Memory 存储引擎。在 MongoDB 4.0 中，只有使用 WiredTiger 存储引擎的副本集支持事务。
-- 在 MongoDB 4.2 及更早版本中，你无法在事务中创建集合。从 MongoDB 4.4 开始，您可以在事务中创建集合和索引。有关详细信息，请参阅 [在事务中创建集合和索引](https://www.mongodb.com/docs/upcoming/core/transactions/#std-label-transactions-create-collections-indexes)。
+- Starting with MongoDB 4.2, multi-document transactions support replica sets and sharded clusters. The primary must use WiredTiger; secondaries can use WiredTiger or In-Memory. In MongoDB 4.0, only replica sets using WiredTiger support transactions.
+- In MongoDB 4.2 and earlier, you cannot create collections in a transaction. Starting with MongoDB 4.4, you can create collections and indexes in a transaction. See [Create Collections and Indexes in a Transaction](https://www.mongodb.com/docs/upcoming/core/transactions/#std-label-transactions-create-collections-indexes).
 
-## MongoDB 数据压缩
+## MongoDB Data Compression
 
-借助 WiredTiger 存储引擎（ MongoDB 3.2 后的默认存储引擎），MongoDB 支持对所有集合和索引进行压缩。压缩以额外的 CPU 为代价最大限度地减少存储使用。
+With the WiredTiger storage engine (MongoDB's default since version 3.2), MongoDB can compress all collections and indexes. Compression reduces storage use at the cost of additional CPU.
 
-默认情况下，WiredTiger 使用 [Snappy](https://github.com/google/snappy) 压缩算法（谷歌开源，旨在实现非常高的速度和合理的压缩，压缩比 3 ～ 5 倍）对所有集合使用块压缩，对所有索引使用前缀压缩。
+By default, WiredTiger uses the [Snappy](https://github.com/google/snappy) compression algorithm for block compression of collections and prefix compression of indexes. Snappy is an open-source Google algorithm designed for high speed and reasonable compression, typically 3–5x.
 
-除了 Snappy 之外，对于集合还有下面这些压缩算法：
+In addition to Snappy, collections can use these compression algorithms:
 
-- [zlib](https://github.com/madler/zlib)：高度压缩算法，压缩比 5 ～ 7 倍
-- [Zstandard](https://github.com/facebook/zstd)（简称 zstd）：Facebook 开源的一种快速无损压缩算法，针对 zlib 级别的实时压缩场景和更好的压缩比，提供更高的压缩率和更低的 CPU 使用率，MongoDB 4.2 开始可用。
+- [zlib](https://github.com/madler/zlib): A high-compression algorithm, typically 5–7x.
+- [Zstandard](https://github.com/facebook/zstd) (zstd): An open-source, fast, lossless compression algorithm from Facebook. It offers higher compression and lower CPU use than zlib for real-time compression, and has been available since MongoDB 4.2.
 
-WiredTiger 日志也会被压缩，默认使用的也是 Snappy 压缩算法。如果日志记录小于或等于 128 字节，WiredTiger 不会压缩该记录。
+WiredTiger logs are also compressed with Snappy by default. Records of 128 bytes or less are not compressed.
 
-## Amazon Document 与 MongoDB 的差异
+## Differences Between Amazon DocumentDB and MongoDB
 
-Amazon DocumentDB（与 MongoDB 兼容） 是一种快速、可靠、完全托管的数据库服务。Amazon DocumentDB 可在云中轻松设置、操作和扩展与 MongoDB 兼容的数据库。
+Amazon DocumentDB (with MongoDB compatibility) is a fast, reliable, fully managed database service. It makes it easy to set up, operate, and scale MongoDB-compatible databases in the cloud.
 
-### `$vectorSearch` 运算符
+### The `$vectorSearch` Operator
 
-Amazon DocumentDB 不支持`$vectorSearch`作为独立运营商。相反，我们在`$search`运营商`vectorSearch`内部支持。有关更多信息，请参阅 [向量搜索 Amazon DocumentDB](https://docs.aws.amazon.com/zh_cn/documentdb/latest/developerguide/vector-search.html)。
+Amazon DocumentDB does not support `$vectorSearch` as a standalone operator. Instead, it supports `vectorSearch` inside the `$search` operator. See [Vector Search in Amazon DocumentDB](https://docs.aws.amazon.com/zh_cn/documentdb/latest/developerguide/vector-search.html) for details.
 
 ### `OpCountersCommand`
 
-Amazon DocumentDB 的`OpCountersCommand`行为偏离于 MongoDB 的`opcounters.command` 如下：
+Amazon DocumentDB's `OpCountersCommand` differs from MongoDB's `opcounters.command` in these ways:
 
-- MongoDB 的`opcounters.command` 计入除插入、更新和删除之外的所有命令，而 Amazon DocumentDB 的 `OpCountersCommand` 也排除 `find` 命令。
-- Amazon DocumentDB 将内部命令（例如`getCloudWatchMetricsV2`）对 `OpCountersCommand` 计入。
+- MongoDB's `opcounters.command` counts all commands except inserts, updates, and deletes. Amazon DocumentDB's `OpCountersCommand` also excludes `find` commands.
+- Amazon DocumentDB includes internal commands such as `getCloudWatchMetricsV2` in `OpCountersCommand`.
 
-### 管理数据库和集合
+### Managing Databases and Collections
 
-Amazon DocumentDB 不支持管理或本地数据库，MongoDB `system.*` 或 `startup_log` 集合也不支持。
+Amazon DocumentDB does not support the `admin` or `local` databases, or MongoDB's `system.*` and `startup_log` collections.
 
-### `cursormaxTimeMS`
+### `cursor.maxTimeMS`
 
-在 Amazon DocumentDB 中，`cursor.maxTimeMS` 重置每个请求的计数器。`getMore`因此，如果指定了 3000MS `maxTimeMS`，则该查询耗时 2800MS，而每个后续`getMore`请求耗时 300MS，则游标不会超时。游标仅在单个操作（无论是查询还是单个`getMore`请求）耗时超过指定值时才将超时`maxTimeMS`。此外，检查游标执行时间的扫描器以五 (5) 分钟间隔尺寸运行。
+In Amazon DocumentDB, `cursor.maxTimeMS` resets the timer for each request. For example, if `maxTimeMS` is 3,000 ms, a query takes 2,800 ms, and each subsequent `getMore` request takes 300 ms, the cursor does not time out. A cursor times out only when a single operation (the query or one `getMore` request) exceeds the specified `maxTimeMS`. A background process checks cursor execution time every five minutes.
 
 ### explain()
 
-Amazon DocumentDB 在利用分布式、容错、自修复的存储系统的专用数据库引擎上模拟 MongoDB 4.0 API。因此，查询计划和`explain()` 的输出在 Amazon DocumentDB 和 MongoDB 之间可能有所不同。希望控制其查询计划的客户可以使用 `$hint` 运算符强制选择首选索引。
+Amazon DocumentDB emulates the MongoDB 4.0 API using a purpose-built database engine on a distributed, fault-tolerant, self-healing storage system. Query plans and `explain()` output can therefore differ between Amazon DocumentDB and MongoDB. To control a query plan, use `$hint` to force the preferred index.
 
-### 字段名称限制
+### Field Name Restrictions
 
-Amazon DocumentDB 不支持点“。” 例如，文档字段名称中 `db.foo.insert({‘x.1’:1})`。
+Amazon DocumentDB does not support periods (`.`) in document field names. For example: `db.foo.insert({'x.1':1})`.
 
-Amazon DocumentDB 也不支持字段名称中的 $ 前缀。
+Amazon DocumentDB also does not support field names that begin with `$`.
 
-例如，在 Amazon DocumentDB 或 MongoDB 中尝试以下命令：
+For example, run the following command in Amazon DocumentDB or MongoDB:
 
 ```shell
 rs0:PRIMARY< db.foo.insert({"a":{"$a":1}})
 ```
 
-MongoDB 将返回以下内容：
+MongoDB returns:
 
 ```shell
 WriteResult({ "nInserted" : 1 })
 ```
 
-Amazon DocumentDB 将返回一个错误：
+Amazon DocumentDB returns an error:
 
 ```shell
 WriteResult({
@@ -336,13 +336,13 @@ WriteResult({
 })
 ```
 
-## 参考
+## References
 
-- MongoDB 官方文档（主要参考资料，以官方文档为准）：<https://www.mongodb.com/docs/manual/>
-- 《MongoDB 权威指南》
-- 技术干货| MongoDB 事务原理 - MongoDB 中文社区：<https://mongoing.com/archives/82187>
-- Transactions - MongoDB 官方文档：<https://www.mongodb.com/docs/manual/core/transactions/>
-- WiredTiger Storage Engine - MongoDB 官方文档：<https://www.mongodb.com/docs/manual/core/wiredtiger/>
-- WiredTiger 存储引擎之一：基础数据结构分析：<https://mongoing.com/topic/archives-35143>
+- MongoDB documentation (primary reference): <https://www.mongodb.com/docs/manual/>
+- _MongoDB: The Definitive Guide_
+- [MongoDB Transaction Internals - MongoDB Chinese Community](https://mongoing.com/archives/82187)
+- [Transactions - MongoDB Documentation](https://www.mongodb.com/docs/manual/core/transactions/)
+- [WiredTiger Storage Engine - MongoDB Documentation](https://www.mongodb.com/docs/manual/core/wiredtiger/)
+- [WiredTiger Storage Engine: An Analysis of Its Basic Data Structures](https://mongoing.com/topic/archives-35143)
 
 <!-- @include: @article-footer.snippet.md -->

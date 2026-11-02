@@ -25,7 +25,7 @@ Find a project course or tutorial series that matches your current skills and jo
 
 You can find project courses on platforms such as MooC, Bilibili, Lagou, GeekTime, or through training providers such as Black Horse and Shang Silicon Valley.
 
-![Hands-on course on MooC](images/shared/mukewangzhiazhanke.png)
+![Hands-on course on MooC](./images/shared/mukewangzhiazhanke.png)
 
 Choose a project that fits your needs. You do not have to build a distributed or microservices system. For many learners, building a solid single-process application is already a worthwhile achievement.
 
@@ -45,7 +45,7 @@ There are many practical projects on GitHub and Gitee. Pick one to study. Once y
 
 See the [Java Open-Source Projects for Practice](https://javaguide.cn/open-source-project/practical-project.html "Java Open-Source Projects for Practice") collection. It covers blogs and forums, exam and coding practice systems, online stores, permission systems, rapid development scaffolds, and reusable tools.
 
-![Java open-source projects for practice](images/shared/javaguide-practical-project.png)
+![Java open-source projects for practice](./images/shared/javaguide-practical-project.png)
 
 Remember: **don't just build the project—improve it.** Course projects and open-source projects both have things you can refine.
 
@@ -59,7 +59,7 @@ This takes more experience. If you have not built a project before, start with o
 
 Winning an award can make the project experience especially valuable. Even if you do not win, you can still list your participation on your resume.
 
-![Alibaba Cloud Tianchi competition](images/shared/up-673f598477242691900a1e72c5d8b26df2c.png)
+![Alibaba Cloud Tianchi competition](./images/shared/up-673f598477242691900a1e72c5d8b26df2c.png)
 
 ### Contribute to a real project
 
@@ -79,7 +79,7 @@ Actually implementing an improvement is best, and the work helps you grow. If yo
 
 The interview preparation section of the **[Java Interview Guide](../zhuanlan/java-mian-shi-zhi-bei.md)** has an article with recommended practice projects, including business applications, reusable tools, public-course labs, and video tutorials. These can work well for learning or building project experience.
 
-![Recommended Java projects for practice](images/shared/project-experience-guide.png)
+![Recommended Java projects for practice](./images/shared/project-experience-guide.png)
 
 That article recommends more than 15 projects, including business applications and reusable components, open-source projects, and video tutorials. For new-grad recruiting, I recommend building one business application and one reusable tool or component.
 
@@ -108,15 +108,15 @@ Finally, here is a useful IntelliJ IDEA code inspection tip:
 
 Right-click the project, then choose **Analyze → Inspect Code**.
 
-![](images/shared/up-651672bce128025a135c1536cd5dc00532e.png)
+![](./images/shared/up-651672bce128025a135c1536cd5dc00532e.png)
 
 After the scan, IDEA reports possible code smells, such as naming issues.
 
-![](images/shared/up-05c83b319941995b07c8020fddc57f26037.png)
+![](./images/shared/up-05c83b319941995b07c8020fddc57f26037.png)
 
 You can also customize the inspection rules.
 
-![](images/shared/up-6b618ad3bad0bc3f76e6066d90c8cd2f255.png)
+![](./images/shared/up-6b618ad3bad0bc3f76e6066d90c8cd2f255.png)
 
 ## How should you prepare for project deep dives?
 

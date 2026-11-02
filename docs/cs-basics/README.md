@@ -25,7 +25,7 @@ If you have limited time, start with [common computer networking interview quest
 
 The guide includes **300+ technical illustrations** that explain abstract concepts visually.
 
-![Overview of the computer science fundamentals guide](images/shared/cs-basics-overview.png)
+![Overview of the computer science fundamentals guide](./images/shared/cs-basics-overview.png)
 
 ## Who This Guide Is For
 

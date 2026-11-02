@@ -1,25 +1,25 @@
 ---
-title: SQL常见面试题总结（1）
-description: SQL常见面试题总结第一篇，涵盖SELECT检索数据、WHERE条件过滤、ORDER BY排序、DISTINCT去重、LIMIT分页等基础查询操作及牛客真题解析。
-category: 数据库
+title: SQL Interview Questions (1)
+description: The first set of SQL interview questions covers basic queries with SELECT, WHERE, ORDER BY, DISTINCT, and LIMIT, with solutions to Nowcoder problems.
+category: Database
 tag:
-  - 数据库基础
+  - Database Fundamentals
   - SQL
 head:
   - - meta
     - name: keywords
-      content: SQL面试题,SELECT查询,WHERE条件,ORDER BY排序,DISTINCT去重,LIMIT分页,SQL基础
+      content: SQL interview questions, SELECT queries, WHERE conditions, ORDER BY sorting, DISTINCT, LIMIT pagination, SQL fundamentals
 ---
 
-> 题目来源于：[牛客题霸 - SQL 必知必会](https://www.nowcoder.com/exam/oj?page=1&tab=SQL%E7%AF%87&topicId=298)
+> Questions are from [Nowcoder - SQL Basics](https://www.nowcoder.com/exam/oj?page=1&tab=SQL%E7%AF%87&topicId=298).
 
-## 检索数据
+## Retrieving Data
 
-`SELECT` 用于从数据库中查询数据。
+Use `SELECT` to retrieve data from a database.
 
-### 从 Customers 表中检索所有的 ID
+### Retrieve All IDs from the Customers Table
 
-现有表 `Customers` 如下：
+The `Customers` table contains:
 
 | cust_id |
 | ------- |
@@ -27,18 +27,18 @@ head:
 | B       |
 | C       |
 
-编写 SQL 语句，从 `Customers` 表中检索所有的 `cust_id`。
+Write a query to retrieve all `cust_id` values from `Customers`.
 
-答案：
+Answer:
 
 ```sql
 SELECT cust_id
 FROM Customers
 ```
 
-### 检索并列出已订购产品的清单
+### Retrieve a List of Ordered Products
 
-表 `OrderItems` 含有非空的列 `prod_id` 代表商品 id，包含了所有已订购的商品（有些已被订购多次）。
+The `OrderItems` table has a non-null `prod_id` column and contains all ordered products. Some products may have been ordered more than once.
 
 | prod_id |
 | ------- |
@@ -50,20 +50,20 @@ FROM Customers
 | a6      |
 | a7      |
 
-编写 SQL 语句，检索并列出所有已订购商品（`prod_id`）的去重后的清单。
+Write a query to retrieve a distinct list of all ordered products (`prod_id`).
 
-答案：
+Answer:
 
 ```sql
 SELECT DISTINCT prod_id
 FROM OrderItems
 ```
 
-知识点：`DISTINCT` 用于返回列中的唯一不同值。
+`DISTINCT` returns unique values in a column.
 
-### 检索所有列
+### Retrieve All Columns
 
-现在有 `Customers` 表（表中含有列 `cust_id` 代表客户 id，`cust_name` 代表客户姓名）
+The `Customers` table has a `cust_id` column for customer IDs and a `cust_name` column for customer names.
 
 | cust_id | cust_name |
 | ------- | --------- |
@@ -75,22 +75,22 @@ FROM OrderItems
 | a6      | lee       |
 | a7      | hex       |
 
-需要编写 SQL 语句，检索所有列。
+Write a query to retrieve all columns.
 
-答案：
+Answer:
 
 ```sql
 SELECT cust_id, cust_name
 FROM Customers
 ```
 
-## 排序检索数据
+## Sorting Retrieved Data
 
-`ORDER BY` 用于对结果集按照一个列或者多个列进行排序。默认按照升序对记录进行排序，如果需要按照降序对记录进行排序，可以使用 `DESC` 关键字。
+Use `ORDER BY` to sort a result set by one or more columns. Rows are sorted in ascending order by default. Use `DESC` to sort in descending order.
 
-### 检索顾客名称并且排序
+### Retrieve and Sort Customer Names
 
-有表 `Customers`，`cust_id` 代表客户 id，`cust_name` 代表客户姓名。
+The `Customers` table has a `cust_id` column for customer IDs and a `cust_name` column for customer names.
 
 | cust_id | cust_name |
 | ------- | --------- |
@@ -102,9 +102,9 @@ FROM Customers
 | a6      | lee       |
 | a7      | hex       |
 
-从 `Customers` 中检索所有的顾客名称（`cust_name`），并按从 Z 到 A 的顺序显示结果。
+Retrieve all customer names (`cust_name`) from `Customers` and sort them from Z to A.
 
-答案：
+Answer:
 
 ```sql
 SELECT cust_name
@@ -112,9 +112,9 @@ FROM Customers
 ORDER BY cust_name DESC
 ```
 
-### 对顾客 ID 和日期排序
+### Sort by Customer ID and Date
 
-有 `Orders` 表：
+The `Orders` table contains:
 
 | cust_id | order_num | order_date          |
 | ------- | --------- | ------------------- |
@@ -123,23 +123,23 @@ ORDER BY cust_name DESC
 | bob     | cccc      | 2021-01-10 12:00:00 |
 | dick    | dddd      | 2021-01-11 00:00:00 |
 
-编写 SQL 语句，从 `Orders` 表中检索顾客 ID（`cust_id`）和订单号（`order_num`），并先按顾客 ID 对结果进行排序，再按订单日期倒序排列。
+Write a query to retrieve customer IDs (`cust_id`) and order numbers (`order_num`) from `Orders`. Sort first by customer ID, then by order date in descending order.
 
-答案：
+Answer:
 
 ```sql
-# 根据列名排序
-# 注意：是 order_date 降序，而不是 order_num
+# Sort by column name.
+# Sort by order_date in descending order, not by order_num.
 SELECT cust_id, order_num
 FROM Orders
 ORDER BY cust_id,order_date DESC
 ```
 
-知识点：`order by` 对多列排序的时候，先排序的列放前面，后排序的列放后面。并且，不同的列可以有不同的排序规则。
+When sorting by multiple columns with `ORDER BY`, list the primary sort column first. Each column can use a different sort direction.
 
-### 按照数量和价格排序
+### Sort by Quantity and Price
 
-假设有一个 `OrderItems` 表：
+Assume the `OrderItems` table contains:
 
 | quantity | item_price |
 | -------- | ---------- |
@@ -147,9 +147,9 @@ ORDER BY cust_id,order_date DESC
 | 10       | 1003       |
 | 2        | 500        |
 
-编写 SQL 语句，显示 `OrderItems` 表中的数量（`quantity`）和价格（`item_price`），并按数量由多到少、价格由高到低排序。
+Write a query to display the quantity (`quantity`) and price (`item_price`) from `OrderItems`. Sort by quantity from highest to lowest, then by price from highest to lowest.
 
-答案：
+Answer:
 
 ```sql
 SELECT quantity, item_price
@@ -157,9 +157,9 @@ FROM OrderItems
 ORDER BY quantity DESC,item_price DESC
 ```
 
-### 检查 SQL 语句
+### Fix the SQL Statement
 
-有 `Vendors` 表：
+The `Vendors` table contains:
 
 | vend_name |
 | --------- |
@@ -167,7 +167,7 @@ ORDER BY quantity DESC,item_price DESC
 | 小龙坎    |
 | 大龙燚    |
 
-下面的 SQL 语句有问题吗？尝试将它改正确，使之能够正确运行，并且返回结果根据`vend_name` 逆序排列。
+What is wrong with the following query? Correct it so that it runs and sorts the results by `vend_name` in descending order.
 
 ```sql
 SELECT vend_name,
@@ -175,7 +175,7 @@ FROM Vendors
 ORDER vend_name DESC
 ```
 
-改正后：
+Corrected query:
 
 ```sql
 SELECT vend_name
@@ -183,32 +183,32 @@ FROM Vendors
 ORDER BY vend_name DESC
 ```
 
-知识点：
+Notes:
 
-- 逗号作用是用来隔开列与列之间的。
-- ORDER BY 是有 BY 的，需要撰写完整，且位置正确。
+- Use commas to separate column names.
+- Write the full `ORDER BY` clause in the correct position.
 
-## 过滤数据
+## Filtering Data
 
-`WHERE` 可以过滤返回的数据。
+Use `WHERE` to filter the rows returned by a query.
 
-下面的运算符可以在 `WHERE` 子句中使用：
+The following operators can be used in a `WHERE` clause:
 
-| 运算符  | 描述                                                         |
-| :------ | :----------------------------------------------------------- |
-| =       | 等于                                                         |
-| <>      | 不等于。 **注释：** 在 SQL 的一些版本中，该操作符可被写成 != |
-| >       | 大于                                                         |
-| <       | 小于                                                         |
-| >=      | 大于等于                                                     |
-| <=      | 小于等于                                                     |
-| BETWEEN | 在某个范围内                                                 |
-| LIKE    | 搜索某种模式                                                 |
-| IN      | 指定针对某个列的多个可能值                                   |
+| Operator | Description                                                 |
+| :------- | :---------------------------------------------------------- |
+| =        | Equal to                                                    |
+| <>       | Not equal to. **Note:** Some SQL dialects use `!=` instead. |
+| >        | Greater than                                                |
+| <        | Less than                                                   |
+| >=       | Greater than or equal to                                    |
+| <=       | Less than or equal to                                       |
+| BETWEEN  | Within a range                                              |
+| LIKE     | Search for a pattern                                        |
+| IN       | Match any of several possible values for a column           |
 
-### 返回固定价格的产品
+### Return Products at a Specific Price
 
-有表 `Products`：
+The `Products` table contains:
 
 | prod_id | prod_name      | prod_price |
 | ------- | -------------- | ---------- |
@@ -216,9 +216,9 @@ ORDER BY vend_name DESC
 | a0019   | iphone13       | 600        |
 | b0018   | gucci t-shirts | 1000       |
 
-【问题】从 `Products` 表中检索产品 ID（`prod_id`）和产品名称（`prod_name`），只返回价格为 9.49 美元的产品。
+Retrieve the product ID (`prod_id`) and name (`prod_name`) from `Products`. Return only products priced at $9.49.
 
-答案：
+Answer:
 
 ```sql
 SELECT prod_id, prod_name
@@ -226,9 +226,9 @@ FROM Products
 WHERE prod_price = 9.49
 ```
 
-### 返回更高价格的产品
+### Return Products Above a Price
 
-有表 `Products`：
+The `Products` table contains:
 
 | prod_id | prod_name      | prod_price |
 | ------- | -------------- | ---------- |
@@ -236,9 +236,9 @@ WHERE prod_price = 9.49
 | a0019   | iphone13       | 600        |
 | b0019   | gucci t-shirts | 1000       |
 
-【问题】编写 SQL 语句，从 `Products` 表中检索产品 ID（`prod_id`）和产品名称（`prod_name`），只返回价格为 9 美元或更高的产品。
+Write a query to retrieve the product ID (`prod_id`) and name (`prod_name`) from `Products`. Return only products priced at $9 or more.
 
-答案：
+Answer:
 
 ```sql
 SELECT prod_id, prod_name
@@ -246,9 +246,9 @@ FROM Products
 WHERE prod_price >= 9
 ```
 
-### 返回产品并且按照价格排序
+### Return Products and Sort by Price
 
-有表 `Products`：
+The `Products` table contains:
 
 | prod_id | prod_name | prod_price |
 | ------- | --------- | ---------- |
@@ -256,9 +256,9 @@ WHERE prod_price >= 9
 | a0019   | sockets   | 4          |
 | b0019   | coffee    | 15         |
 
-【问题】编写 SQL 语句，返回 `Products` 表中所有价格在 3 美元到 6 美元之间的产品的名称（`prod_name`）和价格（`prod_price`），然后按价格对结果进行排序。
+Write a query to return the names (`prod_name`) and prices (`prod_price`) of products in `Products` priced between $3 and $6. Sort the results by price.
 
-答案：
+Answer:
 
 ```sql
 SELECT prod_name, prod_price
@@ -266,16 +266,16 @@ FROM Products
 WHERE prod_price BETWEEN 3 AND 6
 ORDER BY prod_price
 
-# 或者
+# Or:
 SELECT prod_name, prod_price
 FROM Products
 WHERE prod_price >= 3 AND prod_price <= 6
 ORDER BY prod_price
 ```
 
-### 返回更多的产品
+### Return Orders with at Least 100 Items
 
-`OrderItems` 表含有：订单号 `order_num`，`quantity`产品数量
+The `OrderItems` table has an order number (`order_num`) and an item quantity (`quantity`).
 
 | order_num | quantity |
 | --------- | -------- |
@@ -287,9 +287,9 @@ ORDER BY prod_price
 | a2        | 19       |
 | a7        | 5        |
 
-【问题】从 `OrderItems` 表中检索出所有不同且不重复的订单号（`order_num`），其中每个订单都要包含 100 个或更多的产品。
+Retrieve distinct order numbers (`order_num`) from `OrderItems` for orders containing at least 100 items in total.
 
-答案：
+Answer:
 
 ```sql
 SELECT order_num
@@ -298,13 +298,13 @@ GROUP BY order_num
 HAVING SUM(quantity) >= 100
 ```
 
-## 高级数据过滤
+## Advanced Filtering
 
-`AND` 和 `OR` 运算符用于基于一个以上的条件对记录进行过滤，两者可以结合使用。`AND` 必须 2 个条件都成立，`OR`只要 2 个条件中的一个成立即可。
+Use the `AND` and `OR` operators to filter rows by multiple conditions. They can be combined. `AND` requires both conditions to be true; `OR` requires at least one.
 
-### 检索供应商名称
+### Retrieve Vendor Names
 
-`Vendors` 表有字段供应商名称（`vend_name`）、供应商国家（`vend_country`）、供应商州（`vend_state`）
+The `Vendors` table has columns for vendor name (`vend_name`), country (`vend_country`), and state (`vend_state`).
 
 | vend_name | vend_country | vend_state |
 | --------- | ------------ | ---------- |
@@ -312,9 +312,9 @@ HAVING SUM(quantity) >= 100
 | vivo      | CNA          | shenzhen   |
 | huawei    | CNA          | xian       |
 
-【问题】编写 SQL 语句，从 `Vendors` 表中检索供应商名称（`vend_name`），仅返回加利福尼亚州的供应商（这需要按国家[USA]和州[CA]进行过滤，没准其他国家也存在一个 CA）
+Write a query to retrieve vendor names (`vend_name`) from `Vendors`, returning only vendors in California. Filter by both country (`USA`) and state (`CA`), since other countries may also have a state named CA.
 
-答案：
+Answer:
 
 ```sql
 SELECT vend_name
@@ -322,9 +322,9 @@ FROM Vendors
 WHERE vend_country = 'USA' AND vend_state = 'CA'
 ```
 
-### 检索并列出已订购产品的清单
+### Retrieve Ordered Products
 
-`OrderItems` 表包含了所有已订购的产品（有些已被订购多次）。
+The `OrderItems` table contains all ordered products. Some products may have been ordered more than once.
 
 | prod_id | order_num | quantity |
 | ------- | --------- | -------- |
@@ -336,9 +336,9 @@ WHERE vend_country = 'USA' AND vend_state = 'CA'
 | BR02    | a2        | 19       |
 | BR017   | a7        | 5        |
 
-【问题】编写 SQL 语句，查找所有订购了数量至少 100 个的 `BR01`、`BR02` 或 `BR03` 的订单。你需要返回 `OrderItems` 表的订单号（`order_num`）、产品 ID（`prod_id`）和数量（`quantity`），并按产品 ID 和数量进行过滤。
+Write a query to find orders containing at least 100 units of product `BR01`, `BR02`, or `BR03`. Return the order number (`order_num`), product ID (`prod_id`), and quantity (`quantity`) from `OrderItems`, filtering by product ID and quantity.
 
-答案：
+Answer:
 
 ```sql
 SELECT order_num, prod_id, quantity
@@ -346,9 +346,9 @@ FROM OrderItems
 WHERE prod_id IN ('BR01', 'BR02', 'BR03') AND quantity >= 100
 ```
 
-### 返回所有价格在 3 美元到 6 美元之间的产品的名称和价格
+### Return Product Names and Prices in a Range
 
-有表 `Products`：
+The `Products` table contains:
 
 | prod_id | prod_name | prod_price |
 | ------- | --------- | ---------- |
@@ -356,9 +356,9 @@ WHERE prod_id IN ('BR01', 'BR02', 'BR03') AND quantity >= 100
 | a0019   | sockets   | 4          |
 | b0019   | coffee    | 15         |
 
-【问题】编写 SQL 语句，返回所有价格在 3 美元到 6 美元之间的产品的名称（`prod_name`）和价格（`prod_price`），使用 AND 操作符，然后按价格对结果进行升序排序。
+Write a query to return the names (`prod_name`) and prices (`prod_price`) of products priced between $3 and $6. Use `AND` and sort the results by price in ascending order.
 
-答案：
+Answer:
 
 ```sql
 SELECT prod_name, prod_price
@@ -367,9 +367,9 @@ WHERE prod_price >= 3 and prod_price <= 6
 ORDER BY prod_price
 ```
 
-### 检查 SQL 语句
+### Fix the SQL Statement
 
-供应商表 `Vendors` 有字段供应商名称 `vend_name`、供应商国家 `vend_country`、供应商省份 `vend_state`
+The `Vendors` table has columns for vendor name (`vend_name`), country (`vend_country`), and state (`vend_state`).
 
 | vend_name | vend_country | vend_state |
 | --------- | ------------ | ---------- |
@@ -377,7 +377,7 @@ ORDER BY prod_price
 | vivo      | CNA          | shenzhen   |
 | huawei    | CNA          | xian       |
 
-【问题】修改正确下面 sql，使之正确返回。
+Correct the following SQL query.
 
 ```sql
 SELECT vend_name
@@ -386,7 +386,7 @@ ORDER BY vend_name
 WHERE vend_country = 'USA' AND vend_state = 'CA';
 ```
 
-修改后：
+Corrected query:
 
 ```sql
 SELECT vend_name
@@ -395,24 +395,24 @@ WHERE vend_country = 'USA' AND vend_state = 'CA'
 ORDER BY vend_name
 ```
 
-`ORDER BY` 语句必须放在 `WHERE` 之后。
+The `ORDER BY` clause must come after `WHERE`.
 
-## 用通配符进行过滤
+## Filtering with Wildcards
 
-SQL 通配符必须与 `LIKE` 运算符一起使用
+SQL wildcards must be used with the `LIKE` operator.
 
-在 SQL 中，可使用以下通配符：
+SQL supports the following wildcards:
 
-| 通配符                           | 描述                       |
-| :------------------------------- | :------------------------- |
-| `%`                              | 代表零个或多个字符         |
-| `_`                              | 仅替代一个字符             |
-| `[charlist]`                     | 字符列中的任何单一字符     |
-| `[^charlist]` 或者 `[!charlist]` | 不在字符列中的任何单一字符 |
+| Wildcard                       | Description                          |
+| :----------------------------- | :----------------------------------- |
+| `%`                            | Represents zero or more characters   |
+| `_`                            | Replaces exactly one character       |
+| `[charlist]`                   | Any single character in the list     |
+| `[^charlist]` or `[!charlist]` | Any single character not in the list |
 
-### 检索产品名称和描述（一）
+### Retrieve Product Names and Descriptions (1)
 
-`Products` 表如下：
+The `Products` table contains:
 
 | prod_name | prod_desc      |
 | --------- | -------------- |
@@ -422,9 +422,9 @@ SQL 通配符必须与 `LIKE` 运算符一起使用
 | c0019     | gucci toy      |
 | d0019     | lego toy       |
 
-【问题】编写 SQL 语句，从 `Products` 表中检索产品名称（`prod_name`）和描述（`prod_desc`），仅返回描述中包含 `toy` 一词的产品名称。
+Write a query to retrieve product names (`prod_name`) and descriptions (`prod_desc`) from `Products`. Return only products whose descriptions contain the word `toy`.
 
-答案：
+Answer:
 
 ```sql
 SELECT prod_name, prod_desc
@@ -432,9 +432,9 @@ FROM Products
 WHERE prod_desc LIKE '%toy%'
 ```
 
-### 检索产品名称和描述（二）
+### Retrieve Product Names and Descriptions (2)
 
-`Products` 表如下：
+The `Products` table contains:
 
 | prod_name | prod_desc      |
 | --------- | -------------- |
@@ -444,9 +444,9 @@ WHERE prod_desc LIKE '%toy%'
 | c0019     | gucci toy      |
 | d0019     | lego toy       |
 
-【问题】编写 SQL 语句，从 `Products` 表中检索产品名称（`prod_name`）和描述（`prod_desc`），仅返回描述中未出现 `toy` 一词的产品，最后按”产品名称“对结果进行排序。
+Write a query to retrieve product names (`prod_name`) and descriptions (`prod_desc`) from `Products`. Return only products whose descriptions do not contain `toy`, then sort by product name.
 
-答案：
+Answer:
 
 ```sql
 SELECT prod_name, prod_desc
@@ -455,9 +455,9 @@ WHERE prod_desc NOT LIKE '%toy%'
 ORDER BY prod_name
 ```
 
-### 检索产品名称和描述（三）
+### Retrieve Product Names and Descriptions (3)
 
-`Products` 表如下：
+The `Products` table contains:
 
 | prod_name | prod_desc        |
 | --------- | ---------------- |
@@ -467,9 +467,9 @@ ORDER BY prod_name
 | c0019     | gucci toy        |
 | d0019     | lego carrots toy |
 
-【问题】编写 SQL 语句，从 `Products` 表中检索产品名称（`prod_name`）和描述（`prod_desc`），仅返回描述中同时出现 `toy` 和 `carrots` 的产品。有好几种方法可以执行此操作，但对于这个挑战题，请使用 `AND` 和两个 `LIKE` 比较。
+Write a query to retrieve product names (`prod_name`) and descriptions (`prod_desc`) from `Products`. Return only products whose descriptions contain both `toy` and `carrots`. Several approaches are possible, but use `AND` with two `LIKE` conditions for this exercise.
 
-答案：
+Answer:
 
 ```sql
 SELECT prod_name, prod_desc
@@ -477,9 +477,9 @@ FROM Products
 WHERE prod_desc LIKE '%toy%' AND prod_desc LIKE "%carrots%"
 ```
 
-### 检索产品名称和描述（四）
+### Retrieve Product Names and Descriptions (4)
 
-`Products` 表如下：
+The `Products` table contains:
 
 | prod_name | prod_desc        |
 | --------- | ---------------- |
@@ -489,9 +489,9 @@ WHERE prod_desc LIKE '%toy%' AND prod_desc LIKE "%carrots%"
 | c0019     | gucci toy        |
 | d0019     | lego toy carrots |
 
-【问题】编写 SQL 语句，从 Products 表中检索产品名称（prod_name）和描述（prod_desc），仅返回在描述中以**先后顺序**同时出现 toy 和 carrots 的产品。提示：只需要用带有三个 `%` 符号的 `LIKE` 即可。
+Write a query to retrieve product names (`prod_name`) and descriptions (`prod_desc`) from `Products`. Return only products whose descriptions contain `toy` followed by `carrots`. Hint: use `LIKE` with three `%` wildcards.
 
-答案：
+Answer:
 
 ```sql
 SELECT prod_name, prod_desc
@@ -499,11 +499,11 @@ FROM Products
 WHERE prod_desc LIKE '%toy%carrots%'
 ```
 
-## 创建计算字段
+## Creating Calculated Fields
 
-### 别名
+### Aliases
 
-别名的常见用法是在检索出的结果中重命名表的列字段（为了符合特定的报表要求或客户需求）。有表 `Vendors` 代表供应商信息，`vend_id` 供应商 id、`vend_name` 供应商名称、`vend_address` 供应商地址、`vend_city` 供应商城市。
+Aliases are often used to rename columns in query results to meet reporting or customer requirements. The `Vendors` table contains vendor information: `vend_id` is the vendor ID, `vend_name` the vendor name, `vend_address` the vendor address, and `vend_city` the vendor's city.
 
 | vend_id | vend_name     | vend_address | vend_city |
 | ------- | ------------- | ------------ | --------- |
@@ -512,42 +512,42 @@ WHERE prod_desc LIKE '%toy%carrots%'
 | a003    | aliyun cloud  | address3     | hangzhou  |
 | a003    | netease cloud | address4     | guangzhou |
 
-【问题】编写 SQL 语句，从 `Vendors` 表中检索 `vend_id`、`vend_name`、`vend_address` 和 `vend_city`，将 `vend_name` 重命名为 `vname`，将 `vend_city` 重命名为 `vcity`，将 `vend_address` 重命名为 `vaddress`，按供应商名称对结果进行升序排序。
+Write a query to retrieve `vend_id`, `vend_name`, `vend_address`, and `vend_city` from `Vendors`. Rename `vend_name` to `vname`, `vend_city` to `vcity`, and `vend_address` to `vaddress`. Sort the results by vendor name in ascending order.
 
-答案：
+Answer:
 
 ```sql
 SELECT vend_id, vend_name AS vname, vend_address AS vaddress, vend_city AS vcity
 FROM Vendors
 ORDER BY vname
-# as 可以省略
+# `AS` can be omitted.
 SELECT vend_id, vend_name vname, vend_address vaddress, vend_city vcity
 FROM Vendors
 ORDER BY vname
 ```
 
-### 打折
+### Apply a Discount
 
-我们的示例商店正在进行打折促销，所有产品均降价 10%。`Products` 表包含 `prod_id` 产品 id、`prod_price` 产品价格。
+The sample store is running a sale: all products are discounted by 10%. The `Products` table has a product ID (`prod_id`) and price (`prod_price`).
 
-【问题】编写 SQL 语句，从 `Products` 表中返回 `prod_id`、`prod_price` 和 `sale_price`。`sale_price` 是一个包含促销价格的计算字段。提示：可以乘以 0.9，得到原价的 90%（即 10%的折扣）。
+Write a query to return `prod_id`, `prod_price`, and `sale_price` from `Products`. `sale_price` is a calculated field for the discounted price. Hint: multiply by 0.9 to get 90% of the original price, a 10% discount.
 
-答案：
+Answer:
 
 ```sql
 SELECT prod_id, prod_price, prod_price * 0.9 AS sale_price
 FROM Products
 ```
 
-注意：`sale_price` 是对计算结果的命名，而不是原有的列名。
+Note: `sale_price` is an alias for the calculated value, not an existing column.
 
-## 使用函数处理数据
+## Working with Data Using Functions
 
-### 顾客登录名
+### Customer Login Names
 
-我们的商店已经上线了，正在创建顾客账户。所有用户都需要登录名，默认登录名是其名称和所在城市的组合。
+The store is now online, and customer accounts are being created. Each user needs a login name, which defaults to a combination of their name and city.
 
-给出 `Customers` 表 如下：
+The `Customers` table contains:
 
 | cust_id | cust_name | cust_contact | cust_city |
 | ------- | --------- | ------------ | --------- |
@@ -559,25 +559,25 @@ FROM Products
 | a6      | Lee Chen  | Lee Chen     | Oak Park  |
 | a7      | Hex Liu   | Hex Liu      | Oak Park  |
 
-【问题】编写 SQL 语句，返回顾客 ID（`cust_id`）、顾客名称（`cust_name`）和登录名（`user_login`），其中登录名全部为大写字母，并由顾客联系人的前两个字符（`cust_contact`）和其所在城市的前三个字符（`cust_city`）组成。提示：需要使用函数、拼接和别名。
+Write a query to return the customer ID (`cust_id`), name (`cust_name`), and login (`user_login`). Make the login uppercase and compose it from the first two characters of the customer contact (`cust_contact`) and the first three characters of the city (`cust_city`). Hint: use functions, concatenation, and an alias.
 
-答案：
+Answer:
 
 ```sql
 SELECT cust_id, cust_name, UPPER(CONCAT(SUBSTRING(cust_contact, 1, 2), SUBSTRING(cust_city, 1, 3))) AS user_login
 FROM Customers
 ```
 
-知识点：
+Key points:
 
-- 截取函数`SUBSTRING()`：截取字符串，`substring(str ,n ,m)`（n 表示起始截取位置，m 表示要截取的字符个数）表示返回字符串 str 从第 n 个字符开始截取 m 个字符；
-- 拼接函数`CONCAT()`：将两个或多个字符串连接成一个字符串，select concat(A,B)：连接字符串 A 和 B。
+- `SUBSTRING()` extracts part of a string. `SUBSTRING(str, n, m)` returns `m` characters from `str`, starting at position `n`.
+- `CONCAT()` joins two or more strings. For example, `CONCAT(A, B)` joins strings `A` and `B`.
 
-- 大写函数 `UPPER()`：将指定字符串转换为大写。
+- `UPPER()` converts a string to uppercase.
 
-### 返回 2020 年 1 月的所有订单的订单号和订单日期
+### Return Orders from January 2020
 
-`Orders` 订单表如下：
+The `Orders` table contains:
 
 | order_num | order_date          |
 | --------- | ------------------- |
@@ -587,9 +587,9 @@ FROM Customers
 | a0004     | 2020-02-01 00:00:00 |
 | a0005     | 2020-03-01 00:00:00 |
 
-【问题】编写 SQL 语句，返回 2020 年 1 月的所有订单的订单号（`order_num`）和订单日期（`order_date`），并按订单日期升序排序
+Write a query to return the order number (`order_num`) and date (`order_date`) for all orders placed in January 2020. Sort by order date in ascending order.
 
-答案：
+Answer:
 
 ```sql
 SELECT order_num, order_date
@@ -598,7 +598,7 @@ WHERE month(order_date) = '01' AND YEAR(order_date) = '2020'
 ORDER BY order_date
 ```
 
-也可以用通配符来做：
+You can also use a wildcard:
 
 ```sql
 SELECT order_num, order_date
@@ -607,47 +607,47 @@ WHERE order_date LIKE '2020-01%'
 ORDER BY order_date
 ```
 
-知识点：
+Key points:
 
-- 日期格式：`YYYY-MM-DD`
-- 时间格式：`HH:MM:SS`
+- Date format: `YYYY-MM-DD`
+- Time format: `HH:MM:SS`
 
-日期和时间处理相关的常用函数：
+Common date and time functions:
 
-| 函 数           | 说 明                          |
-| --------------- | ------------------------------ |
-| `ADDDATE()`     | 增加一个日期（天、周等）       |
-| `ADDTIME()`     | 增加一个时间（时、分等）       |
-| `CURDATE()`     | 返回当前日期                   |
-| `CURTIME()`     | 返回当前时间                   |
-| `DATE()`        | 返回日期时间的日期部分         |
-| `DATEDIFF`      | 计算两个日期之差               |
-| `DATE_FORMAT()` | 返回一个格式化的日期或时间串   |
-| `DAY()`         | 返回一个日期的天数部分         |
-| `DAYOFWEEK()`   | 对于一个日期，返回对应的星期几 |
-| `HOUR()`        | 返回一个时间的小时部分         |
-| `MINUTE()`      | 返回一个时间的分钟部分         |
-| `MONTH()`       | 返回一个日期的月份部分         |
-| `NOW()`         | 返回当前日期和时间             |
-| `SECOND()`      | 返回一个时间的秒部分           |
-| `TIME()`        | 返回一个日期时间的时间部分     |
-| `YEAR()`        | 返回一个日期的年份部分         |
+| Function        | Description                                       |
+| --------------- | ------------------------------------------------- |
+| `ADDDATE()`     | Adds an interval to a date (days, weeks, etc.)    |
+| `ADDTIME()`     | Adds an interval to a time (hours, minutes, etc.) |
+| `CURDATE()`     | Returns the current date                          |
+| `CURTIME()`     | Returns the current time                          |
+| `DATE()`        | Extracts the date part of a datetime value        |
+| `DATEDIFF`      | Calculates the difference between two dates       |
+| `DATE_FORMAT()` | Returns a formatted date or time string           |
+| `DAY()`         | Returns the day of the month                      |
+| `DAYOFWEEK()`   | Returns the day of the week for a date            |
+| `HOUR()`        | Returns the hour part of a time                   |
+| `MINUTE()`      | Returns the minute part of a time                 |
+| `MONTH()`       | Returns the month part of a date                  |
+| `NOW()`         | Returns the current date and time                 |
+| `SECOND()`      | Returns the second part of a time                 |
+| `TIME()`        | Extracts the time part of a datetime value        |
+| `YEAR()`        | Returns the year part of a date                   |
 
-## 汇总数据
+## Summarizing Data
 
-汇总数据相关的函数：
+Aggregate functions:
 
-| 函 数     | 说 明            |
-| --------- | ---------------- |
-| `AVG()`   | 返回某列的平均值 |
-| `COUNT()` | 返回某列的行数   |
-| `MAX()`   | 返回某列的最大值 |
-| `MIN()`   | 返回某列的最小值 |
-| `SUM()`   | 返回某列值之和   |
+| Function  | Description                            |
+| --------- | -------------------------------------- |
+| `AVG()`   | Returns the average of a column        |
+| `COUNT()` | Returns the number of rows in a column |
+| `MAX()`   | Returns the maximum value in a column  |
+| `MIN()`   | Returns the minimum value in a column  |
+| `SUM()`   | Returns the sum of a column's values   |
 
-### 确定已售出产品的总数
+### Find the Total Quantity Sold
 
-`OrderItems` 表代表售出的产品，`quantity` 代表售出商品数量。
+The `OrderItems` table contains sold products; `quantity` is the number of units sold.
 
 | quantity |
 | -------- |
@@ -658,18 +658,18 @@ ORDER BY order_date
 | 2        |
 | 15       |
 
-【问题】编写 SQL 语句，确定已售出产品的总数。
+Write a query to find the total quantity of products sold.
 
-答案：
+Answer:
 
 ```sql
 SELECT Sum(quantity) AS items_ordered
 FROM OrderItems
 ```
 
-### 确定已售出产品项 BR01 的总数
+### Find the Quantity Sold for Product BR01
 
-`OrderItems` 表代表售出的产品，`quantity` 代表售出商品数量，产品项为 `prod_id`。
+The `OrderItems` table contains sold products. `quantity` is the number of units sold, and `prod_id` identifies the product.
 
 | quantity | prod_id |
 | -------- | ------- |
@@ -678,9 +678,9 @@ FROM OrderItems
 | 1000     | BR01    |
 | 10001    | BR010   |
 
-【问题】修改创建的语句，确定已售出产品项（`prod_id`）为"BR01"的总数。
+Modify the previous query to find the total quantity sold for product `BR01` (`prod_id`).
 
-答案：
+Answer:
 
 ```sql
 SELECT Sum(quantity) AS items_ordered
@@ -688,9 +688,9 @@ FROM OrderItems
 WHERE prod_id = 'BR01'
 ```
 
-### 确定 Products 表中价格不超过 10 美元的最贵产品的价格
+### Find the Highest Product Price at or Below $10
 
-`Products` 表如下，`prod_price` 代表商品的价格。
+The `Products` table contains the product price in `prod_price`.
 
 | prod_price |
 | ---------- |
@@ -698,9 +698,9 @@ WHERE prod_id = 'BR01'
 | 600        |
 | 1000       |
 
-【问题】编写 SQL 语句，确定 `Products` 表中价格不超过 10 美元的最贵产品的价格（`prod_price`）。将计算所得的字段命名为 `max_price`。
+Write a query to find the highest product price (`prod_price`) in `Products` that does not exceed $10. Name the result `max_price`.
 
-答案：
+Answer:
 
 ```sql
 SELECT Max(prod_price) AS max_price
@@ -708,30 +708,30 @@ FROM Products
 WHERE prod_price <= 10
 ```
 
-## 分组数据
+## Grouping Data
 
-`GROUP BY`：
+`GROUP BY`:
 
-- `GROUP BY` 子句将记录分组到汇总行中。
-- `GROUP BY` 为每个组返回一个记录。
-- `GROUP BY` 通常还涉及聚合`COUNT`，`MAX`，`SUM`，`AVG` 等。
-- `GROUP BY` 可以按一列或多列进行分组。
-- `GROUP BY` 按分组字段进行排序后，`ORDER BY` 可以以汇总字段来进行排序。
+- The `GROUP BY` clause groups rows into summary rows.
+- `GROUP BY` returns one row for each group.
+- `GROUP BY` is commonly used with aggregate functions such as `COUNT`, `MAX`, `SUM`, and `AVG`.
+- `GROUP BY` can group by one or more columns.
+- After grouping by columns, `ORDER BY` can sort by aggregate values.
 
-`HAVING`：
+`HAVING`:
 
-- `HAVING` 用于对汇总的 `GROUP BY` 结果进行过滤。
-- `HAVING` 必须要与 `GROUP BY` 连用。
-- `WHERE` 和 `HAVING` 可以在相同的查询中。
+- `HAVING` filters the grouped results produced by `GROUP BY`.
+- `HAVING` must be used with `GROUP BY`.
+- `WHERE` and `HAVING` can be used in the same query.
 
-`HAVING` vs `WHERE`：
+`HAVING` vs. `WHERE`:
 
-- `WHERE`：过滤指定的行，后面不能加聚合函数（分组函数）。
-- `HAVING`：过滤分组，必须要与 `GROUP BY` 连用，不能单独使用。
+- `WHERE` filters rows and cannot be followed by an aggregate function.
+- `HAVING` filters groups and must be used with `GROUP BY`; it cannot be used alone.
 
-### 返回每个订单号各有多少行数
+### Count the Rows for Each Order
 
-`OrderItems` 表包含每个订单的每个产品
+`OrderItems` contains the products in each order.
 
 | order_num |
 | --------- |
@@ -741,9 +741,9 @@ WHERE prod_price <= 10
 | a004      |
 | a007      |
 
-【问题】编写 SQL 语句，返回每个订单号（`order_num`）各有多少行数（`order_lines`），并按 `order_lines` 对结果进行升序排序。
+Write a query to return the number of lines (`order_lines`) for each order number (`order_num`). Sort by `order_lines` in ascending order.
 
-答案：
+Answer:
 
 ```sql
 SELECT order_num, Count(order_num) AS order_lines
@@ -752,15 +752,15 @@ GROUP BY order_num
 ORDER BY order_lines
 ```
 
-知识点：
+Key points:
 
-1. `count(*)`,`count(列名)`都可以，区别在于，`count(列名)`是统计非 NULL 的行数；
-2. `order by` 最后执行，所以可以使用列别名；
-3. 分组聚合一定不要忘记加上 `group by` ,不然只会有一行结果。
+1. Both `COUNT(*)` and `COUNT(column_name)` can be used. `COUNT(column_name)` counts only non-`NULL` values.
+2. `ORDER BY` runs last, so it can use column aliases.
+3. Include `GROUP BY` when aggregating by group; otherwise, the query returns a single result row.
 
-### 每个供应商成本最低的产品
+### Find the Cheapest Product for Each Vendor
 
-有 `Products` 表，含有字段 `prod_price` 代表产品价格，`vend_id` 代表供应商 id
+The `Products` table has a product price (`prod_price`) and vendor ID (`vend_id`).
 
 | vend_id | prod_price |
 | ------- | ---------- |
@@ -770,9 +770,9 @@ ORDER BY order_lines
 | b0019   | 6980       |
 | b0019   | 20         |
 
-【问题】编写 SQL 语句，返回名为 `cheapest_item` 的字段，该字段包含每个供应商成本最低的产品（使用 `Products` 表中的 `prod_price`），然后从最低成本到最高成本对结果进行升序排序。
+Write a query to return each vendor's lowest product price from `Products` in a field named `cheapest_item`. Sort the results from lowest to highest price.
 
-答案：
+Answer:
 
 ```sql
 SELECT vend_id, Min(prod_price) AS cheapest_item
@@ -781,9 +781,9 @@ GROUP BY vend_id
 ORDER BY cheapest_item
 ```
 
-### 返回订单数量总和不小于 100 的所有订单的订单号
+### Return Orders with a Total Quantity of at Least 100
 
-`OrderItems` 代表订单商品表，包括：订单号 `order_num` 和订单数量 `quantity`。
+`OrderItems` contains order items, including the order number (`order_num`) and quantity (`quantity`).
 
 | order_num | quantity |
 | --------- | -------- |
@@ -795,19 +795,19 @@ ORDER BY cheapest_item
 | a2        | 19       |
 | a7        | 5        |
 
-【问题】请编写 SQL 语句，返回订单数量总和不小于 100 的所有订单号，最后结果按照订单号升序排序。
+Write a query to return the order numbers whose total quantity is at least 100. Sort the results by order number in ascending order.
 
-答案：
+Answer:
 
 ```sql
-# 直接聚合
+# Aggregate directly.
 SELECT order_num
 FROM OrderItems
 GROUP BY order_num
 HAVING Sum(quantity) >= 100
 ORDER BY order_num
 
-# 子查询
+# Use a subquery.
 SELECT a.order_num
 FROM (SELECT order_num, Sum(quantity) AS sum_num
     FROM OrderItems
@@ -816,14 +816,14 @@ FROM (SELECT order_num, Sum(quantity) AS sum_num
 ORDER BY a.order_num
 ```
 
-知识点：
+Key points:
 
-- `where`：过滤过滤指定的行，后面不能加聚合函数（分组函数）。
-- `having`：过滤分组，与 `group by` 连用，不能单独使用。
+- `WHERE` filters rows and cannot be followed by an aggregate function.
+- `HAVING` filters groups and must be used with `GROUP BY`.
 
-### 计算总和
+### Calculate Order Totals
 
-`OrderItems` 表代表订单信息，包括字段：订单号 `order_num` 和 `item_price` 商品售出价格、`quantity` 商品数量。
+`OrderItems` contains order information, including the order number (`order_num`), sale price (`item_price`), and quantity (`quantity`).
 
 | order_num | item_price | quantity |
 | --------- | ---------- | -------- |
@@ -835,11 +835,11 @@ ORDER BY a.order_num
 | a2        | 1          | 19       |
 | a7        | 7          | 5        |
 
-【问题】编写 SQL 语句，根据订单号聚合，返回订单总价不小于 1000 的所有订单号，最后的结果按订单号进行升序排序。
+Write a query to group by order number and return orders with a total price of at least 1,000. Sort the results by order number in ascending order.
 
-提示：总价 = item_price 乘以 quantity
+Hint: total price = `item_price` × `quantity`.
 
-答案：
+Answer:
 
 ```sql
 SELECT order_num, Sum(item_price * quantity) AS total_price
@@ -849,9 +849,9 @@ HAVING total_price >= 1000
 ORDER BY order_num
 ```
 
-### 检查 SQL 语句
+### Fix the SQL Statement
 
-`OrderItems` 表含有 `order_num` 订单号
+The `OrderItems` table has an order number (`order_num`).
 
 | order_num |
 | --------- |
@@ -861,7 +861,7 @@ ORDER BY order_num
 | a004      |
 | a007      |
 
-【问题】将下面代码修改正确后执行
+Correct the following query.
 
 ```sql
 SELECT order_num, COUNT(*) AS items
@@ -871,7 +871,7 @@ HAVING COUNT(*) >= 3
 ORDER BY items, order_num;
 ```
 
-修改后：
+Corrected query:
 
 ```sql
 SELECT order_num, COUNT(*) AS items
@@ -881,20 +881,20 @@ HAVING items >= 3
 ORDER BY items, order_num;
 ```
 
-## 使用子查询
+## Using Subqueries
 
-子查询是嵌套在较大查询中的 SQL 查询，也称内部查询或内部选择，包含子查询的语句也称为外部查询或外部选择。简单来说，子查询就是指将一个 `SELECT` 查询（子查询）的结果作为另一个 SQL 语句（主查询）的数据来源或者判断条件。
+A subquery is a SQL query nested inside a larger query. It is also called an inner query or inner select; the query containing it is the outer query or outer select. In short, a subquery uses the result of one `SELECT` query as a data source or condition in another SQL statement.
 
-子查询可以嵌入 `SELECT`、`INSERT`、`UPDATE` 和 `DELETE` 语句中，也可以和 `=`、`<`、`>`、`IN`、`BETWEEN`、`EXISTS` 等运算符一起使用。
+Subqueries can appear in `SELECT`, `INSERT`, `UPDATE`, and `DELETE` statements, and can be used with operators such as `=`, `<`, `>`, `IN`, `BETWEEN`, and `EXISTS`.
 
-子查询常用在 `WHERE` 子句和 `FROM` 子句后边：
+Subqueries are commonly used in `WHERE` and `FROM` clauses:
 
-- 当用于 `WHERE` 子句时，根据不同的运算符，子查询可以返回单行单列、多行单列、单行多列数据。子查询就是要返回能够作为 WHERE 子句查询条件的值。
-- 当用于 `FROM` 子句时，一般返回多行多列数据，相当于返回一张临时表，这样才符合 `FROM` 后面是表的规则。这种做法能够实现多表联合查询。
+- In a `WHERE` clause, a subquery can return one row and one column, multiple rows and one column, or one row with multiple columns, depending on the operator. Its result must be usable as a `WHERE` condition.
+- In a `FROM` clause, a subquery usually returns multiple rows and columns, acting like a temporary table. This enables queries across multiple tables.
 
-> 注意：MySQL 数据库从 4.1 版本才开始支持子查询，早期版本是不支持的。
+> Note: MySQL has supported subqueries since version 4.1. Earlier versions do not support them.
 
-用于 `WHERE` 子句的子查询的基本语法如下：
+The basic syntax for a subquery in a `WHERE` clause is:
 
 ```sql
 SELECT column_name [, column_name ]
@@ -905,10 +905,10 @@ FROM table1 [, table2 ]
 [WHERE])
 ```
 
-- 子查询需要放在括号`( )`内。
-- `operator` 表示用于 `WHERE` 子句的运算符，可以是比较运算符（如 `=`, `<`, `>`, `<>` 等）或逻辑运算符（如 `IN`, `NOT IN`, `EXISTS`, `NOT EXISTS` 等），具体根据需求来确定。
+- Put the subquery inside parentheses `( )`.
+- `operator` is the operator used in the `WHERE` clause. It can be a comparison operator, such as `=`, `<`, `>`, or `<>`, or a logical operator, such as `IN`, `NOT IN`, `EXISTS`, or `NOT EXISTS`, depending on the query.
 
-用于 `FROM` 子句的子查询的基本语法如下：
+The basic syntax for a subquery in a `FROM` clause is:
 
 ```sql
 SELECT column_name [, column_name ]
@@ -919,15 +919,15 @@ FROM (SELECT column_name [, column_name ]
 WHERE condition;
 ```
 
-- 用于 `FROM` 的子查询返回的结果相当于一张临时表，所以需要使用 AS 关键字为该临时表起一个名字。
-- 子查询需要放在括号 `( )` 内。
-- 可以指定多个临时表名，并使用 `JOIN` 语句连接这些表。
+- A subquery in `FROM` acts like a temporary table, so use `AS` to give it an alias.
+- Put the subquery inside parentheses `( )`.
+- You can define multiple temporary tables and join them with `JOIN`.
 
-### 返回购买价格为 10 美元或以上产品的顾客列表
+### Return Customers Who Bought Products Priced at $10 or More
 
-`OrderItems` 表示订单商品表，含有字段订单号：`order_num`、订单价格：`item_price`；`Orders` 表代表订单信息表，含有顾客 `id：cust_id` 和订单号：`order_num`
+`OrderItems` contains order items, with an order number (`order_num`) and item price (`item_price`). `Orders` contains customer IDs (`cust_id`) and order numbers (`order_num`).
 
-`OrderItems` 表:
+`OrderItems`:
 
 | order_num | item_price |
 | --------- | ---------- |
@@ -939,7 +939,7 @@ WHERE condition;
 | a2        | 1          |
 | a7        | 7          |
 
-`Orders` 表：
+`Orders`:
 
 | order_num | cust_id |
 | --------- | ------- |
@@ -951,9 +951,9 @@ WHERE condition;
 | a2        | cust1   |
 | a7        | cust7   |
 
-【问题】使用子查询，返回购买价格为 10 美元或以上产品的顾客列表，结果无需排序。
+Use a subquery to return the customers who bought products priced at $10 or more. The results do not need to be sorted.
 
-答案：
+Answer:
 
 ```sql
 SELECT cust_id
@@ -963,11 +963,11 @@ WHERE order_num IN (SELECT DISTINCT order_num
     where item_price >= 10)
 ```
 
-### 确定哪些订单购买了 prod_id 为 BR01 的产品（一）
+### Find Orders That Include Product BR01 (1)
 
-表 `OrderItems` 代表订单商品信息表，`prod_id` 为产品 id；`Orders` 表代表订单表有 `cust_id` 代表顾客 id 和订单日期 `order_date`
+`OrderItems` contains order items and product IDs (`prod_id`). `Orders` contains customer IDs (`cust_id`) and order dates (`order_date`).
 
-`OrderItems` 表：
+`OrderItems`:
 
 | prod_id | order_num |
 | ------- | --------- |
@@ -976,7 +976,7 @@ WHERE order_num IN (SELECT DISTINCT order_num
 | BR02    | a0003     |
 | BR02    | a0013     |
 
-`Orders` 表：
+`Orders`:
 
 | order_num | cust_id | order_date          |
 | --------- | ------- | ------------------- |
@@ -985,14 +985,14 @@ WHERE order_num IN (SELECT DISTINCT order_num
 | a0003     | cust1   | 2022-01-02 00:00:00 |
 | a0013     | cust2   | 2022-01-01 00:20:00 |
 
-【问题】
+Task:
 
-编写 SQL 语句，使用子查询来确定哪些订单（在 `OrderItems` 中）购买了 `prod_id` 为 "BR01" 的产品，然后从 `Orders` 表中返回每个产品对应的顾客 ID（`cust_id`）和订单日期（`order_date`），按订购日期对结果进行升序排序。
+Use a subquery to find the orders in `OrderItems` that include product `BR01`. Then return each matching customer's ID (`cust_id`) and order date (`order_date`) from `Orders`, sorted by order date in ascending order.
 
-答案：
+Answer:
 
 ```sql
-# 写法 1：子查询
+# Option 1: subquery
 SELECT cust_id,order_date
 FROM Orders
 WHERE order_num IN
@@ -1001,18 +1001,18 @@ WHERE order_num IN
      WHERE prod_id = 'BR01' )
 ORDER BY order_date;
 
-# 写法 2: 连接表
+# Option 2: join the tables
 SELECT b.cust_id, b.order_date
 FROM OrderItems a,Orders b
 WHERE a.order_num = b.order_num AND a.prod_id = 'BR01'
 ORDER BY order_date
 ```
 
-### 返回购买 prod_id 为 BR01 的产品的所有顾客的电子邮件（一）
+### Return Email Addresses of Customers Who Bought Product BR01 (1)
 
-你想知道订购 BR01 产品的日期，有表 `OrderItems` 代表订单商品信息表，`prod_id` 为产品 id；`Orders` 表代表订单表有 `cust_id` 代表顾客 id 和订单日期 `order_date`；`Customers` 表含有 `cust_email` 顾客邮件和 `cust_id` 顾客 id
+To find when product `BR01` was ordered, use `OrderItems`, which contains product IDs (`prod_id`); `Orders`, which contains customer IDs (`cust_id`) and order dates (`order_date`); and `Customers`, which contains customer email addresses (`cust_email`) and IDs (`cust_id`).
 
-`OrderItems` 表：
+`OrderItems`:
 
 | prod_id | order_num |
 | ------- | --------- |
@@ -1021,7 +1021,7 @@ ORDER BY order_date
 | BR02    | a0003     |
 | BR02    | a0013     |
 
-`Orders` 表：
+`Orders`:
 
 | order_num | cust_id | order_date          |
 | --------- | ------- | ------------------- |
@@ -1030,7 +1030,7 @@ ORDER BY order_date
 | a0003     | cust1   | 2022-01-02 00:00:00 |
 | a0013     | cust2   | 2022-01-01 00:20:00 |
 
-`Customers` 表代表顾客信息，`cust_id` 为顾客 id，`cust_email` 为顾客 email
+`Customers` contains customer information: customer ID (`cust_id`) and email address (`cust_email`).
 
 | cust_id | cust_email        |
 | ------- | ----------------- |
@@ -1038,14 +1038,14 @@ ORDER BY order_date
 | cust1   | <cust1@cust.com>  |
 | cust2   | <cust2@cust.com>  |
 
-【问题】返回购买 `prod_id` 为 `BR01` 的产品的所有顾客的电子邮件（`Customers` 表中的 `cust_email`），结果无需排序。
+Return the email addresses (`cust_email` in `Customers`) of all customers who bought product `BR01`. The results do not need to be sorted.
 
-提示：这涉及 `SELECT` 语句，最内层的从 `OrderItems` 表返回 `order_num`，中间的从 `Customers` 表返回 `cust_id`。
+Hint: Use nested `SELECT` statements. The innermost query returns `order_num` from `OrderItems`; the middle query returns `cust_id` from `Orders`.
 
-答案：
+Answer:
 
 ```sql
-# 写法 1：子查询
+# Option 1: subquery
 SELECT cust_email
 FROM Customers
 WHERE cust_id IN (SELECT cust_id
@@ -1054,12 +1054,12 @@ WHERE cust_id IN (SELECT cust_id
         FROM OrderItems
         WHERE prod_id = 'BR01'))
 
-# 写法 2: 连接表（inner join）
+# Option 2: join the tables (inner join)
 SELECT c.cust_email
 FROM OrderItems a,Orders b,Customers c
 WHERE a.order_num = b.order_num AND b.cust_id = c.cust_id AND a.prod_id = 'BR01'
 
-# 写法 3：连接表（left join）
+# Option 3: join the tables (left join)
 SELECT c.cust_email
 FROM Orders a LEFT JOIN
   OrderItems b ON a.order_num = b.order_num LEFT JOIN
@@ -1067,11 +1067,11 @@ FROM Orders a LEFT JOIN
 WHERE b.prod_id = 'BR01'
 ```
 
-### 返回每个顾客不同订单的总金额
+### Return the Total Order Amount for Each Customer
 
-我们需要一个顾客 ID 列表，其中包含他们已订购的总金额。
+Return each customer ID with the total amount they have ordered.
 
-`OrderItems` 表代表订单信息，`OrderItems` 表有订单号：`order_num` 和商品售出价格：`item_price`、商品数量：`quantity`。
+`OrderItems` contains order numbers (`order_num`), sale prices (`item_price`), and quantities (`quantity`).
 
 | order_num | item_price | quantity |
 | --------- | ---------- | -------- |
@@ -1083,7 +1083,7 @@ WHERE b.prod_id = 'BR01'
 | a0003     | 1          | 19       |
 | a0003     | 7          | 5        |
 
-`Orders` 表订单号：`order_num`、顾客 id：`cust_id`
+`Orders` contains order numbers (`order_num`) and customer IDs (`cust_id`).
 
 | order_num | cust_id |
 | --------- | ------- |
@@ -1092,14 +1092,14 @@ WHERE b.prod_id = 'BR01'
 | a0003     | cust1   |
 | a0013     | cust2   |
 
-【问题】
+Task:
 
-编写 SQL 语句，返回顾客 ID（`Orders` 表中的 `cust_id`），并使用子查询返回 `total_ordered` 以便返回每个顾客的订单总数，将结果按金额从大到小排序。
+Write a query to return each customer ID (`cust_id` in `Orders`) and use a subquery to calculate `total_ordered` for each customer. Sort by amount in descending order.
 
-答案：
+Answer:
 
 ```sql
-# 写法 1：子查询
+# Option 1: subquery
 SELECT o.cust_id, SUM(tb.total_ordered) AS `total_ordered`
 FROM (SELECT order_num, SUM(item_price * quantity) AS total_ordered
     FROM OrderItems
@@ -1109,7 +1109,7 @@ WHERE tb.order_num = o.order_num
 GROUP BY o.cust_id
 ORDER BY total_ordered DESC;
 
-# 写法 2：连接表
+# Option 2: join the tables
 SELECT b.cust_id, Sum(a.quantity * a.item_price) AS total_ordered
 FROM OrderItems a,Orders b
 WHERE a.order_num = b.order_num
@@ -1117,11 +1117,11 @@ GROUP BY cust_id
 ORDER BY total_ordered DESC
 ```
 
-关于写法一详细介绍可以参考： [issue#2402：写法 1 存在的错误以及修改方法](https://github.com/Snailclimb/JavaGuide/issues/2402)。
+For details about the first approach, see [issue #2402: Error in the first approach and how to fix it](https://github.com/Snailclimb/JavaGuide/issues/2402).
 
-### 从 Products 表中检索所有的产品名称以及对应的销售总数
+### Retrieve All Product Names and Their Total Quantities Sold
 
-`Products` 表中检索所有的产品名称：`prod_name`、产品 id：`prod_id`
+The `Products` table has product names (`prod_name`) and product IDs (`prod_id`).
 
 | prod_id | prod_name |
 | ------- | --------- |
@@ -1130,7 +1130,7 @@ ORDER BY total_ordered DESC
 | a0013   | coffee    |
 | a0003   | cola      |
 
-`OrderItems` 代表订单商品表，订单产品：`prod_id`、售出数量：`quantity`
+`OrderItems` contains product IDs (`prod_id`) and quantities sold (`quantity`).
 
 | prod_id | quantity |
 | ------- | -------- |
@@ -1142,14 +1142,14 @@ ORDER BY total_ordered DESC
 | a0003   | 19       |
 | a0003   | 5        |
 
-【问题】
+Task:
 
-编写 SQL 语句，从 `Products` 表中检索所有的产品名称（`prod_name`），以及名为 `quant_sold` 的计算列，其中包含所售产品的总数（在 `OrderItems` 表上使用子查询和 `SUM(quantity)` 检索）。
+Write a query to retrieve all product names (`prod_name`) from `Products` and a calculated column named `quant_sold` with the total quantity sold. Use a subquery on `OrderItems` with `SUM(quantity)`.
 
-答案：
+Answer:
 
 ```sql
-# 写法 1：子查询
+# Option 1: subquery
 SELECT p.prod_name, tb.quant_sold
 FROM (SELECT prod_id, Sum(quantity) AS quant_sold
     FROM OrderItems
@@ -1157,21 +1157,21 @@ FROM (SELECT prod_id, Sum(quantity) AS quant_sold
   Products p
 WHERE tb.prod_id = p.prod_id
 
-# 写法 2：连接表
+# Option 2: join the tables
 SELECT p.prod_name, Sum(o.quantity) AS quant_sold
 FROM Products p,
   OrderItems o
 WHERE p.prod_id = o.prod_id
-GROUP BY p.prod_name（这里不能用 p.prod_id，会报错）
+GROUP BY p.prod_name -- Using p.prod_id here causes an error.
 ```
 
-## 连接表
+## Joining Tables
 
-JOIN 是“连接”的意思，顾名思义，SQL JOIN 子句用于将两个或者多个表联合起来进行查询。
+`JOIN` combines two or more tables in a query.
 
-连接表时需要在每个表中选择一个字段，并对这些字段的值进行比较，值相同的两条记录将合并为一条。**连接表的本质就是将不同表的记录合并起来，形成一张新表。当然，这张新表只是临时的，它仅存在于本次查询期间**。
+To join tables, choose a column from each table and compare their values. Rows with matching values are combined. **A join combines rows from different tables into a new, temporary result that exists only for the query.**
 
-使用 `JOIN` 连接两个表的基本语法如下：
+The basic syntax for joining two tables with `JOIN` is:
 
 ```sql
 SELECT table1.column1, table2.column2...
@@ -1180,21 +1180,21 @@ JOIN table2
 ON table1.common_column1 = table2.common_column2;
 ```
 
-`table1.common_column1 = table2.common_column2` 是连接条件，只有满足此条件的记录才会合并为一行。您可以使用多个运算符来连接表，例如 =、>、<、<>、<=、>=、!=、`between`、`like` 或者 `not`，但是最常见的是使用 =。
+`table1.common_column1 = table2.common_column2` is the join condition. Only rows that meet it are combined. You can use operators such as `=`, `>`, `<`, `<>`, `<=`, `>=`, `!=`, `BETWEEN`, `LIKE`, or `NOT`; `=` is the most common.
 
-当两个表中有同名的字段时，为了帮助数据库引擎区分是哪个表的字段，在书写同名字段名时需要加上表名。当然，如果书写的字段名在两个表中是唯一的，也可以不使用以上格式，只写字段名即可。
+When two tables have a column with the same name, qualify it with the table name so the database can identify the correct column. If a column name is unique across the tables, you can use the column name alone.
 
-另外，如果两张表的关联字段名相同，也可以使用 `USING`子句来代替 `ON`，举个例子：
+If both tables use the same name for the join column, you can use `USING` instead of `ON`. For example:
 
 ```sql
-# join....on
+# JOIN ... ON
 SELECT c.cust_name, o.order_num
 FROM Customers c
 INNER JOIN Orders o
 ON c.cust_id = o.cust_id
 ORDER BY c.cust_name
 
-# 如果两张表的关联字段名相同，也可以使用USING子句：JOIN....USING()
+# If both tables use the same join column name, use JOIN ... USING().
 SELECT c.cust_name, o.order_num
 FROM Customers c
 INNER JOIN Orders o
@@ -1202,40 +1202,40 @@ USING(cust_id)
 ORDER BY c.cust_name
 ```
 
-**`ON` 和 `WHERE` 的区别**：
+**`ON` vs. `WHERE`:**
 
-- 连接表时，SQL 会根据连接条件生成一张新的临时表。`ON` 就是连接条件，它决定临时表的生成。
-- `WHERE` 是在临时表生成以后，再对临时表中的数据进行过滤，生成最终的结果集，这个时候已经没有 JOIN-ON 了。
+- When joining tables, SQL uses the join condition to create a temporary result. `ON` defines that condition.
+- `WHERE` filters the temporary result after it is created to produce the final result. At that point, the join has already been performed.
 
-所以总结来说就是：**SQL 先根据 ON 生成一张临时表，然后再根据 WHERE 对临时表进行筛选**。
+In short, **SQL first creates a temporary result using `ON`, then filters it with `WHERE`.**
 
-SQL 允许在 `JOIN` 左边加上一些修饰性的关键词，从而形成不同类型的连接，如下表所示：
+SQL supports different join types by adding modifiers before `JOIN`:
 
-| 连接类型                                 | 说明                                                                                          |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------- |
-| INNER JOIN 内连接                        | （默认连接方式）只有当两个表都存在满足条件的记录时才会返回行。                                |
-| LEFT JOIN / LEFT OUTER JOIN 左(外)连接   | 返回左表中的所有行，即使右表中没有满足条件的行也是如此。                                      |
-| RIGHT JOIN / RIGHT OUTER JOIN 右(外)连接 | 返回右表中的所有行，即使左表中没有满足条件的行也是如此。                                      |
-| FULL JOIN / FULL OUTER JOIN 全(外)连接   | 只要其中有一个表存在满足条件的记录，就返回行。                                                |
-| SELF JOIN                                | 将一个表连接到自身，就像该表是两个表一样。为了区分两个表，在 SQL 语句中需要至少重命名一个表。 |
-| CROSS JOIN                               | 交叉连接，从两个或者多个连接表中返回记录集的笛卡尔积。                                        |
+| Join type                     | Description                                                                                         |
+| ----------------------------- | --------------------------------------------------------------------------------------------------- |
+| INNER JOIN                    | (Default) Returns rows only when both tables have matching rows.                                    |
+| LEFT JOIN / LEFT OUTER JOIN   | Returns every row from the left table, even when there is no matching row in the right table.       |
+| RIGHT JOIN / RIGHT OUTER JOIN | Returns every row from the right table, even when there is no matching row in the left table.       |
+| FULL JOIN / FULL OUTER JOIN   | Returns a row when either table has a matching row.                                                 |
+| SELF JOIN                     | Joins a table to itself as if it were two tables. Rename at least one instance to distinguish them. |
+| CROSS JOIN                    | Returns the Cartesian product of the joined tables.                                                 |
 
-下图展示了 LEFT JOIN、RIGHT JOIN、INNER JOIN、OUTER JOIN 相关的 7 种用法。
+The diagram shows seven variations of `LEFT JOIN`, `RIGHT JOIN`, `INNER JOIN`, and `OUTER JOIN`.
 
 ![](../images/shared/d1794312b448516831369f869814ab39.png)
 
-如果不加任何修饰词，只写 `JOIN`，那么默认为 `INNER JOIN`
+If you write `JOIN` without a modifier, it defaults to `INNER JOIN`.
 
-对于 `INNER JOIN` 来说，还有一种隐式的写法，称为 “**隐式内连接**”，也就是没有 `INNER JOIN` 关键字，使用 `WHERE` 语句实现内连接的功能
+`INNER JOIN` also has an implicit form, called an **implicit inner join**. It omits the `INNER JOIN` keyword and uses a `WHERE` clause to perform the join.
 
 ```sql
-# 隐式内连接
+# Implicit inner join
 SELECT c.cust_name, o.order_num
 FROM Customers c,Orders o
 WHERE c.cust_id = o.cust_id
 ORDER BY c.cust_name
 
-# 显式内连接
+# Explicit inner join
 SELECT c.cust_name, o.order_num
 FROM Customers c
 INNER JOIN Orders o
@@ -1243,9 +1243,9 @@ USING(cust_id)
 ORDER BY c.cust_name;
 ```
 
-### 返回顾客名称和相关订单号
+### Return Customer Names and Their Order Numbers
 
-`Customers` 表有字段顾客名称 `cust_name`、顾客 id `cust_id`
+The `Customers` table has a customer name (`cust_name`) and customer ID (`cust_id`).
 
 | cust_id  | cust_name |
 | -------- | --------- |
@@ -1256,7 +1256,7 @@ ORDER BY c.cust_name;
 | cust221  | an        |
 | cust2217 | hex       |
 
-`Orders` 订单信息表，含有字段 `order_num` 订单号、`cust_id` 顾客 id
+The `Orders` table contains order numbers (`order_num`) and customer IDs (`cust_id`).
 
 | order_num | cust_id  |
 | --------- | -------- |
@@ -1267,18 +1267,18 @@ ORDER BY c.cust_name;
 | a5        | cust221  |
 | a7        | cust2217 |
 
-【问题】编写 SQL 语句，返回 `Customers` 表中的顾客名称（`cust_name`）和 `Orders` 表中的相关订单号（`order_num`），并按顾客名称再按订单号对结果进行升序排序。你可以尝试用两个不同的写法，一个使用简单的等连接语法，另外一个使用 INNER JOIN。
+Write a query to return customer names (`cust_name`) from `Customers` and their matching order numbers (`order_num`) from `Orders`. Sort by customer name, then order number, in ascending order. Try both the simple equality join and `INNER JOIN` syntax.
 
-答案：
+Answer:
 
 ```sql
-# 隐式内连接
+# Implicit inner join
 SELECT c.cust_name, o.order_num
 FROM Customers c,Orders o
 WHERE c.cust_id = o.cust_id
 ORDER BY c.cust_name,o.order_num
 
-# 显式内连接
+# Explicit inner join
 SELECT c.cust_name, o.order_num
 FROM Customers c
 INNER JOIN Orders o
@@ -1286,9 +1286,9 @@ USING(cust_id)
 ORDER BY c.cust_name,o.order_num;
 ```
 
-### 返回顾客名称和相关订单号以及每个订单的总价
+### Return Customer Names, Order Numbers, and Order Totals
 
-`Customers` 表有字段，顾客名称：`cust_name`、顾客 id：`cust_id`
+The `Customers` table has customer names (`cust_name`) and customer IDs (`cust_id`).
 
 | cust_id  | cust_name |
 | -------- | --------- |
@@ -1299,7 +1299,7 @@ ORDER BY c.cust_name,o.order_num;
 | cust221  | an        |
 | cust2217 | hex       |
 
-`Orders` 订单信息表，含有字段，订单号：`order_num`、顾客 id：`cust_id`
+The `Orders` table contains order numbers (`order_num`) and customer IDs (`cust_id`).
 
 | order_num | cust_id  |
 | --------- | -------- |
@@ -1310,7 +1310,7 @@ ORDER BY c.cust_name,o.order_num;
 | a5        | cust221  |
 | a7        | cust2217 |
 
-`OrderItems` 表有字段，商品订单号：`order_num`、商品数量：`quantity`、商品价格：`item_price`
+The `OrderItems` table has order numbers (`order_num`), quantities (`quantity`), and item prices (`item_price`).
 
 | order_num | quantity | item_price |
 | --------- | -------- | ---------- |
@@ -1321,10 +1321,10 @@ ORDER BY c.cust_name,o.order_num;
 | a5        | 15       | 25         |
 | a7        | 7        | 7          |
 
-【问题】除了返回顾客名称和订单号，返回 `Customers` 表中的顾客名称（`cust_name`）和 `Orders` 表中的相关订单号（`order_num`），添加第三列 `OrderTotal`，其中包含每个订单的总价，并按顾客名称再按订单号对结果进行升序排序。
+Return customer names (`cust_name`) from `Customers` and their matching order numbers (`order_num`) from `Orders`. Add a third column, `OrderTotal`, with each order's total price. Sort by customer name, then order number, in ascending order.
 
 ```sql
-# 简单的等连接语法
+# Simple equality join
 SELECT c.cust_name, o.order_num, SUM(quantity * item_price) AS OrderTotal
 FROM Customers c,Orders o,OrderItems oi
 WHERE c.cust_id = o.cust_id AND o.order_num = oi.order_num
@@ -1332,7 +1332,7 @@ GROUP BY c.cust_name, o.order_num
 ORDER BY c.cust_name, o.order_num
 ```
 
-注意，可能有小伙伴会这样写：
+You might be tempted to write the query this way:
 
 ```sql
 SELECT c.cust_name, o.order_num, SUM(quantity * item_price) AS OrderTotal
@@ -1342,17 +1342,17 @@ GROUP BY c.cust_name
 ORDER BY c.cust_name,o.order_num
 ```
 
-这是错误的！只对 `cust_name` 进行聚类确实符合题意，但是不符合 `GROUP BY` 的语法。
+This is incorrect. Grouping only by `cust_name` may seem to match the requirement, but it does not satisfy the `GROUP BY` syntax.
 
-select 语句中，如果没有 `GROUP BY` 语句，那么 `cust_name`、`order_num` 会返回若干个值，而 `sum(quantity * item_price)` 只返回一个值，通过 `group by` `cust_name` 可以让 `cust_name` 和 `sum(quantity * item_price)` 一一对应起来，或者说**聚类**，所以同样的，也要对 `order_num` 进行聚类。
+Without `GROUP BY`, `cust_name` and `order_num` in the `SELECT` statement can return multiple values, while `SUM(quantity * item_price)` returns one value. Grouping by `cust_name` associates each customer name with its sum. Therefore, `order_num` must also be included in the grouping.
 
-> **一句话，select 中的字段要么都聚类，要么都不聚类**
+> **In short, either group every selected column or group none of them.**
 
-### 确定哪些订单购买了 prod_id 为 BR01 的产品（二）
+### Find Orders That Include Product BR01 (2)
 
-表 `OrderItems` 代表订单商品信息表，`prod_id` 为产品 id；`Orders` 表代表订单表有 `cust_id` 代表顾客 id 和订单日期 `order_date`
+`OrderItems` contains order items and product IDs (`prod_id`). `Orders` contains customer IDs (`cust_id`) and order dates (`order_date`).
 
-`OrderItems` 表：
+`OrderItems`:
 
 | prod_id | order_num |
 | ------- | --------- |
@@ -1361,7 +1361,7 @@ select 语句中，如果没有 `GROUP BY` 语句，那么 `cust_name`、`order_
 | BR02    | a0003     |
 | BR02    | a0013     |
 
-`Orders` 表：
+`Orders`:
 
 | order_num | cust_id | order_date          |
 | --------- | ------- | ------------------- |
@@ -1370,14 +1370,14 @@ select 语句中，如果没有 `GROUP BY` 语句，那么 `cust_name`、`order_
 | a0003     | cust1   | 2022-01-02 00:00:00 |
 | a0013     | cust2   | 2022-01-01 00:20:00 |
 
-【问题】
+Task:
 
-编写 SQL 语句，使用子查询来确定哪些订单（在 `OrderItems` 中）购买了 `prod_id` 为 "BR01" 的产品，然后从 `Orders` 表中返回每个产品对应的顾客 ID（`cust_id`）和订单日期（`order_date`），按订购日期对结果进行升序排序。
+Use a subquery to find the orders in `OrderItems` that include product `BR01`. Then return each matching customer's ID (`cust_id`) and order date (`order_date`) from `Orders`, sorted by order date in ascending order.
 
-提示：这一次使用连接和简单的等连接语法。
+Hint: This time, use a join and simple equality syntax.
 
 ```sql
-# 写法 1：子查询
+# Option 1: subquery
 SELECT cust_id, order_date
 FROM Orders
 WHERE order_num IN (SELECT order_num
@@ -1385,7 +1385,7 @@ WHERE order_num IN (SELECT order_num
     WHERE prod_id = 'BR01')
 ORDER BY order_date
 
-# 写法 2：连接表 inner join
+# Option 2: inner join
 SELECT cust_id, order_date
 FROM Orders o INNER JOIN
   (SELECT order_num
@@ -1393,7 +1393,7 @@ FROM Orders o INNER JOIN
     WHERE prod_id = 'BR01') tb ON o.order_num = tb.order_num
 ORDER BY order_date
 
-# 写法 3：写法 2 的简化版
+# Option 3: a shorter version of option 2
 SELECT cust_id, order_date
 FROM Orders
 INNER JOIN OrderItems USING(order_num)
@@ -1401,11 +1401,11 @@ WHERE OrderItems.prod_id = 'BR01'
 ORDER BY order_date
 ```
 
-### 返回购买 prod_id 为 BR01 的产品的所有顾客的电子邮件（二）
+### Return Email Addresses of Customers Who Bought Product BR01 (2)
 
-有表 `OrderItems` 代表订单商品信息表，`prod_id` 为产品 id；`Orders` 表代表订单表有 `cust_id` 代表顾客 id 和订单日期 `order_date`；`Customers` 表含有 `cust_email` 顾客邮件和 cust_id 顾客 id
+`OrderItems` contains order items and product IDs (`prod_id`). `Orders` contains customer IDs (`cust_id`) and order dates (`order_date`). `Customers` contains customer email addresses (`cust_email`) and IDs (`cust_id`).
 
-`OrderItems` 表：
+`OrderItems`:
 
 | prod_id | order_num |
 | ------- | --------- |
@@ -1414,7 +1414,7 @@ ORDER BY order_date
 | BR02    | a0003     |
 | BR02    | a0013     |
 
-`Orders` 表：
+`Orders`:
 
 | order_num | cust_id | order_date          |
 | --------- | ------- | ------------------- |
@@ -1423,7 +1423,7 @@ ORDER BY order_date
 | a0003     | cust1   | 2022-01-02 00:00:00 |
 | a0013     | cust2   | 2022-01-01 00:20:00 |
 
-`Customers` 表代表顾客信息，`cust_id` 为顾客 id，`cust_email` 为顾客 email
+`Customers` contains customer IDs (`cust_id`) and email addresses (`cust_email`).
 
 | cust_id | cust_email        |
 | ------- | ----------------- |
@@ -1431,9 +1431,9 @@ ORDER BY order_date
 | cust1   | <cust1@cust.com>  |
 | cust2   | <cust2@cust.com>  |
 
-【问题】返回购买 `prod_id` 为 BR01 的产品的所有顾客的电子邮件（`Customers` 表中的 `cust_email`），结果无需排序。
+Return the email addresses (`cust_email` in `Customers`) of all customers who bought product `BR01`. The results do not need to be sorted.
 
-提示：涉及到 `SELECT` 语句，最内层的从 `OrderItems` 表返回 `order_num`，中间的从 `Customers` 表返回 `cust_id`，但是必须使用 INNER JOIN 语法。
+Hint: Use `SELECT` statements. The innermost query returns `order_num` from `OrderItems`; the middle query returns `cust_id` from `Orders`. Use `INNER JOIN` syntax.
 
 ```sql
 SELECT cust_email
@@ -1443,9 +1443,9 @@ INNER JOIN OrderItems using(order_num)
 WHERE OrderItems.prod_id = 'BR01'
 ```
 
-### 确定最佳顾客的另一种方式（二）
+### Another Way to Identify the Best Customers (2)
 
-`OrderItems` 表代表订单信息，确定最佳顾客的另一种方式是看他们花了多少钱，`OrderItems` 表有订单号 `order_num` 和 `item_price` 商品售出价格、`quantity` 商品数量
+`OrderItems` contains order information. Another way to identify the best customers is to compare how much they spent. The table has an order number (`order_num`), sale price (`item_price`), and quantity (`quantity`).
 
 | order_num | item_price | quantity |
 | --------- | ---------- | -------- |
@@ -1457,7 +1457,7 @@ WHERE OrderItems.prod_id = 'BR01'
 | a2        | 1          | 19       |
 | a7        | 7          | 5        |
 
-`Orders` 表含有字段 `order_num` 订单号、`cust_id` 顾客 id
+The `Orders` table has an order number (`order_num`) and customer ID (`cust_id`).
 
 | order_num | cust_id  |
 | --------- | -------- |
@@ -1468,7 +1468,7 @@ WHERE OrderItems.prod_id = 'BR01'
 | a5        | cust221  |
 | a7        | cust2217 |
 
-顾客表 `Customers` 有字段 `cust_id` 客户 id、`cust_name` 客户姓名
+The `Customers` table has a customer ID (`cust_id`) and name (`cust_name`).
 
 | cust_id  | cust_name |
 | -------- | --------- |
@@ -1479,9 +1479,9 @@ WHERE OrderItems.prod_id = 'BR01'
 | cust221  | an        |
 | cust2217 | hex       |
 
-【问题】编写 SQL 语句，返回订单总价不小于 1000 的客户名称和总额（`OrderItems` 表中的 `order_num`）。
+Write a query to return the names of customers whose order totals are at least 1,000, along with each total. The totals are based on `OrderItems`.
 
-提示：需要计算总和（`item_price` 乘以 `quantity`）。按总额对结果进行排序，请使用 `INNER JOIN`语法。
+Hint: Calculate each total as `item_price` multiplied by `quantity`. Sort by total and use `INNER JOIN` syntax.
 
 ```sql
 SELECT cust_name, SUM(item_price * quantity) AS total_price
@@ -1493,11 +1493,11 @@ HAVING total_price >= 1000
 ORDER BY total_price
 ```
 
-## 创建高级连接
+## Advanced Joins
 
-### 检索每个顾客的名称和所有的订单号（一）
+### Retrieve Each Customer's Name and All Order Numbers (1)
 
-`Customers` 表代表顾客信息含有顾客 id `cust_id` 和 顾客名称 `cust_name`
+The `Customers` table contains customer IDs (`cust_id`) and names (`cust_name`).
 
 | cust_id  | cust_name |
 | -------- | --------- |
@@ -1508,7 +1508,7 @@ ORDER BY total_price
 | cust221  | an        |
 | cust2217 | hex       |
 
-`Orders` 表代表订单信息含有订单号 `order_num` 和顾客 id `cust_id`
+The `Orders` table contains order numbers (`order_num`) and customer IDs (`cust_id`).
 
 | order_num | cust_id  |
 | --------- | -------- |
@@ -1519,7 +1519,7 @@ ORDER BY total_price
 | a5        | cust221  |
 | a7        | cust2217 |
 
-【问题】使用 INNER JOIN 编写 SQL 语句，检索每个顾客的名称（`Customers` 表中的 `cust_name`）和所有的订单号（`Orders` 表中的 `order_num`），最后根据顾客姓名 `cust_name` 升序返回。
+Use `INNER JOIN` to retrieve each customer's name (`cust_name` in `Customers`) and all order numbers (`order_num` in `Orders`). Sort by customer name in ascending order.
 
 ```sql
 SELECT cust_name, order_num
@@ -1529,9 +1529,9 @@ USING(cust_id)
 ORDER BY cust_name
 ```
 
-### 检索每个顾客的名称和所有的订单号（二）
+### Retrieve Each Customer's Name and All Order Numbers (2)
 
-`Orders` 表代表订单信息含有订单号 `order_num` 和顾客 id `cust_id`
+The `Orders` table contains order numbers (`order_num`) and customer IDs (`cust_id`).
 
 | order_num | cust_id  |
 | --------- | -------- |
@@ -1542,7 +1542,7 @@ ORDER BY cust_name
 | a5        | cust221  |
 | a7        | cust2217 |
 
-`Customers` 表代表顾客信息含有顾客 id `cust_id` 和 顾客名称 `cust_name`
+The `Customers` table contains customer IDs (`cust_id`) and names (`cust_name`).
 
 | cust_id  | cust_name |
 | -------- | --------- |
@@ -1554,7 +1554,7 @@ ORDER BY cust_name
 | cust2217 | hex       |
 | cust40   | ace       |
 
-【问题】检索每个顾客的名称（`Customers` 表中的 `cust_name`）和所有的订单号（Orders 表中的 `order_num`），列出所有的顾客，即使他们没有下过订单。最后根据顾客姓名 `cust_name` 升序返回。
+Retrieve each customer's name (`cust_name` in `Customers`) and all order numbers (`order_num` in `Orders`). Include every customer, even those without orders. Sort by customer name in ascending order.
 
 ```sql
 SELECT cust_name, order_num
@@ -1564,9 +1564,9 @@ USING(cust_id)
 ORDER BY cust_name
 ```
 
-### 返回产品名称和与之相关的订单号
+### Return Product Names and Their Order Numbers
 
-`Products` 表为产品信息表含有字段 `prod_id` 产品 id、`prod_name` 产品名称
+The `Products` table contains product IDs (`prod_id`) and names (`prod_name`).
 
 | prod_id | prod_name |
 | ------- | --------- |
@@ -1576,7 +1576,7 @@ ORDER BY cust_name
 | a0003   | cola      |
 | a0023   | soda      |
 
-`OrderItems` 表为订单信息表含有字段 `order_num` 订单号和产品 id `prod_id`
+The `OrderItems` table contains order numbers (`order_num`) and product IDs (`prod_id`).
 
 | prod_id | order_num |
 | ------- | --------- |
@@ -1588,7 +1588,7 @@ ORDER BY cust_name
 | a0003   | a19       |
 | a0003   | a5        |
 
-【问题】使用外连接（left join、 right join、full join）联结 `Products` 表和 `OrderItems` 表，返回产品名称（`prod_name`）和与之相关的订单号（`order_num`）的列表，并按照产品名称升序排序。
+Use an outer join (`LEFT JOIN`, `RIGHT JOIN`, or `FULL JOIN`) to join `Products` and `OrderItems`. Return product names (`prod_name`) with their related order numbers (`order_num`), sorted by product name in ascending order.
 
 ```sql
 SELECT prod_name, order_num
@@ -1598,9 +1598,9 @@ USING(prod_id)
 ORDER BY prod_name
 ```
 
-### 返回产品名称和每一项产品的总订单数
+### Return Product Names and the Number of Orders for Each Product
 
-`Products` 表为产品信息表含有字段 `prod_id` 产品 id、`prod_name` 产品名称
+The `Products` table contains product IDs (`prod_id`) and names (`prod_name`).
 
 | prod_id | prod_name |
 | ------- | --------- |
@@ -1610,7 +1610,7 @@ ORDER BY prod_name
 | a0003   | cola      |
 | a0023   | soda      |
 
-`OrderItems` 表为订单信息表含有字段 `order_num` 订单号和产品 id `prod_id`
+The `OrderItems` table contains order numbers (`order_num`) and product IDs (`prod_id`).
 
 | prod_id | order_num |
 | ------- | --------- |
@@ -1622,9 +1622,9 @@ ORDER BY prod_name
 | a0003   | a19       |
 | a0003   | a5        |
 
-【问题】
+Task:
 
-使用 OUTER JOIN 联结 `Products` 表和 `OrderItems` 表，返回产品名称（`prod_name`）和每一项产品的总订单数（不是订单号），并按产品名称升序排序。
+Use an outer join to join `Products` and `OrderItems`. Return each product name (`prod_name`) and its total number of orders, not the order numbers. Sort by product name in ascending order.
 
 ```sql
 SELECT prod_name, COUNT(order_num) AS orders
@@ -1635,9 +1635,9 @@ GROUP BY prod_name
 ORDER BY prod_name
 ```
 
-### 列出供应商及其可供产品的数量
+### List Vendors and the Number of Products They Offer
 
-有 `Vendors` 表含有 `vend_id` （供应商 id）
+The `Vendors` table contains vendor IDs (`vend_id`).
 
 | vend_id |
 | ------- |
@@ -1646,7 +1646,7 @@ ORDER BY prod_name
 | a0003   |
 | a0010   |
 
-有 `Products` 表含有 `vend_id`（供应商 id）和 prod_id（供应产品 id）
+The `Products` table contains vendor IDs (`vend_id`) and product IDs (`prod_id`).
 
 | vend_id | prod_id              |
 | ------- | -------------------- |
@@ -1656,9 +1656,9 @@ ORDER BY prod_name
 | a0003   | prod_id_vivo phone   |
 | a0010   | prod_id_huawei phone |
 
-【问题】列出供应商（`Vendors` 表中的 `vend_id`）及其可供产品的数量，包括没有产品的供应商。你需要使用 OUTER JOIN 和 COUNT()聚合函数来计算 `Products` 表中每种产品的数量，最后根据 vend_id 升序排序。
+List each vendor (`vend_id` in `Vendors`) and the number of products they offer, including vendors with no products. Use an outer join and the `COUNT()` aggregate function to count products in `Products`. Sort by `vend_id` in ascending order.
 
-注意：`vend_id` 列会显示在多个表中，因此在每次引用它时都需要完全限定它。
+Note: `vend_id` appears in multiple tables, so qualify it with the table name whenever you reference it.
 
 ```sql
 SELECT v.vend_id, COUNT(prod_id) AS prod_id
@@ -1669,17 +1669,17 @@ GROUP BY v.vend_id
 ORDER BY v.vend_id
 ```
 
-## 组合查询
+## Combining Queries
 
-`UNION` 运算符将两个或更多查询的结果组合起来，并生成一个结果集，其中包含来自 `UNION` 中参与查询的提取行。
+The `UNION` operator combines the results of two or more queries into one result set containing rows returned by those queries.
 
-`UNION` 基本规则：
+Basic rules for `UNION`:
 
-- 所有查询的列数和列顺序必须相同。
-- 每个查询中涉及表的列的数据类型必须相同或兼容。
-- 通常返回的列名取自第一个查询。
+- All queries must return the same number of columns in the same order.
+- The corresponding columns in each query must have the same or compatible data types.
+- The result column names usually come from the first query.
 
-默认地，`UNION` 操作符选取不同的值。如果允许重复的值，请使用 `UNION ALL`。
+By default, `UNION` removes duplicate rows. Use `UNION ALL` to keep duplicates.
 
 ```sql
 SELECT column_name(s) FROM table1
@@ -1687,16 +1687,16 @@ UNION ALL
 SELECT column_name(s) FROM table2;
 ```
 
-`UNION` 结果集中的列名总是等于 `UNION` 中第一个 `SELECT` 语句中的列名。
+The column names in a `UNION` result set are taken from the first `SELECT` statement.
 
-`JOIN` vs `UNION`：
+`JOIN` vs. `UNION`:
 
-- `JOIN` 中连接表的列可能不同，但在 `UNION` 中，所有查询的列数和列顺序必须相同。
-- `UNION` 将查询之后的行放在一起（垂直放置），但 `JOIN` 将查询之后的列放在一起（水平放置），即它构成一个笛卡尔积。
+- A `JOIN` can combine tables with different columns, but a `UNION` requires all queries to return the same number of columns in the same order.
+- `UNION` stacks query results vertically, while `JOIN` combines columns horizontally; a join can produce a Cartesian product.
 
-### 将两个 SELECT 语句结合起来（一）
+### Combine Two SELECT Statements (1)
 
-表 `OrderItems` 包含订单产品信息，字段 `prod_id` 代表产品 id、`quantity` 代表产品数量
+`OrderItems` contains order items. `prod_id` is the product ID, and `quantity` is the product quantity.
 
 | prod_id | quantity |
 | ------- | -------- |
@@ -1709,7 +1709,7 @@ SELECT column_name(s) FROM table2;
 | a0003   | 5        |
 | BNBG    | 10002    |
 
-【问题】将两个 `SELECT` 语句结合起来，以便从 `OrderItems` 表中检索产品 id（`prod_id`）和 `quantity`。其中，一个 `SELECT` 语句过滤数量为 100 的行，另一个 `SELECT` 语句过滤 id 以 BNBG 开头的产品，最后按产品 id 对结果进行升序排序。
+Combine two `SELECT` statements to retrieve product IDs (`prod_id`) and `quantity` from `OrderItems`. One query filters rows with a quantity of 100; the other filters products whose IDs start with `BNBG`. Sort the results by product ID in ascending order.
 
 ```sql
 SELECT prod_id, quantity
@@ -1722,11 +1722,11 @@ WHERE prod_id LIKE 'BNBG%'
 ORDER BY prod_id;
 ```
 
-> **注意**：`UNION` 查询中使用 `ORDER BY` 时，只能在最后一个 `SELECT` 语句之后使用一次，它会对整个组合结果集进行排序。
+> **Note:** In a `UNION` query, use `ORDER BY` only once, after the last `SELECT`. It sorts the entire combined result set.
 
-### 将两个 SELECT 语句结合起来（二）
+### Combine Two SELECT Statements (2)
 
-表 `OrderItems` 包含订单产品信息，字段 `prod_id` 代表产品 id、`quantity` 代表产品数量。
+`OrderItems` contains order items. `prod_id` is the product ID, and `quantity` is the product quantity.
 
 | prod_id | quantity |
 | ------- | -------- |
@@ -1739,11 +1739,11 @@ ORDER BY prod_id;
 | a0003   | 5        |
 | BNBG    | 10002    |
 
-【问题】将两个 `SELECT` 语句结合起来，以便从 `OrderItems` 表中检索产品 id（`prod_id`）和 `quantity`。其中，一个 `SELECT` 语句过滤数量为 100 的行，另一个 `SELECT` 语句过滤 id 以 BNBG 开头的产品，最后按产品 id 对结果进行升序排序。 注意：**这次仅使用单个 SELECT 语句。**
+Combine the two conditions to retrieve product IDs (`prod_id`) and `quantity` from `OrderItems`. One condition selects rows with a quantity of 100; the other selects products whose IDs start with `BNBG`. Sort by product ID in ascending order. **This time, use a single `SELECT` statement.**
 
-答案：
+Answer:
 
-要求只用一条 select 语句，那就用 `or` 不用 `union` 了。
+To use one `SELECT` statement, use `OR` instead of `UNION`.
 
 ```sql
 SELECT prod_id, quantity
@@ -1752,9 +1752,9 @@ WHERE quantity = 100 OR prod_id LIKE 'BNBG%'
 ORDER BY prod_id;
 ```
 
-### 组合 Products 表中的产品名称和 Customers 表中的顾客名称
+### Combine Product Names and Customer Names
 
-`Products` 表含有字段 `prod_name` 代表产品名称
+The `Products` table has a product name column (`prod_name`).
 
 | prod_name |
 | --------- |
@@ -1763,7 +1763,7 @@ ORDER BY prod_id;
 | ring      |
 | umbrella  |
 
-Customers 表代表顾客信息，cust_name 代表顾客名称
+The `Customers` table contains customer information; `cust_name` is the customer name.
 
 | cust_name |
 | --------- |
@@ -1775,10 +1775,10 @@ Customers 表代表顾客信息，cust_name 代表顾客名称
 | lee       |
 | hex       |
 
-【问题】编写 SQL 语句，组合 `Products` 表中的产品名称（`prod_name`）和 `Customers` 表中的顾客名称（`cust_name`）并返回，然后按产品名称对结果进行升序排序。
+Write a query to combine product names (`prod_name`) from `Products` with customer names (`cust_name`) from `Customers`. Sort the results by name in ascending order.
 
 ```sql
-# UNION 结果集中的列名总是等于 UNION 中第一个 SELECT 语句中的列名。
+# The result column names come from the first SELECT statement in the UNION.
 SELECT prod_name
 FROM Products
 UNION
@@ -1787,9 +1787,9 @@ FROM Customers
 ORDER BY prod_name
 ```
 
-### 检查 SQL 语句
+### Fix the SQL Statement
 
-表 `Customers` 含有字段 `cust_name` 顾客名、`cust_contact` 顾客联系方式、`cust_state` 顾客州、`cust_email` 顾客 `email`
+The `Customers` table has a customer name (`cust_name`), contact (`cust_contact`), state (`cust_state`), and email (`cust_email`).
 
 | cust_name | cust_contact | cust_state | cust_email        |
 | --------- | ------------ | ---------- | ----------------- |
@@ -1797,7 +1797,7 @@ ORDER BY prod_name
 | cust1     | 8695193      | MI         | <cust1@cust.com>  |
 | cust2     | 8695194      | IL         | <cust2@cust.com>  |
 
-【问题】修正下面错误的 SQL
+Correct the following SQL statement.
 
 ```sql
 SELECT cust_name, cust_contact, cust_email
@@ -1810,7 +1810,7 @@ FROM Customers
 WHERE cust_state = 'IL'ORDER BY cust_name;
 ```
 
-修正后：
+Corrected query:
 
 ```sql
 SELECT cust_name, cust_contact, cust_email
@@ -1823,9 +1823,9 @@ WHERE cust_state = 'IL'
 ORDER BY cust_name;
 ```
 
-使用 `union` 组合查询时，只能使用一条 `order by` 字句，他必须位于最后一条 `select` 语句之后
+When combining queries with `UNION`, use only one `ORDER BY` clause, after the last `SELECT` statement.
 
-或者直接用 `or` 来做：
+You can also use `OR`:
 
 ```sql
 SELECT cust_name, cust_contact, cust_email

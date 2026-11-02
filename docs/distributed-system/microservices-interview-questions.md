@@ -34,7 +34,7 @@ head:
 
 微服务是一种按业务能力组织服务的架构方式。一个系统进程很多，并不等于服务边界合理；如果多个服务必须一起修改、一起发布，还直接共享数据库表，最终往往得到一个运维成本更高的分布式单体。
 
-![单体到分布式电商](images/shared/monolith-to-distributed-ecommerce.webp)
+![单体到分布式电商](./images/shared/monolith-to-distributed-ecommerce.webp)
 
 相关内容：
 
@@ -112,7 +112,7 @@ head:
 
 微服务把一次请求分散到多个节点，局部故障发生的频率会随调用环节增加。超时限制等待时间，重试处理短暂错误，熔断阻止持续调用异常下游，限流和隔离保护有限资源；这些机制需要放在同一条调用链中设置。
 
-![熔断器状态机](images/shared/fallback-and-circuit-breaker-fuse-state-machine.png)
+![熔断器状态机](./images/shared/fallback-and-circuit-breaker-fuse-state-machine.png)
 
 相关内容：
 

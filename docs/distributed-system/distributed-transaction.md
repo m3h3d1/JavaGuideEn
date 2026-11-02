@@ -434,7 +434,7 @@ Saga 绝对可以说是历史非常悠久了，Saga 事务理论在 1987 年 Hec
 
 Saga 属于长事务解决方案，其核心思想是将长事务拆分为多个本地短事务（本地短事务序列）。
 
-![](images/shared/distributed-transaction-saga.png)
+![](./images/shared/distributed-transaction-saga.png)
 
 - 长事务 —> T1,T2 ~ Tn 个本地短事务
 - 每个短事务都有一个补偿动作 —> C1,C2 ~ Cn

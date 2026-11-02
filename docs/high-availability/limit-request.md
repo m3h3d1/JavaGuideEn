@@ -267,7 +267,7 @@ Resilience4j 不仅提供限流，还提供了熔断、负载保护、自动重�
 
 > ShenYu 地址: <https://github.com/apache/incubator-shenyu>
 
-![ShenYu 限流脚本](images/shared/shenyu-ratelimit-lua-scripts.png)
+![ShenYu 限流脚本](./images/shared/shenyu-ratelimit-lua-scripts.png)
 
 另外，如果不想自己写 Lua 脚本的话，也可以直接利用 Redisson 中的 `RRateLimiter` 来实现分布式限流，其底层实现就是基于 Lua 代码+令牌桶算法。
 

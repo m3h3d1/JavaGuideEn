@@ -33,7 +33,7 @@ head:
 
 先设想一个最常见的场景：同一份数据存了多个副本，节点可能宕机，节点之间的网络也可能中断。CAP、BASE 和共识算法讨论的，都是这个场景里的选择与约束。
 
-![分布式系统通信机制：中心化 vs 去中心化](images/shared/gossip-centralized-vs-decentralized.png)
+![Centralized vs. decentralized communication in distributed systems](./images/shared/gossip-centralized-vs-decentralized.png)
 
 相关内容：
 

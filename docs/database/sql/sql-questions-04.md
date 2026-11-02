@@ -1,60 +1,60 @@
 ---
-title: SQL常见面试题总结（4）
-description: SQL常见面试题总结第四篇，详解MySQL 8.0窗口函数ROW_NUMBER、RANK、DENSE_RANK、NTILE、LAG、LEAD等的用法和应用场景。
-category: 数据库
+title: SQL Interview Questions (4)
+description: The fourth set of SQL interview questions explains MySQL 8.0 window functions such as ROW_NUMBER, RANK, DENSE_RANK, NTILE, LAG, and LEAD.
+category: Database
 tag:
-  - 数据库基础
+  - Database Fundamentals
   - SQL
 head:
   - - meta
     - name: keywords
-      content: SQL面试题,窗口函数,ROW_NUMBER,RANK,DENSE_RANK,NTILE,LAG,LEAD,MySQL 8.0
+      content: SQL interview questions, window functions, ROW_NUMBER, RANK, DENSE_RANK, NTILE, LAG, LEAD, MySQL 8.0
 ---
 
-> 题目来源于：[牛客题霸 - SQL 进阶挑战](https://www.nowcoder.com/exam/oj?page=1&tab=SQL%E7%AF%87&topicId=240)
+> Questions are from [Nowcoder - Advanced SQL Challenges](https://www.nowcoder.com/exam/oj?page=1&tab=SQL%E7%AF%87&topicId=240).
 
-较难或者困难的题目可以根据自身实际情况和面试需要来决定是否要跳过。
+Depending on your experience and interview needs, you may choose to skip the harder problems.
 
-## 专用窗口函数
+## Window Functions
 
-MySQL 8.0 版本引入了窗口函数的支持，下面是 MySQL 中常见的窗口函数及其用法：
+MySQL 8.0 added support for window functions. Common functions and their usage include:
 
-1. `ROW_NUMBER()`: 为查询结果集中的每一行分配一个唯一的整数值。
+1. `ROW_NUMBER()`: assigns a unique integer to each row in the result set.
 
 ```sql
 SELECT col1, col2, ROW_NUMBER() OVER (ORDER BY col1) AS row_num
 FROM table;
 ```
 
-2. `RANK()`: 计算每一行在排序结果中的排名。
+2. `RANK()`: calculates each row's rank in the ordered result.
 
 ```sql
 SELECT col1, col2, RANK() OVER (ORDER BY col1 DESC) AS ranking
 FROM table;
 ```
 
-3. `DENSE_RANK()`: 计算每一行在排序结果中的排名，保留相同的排名。
+3. `DENSE_RANK()`: calculates each row's rank and does not leave gaps after ties.
 
 ```sql
 SELECT col1, col2, DENSE_RANK() OVER (ORDER BY col1 DESC) AS ranking
 FROM table;
 ```
 
-4. `NTILE(n)`: 将结果分成 n 个基本均匀的桶，并为每个桶分配一个标识号。
+4. `NTILE(n)`: divides the result into `n` nearly equal buckets and assigns a number to each bucket.
 
 ```sql
 SELECT col1, col2, NTILE(4) OVER (ORDER BY col1) AS bucket
 FROM table;
 ```
 
-5. `SUM()`, `AVG()`,`COUNT()`, `MIN()`, `MAX()`: 这些聚合函数也可以与窗口函数结合使用，计算窗口内指定列的汇总、平均值、计数、最小值和最大值。
+5. `SUM()`, `AVG()`, `COUNT()`, `MIN()`, and `MAX()`: these aggregate functions can also be used as window functions to calculate totals, averages, counts, minimums, and maximums within a window.
 
 ```sql
 SELECT col1, col2, SUM(col1) OVER () AS sum_col
 FROM table;
 ```
 
-6. `LEAD()` 和 `LAG()`: LEAD 函数用于获取当前行之后的某个偏移量的行的值，而 LAG 函数用于获取当前行之前的某个偏移量的行的值。
+6. `LEAD()` and `LAG()`: `LEAD` returns a value from a later row at a specified offset; `LAG` returns a value from an earlier row.
 
 ```sql
 SELECT col1, col2, LEAD(col1, 1) OVER (ORDER BY col1) AS next_col1,
@@ -62,7 +62,7 @@ SELECT col1, col2, LEAD(col1, 1) OVER (ORDER BY col1) AS next_col1,
 FROM table;
 ```
 
-7. `FIRST_VALUE()` 和 `LAST_VALUE()`: FIRST_VALUE 函数用于获取窗口内指定列的第一个值，LAST_VALUE 函数用于获取窗口内指定列的最后一个值。
+7. `FIRST_VALUE()` and `LAST_VALUE()`: `FIRST_VALUE` returns the first value in a window; `LAST_VALUE` returns the last value.
 
 ```sql
 SELECT col1, col2, FIRST_VALUE(col2) OVER (PARTITION BY col1 ORDER BY col2) AS first_val,
@@ -70,13 +70,13 @@ SELECT col1, col2, FIRST_VALUE(col2) OVER (PARTITION BY col1 ORDER BY col2) AS f
 FROM table;
 ```
 
-窗口函数通常需要配合 OVER 子句一起使用，用于定义窗口的大小、排序规则和分组方式。
+Window functions are generally used with an `OVER` clause, which defines the window, ordering, and partitioning.
 
-### 每类试卷得分前三名
+### Top Three Scores in Each Exam Category
 
-**描述**：
+**Description:**
 
-现有试卷信息表 `examination_info`（`exam_id` 试卷 ID, `tag` 试卷类别, `difficulty` 试卷难度, `duration` 考试时长, `release_time` 发布时间）：
+Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
 | id  | exam_id | tag  | difficulty | duration | release_time        |
 | --- | ------- | ---- | ---------- | -------- | ------------------- |
@@ -84,7 +84,7 @@ FROM table;
 | 2   | 9002    | SQL  | hard       | 60       | 2021-09-01 06:00:00 |
 | 3   | 9003    | 算法 | medium     | 80       | 2021-09-01 10:00:00 |
 
-试卷作答记录表 `exam_record`（`uid` 用户 ID, `exam_id` 试卷 ID, `start_time` 开始作答时间, `submit_time` 交卷时间, score 得分）：
+Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score  |
 | --- | ---- | ------- | ------------------- | ------------------- | ------ |
@@ -99,7 +99,7 @@ FROM table;
 | 9   | 1003 | 9003    | 2021-09-08 12:01:01 | 2021-09-08 12:11:01 | 40     |
 | 10  | 1003 | 9002    | 2021-09-01 14:01:01 | (NULL)              | (NULL) |
 
-找到每类试卷得分的前 3 名，如果两人最大分数相同，选择最小分数大者，如果还相同，选择 uid 大者。由示例数据结果输出如下：
+Find the top three users by score in each exam category. If two users have the same maximum score, rank the user with the higher minimum score first. If still tied, rank the user with the higher `uid` first. The sample output is:
 
 | tid  | uid  | ranking |
 | ---- | ---- | ------- |
@@ -110,9 +110,9 @@ FROM table;
 | 算法 | 1006 | 2       |
 | 算法 | 1003 | 3       |
 
-**解释**：有作答得分记录的试卷 tag 有 SQL 和算法，SQL 试卷用户 1001、1002、1003、1004 有作答得分，最高得分分别为 81、81、89、85，最低得分分别为 78、81、86、40，因此先按最高得分排名再按最低得分排名取前三为 1003、1004、1002。
+**Explanation:** The categories with scored attempts are SQL and Algorithms. For SQL, users 1001, 1002, 1003, and 1004 have maximum scores of 81, 81, 89, and 85, and minimum scores of 78, 81, 86, and 40. Ranking by maximum score, then minimum score, gives 1003, 1004, and 1002 as the top three.
 
-**答案**：
+**Answer:**
 
 ```sql
 SELECT tag,
@@ -133,11 +133,11 @@ FROM
 WHERE ranking <= 3
 ```
 
-### 第二快/慢用时之差大于试卷时长一半的试卷（较难）
+### Exams Where the Second-Fastest and Second-Slowest Durations Differ by More Than Half the Exam Length (Advanced)
 
-**描述**：
+**Description:**
 
-现有试卷信息表 `examination_info`（`exam_id` 试卷 ID, `tag` 试卷类别, `difficulty` 试卷难度, `duration` 考试时长, `release_time` 发布时间）：
+Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
 | id  | exam_id | tag  | difficulty | duration | release_time        |
 | --- | ------- | ---- | ---------- | -------- | ------------------- |
@@ -145,7 +145,7 @@ WHERE ranking <= 3
 | 2   | 9002    | C++  | hard       | 60       | 2021-09-01 06:00:00 |
 | 3   | 9003    | 算法 | medium     | 80       | 2021-09-01 10:00:00 |
 
-试卷作答记录表 `exam_record`（`uid` 用户 ID, `exam_id` 试卷 ID, `start_time` 开始作答时间, `submit_time` 交卷时间, `score` 得分）：
+Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score  |
 | --- | ---- | ------- | ------------------- | ------------------- | ------ |
@@ -162,21 +162,21 @@ WHERE ranking <= 3
 | 11  | 1005 | 9001    | 2021-09-01 14:01:01 | (NULL)              | (NULL) |
 | 12  | 1003 | 9003    | 2021-09-08 15:01:01 | (NULL)              | (NULL) |
 
-找到第二快和第二慢用时之差大于试卷时长的一半的试卷信息，按试卷 ID 降序排序。由示例数据结果输出如下：
+Find exams where the difference between the second-fastest and second-slowest completion times is greater than half the exam duration. Sort by exam ID in descending order. The sample output is:
 
 | exam_id | duration | release_time        |
 | ------- | -------- | ------------------- |
 | 9001    | 60       | 2021-09-01 06:00:00 |
 
-**解释**：试卷 9001 被作答用时有 50 分钟、58 分钟、30 分 1 秒、19 分钟、10 分钟，第二快和第二慢用时之差为 50 分钟-19 分钟=31 分钟，试卷时长为 60 分钟，因此满足大于试卷时长一半的条件，输出试卷 ID、时长、发布时间。
+**Explanation:** Exam 9001 completion times are 50 minutes, 58 minutes, 30 minutes and 1 second, 19 minutes, and 10 minutes. The difference between the second-fastest and second-slowest is 50 - 19 = 31 minutes. Since the exam lasts 60 minutes, this exceeds half its duration. Return the exam ID, duration, and release time.
 
-**思路：**
+**Approach:**
 
-第一步，找到每张试卷完成时间的顺序排名和倒序排名 也就是表 a；
+First, rank each exam's completion times in ascending and descending order; this is subquery `a`.
 
-第二步，与通过试卷信息表 b 建立内连接，并根据试卷 id 分组，利用`having`筛选排名为第二个数据，将秒转化为分钟并进行比较，最后再根据试卷 id 倒序排序就行
+Then join the results with the exam information table `b`, group by exam ID, and use `HAVING` to select the second-ranked times. Convert seconds to minutes for comparison, then sort by exam ID in descending order.
 
-**答案**：
+**Answer:**
 
 ```sql
 SELECT a.exam_id,
@@ -197,11 +197,11 @@ HAVING (max(IF (rn1 = 2, a.timex, 0))- max(IF (rn2 = 2, a.timex, 0)))/ 60 > b.du
 ORDER BY a.exam_id DESC
 ```
 
-### 连续两次作答试卷的最大时间窗（较难）
+### Largest Time Window Between Consecutive Exam Attempts (Advanced)
 
-**描述**
+**Description:**
 
-现有试卷作答记录表 `exam_record`（`uid` 用户 ID, `exam_id` 试卷 ID, `start_time` 开始作答时间, `submit_time` 交卷时间, `score` 得分）：
+Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score |
 | --- | ---- | ------- | ------------------- | ------------------- | ----- |
@@ -211,21 +211,21 @@ ORDER BY a.exam_id DESC
 | 4   | 1005 | 9002    | 2021-09-05 10:01:01 | 2021-09-05 10:21:01 | 81    |
 | 5   | 1005 | 9001    | 2021-09-05 10:31:01 | 2021-09-05 10:51:01 | 81    |
 
-请计算在 2021 年至少有两天作答过试卷的人中，计算该年连续两次作答试卷的最大时间窗 `days_window`，那么根据该年的历史规律他在 `days_window` 天里平均会做多少套试卷，按最大时间窗和平均做答试卷套数倒序排序。由示例数据结果输出如下：
+For each user who attempted exams on at least two days in 2021, calculate the largest interval between consecutive attempts (`days_window`) and the average number of exams they would attempt over that many days, based on their history that year. Sort by the interval and average attempt count in descending order. The sample output is:
 
 | uid  | days_window | avg_exam_cnt |
 | ---- | ----------- | ------------ |
 | 1006 | 6           | 2.57         |
 
-**解释**：用户 1006 分别在 20210901、20210906、20210907 作答过 3 次试卷，连续两次作答最大时间窗为 6 天（1 号到 6 号），他 1 号到 7 号这 7 天里共做了 3 张试卷，平均每天 3/7=0.428571 张，那么 6 天里平均会做 0.428571\*6=2.57 张试卷（保留两位小数）；用户 1005 在 20210905 做了两张试卷，但是只有一天的作答记录，过滤掉。
+**Explanation:** User 1006 attempted exams on September 1, 6, and 7, 2021. The largest interval between consecutive attempts is six days (September 1 to 6). They attempted three exams over seven days, an average of 3/7 = 0.428571 exams per day. Over six days, the average is 0.428571 × 6 = 2.57 exams (rounded to two decimal places). User 1005 attempted two exams on September 5 but has records for only one day, so they are excluded.
 
-**思路：**
+**Approach:**
 
-上面这个解释中提示要对作答记录去重，千万别被骗了，不要去重！去重就通不过测试用例。注意限制时间是 2021 年；
+The explanation above mentions deduplicating attempts, but do not deduplicate them; doing so fails the test cases. Note that the records are limited to 2021.
 
-而且要注意时间差要+1 天；还要注意==没交卷也算在内==！！！！ （反正感觉这题描述不清，出的不是很好）
+Also add one day to the date difference, and include attempts that were not submitted. The problem statement is unclear on these points.
 
-**答案**：
+**Answer:**
 
 ```sql
 SELECT UID,
@@ -244,11 +244,11 @@ ORDER BY days_window DESC,
          avg_exam_cnt DESC
 ```
 
-### 近三个月未完成为 0 的用户完成情况
+### Completion Counts for Users with No Incomplete Attempts in Their Last Three Active Months
 
-**描述**：
+**Description:**
 
-现有试卷作答记录表 `exam_record`（`uid`:用户 ID, `exam_id`:试卷 ID, `start_time`:开始作答时间, `submit_time`:交卷时间，为空的话则代表未完成, `score`:得分）：
+Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time; `NULL` means incomplete, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score  |
 | --- | ---- | ------- | ------------------- | ------------------- | ------ |
@@ -263,23 +263,23 @@ ORDER BY days_window DESC,
 | 9   | 1001 | 9002    | 2021-07-01 12:01:01 | 2021-07-01 12:31:01 | 81     |
 | 10  | 1001 | 9002    | 2021-07-01 12:01:01 | (NULL)              | (NULL) |
 
-找到每个人近三个有试卷作答记录的月份中没有试卷是未完成状态的用户的试卷作答完成数，按试卷完成数和用户 ID 降序排名。由示例数据结果输出如下：
+For each user whose attempts in their three most recent active months are all complete, count completed exams. Sort by completed exam count and user ID in descending order. The sample output is:
 
 | uid  | exam_complete_cnt |
 | ---- | ----------------- |
 | 1006 | 3                 |
 
-**解释**：用户 1006 近三个有作答试卷的月份为 202109、202108、202106，作答试卷数为 3，全部完成；用户 1001 近三个有作答试卷的月份为 202109、202108、202107，作答试卷数为 5，完成试卷数为 4，因为有未完成试卷，故过滤掉。
+**Explanation:** User 1006's three most recent active months are 202109, 202108, and 202106. They attempted three exams, all complete. User 1001's three most recent active months are 202109, 202108, and 202107. They attempted five exams, four of which are complete, so they are excluded.
 
-**思路:**
+**Approach:**
 
-1. `找到每个人近三个有试卷作答记录的月份中没有试卷是未完成状态的用户的试卷作答完成数`首先看这句话，肯定要先根据人进行分组
-2. 最近三个月，可以采用连续重复排名，倒序排列，排名<=3
-3. 统计作答数
-4. 拼装剩余条件
-5. 排序
+1. Group by user to count completed exams among users with no incomplete attempts in their last three active months.
+2. Rank active months in descending order with `DENSE_RANK()` and keep ranks up to 3.
+3. Count attempts.
+4. Apply the remaining conditions.
+5. Sort the results.
 
-**答案**：
+**Answer:**
 
 ```sql
 SELECT UID,
@@ -295,11 +295,11 @@ ORDER BY exam_complete_cnt DESC,
          UID DESC
 ```
 
-### 未完成率较高的 50%用户近三个月答卷情况（困难）
+### Exam Attempts in the Last Three Months for the 50% with the Highest Incompletion Rates (Advanced)
 
-**描述**：
+**Description:**
 
-现有用户信息表 `user_info`（`uid` 用户 ID，`nick_name` 昵称, `achievement` 成就值, `level` 等级, `job` 职业方向, `register_time` 注册时间）：
+Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
 | id  | uid  | nick_name    | achievement | level | job  | register_time       |
 | --- | ---- | ------------ | ----------- | ----- | ---- | ------------------- |
@@ -307,7 +307,7 @@ ORDER BY exam_complete_cnt DESC,
 | 2   | 1002 | 牛客 2 号    | 2500        | 6     | 算法 | 2020-01-01 10:00:00 |
 | 3   | 1003 | 牛客 3 号 ♂ | 2200        | 5     | 算法 | 2020-01-01 10:00:00 |
 
-试卷信息表 `examination_info`（`exam_id` 试卷 ID, `tag` 试卷类别, `difficulty` 试卷难度, `duration` 考试时长, `release_time` 发布时间）：
+Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
 | id  | exam_id | tag    | difficulty | duration | release_time        |
 | --- | ------- | ------ | ---------- | -------- | ------------------- |
@@ -316,7 +316,7 @@ ORDER BY exam_complete_cnt DESC,
 | 3   | 9003    | 算法   | hard       | 80       | 2020-01-01 10:00:00 |
 | 4   | 9004    | PYTHON | medium     | 70       | 2020-01-01 10:00:00 |
 
-试卷作答记录表 `exam_record`（`uid` 用户 ID, `exam_id` 试卷 ID, `start_time` 开始作答时间, `submit_time` 交卷时间, `score` 得分）：
+Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score |
 | --- | ---- | ------- | ------------------- | ------------------- | ----- |
@@ -338,9 +338,9 @@ ORDER BY exam_complete_cnt DESC,
 | 17  | 1001 | 9002    | 2020-05-05 18:01:01 |                     |       |
 | 16  | 1002 | 9003    | 2020-05-06 12:01:01 |                     |       |
 
-请统计 SQL 试卷上未完成率较高的 50%用户中，6 级和 7 级用户在有试卷作答记录的近三个月中，每个月的答卷数目和完成数目。按用户 ID、月份升序排序。
+Among the 50% of users with the highest incompletion rates on SQL exams, report the total and completed exam attempts for level 6 and 7 users in each of their three most recent active months. Sort by user ID and month in ascending order.
 
-由示例数据结果输出如下：
+The sample output is:
 
 | uid  | start_month | total_cnt | complete_cnt |
 | ---- | ----------- | --------- | ------------ |
@@ -348,7 +348,7 @@ ORDER BY exam_complete_cnt DESC,
 | 1002 | 202003      | 2         | 1            |
 | 1002 | 202005      | 2         | 1            |
 
-解释：各个用户对 SQL 试卷的未完成数、作答总数、未完成率如下：
+Explanation: Each user's incomplete attempts, total attempts, and incompletion rate for SQL exams are:
 
 | uid  | incomplete_cnt | total_cnt | incomplete_rate |
 | ---- | -------------- | --------- | --------------- |
@@ -356,19 +356,19 @@ ORDER BY exam_complete_cnt DESC,
 | 1002 | 4              | 8         | 0.5000          |
 | 1003 | 1              | 1         | 1.0000          |
 
-1001、1002、1003 分别排在 1.0、0.5、0.0 的位置，因此较高的 50%用户（排位<=0.5）为 1002、1003；
+Users 1001, 1002, and 1003 have percentile ranks of 1.0, 0.5, and 0.0, respectively. The top 50% (rank <= 0.5) are users 1002 and 1003.
 
-1003 不是 6 级或 7 级；
+User 1003 is neither level 6 nor level 7.
 
-有试卷作答记录的近三个月为 202005、202003、202002；
+The three most recent active months are 202005, 202003, and 202002.
 
-这三个月里 1002 的作答题数分别为 3、2、2，完成数目分别为 1、1、1。
+During those months, user 1002 made 3, 2, and 2 attempts, with 1 completed attempt in each month.
 
-**思路：**
+**Approach:**
 
-注意点：这题注意求的是所有的答题次数和完成次数，而 sql 类别的试卷是限制未完成率排名，6, 7 级用户限制的是做题记录。
+Note: Count all attempts and completed attempts. Use SQL exams to rank users by incompletion rate, and use levels 6 and 7 to filter the exam records.
 
-先求出未完成率的排名
+First, rank users by incompletion rate:
 
 ```sql
 SELECT UID,
@@ -383,7 +383,7 @@ WHERE tag = 'SQL'
 GROUP BY UID
 ```
 
-再求出最近三个月的练习记录
+Next, find each user's records from their three most recent active months:
 
 ```sql
 SELECT UID,
@@ -397,14 +397,14 @@ LEFT JOIN user_info USING (UID)
 WHERE LEVEL IN (6,7)
 ```
 
-**答案**：
+**Answer:**
 
 ```sql
 SELECT t1.uid,
        t1.month_d,
        count(*) AS total_cnt,
        count(t1.submit_time) AS complete_cnt
-FROM-- 先求出未完成率的排名
+FROM-- First, rank users by incompletion rate.
 
   (SELECT UID,
           count(submit_time IS NULL OR NULL)/ count(start_time) AS num,
@@ -415,7 +415,7 @@ FROM-- 先求出未完成率的排名
    WHERE tag = 'SQL'
    GROUP BY UID) t
 INNER JOIN
-  (-- 再求出近三个月的练习记录
+  (-- Next, retrieve records from the three most recent active months.
  SELECT UID,
         date_format(start_time, '%Y%m') AS month_d,
         submit_time,
@@ -425,7 +425,7 @@ INNER JOIN
    FROM exam_record
    LEFT JOIN user_info USING (UID)
    WHERE LEVEL IN (6,7) ) t1 USING (UID)
-WHERE t1.ranking <= 3 AND t.ranking >= 0.5 -- 使用限制找到符合条件的记录
+WHERE t1.ranking <= 3 AND t.ranking >= 0.5 -- Keep rows that meet the ranking conditions.
 
 GROUP BY t1.uid,
          t1.month_d
@@ -433,11 +433,11 @@ ORDER BY t1.uid,
          t1.month_d
 ```
 
-### 试卷完成数同比 2020 年的增长率及排名变化（困难）
+### Year-over-Year Exam Completion Growth and Rank Changes (Advanced)
 
-**描述**：
+**Description:**
 
-现有试卷信息表 `examination_info`（`exam_id` 试卷 ID, `tag` 试卷类别, `difficulty` 试卷难度, `duration` 考试时长, `release_time` 发布时间）：
+Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
 | id  | exam_id | tag    | difficulty | duration | release_time        |
 | --- | ------- | ------ | ---------- | -------- | ------------------- |
@@ -446,7 +446,7 @@ ORDER BY t1.uid,
 | 3   | 9003    | 算法   | hard       | 80       | 2021-01-01 10:00:00 |
 | 4   | 9004    | PYTHON | medium     | 70       | 2021-01-01 10:00:00 |
 
-试卷作答记录表 `exam_record`（`uid` 用户 ID, `exam_id` 试卷 ID, `start_time` 开始作答时间, `submit_time` 交卷时间, `score` 得分）：
+Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score |
 | --- | ---- | ------- | ------------------- | ------------------- | ----- |
@@ -469,17 +469,17 @@ ORDER BY t1.uid,
 | 12  | 1001 | 9004    | 2021-09-02 12:11:01 |                     |       |
 | 14  | 1002 | 9004    | 2020-01-01 12:11:01 | 2020-01-01 12:31:01 | 83    |
 
-请计算 2021 年上半年各类试卷的做完次数相比 2020 年上半年同期的增长率（百分比格式，保留 1 位小数），以及做完次数排名变化，按增长率和 21 年排名降序输出。
+For each exam category, calculate the year-over-year growth in completed attempts for the first half of 2021 compared with the first half of 2020. Format growth as a percentage rounded to one decimal place, and calculate the change in completion-count rank. Sort by growth rate and 2021 rank in descending order.
 
-由示例数据结果输出如下：
+The sample output is:
 
 | tag | exam_cnt_20 | exam_cnt_21 | growth_rate | exam_cnt_rank_20 | exam_cnt_rank_21 | rank_delta |
 | --- | ----------- | ----------- | ----------- | ---------------- | ---------------- | ---------- |
 | SQL | 3           | 2           | -33.3%      | 1                | 2                | 1          |
 
-解释：2020 年上半年有 3 个 tag 有作答完成的记录，分别是 C++、SQL、PYTHON，它们被做完的次数分别是 3、3、2，做完次数排名为 1、1（并列）、3；
+Explanation: In the first half of 2020, completed attempts were recorded for three categories: C++, SQL, and PYTHON. Their completion counts were 3, 3, and 2, with ranks 1, 1 (tied), and 3.
 
-2021 年上半年有 2 个 tag 有作答完成的记录，分别是算法、SQL，它们被做完的次数分别是 3、2，做完次数排名为 1、2；具体如下：
+In the first half of 2021, completed attempts were recorded for two categories: Algorithms and SQL. Their counts were 3 and 2, with ranks 1 and 2:
 
 | tag    | start_year | exam_cnt | exam_cnt_rank |
 | ------ | ---------- | -------- | ------------- |
@@ -489,30 +489,30 @@ ORDER BY t1.uid,
 | 算法   | 2021       | 3        | 1             |
 | SQL    | 2021       | 2        | 2             |
 
-因此能输出同比结果的 tag 只有 SQL，从 2020 到 2021 年，做完次数 3=>2，减少 33.3%（保留 1 位小数）；排名 1=>2，后退 1 名。
+Only SQL has data for both periods. Its completed attempts decreased from 3 to 2, a decline of 33.3% (rounded to one decimal place), and its rank moved from 1 to 2.
 
-**思路：**
+**Approach:**
 
-本题难点在于长整型的数据类型要求不能有负号产生，用 cast 函数转换数据类型为 signed。
+The main challenge is ensuring the integer type supports negative values. Use `CAST()` to convert the value to `SIGNED`.
 
-以及用到的`增长率计算公式：(exam_cnt_21-exam_cnt_20)/exam_cnt_20`
+The growth rate is `(exam_cnt_21 - exam_cnt_20) / exam_cnt_20`.
 
-做完次数排名变化（2021 年和 2020 年比排名升了或者降了多少）
+The rank change is how many places the 2021 rank moved compared with 2020.
 
-计算公式：`exam_cnt_rank_21 - exam_cnt_rank_20`
+Calculate it as `exam_cnt_rank_21 - exam_cnt_rank_20`.
 
-在 MySQL 中，`CAST()` 函数用于将一个表达式的数据类型转换为另一个数据类型。它的基本语法如下：
+In MySQL, `CAST()` converts an expression from one data type to another. Its basic syntax is:
 
 ```sql
 CAST(expression AS data_type)
 
--- 将一个字符串转换成整数
+-- Convert a string to an integer.
 SELECT CAST('123' AS INT);
 ```
 
-示例就不一一举例了，这个函数很简单
+This function is straightforward, so no further examples are needed.
 
-**答案**：
+**Answer:**
 
 ```sql
 SELECT
@@ -531,7 +531,7 @@ SELECT
   cast(exam_cnt_rank_21 AS signed) - cast(exam_cnt_rank_20 AS signed) AS rank_delta
 FROM
   (
-    #2020年、2021年上半年各类试卷的做完次数和做完次数排名
+    # Completion counts and ranks by category for the first half of 2020 and 2021.
     SELECT
       tag,
       count(
@@ -587,13 +587,13 @@ ORDER BY
   exam_cnt_rank_21 DESC
 ```
 
-## 聚合窗口函数
+## Aggregate Window Functions
 
-### 对试卷得分做 min-max 归一化
+### Apply Min-Max Normalization to Exam Scores
 
-**描述**：
+**Description:**
 
-现有试卷信息表 `examination_info`（`exam_id` 试卷 ID, `tag` 试卷类别, `difficulty` 试卷难度, `duration` 考试时长, `release_time` 发布时间）：
+Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
 | id  | exam_id | tag    | difficulty | duration | release_time        |
 | --- | ------- | ------ | ---------- | -------- | ------------------- |
@@ -602,7 +602,7 @@ ORDER BY
 | 3   | 9003    | 算法   | hard       | 80       | 2020-01-01 10:00:00 |
 | 4   | 9004    | PYTHON | medium     | 70       | 2020-01-01 10:00:00 |
 
-试卷作答记录表 `exam_record`（`uid` 用户 ID, `exam_id` 试卷 ID, `start_time` 开始作答时间, `submit_time` 交卷时间, `score` 得分）：
+Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score  |
 | --- | ---- | ------- | ------------------- | ------------------- | ------ |
@@ -619,15 +619,15 @@ ORDER BY
 | 11  | 1002 | 9004    | 2021-09-06 12:01:01 | (NULL)              | (NULL) |
 | 8   | 1001 | 9005    | 2020-01-02 12:11:01 | (NULL)              | (NULL) |
 
-在物理学及统计学数据计算时，有个概念叫 min-max 标准化，也被称为离差标准化，是对原始数据的线性变换，使结果值映射到[0 - 1]之间。
+In physics and statistics, min-max normalization (also called rescaling) is a linear transformation that maps original values to the range [0, 1].
 
-转换函数为：
+The transformation is:
 
 ![](../images/shared/29A377601170AB822322431FCDF7EDFE.png)
 
-请你将用户作答高难度试卷的得分在每份试卷作答记录内执行 min-max 归一化后缩放到[0,100]区间，并输出用户 ID、试卷 ID、归一化后分数平均值；最后按照试卷 ID 升序、归一化分数降序输出。（注：得分区间默认为[0,100]，如果某个试卷作答记录中只有一个得分，那么无需使用公式，归一化并缩放后分数仍为原分数）。
+For each hard exam, apply min-max normalization to the scores and scale them to [0, 100]. Return the user ID, exam ID, and average normalized score. Sort by exam ID in ascending order, then normalized score in descending order. (Scores are assumed to be in [0, 100]. If an exam has only one score, keep it unchanged instead of applying the formula.)
 
-由示例数据结果输出如下：
+The sample output is:
 
 | uid  | exam_id | avg_new_score |
 | ---- | ------- | ------------- |
@@ -638,21 +638,21 @@ ORDER BY
 | 1001 | 9002    | 70            |
 | 1004 | 9002    | 0             |
 
-解释：高难度试卷有 9001、9002、9003；
+Explanation: Exams 9001, 9002, and 9003 are hard exams.
 
-作答了 9001 的记录有 3 条，分数分别为 68、89、90，按给定公式归一化后分数为：0、95、100，而后两个得分都是用户 1001 作答的，因此用户 1001 对试卷 9001 的新得分为(95+100)/2≈98（只保留整数部分），用户 1003 对于试卷 9001 的新得分为 0。最后结果按照试卷 ID 升序、归一化分数降序输出。
+There are three attempts on exam 9001, with scores 68, 89, and 90. The normalized scores are 0, 95, and 100. The latter two scores belong to user 1001, so that user's new score for exam 9001 is (95 + 100) / 2 ≈ 98 (keep the integer part). User 1003's new score is 0. Sort by exam ID in ascending order, then normalized score in descending order.
 
-**思路：**
+**Approach:**
 
-注意点：
+Key points:
 
-1. 将高难度的试卷，按每类试卷的得分，利用 max/min (col) over()窗口函数求得各组内最大最小值，然后进行归一化公式计算，缩放区间为[0,100]，即 min_max\*100
-2. 若某类试卷只有一个得分，则无需使用归一化公式，因只有一个分 max_score=min_score,score，公式后结果可能会变成 0。
-3. 最后结果按 uid、exam_id 分组求归一化后均值，score 为 NULL 的要过滤掉。
+1. For hard exams, use `MAX()` and `MIN()` window functions to get the maximum and minimum score for each exam. Apply the normalization formula and scale the result to [0, 100] by multiplying by 100.
+2. If an exam has only one score, do not apply the formula. Since `max_score = min_score = score`, the formula would produce 0.
+3. Group the final result by `uid` and `exam_id` and calculate the average normalized score. Filter out `NULL` scores.
 
-最后就是仔细看上面公式 （说实话，这题看起来就很绕）
+Finally, apply the formula carefully. The problem may look complicated, but the steps are manageable.
 
-**答案**：
+**Answer:**
 
 ```sql
 SELECT
@@ -693,11 +693,11 @@ ORDER BY
   avg_new_score DESC;
 ```
 
-### 每份试卷每月作答数和截止当月的作答总数
+### Monthly and Cumulative Attempt Counts for Each Exam
 
-**描述:**
+**Description:**
 
-现有试卷作答记录表 exam_record（uid 用户 ID, exam_id 试卷 ID, start_time 开始作答时间, submit_time 交卷时间, score 得分）：
+Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score  |
 | --- | ---- | ------- | ------------------- | ------------------- | ------ |
@@ -714,8 +714,7 @@ ORDER BY
 | 11  | 1001 | 9002    | 2020-02-02 12:01:01 | 2020-02-02 12:43:01 | 81     |
 | 12  | 1001 | 9002    | 2020-03-02 12:11:01 | (NULL)              | (NULL) |
 
-请输出每份试卷每月作答数和截止当月的作答总数。
-由示例数据结果输出如下：
+Return the number of attempts for each exam each month and the cumulative number of attempts through that month. The sample output is:
 
 | exam_id | start_month | month_cnt | cum_exam_cnt |
 | ------- | ----------- | --------- | ------------ |
@@ -727,15 +726,15 @@ ORDER BY
 | 9002    | 202002      | 3         | 4            |
 | 9002    | 202003      | 1         | 5            |
 
-解释：试卷 9001 在 202001、202002、202003、202005 共 4 个月有被作答记录，每个月被作答数分别为 2、1、3、1，截止当月累积作答总数为 2、3、6、7。
+Explanation: Exam 9001 has attempts in four months: 202001, 202002, 202003, and 202005. The monthly counts are 2, 1, 3, and 1, and the cumulative counts are 2, 3, 6, and 7.
 
-**思路：**
+**Approach:**
 
-这题就两个关键点：统计截止当月的作答总数、输出每份试卷每月作答数和截止当月的作答总数
+There are two key requirements: calculate the cumulative attempt count through each month, and return each exam's monthly and cumulative counts.
 
-这个是关键`**sum(count(*)) over(partition by exam_id order by date_format(start_time,'%Y%m'))**`
+The key expression is `SUM(COUNT(*)) OVER (PARTITION BY exam_id ORDER BY DATE_FORMAT(start_time, '%Y%m'))`.
 
-**答案**：
+**Answer:**
 
 ```sql
 SELECT exam_id,
@@ -748,9 +747,9 @@ GROUP BY exam_id,
          start_month
 ```
 
-### 每月及截止当月的答题情况（较难）
+### Monthly and Cumulative Exam Activity (Advanced)
 
-**描述**：现有试卷作答记录表 `exam_record`（`uid` 用户 ID, `exam_id` 试卷 ID, `start_time` 开始作答时间, `submit_time` 交卷时间, `score` 得分）：
+**Description:** Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
 | id  | uid  | exam_id | start_time          | submit_time         | score  |
 | --- | ---- | ------- | ------------------- | ------------------- | ------ |
@@ -767,9 +766,9 @@ GROUP BY exam_id,
 | 11  | 1001 | 9002    | 2020-01-02 19:01:01 | 2020-02-02 12:43:01 | 81     |
 | 12  | 1001 | 9002    | 2020-03-02 12:11:01 | (NULL)              | (NULL) |
 
-请输出自从有用户作答记录以来，每月的试卷作答记录中月活用户数、新增用户数、截止当月的单月最大新增用户数、截止当月的累积用户数。结果按月份升序输出。
+For each month since the first exam attempt, return the number of monthly active users, new users, the maximum monthly new-user count through that month, and the cumulative number of users through that month. Sort by month in ascending order.
 
-由示例数据结果输出如下：
+The sample output is:
 
 | start_month | mau | month_add_uv | max_month_add_uv | cum_sum_uv |
 | ----------- | --- | ------------ | ---------------- | ---------- |
@@ -785,30 +784,30 @@ GROUP BY exam_id,
 | 202003 | 1    |      | 1    | 1    |
 | 202005 |      | 1    |      |      |
 
-由上述矩阵可以看出，2020 年 1 月有 2 个用户活跃（mau=2），当月新增用户数为 2；
+The matrix shows that two users were active in January 2020 (`mau = 2`), and both were new users that month.
 
-2020 年 2 月有 4 个用户活跃，当月新增用户数为 2，最大单月新增用户数为 2，当前累积用户数为 4。
+In February 2020, four users were active, two users were new, the largest monthly new-user count so far was two, and the cumulative user count was four.
 
-**思路：**
+**Approach:**
 
-难点：
+The main challenges are:
 
-1.如何求每月新增用户
+1. Calculating new users each month.
 
-2.截至当月的答题情况
+2. Calculating the cumulative activity through each month.
 
-大致流程：
+The general process is:
 
-（1）统计每个人的首次登陆月份 `min()`
+1. Find each user's first active month with `MIN()`.
 
-（2）统计每月的月活和新增用户数：先得到每个人的首次登陆月份，再对首次登陆月份分组求和是该月份的新增人数
+2. Calculate monthly active users and new users. Find each user's first active month, then group by that month to count new users.
 
-（3）统计截止当月的单月最大新增用户数、截止当月的累积用户数 ，最终按照按月份升序输出
+3. Calculate the maximum monthly new-user count and cumulative user count through each month, then sort by month in ascending order.
 
-**答案**：
+**Answer:**
 
 ```sql
--- 截止当月的单月最大新增用户数、截止当月的累积用户数，按月份升序输出
+-- Return the maximum monthly new-user count and cumulative users through each month, sorted by month.
 SELECT
 	start_month,
 	mau,
@@ -817,7 +816,7 @@ SELECT
 	sum( month_add_uv ) over ( ORDER BY start_month )
 FROM
 	(
-	-- 统计每月的月活和新增用户数
+	-- Count monthly active users and new users.
 	SELECT
 		date_format( a.start_time, '%Y%m' ) AS start_month,
 		count( DISTINCT a.uid ) AS mau,
@@ -825,7 +824,7 @@ FROM
 	FROM
 		exam_record a
 		LEFT JOIN (
-         -- 统计每个人的首次登陆月份
+	         -- Find each user's first active month.
 		SELECT uid, min( date_format( start_time, '%Y%m' )) AS first_month FROM exam_record GROUP BY uid ) b ON date_format( a.start_time, '%Y%m' ) = b.first_month
 	GROUP BY
 		start_month

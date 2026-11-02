@@ -32,7 +32,7 @@ head:
 
 **1. 代理方式**
 
-![代理方式实现读写分离](images/shared/read-and-write-separation-proxy.png)
+![代理方式实现读写分离](./images/shared/read-and-write-separation-proxy.png)
 
 我们可以在应用和数据库之间加一个代理层。应用程序所有的数据请求都交给代理层处理，代理层负责分离读写请求，将它们路由到对应的数据库中。
 
@@ -58,7 +58,7 @@ MySQL binlog（binary log，即二进制日志文件）主要记录了 MySQL 数
 
 更具体和详细的过程是这个样子的（图片来自于：[《MySQL Master-Slave Replication on the Same Machine》](https://www.toptal.com/mysql/mysql-master-slave-replication-tutorial)）：
 
-![MySQL主从复制](images/shared/78816271d3ab52424bfd5ad3086c1a0f.png)
+![MySQL主从复制](./images/shared/78816271d3ab52424bfd5ad3086c1a0f.png)
 
 1. 主库将数据库中数据的变化写入到 binlog。
 2. 从库连接主库，请求 binlog 中的更新事件。
@@ -324,7 +324,7 @@ ShardingSphere 适合“仍然使用传统关系型数据库，但希望通过�
 
 ShardingSphere 提供的功能如下：
 
-![ShardingSphere 提供的功能](images/shared/shardingsphere-features.png)
+![ShardingSphere 提供的功能](./images/shared/shardingsphere-features.png)
 
 实际选型时，主要看团队更适合哪种接入方式：
 

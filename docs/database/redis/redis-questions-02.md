@@ -1,32 +1,28 @@
 ---
-title: Redis常见面试题总结(下)
-description: 最新Redis面试题总结（下）：深度剖析Redis事务原理、性能优化（pipeline/Lua/bigkey/hotkey）、缓存穿透/击穿/雪崩解决方案、慢查询与内存碎片、Redis Sentinel与Cluster集群详解。助你轻松应对后端技术面试！
-category: 数据库
+title: Common Redis Interview Questions, Part 2
+description: Redis interview questions on transactions, performance, large and hot keys, cache failures, consistency, slow commands, and clusters.
+category: Database
 tag:
   - Redis
 head:
   - - meta
     - name: keywords
-      content: Redis面试题,Redis事务,Redis性能优化,Redis缓存穿透,Redis缓存击穿,Redis缓存雪崩,Redis bigkey,Redis hotkey,Redis慢查询,Redis内存碎片,Redis集群,Redis Sentinel,Redis Cluster,Redis pipeline,Redis Lua脚本
+      content: Redis Interview Questions,Redis Transactions,Redis Performance,Cache Penetration,Cache Breakdown,Cache Stampede,Redis Large Keys,Redis Hot Keys,Slow Queries,Memory Fragmentation,Redis Cluster,Redis Sentinel,Redis Pipeline,Lua Scripts
 ---
 
 <!-- @include: @article-header.snippet.md -->
 
-## Redis 事务
+## Redis Transactions
 
-### 什么是 Redis 事务？
+### What Is a Redis Transaction?
 
-你可以将 Redis 中的事务理解为：**Redis 事务提供了一种将多个命令请求打包的功能。然后，再按顺序执行打包的所有命令，并且不会被中途打断。**
+A Redis transaction groups multiple commands and executes them sequentially without interleaving commands from other clients. Redis queues the commands first, then runs them when the client sends EXEC.
 
-Redis 事务实际开发中使用的非常少，功能比较鸡肋，不要将其和我们平时理解的关系型数据库的事务混淆了。
+Redis transactions are rarely used in application development and should not be confused with relational database transactions. They do not provide traditional rollback. Durability depends on Redis persistence.
 
-Redis 事务不提供传统关系型数据库事务中的失败回滚机制，其持久性则依赖 Redis 自身的持久化机制。事务中的每条命令都会与 Redis 服务器进行网络交互，这些命令先在服务端排队，等执行 EXEC 时再按照顺序连续执行。
+### How Do You Use Redis Transactions?
 
-Redis 事务是不建议在日常开发中使用的。
-
-### 如何使用 Redis 事务？
-
-Redis 可以通过 **`MULTI`、`EXEC`、`DISCARD` 和 `WATCH`** 等命令来实现事务（Transaction）功能。
+Redis transactions use MULTI, EXEC, DISCARD, and WATCH.
 
 ```bash
 > MULTI
@@ -40,15 +36,13 @@ QUEUED
 2) "JavaGuide"
 ```
 
-[`MULTI`](https://redis.io/commands/multi) 命令后可以输入多个命令，Redis 不会立即执行这些命令，而是将它们放到队列，当调用了 [`EXEC`](https://redis.io/commands/exec) 命令后，再执行所有的命令。
+After MULTI, Redis queues commands instead of executing them. EXEC runs the queued commands in order:
 
-这个过程是这样的：
+1. Start the transaction with MULTI.
+2. Queue commands.
+3. Run the transaction with EXEC.
 
-1. 开始事务（`MULTI`）；
-2. 命令入队（批量操作 Redis 的命令，先进先出（FIFO）的顺序执行）；
-3. 执行事务（`EXEC`）。
-
-你也可以通过 [`DISCARD`](https://redis.io/commands/discard) 命令取消一个事务，它会清空事务队列中保存的所有命令。
+Use DISCARD to clear the queued commands:
 
 ```bash
 > MULTI
@@ -61,10 +55,10 @@ QUEUED
 OK
 ```
 
-你可以通过[`WATCH`](https://redis.io/commands/watch) 命令监听指定的 Key，当调用 `EXEC` 命令执行事务时，如果一个被 `WATCH` 命令监视的 Key 被 **其他客户端/Session** 修改的话，整个事务都不会被执行。
+WATCH monitors keys. If another client changes a watched key before EXEC, the transaction is aborted:
 
 ```bash
-# 客户端 1
+# Client 1
 > SET PROJECT "RustGuide"
 OK
 > WATCH PROJECT
@@ -74,21 +68,19 @@ OK
 > SET PROJECT "JavaGuide"
 QUEUED
 
-# 客户端 2
-# 在客户端 1 执行 EXEC 命令提交事务之前修改 PROJECT 的值
+# Client 2 changes PROJECT before Client 1 calls EXEC
 > SET PROJECT "GoGuide"
 
-# 客户端 1
-# 修改失败，因为 PROJECT 的值被客户端2修改了
+# Client 1: EXEC aborts because PROJECT changed
 > EXEC
 (nil)
 > GET PROJECT
 "GoGuide"
 ```
 
-不过，如果 **WATCH** 与 **事务** 在同一个 Session 里，并且被 **WATCH** 监视的 Key 被修改的操作发生在事务内部，这个事务是可以被执行成功的（相关 issue：[WATCH 命令碰到 MULTI 命令时的不同效果](https://github.com/Snailclimb/JavaGuide/issues/1714)）。
+If the same client changes a watched key inside its transaction, EXEC can still succeed. See [this issue about WATCH and MULTI](https://github.com/Snailclimb/JavaGuide/issues/1714).
 
-事务内部修改 WATCH 监视的 Key：
+Changes to the watched key inside a transaction:
 
 ```bash
 > SET PROJECT "JavaGuide"
@@ -107,11 +99,11 @@ QUEUED
 1) OK
 2) OK
 3) OK
-127.0.0.1:6379> GET PROJECT
+> GET PROJECT
 "JavaGuide3"
 ```
 
-事务外部修改 WATCH 监视的 Key：
+A change outside the transaction aborts it:
 
 ```bash
 > SET PROJECT "JavaGuide"
@@ -128,537 +120,425 @@ QUEUED
 (nil)
 ```
 
-Redis 官网相关介绍 [https://redis.io/topics/transactions](https://redis.io/topics/transactions) 如下：
+See the [Redis transactions documentation](https://redis.io/docs/latest/develop/using-commands/transactions/).
 
-![Redis 事务](../images/shared/redis-transactions.png)
+### Do Redis Transactions Support Atomicity?
 
-### Redis 事务支持原子性吗？
+Redis transactions differ from traditional database transactions. The ACID properties are:
 
-Redis 的事务和我们平时理解的关系型数据库的事务不同。我们知道事务具有四大特性：**1. 原子性**，**2. 隔离性**，**3. 持久性**，**4. 一致性**。
+1. **Atomicity:** A transaction completes entirely or has no effect.
+2. **Isolation:** Concurrent transactions do not interfere with each other.
+3. **Durability:** Committed changes persist even after a failure.
+4. **Consistency:** A transaction preserves valid data states.
 
-1. **原子性（Atomicity）**：事务是最小的执行单位，不允许分割。事务的原子性确保动作要么全部完成，要么完全不起作用；
-2. **隔离性（Isolation）**：并发访问数据库时，一个用户的事务不被其他事务所干扰，各并发事务之间数据库是独立的；
-3. **持久性（Durability）**：一个事务被提交之后。它对数据库中数据的改变是持久的，即使数据库发生故障也不应该对其有任何影响；
-4. **一致性（Consistency）**：执行事务前后，数据保持一致，多个事务对同一个数据读取的结果是相同的。
+If a command fails while Redis executes a transaction, other queued commands can still run. Redis transactions do not support rollback, so they do not provide traditional atomicity.
 
-Redis 事务在运行错误的情况下，除了执行过程中出现错误的命令外，其他命令都能正常执行。并且，Redis 事务是不支持回滚（roll back）操作的。因此，Redis 事务其实是不满足原子性的。
+Redis's developers chose not to support rollback to keep the implementation simpler and faster, and expect command errors to be caught during development.
 
-Redis 官网也解释了自己为啥不支持回滚。简单来说就是 Redis 开发者们觉得没必要支持回滚，这样更简单便捷并且性能更好。Redis 开发者觉得即使命令执行错误也应该在开发过程中就被发现而不是生产过程中。
+![Why Redis does not support rollback](../images/shared/redis-rollback.png)
 
-![Redis 为什么不支持回滚](../images/shared/redis-rollback.png)
+Related issues:
 
-**相关 issue**：
+- [Redis transactions and atomicity](https://github.com/Snailclimb/JavaGuide/issues/452)
+- [Why Redis has no transaction rollback](https://github.com/Snailclimb/JavaGuide/issues/491)
 
-- [issue#452: 关于 Redis 事务不满足原子性的问题](https://github.com/Snailclimb/JavaGuide/issues/452)。
-- [Issue#491:关于 Redis 没有事务回滚？](https://github.com/Snailclimb/JavaGuide/issues/491)。
+### Do Redis Transactions Support Durability?
 
-### Redis 事务支持持久性吗？
-
-Redis 不同于 Memcached 的很重要一点就是，Redis 支持持久化，而且支持 3 种持久化方式：
-
-- 快照（snapshotting，RDB）；
-- 只追加文件（append-only file，AOF）；
-- RDB 和 AOF 的混合持久化（Redis 4.0 新增）。
-
-与 RDB 持久化相比，AOF 持久化的实时性更好。在 Redis 的配置文件中存在三种不同的 AOF 持久化方式（`fsync` 策略），它们分别是：
+Redis supports RDB snapshots, AOF, and mixed RDB/AOF persistence. AOF can sync writes using one of three policies:
 
 ```bash
-appendfsync always    #每次有数据修改发生时，主线程直接调用fsync同步AOF文件（刷盘），fsync完成后返回。always由主线程执行而非后台线程，严重降低Redis性能
-appendfsync everysec  #每秒钟调用fsync函数同步一次AOF文件
-appendfsync no        #让操作系统决定何时进行同步，一般为30秒一次
+appendfsync always    # Main thread fsyncs after every write; safest but slow
+appendfsync everysec  # Background thread fsyncs about once per second
+appendfsync no        # Operating system decides when to sync, often around 30 seconds
 ```
 
-AOF 持久化的 `fsync` 策略为 no、everysec 时都会存在数据丢失的情况。always 下可以基本是可以满足持久性要求的，但性能太差，实际开发过程中不会使用。
+With no or everysec, a failure may lose recent writes. Always offers stronger durability but has high performance costs. Redis transaction durability therefore depends on the configured persistence policy and is not guaranteed by the transaction itself.
 
-因此，Redis 事务的持久性也是没办法保证的。
+### How Can You Address the Limitations of Redis Transactions?
 
-### 如何解决 Redis 事务的缺陷？
+Redis 2.6 introduced Lua scripting, which can execute multiple commands in one server-side operation. A script runs without other Redis commands interleaving, reducing network overhead.
 
-Redis 从 2.6 版本开始支持执行 Lua 脚本，它的功能和事务非常类似。我们可以利用 Lua 脚本来批量执行多条 Redis 命令，这些 Redis 命令会被提交到 Redis 服务器一次性执行完成，大幅减小了网络开销。
+A Lua script is not equivalent to rollback: if it errors midway, prior writes remain, while later commands do not run. Ensure the script syntax and commands are valid.
 
-一段 Lua 脚本可以视作一条命令执行，一段 Lua 脚本执行过程中不会有其他脚本或 Redis 命令同时执行，保证了操作不会被其他指令插入或打扰。
+Redis 7.0 also introduced [Redis Functions](https://redis.io/docs/latest/develop/programmability/functions-intro/), which provide a server-side programmability feature beyond ad hoc Lua scripts.
 
-不过，如果 Lua 脚本运行时出错并中途结束，出错之后的命令是不会被执行的。并且，出错之前执行的命令是无法被撤销的，无法实现类似关系型数据库执行失败可以回滚的那种原子性效果。因此，**严格来说的话，通过 Lua 脚本来批量执行 Redis 命令实际也是不完全满足原子性的。**
+## ⭐️ Redis Performance Optimization (Important)
 
-如果想要让 Lua 脚本中的命令全部执行，必须保证语句语法和命令都是对的。
+Further reading:
 
-另外，Redis 7.0 新增了 [Redis functions](https://redis.io/docs/latest/develop/programmability/functions-intro/) 特性，你可以将 Redis functions 看作是比 Lua 更强大的脚本。
+- [Has Your Redis Really Slowed Down? How to Optimize Performance](https://mp.weixin.qq.com/s/nNEuYw0NlYGhuKKKKoWfcQ)
+- [Common Causes of Redis Blocking](https://javaguide.cn/database/redis/redis-common-blocking-problems-summary.html)
 
-## ⭐️Redis 性能优化（重要）
+### Reduce Network Traffic with Batch Operations
 
-除了下面介绍的内容之外，再推荐两篇不错的文章：
+A Redis command can be divided into four steps:
 
-- [你的 Redis 真的变慢了吗？性能优化如何做 - 阿里开发者](https://mp.weixin.qq.com/s/nNEuYw0NlYGhuKKKKoWfcQ)。
-- [Redis 常见阻塞原因总结 - JavaGuide](https://javaguide.cn/database/redis/redis-common-blocking-problems-summary.html)。
+1. Send the command.
+2. Queue the command.
+3. Execute the command.
+4. Return the result.
 
-### 使用批量操作减少网络传输
+The time spent sending the command and receiving the result is **Round-Trip Time (RTT)**. Batching reduces network round trips. It can also reduce socket I/O costs, including context switches and read/write system calls. See Redis's [pipelining documentation](https://redis.io/docs/latest/develop/using-commands/pipelining/).
 
-一个 Redis 命令的执行可以简化为以下 4 步：
+#### Native Batch Commands
 
-1. 发送命令；
-2. 命令排队；
-3. 命令执行；
-4. 返回结果。
+Redis has commands that operate on multiple values, including:
 
-其中，第 1 步和第 4 步耗费时间之和称为 **Round Trip Time（RTT，往返时间）**，也就是数据在网络上传输的时间。
+- MGET and MSET for multiple keys.
+- HMGET and HMSET for multiple Hash fields.
+- SADD for multiple Set members.
+- ...
 
-使用批量操作可以减少网络传输次数，进而有效减小网络开销，大幅减少 RTT。
+In Redis Cluster, keys may belong to different hash slots. A command such as MGET may therefore require requests to multiple nodes, losing single-request efficiency and atomicity. Clients commonly handle this by:
 
-另外，除了能减少 RTT 之外，发送一次命令的 socket I/O 成本也比较高（涉及上下文切换，存在 `read()` 和 `write()` 系统调用），批量操作还可以减少 socket I/O 成本。这个在官方对 pipeline 的介绍中有提到：<https://redis.io/docs/manual/pipelining/>。
+1. Finding the hash slot for each key.
+2. Sending requests to the relevant nodes.
+3. Combining the results in the input key order.
 
-#### 原生批量操作命令
+Maintaining the key-to-slot mapping manually can reduce network requests but adds complexity.
 
-Redis 中有一些原生支持批量操作的命令，比如：
+Redis Cluster uses **hash slot partitioning**, not consistent hashing. Each key maps to a hash slot, and the cluster maps slots to nodes. See [Redis Clustering (Premium)](https://javaguide.cn/database/redis/redis-cluster.html).
 
-- `MGET`（获取一个或多个指定 key 的值）、`MSET`（设置一个或多个指定 key 的值）、
-- `HMGET`（获取指定哈希表中一个或者多个指定字段的值）、`HMSET`（同时将一个或多个 field-value 对设置到指定哈希表中）、
-- `SADD`（向指定集合添加一个或多个元素）
-- ……
+#### Pipeline
 
-不过，在 Redis 官方提供的分片集群解决方案 Redis Cluster 下，使用这些原生批量操作命令可能会存在一些小问题需要解决。就比如说 `MGET` 无法保证所有的 key 都在同一个 **hash slot（哈希槽）** 上，`MGET`可能还是需要多次网络传输，原子操作也无法保证了。不过，相较于非批量操作，还是可以节省不少网络传输次数。
+For commands without native batch support, a **pipeline** sends multiple commands in one network round trip. Limit the number and total size of commands in a batch; for example, keep batches under about 500 commands, depending on value sizes.
 
-整个步骤的简化版如下（通常由 Redis 客户端实现，无需我们自己再手动实现）：
+Pipelines also need special handling in Redis Cluster when keys map to different slots. The client can group commands by node.
 
-1. 找到 key 对应的所有 hash slot；
-2. 分别向对应的 Redis 节点发起 `MGET` 请求获取数据；
-3. 等待所有请求执行结束，重新组装结果数据，保持跟入参 key 的顺序一致，然后返回结果。
+Native batch commands and pipelines differ:
 
-如果想要解决这个多次网络传输的问题，比较常用的办法是自己维护 key 与 slot 的关系。不过这样不太灵活，虽然带来了性能提升，但同样让系统复杂性提升。
+- Native batch commands such as MGET are atomic for their supported key set; pipelines are not atomic.
+- A pipeline can contain different commands; a native batch command has a fixed operation.
+- Native batch commands are implemented by Redis. Pipeline support requires both client and server protocol support.
 
-> Redis Cluster 并没有使用一致性哈希，采用的是 **哈希槽分区**，每一个键值对都属于一个 **hash slot（哈希槽）**。当客户端发送命令请求的时候，需要先根据 key 通过上面的计算公式找到的对应的哈希槽，然后再查询哈希槽和节点的映射关系，即可找到目标 Redis 节点。
->
-> 我在 [Redis 集群详解（付费）](https://javaguide.cn/database/redis/redis-cluster.html) 这篇文章中详细介绍了 Redis Cluster 这部分的内容，感兴趣地可以看看。
+Transactions and pipelines also differ:
 
-#### pipeline
+- Redis transactions execute their queued commands together without interleaving; pipelines are non-atomic and may interleave with other clients.
+- A transaction sends each command to Redis while queueing, then sends EXEC. A pipeline sends a batch of commands together.
 
-对于不支持批量操作的命令，我们可以利用 **pipeline（流水线）** 将一批 Redis 命令封装成一组，这些 Redis 命令会被一次性提交到 Redis 服务器，只需要一次网络传输。不过，需要注意控制一次批量操作的 **元素个数**（例如 500 以内，实际也和元素字节数有关），避免网络传输的数据量过大。
-
-与 `MGET`、`MSET` 等原生批量操作命令一样，pipeline 同样在 Redis Cluster 上使用会存在一些小问题。原因类似，无法保证所有的 key 都在同一个 **hash slot（哈希槽）** 上。如果想要使用的话，客户端需要自己维护 key 与 slot 的关系。
-
-原生批量操作命令和 pipeline 的是有区别的，使用的时候需要注意：
-
-- 原生批量操作命令是原子操作，pipeline 是非原子操作。
-- pipeline 可以打包不同的命令，原生批量操作命令不可以。
-- 原生批量操作命令是 Redis 服务端支持实现的，而 pipeline 需要服务端和客户端的共同实现。
-
-顺带补充一下 pipeline 和 Redis 事务的对比：
-
-- 事务是原子操作，pipeline 是非原子操作。两个不同的事务不会同时运行，而 pipeline 可以同时以交错方式执行。
-- Redis 事务中每个命令都需要发送到服务端，而 Pipeline 只需要发送一次，请求次数更少。
-
-> 事务可以看作是一个原子操作，但其实并不满足原子性。当我们提到 Redis 中的原子操作时，主要指的是这个操作（比如事务、Lua 脚本）不会被其他操作（比如其他事务、Lua 脚本）打扰，并不能完全保证这个操作中的所有写命令要么都执行要么都不执行。这主要也是因为 Redis 是不支持回滚操作。
+> Redis transactions prevent command interleaving but do not provide rollback. Atomicity here means other commands do not run in the middle; it does not mean all writes are reverted if one command fails.
 
 ![](../images/shared/redis-pipeline-vs-transaction.png)
 
-另外，pipeline 不适用于执行顺序有依赖关系的一批命令。就比如说，你需要将前一个命令的结果给后续的命令使用，pipeline 就没办法满足你的需求了。对于这种需求，我们可以使用 **Lua 脚本**。
+A pipeline is not suitable when later commands depend on earlier command results. Use a Lua script for that case.
 
-#### Lua 脚本
+#### Lua Scripts
 
-Lua 脚本同样支持批量操作多条命令。一段 Lua 脚本可以视作一条命令执行，可以看作是 **原子操作**。也就是说，一段 Lua 脚本执行过程中不会有其他脚本或 Redis 命令同时执行，保证了操作不会被其他指令插入或打扰，这是 pipeline 所不具备的。
+Lua scripts can batch commands, run without other Redis commands interleaving, and implement simple logic such as reading and processing a value. Pipelines cannot do this.
 
-并且，Lua 脚本中支持一些简单的逻辑处理比如使用命令读取值并在 Lua 脚本中进行处理，这同样是 pipeline 所不具备的。
+Lua scripts still have limitations:
 
-不过， Lua 脚本依然存在下面这些缺陷：
+- If a script fails midway, earlier writes are not rolled back.
+- In Redis Cluster, all keys used by a script must be in the same hash slot.
 
-- 如果 Lua 脚本运行时出错并中途结束，之后的操作不会进行，但是之前已经发生的写操作不会撤销，所以即使使用了 Lua 脚本，也不能实现类似数据库回滚的原子性。
-- Redis Cluster 下 Lua 脚本的原子操作也无法保证了，原因同样是无法保证所有的 key 都在同一个 **hash slot（哈希槽）** 上。
+### Many Keys Expiring at the Same Time
 
-### 大量 key 集中过期问题
+Redis combines active and lazy expiration. A large expiration cycle can consume time on the Redis main thread and delay client requests.
 
-我在前面提到过：对于过期 key，Redis 采用的是 **定期删除+惰性/懒汉式删除** 策略。
+Common mitigations:
 
-定期删除执行过程中，如果突然遇到大量过期 key 的话，客户端请求必须等待定期清理过期 key 任务线程执行完成，因为这个这个定期任务线程是在 Redis 主线程中执行的。这就导致客户端请求没办法被及时处理，响应速度会比较慢。
+1. Add random jitter to expiration times.
+2. Enable lazy freeing with lazyfree-lazy-expire yes in redis.conf. Redis 4.0+ can release expired key memory asynchronously on a background thread.
 
-**如何解决呢？** 下面是两种常见的方法：
+Use expiration jitter whether or not lazy freeing is enabled.
 
-1. 给 key 设置随机过期时间。
-2. 开启 lazy-free（惰性删除/延迟释放）。lazy-free 特性是 Redis 4.0 开始引入的，指的是让 Redis 采用异步方式延迟释放 key 使用的内存，将该操作交给单独的子线程处理，避免阻塞主线程。
+### Redis Large Keys (bigkeys)
 
-个人建议不管是否开启 lazy-free，我们都尽量给 key 设置随机过期时间。
+#### What Is a Large Key?
 
-### Redis bigkey（大 Key）
+A key can be considered large when its value uses substantial memory. These are rough guidelines:
 
-#### 什么是 bigkey？
+- A String value larger than 1 MB.
+- A collection (List, Hash, Set, or Sorted Set) with more than 5,000 elements. Element count alone does not determine memory use.
 
-简单来说，如果一个 key 对应的 value 所占用的内存比较大，那这个 key 就可以看作是 bigkey。具体多大才算大呢？有一个不是特别精确的参考标准：
+![Large key guidelines](../images/shared/bigkey-criterion.png)
 
-- String 类型的 value 超过 1MB
-- 复合类型（List、Hash、Set、Sorted Set 等）的 value 包含的元素超过 5000 个（不过，对于复合类型的 value 来说，不一定包含的元素越多，占用的内存就越多）。
+#### How Are Large Keys Created, and What Problems Do They Cause?
 
-![bigkey 判定标准](../images/shared/bigkey-criterion.png)
+Common causes include:
 
-#### bigkey 是怎么产生的？有什么危害？
+- Poor design, such as storing a large file's binary data in a String.
+- Underestimating how quickly a collection will grow.
+- Failing to remove obsolete data, leaving unused Hash fields or other members.
 
-bigkey 通常是由于下面这些原因产生的：
+Large keys consume memory and bandwidth and can affect performance. They can cause:
 
-- 程序设计不当，比如直接使用 String 类型存储较大的文件对应的二进制数据。
-- 对于业务的数据规模考虑不周到，比如使用集合类型的时候没有考虑到数据量的快速增长。
-- 未及时清理垃圾数据，比如哈希中冗余了大量的无用键值对。
+1. **Client timeouts:** Redis processes commands on its main thread. Operations on large values can delay other commands.
+2. **Network congestion:** Fetching a 1 MB key 1,000 times per second sends about 1,000 MB per second, which can overwhelm a typical 1 Gbps network interface.
+3. **Blocked work:** DEL on a large key can delay later commands.
 
-bigkey 除了会消耗更多的内存空间和带宽，还会对性能造成比较大的影响。
+Large keys can also slow replication and cluster resharding. Avoid them where possible.
 
-在 [Redis 常见阻塞原因总结](./redis-common-blocking-problems-summary.md) 这篇文章中我们提到：大 key 还会造成阻塞问题。具体来说，主要体现在下面三个方面：
+#### How Do You Find Large Keys?
 
-1. 客户端超时阻塞：由于 Redis 执行命令是单线程处理，然后在操作大 key 时会比较耗时，那么就会阻塞 Redis，从客户端这一视角看，就是很久很久都没有响应。
-2. 网络阻塞：每次获取大 key 产生的网络流量较大，如果一个 key 的大小是 1 MB，每秒访问量为 1000，那么每秒会产生 1000MB 的流量，这对于普通千兆网卡的服务器来说是灾难性的。
-3. 工作线程阻塞：如果使用 del 删除大 key 时，会阻塞工作线程，这样就没办法处理后续的命令。
-
-大 key 造成的阻塞问题还会进一步影响到主从同步和集群扩容。
-
-综上，大 key 带来的潜在问题是非常多的，我们应该尽量避免 Redis 中存在 bigkey。
-
-#### 如何发现 bigkey？
-
-**1、使用 Redis 自带的 `--bigkeys` 参数来查找。**
+**1. Use redis-cli --bigkeys.**
 
 ```bash
 # redis-cli -p 6379 --bigkeys
 
-# Scanning the entire keyspace to find biggest keys as well as
-# average sizes per key type.  You can use -i 0.1 to sleep 0.1 sec
-# per 100 SCAN commands (not usually needed).
+# Scanning the keyspace for the largest keys and average sizes per type.
+# Use -i 0.1 to pause 0.1 seconds per 100 SCAN commands if needed.
 
-[00.00%] Biggest string found so far '"ballcat:oauth:refresh_auth:f6cdb384-9a9d-4f2f-af01-dc3f28057c20"' with 4437 bytes
-[00.00%] Biggest list   found so far '"my-list"' with 17 items
+[00.00%] Biggest string found so far '"example:key"' with 4437 bytes
+[00.00%] Biggest list found so far '"my-list"' with 17 items
 
 -------- summary -------
-
 Sampled 5 keys in the keyspace!
 Total key length in bytes is 264 (avg len 52.80)
-
-Biggest   list found '"my-list"' has 17 items
-Biggest string found '"ballcat:oauth:refresh_auth:f6cdb384-9a9d-4f2f-af01-dc3f28057c20"' has 4437 bytes
-
-1 lists with 17 items (20.00% of keys, avg size 17.00)
-0 hashs with 0 fields (00.00% of keys, avg size 0.00)
-4 strings with 4831 bytes (80.00% of keys, avg size 1207.75)
-0 streams with 0 entries (00.00% of keys, avg size 0.00)
-0 sets with 0 members (00.00% of keys, avg size 0.00)
-0 zsets with 0 members (00.00% of keys, avg size 0.00
+Biggest list found '"my-list"' has 17 items
+Biggest string found '"example:key"' has 4437 bytes
 ```
 
-从这个命令的运行结果，我们可以看出：这个命令会扫描（Scan）Redis 中的所有 key，会对 Redis 的性能有一点影响。并且，这种方式只能找出每种数据结构 top 1 bigkey（占用内存最大的 String 数据类型，包含元素最多的复合数据类型）。然而，一个 key 的元素多并不代表占用内存也多，需要我们根据具体的业务情况来进一步判断。
+This scans the keyspace and can affect Redis performance. It reports the largest String and largest collection by element count, not necessarily the key using the most memory. On production systems, use the -i option to throttle scanning, for example redis-cli -p 6379 --bigkeys -i 3.
 
-在线上执行该命令时，为了降低对 Redis 的影响，需要指定 `-i` 参数控制扫描的频率。`redis-cli -p 6379 --bigkeys -i 3` 表示扫描过程中每次扫描后休息的时间间隔为 3 秒。
+**2. Use SCAN and type-specific commands.**
 
-**2、使用 Redis 自带的 SCAN 命令**
+SCAN returns keys incrementally. For each key, use a type-specific command to inspect its length or member count:
 
-`SCAN` 命令可以按照一定的模式和数量返回匹配的 key。获取了 key 之后，可以利用 `STRLEN`、`HLEN`、`LLEN` 等命令返回其长度或成员数量。
+| Type       | Command | Complexity | Result             |
+| ---------- | ------- | ---------- | ------------------ |
+| String     | STRLEN  | O(1)       | String length      |
+| Hash       | HLEN    | O(1)       | Number of fields   |
+| List       | LLEN    | O(1)       | Number of elements |
+| Set        | SCARD   | O(1)       | Number of members  |
+| Sorted Set | ZCARD   | O(1)       | Number of members  |
 
-| 数据结构   | 命令   | 复杂度 | 结果（对应 key）   |
-| ---------- | ------ | ------ | ------------------ |
-| String     | STRLEN | O(1)   | 字符串值的长度     |
-| Hash       | HLEN   | O(1)   | 哈希表中字段的数量 |
-| List       | LLEN   | O(1)   | 列表元素数量       |
-| Set        | SCARD  | O(1)   | 集合元素数量       |
-| Sorted Set | ZCARD  | O(1)   | 有序集合的元素数量 |
+For collections, MEMORY USAGE (Redis 4.0+) reports the memory used by a key.
 
-对于集合类型还可以使用 `MEMORY USAGE` 命令（Redis 4.0+），这个命令会返回键值对占用的内存空间。
+**3. Analyze an RDB file.**
 
-**3、借助开源工具分析 RDB 文件。**
+This requires RDB persistence. Tools include:
 
-通过分析 RDB 文件来找出 big key。这种方案的前提是你的 Redis 采用的是 RDB 持久化。
+- [redis-rdb-tools](https://github.com/sripathikrishnan/redis-rdb-tools): Analyze RDB snapshots using Python.
+- [rdb_bigkeys](https://github.com/weiyanwei412/rdb_bigkeys): Analyze RDB snapshots using Go.
 
-网上有现成的代码/工具可以直接拿来使用：
+**4. Use managed Redis analysis tools.**
 
-- [redis-rdb-tools](https://github.com/sripathikrishnan/redis-rdb-tools)：Python 语言写的用来分析 Redis 的 RDB 快照文件用的工具。
-- [rdb_bigkeys](https://github.com/weiyanwei412/rdb_bigkeys)：Go 语言写的用来分析 Redis 的 RDB 快照文件用的工具，性能更好。
+Cloud Redis services may provide key analysis. For example, Alibaba Cloud supports [real-time key statistics](https://www.alibabacloud.com/help/zh/apsaradb-for-redis/latest/use-the-real-time-key-statistics-feature).
 
-**4、借助公有云的 Redis 分析服务。**
+![Alibaba Cloud key analysis](../images/shared/aliyun-key-analysis.png)
 
-如果你用的是公有云的 Redis 服务的话，可以看看其是否提供了 key 分析功能（一般都提供了）。
+#### How Do You Handle Large Keys?
 
-这里以阿里云 Redis 为例说明，它支持 bigkey 实时分析、发现，文档地址：<https://www.alibabacloud.com/help/zh/apsaradb-for-redis/latest/use-the-real-time-key-statistics-feature>。
+Common approaches can be combined:
 
-![阿里云Key分析](../images/shared/aliyun-key-analysis.png)
+- **Split the key:** Divide a large Hash into smaller Hashes, for example by applying a secondary hash to its fields.
+- **Delete in batches:** Redis 4.0+ supports asynchronous UNLINK. On older versions, combine SCAN and DEL to delete keys in batches.
+- **Choose a suitable data type:** Do not store file contents in Strings; use HyperLogLog for approximate UV counts and Bitmap for Boolean state.
+- **Enable lazy freeing:** Redis 4.0+ can release memory asynchronously to avoid blocking the main thread.
 
-#### 如何处理 bigkey？
+### Redis Hot Keys (hotkeys)
 
-bigkey 的常见处理以及优化办法如下（这些方法可以配合起来使用）：
+#### What Is a Hot Key?
 
-- **分割 bigkey**：将一个 bigkey 分割为多个小 key。例如，将一个含有上万字段数量的 Hash 按照一定策略（比如二次哈希）拆分为多个 Hash。
-- **手动清理**：Redis 4.0+ 可以使用 `UNLINK` 命令来异步删除一个或多个指定的 key。Redis 4.0 以下可以考虑使用 `SCAN` 命令结合 `DEL` 命令来分批次删除。
-- **采用合适的数据结构**：例如，文件二进制数据不使用 String 保存、使用 HyperLogLog 统计页面 UV、Bitmap 保存状态信息（0/1）。
-- **开启 lazy-free（惰性删除/延迟释放）**：lazy-free 特性是 Redis 4.0 开始引入的，指的是让 Redis 采用异步方式延迟释放 key 使用的内存，将该操作交给单独的子线程处理，避免阻塞主线程。
+A key is hot when it receives far more accesses than other keys. For example, if an instance handles 5,000 requests per second and one key receives 2,000 per second, that key may be hot.
 
-### Redis hotkey（热 Key）
+Hot keys often result from sudden demand for popular data, such as breaking news or a flash-sale product.
 
-#### 什么是 hotkey？
+#### What Problems Do Hot Keys Cause?
 
-如果一个 key 的访问次数比较多且明显多于其他 key 的话，那这个 key 就可以看作是 **hotkey（热 Key）**。例如在 Redis 实例的每秒处理请求达到 5000 次，而其中某个 key 的每秒访问量就高达 2000 次，那这个 key 就可以看作是 hotkey。
+Hot keys can consume CPU and bandwidth and increase latency for other requests. Under overload, requests may queue, time out, or reduce throughput. Unbounded retries or fallback to a database can spread the load further.
 
-hotkey 出现的原因主要是某个热点数据访问量暴增，如重大的热搜事件、参与秒杀的商品。
+Access count alone is not enough: expensive commands can exhaust CPU, while large values can saturate bandwidth. Distinguish read hot spots from write hot spots. Local caching can reduce reads but does not directly solve concentrated writes.
 
-#### hotkey 有什么危害？
+#### How Do You Find Hot Keys?
 
-处理 hotkey 会占用大量的 CPU 和带宽，影响同一实例上其他请求的延迟。超过处理能力时，通常先表现为请求排队、超时和吞吐下降，并不意味着 Redis 一定会直接宕机。如果应用在超时后无节制地重试或回源，还可能把压力传递给数据库。
+**1. Use redis-cli --hotkeys.**
 
-排查时不能只看访问次数：高频执行复杂命令更容易耗尽 CPU，频繁读取大 value 则可能先打满带宽。还要区分**读热点与写热点**，本地缓存主要能分担读请求，不能直接解决集中写入同一个 key 的问题。
+redis-cli --hotkeys scans keys and reads OBJECT FREQ to find keys with high LFU frequency counters. These counters are approximate and are not actual request counts or QPS.
 
-因此，hotkey 很可能成为系统性能的瓶颈点，需要单独对其进行优化，以确保系统的高可用性和稳定性。
-
-#### 如何发现 hotkey？
-
-**1、使用 Redis 自带的 `--hotkeys` 参数来查找。**
-
-`redis-cli --hotkeys` 通过 `SCAN` 遍历 key，并读取 `OBJECT FREQ` 来寻找频率值较高的候选 key。**返回的 counter 是 LFU 的近似频率值，不是实际访问次数，也不能直接换算成 QPS。**
-
-使用该方案的前提条件是 Redis Server 的 `maxmemory-policy` 设置为 `allkeys-lfu` 或 `volatile-lfu`，否则会出现如下错误：
-
-```bash
-# redis-cli -p 6379 --hotkeys
-
-# Scanning the entire keyspace to find hot keys as well as
-# average sizes per key type.  You can use -i 0.1 to sleep 0.1 sec
-# per 100 SCAN commands (not usually needed).
-
-Error: ERR An LFU maxmemory policy is not selected, access frequency not tracked. Please note that when switching between policies at runtime LRU and LFU data will take some time to adjust.
-```
-
-Redis 中有两种基于 LFU 的淘汰策略：
-
-1. **volatile-lfu（least frequently used）**：从已设置过期时间的数据集（`server.db[i].expires`）中挑选最不经常使用的数据淘汰。
-2. **allkeys-lfu（least frequently used）**：当内存不足以容纳新写入数据时，在键空间中，移除最不经常使用的 key。
-
-不要仅为了排查热点就直接修改生产实例的淘汰策略，这会改变内存达到上限时的行为。如果实例已经使用 LFU，可以限制扫描节奏：
+The instance must use allkeys-lfu or volatile-lfu. Do not change a production eviction policy just to run this diagnostic; doing so changes behavior at the maxmemory limit.
 
 ```bash
 redis-cli -h 127.0.0.1 -p 6379 --hotkeys -i 0.1
 ```
 
-LFU 计数采用概率递增，并按配置随时间衰减，适合比较近期访问热度。扫描也需要时间和额外请求，不是某个瞬间的完整流量快照，可能错过短暂热点。集群排查还要明确节点范围；从节点上的统计不能直接代表主节点的读流量。机制说明见 [OBJECT FREQ](https://redis.io/docs/latest/commands/object-freq/)、[LFU 淘汰策略](https://redis.io/docs/latest/develop/reference/eviction/#lfu-eviction) 和 [Redis CLI 文档](https://redis.io/docs/latest/develop/tools/cli/)。
+LFU counters increase probabilistically and decay over time. The scan takes time and is not a snapshot of all traffic, so it can miss short-lived hot keys. On a cluster, specify which nodes are being examined.
 
-**2、使用 `MONITOR` 命令。**
+See [OBJECT FREQ](https://redis.io/docs/latest/commands/object-freq/), [LFU eviction](https://redis.io/docs/latest/develop/reference/eviction/#lfu-eviction), and the [Redis CLI guide](https://redis.io/docs/latest/develop/tools/cli/).
 
-`MONITOR` 可以实时输出服务器处理的命令，用于短时采集并按 key 统计；它不是完整的审计日志，部分命令不会被记录。
+**2. Use MONITOR briefly.**
 
-由于该命令对 Redis 性能的影响比较大，因此禁止长时间开启 `MONITOR`（生产环境中建议谨慎使用该命令）。
+MONITOR streams commands processed by the server. It can help count key accesses during a short observation window, but it is not a complete audit log and can affect performance. Do not leave it running for long in production.
 
 ```bash
-# redis-cli
-127.0.0.1:6379> MONITOR
-OK
-1683638260.637378 [0 172.17.0.1:61516] "ping"
-1683638267.144236 [0 172.17.0.1:61518] "smembers" "mySet"
-1683638268.941863 [0 172.17.0.1:61518] "smembers" "mySet"
-1683638269.551671 [0 172.17.0.1:61518] "smembers" "mySet"
-1683638270.646256 [0 172.17.0.1:61516] "ping"
-1683638270.849551 [0 172.17.0.1:61518] "smembers" "mySet"
-1683638271.926945 [0 172.17.0.1:61518] "smembers" "mySet"
-1683638274.276599 [0 172.17.0.1:61518] "smembers" "mySet2"
-1683638276.327234 [0 172.17.0.1:61518] "smembers" "mySet"
+redis-cli MONITOR
 ```
 
-需要短时诊断时，可以限定采集时长和文件大小，结束采集后再离线统计。它只能看到开启期间的请求，无法还原此前已经消失的热点；输出还可能包含业务参数，应控制访问权限。性能影响可参考 [MONITOR 官方说明](https://redis.io/docs/latest/commands/monitor/)。
+Limit the capture duration and output size, then analyze the data offline. It only shows commands observed during collection and may expose application parameters. See the [MONITOR documentation](https://redis.io/docs/latest/commands/monitor/).
 
-**3、借助开源项目。**
+**3. Use an open-source project.**
 
-京东零售的 [hotkey](https://gitee.com/jd-platform-opensource/hotkey) 这个项目不光支持 hotkey 的发现，还支持 hotkey 的处理。
+JD Retail's [hotkey](https://gitee.com/jd-platform-opensource/hotkey) supports hot-key discovery and handling.
 
-![京东零售开源的 hotkey](../images/shared/jd-hotkey.webp)
+![JD Retail's open-source hotkey project](../images/shared/jd-hotkey.webp)
 
-**4、根据业务情况提前预估。**
+**4. Predict hot keys from the workload.**
 
-可以根据业务情况来预估一些 hotkey，比如参与秒杀活动的商品数据等。不过，我们无法预估所有 hotkey 的出现，比如突发的热点新闻事件等。
+Known hot data, such as flash-sale products, can be identified in advance. Sudden events such as breaking news cannot always be predicted.
 
-**5、在客户端或代理层采集。**
+**5. Collect statistics in a client or proxy.**
 
-可以在统一 SDK 或 Proxy 中按时间窗口记录 key 的读写次数，再汇总多个实例的数据。单个实例只能看到自身流量；如果要得到全局热点，需要统一统计口径和窗口，并注意本地缓存命中后的业务访问量不等于 Redis 收到的请求量。
+A shared SDK or proxy can count key accesses over a time window across instances. A single instance sees only its own traffic, and local cache hits do not appear as Redis requests. Use sampling or bounded counters to control overhead; do not create unbounded metrics labelled by every key.
 
-这种方式适合持续观测，但需要维护采集与聚合逻辑。可以用采样、有界计数结构控制开销，不要无上限保存每个 key 的统计，也不要把所有原始 key 都作为监控指标标签。
+**6. Use managed Redis analysis tools.**
 
-**6、借助公有云的 Redis 分析服务。**
+Some cloud Redis services offer hot-key analysis. For example, Alibaba Cloud supports [real-time key statistics](https://www.alibabacloud.com/help/zh/apsaradb-for-redis/latest/use-the-real-time-key-statistics-feature).
 
-如果你用的是公有云的 Redis 服务的话，可以看看其是否提供了 key 分析功能（一般都提供了）。
+![Alibaba Cloud key analysis](../images/shared/aliyun-key-analysis.png)
 
-这里以阿里云 Redis 为例说明，它支持 hotkey 实时分析、发现，文档地址：<https://www.alibabacloud.com/help/zh/apsaradb-for-redis/latest/use-the-real-time-key-statistics-feature>。
+**7. Collect hot-key statistics on the server.**
 
-![阿里云Key分析](../images/shared/aliyun-key-analysis.png)
+A server-side extension can track hot keys over a time window with bounded memory and provide query or notification interfaces. It requires maintaining custom code and checking compatibility with Redis upgrades. Sampling and eviction can cause missed accesses, so account for the observation window, capacity, and overhead.
 
-**7、在服务端统计热点。**
-
-服务端能集中观察到达该节点的请求。需要定制统计能力时，可以使用容量受限的记录结构统计一个时间窗口内的访问，分别记录读写热点，并提供查询与通知接口。这类扩展需要维护服务端代码，还要评估与 Redis 版本升级的兼容性。
-
-有界统计结构可以控制内存占用，但记录被淘汰或采样时，结果就未必覆盖全部访问。评估方案时应明确统计窗口、采样率、记录容量、通知开销和漏报情况，不能把“单次统计很快”等同于“整体没有成本”。
-
-**版本补充：Redis Open Source 8.6.0 起提供原生 `HOTKEYS` 命令族。** 它在指定观测时段内按 CPU 时间或网络字节识别热点，与依赖 LFU 的 `redis-cli --hotkeys` 统计口径不同。例如，在支持该命令且具有相应权限的实例上，可以执行：
+**Redis Open Source 8.6.0 and later provides the HOTKEYS command family.** It identifies hot keys by CPU time or network bytes over an observation period. This differs from redis-cli --hotkeys, which relies on LFU counters.
 
 ```bash
-# 采集 30 秒，按 CPU 和网络流量分别保留 Top 10；SAMPLE 10 表示按 1/10 概率采样
+# Observe for 30 seconds, retain the top 10 by CPU and network; SAMPLE 10 samples 1/10 of requests
 redis-cli HOTKEYS START METRICS 2 CPU NET COUNT 10 DURATION 30 SAMPLE 10
-# 采集期间或结束后查看结果
+# View results during or after collection
 redis-cli HOTKEYS GET
 ```
 
-采样会影响精度；结果也只对应指定的观测范围，不能用来查询从未采集过的历史热点。参数与返回值见 [HOTKEYS START](https://redis.io/docs/latest/commands/hotkeys-start/) 和 [HOTKEYS GET](https://redis.io/docs/latest/commands/hotkeys-get/)。
+Sampling affects accuracy, and results cover only the specified observation window. See [HOTKEYS START](https://redis.io/docs/latest/commands/hotkeys-start/) and [HOTKEYS GET](https://redis.io/docs/latest/commands/hotkeys-get/).
 
-选择探测方案时，可以先用已有监控确定高负载节点及异常时间段，再用适合当前版本的热点工具缩小范围。网络抓包也能辅助分析明文 RESP 流量，但需要处理协议解析、采集开销和 TLS 加密等限制，通常不作为首选的持续监控方式。
+Start with existing monitoring to find overloaded nodes and time windows, then use a diagnostic suited to the Redis version. Packet capture may help analyze plaintext RESP traffic, but protocol parsing, capture overhead, and TLS make it unsuitable as the default continuous monitor.
 
-#### 如何解决 hotkey？
+#### How Do You Handle Hot Keys?
 
-hotkey 的常见处理以及优化办法如下（这些方法可以配合起来使用）：
+- **Spread read traffic:** Cache stable, read-heavy data in application memory (such as Caffeine) or a proxy cache. Set capacity limits and TTLs, define invalidation, and coalesce concurrent cache misses.
+- **Read from replicas when stale data is acceptable:** Account for asynchronous replication lag. Replicas can spread reads, but do not distribute writes to the same key.
+- **Separate different hot keys:** Redis Cluster distributes different keys across shards, but one key belongs to one slot and is served by one primary during normal operation. Adding shards alone does not distribute a single key's load. See the [Redis Cluster specification](https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/).
+- **Split writes only when semantics allow:** A counter that can be aggregated later may be split into sub-counters. Reassess read cost, atomicity, and consistency. Do not apply this directly to inventory updates that require a shared constraint.
+- **Control overload propagation:** Use rate limiting, degradation, request coalescing, and bounded retries to avoid sending every timeout to the database.
 
-- **读热点优先分担读请求**：将稳定、读多写少的数据放入 JVM 本地缓存（如 Caffeine）或代理缓存，并设置容量上限、TTL 和失效机制；缓存失效时合并并发回源请求。
-- **读写分离**：客户端将可接受旧数据的读请求路由到从节点，但要考虑异步复制延迟；增加从节点不能分摊对同一个 key 的写入。
-- **区分多个热点与单个热点**：Redis Cluster 可以把不同 key 分散到不同分片，但一个 key 仍只对应一个槽，正常服务时由一个主节点负责。仅增加分片不能拆散这个 key 的负载。可结合 [Cluster 规范](https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/) 理解槽与节点的关系。
-- **按业务语义拆分写热点**：例如允许延迟汇总的计数可以拆为多个子计数再聚合，但必须重新评估读取成本、原子性和一致性。库存扣减等需要统一约束的操作，不能直接套用计数分片。
-- **控制过载传播**：结合限流、降级、请求合并和有限重试，避免 Redis 超时后所有请求同时冲向数据库。
+If read replicas use different keys, ensure they map to different shards and define how updates or invalidations reach every copy. The same hash tag puts keys in the same slot. See [Cache Fundamentals](./cache-basics.md) for multilevel cache consistency.
 
-如果为读热点创建多份不同 key 的数据副本，还需要保证它们实际分布到不同分片，并处理所有副本的更新或失效。给副本使用相同的 hash tag 会让它们落在同一个槽，无法分散分片负载。多级缓存的通知与一致性边界可继续阅读 [缓存基础](./cache-basics.md)。
+Alibaba Cloud Redis also offers Proxy Query Cache for hot-key workloads:
 
-除了这些方法之外，如果你使用的公有云的 Redis 服务话，还可以留意其提供的开箱即用的解决方案。
+![Alibaba Cloud Proxy Query Cache](../images/shared/aliyun-hotkey-proxy-query-cache.png)
 
-这里以阿里云 Redis 为例说明，它支持通过代理查询缓存功能（Proxy Query Cache）优化热点 Key 问题。
+### Slow Commands
 
-![通过阿里云的Proxy Query Cache优化热点Key问题](../images/shared/aliyun-hotkey-proxy-query-cache.png)
+#### Why Do Slow Commands Occur?
 
-### 慢查询命令
+A Redis command has four stages: sending, queuing, execution, and returning the result. Redis's slow log measures **command execution time**, not network round-trip time.
 
-#### 为什么会有慢查询命令？
+Most Redis commands are O(1), but some are O(N), including:
 
-我们知道一个 Redis 命令的执行可以简化为以下 4 步：
+- KEYS \*: Return all matching keys.
+- HGETALL: Return all fields and values in a Hash.
+- LRANGE: Return a range of List elements.
+- SMEMBERS: Return every Set member.
+- SINTER, SUNION, SDIFF: Compute Set operations.
+- ...
 
-1. 发送命令；
-2. 命令排队；
-3. 命令执行；
-4. 返回结果。
+These commands can take longer as the collection grows. Use them only when the data size is understood; use HSCAN, SSCAN, or ZSCAN for iteration.
 
-Redis 慢查询统计的是命令执行这一步骤的耗时，慢查询命令也就是那些命令执行时间较长的命令。
+Other commands can also be expensive when they return or remove many members:
 
-Redis 为什么会有慢查询命令呢？
+- ZRANGE and ZREVRANGE have complexity O(log(N) + M), where M is the number of members returned.
+- ZREMRANGEBYRANK and ZREMRANGEBYSCORE have complexity O(log(N) + M), where M is the number removed.
 
-Redis 中的大部分命令都是 O(1) 时间复杂度，但也有少部分 O(n) 时间复杂度的命令，例如：
+#### How Do You Find Slow Commands?
 
-- `KEYS *`：会返回所有符合规则的 key。
-- `HGETALL`：会返回一个 Hash 中所有的键值对。
-- `LRANGE`：会返回 List 中指定范围内的元素。
-- `SMEMBERS`：返回 Set 中的所有元素。
-- `SINTER`/`SUNION`/`SDIFF`：计算多个 Set 的交集/并集/差集。
-- ……
+Redis's **Slow Log** records commands whose execution exceeds a configured threshold. Set slowlog-log-slower-than for the threshold and slowlog-max-len for the maximum number of entries in redis.conf. When full, Redis removes the oldest entries.
 
-由于这些命令时间复杂度是 O(n)，有时候也会全表扫描，随着 n 的增大，执行耗时也会越长。不过， 这些命令并不是一定不能使用，但是需要明确 N 的值。另外，有遍历的需求可以使用 `HSCAN`、`SSCAN`、`ZSCAN` 代替。
-
-除了这些 O(n) 时间复杂度的命令可能会导致慢查询之外，还有一些时间复杂度可能在 O(N) 以上的命令，例如：
-
-- `ZRANGE`/`ZREVRANGE`：返回指定 Sorted Set 中指定排名范围内的所有元素。时间复杂度为 O(log(n)+m)，n 为所有元素的数量，m 为返回的元素数量，当 m 和 n 相当大时，O(n) 的时间复杂度更小。
-- `ZREMRANGEBYRANK`/`ZREMRANGEBYSCORE`：移除 Sorted Set 中指定排名范围/指定 score 范围内的所有元素。时间复杂度为 O(log(n)+m)，n 为所有元素的数量，m 被删除元素的数量，当 m 和 n 相当大时，O(n) 的时间复杂度更小。
-- ……
-
-#### 如何找到慢查询命令？
-
-Redis 提供了一个内置的**慢查询日志 (Slow Log)** 功能，专门用来记录执行时间超过指定阈值的命令。这对于排查性能瓶颈、找出导致 Redis 阻塞的“慢”操作非常有帮助，原理和 MySQL 的慢查询日志类似。
-
-在 `redis.conf` 文件中，我们可以使用 `slowlog-log-slower-than` 参数设置耗时命令的阈值，并使用 `slowlog-max-len` 参数设置耗时命令的最大记录条数。
-
-当 Redis 服务器检测到执行时间超过 `slowlog-log-slower-than` 阈值的命令时，就会将该命令记录在慢查询日志（slow log）中，这点和 MySQL 记录慢查询语句类似。当慢查询日志超过设定的最大记录条数之后，Redis 会把最早的执行命令依次舍弃。
-
-⚠️ 注意：由于慢查询日志会占用一定内存空间，如果设置最大记录条数过大，可能会导致内存占用过高的问题。
-
-`slowlog-log-slower-than` 和 `slowlog-max-len` 的默认配置如下（可以自行修改）：
+The slow log consumes memory, so avoid an unnecessarily large limit. Default settings:
 
 ```properties
-# The following time is expressed in microseconds, so 1000000 is equivalent
-# to one second. Note that a negative number disables the slow log, while
-# a value of zero forces the logging of every command.
+# Time is in microseconds: 1000000 is one second.
+# A negative value disables the slow log; zero logs every command.
 slowlog-log-slower-than 10000
 
-# There is no limit to this length. Just be aware that it will consume memory.
-# You can reclaim memory used by the slow log with SLOWLOG RESET.
+# The list length is not limited internally; entries consume memory.
+# Reclaim memory with SLOWLOG RESET.
 slowlog-max-len 128
 ```
 
-除了修改配置文件之外，你也可以直接通过 `CONFIG` 命令直接设置：
+Change these settings at runtime with CONFIG SET:
 
 ```bash
-# 命令执行耗时超过 10000 微妙（即10毫秒）就会被记录
+# Log commands taking longer than 10 ms
 CONFIG SET slowlog-log-slower-than 10000
-# 只保留最近 128 条耗时命令
+# Keep the most recent 128 entries
 CONFIG SET slowlog-max-len 128
 ```
 
-获取慢查询日志的内容很简单，直接使用 `SLOWLOG GET` 命令即可。
+Read entries with SLOWLOG GET:
 
 ```bash
-127.0.0.1:6379> SLOWLOG GET #慢日志查询
- 1) 1) (integer) 5
+127.0.0.1:6379> SLOWLOG GET
+1) 1) (integer) 5
    2) (integer) 1684326682
    3) (integer) 12000
    4) 1) "KEYS"
       2) "*"
    5) "172.17.0.1:61152"
    6) ""
-  // ...
 ```
 
-慢查询日志中的每个条目都由以下六个值组成：
+Each entry contains:
 
-1. **唯一 ID**: 日志条目的唯一标识符。
-2. **时间戳 (Timestamp)**: 命令执行完成时的 Unix 时间戳。
-3. **耗时 (Duration)**: 命令执行所花费的时间，单位是**微秒**。
-4. **命令及参数 (Command)**: 执行的具体命令及其参数数组。
-5. **客户端信息 (Client IP:Port)**: 执行命令的客户端地址和端口。
-6. **客户端名称 (Client Name)**: 如果客户端设置了名称 (CLIENT SETNAME)。
+1. Unique entry ID.
+2. Unix timestamp when execution completed.
+3. Execution duration in microseconds.
+4. Command and its arguments.
+5. Client IP address and port.
+6. Client name, if set with CLIENT SETNAME.
 
-`SLOWLOG GET` 命令默认返回最近 10 条的慢查询命令，你也自己可以指定返回的慢查询命令的数量 `SLOWLOG GET N`。
+SLOWLOG GET returns the ten most recent entries by default. Specify a count with SLOWLOG GET N.
 
-下面是其他比较常用的慢查询相关的命令：
+Other useful commands:
 
 ```bash
-# 返回慢查询命令的数量
-127.0.0.1:6379> SLOWLOG LEN
-(integer) 128
-# 清空慢查询命令
-127.0.0.1:6379> SLOWLOG RESET
-OK
+# Return the number of slow-log entries
+SLOWLOG LEN
+# Clear the slow log
+SLOWLOG RESET
 ```
 
-### Redis 内存碎片
+### Redis Memory Fragmentation
 
-**相关问题**：
+Related questions:
 
-1. 什么是内存碎片？为什么会有 Redis 内存碎片？
-2. 如何清理 Redis 内存碎片？
+1. What is memory fragmentation, and why does it occur in Redis?
+2. How can Redis memory fragmentation be reduced?
 
-**参考答案**：[Redis 内存碎片详解](https://javaguide.cn/database/redis/redis-memory-fragmentation.html)。
+See [Redis Memory Fragmentation](https://javaguide.cn/database/redis/redis-memory-fragmentation.html).
 
-## ⭐️Redis 生产问题（重要）
+## ⭐️ Redis Production Issues (Important)
 
-### 缓存穿透
+### Cache Penetration
 
-#### 什么是缓存穿透？
+#### What Is Cache Penetration?
 
-缓存穿透说简单点就是大量请求的 key 是不合理的，**根本不存在于缓存中，也不存在于数据库中**。这就导致这些请求直接到了数据库上，根本没有经过缓存这一层，对数据库造成了巨大的压力，可能直接就被这么多请求弄宕机了。
+Cache penetration occurs when many requests use invalid keys that exist neither in the cache nor in the database. These requests pass through to the database and can overload it.
 
-![缓存穿透](../images/shared/redis-cache-penetration.png)
+![Cache penetration](../images/shared/redis-cache-penetration.png)
 
-举个例子：某个黑客故意制造一些非法的 key 发起大量请求，导致大量请求落到数据库，结果数据库上也没有查到对应的数据。也就是说这些请求最终都落到了数据库上，对数据库造成了巨大的压力。
+For example, an attacker may generate many invalid keys. Every request misses the cache and the database, creating load on the database.
 
-#### 有哪些解决办法？
+#### How Can You Prevent It?
 
-最基本的就是首先做好参数校验，一些不合法的参数请求直接抛出异常信息返回给客户端。比如查询的数据库 id 不能小于 0、传入的邮箱格式不对的时候直接返回错误消息给客户端等等。
+First validate request parameters. Reject invalid inputs, such as negative database IDs or malformed email addresses.
 
-**1）缓存无效 key**
+**1. Cache invalid keys**
 
-如果缓存和数据库都查不到某个 key 的数据，就写一个到 Redis 中去并设置过期时间，具体命令如下：`SET key value EX 10086`。这种方式可以解决请求的 key 变化不频繁的情况，如果黑客恶意攻击，每次构建不同的请求 key，会导致 Redis 中缓存大量无效的 key。很明显，这种方案并不能从根本上解决此问题。如果非要用这种方式来解决穿透问题的话，尽量将无效的 key 的过期时间设置短一点，比如 1 分钟。
+If a key is missing from both cache and database, cache a placeholder with a short TTL, for example SET key value EX 10086. This helps when invalid keys repeat. An attacker can still generate many unique keys, so this does not solve the problem by itself. Keep placeholder TTLs short.
 
-另外，这里多说一嘴，一般情况下我们是这样设计 key 的：`表名:列名:主键名:主键值`。
+A common key format is table:column:primary-key-name:primary-key-value.
 
-如果用 Java 代码展示的话，差不多是下面这样的：
+Example:
 
 ```java
 public Object getObjectInclNullById(Integer id) {
-    // 从缓存中获取数据
     Object cacheValue = cache.get(id);
-    // 缓存为空
     if (cacheValue == null) {
-        // 从数据库中获取
         Object storageValue = storage.get(key);
-        // 缓存空对象
         cache.set(key, storageValue);
-        // 如果存储数据为空，需要设置一个过期时间(300秒)
         if (storageValue == null) {
-            // 必须设置过期时间，否则有被攻击的风险
-            cache.expire(key, 60 * 5);
+            cache.expire(key, 60 * 5); // Do not cache missing values without a TTL
         }
         return storageValue;
     }
@@ -666,185 +546,162 @@ public Object getObjectInclNullById(Integer id) {
 }
 ```
 
-**2）布隆过滤器**
+**2. Use a Bloom filter**
 
-布隆过滤器是一个非常神奇的数据结构，通过它我们可以非常方便地判断一个给定数据是否存在于海量数据中。我们可以把它看作由二进制向量（或者说位数组）和一系列随机映射函数（哈希函数）两部分组成的数据结构。相比于我们平时常用的 List、Map、Set 等数据结构，它占用空间更少并且效率更高，但是缺点是其返回的结果是概率性的，而不是非常准确的。理论情况下添加到集合中的元素越多，误报的可能性就越大。并且，存放在布隆过滤器的数据不容易删除。
+A Bloom filter can efficiently test whether an element may be present in a large set. It uses a bit array and multiple hash functions. It is space-efficient but probabilistic: it can report false positives, but not false negatives. More inserted elements increase the false-positive probability, and deletion is difficult.
 
-![Bloom Filter 的简单原理示意图](../../cs-basics/images/shared/bloom-filter-simple-schematic-diagram.png)
+![Bloom filter diagram](../../cs-basics/images/shared/bloom-filter-simple-schematic-diagram.png)
 
-Bloom Filter 会使用一个较大的 bit 数组来保存所有的数据，数组中的每个元素都只占用 1 bit ，并且每个元素只能是 0 或者 1（代表 false 或者 true），这也是 Bloom Filter 节省内存的核心所在。这样来算的话，申请一个 100w 个元素的位数组只占用 1000000Bit / 8 = 125000 Byte = 125000/1024 KB ≈ 122KB 的空间。
+The filter maps each value to bit positions and sets those bits to 1. When checking a value, a zero at any mapped position means the value is definitely absent; if all are one, it may be present.
 
-![位数组](../../cs-basics/images/shared/bloom-filter-bit-table.png)
+![Bloom filter bit array](../../cs-basics/images/shared/bloom-filter-bit-table.png)
 
-具体是这样做的：把所有可能存在的请求的值都存放在布隆过滤器中，当用户请求过来，先判断用户发来的请求的值是否存在于布隆过滤器中。不存在的话，直接返回请求参数错误信息给客户端，存在的话才会走下面的流程。
+Use the filter before querying the cache or database. If an element is definitely absent, reject the request. See [Bloom Filters](https://javaguide.cn/cs-basics/data-structure/bloom-filter.html) for false positives, deletion limits, and Guava and RedisBloom usage.
 
-加入布隆过滤器之后的缓存处理流程图如下：
+**3. Rate-limit requests**
 
-![加入布隆过滤器之后的缓存处理流程图](../images/shared/redis-cache-penetration-bloom-filter.png)
+Rate-limit by user or IP. Add a blocklist for clearly abusive traffic. Rate limiting can also reduce database load during cache breakdowns and stampedes.
 
-更多关于布隆过滤器的详细介绍可以看看我的这篇原创：[不了解布隆过滤器？一文给你整的明明白白！](https://javaguide.cn/cs-basics/data-structure/bloom-filter.html)，强烈推荐。
+See [Rate Limiting](https://javaguide.cn/high-availability/limit-request.html).
 
-**3）接口限流**
+### Cache Breakdown
 
-根据用户或者 IP 对接口进行限流，对于异常频繁的访问行为，还可以采取黑名单机制，例如将异常 IP 列入黑名单。
+#### What Is Cache Breakdown?
 
-后面提到的缓存击穿和雪崩都可以配合接口限流来解决，毕竟这些问题的关键都是有很多请求落到了数据库上造成数据库压力过大。
+Cache breakdown occurs when a hot key exists in the database but is missing from the cache, often because its cached value expired. A burst of requests can then hit the database at once.
 
-限流的具体方案可以参考这篇文章：[服务限流详解](https://javaguide.cn/high-availability/limit-request.html)。
+![Cache breakdown](../images/shared/redis-cache-breakdown.png)
 
-### 缓存击穿
+For example, if a flash-sale product expires from the cache during a sale, requests for it may all reach the database.
 
-#### 什么是缓存击穿？
+#### How Can You Prevent It?
 
-缓存击穿中，请求的 key 对应的是 **热点数据**，该数据 **存在于数据库中，但不存在于缓存中（通常是因为缓存中的那份数据已经过期）**。这就可能会导致瞬时大量的请求直接打到了数据库上，对数据库造成了巨大的压力，可能直接就被这么多请求弄宕机了。
+1. **Keep hot keys indefinitely:** Usually not recommended unless there is a clear invalidation plan.
+2. **Prewarm the cache:** Load hot data before demand begins and set a TTL that covers the relevant period, such as the end of a flash sale.
+3. **Use a lock when appropriate:** After a miss, allow one request to query the database and refresh the cache while others wait or use a fallback.
 
-![缓存击穿](../images/shared/redis-cache-breakdown.png)
+#### How Do Cache Penetration and Breakdown Differ?
 
-举个例子：秒杀进行过程中，缓存中的某个秒杀商品的数据突然过期，这就导致瞬时大量对该商品的请求直接落到数据库上，对数据库造成了巨大的压力。
+With penetration, the requested key exists in neither cache nor database. With breakdown, the key is hot and exists in the database but is missing from the cache, often because it expired.
 
-#### 有哪些解决办法？
+### Cache Avalanche
 
-1. **永不过期**（不推荐）：设置热点数据永不过期或者过期时间比较长。
-2. **提前预热**（推荐）：针对热点数据提前预热，将其存入缓存中并设置合理的过期时间比如秒杀场景下的数据在秒杀结束之前不过期。
-3. **加锁**（看情况）：在缓存失效后，通过设置互斥锁确保只有一个请求去查询数据库并更新缓存。
+#### What Is a Cache Avalanche?
 
-#### 缓存穿透和缓存击穿有什么区别？
+A cache avalanche occurs when many or all cached entries expire around the same time, sending a large volume of requests to the database. A cache service outage can cause the same effect.
 
-缓存穿透中，请求的 key 既不存在于缓存中，也不存在于数据库中。
+![Cache avalanche](../images/shared/redis-cache-avalanche.png)
 
-缓存击穿中，请求的 key 对应的是 **热点数据** ，该数据 **存在于数据库中，但不存在于缓存中（通常是因为缓存中的那份数据已经过期）** 。
+#### How Can You Prevent It?
 
-### 缓存雪崩
+**If Redis becomes unavailable:**
 
-#### 什么是缓存雪崩？
+1. **Use a Redis cluster:** Avoid relying on one instance. Redis Cluster and Sentinel are common approaches; see [Redis Clustering (Premium)](https://javaguide.cn/database/redis/redis-cluster.html).
+2. **Use multilevel caching:** A local cache can serve some data when Redis is unavailable.
 
-我发现缓存雪崩这名字起的有点意思，哈哈。
+**If many keys expire together:**
 
-实际上，缓存雪崩描述的就是这样一个简单的场景：**缓存在同一时间大面积的失效，导致大量的请求都直接落到了数据库上，对数据库造成了巨大的压力。** 这就好比雪崩一样，摧枯拉朽之势，数据库的压力可想而知，可能直接就被这么多请求弄宕机了。
+1. **Add expiration jitter:** Randomize TTLs to spread expirations over time.
+2. **Prewarm hot data:** Load it before demand and set suitable expiration times.
+3. **Use persistent cache entries selectively:** Keep stable, critical data without expiration only when there is a reliable update and invalidation strategy.
 
-另外，缓存服务宕机也会导致缓存雪崩现象，导致所有的请求都落到了数据库上。
+#### How Do You Prewarm a Cache?
 
-![缓存雪崩](../images/shared/redis-cache-avalanche.png)
+Common approaches include:
 
-举个例子：缓存中的大量数据在同一时间过期，这个时候突然有大量的请求需要访问这些过期的数据。这就导致大量的请求直接落到数据库上，对数据库造成了巨大的压力。
+1. Use a scheduled job, such as XXL-JOB, to load hot database records into the cache.
+2. Publish hot-record IDs to a message queue such as Kafka and let a cache service consume them, query the database, and refresh the cache asynchronously.
 
-#### 有哪些解决办法？
+#### How Do Cache Avalanche and Breakdown Differ?
 
-**针对 Redis 服务不可用的情况**：
+An avalanche involves many or all cache entries expiring or a cache outage. A breakdown involves one hot key missing from the cache while it still exists in the database.
 
-1. **Redis 集群**：采用 Redis 集群，避免单机出现问题整个缓存服务都没办法使用。Redis Cluster 和 Redis Sentinel 是两种最常用的 Redis 集群实现方案，详细介绍可以参考：[Redis 集群详解(付费)](https://javaguide.cn/database/redis/redis-cluster.html)。
-2. **多级缓存**：设置多级缓存，例如本地缓存+Redis 缓存的二级缓存组合，当 Redis 缓存出现问题时，还可以从本地缓存中获取到部分数据。
+### How Do You Keep a Cache Consistent with a Database?
 
-**针对大量缓存同时失效的情况**：
+Cache consistency is a common engineering challenge. Caching improves performance and reduces database load, but adds a risk of stale data. Stronger consistency usually increases complexity and cost, so choose a level that fits the workload.
 
-1. **设置随机失效时间**（可选）：为缓存设置随机的失效时间，例如在固定过期时间的基础上加上一个随机值，这样可以避免大量缓存同时到期，从而减少缓存雪崩的风险。
-2. **提前预热**（推荐）：针对热点数据提前预热，将其存入缓存中并设置合理的过期时间，比如秒杀场景下的数据在秒杀结束之前不过期。
-3. **持久缓存策略**（看情况）：虽然一般不推荐设置缓存永不过期，但对于某些关键性和变化不频繁的数据，可以考虑这种策略。
+The common **Cache Aside** pattern uses this flow:
 
-#### 缓存预热如何实现？
+- **Read:** Check the cache. On a hit, return the value. On a miss, read from the database, populate the cache, and return the value.
+- **Write:** Update and commit the database first, then delete the corresponding cache entry.
 
-常见的缓存预热方式有两种：
+![Cache Aside write flow](../images/shared/cache-aside-write.png)
 
-1. 使用定时任务，比如 xxl-job，来定时触发缓存预热的逻辑，将数据库中的热点数据查询出来并存入缓存中。
-2. 使用消息队列，比如 Kafka，来异步地进行缓存预热，将数据库中的热点数据的主键或者 ID 发送到消息队列中，然后由缓存服务消费消息队列中的数据，根据主键或者 ID 查询数据库并更新缓存。
+![Cache Aside read flow](../images/shared/cache-aside-read.png)
 
-#### 缓存雪崩和缓存击穿有什么区别？
+This sequence still needs failure handling:
 
-缓存雪崩和缓存击穿比较像，但缓存雪崩导致的原因是缓存中的大量或者所有数据失效，缓存击穿导致的原因主要是某个热点数据不存在于缓存中（通常是因为缓存中的那份数据已经过期）。
+- **Deletion failure:** Retry invalidation with a recoverable task. If using a message queue, handle a crash after database commit but before publishing the message; a transactional outbox or CDC may be needed. Monitor retries.
+- **Stale repopulation:** A read can fetch old data before an update and populate the cache after deletion. Delayed double deletion reduces some races but cannot cover arbitrarily long delays. Replica reads and long database snapshots can also return stale data.
+- **TTL fallback:** Set a TTL according to the business tolerance, but ensure a cache miss can read sufficiently fresh data. TTL alone does not provide strong consistency.
+- **Read path and local copies:** Cache deletion requires a source-of-truth read or a defined fallback. JVM-local caches need their own invalidation mechanism.
 
-### 如何保证缓存和数据库数据的一致性？
+See [Three Common Cache Read/Write Strategies](./3-commonly-used-cache-read-and-write-strategies.md) for concurrency and retry details, and [Cache Fundamentals](./cache-basics.md) for multilevel cache behavior.
 
-缓存和数据库一致性是个挺常见的技术挑战。引入缓存主要是为了提升性能、减轻数据库压力，但确实会带来数据不一致的风险。绝对的一致性往往意味着更高的系统复杂度和性能开销，所以实践中我们通常会根据业务场景选择合适的策略，在性能和一致性之间找到一个平衡点。
+Further reading: [Cache and Database Consistency: A Practical Guide](https://mp.weixin.qq.com/s?__biz=MzIyOTYxNDI5OA==&mid=2247487312&idx=1&sn=fa19566f5729d6598155b5c676eee62d&chksm=e8beb8e5dfc931f3e35655da9da0b61c79f2843101c130cf38996446975014f958a6481aacf1&scene=178&cur_album_id=1699766580538032128#rd).
 
-下面单独对 **Cache Aside Pattern（旁路缓存模式）** 来聊聊。这是非常常用的一种缓存读写策略，它的读写逻辑是这样的：
+### What Can Cause Redis to Block?
 
-- **读操作**：
-  1. 先尝试从缓存读取数据。
-  2. 如果缓存命中，直接返回数据。
-  3. 如果缓存未命中，从数据库查询数据，将查到的数据放入缓存并返回数据。
-- **写操作**：
-  1. 先更新数据库并提交事务。
-  2. 提交成功后，再删除缓存中对应的数据。
+Common causes include:
 
-图解如下：
-
-![](../images/shared/cache-aside-write.png)
-
-![](../images/shared/cache-aside-read.png)
-
-这个顺序仍需处理以下问题：
-
-- **删除失败**：通过可恢复的任务重试失效操作；如果用 MQ，需要考虑“DB 已提交、消息尚未发出”时宕机的缺口，必要时使用事务消息表或 CDC 衔接，并监控补偿任务。
-- **旧值回填**：读请求可能在更新前读到旧值，却在删除完成后才回填。延迟双删只能降低部分风险，不能保证覆盖任意长的延迟；读从库、长事务快照也可能带来旧数据。
-- **过期兜底**：设置符合业务容忍度的 TTL，但过期后的回源必须能够得到足够新的数据；TTL 本身不能提供强一致性。
-- **读端能力与多级副本**：删除缓存要求未命中后有回源或明确的降级方案。若还有 JVM 本地缓存，需要另外处理各实例的失效通知。
-
-各类并发时序、事务提交和重试边界见 [3 种常用的缓存读写策略详解](./3-commonly-used-cache-read-and-write-strategies.md)，多级缓存的回源与通知问题见 [缓存基础](./cache-basics.md)。
-
-相关文章推荐：[缓存和数据库一致性问题，看这篇就够了 - 水滴与银弹](https://mp.weixin.qq.com/s?__biz=MzIyOTYxNDI5OA==&mid=2247487312&idx=1&sn=fa19566f5729d6598155b5c676eee62d&chksm=e8beb8e5dfc931f3e35655da9da0b61c79f2843101c130cf38996446975014f958a6481aacf1&scene=178&cur_album_id=1699766580538032128#rd)。
-
-### 哪些情况可能会导致 Redis 阻塞？
-
-常见的导致 Redis 阻塞原因有：
-
-- `O(n)` 复杂度命令执行（如 `KEYS *`、`HGETALL`、`LRANGE`、`SMEMBERS` 等），随着数据量增大导致执行时间过长。
-- 执行 `SAVE` 命令生成 RDB 快照时同步阻塞主线程，而 `BGSAVE` 通过 `fork` 子进程避免阻塞。
-- AOF 记录日志在主线程中进行，可能因命令执行后写日志而阻塞后续命令。
-- AOF 刷盘（fsync）时后台线程同步到磁盘，磁盘压力大导致 `fsync` 阻塞，进而阻塞主线程 `write` 操作，尤其在 `appendfsync always` 或 `everysec` 配置下明显。
-- AOF 重写过程中将重写缓冲区内容追加到新 AOF 文件时产生阻塞。
-- 操作大 key（string > 1MB 或复合类型元素 > 5000）导致客户端超时、网络阻塞和工作线程阻塞。
-- 使用 `flushdb` 或 `flushall` 清空数据库时涉及大量键值对删除和内存释放，造成主线程阻塞。
-- 集群扩容缩容时数据迁移为同步操作，大 key 迁移导致两端节点长时间阻塞，可能触发故障转移
-- 内存不足触发 Swap，操作系统将 Redis 内存换出到硬盘，读写性能急剧下降。
-- 其他进程过度占用 CPU 导致 Redis 吞吐量下降。
-- 网络问题如连接拒绝、延迟高、网卡软中断等导致 Redis 阻塞。
-
-详细介绍可以阅读这篇文章：[Redis 常见阻塞原因总结](https://javaguide.cn/database/redis/redis-common-blocking-problems-summary.html)。
-
-## Redis 集群
-
-**Redis Sentinel**：
-
-1. 什么是 Sentinel？ 有什么用？
-2. Sentinel 如何检测节点是否下线？主观下线与客观下线的区别？
-3. Sentinel 是如何实现故障转移的？
-4. 为什么建议部署多个 sentinel 节点（哨兵集群）？
-5. Sentinel 如何选择出新的 master（选举机制）？
-6. 如何从 Sentinel 集群中选择出 Leader？
-7. Sentinel 可以防止脑裂吗？
-
-**Redis Cluster**：
-
-1. 为什么需要 Redis Cluster？解决了什么问题？有什么优势？
-2. Redis Cluster 是如何分片的？
-3. 为什么 Redis Cluster 的哈希槽是 16384 个？
-4. 如何确定给定 key 的应该分布到哪个哈希槽中？
-5. Redis Cluster 支持重新分配哈希槽吗？
-6. Redis Cluster 扩容缩容期间可以提供服务吗？
-7. Redis Cluster 中的节点是怎么进行通信的？
-
-**参考答案**：[Redis 集群详解（付费）](https://javaguide.cn/database/redis/redis-cluster.html)。
-
-## Redis 使用规范
-
-实际使用 Redis 的过程中，我们尽量要准守一些常见的规范，比如：
-
-1. 使用连接池：避免频繁创建关闭客户端连接。
-2. 尽量不使用 O(n) 指令，使用 O(n) 命令时要关注 n 的数量：像 `KEYS *`、`HGETALL`、`LRANGE`、`SMEMBERS`、`SINTER`/`SUNION`/`SDIFF` 等 O(n) 命令并非不能使用，但是需要明确 n 的值。另外，有遍历的需求可以使用 `HSCAN`、`SSCAN`、`ZSCAN` 代替。
-3. 使用批量操作减少网络传输：原生批量操作命令（比如 `MGET`、`MSET` 等等）、pipeline、Lua 脚本。
-4. 尽量不使用 Redis 事务：Redis 事务实现的功能比较鸡肋，可以使用 Lua 脚本代替。
-5. 禁止长时间开启 monitor：对性能影响比较大。
-6. 控制 key 的生命周期：避免 Redis 中存放了太多不经常被访问的数据。
-7. ……
-
-## 参考
-
-- 《Redis 开发与运维》
-- 《Redis 设计与实现》
-- Redis Transactions：<https://redis.io/docs/manual/transactions/>
-- What is Redis Pipeline：<https://buildatscale.tech/what-is-redis-pipeline/>
-- 一文详解 Redis 中 BigKey、HotKey 的发现与处理：<https://mp.weixin.qq.com/s/FPYE1B839_8Yk1-YSiW-1Q>
-- Bigkey 问题的解决思路与方式探索：<https://mp.weixin.qq.com/s/Sej7D9TpdAobcCmdYdMIyA>
-- Redis 延迟问题全面排障指南：<https://mp.weixin.qq.com/s/mIc6a9mfEGdaNDD3MmfFsg>
+- O(N) commands such as KEYS \*, HGETALL, LRANGE, and SMEMBERS taking too long as data grows.
+- SAVE synchronously creating an RDB snapshot on the main thread. BGSAVE forks a child process instead.
+- AOF logging on the main thread delaying subsequent commands.
+- AOF fsync waiting on slow disks, which can also delay main-thread writes, especially with appendfsync always or everysec.
+- Appending the rewrite buffer to a new AOF file during rewrite.
+- Large keys causing command latency, network congestion, or blocking deletion.
+- FLUSHDB and FLUSHALL deleting many keys and releasing memory.
+- Cluster resharding synchronously migrating data; large keys can block both nodes and may trigger failover.
+- Swap moving Redis memory to disk, sharply reducing performance.
+- CPU contention from other processes.
+- Network connection failures, latency, or NIC soft interrupts.
+
+See [Common Causes of Redis Blocking](https://javaguide.cn/database/redis/redis-common-blocking-problems-summary.html).
+
+## Redis Clustering
+
+**Redis Sentinel:**
+
+1. What is Sentinel, and what does it do?
+2. How does Sentinel detect node failure? What is the difference between subjective and objective down?
+3. How does Sentinel perform failover?
+4. Why deploy multiple Sentinel nodes?
+5. How does Sentinel select a new primary?
+6. How does Sentinel elect a leader?
+7. Can Sentinel prevent split-brain?
+
+**Redis Cluster:**
+
+1. Why use Redis Cluster, and what problems does it solve?
+2. How does Redis Cluster shard data?
+3. Why does Redis Cluster use 16,384 hash slots?
+4. How is a key mapped to a slot?
+5. Can Redis Cluster reassign slots?
+6. Does the cluster remain available while scaling?
+7. How do Redis Cluster nodes communicate?
+
+See [Redis Clustering (Premium)](https://javaguide.cn/database/redis/redis-cluster.html).
+
+## Redis Usage Guidelines
+
+Follow these common practices:
+
+1. Use a connection pool instead of frequently creating and closing connections.
+2. Avoid O(N) commands where possible. If using them, understand N. Use HSCAN, SSCAN, or ZSCAN for iteration.
+3. Reduce network traffic with native batch commands, pipelines, or Lua scripts.
+4. Avoid Redis transactions when Lua scripts or another design better fits; Redis transactions have limited guarantees.
+5. Do not leave MONITOR running for long; it can affect performance.
+6. Set key lifetimes to avoid retaining data that is no longer accessed.
+7. ...
+
+## References
+
+- _Redis Development and Operations_.
+- _Redis Design and Implementation_.
+- [Redis Transactions](https://redis.io/docs/latest/develop/using-commands/transactions/).
+- [What Is a Redis Pipeline?](https://buildatscale.tech/what-is-redis-pipeline/).
+- [Finding and Handling Big Keys and Hot Keys in Redis](https://mp.weixin.qq.com/s/FPYE1B839_8Yk1-YSiW-1Q).
+- [Approaches to Resolving Big Key Issues](https://mp.weixin.qq.com/s/Sej7D9TpdAobcCmdYdMIyA).
+- [A Guide to Diagnosing Redis Latency](https://mp.weixin.qq.com/s/mIc6a9mfEGdaNDD3MmfFsg).
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,43 +1,38 @@
 ---
-title: Redis为什么用跳表实现有序集合
-description: 深入讲解Redis有序集合Zset为何选择跳表而非红黑树、B+树实现，详解跳表的数据结构原理、时间复杂度分析和Redis源码实现。
-category: 数据库
+title: Why Redis Uses Skip Lists for Sorted Sets
+description: Learn why Redis Sorted Sets use skip lists, how skip lists support search, insertion, and deletion, and how they compare with balanced trees and B+ trees.
+category: Database
 tag:
   - Redis
 head:
   - - meta
     - name: keywords
-      content: Redis跳表,SkipList,有序集合,Zset,跳表原理,平衡树对比,Redis数据结构
+      content: Redis Skip List,Skip List,Sorted Set,Zset,Skip List Internals,Balanced Tree,Redis Data Structures
 ---
 
-## 前言
+## Introduction
 
-近几年针对 Redis 面试时会涉及常见数据结构的底层设计，其中就有这么一道比较有意思的面试题：“Redis 的有序集合底层为什么要用跳表，而不用平衡树、红黑树或者 B+树？”。
+Redis interview questions often cover the implementation choices behind common data structures. One interesting question is: “Why does Redis use a skip list for Sorted Sets instead of a balanced tree, red-black tree, or B+ tree?”
 
-本文就以这道大厂常问的面试题为切入点，带大家详细了解一下跳表这个数据结构。
-
-如果你只是想先快速了解跳表的多级索引、查询复杂度和面试回答框架，可以先看 [跳表面试题总结](../../cs-basics/data-structure/skip-list.md)，再回到本文看 Redis ZSet 的源码实现。
-
-本文整体脉络如下图所示，笔者会从有序集合的基本使用到跳表的源码分析和实现，让你会对 Redis 的有序集合底层实现的跳表有着更深刻的理解和掌握。
+This guide uses that question to explain skip lists, including Redis Sorted Set usage and a Java implementation. For a quick review of skip-list indexes, complexity, and interview answers, see [Skip Lists: Interview Questions](../../cs-basics/data-structure/skip-list.md).
 
 ![](../images/shared/202401222005468.png)
 
-## 跳表在 Redis 中的运用
+## How Redis Uses Skip Lists
 
-这里我们需要先了解一下 Redis 用到跳表的数据结构有序集合的使用，Redis 有个比较常用的数据结构叫**有序集合(sorted set，简称 zset)**，正如其名它是一个可以保证有序且元素唯一的集合，所以它经常用于排行榜等需要进行统计排列的场景。
+Redis provides an ordered collection called a **Sorted Set** (Zset). Each member is unique and has a score. Sorted Sets are commonly used for leaderboards and ranking.
 
-这里我们通过命令行的形式演示一下排行榜的实现，可以看到笔者分别输入 3 名用户：**xiaoming**、**xiaohong**、**xiaowang**，它们的**score**分别是 60、80、60，最终按照成绩升级降序排列。
+The following example adds three users with scores 60, 80, and 60, then lists them in descending score order:
 
 ```bash
+127.0.0.1:6379> ZADD rankList 60 xiaoming
+(integer) 1
+127.0.0.1:6379> ZADD rankList 80 xiaohong
+(integer) 1
+127.0.0.1:6379> ZADD rankList 60 xiaowang
+(integer) 1
 
-127.0.0.1:6379> zadd rankList 60 xiaoming
-(integer) 1
-127.0.0.1:6379> zadd rankList 80 xiaohong
-(integer) 1
-127.0.0.1:6379> zadd rankList 60 xiaowang
-(integer) 1
-
-# 返回有序集中指定区间内的成员，通过索引，分数从高到低
+# Return members in the score range, ordered from highest to lowest
 127.0.0.1:6379> ZREVRANGE rankList 0 100 WITHSCORES
 1) "xiaohong"
 2) "80"
@@ -47,366 +42,263 @@ head:
 6) "60"
 ```
 
-此时我们通过 `object` 指令查看 zset 的数据结构，可以看到当前有序集合存储的还是**ziplist(压缩列表)**。
+Inspect the object's encoding:
 
 ```bash
-127.0.0.1:6379> object encoding rankList
+127.0.0.1:6379> OBJECT ENCODING rankList
 "ziplist"
 ```
 
-因为设计者考虑到 Redis 数据存放于内存，为了节约宝贵的内存空间，在有序集合元素小于 64 字节且个数小于 128 的时候，会使用 ziplist，而这个阈值的默认值的设置就来自下面这两个配置项。
+Redis uses a compact representation for small Sorted Sets to save memory. In configurations that use the legacy ziplist encoding, a Sorted Set uses it when each member is shorter than 64 bytes and the collection has fewer than 128 entries. These thresholds are controlled by:
 
 ```bash
 zset-max-ziplist-value 64
 zset-max-ziplist-entries 128
 ```
 
-一旦有序集合中的某个元素超出这两个其中的一个阈值它就会转为 **skiplist**（实际是 dict+skiplist，还会借用字典来提高获取指定元素的效率）。
+If either threshold is exceeded, Redis converts the object to a **skip list** encoding backed by both a dictionary and a skip list. The dictionary helps retrieve a member's score efficiently.
 
-我们不妨在添加一个大于 64 字节的元素，可以看到有序集合的底层存储转为 skiplist。
+Add a member longer than 64 bytes:
 
 ```bash
-127.0.0.1:6379> zadd rankList 90 yigemingzihuichaoguo64zijiedeyonghumingchengyongyuceshitiaobiaodeshijiyunyong
+127.0.0.1:6379> ZADD rankList 90 yigemingzihuichaoguo64zijiedeyonghumingchengyongyuceshitiaobiaodeshijiyunyong
 (integer) 1
 
-# 超过阈值，转为跳表
-127.0.0.1:6379> object encoding rankList
+# The encoding changes after a threshold is exceeded
+127.0.0.1:6379> OBJECT ENCODING rankList
 "skiplist"
 ```
 
-也就是说，ZSet 有两种不同的实现，分别是 ziplist 和 skiplist，具体使用哪种结构进行存储的规则如下：
+A Sorted Set uses the compact encoding only when both conditions hold:
 
-- 当有序集合对象同时满足以下两个条件时，使用 ziplist：
-  1. ZSet 保存的键值对数量少于 128 个；
-  2. 每个元素的长度小于 64 字节。
-- 如果不满足上述两个条件，那么使用 skiplist 。
+1. It has fewer than 128 entries.
+2. Each member is shorter than 64 bytes.
 
-## 手写一个跳表
+Otherwise, it uses the skip-list encoding. Redis versions that use listpack instead of ziplist have corresponding configuration names and encoding details.
 
-为了更好的回答上述问题以及更好的理解和掌握跳表，这里可以通过手写一个简单的跳表的形式来帮助读者理解跳表这个数据结构。
+## Implementing a Skip List
 
-我们都知道有序链表在添加、查询、删除的平均时间复杂都都是 **O(n)** 即线性增长，所以一旦节点数量达到一定体量后其性能表现就会非常差劲。而跳表我们完全可以理解为在原始链表基础上，建立多级索引，通过多级索引检索定位将增删改查的时间复杂度变为 **O(log n)** 。
+A sorted linked list takes O(N) time on average for insertion, lookup, and deletion. A skip list adds multiple levels of indexes over the base linked list, reducing the expected time for these operations to O(log N).
 
-可能这里说的有些抽象，我们举个例子，以下图跳表为例，其原始链表存储按序存储 1-10，有 2 级索引，每级索引的索引个数都是基于下层元素个数的一半。
+The following example stores values 1–10 in the base list and has two index levels. Each level contains about half as many nodes as the level below it.
 
 ![](../images/shared/202401222005436.png)
 
-假如我们需要查询元素 6，其工作流程如下：
+### Searching
 
-1. 从 2 级索引开始，先来到节点 4。
-2. 查看 4 的后继节点，是 8 的 2 级索引，这个值大于 6，说明 2 级索引后续的索引都是大于 6 的，没有再往后搜寻的必要，我们索引向下查找。
-3. 来到 4 的 1 级索引，比对其后继节点为 6，查找结束。
+To find 6:
 
-相较于原始有序链表需要 6 次，我们的跳表通过建立多级索引，我们只需两次就直接定位到了目标元素，其查寻的复杂度被直接优化为**O(log n)**。
+1. Start at the top index and move to node 4.
+2. Node 4's next top-level node is 8, which is greater than 6. Move down a level.
+3. At the next level, node 4 points to 6, so the search finds the target.
+
+A linked list would inspect six nodes. The skip list finds the target in two steps in this example.
 
 ![](../images/shared/202401222005524.png)
 
-对应的添加也是一个道理，假如我们需要在这个有序集合中添加一个元素 7，那么我们就需要通过跳表找到**小于元素 7 的最大值**，也就是下图元素 6 的位置，将其插入到元素 6 的后面，让元素 6 的索引指向新插入的节点 7，其工作流程如下：
+### Insertion
 
-1. 从 2 级索引开始定位到了元素 4 的索引。
-2. 查看索引 4 的后继索引为 8，索引向下推进。
-3. 来到 1 级索引，发现索引 4 后继索引为 6，小于插入元素 7，指针推进到索引 6 位置。
-4. 继续比较 6 的后继节点为索引 8，大于元素 7，索引继续向下。
-5. 最终我们来到 6 的原始节点，发现其后继节点为 7，指针没有继续向下的空间，自此我们可知元素 6 就是小于插入元素 7 的最大值，于是便将元素 7 插入。
+To insert 7, find the greatest value smaller than 7 (node 6), then insert 7 after it. Search from the highest level:
+
+1. Start at node 4 in the top index.
+2. Its next node is 8, which is greater than 7, so move down.
+3. At the next level, move from 4 to 6.
+4. Node 6's next node is 8, so move down again.
+5. At the base level, insert 7 after 6.
 
 ![](../images/shared/202401222005480.png)
 
-这里我们又面临一个问题，我们是否需要为元素 7 建立索引，索引多高合适？
+Should the new node have indexes, and if so, how many? Ideally, each index level contains about half as many nodes as the level below. For 16 base nodes, the expected number of indexes is:
 
-我们上文提到，理想情况是每一层索引是下一层元素个数的二分之一，假设我们的总共有 16 个元素，对应各级索引元素个数应该是：
-
-```bash
-1. 一级索引:16/2=8
-2. 二级索引:8/2 =4
-3. 三级索引:4/2=2
+```text
+Level 1: 16 / 2 = 8
+Level 2: 8 / 2 = 4
+Level 3: 4 / 2 = 2
 ```
 
-由此我们用数学归纳法可知：
+For N elements, the expected number of nodes at index level K is:
 
-```bash
-1. 一级索引:16/2=16/2^1=8
-2. 二级索引:8/2 => 16/2^2 =4
-3. 三级索引:4/2=>16/2^3=2
+```text
+r = N / 2^K
 ```
 
-假设元素个数为 n，那么对应 k 层索引的元素个数 r 计算公式为:
+If the highest level has about two nodes and the skip list contains N elements, the height H satisfies:
 
-```bash
-r=n/2^k
+```text
+2 = N / 2^H
+2 * 2^H = N
+2^(H + 1) = N
+H = log2(N) - 1
 ```
 
-同理我们再来推断以下索引的最大高度，一般来说最高级索引的元素个数为 2，我们设元素总个数为 n，索引高度为 h，代入上述公式可得：
+For example, if N is 65,536, the estimated maximum height is 15. A practical implementation can cap the height at 16.
 
-```bash
-2= n/2^h
-=> 2*2^h=n
-=> 2^(h+1)=n
-=> h+1=log2^n
-=> h=log2^n -1
-```
+To approximate the ideal distribution, generate the node height randomly:
 
-而 Redis 又是内存数据库，我们假设元素最大个数是**65536**，我们把**65536**代入上述公式可知最大高度为 16。所以我们建议添加一个元素后为其建立的索引高度不超过 16。
+1. Start with height 1, meaning the base node has no index.
+2. Generate a random number between 0 and 1.
+3. Promote the node one level when the number is greater than 0.5.
+4. Repeat until promotion fails or the maximum height is reached.
 
-因为我们要求尽可能保证每一个上级索引都是下级索引的一半，在实现高度生成算法时，我们可以这样设计：
-
-1. 跳表的高度计算从原始链表开始，即默认情况下插入的元素的高度为 1，代表没有索引，只有元素节点。
-2. 设计一个为插入元素生成节点索引高度 level 的方法。
-3. 进行一次随机运算，随机数值范围为 0-1 之间。
-4. 如果随机数大于 0.5 则为当前元素添加一级索引，自此我们保证生成一级索引的概率为 **50%** ，这也就保证了 1 级索引理想情况下只有一半的元素会生成索引。
-5. 同理后续每次随机算法得到的值大于 0.5 时，我们的索引高度就加 1，这样就可以保证节点生成的 2 级索引概率为 **25%** ，3 级索引为 **12.5%** ……
-
-我们回过头，上述插入 7 之后，我们通过随机算法得到 2，即要为其建立 1 级索引：
+Each additional level has half the probability of the previous one: 50% for level 1, 25% for level 2, 12.5% for level 3, and so on.
 
 ![](../images/shared/202401222005505.png)
 
-最后我们再来说说删除，假设我们这里要删除元素 10，我们必须定位到当前跳表**各层**元素小于 10 的最大值，索引执行步骤为：
+### Deletion
 
-1. 2 级索引 4 的后继节点为 8，指针推进。
-2. 索引 8 无后继节点，该层无要删除的元素，指针直接向下。
-3. 1 级索引 8 后继节点为 10，说明 1 级索引 8 在进行删除时需要将自己的指针和 1 级索引 10 断开联系，将 10 删除。
-4. 1 级索引完成定位后，指针向下，后继节点为 9，指针推进。
-5. 9 的后继节点为 10，同理需要让其指向 null，将 10 删除。
+To delete 10, locate the greatest node below 10 at every level, then update links that point to 10:
+
+1. At the top level, move from 4 to 8.
+2. Node 8 has no next node at this level; move down.
+3. At the next level, node 8 points to 10. Bypass 10.
+4. Continue down to the base level, where node 9 also points to 10. Bypass it as well.
 
 ![](../images/shared/202401222005503.png)
 
-### 模板定义
+### Node Structure
 
-有了整体的思路之后，我们可以开始实现一个跳表了，首先定义一下跳表中的节点**Node**，从上文的演示中可以看出每一个**Node**它都包含以下几个元素：
+A skip-list node stores:
 
-1. 存储的**value**值。
-2. 后继节点的地址。
-3. 多级索引。
+1. Its value.
+2. A set of forward pointers.
+3. Its height.
 
-为了更方便统一管理**Node**后继节点地址和多级索引指向的元素地址，笔者在**Node**中设置了一个**forwards**数组，用于记录原始链表节点的后继节点和多级索引的后继节点指向。
-
-以下图为例，我们**forwards**数组长度为 5，其中**索引 0**记录的是原始链表节点的后继节点地址，而其余自底向上表示从 1 级索引到 4 级索引的后继节点指向。
+The forward-pointer array stores the next node at each level. Index 0 is the base list; higher array indexes correspond to higher skip-list levels.
 
 ![](../images/shared/202401222005347.png)
 
-于是我们的就有了这样一个代码定义，可以看出笔者对于数组的长度设置为固定的 16**(上文的推算最大高度建议是 16)**，默认**data**为-1，节点最大高度**maxLevel**初始化为 1，注意这个**maxLevel**的值代表原始链表加上索引的总高度。
+The implementation below uses a maximum height of 16. The head node is a sentinel, and levelCount tracks the current height of the list.
 
 ```java
-/**
- * 跳表索引最大高度为16
- */
 private static final int MAX_LEVEL = 16;
 
 class Node {
     private int data = -1;
     private Node[] forwards = new Node[MAX_LEVEL];
     private int maxLevel = 0;
-
 }
 ```
 
-### 元素添加
+### Adding Elements
 
-定义好节点之后，我们先实现以下元素的添加，添加元素时首先自然是设置**data**这一步我们直接根据将传入的**value**设置到**data**上即可。
-
-然后就是高度**maxLevel**的设置 ，我们在上文也已经给出了思路，默认高度为 1，即只有一个原始链表节点，通过随机算法每次大于 0.5 索引高度加 1，由此我们得出高度计算的算法`randomLevel()`：
+Generate a random height for the new node. Then search from the highest level down, storing the predecessor at each level that the new node will occupy. Update those forward pointers to insert the node.
 
 ```java
-/**
- * 理论来讲，一级索引中元素个数应该占原始数据的 50%，二级索引中元素个数占 25%，三级索引12.5% ，一直到最顶层。
- * 因为这里每一层的晋升概率是 50%。对于每一个新插入的节点，都需要调用 randomLevel 生成一个合理的层数。
- * 该 randomLevel 方法会随机生成 1~MAX_LEVEL 之间的数，且 ：
- * 50%的概率返回 1
- * 25%的概率返回 2
- *  12.5%的概率返回 3 ...
- * @return
- */
+private static final float PROB = 0.5f;
+private int levelCount = 1;
+private Node head = new Node();
+
 private int randomLevel() {
     int level = 1;
     while (Math.random() > PROB && level < MAX_LEVEL) {
-        ++level;
+        level++;
     }
     return level;
 }
-```
-
-然后再设置当前要插入的**Node**和**Node**索引的后继节点地址，这一步稍微复杂一点，我们假设当前节点的高度为 4，即 1 个节点加 3 个索引，所以我们创建一个长度为 4 的数组**maxOfMinArr** ，遍历各级索引节点中小于当前**value**的最大值。
-
-假设我们要插入的**value**为 5，我们的数组查找结果当前节点的前驱节点和 1 级索引、2 级索引的前驱节点都为 4，三级索引为空。
-
-![](../images/shared/202401222005299.png)
-
-然后我们基于这个数组**maxOfMinArr** 定位到各级的后继节点，让插入的元素 5 指向这些后继节点，而**maxOfMinArr**指向 5，结果如下图：
-
-![](../images/shared/202401222005369.png)
-
-转化成代码就是下面这个形式，是不是很简单呢？我们继续：
-
-```java
-/**
- * 默认情况下的高度为1，即只有自己一个节点
- */
-private int levelCount = 1;
-
-/**
- * 跳表最底层的节点，即头节点
- */
-private Node h = new Node();
 
 public void add(int value) {
-    int level = randomLevel(); // 新节点的随机高度
+    int level = randomLevel();
 
     Node newNode = new Node();
     newNode.data = value;
     newNode.maxLevel = level;
 
-    // 用于记录每层前驱节点的数组
     Node[] update = new Node[level];
     for (int i = 0; i < level; i++) {
-        update[i] = h;
+        update[i] = head;
     }
 
-    Node p = h;
-    // 关键修正：从跳表的当前最高层开始查找
+    Node current = head;
     for (int i = levelCount - 1; i >= 0; i--) {
-        while (p.forwards[i] != null && p.forwards[i].data < value) {
-            p = p.forwards[i];
+        while (current.forwards[i] != null
+                && current.forwards[i].data < value) {
+            current = current.forwards[i];
         }
-        // 只记录需要更新的层的前驱节点
         if (i < level) {
-            update[i] = p;
+            update[i] = current;
         }
     }
 
-    // 插入新节点
     for (int i = 0; i < level; i++) {
         newNode.forwards[i] = update[i].forwards[i];
         update[i].forwards[i] = newNode;
     }
 
-    // 更新跳表的总高度
     if (levelCount < level) {
         levelCount = level;
     }
 }
 ```
 
-### 元素查询
+### Searching for Elements
 
-查询逻辑比较简单，从跳表最高级的索引开始定位找到小于要查的 value 的最大值，以下图为例，我们希望查找到节点 8：
-
-![](../images/shared/202401222005323.png)
-
-- **从最高层级开始 (3 级索引)** ：查找指针 `p` 从头节点开始。在 3 级索引上，`p` 的后继 `forwards[2]`（假设最高 3 层，索引从 0 开始）指向节点 `5`。由于 `5 < 8`，指针 `p` 向右移动到节点 `5`。节点 `5` 在 3 级索引上的后继 `forwards[2]` 为 `null`（或指向一个大于 `8` 的节点，图中未画出）。当前层级向右查找结束，指针 `p` 保持在节点 `5`，**向下移动到 2 级索引**。
-- **在 2 级索引**：当前指针 `p` 为节点 `5`。`p` 的后继 `forwards[1]` 指向节点 `8`。由于 `8` 不小于 `8`（即 `8 < 8` 为 `false`），当前层级向右查找结束（`p` 不会移动到节点 `8`）。指针 `p` 保持在节点 `5`，**向下移动到 1 级索引**。
-- **在 1 级索引** ：当前指针 `p` 为节点 `5`。`p` 的后继 `forwards[0]` 指向最底层的节点 `5`。由于 `5 < 8`，指针 `p` 向右移动到最底层的节点 `5`。此时，当前指针 `p` 为最底层的节点 `5`。其后继 `forwards[0]` 指向最底层的节点 `6`。由于 `6 < 8`，指针 `p` 向右移动到最底层的节点 `6`。当前指针 `p` 为最底层的节点 `6`。其后继 `forwards[0]` 指向最底层的节点 `7`。由于 `7 < 8`，指针 `p` 向右移动到最底层的节点 `7`。当前指针 `p` 为最底层的节点 `7`。其后继 `forwards[0]` 指向最底层的节点 `8`。由于 `8` 不小于 `8`（即 `8 < 8` 为 `false`），当前层级向右查找结束。此时，已经遍历完所有层级，`for` 循环结束。
-- **最终定位与检查** ：经过所有层级的查找，指针 `p` 最终停留在最底层（0 级索引）的节点 `7`。这个节点是整个跳表中值小于目标值 `8` 的那个最大的节点。检查节点 `7` 的**后继节点**（即 `p.forwards[0]`）：`p.forwards[0]` 指向节点 `8`。判断 `p.forwards[0].data`（即节点 `8` 的值）是否等于目标值 `8`。条件满足（`8 == 8`），**查找成功，找到节点 `8`**。
-
-所以我们的代码实现也很上述步骤差不多，从最高级索引开始向前查找，如果不为空且小于要查找的值，则继续向前搜寻，遇到不小于的节点则继续向下，如此往复，直到得到当前跳表中小于查找值的最大节点，查看其前驱是否等于要查找的值：
+Search from the highest level down. At each level, move forward while the next value is less than the target. At the base level, check whether the next node is the target.
 
 ```java
 public Node get(int value) {
-    Node p = h; // 从头节点开始
+    Node current = head;
 
-    // 从最高层级索引开始，逐层向下
     for (int i = levelCount - 1; i >= 0; i--) {
-        // 在当前层级向右查找，直到 p.forwards[i] 为 null
-        // 或者 p.forwards[i].data 大于等于目标值 value
-        while (p.forwards[i] != null && p.forwards[i].data < value) {
-            p = p.forwards[i]; // 向右移动
+        while (current.forwards[i] != null
+                && current.forwards[i].data < value) {
+            current = current.forwards[i];
         }
-        // 此时 p.forwards[i] 为 null，或者 p.forwards[i].data >= value
-        // 或者 p 是当前层级中小于 value 的最大节点（如果存在这样的节点）
     }
 
-    // 经过所有层级的查找，p 现在是原始链表（0级索引）中
-    // 小于目标值 value 的最大节点（或者头节点，如果所有元素都大于等于 value）
-
-    // 检查 p 在原始链表中的下一个节点是否是目标值
-    if (p.forwards[0] != null && p.forwards[0].data == value) {
-        return p.forwards[0]; // 找到了，返回该节点
+    Node candidate = current.forwards[0];
+    if (candidate != null && candidate.data == value) {
+        return candidate;
     }
-
-    return null; // 未找到
+    return null;
 }
 ```
 
-### 元素删除
+### Deleting Elements
 
-最后是删除逻辑，需要查找各层级小于要删除节点的最大值，假设我们要删除 10：
-
-1. 3 级索引得到小于 10 的最大值为 5，继续向下。
-2. 2 级索引从索引 5 开始查找，发现小于 10 的最大值为 8，继续向下。
-3. 同理 1 级索引得到 8，继续向下。
-4. 原始节点找到 9。
-5. 从最高级索引开始，查看每个小于 10 的节点后继节点是否为 10，如果等于 10，则让这个节点指向 10 的后继节点，将节点 10 及其索引交由 GC 回收。
-
-![](../images/shared/202401222005350.png)
+Record the predecessor at each level. If the target exists at the base level, bypass it at every level that points to it. Reduce levelCount if the top level becomes empty.
 
 ```java
-/**
- * 删除
- *
- * @param value
- */
 public void delete(int value) {
-    Node p = h;
-    //找到各级节点小于value的最大值
-    Node[] updateArr = new Node[levelCount];
+    Node current = head;
+    Node[] update = new Node[levelCount];
+
     for (int i = levelCount - 1; i >= 0; i--) {
-        while (p.forwards[i] != null && p.forwards[i].data < value) {
-            p = p.forwards[i];
+        while (current.forwards[i] != null
+                && current.forwards[i].data < value) {
+            current = current.forwards[i];
         }
-        updateArr[i] = p;
+        update[i] = current;
     }
-    //查看原始层节点前驱是否等于value，若等于则说明存在要删除的值
-    if (p.forwards[0] != null && p.forwards[0].data == value) {
-        //从最高级索引开始查看其前驱是否等于value，若等于则将当前节点指向value节点的后继节点
+
+    Node candidate = current.forwards[0];
+    if (candidate != null && candidate.data == value) {
         for (int i = levelCount - 1; i >= 0; i--) {
-            if (updateArr[i].forwards[i] != null && updateArr[i].forwards[i].data == value) {
-                updateArr[i].forwards[i] = updateArr[i].forwards[i].forwards[i];
+            if (update[i].forwards[i] == candidate) {
+                update[i].forwards[i] = candidate.forwards[i];
             }
         }
     }
 
-    //从最高级开始查看是否有一级索引为空，若为空则层级减1
-    while (levelCount > 1 && h.forwards[levelCount - 1] == null) {
+    while (levelCount > 1 && head.forwards[levelCount - 1] == null) {
         levelCount--;
     }
-
 }
 ```
 
-### 完整代码以及测试
+### Complete Example and Test
 
-完整代码如下，读者可自行参阅:
+The following class combines the node definition and the add, search, delete, and print operations:
 
 ```java
 public class SkipList {
-
-    /**
-     * 跳表索引最大高度为16
-     */
     private static final int MAX_LEVEL = 16;
-
-    /**
-     * 每个节点添加一层索引高度的概率为二分之一
-     */
     private static final float PROB = 0.5f;
 
-    /**
-     * 默认情况下的高度为1，即只有自己一个节点
-     */
     private int levelCount = 1;
-
-    /**
-     * 跳表最底层的节点，即头节点
-     */
-    private Node h = new Node();
-
-    public SkipList() {
-    }
+    private Node head = new Node();
 
     public class Node {
-
         private int data = -1;
-        /**
-         *
-         */
         private Node[] forwards = new Node[MAX_LEVEL];
         private int maxLevel = 0;
 
@@ -419,315 +311,253 @@ public class SkipList {
         }
     }
 
-    public void add(int value) {
-        int level = randomLevel(); // 新节点的随机高度
+    private int randomLevel() {
+        int level = 1;
+        while (Math.random() > PROB && level < MAX_LEVEL) {
+            level++;
+        }
+        return level;
+    }
 
+    public void add(int value) {
+        int level = randomLevel();
         Node newNode = new Node();
         newNode.data = value;
         newNode.maxLevel = level;
 
-        // 用于记录每层前驱节点的数组
         Node[] update = new Node[level];
         for (int i = 0; i < level; i++) {
-            update[i] = h;
+            update[i] = head;
         }
 
-        Node p = h;
-        // 关键修正：从跳表的当前最高层开始查找
+        Node current = head;
         for (int i = levelCount - 1; i >= 0; i--) {
-            while (p.forwards[i] != null && p.forwards[i].data < value) {
-                p = p.forwards[i];
+            while (current.forwards[i] != null
+                    && current.forwards[i].data < value) {
+                current = current.forwards[i];
             }
-            // 只记录需要更新的层的前驱节点
             if (i < level) {
-                update[i] = p;
+                update[i] = current;
             }
         }
 
-        // 插入新节点
         for (int i = 0; i < level; i++) {
             newNode.forwards[i] = update[i].forwards[i];
             update[i].forwards[i] = newNode;
         }
 
-        // 更新跳表的总高度
         if (levelCount < level) {
             levelCount = level;
         }
     }
 
-    /**
-     * 理论来讲，一级索引中元素个数应该占原始数据的 50%，二级索引中元素个数占 25%，三级索引12.5% ，一直到最顶层。
-     * 因为这里每一层的晋升概率是 50%。对于每一个新插入的节点，都需要调用 randomLevel 生成一个合理的层数。 该 randomLevel
-     * 方法会随机生成 1~MAX_LEVEL 之间的数，且 ： 50%的概率返回 1 25%的概率返回 2 12.5%的概率返回 3 ...
-     *
-     * @return
-     */
-    private int randomLevel() {
-        int level = 1;
-        while (Math.random() > PROB && level < MAX_LEVEL) {
-            ++level;
-        }
-        return level;
-    }
-
     public Node get(int value) {
-        Node p = h;
-        //找到小于value的最大值
+        Node current = head;
         for (int i = levelCount - 1; i >= 0; i--) {
-            while (p.forwards[i] != null && p.forwards[i].data < value) {
-                p = p.forwards[i];
+            while (current.forwards[i] != null
+                    && current.forwards[i].data < value) {
+                current = current.forwards[i];
             }
         }
-        //如果p的前驱节点等于value则直接返回
-        if (p.forwards[0] != null && p.forwards[0].data == value) {
-            return p.forwards[0];
-        }
 
-        return null;
+        Node candidate = current.forwards[0];
+        return candidate != null && candidate.data == value
+                ? candidate
+                : null;
     }
 
-    /**
-     * 删除
-     *
-     * @param value
-     */
     public void delete(int value) {
-        Node p = h;
-        //找到各级节点小于value的最大值
-        Node[] updateArr = new Node[levelCount];
+        Node current = head;
+        Node[] update = new Node[levelCount];
+
         for (int i = levelCount - 1; i >= 0; i--) {
-            while (p.forwards[i] != null && p.forwards[i].data < value) {
-                p = p.forwards[i];
+            while (current.forwards[i] != null
+                    && current.forwards[i].data < value) {
+                current = current.forwards[i];
             }
-            updateArr[i] = p;
+            update[i] = current;
         }
-        //查看原始层节点前驱是否等于value，若等于则说明存在要删除的值
-        if (p.forwards[0] != null && p.forwards[0].data == value) {
-            //从最高级索引开始查看其前驱是否等于value，若等于则将当前节点指向value节点的后继节点
+
+        Node candidate = current.forwards[0];
+        if (candidate != null && candidate.data == value) {
             for (int i = levelCount - 1; i >= 0; i--) {
-                if (updateArr[i].forwards[i] != null && updateArr[i].forwards[i].data == value) {
-                    updateArr[i].forwards[i] = updateArr[i].forwards[i].forwards[i];
+                if (update[i].forwards[i] == candidate) {
+                    update[i].forwards[i] = candidate.forwards[i];
                 }
             }
         }
 
-        //从最高级开始查看是否有一级索引为空，若为空则层级减1
-        while (levelCount > 1 && h.forwards[levelCount - 1] == null) {
+        while (levelCount > 1 && head.forwards[levelCount - 1] == null) {
             levelCount--;
         }
-
     }
 
     public void printAll() {
-        Node p = h;
-        //基于最底层的非索引层进行遍历，只要后继节点不为空，则速速出当前节点，并移动到后继节点
-        while (p.forwards[0] != null) {
-            System.out.println(p.forwards[0]);
-            p = p.forwards[0];
+        Node current = head;
+        while (current.forwards[0] != null) {
+            current = current.forwards[0];
+            System.out.println(current);
         }
-
     }
 }
-
 ```
 
-测试代码：
+Test it with:
 
 ```java
 public static void main(String[] args) {
-        SkipList skipList = new SkipList();
-        for (int i = 0; i < 24; i++) {
-            skipList.add(i);
-        }
-
-        System.out.println("**********输出添加结果**********");
-        skipList.printAll();
-
-        SkipList.Node node = skipList.get(22);
-        System.out.println("**********查询结果:" + node+" **********");
-
-        skipList.delete(22);
-        System.out.println("**********删除结果**********");
-        skipList.printAll();
-
-
+    SkipList skipList = new SkipList();
+    for (int i = 0; i < 24; i++) {
+        skipList.add(i);
     }
+
+    System.out.println("********** Added elements **********");
+    skipList.printAll();
+
+    SkipList.Node node = skipList.get(22);
+    System.out.println("********** Search result: " + node + " **********");
+
+    skipList.delete(22);
+    System.out.println("********** After deletion **********");
+    skipList.printAll();
+}
 ```
 
-**Redis 跳表的特点**：
+**Redis skip-list characteristics:**
 
-1. 采用**双向链表**，不同于上面的示例，存在一个回退指针。主要用于简化操作，例如删除某个元素时，还需要找到该元素的前驱节点，使用回退指针会非常方便。
-2. `score` 值可以重复，如果 `score` 值一样，则按照 ele（节点存储的值，为 sds）字典排序
-3. Redis 跳跃表默认允许最大的层数是 32，被源码中 `ZSKIPLIST_MAXLEVEL` 定义。
+1. Redis uses a **doubly linked list**, unlike the example above. A backward pointer makes it easier to find a predecessor, for example when deleting a member.
+2. Scores can repeat. When scores are equal, Redis orders members lexicographically by their element value (an SDS).
+3. Redis defines a maximum skip-list height of 32 with ZSKIPLIST_MAXLEVEL.
 
-## 和其余三种数据结构的比较
+## Comparing Skip Lists with Other Data Structures
 
-最后，我们再来回答一下文章开头的那道面试题: “Redis 的有序集合底层为什么要用跳表，而不用平衡树、红黑树或者 B+树？”。
+The interview question is: “Why does Redis use a skip list for Sorted Sets instead of a balanced tree, red-black tree, or B+ tree?”
 
-### 平衡树 vs 跳表
+### Balanced Tree vs. Skip List
 
-先来说说它和平衡树的比较，平衡树我们又会称之为 **AVL 树**，是一个严格的平衡二叉树，平衡条件必须满足（所有节点的左右子树高度差不超过 1，即平衡因子为范围为 `[-1,1]`）。平衡树的插入、删除和查询的时间复杂度和跳表一样都是 **O(log n)** 。
+An AVL tree is a strictly balanced binary tree. For every node, the heights of the left and right subtrees differ by at most one (balance factor in [-1, 1]). Search, insertion, and deletion are O(log N), as they are for a skip list.
 
-对于范围查询来说，它也可以通过中序遍历的方式达到和跳表一样的效果。但是它的每一次插入或者删除操作都需要保证整颗树左右节点的绝对平衡，只要不平衡就要通过旋转操作来保持平衡，这个过程是比较耗时的。
+AVL trees can support range queries through in-order traversal. However, insertions and deletions may require rotations to restore strict balance.
 
 ![](../images/shared/202401222005312.png)
 
-跳表诞生的初衷就是为了克服平衡树的一些缺点，跳表的发明者在论文[《Skip lists: a probabilistic alternative to balanced trees》](https://15721.courses.cs.cmu.edu/spring2018/papers/08-oltpindexes1/pugh-skiplists-cacm1990.pdf)中有详细提到：
+Skip lists use probabilistic rather than strict balancing. Their insertion and deletion algorithms are simpler and can be faster than equivalent balanced-tree operations. See William Pugh's paper, [“Skip Lists: A Probabilistic Alternative to Balanced Trees”](https://15721.courses.cs.cmu.edu/spring2018/papers/08-oltpindexes1/pugh-skiplists-cacm1990.pdf).
 
-![](../images/shared/skiplist-a-probabilistic-alternative-to-balanced-trees.png)
+> Skip lists can be used instead of balanced trees. They use probabilistic balancing instead of strictly enforced balancing, which makes insertion and deletion algorithms simpler and often faster.
 
-> Skip lists are a data structure that can be used in place of balanced trees. Skip lists use probabilistic balancing rather than strictly enforced balancing and as a result the algorithms for insertion and deletion in skip lists are much simpler and significantly faster than equivalent algorithms for balanced trees.
->
-> 跳表是一种可以用来代替平衡树的数据结构。跳表使用概率平衡而不是严格强制的平衡，因此，跳表中的插入和删除算法比平衡树的等效算法简单得多，速度也快得多。
-
-笔者这里也贴出了 AVL 树插入操作的核心代码，可以看出每一次添加操作都需要进行一次递归定位插入位置，然后还需要根据回溯到根节点检查沿途的各层节点是否失衡，再通过旋转节点的方式进行调整。
+The following AVL insertion excerpt illustrates the balance checks and rotations required after inserting a node:
 
 ```java
-// 向二分搜索树中添加新的元素(key, value)
+// Add a new (key, value) to the binary search tree.
 public void add(K key, V value) {
     root = add(root, key, value);
 }
 
-// 向以node为根的二分搜索树中插入元素(key, value)，递归算法
-// 返回插入新节点后二分搜索树的根
+// Insert into the tree rooted at node and return the new root.
 private Node add(Node node, K key, V value) {
-
     if (node == null) {
         size++;
         return new Node(key, value);
     }
 
-    if (key.compareTo(node.key) < 0)
+    if (key.compareTo(node.key) < 0) {
         node.left = add(node.left, key, value);
-    else if (key.compareTo(node.key) > 0)
+    } else if (key.compareTo(node.key) > 0) {
         node.right = add(node.right, key, value);
-    else // key.compareTo(node.key) == 0
+    } else {
         node.value = value;
+    }
 
     node.height = 1 + Math.max(getHeight(node.left), getHeight(node.right));
-
     int balanceFactor = getBalanceFactor(node);
 
-    // LL型需要右旋
     if (balanceFactor > 1 && getBalanceFactor(node.left) >= 0) {
-        return rightRotate(node);
+        return rightRotate(node); // LL case
     }
-
-    //RR型失衡需要左旋
     if (balanceFactor < -1 && getBalanceFactor(node.right) <= 0) {
-        return leftRotate(node);
+        return leftRotate(node); // RR case
     }
-
-    //LR需要先左旋成LL型，然后再右旋
     if (balanceFactor > 1 && getBalanceFactor(node.left) < 0) {
-        node.left = leftRotate(node.left);
+        node.left = leftRotate(node.left); // LR case
         return rightRotate(node);
     }
-
-    //RL
     if (balanceFactor < -1 && getBalanceFactor(node.right) > 0) {
-        node.right = rightRotate(node.right);
+        node.right = rightRotate(node.right); // RL case
         return leftRotate(node);
     }
     return node;
 }
 ```
 
-### 红黑树 vs 跳表
+### Red-Black Tree vs. Skip List
 
-红黑树（Red Black Tree）也是一种自平衡二叉查找树，它的查询性能略微逊色于 AVL 树，但插入和删除效率更高。红黑树的插入、删除和查询的时间复杂度和跳表一样都是 **O(log n)** 。
+A red-black tree is a self-balancing binary search tree. Its lookup is slightly slower than an AVL tree, while insertion and deletion can be more efficient. Search, insertion, and deletion are O(log N).
 
-红黑树是一个**黑平衡树**，即从任意节点到另外一个叶子叶子节点，它所经过的黑节点是一样的。当对它进行插入操作时，需要通过旋转和染色（红黑变换）来保证黑平衡。不过，相较于 AVL 树为了维持平衡的开销要小一些。关于红黑树的详细介绍，可以查看这篇文章：[红黑树](https://javaguide.cn/cs-basics/data-structure/red-black-tree.html)。
-
-相比较于红黑树来说，跳表的实现也更简单一些。并且，按照区间来查找数据这个操作，红黑树的效率没有跳表高。
+A red-black tree maintains black-height invariants using rotations and recoloring. This is generally less costly than maintaining AVL balance, but skip lists are simpler to implement. Skip lists also work well for range queries.
 
 ![](../images/shared/202401222005709.png)
 
-对应红黑树添加的核心代码如下，读者可自行参阅理解：
+Example red-black tree insertion code:
 
 ```java
-private Node < K, V > add(Node < K, V > node, K key, V val) {
-
+private Node<K, V> add(Node<K, V> node, K key, V value) {
     if (node == null) {
         size++;
-        return new Node(key, val);
-
+        return new Node(key, value);
     }
 
     if (key.compareTo(node.key) < 0) {
-        node.left = add(node.left, key, val);
+        node.left = add(node.left, key, value);
     } else if (key.compareTo(node.key) > 0) {
-        node.right = add(node.right, key, val);
+        node.right = add(node.right, key, value);
     } else {
-        node.val = val;
+        node.value = value;
     }
 
-    //左节点不为红，右节点为红，左旋
     if (isRed(node.right) && !isRed(node.left)) {
         node = leftRotate(node);
     }
-
-    //左链右旋
     if (isRed(node.left) && isRed(node.left.left)) {
         node = rightRotate(node);
     }
-
-    //颜色翻转
     if (isRed(node.left) && isRed(node.right)) {
         flipColors(node);
     }
-
     return node;
 }
 ```
 
-### B+树 vs 跳表
+### B+ Tree vs. Skip List
 
-想必使用 MySQL 的读者都知道 B+树这个数据结构，B+树是一种常用的数据结构，具有以下特点：
+B+ trees are widely used for database and file-system indexes:
 
-1. **多叉树结构**：它是一棵多叉树，每个节点可以包含多个子节点，减小了树的高度，查询效率高。
-2. **存储效率高**:其中非叶子节点存储多个 key，叶子节点存储 value，使得每个节点更够存储更多的键，根据索引进行范围查询时查询效率更高。-
-3. **平衡性**：它是绝对的平衡，即树的各个分支高度相差不大，确保查询和插入时间复杂度为 **O(log n)** 。
-4. **顺序访问**：叶子节点间通过链表指针相连，范围查询表现出色。
-5. **数据均匀分布**：B+树插入时可能会导致数据重新分布，使得数据在整棵树分布更加均匀，保证范围查询和删除效率。
+1. **Multiway structure:** Each node can contain many children, reducing tree height.
+2. **High fan-out:** Internal nodes store multiple keys; leaf nodes store values, which supports efficient range queries.
+3. **Balanced height:** The tree remains balanced, so lookup and insertion are O(log N).
+4. **Sequential access:** Leaf nodes are linked to support range scans.
+5. **Even distribution:** Insertions may split or merge nodes to keep data distributed.
 
 ![](../images/shared/202401222005649.png)
 
-所以，B+树更适合作为数据库和文件系统中常用的索引结构之一，它的核心思想是通过可能少的 IO 定位到尽可能多的索引来获得查询数据。对于 Redis 这种内存数据库来说，它对这些并不感冒，因为 Redis 作为内存数据库它不可能存储大量的数据，所以对于索引不需要通过 B+树这种方式进行维护，只需按照概率进行随机维护即可，节约内存。而且使用跳表实现 zset 时相较前者来说更简单一些，在进行插入时只需通过索引将数据插入到链表中合适的位置再随机维护一定高度的索引即可，也不需要像 B+树那样插入时发现失衡时还需要对节点分裂与合并。
+B+ trees reduce disk I/O by locating many index entries in each page. That advantage is less important for Redis's in-memory data. Skip lists can maintain probabilistic indexes with less complex insertion logic; they do not need B+ tree node splits and merges.
 
-### Redis 作者给出的理由
+### Redis Author's Reasons
 
-当然我们也可以通过 Redis 的作者自己给出的理由:
+Redis's author gave several reasons for choosing skip lists:
 
-> There are a few reasons:
-> 1、They are not very memory intensive. It's up to you basically. Changing parameters about the probability of a node to have a given number of levels will make then less memory intensive than btrees.
-> 2、A sorted set is often target of many ZRANGE or ZREVRANGE operations, that is, traversing the skip list as a linked list. With this operation the cache locality of skip lists is at least as good as with other kind of balanced trees.
-> 3、They are simpler to implement, debug, and so forth. For instance thanks to the skip list simplicity I received a patch (already in Redis master) with augmented skip lists implementing ZRANK in O(log(N)). It required little changes to the code.
+> 1. They are not very memory intensive. Their memory use can be adjusted by changing the probability that a node has a given number of levels.
+> 2. Sorted Sets often serve ZRANGE and ZREVRANGE operations, which traverse the skip list as a linked list. Skip-list cache locality is at least as good as that of other balanced trees for this operation.
+> 3. They are simpler to implement and debug. This simplicity made it easier to add augmented skip lists for O(log N) ZRANK.
 
-翻译过来的意思就是:
+## Summary
 
-> 有几个原因：
->
-> 1、它们不是很占用内存。这主要取决于你。改变节点拥有给定层数的概率的参数，会使它们比 B 树更节省内存。
->
-> 2、有序集合经常是许多 ZRANGE 或 ZREVRANGE 操作的目标，也就是说，以链表的方式遍历跳表。通过这种操作，跳表的缓存局部性至少和其他类型的平衡树一样好。
->
-> 3、它们更容易实现、调试等等。例如，由于跳表的简单性，我收到了一个补丁（已经在 Redis 主分支中），用增强的跳表实现了 O(log(N))的 ZRANK。它只需要对代码做很少的修改。
+This guide explained how skip lists work and how they compare with balanced trees, red-black trees, and B+ trees. To study skip-list basics, see [Skip Lists: Interview Questions](../../cs-basics/data-structure/skip-list.md). Related guides include [Red-Black Trees](../../cs-basics/data-structure/red-black-tree.md) and [Hash Tables: Interview Questions](../../cs-basics/data-structure/hash-table.md).
 
-## 小结
+## References
 
-本文通过大量篇幅介绍跳表的工作原理和实现，帮助读者更进一步的熟悉跳表这一数据结构的优劣，最后再结合各个数据结构操作的特点进行比对，从而帮助读者更好的理解这道面试题，建议读者实现理解跳表时，尽可能配合执笔模拟来了解跳表的增删改查详细过程。
-
-## 数据结构延伸阅读
-
-如果想从面试角度快速复盘跳表，可以看 [跳表面试题总结](../../cs-basics/data-structure/skip-list.md)。如果想对比 Redis ZSet 背后的其他结构，也可以顺手复习 [红黑树详解](../../cs-basics/data-structure/red-black-tree.md) 和 [哈希表面试题总结](../../cs-basics/data-structure/hash-table.md)。
-
-## 参考
-
-- 为啥 redis 使用跳表(skiplist)而不是使用 red-black？:<https://www.zhihu.com/question/20202931/answer/16086538>
-- Skip List--跳表（全网最详细的跳表文章没有之一）:<https://www.jianshu.com/p/9d8296562806>
-- Redis 对象与底层数据结构详解:<https://blog.csdn.net/shark_chili3007/article/details/104171986>
-- Redis 有序集合(sorted set):<https://www.runoob.com/redis/redis-sorted-sets.html>
-- 红黑树和跳表比较:<https://zhuanlan.zhihu.com/p/576984787>
-- 为什么 redis 的 zset 用跳跃表而不用 b+ tree？:<https://blog.csdn.net/f80407515/article/details/129136998>
+- [Why Redis Uses Skip Lists Instead of Red-Black Trees](https://www.zhihu.com/question/20202931/answer/16086538)
+- [Skip List: A Detailed Guide](https://www.jianshu.com/p/9d8296562806)
+- [Redis Objects and Internal Data Structures](https://blog.csdn.net/shark_chili3007/article/details/104171986)
+- [Redis Sorted Sets](https://www.runoob.com/redis/redis-sorted-sets.html)
+- [Comparing Red-Black Trees and Skip Lists](https://zhuanlan.zhihu.com/p/576984787)
+- [Why Does Redis Zset Use a Skip List Instead of a B+ Tree?](https://blog.csdn.net/f80407515/article/details/129136998)

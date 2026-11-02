@@ -1,168 +1,168 @@
 ---
-title: 3种常用的缓存读写策略详解
-description: 深入对比 Cache Aside、Read/Write Through、Write Behind 三种缓存读写策略，附详细时序图、一致性问题分析及生产级解决方案，Redis 实战必备！
-category: 数据库
+title: 3 Common Cache Read/Write Strategies Explained
+description: Compare Cache Aside, Read/Write Through, and Write Behind, with sequence diagrams, consistency tradeoffs, and production guidance for Redis applications.
+category: Database
 tag:
   - Redis
 head:
   - - meta
     - name: keywords
-      content: 缓存读写策略,Cache Aside,Read Through,Write Through,Write Behind,Write Back,缓存一致性,缓存失效,旁路缓存,读写穿透,异步缓存写入,Redis缓存策略,缓存更新策略
+      content: cache read/write strategies, Cache Aside, Read Through, Write Through, Write Behind, Write Back, cache consistency, cache invalidation, asynchronous cache writes, Redis caching strategies
 ---
 
-看到很多小伙伴简历上写了“**熟练使用缓存**”，但是被我问到“**缓存常用的 3 种读写策略**”的时候却一脸懵逼。
+Many candidates list “**proficient with caching**” on their resumes, but struggle to explain the **three common cache read/write strategies** when asked.
 
-在我看来，造成这个问题的原因是我们在学习 Redis 的时候，可能只是简单写了一些 Demo，并没有去关注缓存的读写策略，或者说压根不知道这回事。
+This often happens because people learn Redis by writing simple demos without studying cache read/write strategies, or do not know these strategies exist.
 
-但是，搞懂 3 种常见的缓存读写策略对于实际工作中使用缓存以及面试中被问到缓存都是非常有帮助的！
+Understanding these three common strategies is useful both when using caches at work and when discussing caching in interviews.
 
-**下面介绍到的三种模式各有优劣，不存在最佳模式，根据具体的业务场景选择适合自己的缓存读写模式。**
+**Each of the following strategies has tradeoffs. There is no universally best choice; select one that fits the workload.**
 
-### Cache Aside Pattern（旁路缓存模式）
+### Cache Aside Pattern
 
-这是我们日常开发中**最常用、最经典**的一种模式，几乎是互联网应用缓存方案的事实标准，尤其适合**读多写少**的业务场景。
+This is the **most common and established** pattern in application development. It is widely used in web applications, especially for **read-heavy workloads**.
 
-这个模式之所以被称为**“旁路”(Aside)**,是因为应用程序的**写操作完全绕过了缓存，直接操作数据库**。
+It is called **“aside”** because the application's **write operations bypass the cache and go directly to the database**.
 
-应用程序扮演了数据流转的“指挥官”，需要同时维护 Cache 和 DB 两个数据源。
+The application coordinates data flow and must manage both the cache and the database.
 
-下面我们来看一下这个策略模式下的缓存读写步骤。
+The read and write steps are:
 
-**写操作 ：**
+**Write:**
 
-1. 应用**先更新 DB，并提交事务**。
-2. 事务提交成功后，**删除 Cache** 中对应的数据。
+1. The application **updates the database and commits the transaction**.
+2. After the commit succeeds, it **deletes the corresponding cache entry**.
 
-简单画了一张图帮助大家理解写的步骤。
+The diagram shows the write flow.
 
 ![](../images/shared/cache-aside-write.png)
 
-**读操作：**
+**Read:**
 
-1. 应用先从 Cache 读取数据。
-2. 如果命中(Hit)，则直接返回。
-3. 如果未命中(Miss)，则从 DB 读取数据，成功读取后，**将数据写回 Cache**，然后返回。
+1. The application reads from the cache.
+2. On a cache hit, it returns the value.
+3. On a cache miss, it reads from the database, **writes the value to the cache**, then returns it.
 
-简单画了一张图帮助大家理解读的步骤。
+The diagram shows the read flow.
 
 ![](../images/shared/cache-aside-read.png)
 
-你仅仅了解了上面这些内容的话是远远不够的，我们还要搞懂其中的原理。
+Knowing the basic steps is not enough; you should also understand how the pattern behaves.
 
-比如说面试官很可能会追问：
+An interviewer may ask:
 
-1. 为什么写操作是“先更新 DB，后删除 Cache”？顺序能反过来吗？
-2. 那“先更新 DB，后删除 Cache”就绝对安全吗？
-3. 为什么是“删除 Cache”，而不是“更新 Cache”？
+1. Why update the database before deleting the cache? Can the order be reversed?
+2. Is updating the database before deleting the cache always safe?
+3. Why delete the cache instead of updating it?
 
-接下来我会以此分析解答这些问题。
+The following sections answer these questions.
 
-**1. 为什么写操作是“先更新 DB，后删除 Cache”？顺序能反过来吗？**
+**1. Why update the database before deleting the cache? Can the order be reversed?**
 
-**答：** 通常不建议反过来。如果只做“先删 Cache，后更新 DB”，并发读请求就可能把旧数据重新放回缓存。
+**Answer:** Usually, no. If you delete the cache before updating the database, a concurrent read may load the old value and put it back in the cache.
 
-- **时序分析 (请求 A 写, 请求 B 读):**
-  1. 请求 A: 先将 Cache 中的数据删除。
-  2. 请求 B: 此时发现 Cache 为空，于是去 DB 读取**旧值**，并准备写入 Cache。
-  3. 请求 A : 将**新值**写入 DB 并提交事务。
-  4. 请求 B: 将之前读到的**旧值**写入了 Cache。
-- **结果：** DB 中是新值，而 Cache 中是旧值，数据不一致。
+- **Timeline (Request A writes; Request B reads):**
+  1. Request A deletes the cache entry.
+  2. Request B finds a cache miss, reads the **old value** from the database, and prepares to cache it.
+  3. Request A writes the **new value** to the database and commits.
+  4. Request B writes the previously read **old value** to the cache.
+- **Result:** The database has the new value, but the cache has the old value.
 
-**2. 那“先更新 DB，后删除 Cache”就绝对安全吗？**
+**2. Is updating the database before deleting the cache always safe?**
 
-**答案：** 也不是绝对安全的！因为这样也可能会造成 **数据库和缓存数据不一致**的问题。
+**Answer:** No. This ordering can also cause **the database and cache to become inconsistent**.
 
-- **时序分析 (请求 A 读, 请求 B 写):**
-  1. 请求 A : 缓存未命中，从 DB 读取到**旧值**。
-  2. 请求 B: 完成 DB 更新并提交事务，随后将 Cache 删除。
-  3. 请求 A : 将自己之前拿到的**旧值**写入了 Cache。
-- **结果：** DB 中是新值，Cache 中又是旧值。
-- **发生概率取决于什么？** 关键是“读 DB → 写 Cache”的时间窗口是否与写请求重叠。慢查询、线程暂停、网络延迟都可能拉长这个窗口，不能仅凭“读一般比写快”就认定概率极小。
+- **Timeline (Request A reads; Request B writes):**
+  1. Request A misses the cache and reads the **old value** from the database.
+  2. Request B updates the database, commits the transaction, then deletes the cache entry.
+  3. Request A writes its previously read **old value** to the cache.
+- **Result:** The database has the new value, but the cache has the old value.
+- **What affects the likelihood?** Whether the “read database → write cache” window overlaps with a write. Slow queries, thread pauses, and network delays can extend this window; do not assume the risk is negligible just because reads are usually faster than writes.
 
-这里的“先更新 DB”必须包含**事务提交成功**。如果在事务方法内部执行 `UPDATE` 后就删缓存，而事务要等方法返回才提交，其他请求仍可能在提交前读到旧值并回填。提交后的回调可以保证操作顺序，但进程可能在提交后、执行回调前退出，仍需考虑失败补偿。
+“Update the database first” means the **transaction must commit successfully**. If the cache is deleted after `UPDATE` inside a transaction method, but the transaction commits only after the method returns, other requests may still read the old value before the commit and repopulate the cache. An after-commit callback preserves ordering, but the process can still exit after the commit and before the callback runs, so failure recovery is still needed.
 
-回源的数据是否足够新也很关键：读写分离时，从库可能尚未应用主库的更新；在 InnoDB 的 `REPEATABLE READ` 隔离级别下，已经建立快照的长事务也可能继续读到旧版本。对新鲜度敏感的回填，应评估是否需要读主库、使用新的短事务，避免把旧快照当作最新数据写入缓存。快照规则可以参考 [MySQL 官方文档](https://dev.mysql.com/doc/refman/8.4/en/innodb-transaction-isolation-levels.html)。
+The freshness of the database value also matters. With read/write splitting, a replica may not have applied the primary's update yet. Under InnoDB's `REPEATABLE READ`, a long-running transaction with an existing snapshot may also continue to see an old version. For freshness-sensitive cache fills, consider reading from the primary in a new, short transaction instead of caching a value from an old snapshot. See the [MySQL documentation](https://dev.mysql.com/doc/refman/8.4/en/innodb-transaction-isolation-levels.html) for snapshot behavior.
 
-**3. 为什么是“删除 Cache”，而不是“更新 Cache”？**
+**3. Why delete the cache instead of updating it?**
 
-- **性能开销：** 写操作往往只更新了对象的部分字段，如果为了“更新 Cache”而去重新查询或计算整个缓存对象，开销可能很大。相比之下，“删除”是一个轻量级操作。
-- **懒加载思想：** “删除”操作遵循懒加载原则。只有当数据下一次被真正需要（被读取）时，才触发从 DB 加载并写入缓存，避免了无效的缓存更新。
-- **避免并发写覆盖：** 假设 A 提交版本 1，B 随后提交版本 2，并先完成缓存更新；如果 A 的缓存更新最后才到达，就会把缓存覆盖回版本 1。删除缓存不携带旧值，可以避免这种直接覆盖，但仍要处理前面提到的旧数据回填问题。
+- **Write overhead**: A write may update only some fields of an object. Re-querying or recomputing the entire cached object can be expensive; deleting an entry is lightweight.
+- **Lazy loading**: Deletion follows a lazy-loading approach. The next read loads the value from the database and repopulates the cache, avoiding unnecessary cache updates.
+- **Avoid overwriting newer data with an older write**: Suppose A commits version 1, then B commits version 2 and updates the cache. If A's cache update arrives later, it can overwrite version 2 with version 1. Deleting the cache avoids writing a stale value directly, though stale cache fills still need to be handled.
 
-采用这套模式，需要满足两个前提：缓存数据可以从数据库重建，读端在缓存未命中时具备回源能力；业务也能接受一定的陈旧读取窗口。这个窗口可能发生在提交后、删缓存前，也可能由删除失败或旧值回填造成，并不一定很短。[Cache Aside 本身不保证缓存与数据库始终一致](https://learn.microsoft.com/en-us/azure/architecture/patterns/cache-aside)。
+This pattern assumes that cache entries can be rebuilt from the database, readers can fall back to the database on a cache miss, and the business can tolerate a period of stale reads. That period may occur after a commit but before cache deletion, or result from a failed deletion or stale cache fill; it is not necessarily brief. [Cache Aside does not guarantee that the cache and database are always consistent](https://learn.microsoft.com/en-us/azure/architecture/patterns/cache-aside).
 
-**4. 删除失败、旧值回填分别怎么处理？**
+**4. How should deletion failures and stale cache fills be handled?**
 
-- **删除失败要有可恢复的重试。** 可以将失效任务交给消息队列或后台任务，但“提交 DB 后再发消息”仍可能在两步之间宕机。需要可靠衔接时，可以采用事务消息表（Transactional Outbox）：在更新业务数据的同一个数据库事务中记录待处理事件，提交后由后台投递；也可以通过 CDC 订阅已提交的数据库变更来触发失效。消费者重复执行删除通常是安全的，同时要监控积压、重试失败并提供补偿入口。可参考 [AWS 对事务消息表的说明](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html)。
-- **旧值回填不能仅靠删除重试解决。** 删除可能早已成功，旧请求却在删除之后才写入缓存。延迟再删除一次能清理一部分迟到回填，但固定延迟无法覆盖任意长的请求暂停、事务或复制延迟，第二次删除本身也可能失败。因此，延迟双删只能缩小风险，不能作为强一致性保证。
-- **TTL 是兜底，不是同步协议。** 过期后应从数据库重新加载；如果仍从延迟副本或旧快照回填，陈旧数据会再次获得一段 TTL。也不要在每次读取旧值时续期，否则可能一直保留旧数据。TTL 应根据业务可接受的陈旧时间和回源压力确定。
+- **Make deletion failures recoverable.** Use a message queue or background job to retry invalidation, but publishing a message after committing the database can still fail if the process crashes between the two steps. For reliable coordination, use a **Transactional Outbox**: record a pending event in the same database transaction as the business update, then publish it asynchronously after commit. Alternatively, use CDC to trigger invalidation from committed changes. Repeating a delete is usually safe. Monitor backlog and retry failures, and provide a repair path. See [AWS guidance on the Transactional Outbox](https://docs.aws.amazon.com/prescriptive-guidance/latest/cloud-design-patterns/transactional-outbox.html).
+- **Deletion retries alone cannot prevent stale cache fills.** A deletion may succeed, then an old request may write stale data to the cache afterward. A delayed second deletion can remove some late fills, but a fixed delay cannot cover arbitrarily long request pauses, transactions, or replication lag, and the second deletion can also fail. Delayed double deletion reduces risk but does not guarantee strong consistency.
+- **TTL is a fallback, not a synchronization protocol.** After expiration, reload from the database. If the value still comes from a lagging replica or old snapshot, stale data gets a new TTL. Do not extend the TTL every time stale data is read, or it may persist indefinitely. Choose TTL based on the acceptable staleness window and database load.
 
-业务需要进一步约束并发回填时，可以设计覆盖相关读写路径的互斥或版本校验协议。只给写请求加锁，无法阻止未加锁的读请求回填；只比较缓存当前版本，也无法在缓存已经被删除时识别迟到的旧值，需要保留独立的版本水位等信息。**Redis 锁或 Lua 脚本都不能让 Redis 与 MySQL 的两次写入自动成为一个原子事务。** 对必须读取最新已提交状态的业务，应明确权威读路径和数据库隔离要求。
+If the business needs tighter control over concurrent cache fills, define a locking or version-check protocol that covers the relevant read and write paths. Locking only writes does not prevent an unlocked read from repopulating the cache. Comparing only the current cache version cannot detect a late stale value after the cache has been deleted; a separate version watermark may be needed. **Neither Redis locks nor Lua scripts make writes to Redis and MySQL one atomic transaction.** For operations that must read the latest committed state, define the authoritative read path and database isolation requirements.
 
-现在我们再来分析一下 **Cache Aside Pattern 的缺陷**。
+Now consider the **limitations of Cache Aside**.
 
-**缺陷 1：首次请求数据一定不在 Cache 的问题**
+**Limitation 1: The first request is always a cache miss**
 
-解决办法：对于访问量巨大的热点数据，可以在系统启动或低峰期进行缓存预热。
+**Solution:** Preload highly popular data during startup or off-peak hours.
 
-**缺陷 2：写操作比较频繁的话导致 Cache 中的数据会被频繁被删除，这样会影响缓存命中率 。**
+**Limitation 2: Frequent writes repeatedly invalidate cache entries and reduce the hit rate.**
 
-解决办法：
+**Possible responses:**
 
-- 先判断这份数据是否适合缓存。读写频率接近、重建成本又低时，直接查询数据库可能更简单。
-- 如果确实需要主动更新缓存，应处理并发更新顺序和失败补偿，并设置合理的 TTL。加锁或版本控制可以解决部分并发问题，但不能省略前面讨论的跨系统故障处理。
+- First decide whether the data should be cached. If reads and writes are similarly frequent and the data is inexpensive to rebuild, querying the database directly may be simpler.
+- If the cache must be updated proactively, handle concurrent write ordering and failure recovery, and set a suitable TTL. Locks and version checks can address some concurrency issues, but do not replace cross-system failure handling.
 
-### Read/Write Through Pattern（读写穿透）
+### Read/Write Through Pattern
 
-在这种模式下，应用程序将**Cache 视为唯一的、主要的存储**。所有的读写请求都直接打向 Cache，而 Cache 服务自身负责与 DB 进行数据同步。
+In this pattern, the application treats the **cache as its primary storage**. All reads and writes go through the cache, which is responsible for synchronizing data with the database.
 
-对应用程序**透明**，应用开发者无需关心 DB 的存在。
+The database is **transparent** to the application, so application developers do not need to handle it directly.
 
-这种缓存读写策略小伙伴们应该也发现了在平时在开发过程中非常少见。抛去性能方面的影响，大概率是因为我们经常使用的分布式缓存 Redis 本身并没有提供 Cache 将数据写入 DB 的功能，需要我们在业务侧或中间件里自己实现。
+This strategy is uncommon in everyday application development. Apart from performance concerns, a likely reason is that Redis, a widely used distributed cache, does not provide built-in cache-to-database writes. The application or middleware must implement that behavior.
 
-**写（Write Through）：**
+**Write Through:**
 
-- 先查 Cache，Cache 中不存在，直接更新 DB。
-- Cache 中存在，则先更新 Cache，然后 Cache 服务自己更新 DB。只有当 Cache 和 DB 都写入成功后，才向上层返回成功。
+- Check the cache. If the entry is absent, update the database directly.
+- If the entry exists, update the cache first, then let the cache service update the database. Return success only after both writes succeed.
 
-简单画了一张图帮助大家理解写的步骤。
+The diagram shows the write flow.
 
 ![](../images/shared/write-through.png)
 
-**读(Read Through)：**
+**Read Through:**
 
-- 应用从 Cache 读取数据。
-- 如果命中，直接返回。
-- 如果未命中，由**Cache 服务自己**负责从 DB 加载数据，加载成功后先写入自身，再返回给应用。
+- The application reads from the cache.
+- On a hit, the cache returns the value.
+- On a miss, the **cache service** loads the value from the database, stores it in the cache, then returns it to the application.
 
-简单画了一张图帮助大家理解读的步骤。
+The diagram shows the read flow.
 
 ![](../images/shared/read-through.png)
 
-Read-Through 实际只是在 Cache-Aside 之上进行了封装。在 Cache-Aside 下，发生读请求的时候，如果 Cache 中不存在对应的数据，是由客户端自己负责把数据写入 Cache，而 Read Through 则是 Cache 服务自己来写入缓存的，这对客户端是透明的。
+Read Through wraps the Cache Aside pattern. With Cache Aside, the client writes a value to the cache after a miss. With Read Through, the cache service performs that write, hiding the behavior from the client.
 
-从实现角度看，Read-Through 本质上是把 Cache-Aside 中“读 Miss → 读 DB → 回填 Cache”的逻辑，下沉到了缓存服务内部，对客户端透明。
+In implementation terms, Read Through moves the “cache miss → read database → populate cache” logic inside the cache service.
 
-和 Cache Aside 一样， Read-Through 也有首次请求数据一定不再 Cache 的问题，对于热点数据可以提前放入缓存中。
+Like Cache Aside, Read Through has a cache miss on the first request. Preload popular data to avoid it.
 
-### Write Behind Pattern（异步缓存写入）
+### Write Behind Pattern (Asynchronous Cache Writes)
 
-Write Behind（也常被称为 Write-Back） Pattern 和 Read/Write Through Pattern 很相似，两者都是由 Cache 服务来负责 Cache 和 DB 的读写。
+The Write Behind (also called Write Back) pattern is similar to Read/Write Through: the cache service handles reads and writes for both the cache and database.
 
-但是，两个又有很大的不同：**Read/Write Through 是同步更新 Cache 和 DB，而 Write Behind 则是只更新缓存，不直接更新 DB，而是改为异步批量的方式来更新 DB。**
+However, they differ in an important way: **Read/Write Through synchronously updates both the cache and database, while Write Behind updates the cache first and writes to the database asynchronously in batches.**
 
-**写操作 (Write Behind)：**
+**Write Behind:**
 
-1. 应用将数据写入 Cache，然后**立即返回**。
-2. Cache 服务将这个写操作放入一个队列中。
-3. 通过一个独立的异步线程/任务，将队列中的写操作**批量地、合并地**写入 DB。
+1. The application writes to the cache and **returns immediately**.
+2. The cache service adds the write to a queue.
+3. A separate asynchronous thread or job **batches and combines** queued writes before applying them to the database.
 
-这种模式对数据一致性带来了挑战（例如：Cache 中的数据还没来得及写回 DB，系统就宕机了），因此不适用于需要强一致性的场景（如交易、库存）。
+This pattern can compromise consistency. For example, the system may crash before cached data is written back to the database. It is therefore unsuitable for use cases requiring strong consistency, such as payments or inventory.
 
-但是，它的异步和批量特性，带来了**无与伦比的写性能**。它在很多高性能系统中都有广泛应用：
+However, asynchronous batching can provide **very high write throughput**. It is widely used in high-performance systems:
 
-- **MySQL 的 InnoDB Buffer Pool 机制：** 数据修改先在内存 Buffer Pool 中完成，然后由后台线程异步刷写到磁盘。
-- **操作系统的页缓存（Page Cache）：** 文件写入也是先写到内存，再由操作系统异步刷盘。
-- **高频计数场景：** 对于文章浏览量、帖子点赞数这类允许短暂数据不一致、但写入极其频繁的场景，可以先在 Redis 中快速累加，再通过定时任务异步同步回数据库。
+- **InnoDB Buffer Pool in MySQL**: Data changes are made in the in-memory Buffer Pool first, then flushed to disk asynchronously by a background thread.
+- **Operating system page cache**: File writes first go to memory, then the operating system flushes them to disk asynchronously.
+- **High-frequency counters**: For values such as article views or post likes, where brief inconsistency is acceptable but writes are frequent, increment counters quickly in Redis and synchronize them to the database periodically.
 
 <!-- @include: @article-footer.snippet.md -->

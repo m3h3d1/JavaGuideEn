@@ -1,140 +1,126 @@
 ---
-title: 如何基于Redis实现消息队列？
-description: 讲解 Redis 做消息队列的三种方式：List、Pub/Sub、Stream。对比生产级 MQ 核心能力，详解 Redis 5.0 Stream 的消费者组、ACK 机制及与 Kafka/RabbitMQ 的适用场景对比。
-category: 数据库
+title: How to Implement a Message Queue with Redis
+description: Compare Redis List, Pub/Sub, and Stream for message queues. Learn about Redis Streams, consumer groups, acknowledgments, and when to use a dedicated message broker.
+category: Database
 tag:
   - Redis
-  - 消息队列
+  - Message Queues
 head:
   - - meta
     - name: keywords
-      content: Redis消息队列,Redis Stream,Redis List,Redis Pub/Sub,消息队列,消费者组,ACK机制,XREADGROUP,XADD,XACK
+      content: Redis Message Queue,Redis Stream,Redis List,Redis Pub/Sub,Consumer Groups,Acknowledgments,XREADGROUP,XADD,XACK
 ---
 
-先说结论：**可以是可以，但要看具体场景。和专业的消息队列（如 Kafka、RabbitMQ）相比，还是有一些欠缺的地方。**
+The short answer: **Redis can be used as a message queue, depending on the workload.** It lacks some capabilities of dedicated message brokers such as Kafka and RabbitMQ.
 
-正式开始介绍之前，我们先来看看：**一个生产级 MQ 需要具备哪些核心能力？**
+Before comparing Redis options, consider the core capabilities expected from a production message queue:
 
-| 能力维度         | 定义                            | 关键指标/特征                       |
-| :--------------- | :------------------------------ | :---------------------------------- |
-| **持久化**       | 消息写入后不因进程/节点故障丢失 | 同步刷盘/多副本确认、RPO ≈ 0        |
-| **至少一次投递** | 消息最终被消费，允许重复        | 需配合消费者幂等性                  |
-| **消费确认**     | 消费者显式告知处理成功          | ACK 机制、超时重试、死信队列        |
-| **消息重试**     | 消费失败可自动重新投递          | 退避策略、最大重试次数、死信转移    |
-| **消费者组**     | 多消费者协作消费，故障自动转移  | 组内负载均衡、分区分配、Rebalance   |
-| **消息堆积能力** | 生产速率 > 消费速率时的缓冲能力 | 磁盘存储、TTL、堆积告警             |
-| **顺序保证**     | 消息按发送顺序被消费            | 分区有序/全局有序、乱序惩罚         |
-| **可扩展性**     | 水平扩展以提升吞吐或容灾        | 分片机制、无状态 Broker、动态扩缩容 |
+| Capability                 | Description                                                | Common mechanisms                                 |
+| :------------------------- | :--------------------------------------------------------- | :------------------------------------------------ |
+| **Persistence**            | Messages survive process or node failures                  | Disk sync, replicated acknowledgments, low RPO    |
+| **At-least-once delivery** | A message is eventually processed, possibly more than once | Idempotent consumers                              |
+| **Acknowledgment**         | Consumers confirm successful processing                    | ACK, timeout, retry, dead-letter queue            |
+| **Retry**                  | Failed messages can be delivered again                     | Backoff, retry limits, dead-letter routing        |
+| **Consumer groups**        | Consumers share work and recover from failures             | Load balancing, partition assignment, rebalancing |
+| **Backlog handling**       | Buffer messages when production exceeds consumption        | Disk storage, TTL, backlog alerts                 |
+| **Ordering**               | Preserve message order                                     | Per-partition or global ordering                  |
+| **Scalability**            | Scale throughput or fault tolerance horizontally           | Sharding, stateless brokers, dynamic scaling      |
 
-Redis 提供了多种实现 MQ 的方式，从早期的 `List` 到 `Pub/Sub`，再到 Redis 5.0 新增的 `Stream` 数据结构（基于有序链表实现，支持消费者组和 ACK 机制，可用于构建轻量级消息队列）。
+Redis supports several queue patterns, from the early List approach to Pub/Sub and Redis 5.0 Streams. Streams are an ordered log implemented with a radix tree and support consumer groups and acknowledgments, making them useful for lightweight queue workloads.
 
-### 第一阶段：早期用 List 数据结构
+## Stage 1: Using Lists
 
-**Redis 2.0 之前，如果想要使用 Redis 来做消息队列的话，只能通过 List 来实现。**
-
-通过 `RPUSH/LPOP` 或者 `LPUSH/RPOP` 即可实现简易版消息队列：
+Before Redis 2.0, Lists were the main way to build a message queue. RPUSH/LPOP or LPUSH/RPOP can implement a basic queue:
 
 ```bash
-# 生产者生产消息
+# Producer publishes messages
 > RPUSH myList msg1 msg2
 (integer) 2
 > RPUSH myList msg3
 (integer) 3
-# 消费者消费消息
+
+# Consumer receives a message
 > LPOP myList
 "msg1"
 ```
 
-不过，通过 `RPUSH/LPOP` 或者 `LPUSH/RPOP` 这样的方式存在性能问题，我们需要不断轮询去调用 `RPOP` 或 `LPOP` 来消费消息。当 List 为空时，大部分的轮询的请求都是无效请求，这种方式大量浪费了系统资源。
-
-因此，Redis 还提供了 `BLPOP`、`BRPOP` 这种阻塞式读取的命令（带 B-Blocking 的都是阻塞式），并且还支持一个超时参数。如果 List 为空，Redis 服务端不会立刻返回结果，它会等待 List 中有新数据后再返回或者是等待最多一个超时时间后返回空。如果将超时时间设置为 0 时，即可无限等待，直到弹出消息
+Polling with RPOP or LPOP wastes requests when the List is empty. Redis also provides blocking reads such as BLPOP and BRPOP. If the List is empty, the server waits for a message or until the timeout expires. A timeout of 0 waits indefinitely.
 
 ```bash
-# 超时时间为 10s
-# 如果有数据立刻返回，否则最多等待10秒
+# Wait up to 10 seconds; return immediately if a message is available
 > BRPOP myList 10
 null
 ```
 
-List 实现消息队列功能太简单，像消息确认机制等功能还需要我们自己实现。**最致命的是，它不支持一个消息被多个消费者消费（广播），而且消息一旦被取出，就没有了，如果消费者处理失败，消息就永久丢失了。**
+Lists are simple and lack built-in acknowledgments. More critically, a message is removed when consumed, so a consumer failure can permanently lose it. Lists also do not broadcast one message to multiple consumers.
 
-### 第二阶段：引入 Pub/Sub（发布/订阅）模式
+## Stage 2: Pub/Sub
 
-**Redis 2.0 引入了发布订阅 (Pub/Sub) 功能，解决了 List 实现消息队列没有广播机制的问题。**
+Redis 2.0 introduced publish/subscribe (Pub/Sub), which adds broadcasting.
 
-![Redis 发布订阅 (Pub/Sub) 功能](../images/shared/redis-pub-sub.png)
+![Redis Pub/Sub](../images/shared/redis-pub-sub.png)
 
-Pub/Sub 中引入了一个概念叫 **Channel（频道）**，发布订阅机制的实现就是基于这个 Channel 来做的。
+Pub/Sub uses **channels**. Publishers send messages to a channel with PUBLISH, and subscribers listen with SUBSCRIBE. Multiple subscribers can listen to the same channel, so every subscriber receives the published message.
 
-Pub/Sub 涉及发布者（Publisher）和订阅者（Subscriber，也叫消费者）两个角色：
+The diagram below shows a simple example with three Redis clients:
 
-- 发布者通过 `PUBLISH` 投递消息给指定 Channel。
-- 订阅者通过`SUBSCRIBE`订阅它关心的 Channel。并且，订阅者可以订阅一个或者多个 Channel。
+![Pub/Sub message queue example](../images/shared/redis-pubsub-message-queue.png)
 
-也就是说，多个消费者可以订阅同一个 Channel，生产者向这个 Channel 发布消息，所有订阅者都能收到。
+Pub/Sub supports both one-to-one and broadcast delivery, along with simple pattern matching for channels.
 
-我们这里启动 3 个 Redis 客户端来简单演示一下：
+Its critical limitation is that Pub/Sub is **fire-and-forget**: it has no persistence or delivery guarantees. If a consumer is offline or briefly disconnected when a message is published, it loses that message. Pub/Sub also has no acknowledgment mechanism or backlog support. Use it for low-reliability real-time notifications, not critical business messages.
 
-![Pub/Sub 实现消息队列演示](../images/shared/redis-pubsub-message-queue.png)
+## Stage 3: Redis Streams
 
-Pub/Sub 既能单播又能广播，还支持 Channel 的简单正则匹配。
+Redis 5.0 introduced the Stream data type. A Stream is an ordered message log implemented with a radix tree. It supports consumer groups and acknowledgments, so it can serve as a lightweight message queue.
 
-Pub/Sub 有一个致命的缺陷：**它发后即忘，完全没有持久化和可靠性保证**。 如果消息发布时，某个消费者不在线，或者网络抖动了一下，那这条消息对它来说就永远丢失了。此外，它也**没有 ACK 机制**，无法知道消费者是否成功处理，更别提**消息堆积**的问题了。所以，Pub/Sub 只适合做一些对可靠性要求极低的实时通知，绝对不能用于任何严肃的业务消息队列。
+**Why use a radix tree instead of a List or linked list?**
 
-### 第三阶段：Redis 5.0 新增 Stream
+1. **Compact storage:** Stream IDs, such as 1625000000000-0, are ordered and often share prefixes. A radix tree compresses common prefixes. A linked list stores each node separately and cannot exploit this prefix overlap.
+2. **Efficient lookup:** A radix tree supports efficient range queries such as XRANGE over large streams. Lists are optimized for operations at their ends and do not support efficient lookup by ID.
 
-Redis 5.0 新增了 `Stream` 数据结构。这是一个基于 Radix Tree（基数树）实现的有序消息日志，天然支持消费者组和 ACK 机制，可用于构建轻量级消息队列。
+Streams borrow ideas from systems such as Kafka:
 
-**为什么要用 Radix Tree？** 很多人好奇，为什么不继续用 `List/LinkedList`？
+1. **Consumer groups:** Distribute messages among consumers in a group and support recovery when a consumer fails.
+2. **Persistence:** RDB and AOF can preserve messages across restarts. The loss window depends on appendfsync; everysec can typically lose up to one second of writes.
+3. **Acknowledgments:** Consumers use XACK after processing. Unacknowledged messages remain in the Pending Entries List (PEL), supporting at-least-once delivery.
+4. **Replay and claiming:** XRANGE reads messages by ID or time range; XCLAIM transfers pending messages to another consumer.
 
-1. **内存极度压缩**：`Stream` 的消息 ID（如 `1625000000000-0`）是高度有序且前缀高度重合的。Radix Tree 是一种压缩前缀树，它会将具有相同前缀的节点合并。而 List/LinkedList
-   每个元素都要完整的链表节点开销，并且无法利用 ID 的前缀重复特性来节省空间。
-2. **高效检索**：在处理数百万级消息堆积时，Radix Tree 能保持极高的查询效率，这也是 `Stream` 能支持大数据量范围查询（`XRANGE`）的底层底气。相比之下，`List/LinkedList`只能从头尾操作，无法高效按 ID 范围查询，执行 `XRANGE` 需要遍历整个列表。
-
-它借鉴了 Kafka 等专业 MQ 的核心概念：
-
-1. **消费者组（Consumer Groups）**：实现消息在多个消费者间的负载均衡，支持故障自动转移。
-2. **持久化**：可以通过 RDB 和 AOF 保证消息在 Redis 重启后不丢失（取决于 `appendfsync` 配置，`everysec` 模式下通常最多丢失 1 秒数据）。
-3. **ACK 机制**：消费者处理完消息后，需要手动 `XACK` 确认，否则消息会保留在 `Pending List` 中。这保证了消息至少被成功消费一次。
-4. **消息回溯与转移**：支持 `XRANGE` 按时间范围回溯消息，以及 `XCLAIM` 将挂起的消息转移到其他消费者处理。
-
-> 🌈 版本演进：
+> **Version updates:**
 >
-> - Redis 8.2：`XACKDEL`、`XDELEX`、`XADD` 和 `XTRIM 命令提供了对流操作如何与多个消费者组交互的细粒度控制，简化了跨不同应用程序的消息处理协调。
-> - Redis 8.6：支持幂等消息处理（最多一次生产），防止在使用至少一次交付模式时出现重复条目。此功能可实现可靠的消息提交，并自动去重。
-
-`Stream` 的结构如下：
+> - Redis 8.2 added XACKDEL and XDELEX, and extended XADD and XTRIM, to provide finer control over stream operations across consumer groups.
+> - Redis 8.6 added idempotent message processing for at-most-once production, preventing duplicate entries when using at-least-once delivery.
 
 ![](../images/shared/redis-stream-structure.png)
 
-这是一个有序的消息链表，每个消息都有一个唯一的 ID 和对应的内容。ID 是一个时间戳和序列号的组合，用来保证消息的唯一性和递增性。内容是一个或多个键值对（类似 Hash 基本数据类型），用来存储消息的数据。
+A Stream is an ordered log. Each message has a unique ID made from a timestamp and sequence number, plus one or more field-value pairs.
 
-这里再对图中涉及到的一些概念，进行简单解释：
+Key concepts:
 
-- `Consumer Group`：消费者组用于组织和管理多个消费者。消费者组本身不处理消息，而是再将消息分发给消费者，由消费者进行真正的消费。
-- `last_delivered_id`：标识消费者组当前消费位置的游标，消费者组中任意一个消费者读取了消息都会使 last_delivered_id 往前移动。
-- `pending_ids`：记录已经被客户端消费但没有 ack 的消息的 ID。
+- **Consumer group:** Organizes consumers. The group tracks delivery state and distributes messages; consumers perform the actual processing.
+- **last_delivered_id:** The group's cursor. It advances when a consumer in the group reads messages.
+- **pending_ids:** IDs of messages delivered to consumers but not yet acknowledged.
 
-下面是`Stream` 用作消息队列时常用的命令：
+Common Stream commands:
 
-- `XADD`：向流中添加新的消息。
-- `XREAD`：从流中读取消息。
-- `XREADGROUP`：从消费组中读取消息。
-- `XRANGE`：根据消息 ID 范围读取流中的消息。
-- `XREVRANGE`：与 `XRANGE` 类似，但以相反顺序返回结果。
-- `XDEL`：从流中删除消息。
-- `XTRIM`：修剪流的长度，可以指定修建策略（`MAXLEN`/`MINID`）。
-- `XLEN`：获取流的长度。
-- `XGROUP CREATE`：创建消费者组。
-- `XGROUP DESTROY`：删除消费者组。
-- `XGROUP DELCONSUMER`：从消费者组中删除一个消费者。
-- `XGROUP SETID`：为消费者组设置新的最后递送消息 ID。
-- `XACK`：确认消费组中的消息已被处理。
-- `XPENDING`：查询消费组中挂起（未确认）的消息。
-- `XCLAIM`：将挂起的消息从一个消费者转移到另一个消费者。
-- `XINFO`：获取流（`XINFO STREAM`）、消费组（`XINFO GROUPS`）或消费者（`XINFO CONSUMERS`）的详细信息。
+- XADD: Add a message.
+- XREAD: Read messages from a Stream.
+- XREADGROUP: Read messages as a consumer group.
+- XRANGE: Read messages within an ID range.
+- XREVRANGE: Read a range in reverse order.
+- XDEL: Delete messages.
+- XTRIM: Trim a Stream by length or minimum ID (MAXLEN/MINID).
+- XLEN: Get the Stream length.
+- XGROUP CREATE: Create a consumer group.
+- XGROUP DESTROY: Delete a consumer group.
+- XGROUP DELCONSUMER: Remove a consumer from a group.
+- XGROUP SETID: Set the group's last-delivered message ID.
+- XACK: Acknowledge processed messages.
+- XPENDING: Inspect unacknowledged messages.
+- XCLAIM: Transfer pending messages to another consumer.
+- XINFO: Inspect a Stream, groups, or consumers.
 
-下面这张时序图展示了 Stream 消费者组消息流转与 ACK 机制：
+The sequence diagram shows how messages move through a consumer group and its acknowledgment flow:
 
 ```mermaid
 sequenceDiagram
@@ -144,80 +130,76 @@ sequenceDiagram
     participant C1 as Consumer-1
     participant C2 as Consumer-2
 
-    %% 生产消息
     P->>R: XADD my_stream * field value
-    R-->>P: 返回 ID = 1001
+    R-->>P: Returns ID = 1001
 
-    %% 消费新消息
     C1->>R: XREADGROUP GROUP group_a consumer-1<br/>STREAMS my_stream >
-    R-->>C1: 返回消息 1001
+    R-->>C1: Returns message 1001
 
-    Note over CG: 1️⃣ last_delivered_id 推进到 1001
-    Note over CG: 2️⃣ 1001 进入 PEL (Pending Entries List)
+    Note over CG: 1️⃣ last_delivered_id advances to 1001
+    Note over CG: 2️⃣ 1001 enters the PEL
 
-    %% 正常消费
-    alt 正常处理完成
+    alt Processing succeeds
         C1->>R: XACK my_stream group_a 1001
         R-->>C1: OK
-        Note over CG: 1001 从 PEL 移除
-    else 消费者崩溃
-        Note over C1: 未 ACK，连接断开
-        Note over CG: 1001 仍在 PEL 中<br/>idle time 持续增长
+        Note over CG: 1001 is removed from the PEL
+    else Consumer crashes
+        Note over C1: No ACK; connection closes
+        Note over CG: 1001 remains in the PEL<br/>idle time increases
 
         C2->>R: XPENDING my_stream group_a
-        R-->>C2: 返回 1001 + idle time
+        R-->>C2: Returns 1001 and idle time
 
         C2->>R: XCLAIM my_stream group_a consumer-2 60000 1001
-        R-->>C2: 返回 1001
+        R-->>C2: Returns 1001
 
-        Note over CG: 1001 转移到 consumer-2
+        Note over CG: 1001 is transferred to consumer-2
 
         C2->>R: XACK my_stream group_a 1001
         R-->>C2: OK
     end
-
 ```
 
-总的来说，`Stream` 已经可以满足一个消息队列的基本要求了。不过，`Stream` 在实际使用中需要注意以下几点：
+Streams meet many basic queue requirements, but consider these limitations:
 
-1. **持久化限制**：Redis 5.0 的 Stream 依赖 RDB/AOF 异步持久化，在故障恢复时可能丢失最近未持久化的消息（取决于 `appendfsync` 配置）。AOF 的 `everysec` 模式下通常最多丢失 1 秒数据。
-2. **消息堆积受限**：Redis Stream 的数据存储在内存中，受服务器内存容量限制。相比 Kafka 基于磁盘的存储，Redis Stream 不适合海量堆积场景。
-3. **消费组管理**：Consumer Group 的状态信息（如 `last_delivered_id`）需要定期维护，长时间未处理的 Pending 消息会占用内存。
+1. **Persistence guarantees:** Streams rely on RDB/AOF persistence. Recent messages may be lost during recovery depending on appendfsync; everysec can typically lose up to one second.
+2. **Backlog capacity:** Stream data resides in Redis memory, so capacity is limited by available memory. It is not suited to massive backlogs like Kafka's disk-based storage.
+3. **Consumer-group maintenance:** Group state such as last_delivered_id must be managed. Long-lived pending messages consume memory.
 
-下面这张表格是 Redis Stream 和常见 MQ 的对比：
+## Redis Streams Compared with Other Queues
 
-| 维度           | Redis Stream               | RabbitMQ                         | Kafka                               | 内存队列                 |
-| :------------- | :------------------------- | :------------------------------- | :---------------------------------- | :----------------------- |
-| **吞吐量**     | 高（十万级 QPS）           | 中（万级 QPS）                   | **极高（百万级，靠分区水平扩展）**  | 极高（受限于 CPU/内存）  |
-| **延迟**       | **极低（亚毫秒级）**       | **低（微秒/毫秒级，实时性强）**  | 中（毫秒级，受批处理影响）          | 极低（纳秒/微秒级）      |
-| **持久化**     | 支持（RDB/AOF 异步）       | 支持（磁盘）                     | **强支持（原生磁盘顺序写）**        | 无                       |
-| **消息堆积**   | 一般（受内存限制）         | 中（堆积多时性能下降明显）       | **极强（TB 级磁盘存储，性能稳定）** | 差（易 OOM）             |
-| **消息回溯**   | 支持（按 ID/时间）         | **不支持（传统队列模式下）**     | **强支持（按 Offset/时间）**        | 不支持                   |
-| **可靠性**     | 中（AOF 丢数据风险）       | **高（Confirm/确认机制成熟）**   | **极高（多副本 + 强一致性配置）**   | 低                       |
-| **运维复杂度** | 低（运维 Redis 即可）      | 中（Erlang 环境，集群管理）      | 高（依赖 ZK 或 KRaft）              | 极低                     |
-| **适用场景**   | 轻量级、低延迟、已有 Redis | **复杂路由、高可靠性、金融业务** | **大数据、日志聚合、高吞吐流处理**  | 进程内解耦、极致性能要求 |
+| Dimension       | Redis Stream                                           | RabbitMQ                                                   | Kafka                                                  | In-memory queue                         |
+| :-------------- | :----------------------------------------------------- | :--------------------------------------------------------- | :----------------------------------------------------- | :-------------------------------------- |
+| **Throughput**  | High (around 100K QPS)                                 | Medium (around 10K QPS)                                    | **Very high; scales with partitions**                  | Very high; limited by CPU and memory    |
+| **Latency**     | **Very low (sub-millisecond)**                         | **Low (microsecond/millisecond)**                          | Medium (milliseconds; batching affects latency)        | Very low (nanosecond/microsecond)       |
+| **Persistence** | RDB/AOF, typically asynchronous                        | Disk-backed                                                | **Native sequential disk writes**                      | None                                    |
+| **Backlog**     | Limited by memory                                      | Medium; large backlogs may reduce performance              | **Very large; disk storage can reach TBs**             | Poor; risk of OOM                       |
+| **Replay**      | By ID or time                                          | Not supported in a traditional queue                       | **By offset or time**                                  | Not supported                           |
+| **Reliability** | Medium; AOF can lose recent writes                     | **High; mature publisher confirms and acknowledgments**    | **Very high with replicas and suitable configuration** | Low                                     |
+| **Operations**  | Low if Redis is already operated                       | Medium; Erlang and cluster management                      | High; ZooKeeper or KRaft                               | Very low                                |
+| **Use cases**   | Lightweight, low-latency workloads with existing Redis | **Complex routing, high reliability, financial workloads** | **Big data, log aggregation, high-throughput streams** | In-process decoupling and maximum speed |
 
-### 总结
+## Summary
 
-**回到最初的问题：Redis 到底能不能做 MQ？**
+**Can Redis be used as a message queue?**
 
-- **如果业务简单、量小、追求极致性能**，且能容忍极小概率的数据丢失，使用 **Redis Stream** 是最优解，因为它省去了部署维护 MQ 的成本，可以复用现有的 Redis 组件（大部分需要用到 MQ 的项目，通常都会需要 Redis）。
-- **如果是金融级业务、海量数据、需要严格保证不丢消息**，必须选择 **Kafka、RabbitMQ** 等更成熟的 MQ。
+- **For simple, low-volume workloads** that prioritize performance and can tolerate a small risk of message loss, Redis Streams can avoid the cost of operating another broker and reuse an existing Redis deployment.
+- **For financial workloads, massive backlogs, or strict delivery guarantees**, use a dedicated broker such as Kafka or RabbitMQ.
 
-更多 Redis 高频知识点和面试题总结，可以阅读笔者写的这几篇文章：
+For more Redis interview questions, see:
 
-- [Redis 常见面试题总结（上）](https://javaguide.cn/database/redis/redis-questions-01.html "Redis 常见面试题总结（上）")（Redis 基础、应用、数据类型、持久化机制、线程模型等）
-- [Redis 常见面试题总结(下)](https://javaguide.cn/database/redis/redis-questions-02.html "Redis 常见面试题总结(下)")（Redis 事务、性能优化、生产问题、集群、使用规范等）
-- [如何基于Redis实现延时任务](https://javaguide.cn/database/redis/redis-delayed-task.html "如何基于Redis实现延时任务")
-- [Redis 5 种基本数据类型详解](https://javaguide.cn/database/redis/redis-data-structures-01.html "Redis 5 种基本数据类型详解")
-- [Redis 3 种特殊数据类型详解](https://javaguide.cn/database/redis/redis-data-structures-02.html "Redis 3 种特殊数据类型详解")
-- [Redis为什么用跳表实现有序集合](https://javaguide.cn/database/redis/redis-skiplist.html "Redis为什么用跳表实现有序集合")
-- [Redis 持久化机制详解](https://javaguide.cn/database/redis/redis-persistence.html "Redis 持久化机制详解")
-- [Redis 内存碎片详解](https://javaguide.cn/database/redis/redis-memory-fragmentation.html "Redis 内存碎片详解")
-- [Redis 常见阻塞原因总结](https://javaguide.cn/database/redis/redis-common-blocking-problems-summary.html "Redis 常见阻塞原因总结")
+- [Common Redis Interview Questions, Part 1](https://javaguide.cn/database/redis/redis-questions-01.html): Fundamentals, use cases, data types, persistence, and threading.
+- [Common Redis Interview Questions, Part 2](https://javaguide.cn/database/redis/redis-questions-02.html): Transactions, performance, production issues, clustering, and usage guidelines.
+- [How to Implement Delayed Tasks with Redis](https://javaguide.cn/database/redis/redis-delayed-task.html)
+- [Redis's Five Core Data Types](https://javaguide.cn/database/redis/redis-data-structures-01.html)
+- [Redis's Three Specialized Data Types](https://javaguide.cn/database/redis/redis-data-structures-02.html)
+- [Why Redis Uses Skip Lists for Sorted Sets](https://javaguide.cn/database/redis/redis-skiplist.html)
+- [Redis Persistence](https://javaguide.cn/database/redis/redis-persistence.html)
+- [Redis Memory Fragmentation](https://javaguide.cn/database/redis/redis-memory-fragmentation.html)
+- [Common Causes of Redis Blocking](https://javaguide.cn/database/redis/redis-common-blocking-problems-summary.html)
 
-我的 [《SpringAI 智能面试平台+RAG 知识库》](https://javaguide.cn/zhuanlan/interview-guide.html)项目就是用的 Redis Stream 作为消息队列。在我的项目的场景下，它几乎是最合适的选择，完全够用了。
+The [SpringAI Interview Platform with a RAG Knowledge Base](https://javaguide.cn/zhuanlan/interview-guide.html) project uses Redis Streams as its message queue. For that workload, Streams were a good fit and met the project's needs.
 
-![系统架构图](../../zhuanlan/images/shared/interview-guide-architecture-diagram.png)
+![System architecture](../../zhuanlan/images/shared/interview-guide-architecture-diagram.png)
 
-![AI 智能面试平台效果展示](../../zhuanlan/images/shared/page-resume-history.png)
+![AI interview platform preview](../../zhuanlan/images/shared/page-resume-history.png)

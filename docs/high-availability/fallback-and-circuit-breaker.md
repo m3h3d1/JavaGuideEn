@@ -213,7 +213,7 @@ Fallback 可以理解成：**兜底结果**。
 
 如果 `blockHandler` 和 `fallback` 都配置了，Sentinel 规则触发的异常会优先进入 `blockHandler`；业务异常才进入 `fallback`。这一点别搞反，不然排查线上问题时会很绕。
 
-![Sentinel：blockHandler 与 Fallback 的区别](images/shared/fallback-and-circuit-breaker-blockhandler-vs-fallback.png)
+![Sentinel：blockHandler 与 Fallback 的区别](./images/shared/fallback-and-circuit-breaker-blockhandler-vs-fallback.png)
 
 ### 常见的 Fallback 做法
 
@@ -275,7 +275,7 @@ Fallback 本身也可能出问题，而且这种问题比正常故障更难发�
 
 这就是雪崩效应。
 
-![雪崩效应传播](images/shared/fallback-and-circuit-breaker-avalanche-effect-spread.png)
+![雪崩效应传播](./images/shared/fallback-and-circuit-breaker-avalanche-effect-spread.png)
 
 ### 一个更接近真实情况的例子
 
@@ -433,7 +433,7 @@ Fallback 不是一个独立的治理策略，它更像是限流、熔断、降�
 
 一句话总结：**限流拦入口，熔断断下游，降级保核心，Fallback 给兜底结果。**
 
-![请求保护流程](images/shared/fallback-and-circuit-breaker-request-protection-process.png)
+![请求保护流程](./images/shared/fallback-and-circuit-breaker-request-protection-process.png)
 
 ### Sentinel 注解方式的最小示例
 
@@ -534,7 +534,7 @@ Resilience4j 的特点是轻量、模块化。你需要熔断，就引 CircuitBr
 
 > 线程池隔离的代价不是很多人以为的"GC 扫描"，而是上下文切换。线程多了，CPU 在线程间频繁调度唤醒和挂起，sy 飙高，P99 尾延迟跟着恶化。到底严不严重，得看线程数、CPU sy/us 比例、队列等待时间和 P99 指标，别光凭感觉。
 
-![隔离策略对比](images/shared/fallback-and-circuit-breaker-isolation-strategy-comparison.png)
+![隔离策略对比](./images/shared/fallback-and-circuit-breaker-isolation-strategy-comparison.png)
 
 ### Sentinel 的系统自适应保护是什么？
 
