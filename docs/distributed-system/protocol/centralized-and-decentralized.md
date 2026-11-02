@@ -1,303 +1,303 @@
 ---
-title: 分布式协调详解：Leader、Quorum、Lease、Fencing Token 与 Gossip
-description: 分布式协调机制详解，讲解中心化与去中心化设计中的决策问题和状态传播问题，包括 Leader、Quorum、多数派、Term/Epoch、Lease、Fencing Token、Gossip、幂等和定时任务执行语义。
-category: 分布式
+title: "Distributed Coordination: Leader, Quorum, Lease, Fencing Token, and Gossip"
+description: "An explanation of decision-making and state propagation in centralized and decentralized systems, covering Leader, Quorum, majority, Term/Epoch, Lease, Fencing Token, Gossip, idempotency, and scheduled-task execution semantics."
+category: Distributed Systems
 tag:
-  - 分布式理论
-  - 分布式协议与算法
-  - 系统设计
+  - Distributed Systems Theory
+  - Distributed Protocols and Algorithms
+  - System Design
 head:
   - - meta
     - name: keywords
-      content: 分布式协调,中心化,去中心化,Leader,Primary,Quorum,多数派,Leader选举,Lease,Fencing Token,Gossip,幂等,最终一致性,定时任务
+      content: distributed coordination,centralized,decentralized,Leader,Primary,Quorum,majority,Leader election,Lease,Fencing Token,Gossip,idempotency,eventual consistency,scheduled tasks
 ---
 
-一个定时任务部署了 3 个实例，到了凌晨 2 点，到底谁来跑这批任务？
+Three instances run a scheduled job. At 2 a.m., which one should execute it?
 
-如果 3 个实例都跑，数据可能被重复处理；如果 3 个实例都等别人跑，任务就会漏掉。缓存集群、消息队列、配置中心、分布式锁也会遇到类似问题：节点多了以后，系统必须有人决定“谁负责什么”“谁现在还活着”“这次变更按什么顺序生效”。
+If all three run it, data may be processed more than once. If all three wait for another instance, the job may be skipped. Cache clusters, message queues, configuration centers, and distributed locks face similar issues. As a system grows to multiple nodes, it needs a way to decide who is responsible for what, which nodes are still alive, and in what order changes take effect.
 
-这就是分布式系统里的协调问题。
+This is the coordination problem in distributed systems.
 
-不过，这里要先区分两件事：**只选出一个执行者**，和**业务只生效一次**。
+First, distinguish between **choosing one executor** and **ensuring a business operation takes effect only once**.
 
-选主、分布式锁或数据库抢占可以减少多个实例同时执行，但无法单独保证端到端的 exactly-once。执行节点可能已经处理成功，却在更新任务状态前宕机；调度系统为了避免漏任务，只能再次派发。Kubernetes CronJob 官方文档也提醒过，CronJob 创建 Job 的时间是近似的，某些情况下可能创建两个 Job，也可能没有创建 Job，因此 Job 本身应该设计成幂等。
+Leader election, distributed locks, and database claims can reduce concurrent execution by multiple instances, but they cannot guarantee end-to-end exactly-once processing by themselves. An executor may finish the work and crash before updating task status. To avoid losing the task, the scheduler may dispatch it again. The Kubernetes CronJob documentation also warns that job creation is approximate: a CronJob may create two Jobs or none in some cases. Therefore, the Job itself should be idempotent.
 
-生产里的定时任务通常更接近“至少执行一次 + 业务幂等”：用任务 ID、业务唯一键、状态机、去重表或事务约束保证同一批数据重复执行时不会产生额外副作用。
+Production scheduled tasks are usually closer to “at least once + business idempotency.” A task ID, business key, state machine, deduplication table, or transaction constraint can prevent repeated execution from causing additional side effects.
 
-![定时任务执行语义](../images/shared/cronjob-execution-semantics.webp)
+![Scheduled-task execution semantics](../images/shared/cronjob-execution-semantics.webp)
 
-这篇文章只讨论设计取舍，不展开 ZooKeeper、etcd、Redis Cluster、Eureka 等具体系统的完整实现。想看共识算法，可以继续读 [Raft 算法详解](./raft-algorithm.md) 和 [ZAB 协议详解](./zab.md)；想看状态传播，可以继续读 [Gossip 协议详解](./gossip-protocol.md)；想看业务互斥，可以继续读 [分布式锁实现方案详解](../distributed-lock-implementations.md)。
+This article focuses on design trade-offs rather than the complete implementation of systems such as ZooKeeper, etcd, Redis Cluster, or Eureka. For consensus algorithms, see [Raft](./raft-algorithm.md) and [ZAB](./zab.md). For state propagation, see [Gossip](./gossip-protocol.md). For mutual exclusion in business operations, see [Distributed Lock Implementations](../distributed-lock-implementations.md).
 
-## 这篇和其他文章是什么关系？
+## How does this article relate to the others?
 
-[分布式系统入门](../distributed-system-intro.md) 解决的是“为什么单机系统拆成多节点后会变复杂”。[CAP 定理与 BASE 理论详解](./cap-and-base-theorem.md) 解决的是“分区发生时一致性和可用性怎么取舍”。Raft、Paxos、ZAB 解决的是“一组节点如何对某个值或日志顺序达成一致”。Gossip 解决的是“状态如何在大量节点之间传播并最终收敛”。
+[Distributed Systems Fundamentals](../distributed-system-intro.md) explains why a single-node system becomes more complex when split across nodes. [CAP and BASE Explained](./cap-and-base-theorem.md) covers consistency and availability trade-offs during a partition. Raft, Paxos, and ZAB help a group of nodes agree on a value or log order. Gossip propagates state across many nodes until it converges.
 
-这篇文章放在它们中间，重点回答一个更工程化的问题：**一个分布式系统到底怎么协调多个节点？**
+This article connects those topics and focuses on a practical question: **How does a distributed system coordinate multiple nodes?**
 
-为了避免概念混在一起，先拆成两类问题：
+To keep the concepts distinct, divide the problem into two categories:
 
-- **决策问题**：谁能成为 Leader？某条日志是否提交？某个资源当前归谁？某个任务能不能执行？
-- **传播问题**：成员状态、故障报告、配置版本、缓存元数据怎么扩散到其他节点？
+- **Decision-making:** Who can become Leader? Is a log entry committed? Who owns a resource? Can a task run?
+- **Propagation:** How do membership, failure reports, configuration versions, and cache metadata reach other nodes?
 
-![分布式协调决策与传播](../images/shared/distributed-coordination-decision-vs-propagation.webp)
+![Decision-making and propagation in distributed coordination](../images/shared/distributed-coordination-decision-vs-propagation.webp)
 
-Leader、Quorum、Lease、Lock、Fencing Token 主要围绕决策和执行资格展开；Gossip 主要解决状态传播。真实系统经常把这些机制组合起来使用，很少只有简单的“中心化”或“去中心化”二选一。
+Leader, Quorum, Lease, Lock, and Fencing Token mainly govern decisions and execution rights. Gossip mainly propagates state. Real systems often combine these mechanisms; they are rarely purely centralized or decentralized.
 
-## 分布式系统为什么要协调？
+## Why do distributed systems need coordination?
 
-单机系统里，很多事情可以直接靠本地内存、数据库事务或进程锁完成。到了分布式系统里，这些办法突然不够用了。
+On a single machine, local memory, database transactions, or process locks can solve many problems. In a distributed system, these mechanisms may no longer be enough.
 
-分布式系统多了一层网络，不确定性也跟着来了。
+The network introduces uncertainty.
 
-每个节点只能看到自己的本地状态，以及已经收到的消息。某个节点没有响应，可能是真的宕机了，也可能是网络抖动、GC 暂停、磁盘 I/O 卡住、线程池打满。调用方看到的超时，只能说明自己在指定时间内没有收到结果，不能证明对方一定没有执行。
+Each node sees only its local state and the messages it has received. A node that does not respond may have crashed, or it may be affected by network jitter, a GC pause, stalled disk I/O, or an exhausted thread pool. A timeout only means that the caller did not receive a result within the specified time; it does not prove that the other node did not execute the operation.
 
-协调要解决的就是这些问题：
+Coordination addresses questions such as:
 
-- **成员管理**：集群里有哪些节点？哪些节点现在可以参与工作？
-- **任务分配**：某个分片、任务、分区、主副本应该由谁负责？
-- **顺序控制**：多个节点同时提交变更时，谁先谁后？
-- **故障切换**：负责节点失联后，谁来接管？接管之前要确认哪些状态？
-- **版本推进**：配置、元数据、选主结果变化后，如何让节点识别新旧状态？
+- **Membership:** Which nodes belong to the cluster, and which can participate now?
+- **Task assignment:** Which node owns a shard, task, partition, or primary replica?
+- **Ordering:** If several nodes submit changes at once, what is their order?
+- **Failover:** Who takes over when the responsible node becomes unreachable, and what state must be checked first?
+- **Version progression:** How do nodes distinguish new state from old state after a configuration, metadata, or election change?
 
-这些问题可以交给当前 Leader 统一推进，也可以让一组节点通过 Quorum 共同判断，还可以通过 Gossip 先传播观察到的状态，再由投票、版本号或业务规则作出决定。
+A Leader can coordinate these decisions. A group of nodes can use a Quorum to decide together. Gossip can spread observed state before a vote, version, or business rule determines what to do.
 
-## Leader/Quorum 协调：谁来作出决定？
+## Leader/Quorum coordination: who makes the decision?
 
-很多系统会引入 Leader、Primary 或调度中心。其他节点主要执行任务，或者根据 Leader 推进的日志、配置和分配结果更新状态。
+Many systems use a Leader, Primary, or scheduler. Other nodes mainly execute tasks or apply logs, configuration, and assignments from the Leader.
 
-这里容易有一个误解：有 Leader 不等于有一个脆弱的单点。Raft、ZAB 这类系统里的 Leader 是多副本选举出来的当前角色，状态仍然由日志复制和 Quorum 保护。真正要看的是，Leader 背后的状态有没有副本保护，Leader 挂掉后能不能选出新的 Leader，以及新 Leader 能不能接住旧状态继续工作。
+A common misconception is that a Leader is necessarily a fragile single point of failure. In systems such as Raft and ZAB, the Leader is a role elected from multiple replicas; log replication and a Quorum protect the state. The important questions are whether the Leader's state is replicated, whether the remaining nodes can elect a new Leader after a failure, and whether the new Leader can continue from the existing state.
 
-Leader 常见职责有几类。
+Leaders commonly have several responsibilities.
 
-第一类是维护集群视图。比如哪些 Worker 在线、每个 Worker 的负载如何、某个分片现在归谁、某个副本是不是落后太多。这些信息可能来自心跳、上报、探测，也可能来自底层存储里的注册信息。
+First, they maintain a cluster view: which Workers are online, their load, which node owns a shard, and whether a replica is falling behind. This information may come from heartbeats, reports, probes, or a backing store's membership records.
 
-第二类是做分配决策。比如任务调度系统把任务派给某个执行器，分布式存储把分片迁移到某台机器，消息队列把分区 Leader 切到另一个副本。Worker 不需要各自猜测，只要执行已经确认的分配结果。
+Second, they make assignment decisions. A scheduler may assign a task to an executor, distributed storage may move a shard to another machine, or a message queue may transfer partition leadership to another replica. Workers do not need to guess; they follow the confirmed assignment.
 
-第三类是控制写入顺序。很多分布式系统并不怕读请求分散，真正麻烦的是写请求。多个节点同时改元数据，如果没有统一顺序，很容易出现两个节点都认为自己持有同一个分片、两个任务都认为自己是主执行者这类问题。Leader 可以把写入串成一条有序日志，再复制给其他节点。
+Third, they control write ordering. Distributed systems can often spread reads across nodes; writes to shared metadata are more difficult. Without a common order, two nodes may both believe they own a shard or are the primary executor for a task. A Leader can order writes in a log and replicate it to other nodes.
 
-Leader 让系统行为更容易理解，排查问题时也更容易找到决策入口。代价是协调链路可能变成瓶颈，也必须处理误判、脑裂和故障切换。
+A Leader makes system behavior easier to understand and provides a clear place to inspect decisions. The trade-offs are that the coordination path may become a bottleneck and the system must handle false suspicions, split brain, and failover.
 
-## Leader/Quorum 协调会遇到哪些问题？
+## What problems arise with Leader/Quorum coordination?
 
-最容易想到的是 Leader 单点。
+The first concern is a single point of failure.
 
-如果 Leader 的状态只存在自己内存里，Leader 一挂，集群就不知道当前任务分配、分片归属和最新元数据是什么。这种设计确实很危险。更常见的工程做法是让 Leader 只承担“当前决策者”的角色，元数据和日志复制到多个副本里。Leader 挂掉后，剩余节点基于已有日志再选出新 Leader。
+If the Leader's state exists only in its memory, a crash leaves the cluster without task assignments, shard ownership, or current metadata. A common design gives the Leader the role of “current decision-maker” while replicating metadata and logs to several nodes. If the Leader fails, the remaining nodes elect a new Leader from the replicated state.
 
-另一个问题是瓶颈。所有协调请求都经过 Leader，Leader 的 CPU、网络、磁盘日志写入都会影响整个系统。尤其是元数据变更很频繁时，Leader 会变成系统扩展的上限。很多系统会把数据面和控制面拆开：普通读写尽量分散，只有选主、元数据变更、分片迁移这类操作才进入协调链路。
+Another concern is bottlenecking. Coordination requests pass through the Leader, so its CPU, network, and disk log writes affect the whole system. Frequent metadata changes can limit scalability. Many systems separate the data plane from the control plane: normal reads and writes are distributed, while elections, metadata changes, and shard migrations use the coordination path.
 
-更麻烦的是误判。
+False suspicions are more difficult.
 
-心跳检测很常见，但心跳不是“生死证明”。Leader 没收到 Worker 的心跳，只能说明在当前网络和超时时间内没有收到响应。Worker 可能还在执行任务，只是卡在 Full GC、网络隔离或磁盘写入上。如果 Leader 直接把任务交给另一个 Worker，旧 Worker 恢复后继续写结果，就可能出现重复写入。
+Heartbeats are common, but they are not proof that a node is alive or dead. If the Leader misses a Worker heartbeat, it only knows that it has not received a response within the current network and timeout conditions. The Worker may still be executing a task but be paused by Full GC, network isolation, or a disk write. If the Leader assigns that task elsewhere, the old Worker may resume and write a duplicate result.
 
-脑裂也是从这里来的。
+Split brain can arise from the same uncertainty.
 
-脑裂发生时，多个分区会同时认为自己有权继续推进系统状态。比如原 Leader 和一部分节点被隔离，另一部分节点又选出了新 Leader。如果两个 Leader 都能对外接受写入，分区恢复后就会出现两条互相冲突的状态线。对配置中心、分布式锁、主从切换、分片归属这类场景来说，这通常是不能接受的。
+During a split brain, multiple partitions believe they can advance system state. For example, the old Leader may be isolated from some nodes while the other partition elects a new Leader. If both accept writes, the partitions can develop conflicting state after the network recovers. This is usually unacceptable for configuration centers, distributed locks, failover, and shard ownership.
 
-所以，难点不止是“选一个 Leader”，还要让旧 Leader 在失去资格后不能继续造成破坏。
+The challenge is not only to “elect a Leader,” but also to prevent an old Leader from causing damage after it loses authority.
 
-## 如何缓解 Leader 单点和脑裂？
+## How can Leader bottlenecks and split brain be mitigated?
 
-只给 Leader 配一个备用节点还不够。备用节点要接管，就必须知道 Leader 已经做过哪些决定、哪些决定已经提交、哪些决定还只是 Leader 自己以为成功。
+A standby node alone is not enough. To take over, it must know which decisions the Leader made, which were committed, and which only appeared successful to the Leader.
 
-这就需要副本、Quorum 和协议约束。
+This requires replicas, a Quorum, and protocol rules.
 
-### 多数派不是完整答案
+### A majority is not the whole solution
 
-多数派规则很好理解：超过半数节点同意后，才认为某个决定有效。假设集群有 `N` 个投票节点，多数派就是 `floor(N/2) + 1`。3 个节点需要 2 个同意，5 个节点需要 3 个同意。
+A majority rule is straightforward: a decision is valid only after more than half of the nodes agree. For a cluster with `N` voting nodes, a majority is `floor(N/2) + 1`. Three nodes require two votes; five require three.
 
-这个公式默认几个前提：
+This formula assumes:
 
-- 成员集相对固定；
-- 每个投票节点权重相同；
-- 处理的是崩溃故障和网络分区，不考虑恶意节点；
-- 使用的是普通多数派 Quorum，而不是加权 Quorum、Flexible Quorum 或 BFT Quorum。
+- The membership set is relatively stable.
+- Every voting node has equal weight.
+- The system handles crash faults and network partitions, not malicious nodes.
+- The system uses a simple majority Quorum, not a weighted, Flexible, or BFT Quorum.
 
-多数派有一个重要性质：任意两个多数派集合一定有交集。
+An important property of majorities is that any two majority sets overlap.
 
-但“存在交集”本身还不够。协议还必须约束谁有资格当选，以及新 Leader 如何恢复状态。以 Raft 为例，每个节点在同一个 Term 内最多投一票，候选人的日志还必须至少和投票者一样新。多数派交集加上日志新旧判断，才能保证已经提交的日志不会在后续选主时丢失。Raft 把这类性质称为 Leader Completeness。
+However, overlap alone is not sufficient. The protocol must also constrain who can be elected and how the new Leader recovers state. In Raft, each node votes at most once per Term, and a candidate's log must be at least as up to date as the voter's. The intersection of majorities, combined with log freshness checks, prevents committed entries from being lost during later elections. Raft calls this property **Leader Completeness**.
 
-因此，多数派提供的是交集基础；真正的安全性还来自选举规则、日志匹配规则和提交规则。
+Thus, a majority provides the basis for intersection. Safety also depends on election, log matching, and commit rules.
 
-多数派也有成本。对依赖多数派保证安全的协调状态或复制日志，拿不到 Quorum 时通常应停止提交新的写入。系统是否还能提供旧数据读取，取决于具体协议和一致性要求。3 个节点容忍 1 个投票节点故障，5 个节点容忍 2 个投票节点故障；4 个节点仍然只能容忍 1 个投票节点故障，6 个节点仍然只能容忍 2 个投票节点故障，所以很多协调系统更推荐奇数个投票节点。
+Majorities have a cost. To preserve safety for coordinated state or replicated logs, a system usually stops committing new writes when it cannot reach a Quorum. Whether it can still serve stale reads depends on the protocol and consistency requirement. Three nodes tolerate one voting-node failure; five tolerate two. Four still tolerate only one, and six still tolerate only two, which is why many coordination systems recommend an odd number of voting nodes.
 
-### Term/Epoch 只能保护协议内部
+### Term/Epoch protects protocol state, not every external resource
 
-Leader 选举通常需要任期概念。Raft 里叫 Term，ZAB 里有 Epoch。每次选主进入一个新的任期，节点看到更高任期后，会拒绝旧任期请求，旧 Leader 也应退回普通节点。
+Leader election usually needs a term concept. Raft calls it a **Term**; ZAB uses an **Epoch**. Each election begins a new term. When a node sees a higher term, it rejects requests from the old term, and an old Leader should step down to Follower.
 
-这主要保护的是协调协议内部状态。
+This mainly protects the coordination protocol's internal state.
 
-任期不会自动传播到所有外部业务资源。旧 Leader 如果绕过复制协议直接写数据库、对象存储或第三方接口，资源端并不知道 Raft Term 或 ZAB Epoch 已经变化。要真正拒绝迟到写，还需要资源端验证版本号或 Fencing Token。
+A term is not automatically propagated to external business resources. If an old Leader bypasses the replication protocol and writes directly to a database, object store, or third-party API, that resource does not know that the Raft Term or ZAB Epoch has changed. To reject stale writes, the resource must validate a version or Fencing Token.
 
-### Lease 解决资源回收，不能证明旧客户端已经停下
+### A Lease reclaims resources; it does not prove an old client has stopped
 
-比如一个客户端拿到了锁，然后发生长时间 GC。锁服务认为它已经失联，把锁交给了另一个客户端。旧客户端恢复后，它可能还拿着旧的执行上下文去写数据库、对象存储或外部接口。锁服务已经换主或换 owner，并不代表旧客户端手里的业务线程立刻消失。
+Suppose a client acquires a lock and then experiences a long GC pause. The lock service considers it disconnected and grants the lock to another client. When the old client resumes, it may still use its old execution context to write to a database, object store, or external API. A new Leader or lock owner does not make the old client's business thread disappear.
 
-**Lease** 可以理解为带有效期的授权。客户端拿到 Lease 后，需要在 TTL 内续约；续约失败或 Lease 过期后，协调系统就可以回收相关资源。etcd 的 Lease API 就是这种模型：集群授予带 TTL 的 Lease，如果集群在 TTL 内没有收到 keepAlive，Lease 就会过期，挂在 Lease 上的 Key 也会被删除。etcd 返回的 TTL 以服务端选择和响应为准，并不是客户端自己用本地时钟决定 Lease 是否过期。
+A **Lease** is a time-limited grant of authority. A client that receives a Lease must renew it before its TTL expires. If renewal fails or the Lease expires, the coordination system can reclaim associated resources. The etcd Lease API works this way: the cluster grants a Lease with a TTL, and if it receives no `keepAlive` within that TTL, the Lease expires and attached keys are deleted. The TTL is determined and returned by the server; the client does not decide expiration using its local clock.
 
-真正危险的是客户端对 Lease 状态的认知可能过时。它可能因为长时间 GC、网络隔离或线程阻塞，没有及时发现 Lease 已经过期。
+The danger is that a client may have a stale view of its Lease. A long GC pause, network isolation, or blocked thread may prevent it from learning that the Lease has expired.
 
-所以 Lease 适合做存活检测和资源自动回收，却不能单独证明旧客户端已经停止执行。只要旧客户端还能访问共享资源，就仍然可能产生迟到写。
+A Lease is useful for failure detection and automatic resource reclamation, but it cannot prove that the old client has stopped executing. If the client can still access a shared resource, it may still issue stale writes.
 
-### Fencing Token 拒绝过期执行者
+### Fencing Tokens reject stale executors
 
-**Fencing Token** 的处理方式更直接：每次成功获得权限时，协调系统发一个单调递增的 token。客户端写共享资源时必须带上这个 token，资源端记录见过的最大 token，并拒绝更小 token 的写入。
+A **Fencing Token** addresses this more directly. Each time a client gains authority, the coordination system issues a monotonically increasing token. The client includes the token when writing to a shared resource. The resource records the largest token it has seen and rejects writes with smaller tokens.
 
-举个例子：
+For example:
 
-1. 客户端 A 获得锁，拿到 token=10。
-2. A 发生长时间暂停，锁过期。
-3. 客户端 B 获得锁，拿到 token=11，并成功写入资源。
-4. A 恢复后继续带着 token=10 写资源。
-5. 资源端发现 `10 < 11`，拒绝 A 的写入。
+1. Client A acquires the lock and receives token 10.
+2. A pauses for a long time and its lock expires.
+3. Client B acquires the lock, receives token 11, and writes to the resource.
+4. A resumes and tries to write with token 10.
+5. The resource sees `10 < 11` and rejects A's write.
 
-token 数字本身解决不了问题，资源端校验才是关键。资源端最好原子地完成“比较 token + 更新数据 + 记录最新 token”。如果先查 token、再单独写数据，中间仍可能被并发请求插入。
+The resource's validation is essential; the token value alone does not help. Ideally, the resource atomically compares the token, updates the data, and records the latest token. If it checks the token and writes the data in separate operations, a concurrent request can still intervene.
 
-可以把 Lease、Fencing Token 和幂等键放在一起看：
+Lease, Fencing Token, and idempotency keys solve different problems:
 
-| 机制          | 解决的问题                     | 不能保证什么               |
-| ------------- | ------------------------------ | -------------------------- |
-| Lease         | 自动回收失联客户端持有的资格   | 旧客户端已经停止运行       |
-| Fencing Token | 拒绝旧持有者的迟到写           | 业务操作本身可重试         |
-| 幂等键        | 防止同一业务请求重复产生副作用 | 当前执行者一定是最新 owner |
+| Mechanism       | What it solves                                                          | What it does not guarantee                     |
+| --------------- | ----------------------------------------------------------------------- | ---------------------------------------------- |
+| Lease           | Reclaims authority held by an unreachable client.                       | That the old client has stopped running.       |
+| Fencing Token   | Rejects stale writes from an old owner.                                 | That the business operation is safe to retry.  |
+| Idempotency key | Prevents the same business request from causing duplicate side effects. | That the current executor is the latest owner. |
 
-![Lease 与 Fencing Token](../images/shared/lease-fencing-token-late-write.webp)
+![Lease and Fencing Token](../images/shared/lease-fencing-token-late-write.webp)
 
-## Gossip 状态传播：让节点交换本地视图
+## Gossip state propagation: nodes exchange local views
 
-Gossip 不依赖一个固定节点维护完整集群视图。每个节点保存自己的本地视图，并通过对等通信交换状态。
+Gossip does not rely on one fixed node maintaining the complete cluster view. Each node stores a local view and exchanges state with peers.
 
-节点周期性选择其他节点交换信息，状态像消息扩散一样在集群里传播。一个节点知道了新成员、新故障、新版本，后面会继续告诉其他节点。经过多轮交换后，大部分节点会看到相近的状态。
+Nodes periodically select peers and exchange information. State spreads through the cluster like a message. After learning about a new member, failure, or version, a node can tell others. After several rounds, most nodes have similar views.
 
-Gossip 本身更适合传播“我观察到了什么”，不适合单独决定“全体必须接受什么”。
+Gossip is suited to propagating “what I observed,” not to deciding by itself “what everyone must accept.”
 
-它通常提供最终传播和收敛，不直接提供严格互斥或全局写入顺序。Gossip 传播需要时间，同一时刻不同节点看到的状态可能不同。同一条消息也可能被重复传播，需要版本号、消息 ID、时间戳或其他方式去重。发生网络分区时，不同分区可能各自形成不同判断，恢复后还要靠版本、任期、冲突解决策略收敛。
+It usually provides eventual propagation and convergence, not strict mutual exclusion or global write ordering. Because Gossip takes time, nodes may see different states at the same moment. A message may also be delivered multiple times, so systems need version numbers, message IDs, timestamps, or another deduplication method. During a network partition, different partitions may reach different conclusions; after recovery, they need versions, terms, and conflict-resolution rules to converge.
 
-但这不表示所有无固定 Leader 的协议都只能最终一致。EPaxos 这类无固定 Leader 的共识协议仍然可以提供强一致性，只是实现复杂度和适用场景与常见 Leader-based 协议不同。
+This does not mean that every protocol without a fixed Leader provides only eventual consistency. Leaderless consensus protocols such as EPaxos can still provide strong consistency, though their implementation complexity and use cases differ from common Leader-based protocols.
 
-真实系统经常混合使用多种机制。Redis Cluster 就是一个典型例子：节点通过 Cluster Bus 和 Gossip 传播成员状态、槽位信息和故障观察；节点可以先把另一个节点标记为 PFAIL；当多数 Master 对故障达成足够观察后，再升级为 FAIL；Replica 晋升还要结合多数投票、`currentEpoch` 和 `configEpoch` 区分新旧配置。
+Real systems often combine mechanisms. Redis Cluster is one example: nodes use the Cluster Bus and Gossip to propagate membership, slot assignments, and failure observations. A node may first mark another node PFAIL. After enough Masters report the failure, the status is promoted to FAIL. Replica promotion also uses majority voting, `currentEpoch`, and `configEpoch` to distinguish old and new configurations.
 
-所以，Gossip 更适合“状态传播”，不适合单独承担“强互斥”和“严格写入顺序”。如果一个场景要求任意时刻只能有一个 owner，或者写入必须线性一致，还是要引入共识、多数派投票、资源端版本校验或 Fencing Token。
+Gossip is suited to **state propagation**, not to strict mutual exclusion or global write ordering by itself. If a scenario requires exactly one owner at any moment or linearizable writes, it also needs consensus, majority voting, resource-side version validation, or Fencing Tokens.
 
-## 这些机制怎么选？
+## How should you choose among these mechanisms?
 
-先看错误决定的后果。
+Start by considering the cost of an incorrect decision.
 
-如果重复执行一次任务只是多消耗一些资源，或者某个节点短时间看到旧状态可以接受，那状态传播和最终收敛通常就够了。比如节点发现、健康状态传播、缓存元数据扩散、非关键状态同步，都可以考虑 Gossip 或类似的对等传播方式。
+If running a task twice only wastes some resources, or if a node can briefly see stale state, state propagation and eventual convergence may be enough. Node discovery, health-state propagation, cache metadata, and other non-critical state updates can use Gossip or a similar peer-to-peer mechanism.
 
-如果错误决定会导致资金错误、库存错误、元数据损坏、两个主节点同时写同一份数据，那就要优先考虑 Leader/Quorum、共识算法、多数派提交，必要时再加 Fencing Token。这里牺牲一点可用性和吞吐，通常比事后修数据便宜。
+If a wrong decision could corrupt financial data, inventory, or metadata, or let two primaries write the same data, prioritize Leader/Quorum coordination, consensus, or majority commits. Add Fencing Tokens when necessary. A small loss of availability or throughput is usually cheaper than repairing corrupted data.
 
-再看系统规模和写入路径。
+Then consider cluster size and the write path.
 
-小规模控制面用 Leader 管理通常更容易维护。节点数量很大、状态变化频繁、每个节点只需要近似视图时，对等传播更合适。Gossip 的消息会有冗余，但它避免了所有状态更新都汇聚到一个固定节点；同时也会增加冲突处理、消息去重和状态排查成本。
+A Leader is often easier to operate for a small control plane. Peer-to-peer propagation is more suitable when there are many nodes, state changes frequently, and each node needs only an approximate view. Gossip adds redundant messages but avoids routing every state update through one fixed node. It also adds the cost of conflict resolution, deduplication, and state troubleshooting.
 
-可以用下面这个表快速判断：
+Use this table as a quick guide:
 
-| 机制              | 主要解决什么             | 一致性特点             | 典型场景                        |
-| ----------------- | ------------------------ | ---------------------- | ------------------------------- |
-| Leader + 日志复制 | 决定写入顺序和元数据状态 | 可提供强一致           | 配置发布、主从切换、元数据变更  |
-| Quorum 投票       | 判断某个决定是否有效     | 依赖集合交集与协议规则 | 日志提交、Leader 选举、故障确认 |
-| Lease / Lock      | 临时授予执行资格         | 资格可能过期           | 定时任务、资源 owner、短临界区  |
-| Fencing Token     | 拒绝旧 owner 的迟到写    | 依赖资源端校验         | 数据库、对象存储、外部资源写入  |
-| Gossip            | 扩散成员和状态信息       | 通常最终收敛           | 服务发现、健康状态、缓存元数据  |
-| 队列 / 分片领取   | 把工作分配给多个 Worker  | 通常至少一次           | 批处理、消费任务、分片扫描      |
+| Mechanism                | Main purpose                                 | Consistency characteristics                     | Common scenarios                                            |
+| ------------------------ | -------------------------------------------- | ----------------------------------------------- | ----------------------------------------------------------- |
+| Leader + log replication | Orders writes and metadata state.            | Can provide strong consistency.                 | Configuration publishing, failover, metadata changes        |
+| Quorum voting            | Determines whether a decision is valid.      | Depends on set intersection and protocol rules. | Log commits, Leader election, failure confirmation          |
+| Lease/Lock               | Temporarily grants execution authority.      | Authority may expire.                           | Scheduled jobs, resource ownership, short critical sections |
+| Fencing Token            | Rejects stale writes from old owners.        | Depends on resource-side validation.            | Database, object store, or external-resource writes         |
+| Gossip                   | Propagates membership and state information. | Usually converges eventually.                   | Service discovery, health state, cache metadata             |
+| Queue/task claiming      | Distributes work among Workers.              | Usually at least once.                          | Batch processing, consumer tasks, shard scans               |
 
-![分布式协调机制选型](../images/shared/distributed-coordination-mechanism-selection.webp)
+![Choosing a distributed coordination mechanism](../images/shared/distributed-coordination-mechanism-selection.webp)
 
-真实系统经常会混合使用这些机制。
+Real systems often combine these mechanisms.
 
-比如控制面用 Leader 和多数派保护元数据，数据面尽量让请求分散；集群成员状态用 Gossip 传播，但真正的主从切换还要经过投票和 Epoch；任务调度可以有中心调度器，也可以让执行器自己触发，但底层仍可能依赖数据库条件更新、ZooKeeper、etcd 或消息队列。
+For example, a control plane may use a Leader and a majority to protect metadata, while distributing data-plane requests. Gossip may spread cluster membership, while voting and Epochs control primary-replica failover. A scheduler may use a central coordinator or let executors trigger work, while database conditional updates, ZooKeeper, etcd, or a message queue provide the underlying coordination.
 
-## 3 个实例的定时任务到底怎么设计？
+## How should a scheduled task run on three instances?
 
-开头那个凌晨 2 点定时任务，常见方案不止一种。
+There is more than one way to handle the 2 a.m. scheduled task from the opening example:
 
-1. 选出一个调度 Leader，由它创建任务。
-2. 所有实例同时触发，但通过数据库唯一键、条件更新或分布式锁竞争执行权。
-3. 调度器只产生任务消息，由消费者组领取和分片处理。
-4. 把任务拆成多个分片，每个实例只处理自己领取的部分。
+1. Elect a scheduling Leader to create the task.
+2. Let every instance trigger, then use a database unique key, conditional update, or distributed lock to claim execution.
+3. Have a scheduler produce task messages and let a consumer group claim and process them.
+4. Split the task into shards, with each instance processing the shards it claims.
 
-无论哪种方案，都不应该只依赖“这次一定只有一个实例执行”。更稳的设计通常包含这些东西：
+Whichever approach you choose, do not assume that only one instance will ever execute the task. A robust design usually includes:
 
-- 调度记录有唯一任务 ID；
-- 领取任务使用条件更新、版本号或租约；
-- 业务处理具备幂等性；
-- 任务支持超时回收和重新领取；
-- 涉及外部共享资源时使用 Fencing Token 或资源版本校验；
-- 保存执行进度，支持失败后从检查点恢复。
+- A unique task ID in the scheduling record.
+- Conditional updates, versions, or Leases when claiming the task.
+- Idempotent business processing.
+- Recovery and reassignment for timed-out tasks.
+- Fencing Tokens or resource-version checks when writing to shared external resources.
+- Saved progress so a failed task can resume from a checkpoint.
 
-如果任务很短、失败后重跑代价低，数据库唯一键或消息队列通常就够了。如果任务会长时间占用外部资源，或者旧执行者恢复后继续写会造成损坏，就需要引入 Lease、Fencing Token、幂等键和状态机。
+For a short task that is cheap to retry, a database unique key or message queue may be enough. If the task holds an external resource for a long time, or a resumed old executor could corrupt data, consider Leases, Fencing Tokens, idempotency keys, and a state machine.
 
-## 面试怎么回答？
+## How to answer this in an interview
 
-面试里如果被问到“分布式系统中的中心化和去中心化有什么区别”，不要一上来就把 Leader 和 Gossip 对立起来。更好的回答顺序是：先说为什么需要协调，再把问题拆成“决策”和“传播”，最后补上脑裂、Lease、Fencing Token 和选型取舍。
+If asked about centralized and decentralized coordination, do not immediately frame Leader and Gossip as opposites. Explain why coordination is needed, split the topic into decision-making and propagation, then discuss split brain, Leases, Fencing Tokens, and trade-offs.
 
-可以这样回答：
+One possible answer:
 
-> 分布式系统里，多个节点要共同完成一件事，就必须解决成员管理、任务分配、故障切换和写入顺序这些协调问题。
+> A distributed system needs coordination when multiple nodes jointly perform work. It must manage membership, assign tasks, handle failover, and order writes.
 >
-> 我会先把问题拆成两类：一类是决策问题，比如谁是 Leader、某条日志是否提交、某个资源当前归谁；另一类是传播问题，比如成员状态、故障观察、配置版本怎么扩散到其他节点。
+> I divide the problem into two categories. Decision-making includes who becomes Leader, whether a log entry is committed, and who owns a resource. Propagation includes how membership, failure observations, and configuration versions reach other nodes.
 >
-> Leader、Quorum 和共识协议主要解决决策问题。Leader 不一定是单点，关键要看它背后有没有日志复制、多副本和多数派选举。为了避免脑裂，通常要用多数派、Term/Epoch、选举限制和日志匹配规则。
+> Leader, Quorum, and consensus protocols mainly address decisions. A Leader is not necessarily a single point of failure; the important questions are whether its state is replicated and whether the cluster can elect a replacement by majority. Preventing split brain usually requires majority rules, Terms/Epochs, election restrictions, and log-matching rules.
 >
-> Gossip 主要解决状态传播问题。它适合传播成员和健康状态，但不适合单独承担严格互斥或全局写入顺序。真实系统经常混合使用，比如 Gossip 传播故障观察，多数派投票和 Epoch 决定主节点晋升。
+> Gossip mainly propagates state. It can spread membership and health information, but it should not provide strict mutual exclusion or global write ordering by itself. Real systems combine mechanisms; for example, Gossip can spread failure observations while majority voting and Epochs decide whether to promote a primary.
 >
-> 如果涉及锁或任务 owner，还要考虑 Lease 和 Fencing Token。Lease 能回收失联客户端的资格，但不能证明旧客户端已经停止运行；Fencing Token 需要资源端校验，才能拒绝旧 owner 的迟到写。业务侧还要用幂等键、唯一约束或状态机处理重复执行。
+> For locks or task ownership, I also consider Leases and Fencing Tokens. A Lease can reclaim authority from an unreachable client but cannot prove that the old client has stopped. A Fencing Token must be checked by the resource to reject stale writes. The business operation still needs idempotency keys, unique constraints, or a state machine to handle repeated execution.
 
-这个回答已经能覆盖大部分面试场景。如果面试官继续追问，可以按下面几类问题展开。
+This covers most interview scenarios. If the interviewer asks for more, discuss these questions.
 
-### 有 Leader 就一定是单点吗？
+### Does having a Leader always create a single point of failure?
 
-不一定。
+No.
 
-如果 Leader 的状态只存在自己内存里，挂掉后没有副本接管，那就是单点。很多分布式系统里的 Leader 更像“当前决策者”：它负责接收写请求、推进日志或分配任务，但状态会复制到多个节点。Leader 挂掉后，剩余节点可以基于已有日志和多数派选举出新 Leader。
+If the Leader's state exists only in its memory and no replica can take over, it is a single point of failure. In many distributed systems, the Leader is the current decision-maker: it accepts writes, advances a log, or assigns tasks, while state is replicated to several nodes. The remaining nodes can elect a new Leader after a failure.
 
-所以，判断是不是单点，不能只看有没有 Leader，要看 3 件事：
+To determine whether the Leader is a single point of failure, check:
 
-- Leader 状态有没有持久化和多副本；
-- Leader 挂掉后能不能自动选出新 Leader；
-- 新 Leader 能不能拿到已经提交过的状态。
+- Is the Leader's state persisted and replicated?
+- Can the remaining nodes automatically elect a new Leader after it fails?
+- Can the new Leader recover the state that was already committed?
 
-### 如何避免脑裂？
+### How can split brain be prevented?
 
-脑裂的风险在于多个分区都认为自己有权写入。
+The risk is that multiple partitions believe they can accept writes.
 
-常见做法是用多数派和任期控制。只有拿到多数派的节点集合才能选出 Leader 或提交写入。3 个节点至少要 2 个同意，5 个节点至少要 3 个同意。网络分区后，少数派拿不到多数派，就不能继续提交新的协调写入。
+A common approach combines majority rules with Terms. Only a majority can elect a Leader or commit writes. Three nodes need at least two votes; five need at least three. After a network partition, the minority cannot obtain a majority and must stop committing new coordination writes.
 
-任期负责区分新旧 Leader。Raft 里的 Term、ZAB 里的 Epoch 都是类似思路。节点看到更高任期后，要拒绝旧任期的协议请求。这样旧 Leader 即使从网络隔离或长时间暂停中恢复，也不能继续用旧身份推进内部日志。
+Terms distinguish old and new Leaders. Raft Terms and ZAB Epochs follow this idea. After seeing a higher term, a node rejects protocol requests from an older one. Thus, an old Leader that recovers from isolation or a long pause cannot continue advancing the internal log using its old identity.
 
-不过，这主要保护的是协调系统内部状态。业务资源还可能遇到旧客户端恢复后继续写的问题，这时就需要 Fencing Token：每次获得锁或权限时拿到一个递增 token，写资源时带上 token，资源端拒绝更小的旧 token。
+This mainly protects the coordination system's internal state. A business resource may still receive writes from an old client after it resumes. Use a Fencing Token in that case: issue a higher token whenever a client acquires the lock or authority, include it in writes, and have the resource reject lower tokens.
 
-### Gossip 是不是只能最终一致？
+### Can Gossip provide only eventual consistency?
 
-纯 Gossip 状态传播通常只负责信息扩散和最终收敛，不直接提供强互斥和全局写入顺序。
+Pure Gossip state propagation usually spreads information and converges eventually; it does not directly provide strong mutual exclusion or global write ordering.
 
-但“无固定 Leader”和“最终一致”不能画等号。也有无固定 Leader 的共识协议可以提供强一致性，只是工程实现更复杂。实际项目里更常见的组合是：Gossip 负责传播成员状态和故障报告，Quorum、Epoch、日志复制或资源端校验负责作出最终决定。
+However, “leaderless” does not mean “eventually consistent.” Some leaderless consensus protocols can provide strong consistency, though they are more complex. A common system design is to use Gossip for membership and failure reports, then use Quorum, Epochs, log replication, or resource-side validation to make the final decision.
 
-### 项目里怎么落到选型？
+### How should you explain a technology choice in a project?
 
-回答项目经验时，不要只说“我们用了 ZooKeeper/Redis/etcd”。更应该把选择理由说出来。
+Do not just say, “We used ZooKeeper/Redis/etcd.” Explain why.
 
-如果是分布式锁、配置变更、主节点切换、分片归属这类场景，可以这样说：
+For distributed locks, configuration changes, primary failover, and shard ownership, you might say:
 
-> 这类状态写错后代价比较高，所以我会优先考虑带多数派和会话/租约语义的协调组件。锁或 owner 过期后，还要考虑旧客户端恢复后的迟到写。如果资源端支持版本校验，会加 Fencing Token 做兜底。
+> Writing this state incorrectly is costly, so I would favor a coordination component with majority and session/Lease semantics. I would also account for stale writes if an old lock or owner resumes. If the resource supports version checks, I would use a Fencing Token as an additional safeguard.
 
-如果是服务发现、节点状态传播、缓存集群状态这类场景，可以这样说：
+For service discovery, node-state propagation, and cache-cluster status, you might say:
 
-> 这类信息允许短时间不一致，更看重扩展性和传播成本。可以接受通过 Gossip 或类似机制逐步收敛，但要处理消息重复、旧状态、网络分区恢复后的版本冲突。
+> This information can be briefly inconsistent, so scalability and propagation cost matter more. Gossip or a similar mechanism can converge gradually, provided the system handles duplicate messages, stale state, and version conflicts after a partition heals.
 
-面试回答到这个程度，就已经跳出了“中心化 vs 去中心化”的定义背诵，开始讲分布式系统里最重要的取舍：决策、传播、租约、幂等和故障恢复。
+This answer moves beyond reciting “centralized vs. decentralized” definitions. It covers the important distributed systems trade-offs: decisions, propagation, Leases, idempotency, and failure recovery.
 
-## 参考
+## References
 
 - [Kubernetes CronJob](https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/)
 - [The Raft Consensus Algorithm](https://raft.github.io/)
 - [In Search of an Understandable Consensus Algorithm](https://raft.github.io/raft.pdf)
-- [ZooKeeper Internals：Atomic Broadcast、Leader Activation、Quorums](https://zookeeper.apache.org/doc/current/zookeeperInternals.html)
-- [ZooKeeper Administrator's Guide：Clustered Setup 与多数派部署建议](https://zookeeper.apache.org/doc/current/zookeeperAdmin.html)
+- [ZooKeeper Internals: Atomic Broadcast, Leader Activation, and Quorums](https://zookeeper.apache.org/doc/current/zookeeperInternals.html)
+- [ZooKeeper Administrator's Guide: Clustered Setup and Majority Deployment](https://zookeeper.apache.org/doc/current/zookeeperAdmin.html)
 - [Redis Cluster Specification](https://redis.io/docs/latest/operate/oss_and_stack/reference/cluster-spec/)
-- [etcd API：Lease API](https://etcd.io/docs/v3.7/learning/api/)
+- [etcd API: Lease API](https://etcd.io/docs/v3.7/learning/api/)
 - [EPaxos](https://efficient.github.io/epaxos/)
-- [How to do distributed locking - Martin Kleppmann](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)
+- [How to Do Distributed Locking — Martin Kleppmann](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)
 - [Epidemic Algorithms for Replicated Database Maintenance](https://dl.acm.org/doi/10.1145/43921.43922)
 
 <!-- @include: @article-footer.snippet.md -->

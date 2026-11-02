@@ -1,138 +1,138 @@
 ---
-title: 一致性哈希算法详解：哈希环、虚拟节点、数据倾斜与分布式缓存应用
-category: 分布式
-description: 一致性哈希算法详解，讲解哈希环、节点扩缩容、虚拟节点、数据倾斜和负载均衡原理，以及在 Redis、Memcached、分布式缓存和分库分表中的典型应用。
+title: "Consistent Hashing Explained: Hash Rings, Virtual Nodes, Data Skew, and Distributed Caches"
+category: Distributed Systems
+description: "An introduction to consistent hashing, including hash rings, node membership changes, virtual nodes, data skew, and load balancing, with examples from Redis, Memcached, distributed caches, and database sharding."
 tag:
-  - 分布式协议与算法
-  - 哈希算法
+  - Distributed Protocols and Algorithms
+  - Hashing Algorithms
 head:
   - - meta
     - name: keywords
-      content: 一致性哈希,Consistent Hashing,哈希环,虚拟节点,数据倾斜,分布式缓存,Redis,Memcached,负载均衡,分布式算法
+      content: consistent hashing,hash ring,virtual nodes,data skew,distributed cache,Redis,Memcached,load balancing,distributed algorithms
 ---
 
-开始之前，先说两个常见的场景：
+Consider two common scenarios:
 
-1. **负载均衡**：由于访问人数太多，我们的网站部署了多台服务器个共同提供相同的服务，但每台服务器上存储的数据不同。为了保证请求的正确响应，相同参数（key）的请求（比如同个 IP 的请求、同一个用户的请求）需要发到同一台服务器处理。
-2. **分布式缓存**：由于缓存数据量太大，我们部署了多台缓存服务器共同提供缓存服务。缓存数据需要尽可能均匀地分布式在这些缓存服务器上，通过 key 可以找到对应的缓存服务器。
+1. **Load balancing:** A website runs the same service on several servers to handle a large number of requests, but each server stores different data. Requests with the same key, such as a client IP or user ID, need to reach the same server so they receive a consistent response.
+2. **Distributed caching:** Several cache servers jointly store a large dataset. Data should be distributed as evenly as possible, and a key should identify the cache server that stores its value.
 
-这两种场景的本质，都是需要建立一个**从 key 到服务器/节点的稳定映射关系**。
+Both scenarios need a **stable mapping from keys to servers or nodes**.
 
-在协议专题里，一致性哈希解决的是**数据或请求怎么分布到节点上**，不是多副本之间如何达成一致。状态传播可以看 [Gossip 协议详解](./gossip-protocol.md)，写入顺序和多数派提交可以看 [Raft 算法详解](./raft-algorithm.md)。
+In the distributed protocols section, consistent hashing addresses **how data or requests are assigned to nodes**. It does not make replicas agree with each other. For state propagation, see [Gossip Protocol](./gossip-protocol.md); for write ordering and majority-based commits, see [Raft](./raft-algorithm.md).
 
-为了实现这个目标，你首先会想到什么方案呢？
+What approach would you consider first?
 
-## 普通哈希算法
+## Basic hashing
 
-相信大家很快就能想到 **“哈希+取模”** 这个经典组合。通过哈希函数计算出 key 的哈希值，再对服务器数量取模，从而将 key 映射到固定的服务器上。
-
-公式也很简单：
+A common solution is **hashing followed by modulo**. Hash the key, then take the remainder after dividing by the number of servers.
 
 ```java
 node_number = hash(key) % N
 ```
 
-- `hash(key)`: 使用哈希函数（建议使用性能较好的非加密哈希函数，例如 SipHash、MurMurHash3、CRC32、DJB）对唯一键进行哈希。
-- `% N`: 对哈希值取模，将哈希值映射到一个介于 0 到 N-1 之间的值，N 为节点数/服务器数。
+- `hash(key)`: Apply a hash function to the unique key. A fast non-cryptographic hash such as SipHash, MurmurHash3, CRC32, or DJB is often suitable.
+- `% N`: Map the hash to a value from 0 to N-1, where N is the number of nodes or servers.
 
-![哈希取模](../images/shared/hashqumo.png)
+![Hashing followed by modulo](../images/shared/hashqumo.png)
 
-然而，传统的哈希取模算法有一个比较大的缺陷就是：**无法很好的解决机器/节点动态减少（比如某台机器宕机）或者增加的场景（比如又增加了一台机器）。**
+However, ordinary modulo hashing handles dynamic membership poorly. If a server is added or removed—for example, because a machine fails—the mapping changes substantially.
 
-想象一下，服务器的初始数量为 4 台 (N = 4)，如果其中一台服务器宕机，N 就变成了 3。此时，对于同一个 key，`hash(key) % 3` 的结果很可能与 `hash(key) % 4` 完全不同。
+Suppose there are initially four servers (`N = 4`). If one server fails, `N` becomes 3. For the same key, `hash(key) % 3` will usually differ from `hash(key) % 4`.
 
-![哈希取模-移除节点Node2](../images/shared/hashqumo-remove-node2.png)
+![Removing Node 2 from modulo hashing](../images/shared/hashqumo-remove-node2.png)
 
-这意味着几乎所有的数据映射关系都会错乱。在分布式缓存场景下，这会导致**大规模的缓存失效和缓存穿透**，瞬间将压力全部打到后端的数据库上，引发系统雪崩。
+Nearly all key-to-server mappings can change. In a distributed cache, this can cause widespread cache misses and cache penetration, suddenly sending a large amount of traffic to the database and potentially causing an outage.
 
-据估算，当节点数量从 N 变为 N-1 时，平均有 (N-1)/N 比例的数据需要迁移，这个比例 **趋近于 100%** 。这种“牵一发而动全身”的效应，在生产环境中是完全不可接受的。
+When the node count changes from N to N-1, an estimated `(N-1)/N` of the data must move on average. This approaches 100% as N grows. Such a large remapping is usually unacceptable in production.
 
-为了更好地解决这个问题，一致性哈希算法诞生了。
+Consistent hashing was designed to reduce this problem.
 
-## 一致性哈希算法
+## Consistent hashing
 
-一致性哈希算法在 1997 年由麻省理工学院提出（这篇论文的 PDF 在线阅读地址：<https://www.cs.princeton.edu/courses/archive/fall09/cos518/papers/chash.pdf>），是一种特殊的哈希算法，在移除或者添加一个服务器时，能够尽可能小地改变已存在的服务请求与处理请求服务器之间的映射关系。一致性哈希解决了传统哈希算法在分布式[哈希表](https://baike.baidu.com/item/哈希表/5981869)（Distributed Hash Table，DHT）中存在的动态伸缩等问题 。
+Consistent hashing was introduced by researchers at MIT in 1997 ([paper](https://www.cs.princeton.edu/courses/archive/fall09/cos518/papers/chash.pdf)). It is a hashing technique that minimizes changes to existing request-to-server mappings when a server is added or removed. It addresses dynamic membership in distributed [hash tables](https://baike.baidu.com/item/%E5%93%88%E5%B8%8C%E8%A1%A8/5981869) (DHTs).
 
-一致性哈希算法的底层原理也很简单，关键在于**哈希环**的引入。
+The key idea is to organize the hash space into a **hash ring**.
 
-### 哈希环
+### Hash ring
 
-一致性哈希算法将哈希空间组织成一个环形结构，将数据和节点都映射到这个环上，然后根据顺时针的规则确定数据或请求应该分配到哪个节点上。通常情况下，哈希环的起点是 0，终点是 2^32 - 1，并且起点与终点连接，故这个环的整数分布范围是 **[0, 2^32-1]** 。
+Consistent hashing arranges the hash space as a ring. Both data and nodes are mapped onto the ring, and a key is assigned to the first node encountered when moving clockwise. A common hash space ranges from 0 to `2^32 - 1`, with the endpoints connected, so the integer range is **[0, 2^32 - 1]**.
 
-传统哈希算法是对服务器数量取模，一致性哈希算法是对哈希环的范围取模，固定值，通常为 2^32：
+Ordinary hashing takes the modulo of the server count. Consistent hashing takes the modulo of the fixed hash-space size, usually `2^32`:
 
 ```java
 node_number = hash(key) % 2^32
 ```
 
-服务器/节点如何映射到哈希环上呢？也是哈希取模。例如，一般我们会根据服务器的 IP 或者主机名进行哈希，然后再取模。
+Servers or nodes are mapped onto the ring in the same way. For example, hash a server's IP address or hostname, then take the modulo:
 
 ```java
-hash（服务器ip）% 2^32
+hash(server_ip) % 2^32
 ```
 
-如下图所示：
+The following diagram illustrates the ring:
 
-![哈希环](../images/shared/consistent-hashing-circle.png)
+![Hash ring](../images/shared/consistent-hashing-circle.png)
 
-我们将数据和节点都映射到哈希环上，环上的每个节点都负责一个区间。对于上图来说，每个节点负责的数据情况如下：
+Each node on the ring owns an interval. In the diagram:
 
-- **Node1:** 负责 Node4 到 Node1 之间的区域（包含 value6）。
-- **Node2:** 负责 Node1 到 Node2 之间的区域（包含 value1, value2）。
-- **Node3:** 负责 Node2 到 Node3 之间的区域（包含 value3）。
-- **Node4:** 负责 Node3 到 Node4 之间的区域（包含 value4, value5）。
+- **Node 1:** Owns the interval from Node 4 to Node 1, including `value6`.
+- **Node 2:** Owns the interval from Node 1 to Node 2, including `value1` and `value2`.
+- **Node 3:** Owns the interval from Node 2 to Node 3, including `value3`.
+- **Node 4:** Owns the interval from Node 3 to Node 4, including `value4` and `value5`.
 
-### 节点移除/增加
+### Adding or removing nodes
 
-新增节点和移除节点的情况下，哈希环的引入可以避免影响范围太大，减少需要迁移的数据。
+The hash ring limits how much data moves when a node is added or removed.
 
-还是用上面分享的哈希环示意图为例，假设 Node2 节点被移除的话，那 Node3 就要负责 Node2 的数据，直接迁移 Node2 的数据到 Node3 即可，其他节点不受影响。
+In the diagram above, if Node 2 is removed, Node 3 takes over its data. Only Node 2's data needs to move; the other nodes are unaffected.
 
-![节点移除](../images/shared/consistent-hashing-circle-remove-node2.png)
+![Removing a node](../images/shared/consistent-hashing-circle-remove-node2.png)
 
-同样地，如果我们在 Node1 和 Node2 之间新增一个节点 Node5，那么原本应该由 Node2 负责的一部分数据（即哈希值落在 Node1 和 Node5 之间的数据，如图中的 value1）现在会由 Node5 负责。我们只需要将这部分数据从 Node2 迁移到 Node5 即可，同样只影响了相邻的节点，影响范围非常小。
+Similarly, suppose Node 5 is added between Node 1 and Node 2. Node 5 takes over the data whose hashes fall between Node 1 and Node 5, such as `value1` in the diagram. Only that portion of data moves from Node 2 to Node 5, so the impact remains limited to adjacent nodes.
 
-![节点增加](../images/shared/consistent-hashing-circle-add-node5.png)
+![Adding a node](../images/shared/consistent-hashing-circle-add-node5.png)
 
-### 数据倾斜问题
+### Data skew
 
-理想情况下，节点在环上是均匀分布的。然而，现实可能并不是这样的，尤其是节点数量比较少的时候。节点可能被映射到附近的区域，这样的话，就会导致绝大部分数据都由其中一个节点负责。
+Ideally, nodes are evenly distributed around the ring. In practice, especially with few nodes, several may map close together. One node can then end up responsible for most of the data.
 
-![数据倾斜](../images/shared/consistent-hashing-circle-unbalance.png)
+![Data skew on a hash ring](../images/shared/consistent-hashing-circle-unbalance.png)
 
-对于上图来说，每个节点负责的数据情况如下：
+In the diagram, the data is assigned as follows:
 
-- **Node1:** 负责 Node4 到 Node1 之间的区域（包含 value6）。
-- **Node2:** 负责 Node1 到 Node2 之间的区域（包含 value1）。
-- **Node3:** 负责 Node2 到 Node3 之间的区域（包含 value2，value3， value4, value5）。
-- **Node4:** 负责 Node3 到 Node4 之间的区域。
+- **Node 1:** Owns the interval from Node 4 to Node 1, including `value6`.
+- **Node 2:** Owns the interval from Node 1 to Node 2, including `value1`.
+- **Node 3:** Owns the interval from Node 2 to Node 3, including `value2`, `value3`, `value4`, and `value5`.
+- **Node 4:** Owns the interval from Node 3 to Node 4.
 
-除了数据倾斜问题，还有一个隐患。当新增或者删除节点的时候，数据分配不均衡。例如，Node3 被移除的话，Node3 负责的所有数据都要交给 Node4，随后所有的请求都要达到 Node4 上。假设 Node4 的服务器处理能力比较差的话，那可能直接就被干崩了。理想情况下，应该有更多节点来分担压力。
+Uneven assignment also makes node removal risky. If Node 3 is removed, Node 4 receives all of Node 3's data and traffic. If Node 4 has less capacity, it may become overloaded. Ideally, several nodes would share that load.
 
-如何解决这些问题呢？答案是引入**虚拟节点**。
+**Virtual nodes** help address these problems.
 
-### 虚拟节点
+### Virtual nodes
 
-虚拟节点就是对真实的物理节点在哈希环上虚拟出几个它的分身节点。数据落到分身节点上实际上就是落到真实的物理节点上，通过将虚拟节点均匀分散在哈希环的各个部分。
+A virtual node is a position on the hash ring that represents a physical node. Data assigned to the virtual node is stored by its physical node. Distributing virtual nodes across the ring makes data assignment more even.
 
-如下图所示，Node1、Node2、Node3、Node4 这 4 个节点都对应 3 个虚拟节点（下图只是为了演示，实际情况节点分布不会这么有规律）。
+In the following diagram, each of the four physical nodes—Node 1 through Node 4—has three virtual nodes. This is only an illustration; real distributions are not usually this regular.
 
-![虚拟节点](../images/shared/consistent-hashing-circle-virtual-node.png)
+![Virtual nodes](../images/shared/consistent-hashing-circle-virtual-node.png)
 
-对于上图来说，每个节点最终负责的数据情况如下：
+The data assignment in the diagram is:
 
-- **Node1**:value4
-- **Node2**:value1,value3
-- **Node3**:value5
-- **Node4**:value2,value6
+- **Node 1:** `value4`
+- **Node 2:** `value1`, `value3`
+- **Node 3:** `value5`
+- **Node 4:** `value2`, `value6`
 
-**引入虚拟节点的好处是巨大的：**
+Virtual nodes provide two major benefits:
 
-1. **数据均衡：** 虚拟节点越多，环上的“服务器点”就越密集，数据分布自然就越均匀，从根本上解决了数据倾斜问题。通常，每个真实节点对应的虚拟节点数在 100 到 200 之间，例如 Nginx 选择为每个权重分配 160 个虚拟节点。这里的权重的是为了区分服务器，例如处理能力更强的服务器权重越高，进而导致对应的虚拟节点越多，被命中的概率越大。
-2. **容错性增强：** 这才是虚拟节点最精妙的地方。当一个物理节点宕机，它相当于在环上的多个虚拟节点同时下线。这些虚拟节点原本负责的数据和流量，会**自然地、均匀地分散**给环上其他**多个不同**的物理节点去接管，而不会将压力集中于某一个邻居节点。这极大地提升了系统的稳定性和容错能力。
+1. **Better balance:** More virtual nodes create more positions around the ring, which generally makes data distribution more even and reduces skew. A physical node often has 100–200 virtual nodes. For example, Nginx assigns 160 virtual nodes per weight. A server's weight represents its capacity: a more powerful server gets more virtual nodes and is more likely to receive requests.
+2. **Improved fault tolerance:** When a physical node fails, all its virtual nodes disappear from the ring. Their data and traffic are distributed across multiple other physical nodes instead of concentrating on one neighbor. This improves system stability and fault tolerance.
 
-## 参考
+## References
 
-- 深入剖析 Nginx 负载均衡算法：<https://www.taohui.tech/2021/02/08/nginx/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90Nginx%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E7%AE%97%E6%B3%95/>
-- 读源码学架构系列：一致性哈希：<https://zhaoyang.me/posts/consistent-hash-algorithm/>
-- 一致性 Hash 算法原理总结：<https://mp.weixin.qq.com/s/WTz1KA9kOGrqFVTtALJzjQ>
+- [A Deep Dive into Nginx Load-Balancing Algorithms](https://www.taohui.tech/2021/02/08/nginx/%E6%B7%B1%E5%85%A5%E5%89%96%E6%9E%90Nginx%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E7%AE%97%E6%B3%95/)
+- [Learn System Architecture by Reading Source Code: Consistent Hashing](https://zhaoyang.me/posts/consistent-hash-algorithm/)
+- [A Summary of Consistent Hashing](https://mp.weixin.qq.com/s/WTz1KA9kOGrqFVTtALJzjQ)
+
+<!-- @include: @article-footer.snippet.md -->

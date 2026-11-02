@@ -1,150 +1,135 @@
 ---
-title: RPC 远程过程调用详解：原理、调用流程、序列化协议与框架选型
-category: 分布式
-description: RPC 远程过程调用基础详解，讲解 RPC 的核心原理、调用流程、动态代理、序列化协议、网络传输、服务发现，以及 Dubbo、gRPC、Thrift 等常见框架选型。
+title: "RPC Explained: Principles, Call Flow, Serialization, and Framework Selection"
+category: Distributed Systems
+description: "An introduction to RPC principles, call flow, dynamic proxies, serialization, network transport, service discovery, and framework choices including Dubbo, gRPC, and Thrift."
 tag:
   - RPC
 head:
   - - meta
     - name: keywords
-      content: RPC,RPC 原理,远程过程调用,动态代理,序列化,服务发现,Dubbo,gRPC,Thrift,微服务通信,RPC 面试题
+      content: RPC,remote procedure call,dynamic proxy,serialization,service discovery,Dubbo,gRPC,Thrift,microservice communication,RPC interview questions
 ---
 
-这篇文章会简单介绍一下 RPC 相关的基础概念。
+This article introduces the basics of RPC.
 
-放到分布式系统里看，RPC 解决的是**服务之间如何互相调用**。外部请求进入系统通常先经过 [API 网关](../api-gateway.md)，进入内部服务后，服务之间才会通过 RPC、HTTP Client、消息队列等方式继续协作。如果你想看 Dubbo 这种成熟 RPC 框架的服务治理细节，可以继续读 [Dubbo 面试题总结](./dubbo.md)。
+In a distributed system, RPC addresses **how services call one another**. External requests typically enter through an [API gateway](../api-gateway.md); internal services then collaborate through RPC, HTTP clients, message queues, or other mechanisms. For service governance in a mature RPC framework, see [Dubbo Interview Questions](./dubbo.md).
 
-## RPC 是什么?
+## What is RPC?
 
-![RPC 概览](../../cs-basics/images/shared/rpc-overview.png)
+![RPC overview](../../cs-basics/images/shared/rpc-overview.png)
 
-**RPC（Remote Procedure Call）** 即远程过程调用，通过名字我们就能看出 RPC 关注的是远程调用而非本地调用。
+**RPC (Remote Procedure Call)** focuses on calling procedures in another process or machine.
 
-**为什么要 RPC ？** 因为，两个不同的服务器上的服务提供的方法不在一个内存空间，所以，需要通过网络编程才能传递方法调用所需要的参数。并且，方法调用的结果也需要通过网络编程来接收。但是，如果我们自己手动网络编程来实现这个调用过程的话工作量是非常大的，因为，我们需要考虑底层传输方式（TCP 还是 UDP）、序列化方式等等方面。
+**Why use RPC?** Services on different servers do not share a memory space. The caller must send method arguments over a network and receive the result over that network. Implementing the entire process manually requires work on transport choices such as TCP or UDP, serialization, and related details.
 
-**RPC 能帮助我们做什么呢？** 简单来说，通过 RPC 可以帮助我们调用远程计算机上某个服务的方法，这个过程就像调用本地方法一样简单。并且！我们不需要了解底层网络编程的具体细节。
+**What does RPC provide?** It lets a program call a method provided by a service on a remote machine through an interface resembling a local call, without implementing the underlying network communication itself.
 
-举个例子：两个不同的服务 A、B 部署在两台不同的机器上，服务 A 如果想要调用服务 B 中的某个方法的话就可以通过 RPC 来做。
+For example, if services A and B run on different machines, A can use RPC to call a method provided by B. The goal is to make that remote call convenient while hiding much of the transport machinery.
 
-一言蔽之：**RPC 的出现就是为了让你调用远程方法像调用本地方法一样简单。**
+## How does RPC work?
 
-## RPC 的原理是什么?
+An RPC framework can be viewed as five parts:
 
-为了能够帮助小伙伴们理解 RPC 原理，我们可以将整个 RPC 的 核心功能看作是下面 👇 5 个部分实现的：
+1. **Client (service consumer):** Calls the remote method.
+2. **Client stub:** A proxy that passes the method, class, arguments, and other call information to the server.
+3. **Network transport:** Sends the request to the server and returns its result. Implementations can use sockets or a library such as Netty.
+4. **Server stub:** Receives a request, invokes the corresponding method, and returns the result.
+5. **Server (service provider):** Provides the remote method.
 
-1. **客户端（服务消费端）**：调用远程方法的一端。
-1. **客户端 Stub（桩）**：这其实就是一代理类。代理类主要做的事情很简单，就是把你调用方法、类、方法参数等信息传递到服务端。
-1. **网络传输**：网络传输就是你要把你调用的方法的信息比如说参数啊这些东西传输到服务端，然后服务端执行完之后再把返回结果通过网络传输给你传输回来。网络传输的实现方式有很多种比如最基本的 Socket 或者性能以及封装更加优秀的 Netty（推荐）。
-1. **服务端 Stub（桩）**：这个桩就不是代理类了。我觉得理解为桩实际不太好，大家注意一下就好。这里的服务端 Stub 实际指的就是接收到客户端执行方法的请求后，去执行对应的方法然后返回结果给客户端的类。
-1. **服务端（服务提供端）**：提供远程方法的一端。
+![RPC architecture](../../cs-basics/images/shared/rpc-principle.png)
 
-具体原理图如下，后面我会串起来将整个 RPC 的过程给大家说一下。
+A typical call proceeds as follows:
 
-![RPC 原理图](../../cs-basics/images/shared/rpc-principle.png)
+1. The client invokes the remote service through a local-style call.
+2. The client stub serializes the method and arguments into an `RpcRequest` message.
+3. The client stub finds the remote service's address and sends the message.
+4. The server stub deserializes the message into a Java `RpcRequest` object.
+5. The server stub uses the class, method, and arguments in the request to invoke the local method.
+6. The server stub serializes the result into an `RpcResponse` and sends it back.
+7. The client stub deserializes the response into a Java `RpcResponse`, giving the caller the result.
 
-1. 服务消费端（client）以本地调用的方式调用远程服务；
-1. 客户端 Stub（client stub） 接收到调用后负责将方法、参数等组装成能够进行网络传输的消息体（序列化）：`RpcRequest`；
-1. 客户端 Stub（client stub） 找到远程服务的地址，并将消息发送到服务提供端；
-1. 服务端 Stub（桩）收到消息将消息反序列化为 Java 对象: `RpcRequest`；
-1. 服务端 Stub（桩）根据`RpcRequest`中的类、方法、方法参数等信息调用本地的方法；
-1. 服务端 Stub（桩）得到方法执行结果并将组装成能够进行网络传输的消息体：`RpcResponse`（序列化）发送至消费方；
-1. 客户端 Stub（client stub）接收到消息并将消息反序列化为 Java 对象:`RpcResponse` ，这样也就得到了最终结果。over!
+For interviews, practice drawing and explaining this flow as well as understanding the individual components.
 
-相信小伙伴们看完上面的讲解之后，已经了解了 RPC 的原理。
+## Common RPC frameworks
 
-虽然篇幅不多，但是基本把 RPC 框架的核心原理讲清楚了！另外，对于上面的技术细节，我会在后面的章节介绍到。
-
-**最后，对于 RPC 的原理，希望小伙伴不单单要理解，还要能够自己画出来并且能够给别人讲出来。因为，在面试中这个问题在面试官问到 RPC 相关内容的时候基本都会碰到。**
-
-## 有哪些常见的 RPC 框架？
-
-我们这里说的 RPC 框架指的是可以让客户端直接调用服务端方法，就像调用本地方法一样简单的框架，比如我下面介绍的 Dubbo、Motan、gRPC 这些。 如果需要和 HTTP 协议打交道，解析和封装 HTTP 请求和响应。这类框架并不能算是“RPC 框架”，比如 Feign。
+Here, an RPC framework lets a client invoke server methods through a local-style interface, as with Dubbo, Motan, or gRPC. A framework that primarily constructs and parses HTTP requests and responses, such as Feign, is not classified as an RPC framework in this discussion.
 
 ### Dubbo
 
-![](../images/shared/image-20220716111053081.png)
+![Dubbo](../images/shared/image-20220716111053081.png)
 
-Apache Dubbo 是一款微服务框架，为大规模微服务实践提供高性能 RPC 通信、流量治理、可观测性等解决方案，
-涵盖 Java、Golang 等多种语言 SDK 实现。
+Apache Dubbo is a microservice framework offering high-performance RPC communication, traffic management, and observability for large-scale services. It has SDKs for languages including Java and Go.
 
-Dubbo 提供了从服务定义、服务发现、服务通信到流量管控等几乎所有的服务治理能力，支持 Triple 协议（基于 HTTP/2 之上定义的下一代 RPC 通信协议）、应用级服务发现、Dubbo Mesh （Dubbo3 赋予了很多云原生友好的新特性）等特性。
+Dubbo provides service governance capabilities from service definition, discovery, and communication through traffic control. Its features include the Triple protocol, defined on HTTP/2; application-level service discovery; and Dubbo Mesh, part of Dubbo 3's cloud-native support.
 
-![Dubbo3](../../cs-basics/images/shared/image-20220716111545343.png)
+![Dubbo 3](../../cs-basics/images/shared/image-20220716111545343.png)
 
-Dubbo 是由阿里开源，后来加入了 Apache 。正是由于 Dubbo 的出现，才使得越来越多的公司开始使用以及接受分布式架构。
+Alibaba open-sourced Dubbo, which later joined Apache. Its adoption helped more companies use distributed architectures, and its source code is useful study material.
 
-Dubbo 算的是比较优秀的国产开源项目了，它的源码也是非常值得学习和阅读的！
-
-- GitHub：[https://github.com/apache/incubator-dubbo](https://github.com/apache/incubator-dubbo "https://github.com/apache/incubator-dubbo")
-- 官网：<https://dubbo.apache.org/zh/>
+- [GitHub](https://github.com/apache/incubator-dubbo)
+- [Official website](https://dubbo.apache.org/zh/)
 
 ### Motan
 
-Motan 是新浪微博开源的一款 RPC 框架，据说在新浪微博正支撑着千亿次调用。不过笔者倒是很少看到有公司使用，而且网上的资料也比较少。
+Motan is an RPC framework open-sourced by Sina Weibo and reportedly supports hundreds of billions of calls there. The author has seen relatively little adoption and documentation elsewhere.
 
-很多人喜欢拿 Motan 和 Dubbo 作比较，毕竟都是国内大公司开源的。笔者在查阅了很多资料，以及简单查看了其源码之后发现：**Motan 更像是一个精简版的 Dubbo，可能是借鉴了 Dubbo 的思想，Motan 的设计更加精简，功能更加纯粹。**
+Motan is often compared with Dubbo because both originated at large Chinese companies. After reviewing documentation and some source code, the author describes **Motan as a more streamlined framework that appears to draw on ideas from Dubbo**.
 
-不过，我不推荐你在实际项目中使用 Motan。如果你要是公司实际使用的话，还是推荐 Dubbo ，其社区活跃度以及生态都要好很多。
+The author recommends Dubbo for practical projects because of its more active community and broader ecosystem.
 
-- 从 Motan 看 RPC 框架设计：[http://kriszhang.com/motan-rpc-impl/](http://kriszhang.com/motan-rpc-impl/ "http://kriszhang.com/motan-rpc-impl/")
-- Motan 中文文档：[https://github.com/weibocom/motan/wiki/zh_overview](https://github.com/weibocom/motan/wiki/zh_overview "https://github.com/weibocom/motan/wiki/zh_overview")
+- [RPC framework design through Motan](http://kriszhang.com/motan-rpc-impl/)
+- [Motan documentation in Chinese](https://github.com/weibocom/motan/wiki/zh_overview)
 
 ### gRPC
 
-![](../images/shared/2843b10d-0c2f-4b7e-9c3e-ea4466792a8b.png)
+![gRPC](../images/shared/2843b10d-0c2f-4b7e-9c3e-ea4466792a8b.png)
 
-gRPC 是 Google 开源的一个高性能、通用的开源 RPC 框架。其由主要面向移动应用开发并基于 HTTP/2 协议标准而设计（支持双向流、消息头压缩等功能，更加节省带宽），基于 ProtoBuf 序列化协议开发，并且支持众多开发语言。
+gRPC is a high-performance, general-purpose RPC framework open-sourced by Google. It uses HTTP/2 features such as bidirectional streaming and header compression to save bandwidth, uses Protocol Buffers for serialization, and supports many languages.
 
-**何谓 ProtoBuf？** [ProtoBuf（ Protocol Buffer）](https://github.com/protocolbuffers/protobuf) 是一种更加灵活、高效的数据格式，可用于通讯协议、数据存储等领域，基本支持所有主流编程语言且与平台无关。不过，通过 ProtoBuf 定义接口和数据类型还挺繁琐的，这是一个小问题。
+**What is Protocol Buffers?** [Protocol Buffers](https://github.com/protocolbuffers/protobuf) is a flexible, efficient, platform-independent data format for communication and storage. It supports most mainstream languages, though defining interfaces and data types can require extra work.
 
-![](../images/shared/image-20220716104304033.png)
+![Protocol Buffers](../images/shared/image-20220716104304033.png)
 
-不得不说，gRPC 的通信层的设计还是非常优秀的，[Dubbo-go 3.0](https://dubbogo.github.io/) 的通信层改进主要借鉴了 gRPC。
+gRPC's communication layer influenced the improvements in [Dubbo-go 3.0](https://dubbogo.github.io/). The article notes that gRPC provides limited built-in service governance and suggests using additional components such as Tencent's PolarisMesh when those capabilities are needed.
 
-不过，gRPC 的设计导致其几乎没有服务治理能力。如果你想要解决这个问题的话，就需要依赖其他组件比如腾讯的 PolarisMesh（北极星）了。
-
-- GitHub：[https://github.com/grpc/grpc](https://github.com/grpc/grpc "https://github.com/grpc/grpc")
-- 官网：[https://grpc.io/](https://grpc.io/ "https://grpc.io/")
+- [GitHub](https://github.com/grpc/grpc)
+- [Official website](https://grpc.io/)
 
 ### Thrift
 
-Apache Thrift 是 Facebook 开源的跨语言的 RPC 通信框架，目前已经捐献给 Apache 基金会管理，由于其跨语言特性和出色的性能，在很多互联网公司得到应用，有能力的公司甚至会基于 thrift 研发一套分布式服务框架，增加诸如服务注册、服务发现等功能。
+Apache Thrift is a cross-language RPC framework open-sourced by Facebook and donated to the Apache Foundation. Its language support and performance have led many Internet companies to adopt it; some build additional features such as service registration and discovery on top.
 
-`Thrift`支持多种不同的**编程语言**，包括`C++`、`Java`、`Python`、`PHP`、`Ruby`等（相比于 gRPC 支持的语言更多 ）。
+Thrift supports languages including C++, Java, Python, PHP, and Ruby. The source describes its language support as broader than gRPC's.
 
-- 官网：[https://thrift.apache.org/](https://thrift.apache.org/ "https://thrift.apache.org/")
-- Thrift 简单介绍：[https://www.jianshu.com/p/8f25d057a5a9](https://www.jianshu.com/p/8f25d057a5a9 "https://www.jianshu.com/p/8f25d057a5a9")
+- [Official website](https://thrift.apache.org/)
+- [Introduction to Thrift](https://www.jianshu.com/p/8f25d057a5a9)
 
-### 总结
+### Summary
 
-gRPC 和 Thrift 虽然支持跨语言的 RPC 调用，但是它们只提供了最基本的 RPC 框架功能，缺乏一系列配套的服务化组件和服务治理功能的支撑。
+gRPC and Thrift support cross-language RPC but provide fewer integrated service-governance components. The author favors Dubbo for its features, ecosystem, active community, production use at companies such as Dangdang and Didi, and available learning material.
 
-Dubbo 不论是从功能完善程度、生态系统还是社区活跃度来说都是最优秀的。而且，Dubbo 在国内有很多成功的案例比如当当网、滴滴等等，是一款经得起生产考验的成熟稳定的 RPC 框架。最重要的是你还能找到非常多的 Dubbo 参考资料，学习成本相对也较低。
+The following diagram shows Dubbo's ecosystem:
 
-下图展示了 Dubbo 的生态系统。
+![Dubbo ecosystem](../images/shared/eee98ff2-8e06-4628-a42b-d30ffcd2831e.png)
 
-![](../images/shared/eee98ff2-8e06-4628-a42b-d30ffcd2831e.png)
+Dubbo is also a component of Spring Cloud Alibaba.
 
-Dubbo 也是 Spring Cloud Alibaba 里面的一个组件。
+![Spring Cloud Alibaba](../images/shared/0d195dae-72bc-4956-8451-3eaf6dd11cbd.png)
 
-![](../images/shared/0d195dae-72bc-4956-8451-3eaf6dd11cbd.png)
+The source notes that Dubbo and Motan have traditionally focused on Java, despite supporting some other languages, and suggests gRPC for calls across many languages. For a Java backend choosing an RPC framework, the author recommends considering Dubbo.
 
-但是，Dubbo 和 Motan 主要是给 Java 语言使用。虽然，Dubbo 和 Motan 目前也能兼容部分语言，但是不太推荐。如果需要跨多种语言调用的话，可以考虑使用 gRPC。
+## How do you design and implement an RPC framework?
 
-综上，如果是 Java 后端技术栈，并且你在纠结选择哪一种 RPC 框架的话，我推荐你考虑一下 Dubbo。
+**Building an RPC Framework** is a booklet in the author's [Knowledge Planet](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html). Its 12 articles explain how to build a simple RPC framework from scratch using Netty, Kryo, and ZooKeeper.
 
-## 如何设计并实现一个 RPC 框架？
+The project has detailed code comments, a clear structure, and Checkstyle integration, making it suitable for study.
 
-**《手写 RPC 框架》** 是我的[知识星球](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html)的一个内部小册，我写了 12 篇文章来讲解如何从零开始基于 Netty+Kyro+Zookeeper 实现一个简易的 RPC 框架。
+**Contents overview:**
 
-麻雀虽小五脏俱全，项目代码注释详细，结构清晰，并且集成了 Check Style 规范代码结构，非常适合阅读和学习。
+![RPC framework booklet contents](../images/shared/image-20220308100605485.png)
 
-**内容概览**：
+## Why use RPC when HTTP exists?
 
-![](../images/shared/image-20220308100605485.png)
-
-## 既然有了 HTTP 协议，为什么还要有 RPC ？
-
-关于这个问题的详细答案，请看这篇文章：[有了 HTTP 协议，为什么还要有 RPC ？](../../cs-basics/network/http-vs-rpc.md) 。
+For a detailed answer, see [Why use RPC when HTTP exists?](../../cs-basics/network/http-vs-rpc.md).
 
 <!-- @include: @article-footer.snippet.md -->

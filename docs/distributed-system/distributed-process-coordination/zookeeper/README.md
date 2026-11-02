@@ -1,73 +1,73 @@
 ---
-title: ZooKeeper 专题：核心概念、ZNode、Watcher、ZAB、集群部署、Curator 与分布式锁
-description: ZooKeeper 面试与分布式协调学习路线，涵盖 ZNode、节点类型、Watcher、ACL、ZAB 协议、Leader 选举、集群部署、Curator 和分布式锁。
-category: 分布式
+title: "ZooKeeper Guide: ZNodes, Watchers, ZAB, Cluster Deployment, Curator, and Distributed Locks"
+description: "A ZooKeeper and distributed coordination study guide covering ZNodes, node types, Watchers, ACLs, ZAB, Leader election, deployment, Curator, and distributed locks."
+category: Distributed Systems
 tag:
   - ZooKeeper
-  - 分布式协调
-  - 分布式锁
+  - Distributed Coordination
+  - Distributed Locks
 sitemap:
   changefreq: weekly
   priority: 0.9
 head:
   - - meta
     - name: keywords
-      content: ZooKeeper,ZooKeeper入门,ZooKeeper进阶,ZNode,Watcher,ZAB协议,Leader选举,Curator,分布式协调,分布式锁,注册中心,后端面试
+      content: ZooKeeper,ZNode,Watcher,ZAB,Leader election,Curator,distributed coordination,distributed locks,service registry,backend interviews
 ---
 
-ZooKeeper 是经典的分布式协调组件，常用于注册中心、配置管理、分布式锁、Leader 选举和集群元数据管理。学习 ZooKeeper 时，可以先掌握数据模型和 Watcher，再理解 ZAB 协议、Leader 选举和工程实践。
+ZooKeeper is a distributed coordination service commonly used for service registries, configuration management, distributed locks, Leader election, and cluster metadata. Start with its data model and Watchers, then study ZAB, Leader election, and practical operation.
 
-## 适合谁看
+## Who this guide is for
 
-- 想系统学习 ZooKeeper 的后端开发者。
-- 准备 ZooKeeper、注册中心、分布式锁、分布式协调相关面试题的同学。
-- 用过 ZooKeeper 或 Curator，但对 ZNode、Watcher、ZAB、Leader 选举不够熟的读者。
-- 需要对比 ZooKeeper、Eureka、Nacos 等注册中心和协调组件的工程师。
+- Backend developers studying ZooKeeper.
+- Candidates preparing for interviews on ZooKeeper, service registries, distributed locks, or coordination.
+- Readers who have used ZooKeeper or Curator and want to understand ZNodes, Watchers, ZAB, and Leader election.
+- Engineers comparing ZooKeeper, Eureka, Nacos, and other registry or coordination components.
 
-## 学习重点
+## Key topics
 
-- ZooKeeper 的数据模型为什么是树形 ZNode？
-- 临时节点、有序节点、Watcher 机制分别适合解决哪些问题？
-- ZooKeeper 如何通过 ZAB 协议处理消息广播、主从同步和崩溃恢复？
-- 为什么 ZooKeeper 集群通常建议部署奇数个节点？
-- Curator 如何简化原生 ZooKeeper 客户端开发和分布式锁实现？
+- Why does ZooKeeper use a tree of ZNodes as its data model?
+- What problems do ephemeral nodes, sequential nodes, and Watchers solve?
+- How does ZAB handle message broadcast, replica synchronization, and crash recovery?
+- Why are ZooKeeper clusters usually deployed with an odd number of nodes?
+- How does Curator simplify ZooKeeper client development and distributed locks?
 
-## 和其他文章的关系
+## How this guide relates to other articles
 
-[分布式协调详解](../../protocol/centralized-and-decentralized.md) 先讲 Leader、Quorum、脑裂和租约这些通用问题；ZooKeeper 专题把这些问题落到 ZNode、Watcher、Session 和 ZAB 上。
+[Distributed Coordination](../../protocol/centralized-and-decentralized.md) introduces general concepts such as Leaders, Quorums, split brain, and Leases. This guide applies them to ZNodes, Watchers, sessions, and ZAB.
 
-[ZAB 协议详解](../../protocol/zab.md) 只讲 ZooKeeper 的原子广播和崩溃恢复，不展开 ZNode、Curator 命令和应用场景。想看实际命令和客户端代码，可以继续读 [ZooKeeper 实战教程](./zookeeper-in-action.md)。
+[ZAB Explained](../../protocol/zab.md) focuses on atomic broadcast and crash recovery. For commands and client code, continue with the [ZooKeeper practical guide](./zookeeper-in-action.md).
 
-## 建议阅读顺序
+## Suggested reading order
 
-1. [分布式协调详解](../../protocol/centralized-and-decentralized.md)：先理解分布式协调、Leader、Quorum、脑裂和租约这些共性问题。
-2. [ZooKeeper 入门指南](./zookeeper-intro.md)：再理解 ZNode、Watcher、ACL 和典型应用场景。
-3. [ZooKeeper 进阶详解](./zookeeper-plus.md)：继续补齐 ZAB、Leader 选举、集群部署和会话机制。
-4. [ZooKeeper 实战教程](./zookeeper-in-action.md)：最后通过 Docker、zkCli、四字命令和 Curator 做实践。
+1. [Distributed Coordination](../../protocol/centralized-and-decentralized.md): Learn about coordination, Leaders, Quorums, split brain, and Leases.
+2. [ZooKeeper Fundamentals](./zookeeper-intro.md): Study ZNodes, Watchers, ACLs, and common use cases.
+3. [Advanced ZooKeeper](./zookeeper-plus.md): Explore ZAB, Leader election, cluster deployment, and sessions.
+4. [ZooKeeper in Practice](./zookeeper-in-action.md): Work with Docker, zkCli, four-letter commands, and Curator.
 
-## 核心文章
+## Core articles
 
-- [ZooKeeper 入门指南](./zookeeper-intro.md)：讲解 ZooKeeper 核心概念、ZNode 数据模型、节点类型、Watcher 监听机制、ACL 权限控制和典型应用场景。
-- [ZooKeeper 进阶详解](./zookeeper-plus.md)：深入讲解 ZAB 协议、Leader 选举、集群部署策略、奇数节点原则、会话管理以及与 Eureka、Nacos 等注册中心的对比。
-- [ZooKeeper 实战教程](./zookeeper-in-action.md)：覆盖 Docker 安装部署、zkCli 常用命令、四字命令、Curator Java 客户端 CRUD 操作和分布式锁示例。
+- [ZooKeeper Fundamentals](./zookeeper-intro.md): Core concepts, the ZNode model, node types, Watchers, ACLs, and use cases.
+- [Advanced ZooKeeper](./zookeeper-plus.md): ZAB, Leader election, cluster deployment, odd node counts, sessions, and comparisons with Eureka and Nacos.
+- [ZooKeeper in Practice](./zookeeper-in-action.md): Docker deployment, zkCli, four-letter commands, Curator CRUD operations, and distributed lock examples.
 
-## 高频问题
+## Common interview questions
 
-- ZooKeeper 适合解决哪些分布式协调问题？
-- ZNode 有哪些类型？临时顺序节点为什么常用于分布式锁？
-- Watcher 为什么是一次性触发？使用时有什么注意事项？
-- ZAB 协议和 Raft、Paxos 有什么关系？
-- ZooKeeper 集群为什么通常部署奇数个节点？
-- ZooKeeper 和 Eureka、Nacos 作为注册中心有什么区别？
-- Curator 相比原生 ZooKeeper 客户端解决了哪些开发痛点？
+- Which distributed coordination problems is ZooKeeper suited to?
+- What types of ZNode exist, and why are ephemeral sequential nodes used for distributed locks?
+- Why are Watchers one-time triggers, and what should clients account for?
+- How does ZAB relate to Raft and Paxos?
+- Why do ZooKeeper clusters usually have an odd number of nodes?
+- How does ZooKeeper compare with Eureka and Nacos as a service registry?
+- What client development problems does Curator solve?
 
-## 相关专题
+## Related topics
 
-- [分布式系统知识体系](../../)
-- [分布式理论、算法与协议专题](../../protocol/)
-- [分布式协调详解](../../protocol/centralized-and-decentralized.md)
-- [ZAB 协议详解](../../protocol/zab.md)
-- [分布式锁实现方案详解](../../distributed-lock-implementations.md)
-- [分布式配置中心详解](../../distributed-configuration-center.md)
+- [Distributed Systems Guide](../../)
+- [Distributed Systems Theory and Protocols](../../protocol/)
+- [Distributed Coordination](../../protocol/centralized-and-decentralized.md)
+- [ZAB Explained](../../protocol/zab.md)
+- [Distributed Lock Implementations](../../distributed-lock-implementations.md)
+- [Distributed Configuration Centers](../../distributed-configuration-center.md)
 
 <!-- @include: @article-footer.snippet.md -->

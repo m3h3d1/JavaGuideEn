@@ -1,71 +1,71 @@
 ---
-title: RPC 远程过程调用专题：原理、调用流程、序列化、服务发现、Dubbo 与 gRPC
-description: RPC 面试与远程调用学习路线，涵盖 RPC 原理、调用流程、动态代理、序列化、网络传输、服务发现、负载均衡、Dubbo、gRPC 和 HTTP 对比。
-category: 分布式
+title: "RPC Guide: Principles, Call Flow, Serialization, Service Discovery, Dubbo, and gRPC"
+description: "A study and interview guide to RPC, covering call flow, dynamic proxies, serialization, network transport, service discovery, load balancing, Dubbo, gRPC, and HTTP."
+category: Distributed Systems
 tag:
   - RPC
   - Dubbo
-  - 分布式
+  - Distributed Systems
 sitemap:
   changefreq: weekly
   priority: 0.9
 head:
   - - meta
     - name: keywords
-      content: RPC,RPC原理,RPC框架,Dubbo,gRPC,Thrift,远程过程调用,服务发现,动态代理,序列化协议,负载均衡,HTTP和RPC区别,后端面试
+      content: RPC,RPC principles,RPC frameworks,Dubbo,gRPC,Thrift,remote procedure call,service discovery,dynamic proxy,serialization,load balancing,HTTP vs RPC,backend interviews
 ---
 
-RPC（Remote Procedure Call，远程过程调用）是分布式系统里最常见的服务调用方式之一。它希望让调用远程服务像调用本地方法一样自然，同时封装网络通信、序列化、服务发现、负载均衡、超时重试和容错治理等复杂细节。
+Remote procedure call (RPC) is a common way for services in a distributed system to communicate. It aims to make calling a remote service feel like calling a local method while encapsulating network communication, serialization, service discovery, load balancing, timeouts, retries, and fault tolerance.
 
-## 适合谁看
+## Who this guide is for
 
-- 想理解 RPC 框架工作原理的后端开发者。
-- 正在准备 RPC、Dubbo、微服务调用相关面试题的同学。
-- 已经用过 Feign、Dubbo、gRPC，但对底层调用流程和服务治理不够熟的读者。
-- 需要判断内部服务调用到底该用 HTTP 还是 RPC 的工程师。
+- Backend developers who want to understand how RPC frameworks work.
+- Candidates preparing for interviews about RPC, Dubbo, and microservice communication.
+- Readers who have used Feign, Dubbo, or gRPC and want to understand their call flow and service governance.
+- Engineers deciding whether to use HTTP or RPC for internal service calls.
 
-## 学习重点
+## Key topics
 
-- RPC 是远程调用模型，不是某一个具体协议。
-- 一次 RPC 调用通常会经过动态代理、序列化、网络传输、服务发现、负载均衡、结果反序列化等步骤。
-- Dubbo、gRPC、Thrift 等框架的侧重点不同，不能只用“性能更好”概括 RPC。
-- HTTP 和 RPC 不是互斥关系，gRPC 就是基于 HTTP/2 承载 RPC 调用的典型例子。
-- 面试中要能从“为什么需要 RPC、RPC 怎么工作、框架如何治理服务、如何选型”几个层次回答。
+- RPC is a remote invocation model, not one specific protocol.
+- An RPC call typically involves a dynamic proxy, serialization, network transport, service discovery, load balancing, and response deserialization.
+- Frameworks such as Dubbo, gRPC, and Thrift have different priorities; RPC cannot be reduced to “better performance.”
+- HTTP and RPC are not mutually exclusive: gRPC carries RPC calls over HTTP/2.
+- In an interview, explain why RPC is needed, how it works, how frameworks govern services, and how to choose a framework.
 
-## 和其他分布式文章的关系
+## How this guide relates to other articles
 
-RPC 主要解决**服务之间如何调用**。它和 [API 网关](../api-gateway.md) 经常一起出现，但两者位置不同：网关负责外部流量入口和统一治理，RPC 更常用于内部服务之间的调用。
+RPC addresses **how services call one another**. It often appears alongside an [API gateway](../api-gateway.md), but they have different roles: the gateway handles and governs external traffic, while RPC is commonly used between internal services.
 
-RPC 框架通常还会依赖注册发现、负载均衡、超时重试和集群容错。想把这条链路补完整，可以把本专题和 [分布式配置中心详解](../distributed-configuration-center.md)、[ZooKeeper 专题](../distributed-process-coordination/zookeeper/) 放在一起看。
+RPC frameworks also depend on service registration and discovery, load balancing, timeouts, retries, and cluster fault tolerance. For the wider context, read the guides to [distributed configuration centers](../distributed-configuration-center.md) and [ZooKeeper](../distributed-process-coordination/zookeeper/).
 
-## 建议阅读顺序
+## Suggested reading order
 
-1. [有了 HTTP 协议，为什么还要 RPC？](../../cs-basics/network/http-vs-rpc.md)：先厘清 HTTP 与 RPC 的关系。
-2. [RPC 远程过程调用详解](./rpc-intro.md)：再系统理解 RPC 调用流程、核心组件和框架选型。
-3. [Dubbo 面试题总结](./dubbo.md)：最后把 RPC 放到 Dubbo 这种成熟框架里，看服务治理和生产实践。
+1. [Why use RPC when HTTP exists?](../../cs-basics/network/http-vs-rpc.md): Understand the relationship between HTTP and RPC.
+2. [RPC Explained](./rpc-intro.md): Study the call flow, core components, and framework choices.
+3. [Dubbo Interview Questions](./dubbo.md): Explore service governance and production practices in a mature RPC framework.
 
-## 核心文章
+## Core articles
 
-- [RPC 远程过程调用详解](./rpc-intro.md)：从调用流程、动态代理、序列化协议、网络传输和服务发现等角度理解 RPC 的基本原理。
-- [Dubbo 面试题总结](./dubbo.md)：串联 Dubbo 架构原理、服务暴露与引用、SPI 扩展机制、负载均衡、集群容错、注册中心和生产实践问题。
-- [有了 HTTP 协议，为什么还要 RPC？](../../cs-basics/network/http-vs-rpc.md)：解释 HTTP 与 RPC 的关系，避免把 RPC 简单理解成“比 HTTP 更高级的协议”。
+- [RPC Explained](./rpc-intro.md): Learn the call flow, dynamic proxies, serialization protocols, network transport, and service discovery.
+- [Dubbo Interview Questions](./dubbo.md): Review Dubbo architecture, service exposure and references, SPI extensions, load balancing, cluster fault tolerance, registries, and production practice.
+- [Why use RPC when HTTP exists?](../../cs-basics/network/http-vs-rpc.md): Understand their relationship without treating RPC as simply a more advanced protocol than HTTP.
 
-## 高频问题
+## Common interview questions
 
-- RPC 调用一次完整流程是什么？
-- RPC 框架为什么通常会用动态代理？
-- RPC 常见序列化协议有哪些，如何选型？
-- Dubbo 的服务暴露和服务引用过程是怎样的？
-- Dubbo 的 SPI、负载均衡和集群容错机制怎么实现？
-- HTTP 和 RPC 有什么区别？为什么服务内部调用常用 RPC？
-- gRPC 为什么说是 RPC，又为什么基于 HTTP/2？
-- 内部服务调用用 HTTP 还是 RPC，应该从哪些维度判断？
+- What happens during a complete RPC call?
+- Why do RPC frameworks commonly use dynamic proxies?
+- Which serialization protocols are common in RPC, and how do you choose one?
+- How does Dubbo expose and reference services?
+- How are Dubbo SPI, load balancing, and cluster fault tolerance implemented?
+- How do HTTP and RPC differ? Why is RPC common for internal calls?
+- Why is gRPC considered RPC, and why does it use HTTP/2?
+- What factors should guide the choice between HTTP and RPC for internal calls?
 
-## 相关专题
+## Related topics
 
-- [分布式系统知识体系](../)
-- [API 网关详解](../api-gateway.md)
-- [Spring Cloud Gateway 面试题总结](../spring-cloud-gateway-questions.md)
-- [计算机网络](../../cs-basics/network/)
+- [Distributed Systems Guide](../)
+- [API Gateways](../api-gateway.md)
+- [Spring Cloud Gateway Interview Questions](../spring-cloud-gateway-questions.md)
+- [Computer Networking](../../cs-basics/network/)
 
 <!-- @include: @article-footer.snippet.md -->

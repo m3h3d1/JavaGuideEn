@@ -1,528 +1,515 @@
 ---
-title: CAP 定理与 BASE 理论详解：一致性、可用性、分区容错与最终一致性
-category: 分布式
-description: CAP 定理与 BASE 理论详解，讲解 Consistency、Availability、Partition Tolerance 的取舍关系，以及 Basically Available、Soft State、Eventually Consistent 在分布式系统中的应用。
+title: "CAP and BASE Explained: Consistency, Availability, Partition Tolerance, and Eventual Consistency"
+category: Distributed Systems
+description: "An explanation of CAP trade-offs among consistency, availability, and partition tolerance, and how Basically Available, Soft State, and Eventually Consistent apply to distributed systems."
 tag:
-  - 分布式理论
+  - Distributed Systems Theory
 head:
   - - meta
     - name: keywords
-      content: CAP 定理,BASE 理论,分布式系统,一致性,可用性,分区容错,最终一致性,强一致性,分布式理论,分布式面试题
+      content: CAP theorem,BASE theory,distributed systems,consistency,availability,partition tolerance,eventual consistency,strong consistency,distributed systems interview questions
 ---
 
-经历过技术面试的小伙伴想必对 CAP & BASE 这两个理论再熟悉不过了！
+If you have interviewed for a technical role, you have probably heard of CAP and BASE. CAP and BASE are foundational concepts for understanding distributed systems and are common interview topics, so it is useful to understand them well enough to explain them in your own words.
 
-我当年参加面试的时候，不夸张地说，只要问到分布式相关的内容，面试官几乎都会问到这两个基础理论。一是因为这是学习分布式知识的必备前置基础，二是因为很多面试官自己比较熟悉（方便提问）。
+This guide focuses on the trade-offs a system faces during a network partition. For Leader, Quorum, Lease, and Gossip, see [Distributed Coordination](./centralized-and-decentralized.md). For business-level implementations of eventual consistency, see [Distributed Transaction Solutions](../distributed-transaction.md).
 
-我们非常有必要将这两个理论搞懂，并且能够用自己的理解给别人讲出来。
+## CAP theorem
 
-这篇主要解决“分区发生时系统怎么取舍”。如果你想继续理解 Leader、Quorum、Lease、Gossip 这些设计为什么会出现，可以接着读 [分布式协调详解](./centralized-and-decentralized.md)；如果想看业务侧如何用最终一致性落地，可以继续读 [分布式事务解决方案详解](../distributed-transaction.md)。
+The [CAP theorem](https://en.wikipedia.org/wiki/CAP_theorem) originated in 2000, when UC Berkeley professor Eric Brewer presented the conjecture at the Symposium on Principles of Distributed Computing (PODC). It is also known as **Brewer's theorem**.
 
-## CAP 理论
+Two years later, MIT researchers Seth Gilbert and Nancy Lynch proved Brewer's conjecture, establishing CAP as a theorem in distributed computing.
 
-[CAP 理论/定理](https://zh.wikipedia.org/wiki/CAP%E5%AE%9A%E7%90%86)起源于 2000 年，由加州大学伯克利分校的 Eric Brewer 教授在分布式计算原理研讨会（PODC）上提出，因此 CAP 定理又被称作 **布鲁尔定理（Brewer’s theorem）**
+### Overview
 
-2 年后，麻省理工学院的 Seth Gilbert 和 Nancy Lynch 发表了布鲁尔猜想的证明，CAP 理论正式成为分布式领域的定理。
+CAP describes trade-offs among **Consistency**, **Availability**, and **Partition Tolerance**.
 
-### 简介
+> **Important:** “CP-leaning” and “AP-leaning” are informal descriptions used below for intuition. Under the strict CAP definitions (C = linearizability; A = every non-failing node must respond), many systems cannot be classified cleanly. Different operations in the same system may have different consistency and availability guarantees, and a system may satisfy neither CAP-C nor CAP-A.
 
-CAP 定理讨论 Consistency（一致性）、Availability（可用性）和 Partition Tolerance（分区容错）。
+![CAP theorem](../images/shared/cap.png)
 
-> **重要说明**：下文使用「偏 CP / 偏 AP」仅作直觉描述。严格按 CAP 定义（C=Linearizability，A=每个非故障节点都必须响应）时，许多系统并不能被干净归类——同一系统内不同操作的一致性/可用性特征不同，很多系统既不满足 CAP-C 也不满足 CAP-A。
+When Brewer proposed the CAP conjecture, he did not give strict definitions for **Consistency**, **Availability**, and **Partition Tolerance**. There are several informal interpretations. A commonly used interpretation is:
 
-![](../images/shared/cap.png)
+In theoretical computer science, the CAP theorem says that when designing reads and writes for a distributed system, only two of the following three properties can be guaranteed at the same time:
 
-CAP 理论的提出者布鲁尔在提出 CAP 猜想的时候，并没有对 **Consistency**、**Availability**、**Partition Tolerance** 给出严格定义。
+- **Consistency:** In the context of Gilbert and Lynch's 2002 proof, CAP consistency means **atomic consistency**, usually treated as **linearizability**. All operations can be ordered according to real time: once a write completes, every later read returns that value or a newer one. **This differs from consistency in ACID**, which means that database constraints hold before and after a transaction.
+- **Availability:** Every non-failing node must return a response to every request; response latency is not part of this definition. **This is the strict CAP definition**, not an engineering latency or SLA target such as “respond within one second.”
+- **Partition tolerance:** CAP's P assumes an asynchronous network, where delays, packet loss, and partitions may occur. P is not a feature that a system can choose to enable or disable. The actual trade-off during a partition is between **linearizability** (CAP consistency) and **CAP availability** (every non-failing node returns a non-error response).
 
-因此，对于 CAP 的民间解读有很多，比较常见、也更推荐的一种解读如下。
+**What is a network partition?**
 
-在理论计算机科学中，CAP 定理（CAP theorem）指出对于一个分布式系统来说，当设计读写操作时，只能同时满足以下三点中的两个：
+A network partition occurs when failures, such as problems affecting some links or nodes, prevent some nodes in a distributed system from communicating. The network is split into separate groups.
 
-- **一致性（Consistency）**：在 Gilbert/Lynch（2002）的证明语境里，CAP 的一致性 C 指的是 **Atomic Consistency**，通常等同于 **Linearizability（线性一致性）**。即所有操作按实时顺序线性化，即写操作一旦完成，后续所有读操作都必须返回该写入的值（或更新的值）。**注意：** 这里的 Consistency 与数据库 ACID 中的 Consistency（一致性约束）含义不同，后者指事务执行前后数据库状态满足完整性约束。
-- **可用性（Availability）**：非故障的节点必须对每个请求返回响应（不讨论响应快慢）。**注意**：这是 CAP 理论中的严格定义，不包含工程中的延迟/SLA 指标（如「1s 内返回」）。
-- **分区容错性（Partition Tolerance）**：CAP 里的 P 本质上是在假设异步网络（可能延迟/丢包/分区），不是一个你「选择要不要」的功能。真正的权衡是：当分区发生时，你必须在**线性一致（CAP 的 Consistency=Linearizability）**与**CAP-Availability（任何非故障节点都要对请求给非错误响应）**之间做选择。
+![Network partition](../images/shared/partition-tolerance.png)
 
-**什么是网络分区？**
+### CAP is not simply “pick two”
 
-分布式系统中，多个节点之间的网络本来是连通的，但是因为某些故障（比如部分节点网络出了问题）某些节点之间不连通了，整个网络就分成了几块区域，这就叫 **网络分区**。
+CAP is often summarized as “a system can provide only two of consistency, availability, and partition tolerance.” This phrasing is misleading. In 2012, twelve years after the original paper, Brewer revisited and clarified the conjecture.
 
-![partition-tolerance](../images/shared/partition-tolerance.png)
-
-### 不是所谓的「3 选 2」
-
-大部分人解释这一定律时，常常简单地表述为：「一致性、可用性、分区容忍性三者你只能同时达到其中两个，不可能同时达到」。实际上这是很有误导性的说法，而且在 CAP 理论诞生 12 年之后，CAP 之父也在 2012 年重写了之前的论文。
-
-> **当发生网络分区的时候，如果我们要继续服务，那么强一致性和可用性只能 2 选 1。**
+> **When a network partition occurs, if the system continues serving requests, it must choose between strong consistency and availability.**
 >
-> 简而言之：CAP 理论中分区容错性 P 不是一定要满足的，但当选择满足 P 时，在此基础上只能满足可用性 A 或者一致性 C。
+> In short, P is not an optional feature. When a partition occurs, a system that continues operating must trade off A against C.
 
-**为啥不可能选择 CA 架构呢？**
+**Why can’t a distributed system choose CA?**
 
-因为分布式系统离不开网络通信，而网络故障是常态：
+Distributed systems rely on network communication, and network failures are inevitable:
 
-- 心跳检测可能因网络抖动丢包，导致误判节点故障
-- 数据同步过程中可能因包丢失导致不一致，系统为达成一致会不断重试，造成请求阻塞
+- Heartbeat packets may be dropped during network jitter, causing a node to be suspected of failing.
+- Data synchronization may lose packets. Repeated retries to restore consistency can block requests.
 
-**因此，在异步网络模型下（分区可能发生），当分区发生时，必须在线性一致性与 CAP-可用性之间取舍。** 能够保证 CA 的只有单机系统——因为只有一个节点，数据写入成功后所有请求都能看到相同数据；只要这个节点活着，系统就可用。
+**Therefore, in an asynchronous network where partitions can occur, a system must trade off linearizability against CAP availability during a partition.** A single-node system can provide CA because it has no network partition between replicas: after a successful write, later requests to that node see the same data, as long as the node remains available.
 
-下面这张图展示了 CAP 理论的核心权衡和常见系统的倾向：
+The diagram below shows the core CAP trade-off and common system tendencies:
 
 ```mermaid
 flowchart TB
-    %% 核心语义配色
+    %% Core semantic colors
     classDef cap fill:#E99151,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef cp fill:#3498DB,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef ap fill:#27AE60,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef caution fill:#F39C12,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef danger fill:#C44545,color:#FFFFFF,stroke:none,rx:10,ry:10
 
-    P[分区容错性 P<br/>Partition Tolerance]:::cap
-    P -->|网络分区发生| Choice{分区时权衡 C 与 A}:::caution
-    Choice -->|倾向 C| CP[一致性优先<br/>牺牲可用性]:::cp
-    Choice -->|倾向 A| AP[可用性优先<br/>牺牲一致性]:::ap
+    P[Partition Tolerance P]:::cap
+    P -->|Partition occurs| Choice{Trade off C and A during partition}:::caution
+    Choice -->|Favor C| CP[Prioritize consistency<br/>sacrifice availability]:::cp
+    Choice -->|Favor A| AP[Prioritize availability<br/>sacrifice consistency]:::ap
 
-    CP --> ZK[ ZooKeeper<br/>etcd ]:::cp
-    CP --> UseCP[应用场景：<br/>分布式锁、配置管理]:::cp
+    CP --> ZK[ZooKeeper<br/>etcd]:::cp
+    CP --> UseCP[Use cases:<br/>distributed locks, configuration management]:::cp
 
-    AP --> Eureka[ Eureka<br/>Cassandra ]:::ap
-    AP --> UseAP[应用场景：<br/>服务注册中心、社交动态]:::ap
+    AP --> Eureka[Eureka<br/>Cassandra]:::ap
+    AP --> UseAP[Use cases:<br/>service registries, social feeds]:::ap
 
-    CA[仅单机系统<br/>可实现 CA]:::danger -.->|有分区时不可行| Choice
+    CA[Only a single-node system<br/>can provide CA]:::danger -.->|Not possible during a partition| Choice
 
     linkStyle default stroke-width:2px,stroke:#333333,opacity:0.8
 ```
 
-这里需要引入 **PACELC 理论**（CAP 的扩展）来更全面地解释：
-
-Daniel J. Abadi 提出的 PACELC 理论指出：**如果存在分区（P），必须在可用性（A）和一致性（C）之间选择；否则（E，Else），必须在延迟（L）和一致性（C）之间选择。**
+**PACELC** extends CAP and gives a more complete view. Daniel J. Abadi's PACELC theory says: **if a partition (P) occurs, a system must choose between availability (A) and consistency (C); else (E), it must choose between latency (L) and consistency (C).**
 
 ```mermaid
 flowchart TB
-    %% 核心语义配色
+    %% Core semantic colors
     classDef question fill:#95A5A6,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef choice fill:#E99151,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef consistency fill:#3498DB,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef availability fill:#27AE60,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef latency fill:#9B59B6,color:#FFFFFF,stroke:none,rx:10,ry:10
 
-    Q{是否存在分区 P?}:::question
+    Q{Is there a partition P?}:::question
 
-    Q -->|是 Partition| PAC[权衡 A 与 C]:::choice
-    Q -->|否 Else| ELC[权衡 L 与 C]:::choice
+    Q -->|Yes: Partition| PAC[Trade off A and C]:::choice
+    Q -->|No: Else| ELC[Trade off L and C]:::choice
 
-    PAC --> PA[选择可用性 A<br/>Cassandra AP]:::availability
-    PAC --> PC[选择一致性 C<br/>ZooKeeper CP]:::consistency
+    PAC --> PA[Choose availability A<br/>Cassandra AP]:::availability
+    PAC --> PC[Choose consistency C<br/>ZooKeeper CP]:::consistency
 
-    ELC --> LC[选择低延迟 L<br/>MySQL 异步复制]:::latency
-    ELC --> EC[选择强一致 C<br/>MySQL 半同步复制]:::consistency
+    ELC --> LC[Choose low latency L<br/>MySQL asynchronous replication]:::latency
+    ELC --> EC[Choose strong consistency C<br/>MySQL semisynchronous replication]:::consistency
 
     linkStyle default stroke-width:2px,stroke:#333333,opacity:0.8
 ```
 
-实际意义：即使无网络分区，分布式系统仍需在低延迟（异步复制）和强一致（同步复制）之间权衡。例如：
+In practice, a distributed system must also trade off latency against consistency even when there is no partition. For example:
 
-- **Cassandra**：可通过调整读写一致性级别（ONE/QUORUM/ALL）在延迟与一致性间权衡
-- **MySQL 主从**：可选择异步复制（低延迟）或半同步复制（强一致）
+- **Cassandra:** Read and write consistency levels (`ONE`, `QUORUM`, `ALL`) let users trade latency for consistency.
+- **MySQL primary-replica replication:** Asynchronous replication favors low latency; semisynchronous replication favors stronger consistency.
 
-比如 ZooKeeper、HBase 就是 CP 架构，Cassandra、Eureka 就是 AP 架构，Nacos 不仅支持 CP 架构也支持 AP 架构。
+ZooKeeper and HBase are commonly described as CP systems; Cassandra and Eureka as AP systems. Nacos supports both CP and AP modes.
 
-**选择 CP 还是 AP 的关键在于当前的业务场景，没有定论**：比如对于需要确保强一致性的场景如分布式锁、配置管理会选择 CP；对于高可用优先的场景如微服务注册中心会选择 AP。
+**The right choice depends on the business scenario.** CP is often chosen for use cases that require strong consistency, such as distributed locks and configuration management. AP may suit use cases that prioritize availability, such as service registries.
 
-**另外，需要补充说明的一点**：在无分区时，可以同时做到线性一致与「会响应」的 CAP-可用性；但工程上通常还要在延迟与一致性之间权衡（这便是 PACELC 理论中 ELC 部分讨论的内容）。
+**One more qualification:** Without a partition, a system can provide both linearizability and the CAP requirement to respond. In practice, it still often trades latency against consistency, as described by PACELC's ELC branch.
 
-### CAP 理论的适用范围
+### Scope of the CAP theorem
 
-**重要结论**：CAP 理论主要讨论单个数据对象在副本复制场景下的一致性与可用性权衡。
+**Key point:** CAP primarily describes the consistency/availability trade-off for a single data object with replicated copies.
 
-| 更贴近 CAP 讨论模型 | 需要拆分到分片/对象/操作级别分析     |
-| ------------------- | ------------------------------------ |
-| Redis 主从/哨兵集群 | 业务系统（无状态服务）               |
-| MySQL 主从/多主集群 | Redis-Cluster（每个 shard 仍有副本） |
-| MongoDB 副本集      | MongoDB-Cluster（分片 + 副本并存）   |
-| ZooKeeper、etcd     | 分库分表（跨分片事务需额外协调）     |
-| Kafka、RocketMQ     | 大多数微服务应用\*                   |
+| Closer to the CAP model                        | Requires analysis by shard, object, or operation                          |
+| ---------------------------------------------- | ------------------------------------------------------------------------- |
+| Redis primary-replica or Sentinel cluster      | Business applications with stateless services                             |
+| MySQL primary-replica or multi-primary cluster | Redis Cluster (each shard can still have replicas)                        |
+| MongoDB replica set                            | MongoDB sharded cluster (shards and replicas)                             |
+| ZooKeeper, etcd                                | Sharded databases (cross-shard transactions need additional coordination) |
+| Kafka, RocketMQ                                | Most microservice applications\*                                          |
 
-**说明**：
+**Notes:**
 
-- **CAP 讨论模型**：单个读写寄存器（single register）的副本复制语义
-- **复杂系统**：需要拆解到「每个对象/分区/操作」的一致性语义讨论
-- **分片 + 副本**：分片系统每个 shard 通常仍有副本复制，一致性与可用性权衡仍在
+- The CAP model concerns replicated semantics for a single read/write register.
+- Complex systems need analysis of consistency at the level of each object, partition, or operation.
+- Sharded systems often replicate each shard, so the consistency/availability trade-off still applies to each shard.
 
-> **业务系统与 CAP 的深度关联**：
+> **How CAP affects business applications**
 >
-> 业务系统本身虽不涉及副本同步，但**深受底层组件 CAP 属性的影响**。忽视这一点会导致系统在遭遇网络分区时发生级联雪崩（Cascading Failure）。
+> Business applications may not replicate data themselves, but they **are affected by the CAP properties of their underlying components**. Ignoring those properties can contribute to cascading failures during a network partition.
 >
-> **受 CAP 属性影响的业务场景**：
+> **Business scenarios affected by CAP:**
 >
-> | 业务场景 | 底层组件                     | CP 组件的影响              | AP 组件的影响                  |
-> | -------- | ---------------------------- | -------------------------- | ------------------------------ |
-> | RPC 路由 | 注册中心（如 Nacos CP 模式） | 注册期间不可用，请求被拒绝 | 可能路由到已下线实例，需要重试 |
-> | 分布式锁 | Redis（AP）/ ZooKeeper（CP） | 性能较低但可靠             | 性能高但可能锁失效             |
-> | 限流熔断 | Redis 计数器                 | 可能读到旧计数，限流失效   | 同左                           |
-> | 缓存更新 | Redis 主从                   | 主从切换时可能丢数据       | 同左                           |
-> | 消息消费 | Kafka                        | 消费进度同步慢，重复消费   | 同左                           |
+> | Scenario                           | Underlying component                       | Effect of CP component                                        | Effect of AP component                                              |
+> | ---------------------------------- | ------------------------------------------ | ------------------------------------------------------------- | ------------------------------------------------------------------- |
+> | RPC routing                        | Service registry, such as Nacos in CP mode | Registration may be unavailable and requests rejected         | Routing may use an instance that is already down, requiring retries |
+> | Distributed locks                  | Redis (AP) / ZooKeeper (CP)                | Lower performance, stronger coordination                      | Higher performance, but a lock may fail                             |
+> | Rate limiting and circuit breaking | Redis counter                              | A stale counter may cause rate limiting to fail               | Similar risk                                                        |
+> | Cache updates                      | Redis primary-replica                      | Failover may lose data                                        | Similar risk                                                        |
+> | Message consumption                | Kafka                                      | Slow progress synchronization may cause duplicate consumption | Similar risk                                                        |
 >
-> **实践建议**：业务开发者虽然不需要「实践」CAP 理论，但**必须理解 CAP 理论**，以便：
+> **Practical guidance:** Application developers do not implement the CAP theorem, but they **must understand it** so they can:
 >
-> - 为不同业务场景选择合适的组件（CP 或 AP）
-> - 理解所选组件在网络分区时的行为特征
-> - 设计符合业务需求的容错机制（重试、熔断、降级）
+> - Choose an appropriate CP or AP component for each use case.
+> - Understand how the selected component behaves during a network partition.
+> - Design suitable fault-handling mechanisms such as retries, circuit breakers, and fallbacks.
 
-很多开发者认为自己在「实践 CAP 理论」，实际上只是站在已有组件上做选择（用 CP 还是 AP），而非真正实践该理论。真正需要实践 CAP 的是研发 Redis、MySQL 这类分布式存储组件的工程师。
+Developers sometimes say they are “applying CAP” when they are choosing between existing CP and AP components. Engineers building distributed storage systems such as Redis or MySQL are the ones who implement the underlying trade-offs.
 
-### 在业务中应用 CAP 思想
+### Applying CAP thinking in business systems
 
-除研发分布式存储组件外，业务开发中更多是**选择**合适的架构，而非实践 CAP 理论本身：
+Most business developers choose a suitable architecture rather than implementing CAP itself:
 
-| 场景           | 偏向 CP 的选择               | 偏向 AP 的选择           | 业务权衡                 |
-| -------------- | ---------------------------- | ------------------------ | ------------------------ |
-| 数据库主从复制 | 同步复制（强一致）           | 异步复制（高性能）       | 数据一致性 vs 响应速度   |
-| 分布式锁实现   | ZooKeeper（强一致）          | Redis（高性能）          | 锁的可靠性 vs 获取速度   |
-| 服务注册中心   | ZooKeeper、Consul（CP 模式） | Eureka、Nacos（AP 模式） | 注册准确性 vs 发现可用性 |
-| 限流计数器     | Redis（强一致命令）          | Redis（允许过期）        | 限流精度 vs 性能         |
+| Scenario             | CP-leaning choice                              | AP-leaning choice                             | Trade-off                                        |
+| -------------------- | ---------------------------------------------- | --------------------------------------------- | ------------------------------------------------ |
+| Database replication | Synchronous replication (stronger consistency) | Asynchronous replication (higher performance) | Consistency vs. response time                    |
+| Distributed locks    | ZooKeeper (strong consistency)                 | Redis (higher performance)                    | Lock reliability vs. acquisition speed           |
+| Service registry     | ZooKeeper or Consul (CP mode)                  | Eureka or Nacos (AP mode)                     | Registration accuracy vs. discovery availability |
+| Rate-limit counter   | Redis with stronger consistency                | Redis allowing expiration                     | Accuracy vs. performance                         |
 
-**选型原则**：
+**Selection guidelines:**
 
-- **关注性能**：倾向选择允许异步复制的组件，写入主节点即可返回成功，响应快；但存在数据丢失/读取到旧数据的风险，需配合重试机制
-- **关注数据安全**：倾向选择要求多数派确认的组件，写入需等待 quorum 节点确认，响应慢；但能降低数据丢失风险
+- **When performance matters:** Consider components that allow asynchronous replication. The primary can acknowledge writes quickly, but data loss or stale reads are possible, so retries and other safeguards may be needed.
+- **When data safety matters:** Consider components that wait for a majority. Writes wait for quorum confirmation, which increases latency but can reduce data-loss risk.
 
-**注意**：数据丢失与否更取决于持久化、复制确认策略、故障模型，不能简单地用「CP/AP 标签」来判断。
+**Note:** Data loss depends more directly on persistence, replication acknowledgments, and the failure model. A CP/AP label alone does not determine whether data will be lost.
 
-**级联雪崩案例**：
+**Cascading failure example:**
 
-一个典型的忽视 CAP 导致的级联雪崩场景：
+The following diagram shows how ignoring component behavior during a partition can contribute to cascading failure:
 
 ```mermaid
 flowchart TB
-    %% 核心语义配色
+    %% Core semantic colors
     classDef start fill:#95A5A6,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef process fill:#3498DB,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef warning fill:#F39C12,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef danger fill:#C44545,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef solution fill:#27AE60,color:#FFFFFF,stroke:none,rx:10,ry:10
 
-    Start[网络分区发生]:::start --> P1[Redis 集群主从分离<br/>AP 架构数据不一致]:::process
-    P1 --> P2[限流计数器读到旧值<br/>以为未限流]:::warning
-    P2 --> P3[大量请求同时打到后端]:::warning
-    P3 --> P4[服务线程池耗尽]:::danger
-    P4 --> P5[RPC 调用超时堆积]:::danger
-    P5 --> P6[整个调用链路雪崩]:::danger
+    Start[Network partition occurs]:::start --> P1[Redis primary and replicas diverge<br/>AP behavior]:::process
+    P1 --> P2[Rate-limit counter reads stale value<br/>and assumes traffic is below limit]:::warning
+    P2 --> P3[Many requests reach the backend]:::warning
+    P3 --> P4[Service thread pools are exhausted]:::danger
+    P4 --> P5[RPC calls time out and queue up]:::danger
+    P5 --> P6[The entire call chain fails]:::danger
 
-    P2 -.->|理解 CAP 属性| S1[选择合适组件]:::solution
-    P3 -.->|多层防护| S2[本地缓存 + 熔断降级]:::solution
-    P4 -.->|超时重试| S3[合理设置超时时间]:::solution
-    P5 -.->|隔离机制| S4[不同业务隔离实例]:::solution
+    P2 -.->|Understand component behavior| S1[Choose suitable components]:::solution
+    P3 -.->|Use layered defenses| S2[Local cache + circuit breaker/fallback]:::solution
+    P4 -.->|Set timeouts and retries| S3[Choose reasonable timeout values]:::solution
+    P5 -.->|Isolate workloads| S4[Separate instances by business function]:::solution
 
     linkStyle default stroke-width:2px,stroke:#333333,opacity:0.8
 ```
 
-**防护措施**：
+**Protective measures:**
 
-1. **理解底层组件的 CAP 属性**：知道在网络分区时组件的行为
-2. **多层防护**：不只依赖单一组件，结合本地缓存、熔断、降级
-3. **超时与重试**：合理设置超时时间，避免无限等待
-4. **隔离机制**：不同业务使用不同的底层组件实例，避免故障扩散
+1. **Understand the CAP properties of dependencies:** Know how each component behaves during a network partition.
+2. **Use layered defenses:** Do not rely on a single component; combine local caches, circuit breakers, and fallbacks.
+3. **Set timeouts and retries:** Avoid waiting indefinitely.
+4. **Isolate workloads:** Separate underlying component instances for different business functions to limit fault propagation.
 
-### CAP 实际应用案例
+### CAP in practice: service registries
 
-我这里以注册中心来探讨一下 CAP 的实际应用。考虑到很多小伙伴不知道注册中心是干嘛的，这里简单以 Dubbo 为例说一说。
+Consider how CAP applies to a service registry. If you are unfamiliar with registries, the Dubbo example below provides some context.
 
-下图是 Dubbo 的架构图。**注册中心 Registry 在其中扮演什么角色呢？提供了什么服务呢？**
+The following diagram shows Dubbo's architecture. What does the **Registry** do?
 
-注册中心负责服务地址的注册与查找，相当于目录服务，服务提供者和消费者只在启动时与注册中心交互，注册中心不转发请求，压力较小。
+A registry stores and looks up service addresses, acting as a directory. Providers and consumers contact it when they start; the registry does not forward requests, so it usually handles less traffic.
 
-![](../images/shared/dubbo-architecture.png)
+![Dubbo architecture](../images/shared/dubbo-architecture.png)
 
-常见的可以作为注册中心的组件有：ZooKeeper、Eureka、Nacos...。
+Common service registry choices include ZooKeeper, Eureka, and Nacos.
 
-#### ZooKeeper 3.8.x（CP 架构）
+#### ZooKeeper 3.8.x (CP)
 
-ZooKeeper 倾向 **CP 架构**。ZooKeeper 3.x 通过 ZAB 协议提供 **Linearizable Writes（线性化写入）**，但读取行为需区分：
+ZooKeeper is commonly described as **CP**. ZooKeeper 3.x uses ZAB to provide **linearizable writes**, but read guarantees depend on the read type:
 
-- **Sync 读取**：强制与 Leader 同步，保证线性一致性（Linearizability）。
-- **普通读取**：默认提供 **顺序一致性（Sequential Consistency）**，保证全局更新操作的顺序，同一会话内客户端视图绝不会发生回退，但可能读到稍旧数据（存在读取滞后）。
+- **Synchronous read:** Explicitly synchronizes with the Leader to provide linearizability.
+- **Ordinary read:** By default, provides **sequential consistency**. Clients observe updates in global order and a client's view never moves backward within a session, but a read may be stale.
 
-> **重要区别**：顺序一致性 ≠ 最终一致性。ZooKeeper 的普通读取保证所有客户端看到相同的**更新顺序**（全局 zxid 顺序），只是存在读取滞后；而最终一致性不保证全局顺序，仅保证最终收敛。ZK 的默认读更像是「stale-but-ordered」的读（顺序/会话保证很强），而不是 Dynamo 系那种 eventual consistency 语境。
+> **Important distinction:** Sequential consistency is not eventual consistency. ZooKeeper ordinary reads preserve the same **global update order** (the global ZXID order) across clients, but may lag behind. Eventual consistency does not guarantee a global order; it guarantees only eventual convergence. ZooKeeper's default read is better described as “stale but ordered.”
 
-在 Leader 选举期间或 Follower 节点数不足 Quorum（N/2+1）时，ZooKeeper 会拒绝服务以维持一致性，表现为不可用（牺牲 A）。
+During Leader election or when fewer than a quorum (`N/2 + 1`) of Followers are available, ZooKeeper may reject requests to preserve consistency, reducing availability.
 
-在多节点部署下，集群采用 Quorum 模式：多数派节点（n/2+1）必须同意变更才有效。
+ZooKeeper uses quorum-based coordination in multi-node deployments: a majority (`N/2 + 1`) must agree for a change to take effect.
 
-ZooKeeper 提供 Watcher 机制（异步通知变更）和版本号机制（zxid 校验新鲜度）以缓解读取滞后问题。
+ZooKeeper also provides Watchers for asynchronous change notifications and version numbers such as ZXID to help clients assess freshness.
 
-失败路径与状态机表现：
+Failure paths and client behavior:
 
-| 故障场景                        | 系统状态                        | 客户端表现                                                   |
-| ------------------------------- | ------------------------------- | ------------------------------------------------------------ |
-| Quorum 失效（半数以上节点故障） | **LOOKING** 状态，Leader 选举中 | 写入请求拒绝，读取请求可能返回旧数据或超时                   |
-| Follower 与 Leader 分区         | Follower 进入 **ELECTION** 状态 | 该 Follower 无法参与投票，但可响应读取（滞后数据）           |
-| Leader 与多数派分区             | Leader 自动降级，集群重新选举   | 原Leader的写入丢失，需客户端重试（检测到 zxid 回退）         |
-| Watcher 丢失                    | 网络抖动或 GC 压力导致          | 客户端需重试（指数退避 + Jitter），监控 `Watches` 队列防背压 |
+| Failure scenario                                   | System state                                | Client behavior                                                                                         |
+| -------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Quorum unavailable (more than half the nodes fail) | **LOOKING**, electing a Leader              | Writes are rejected; reads may return stale data or time out.                                           |
+| Follower is partitioned from Leader                | Follower enters **ELECTION**                | It cannot vote but may serve reads from stale data.                                                     |
+| Leader is partitioned from the majority            | Leader steps down and the cluster re-elects | Writes accepted by the old Leader may be lost; clients need to retry and detect ZXID regression.        |
+| Watcher notification is missed                     | Network jitter or GC pressure               | Clients should retry with exponential backoff and jitter; monitor the `Watches` queue for backpressure. |
 
-#### Eureka（AP 架构）
+#### Eureka (AP)
 
-Eureka 采用 AP 架构：节点对等，通过 Peer 复制/同步（定期全量拉取 + 增量更新）保持数据一致，无 Leader 选举。**注意**：Spring Cloud 生态中历史上更常见 1.x 依赖形态；Netflix/eureka 的 2.x 仍在维护并持续发布。
+Eureka is an AP system. Nodes are peers and synchronize through peer replication (periodic full fetches plus incremental updates); there is no Leader election. **Note:** Spring Cloud historically used the 1.x dependency line more often; Netflix Eureka 2.x is still maintained and continues to receive releases.
 
-失败路径与状态机表现：
+Failure paths and client behavior:
 
-| 故障场景                     | 系统状态                                 | 客户端表现                                                                                      | 自我保护机制                                                          |
-| ---------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| 网络分区（脑裂）             | 分区两侧**独立运行**，均可读写           | 客户端可能读到旧注册信息（不一致窗口 = 心跳间隔 30s + gossip 传播延迟，10 节点拓扑中 P99 <60s） | 当续约阈值 < 85% 时触发**自我保护**，暂停实例剔除，避免“误杀”健康实例 |
-| 半数节点故障                 | 剩余节点继续服务，但数据可能分叉         | 读操作正常，写入可能仅存于少数派节点                                                            | 自我保护触发，待节点恢复后通过 gossip 自动合并                        |
-| 节点短暂重启                 | 从 Peer 批量拉取注册表（Registry Fetch） | 服务发现短暂不可用（< 1min），缓存起作用                                                        | 正常模式，自动恢复                                                    |
-| 注册风暴（大量实例同时注册） | 写队列堆积，可能导致请求丢弃             | 部分注册请求超时，需客户端重试                                                                  | 可配置限流与背压（如 Ribbon 重试策略）                                |
+| Failure scenario                                     | System state                                                                    | Client behavior                                                                                                                                              | Self-preservation behavior                                                                                                                     |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Network partition (split brain)                      | Both sides of the partition continue independently and accept reads and writes. | Clients may see stale registrations (inconsistency window = 30-second heartbeat interval plus Gossip delay; in a 10-node topology, P99 is under 60 seconds). | When renewals fall below 85% of the threshold, **self-preservation** pauses instance eviction to avoid removing healthy instances incorrectly. |
+| Half the nodes fail                                  | Remaining nodes continue serving, but data may diverge.                         | Reads work; writes may exist only on minority nodes.                                                                                                         | Self-preservation is triggered; Gossip merges state after nodes recover.                                                                       |
+| Brief node restart                                   | The node fetches the registry from peers in a batch.                            | Service discovery may be briefly unavailable (< 1 minute); caches help.                                                                                      | Normal mode; recovery is automatic.                                                                                                            |
+| Registration storm (many instances register at once) | The write queue backs up and may drop requests.                                 | Some registrations time out and need client retries.                                                                                                         | Rate limiting and backpressure can be configured, for example through Ribbon retry policies.                                                   |
 
-**自我保护机制详细说明**：
+**How self-preservation works:**
 
-Eureka Server 通过以下逻辑判断是否进入自我保护：
+Eureka Server uses the following logic to decide whether to enter self-preservation mode:
 
-```
-每分钟期望续约数 E = 当前实例数 N × (60 / 心跳间隔秒数)
-阈值 T = E × 0.85
-若最近 1 分钟实际续约数 R < T，则进入自我保护：暂停剔除（eviction）
-（E/T 会按固定周期根据 N 更新，常见周期约 15 分钟）
-```
-
-默认心跳间隔为 30 秒时，每分钟期望续约数 = 实例数 × 2。
-
-当 `实际续约率 < 85%` 时：
-
-1. 进入 **SELF PRESERVATION** 模式
-2. 停止剔除过期实例（EvictionTask 暂停）
-3. 日志输出：`ENTER SELF PRESERVATION MODE`
-
-**设计权衡**：宁可保留「僵尸」实例，也不误杀健康实例——因为在微服务场景下，短暂的服务降级好过大规模服务不可用。客户端通常配置重试与熔断来处理不可用实例。
-
-#### 总结
-
-选择 CP 或 AP 取决于场景：ZooKeeper 适合强一致需求，如配置管理；Eureka 适合高可用注册，如微服务发现。
-
-Nacos 不仅支持 CP 也支持 AP。
-
-### 总结
-
-CAP 理论指导我们：在分布式系统可能出现网络分区（P）的前提下，我们必须在强一致性（C）和高可用性（A）之间做出权衡。
-
-- **CP 架构**：牺牲可用性，保证强一致性。适用于对数据一致性要求极高的场景（如金融交易、分布式锁）。
-- **AP 架构**：牺牲一致性，保证高可用性。适用于对系统可用性要求较高，能容忍短暂数据不一致的场景（如社交动态、商品搜索）。
-- **PACELC**：在无分区（E）时，需在延迟（L）和一致性（C）之间权衡。
-
-### 推荐阅读
-
-1. [CAP 定理简化](https://medium.com/@ravindraprasad/cap-theorem-simplified-28499a67eab4) （英文，有趣的案例）
-2. [神一样的 CAP 理论被应用在何方](https://juejin.im/post/6844903936718012430) （中文，列举了很多实际的例子）
-3. [请停止呼叫数据库 CP 或 AP](https://martin.kleppmann.com/2015/05/11/please-stop-calling-databases-cp-or-ap.html) （英文，带给你不一样的思考）
-
-## BASE 理论
-
-[BASE 理论](https://dl.acm.org/doi/10.1145/1394127.1394128)起源于 2008 年，由 eBay 的架构师 Dan Pritchett 在 ACM 上发表，论文标题为《Base: An ACID Alternative》。
-
-> **关键洞察**：从论文标题可以看出，**BASE 首先是 ACID 的替代品**。但同时需要注意，BASE 与 CAP 理论也存在密切关系——**最终一致性正是 CAP 中 AP 架构在工程实践中达到系统收敛的指导原则**。
-
-### 简介
-
-**BASE** 是 **Basically Available（基本可用）**、**Soft-state（软状态）** 和 **Eventually Consistent（最终一致性）** 三个短语的缩写。BASE 理论来源于对大规模互联网系统分布式实践的总结。
-
-### BASE 与 ACID 的关系
-
-要理解 BASE 理论，首先需要回顾 ACID 理论中的 **一致性（Consistency）**：
-
-**ACID 的一致性定义**：事务执行前后，数据库只能从一个一致状态转变为另一个一致状态。
-
-以转账为例：小竹向熊猫转账 1000W。
-
-- **初始态**：小竹 1001W，熊猫 888W，合计 1889W
-- **结果态**：小竹 1W，熊猫 1888W，合计 1889W
-
-无论事务成功或失败，整体数据的变化必须一致——类似于能量守恒定律。
-
-**分布式场景的挑战**：
-
-在分布式系统中，商品服务和订单服务分离部署，[扣减库存、创建订单]需要通过网络调用，这中间必然存在时间差：
-
-```
-时刻 T1：库存 8888 → 8887（扣减成功）
-时刻 T2：网络调用订单服务...
-时刻 T3：订单创建成功
+```text
+Expected renewals per minute E = current instance count N × (60 / heartbeat interval in seconds)
+Threshold T = E × 0.85
+If actual renewals R in the last minute < T, enter self-preservation and pause eviction.
+(E and T are recalculated periodically based on N; a common interval is about 15 minutes.)
 ```
 
-在 T1~T3 期间，系统处于 **中间态**：库存已减，订单未创建。跨服务后无法用单库 ACID 事务保证整体原子提交与隔离，系统会客观存在中间态；BASE 接受中间态并通过补偿/重试让状态最终收敛。
+With the default 30-second heartbeat interval, the expected renewals per minute are twice the number of instances.
 
-**BASE 理论的解决方案**：
+When the `actual renewal rate < 85%`:
 
-BASE 理论承认并允许这种中间态的存在：
+1. Eureka enters **SELF PRESERVATION** mode.
+2. It stops evicting expired instances (`EvictionTask` is paused).
+3. The log reports: `ENTER SELF PRESERVATION MODE`.
 
-- **Soft-state（软状态）**：允许系统存在中间态，且该中间态不影响系统整体可用性
-- **Eventually consistent（最终一致性）**：中间态最终会演变成终态（要么成功，要么回滚）
+**Trade-off:** Eureka would rather retain a stale instance than incorrectly evict a healthy one. In microservice systems, a brief degradation is often preferable to widespread service unavailability. Clients commonly use retries and circuit breakers to handle unavailable instances.
 
-下面通过一个对比图来直观理解 ACID 和 BASE 在事务处理上的不同模式：
+#### Summary
+
+Choose CP or AP according to the use case. ZooKeeper suits use cases such as configuration management that require strong consistency; Eureka suits highly available service discovery. Nacos supports both CP and AP modes.
+
+### CAP summary
+
+CAP teaches that when a distributed system may experience network partitions (P), it must trade off strong consistency (C) and high availability (A).
+
+- **CP:** Sacrifices availability to preserve strong consistency. Suitable for use cases with strict consistency requirements, such as financial transactions and distributed locks.
+- **AP:** Sacrifices consistency to preserve availability. Suitable when the system must remain available and brief inconsistencies are acceptable, such as social feeds and product search.
+- **PACELC:** Without a partition (E), a system still trades off latency (L) and consistency (C).
+
+### Further reading
+
+1. [CAP Theorem Simplified](https://medium.com/@ravindraprasad/cap-theorem-simplified-28499a67eab4) (English; includes examples)
+2. [Where Is the Famous CAP Theorem Applied?](https://juejin.im/post/6844903936718012430) (Chinese; includes practical examples)
+3. [Please Stop Calling Database CP or AP](https://martin.kleppmann.com/2015/05/11/please-stop-calling-databases-cp-or-ap.html) (English; offers a different perspective)
+
+## BASE theory
+
+[BASE theory](https://dl.acm.org/doi/10.1145/1394127.1394128) originated in 2008, when eBay architect Dan Pritchett published the paper “Base: An ACID Alternative” in an ACM publication.
+
+> **Key insight:** As the paper title suggests, **BASE was first presented as an alternative to ACID**. BASE is also closely related to CAP: **eventual consistency is an engineering principle for allowing an AP system to converge in practice.**
+
+### Overview
+
+**BASE** stands for **Basically Available**, **Soft State**, and **Eventually Consistent**. The theory summarizes experience from large-scale Internet systems.
+
+### BASE and ACID
+
+To understand BASE, first recall **consistency** in ACID:
+
+**ACID consistency:** A transaction moves the database from one valid state to another.
+
+For example, Xiao Zhu transfers 10 million to Panda:
+
+- **Initial state:** Xiao Zhu has 10.01 million; Panda has 8.88 million; total: 18.89 million.
+- **Result state:** Xiao Zhu has 0.01 million; Panda has 18.88 million; total: 18.89 million.
+
+Whether the transaction succeeds or fails, the overall data must remain consistent, much like conservation of energy.
+
+**The challenge in distributed systems:**
+
+Suppose the inventory and order services are deployed separately. Reducing inventory and creating an order require network calls, so there is necessarily a time gap:
+
+```text
+Time T1: inventory 8888 → 8887 (decrement succeeds)
+Time T2: network call to the order service...
+Time T3: order creation succeeds
+```
+
+Between T1 and T3, the system is in an **intermediate state**: inventory has been decremented, but the order has not been created. Once the services are separated, a single-database ACID transaction cannot atomically commit or roll back the whole operation. Intermediate states are unavoidable; BASE accepts them and uses retries or compensation to converge to a final state.
+
+**BASE's approach:**
+
+BASE allows intermediate states:
+
+- **Soft State:** The system may temporarily be in an intermediate state, as long as this does not make the whole system unavailable.
+- **Eventually Consistent:** The intermediate state eventually reaches a final state, either success or rollback.
+
+The diagram compares ACID and BASE transaction flows:
 
 ```mermaid
 flowchart LR
-    %% 核心语义配色
+    %% Core semantic colors
     classDef acid fill:#3498DB,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef base fill:#27AE60,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef state fill:#95A5A6,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef success fill:#4CA497,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef fail fill:#C44545,color:#FFFFFF,stroke:none,rx:10,ry:10
 
-    subgraph ACID [ACID 模式：无中间态]
+    subgraph ACID [ACID: no intermediate state]
         direction TB
-        A1[初始态<br/>小竹1001W + 熊猫888W]:::state
-        A1 -->|事务执行| A2[终态：成功<br/>小竹1W + 熊猫1888W]:::success
-        A1 -->|事务失败| A3[终态：失败<br/>小竹1001W + 熊猫888W]:::fail
+        A1[Initial state<br/>Xiao Zhu 10.01M + Panda 8.88M]:::state
+        A1 -->|Transaction succeeds| A2[Final state: success<br/>Xiao Zhu 0.01M + Panda 18.88M]:::success
+        A1 -->|Transaction fails| A3[Final state: failure<br/>Xiao Zhu 10.01M + Panda 8.88M]:::fail
     end
 
-    subgraph BASE [BASE 模式：允许中间态]
+    subgraph BASE [BASE: intermediate state allowed]
         direction TB
-        B1[初始态<br/>库存8888]:::state
-        B1 -->|扣减成功| B2[中间态<br/>库存8887 订单未创建]:::base
-        B2 -->|订单创建成功| B3[终态：成功<br/>库存8887 订单已创建]:::success
-        B2 -->|订单创建失败| B4[终态：失败<br/>库存回滚到8888]:::fail
+        B1[Initial state<br/>inventory 8888]:::state
+        B1 -->|Decrement succeeds| B2[Intermediate state<br/>inventory 8887, order not created]:::base
+        B2 -->|Order creation succeeds| B3[Final state: success<br/>inventory 8887, order created]:::success
+        B2 -->|Order creation fails| B4[Final state: failure<br/>inventory restored to 8888]:::fail
     end
 
     linkStyle default stroke-width:2px,stroke:#333333,opacity:0.8
 ```
 
-因此，**BASE 理论是 ACID 在分布式场景中的替代品**，而非 CAP 理论的补充。
+Therefore, **BASE is an alternative to ACID for distributed scenarios, not an extension of CAP.**
 
-### BASE 理论三要素
+### The three BASE properties
 
-![BASE理论三要素](https://imgconvert.csdnimg.cn/aHR0cHM6Ly91c2VyLWdvbGQtY2RuLnhpdHUuaW8vMjAxOC81LzI0LzE2MzkxNDgwNmQ5ZTE1YzY?x-oss-process=image/format,png)
+![The three properties of BASE](https://imgconvert.csdnimg.cn/aHR0cHM6Ly91c2VyLWdvbGQtY2RuLnhpdHUuaW8vMjAxOC81LzI0LzE2MzkxNDgwNmQ5ZTE1YzY?x-oss-process=image/format,png)
 
-#### 基本可用
+#### Basically available
 
-基本可用是指分布式系统在出现不可预知故障的时候，允许损失部分可用性。但是，这绝不等价于系统不可用。
+Basic availability means the system may lose some availability when an unexpected failure occurs. It does not mean that the system becomes entirely unavailable.
 
-**什么叫允许损失部分可用性呢？**
+**What does partial loss of availability mean?**
 
-- **响应时间上的损失**：正常情况下，处理用户请求需要 0.5s 返回结果，但是由于系统出现故障，处理用户请求的时间变为 3s。
-- **系统功能上的损失**：正常情况下，用户可以使用系统的全部功能，但是由于系统访问量突然剧增，系统的部分非核心功能无法使用。
+- **Increased response time:** A request that normally takes 0.5 seconds may take 3 seconds during a failure.
+- **Reduced functionality:** A sudden increase in traffic may make some non-critical features unavailable while core features continue to work.
 
-#### 软状态
+#### Soft State
 
-软状态（Soft State）是指允许系统中的数据存在中间状态，并认为该中间状态的存在不会影响系统的整体可用性。
+**Soft State** means that data may temporarily be in an intermediate state, and that this state does not make the whole system unavailable.
 
-> **与 ACID 的区别**：ACID 理论要求事务执行后立即进入终态（成功或失败），不允许中间态；而 BASE 理论承认中间态是分布式系统的客观存在，只要中间态最终会演变成终态即可。
+> **Compared with ACID:** ACID transactions finish in a terminal state, either success or failure, without exposing an intermediate state. BASE recognizes that intermediate states are inevitable in distributed systems, provided they eventually reach a terminal state.
 
-举例说明：
+For example:
 
-- **ACID 模式**：银行转账事务中，扣款和入账必须同时成功或同时失败，不允许「扣款成功但入账未完成」的中间态
-- **BASE 模式**：电商下单事务中，允许「库存已减但订单未创建」的中间态存在，只要最终会达到一致（要么订单创建成功，要么库存回滚）
+- **ACID:** A bank transfer must debit and credit accounts together or do neither; “debited but not credited” is not allowed as a final transaction state.
+- **BASE:** An e-commerce flow may temporarily have inventory reduced before an order is created, provided the system eventually creates the order or restores inventory.
 
-#### 最终一致性
+#### Eventual consistency
 
-最终一致性（Eventual Consistency）强调：**若系统在一段时间内无新的更新操作，则所有副本最终收敛到相同值。**
+**Eventual consistency** means that if no new updates occur for some time, all replicas eventually converge to the same value.
 
-需要注意的是，「最终一致性」这个词在两个不同语境下有不同含义：
+The term has two meanings in different contexts:
 
-| 语境                           | 含义                     | 典型场景                   |
-| ------------------------------ | ------------------------ | -------------------------- |
-| **副本式存储（CAP 语境）**     | 数据副本最终同步一致     | Cassandra 数据复制         |
-| **事务状态（BASE/ACID 语境）** | 事务中间态最终演变成终态 | 分布式事务（如 TCC、Saga） |
+| Context                                   | Meaning                                                             | Example                                      |
+| ----------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------- |
+| **Replicated storage (CAP context)**      | Data replicas eventually synchronize.                               | Cassandra replication                        |
+| **Transaction state (BASE/ACID context)** | An intermediate transaction state eventually reaches a final state. | Distributed transactions such as TCC or Saga |
 
-**副本式存储的最终一致性**：
+**Eventual consistency in replicated storage:**
 
-「一段时间」是未界定的——可能是毫秒级（局域网同步）或分钟级（跨地域复制）。生产环境中需通过 **Read Repair（读修复）**、**Anti-Entropy（反熵/后台同步）** 或 **Quorum 写入** 主动加速收敛。
+The convergence period is not bounded by the definition; it may be milliseconds for synchronization in a local network or minutes for cross-region replication. Production systems can accelerate convergence using **Read Repair**, **Anti-Entropy** (background synchronization), or **Quorum** writes.
 
-**事务状态的最终一致性**：
+**Eventual consistency in transaction state:**
 
-以分布式事务为例：[扣减库存、创建订单、扣减余额]
+Consider a distributed transaction that reduces inventory, creates an order, and debits an account:
 
-- 时刻 T1：库存已减（中间态）
-- 时刻 T2：订单已创建（中间态）
-- 时刻 T3：余额已扣（终态：事务成功）
+- T1: Inventory is reduced (intermediate state).
+- T2: The order is created (intermediate state).
+- T3: The account is debited (final state: transaction succeeds).
 
-或在失败场景：
+On failure:
 
-- 时刻 T1：库存已减（中间态）
-- 时刻 T2：订单创建失败（触发回滚）
-- 时刻 T3：库存回滚（终态：事务失败）
+- T1: Inventory is reduced (intermediate state).
+- T2: Order creation fails (rollback begins).
+- T3: Inventory is restored (final state: transaction fails).
 
-系统会保证在一定时间内达到数据一致的状态，而不需要实时保证系统数据的强一致性。
+The system reaches a consistent state within some period without requiring strong consistency at every instant.
 
-分布式一致性的 3 种级别：
+Three common consistency levels are:
 
-1. **强一致性**：系统写入了什么，读出来的就是什么。
-2. **弱一致性**：不一定可以读取到最新写入的值，也不保证多少时间之后读取到的数据是最新的，只是会尽量保证某个时刻达到数据一致的状态。
-3. **最终一致性**：弱一致性的升级版，系统会保证在一定时间内达到数据一致的状态。
+1. **Strong consistency:** A read returns the latest successful write.
+2. **Weak consistency:** A read may not return the latest write, and there is no guarantee about when it will. The system only tries to reach a consistent state eventually.
+3. **Eventual consistency:** A stronger form of weak consistency in which the system guarantees convergence within some period.
 
-**业界比较推崇最终一致性级别，但是某些对数据一致要求十分严格的场景比如银行转账还是要保证强一致性。**
+Eventual consistency is common in industry. Some scenarios, such as bank transfers, require strong consistency.
 
-那实现最终一致性的具体方式是什么呢？
+Common ways to implement eventual consistency include:
 
-- **读时修复（Read Repair）**：在读取数据时，检测数据的不一致，进行修复。适合读多写少场景。
-- **写时修复（Hinted Handoff）**：在写入数据时，如果目标节点不可用，将数据缓存下来，待节点恢复后重传。**写时修复** 优化了写入延迟，但增加了读取时的不一致风险（数据可能还在缓存队列中未落盘到目标节点）。
-- **异步修复（Anti-Entropy/反熵）**：通过后台比对副本数据差异并修复。工程实现中关键挑战是**高效检测数据差异**——暴力逐条比对（O(n)）在大规模数据集下不可行，生产系统采用**默克尔树（Merkle Tree）**实现低开销差异定位。
+- **Read Repair:** Detect and repair inconsistent data during a read. Suits read-heavy, write-light workloads.
+- **Write Repair (Hinted Handoff):** If the target node is unavailable during a write, buffer the data and resend it when the node recovers. This can reduce write latency but increases the risk of stale reads while the data remains buffered.
+- **Asynchronous Repair (Anti-Entropy):** Compare replicas in the background and repair differences. A key engineering challenge is efficient difference detection: comparing every record (O(n)) is impractical for large datasets, so production systems use **Merkle Trees** to locate differences efficiently.
 
-**选择建议**：
+**Choosing an approach:**
 
-- **写时修复**：适合写多读少，优化写入性能，但牺牲一致性窗口。
-- **读时修复**：适合读多写少，保证读取数据的准确性。
-- **Anti-Entropy**：后台兜底保障，适合数据规模大但对最终一致性要求高的场景。
+- **Write Repair:** Suits write-heavy, read-light workloads; improves write performance at the cost of a longer inconsistency window.
+- **Read Repair:** Suits read-heavy, write-light workloads; helps ensure that reads return accurate data.
+- **Anti-Entropy:** Provides background repair for large datasets with strict eventual-convergence requirements.
 
-### 为什么很多人把 BASE 当作 CAP 的补充？
+### Why is BASE often called an extension of CAP?
 
-这是一个**部分正确但表述不够精确**的说法。更准确的理解是：
+This is **partly right but imprecise**. A more accurate explanation is:
 
-1. **BASE 首先是 ACID 的替代品**：从论文标题[《Base: An ACID Alternative》](https://spawn-queue.acm.org/doi/10.1145/1394127.1394128)可以看出，BASE 理论的初衷是解决分布式事务场景下 ACID 过于严格的问题。
+1. **BASE was first proposed as an alternative to ACID.** The title of the paper, [“Base: An ACID Alternative”](https://spawn-queue.acm.org/doi/10.1145/1394127.1394128), reflects its original goal of relaxing ACID in distributed transaction scenarios.
+2. **BASE is related to AP systems in CAP:**
+   - Choosing AP means giving up strong consistency (C) during a partition.
+   - After giving up strong consistency, the system still needs a way to converge. Eventual consistency provides that goal.
+   - BASE, especially eventual consistency, guides the engineering practices used to make an AP system converge.
+3. **The misunderstanding:** The relationship between BASE and AP is sometimes mistaken for BASE being an extension of CAP. In fact:
+   - **BASE does not extend or revise the CAP theorem.**
+   - **BASE is an engineering guide for AP systems:** after choosing AP, BASE describes how to eventually converge in practice.
 
-2. **BASE 与 CAP 的 AP 架构存在内在联系**：
-
-   - 选择 AP 架构意味着放弃强一致性（C）
-   - 放弃强一致性后，系统如何达到收敛？答案是**最终一致性**
-   - 因此，BASE 理论（特别是最终一致性）是 AP 架构在工程实践中**必须采用**的指导原则
-
-3. **误解产生的根源**：很多人把“BASE 与 AP 相关”误解为“BASE 是 CAP 的补充”。实际上：
-   - **BASE 不是对 CAP 理论的补充或修正**
-   - **BASE 是 AP 架构选择的工程实践指南**——当你选择了 AP，BASE 告诉你如何在工程实践中让系统最终达到一致
-
-**正确的理解**：
+The relationship can be summarized as follows:
 
 ```mermaid
 flowchart TB
-    %% 核心语义配色
+    %% Core semantic colors
     classDef cap fill:#E99151,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef base fill:#27AE60,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef acid fill:#3498DB,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef relation fill:#9B59B6,color:#FFFFFF,stroke:none,rx:10,ry:10
 
-    CAP[CAP 理论<br/>分布式存储系统设计约束]:::cap
-    ACID[ACID 理论<br/>数据库事务完整性]:::acid
-    BASE[BASE 理论<br/>ACID 的分布式替代品]:::base
+    CAP[CAP theory<br/>constraints on distributed storage design]:::cap
+    ACID[ACID theory<br/>database transaction integrity]:::acid
+    BASE[BASE theory<br/>distributed alternative to ACID]:::base
 
-    CAP -->|AP 架构放弃强一致性| BASE
-    ACID -->|分布式场景放宽| BASE
+    CAP -->|AP gives up strong consistency| BASE
+    ACID -->|Relaxed for distributed scenarios| BASE
 
-    CAP -->|约束：不能同时满足 C+A| R1[实践意义]:::relation
-    BASE -->|实现：如何达到最终一致| R1
+    CAP -->|Constraint: C and A cannot both be guaranteed during a partition| R1[Practical implications]:::relation
+    BASE -->|Implementation: how to converge eventually| R1
 
-    R1 --> Result[CAP 告诉我们限制<br/>BASE 告诉我们做法]:::relation
+    R1 --> Result[CAP explains the constraints<br/>BASE guides the implementation]:::relation
 
     linkStyle default stroke-width:2px,stroke:#333333,opacity:0.8
 ```
 
-| 维度       | CAP 理论                 | BASE 理论                                        |
-| ---------- | ------------------------ | ------------------------------------------------ |
-| 关注领域   | 分布式存储系统（带副本） | 所有分布式系统                                   |
-| 一致性含义 | 数据一致性（副本同步）   | 状态一致性（事务终态）                           |
-| 可用性含义 | 节点故障时系统可用       | 部分节点故障时部分功能可用                       |
-| 核心关系   | -                        | ① ACID 的分布式替代品<br>② AP 架构的工程实践指南 |
+| Dimension               | CAP                                       | BASE                                                                        |
+| ----------------------- | ----------------------------------------- | --------------------------------------------------------------------------- |
+| Scope                   | Distributed storage with replicas         | Distributed systems broadly                                                 |
+| Meaning of consistency  | Data consistency among replicas           | Consistency of transaction state and final outcome                          |
+| Meaning of availability | Service availability during node failures | Some functionality remains available when some nodes fail                   |
+| Relationship            | —                                         | (1) Distributed alternative to ACID<br>(2) Engineering guide for AP systems |
 
-> **实践意义**：CAP 告诉我们在 AP 架构下无法保证强一致性，BASE 告诉我们在 AP 架构下如何通过最终一致性让系统达到收敛——两者是**约束与实现**的关系，而非补充关系。
+> **In practice:** CAP says an AP system cannot guarantee strong consistency during a partition. BASE explains how eventual consistency can help it converge. They are related as **constraint and implementation**, not as extension and original.
 
-如果说 CAP 是分布式存储系统的设计约束（告诉我们不能做什么），那么 BASE 就是分布式系统（尤其是业务系统）的实践指导（告诉我们如何做）——它告诉我们：**绝大多数应用场景不需要强一致性，通过接受中间态并最终达到一致性，是更务实的选择。**
+CAP describes constraints on distributed storage design—what cannot be guaranteed. BASE guides the practice of distributed systems, especially business applications—how to proceed. **For many use cases, accepting intermediate states and eventual convergence is more practical than requiring strong consistency.**
 
-### 总结
+### BASE summary
 
-**ACID 是数据库事务完整性的理论，CAP 是分布式存储系统的设计理论，BASE 是 ACID 在分布式场景中的替代品，同时也是 AP 架构的工程实践指南。**
+**ACID describes database transaction integrity. CAP describes trade-offs in distributed storage. BASE is an alternative to ACID in distributed scenarios and an engineering guide for AP systems.**
 
-> **关键对应关系**：
+> **Key distinctions:**
 >
-> - **CAP 的一致性** = 数据一致性（副本节点间的数据同步）
-> - **BASE 的一致性** = 状态一致性（事务终态的一致）= ACID 的一致性
-> - **CAP 的可用性** = 主从集群的可用性（节点故障时系统仍可用）
-> - **BASE 的可用性** = 分片式集群的可用性（部分节点故障只影响部分用户）
-> - **CAP 与 BASE 的关系**：选择 AP 架构后，BASE 理论指导如何在工程实践中通过最终一致性达到系统收敛
+> - **CAP consistency:** Replica consistency (synchronization among copies of data).
+> - **BASE consistency:** Transaction-state consistency (reaching a final state), related to ACID consistency.
+> - **CAP availability:** A replicated cluster continues responding when nodes fail.
+> - **BASE availability:** A sharded system may keep serving some users when some nodes fail.
+> - **CAP and BASE:** After choosing AP, BASE guides how to converge through eventual consistency.
 
 <!-- @include: @article-footer.snippet.md -->

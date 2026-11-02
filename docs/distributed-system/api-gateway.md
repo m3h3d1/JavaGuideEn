@@ -1,95 +1,95 @@
 ---
-title: API 网关详解：核心功能、工作原理与 Spring Cloud Gateway / Kong / APISIX 选型
-category: 分布式
-description: API 网关核心知识详解，涵盖请求路由、认证鉴权、限流熔断、负载均衡、灰度发布、双层网关架构，以及 Spring Cloud Gateway、Kong、APISIX、ShenYu 等常见网关选型对比。
+title: "API Gateways Explained: Features, How They Work, and Choosing a Gateway"
+category: Distributed Systems
+description: Learn API gateway routing, authentication, rate limiting, circuit breaking, load balancing, canary releases, and two-tier architecture, with comparisons of Spring Cloud Gateway, Kong, APISIX, and ShenYu.
 tag:
-  - API 网关
+  - API Gateway
 head:
   - - meta
     - name: keywords
-      content: API 网关,微服务网关,Spring Cloud Gateway,Kong,APISIX,ShenYu,Zuul,限流熔断,负载均衡,网关选型,网关面试题
+      content: API gateway,microservices gateway,Spring Cloud Gateway,Kong,APISIX,ShenYu,Zuul,rate limiting,circuit breaking,load balancing,gateway selection,gateway interview questions
 ---
 
-## 什么是网关？
+## What Is an API Gateway?
 
-API 网关（API Gateway）是位于客户端与后端服务之间的**统一入口**，所有客户端请求先经过网关，再由网关路由到具体的目标服务。
+An API gateway is a **single entry point** between clients and backend services. Client requests pass through the gateway, which routes them to the appropriate service.
 
-在这组分布式文章里，网关属于“流量入口”这一层。[RPC](./rpc/) 主要讲服务之间怎么互相调用，网关讲外部请求进入系统后怎么做路由、鉴权、限流、灰度和协议适配。如果你只想看 Spring Cloud Gateway 的路由、Predicate、Filter 和限流细节，可以继续读 [Spring Cloud Gateway 面试题总结](./spring-cloud-gateway-questions.md)。
+In this distributed systems guide, gateways form the traffic entry layer. The [RPC guide](./rpc/) covers service-to-service calls; this article covers how incoming requests are routed, authorized, rate-limited, canaried, and adapted to different protocols. For Spring Cloud Gateway routes, predicates, filters, and rate limiting, see [Spring Cloud Gateway Interview Questions](./spring-cloud-gateway-questions.md).
 
-### 核心价值
+### Why Use a Gateway?
 
-在微服务架构下，一个系统被拆分为多个服务。像**安全认证、流量控制、日志、监控**等功能是每个服务都需要的。如果没有网关，我们需要在每个服务中单独实现这些功能，导致：
+In a microservices architecture, a system is split into multiple services. Each service may need **authentication, traffic control, logging, and monitoring**. Without a gateway, these capabilities must be implemented separately in each service, leading to:
 
-- **代码重复**：相同逻辑在多个服务中冗余实现
-- **管理分散**：缺乏统一的配置和监控视图
-- **维护成本高**：功能变更需要修改所有服务
+- **Duplicated code**: The same logic is implemented across multiple services.
+- **Fragmented management**: There is no unified view for configuration and monitoring.
+- **High maintenance cost**: Changes require updates to every service.
 
-![网关示意图](../ai/images/shared/api-gateway-overview.png)
+![API gateway overview](../ai/images/shared/api-gateway-overview.png)
 
-### 核心职责
+### Core Responsibilities
 
-网关的功能虽然繁多，但核心可以概括为两件事：
+Although gateways can provide many features, their core responsibilities are:
 
-| 职责         | 说明                                | 典型功能                               |
-| ------------ | ----------------------------------- | -------------------------------------- |
-| **请求转发** | 将客户端请求路由到正确的目标服务    | 动态路由、负载均衡、协议转换           |
-| **请求过滤** | 在请求到达后端服务前/后进行拦截处理 | 身份认证、权限校验、限流熔断、日志记录 |
+| Responsibility        | Description                                                                    | Examples                                                                 |
+| --------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| **Request routing**   | Routes client requests to the correct service.                                 | Dynamic routing, load balancing, protocol conversion.                    |
+| **Request filtering** | Intercepts and processes requests before or after they reach backend services. | Authentication, authorization, rate limiting, circuit breaking, logging. |
 
-下表是抽象层面的两类核心职责，落到具体能力上，会衍生出下一节列举的十余项网关功能。
+These are the two high-level responsibilities; they lead to the gateway capabilities listed in the next section.
 
-网关可以提供请求转发、安全认证（身份/权限认证）、流量控制、负载均衡、降级熔断、日志、监控、参数校验、协议转换等功能。
+A gateway can provide request routing, authentication and authorization, traffic control, load balancing, graceful degradation, circuit breaking, logging, monitoring, parameter validation, and protocol conversion.
 
-**网关在微服务架构中的位置**：所有客户端请求先到达网关，网关负责统一的认证鉴权、流量控制、路由分发，后端服务专注于业务逻辑处理。
+**Where the gateway fits in a microservices architecture:** Client requests first reach the gateway, which handles authentication, authorization, traffic control, and routing. Backend services can then focus on business logic.
 
-### 高可用部署
+### High Availability
 
-引入网关后会增加一次网络转发（性能损耗在内网环境下通常可忽略），但同时也引入了新的单点风险。因此，网关服务本身必须保障高可用：
+Adding a gateway introduces an extra network hop, though its performance cost is usually negligible on an internal network. It also creates a potential single point of failure, so the gateway itself must be highly available.
 
-如下图所示，网关服务外层通过 Nginx（或其他负载均衡设备/软件）进行负载转发以达到高可用。Nginx 在部署时也应考虑高可用，避免单点风险。
+As shown below, place Nginx or another load balancer in front of the gateway service to provide high availability. Nginx itself must also be deployed redundantly to avoid a single point of failure.
 
-![基于 Nginx 的服务端负载均衡](images/shared/server-load-balancing.png)
+![Server-side load balancing with Nginx](./images/shared/server-load-balancing.png)
 
-## 网关能提供哪些功能？
+## What Can a Gateway Do?
 
-绝大部分网关可以提供下面这些功能（有一些功能需要借助其他框架或者中间件）：
+Most gateways provide the following capabilities, though some require additional frameworks or middleware:
 
-- **请求转发**：将请求转发到目标微服务。
-- **负载均衡**：根据各个微服务实例的负载情况或者具体的负载均衡策略配置对请求实现动态的负载均衡。
-- **安全认证**：对用户请求进行身份验证并仅允许可信客户端访问 API，并且还能够使用类似 RBAC 等方式来授权。
-- **参数校验**：支持参数映射与校验逻辑。
-- **日志记录**：记录所有请求的行为日志供后续使用。
-- **监控告警**：从业务指标、机器指标、JVM 指标等方面进行监控并提供配套的告警机制。
-- **流量控制**：对请求的流量进行控制，也就是限制某一时刻内的请求数。
-- **熔断降级**：实时监控请求的统计信息，达到配置的失败阈值后，自动熔断，返回默认值。
-- **响应缓存**：当用户请求获取的是一些静态的或更新不频繁的数据时，一段时间内多次请求获取到的数据很可能是一样的。对于这种情况可以将响应缓存起来。这样用户请求可以直接在网关层得到响应数据，无需再去访问业务服务，减轻业务服务的负担。
-- **响应聚合**：某些情况下用户请求要获取的响应内容可能会来自于多个业务服务。通用网关可以做简单聚合，但复杂聚合更推荐放在 BFF（Backend For Frontend）或 GraphQL 层，避免把业务编排逻辑沉淀到基础设施层。
-- **灰度发布**：将请求动态分流到不同的服务版本（最基本的一种灰度发布）。
-- **异常处理**：对于业务服务返回的异常响应，可以在网关层在返回给用户之前做转换处理。这样可以把一些业务侧返回的异常细节隐藏，转换成用户友好的错误提示返回。
-- **API 文档**：如果计划将 API 暴露给组织以外的开发人员，那么必须考虑使用 API 文档，例如 Swagger 或 OpenAPI。
-- **协议转换**：通过协议转换整合后台基于 REST、AMQP、Dubbo 等不同风格和实现技术的微服务，面向 Web/Mobile、开放平台等特定客户端提供统一服务。
-- **证书管理**：将 SSL 证书部署到 API 网关，由一个统一的入口管理接口，降低了证书更换时的复杂度。
+- **Request routing**: Forward requests to the target microservice.
+- **Load balancing**: Distribute requests dynamically based on service instance load or a configured load-balancing policy.
+- **Authentication and authorization**: Authenticate users, restrict API access to trusted clients, and authorize requests using approaches such as RBAC.
+- **Parameter validation**: Map and validate request parameters.
+- **Logging**: Record request activity for later analysis.
+- **Monitoring and alerts**: Monitor business, host, and JVM metrics and raise alerts.
+- **Traffic control**: Limit the number of requests allowed over a given period.
+- **Circuit breaking and graceful degradation**: Monitor request statistics and, after a configured failure threshold is reached, open the circuit and return a fallback response.
+- **Response caching**: Cache responses for static or infrequently updated data. Repeated requests can then be served at the gateway without calling the backend service, reducing its load.
+- **Response aggregation**: Combine responses from multiple services when needed. Keep complex aggregation in a BFF (Backend for Frontend) or GraphQL layer rather than embedding business orchestration in infrastructure.
+- **Canary releases**: Dynamically route requests to different service versions.
+- **Error handling**: Transform service error responses before returning them, hiding internal details and providing user-friendly messages.
+- **API documentation**: If APIs are exposed to developers outside the organization, provide documentation such as Swagger or OpenAPI.
+- **Protocol conversion**: Integrate services using different protocols or technologies, such as REST, AMQP, and Dubbo, behind a unified interface for web, mobile, or partner clients.
+- **Certificate management**: Manage SSL certificates at the API gateway to simplify certificate replacement through a centralized entry point.
 
-需要注意的是，网关并不适合承载所有逻辑。强业务规则校验、复杂字段映射、长事务、长连接业务逻辑、细粒度业务授权等，通常应该回到业务服务、BFF 或 GraphQL 层处理。网关更适合做协议级、通用型、跨服务的能力，避免演化成难以维护的“巨石网关”。
+Gateways should not carry every kind of logic. Complex business validation, field mapping, long-running transactions, long-lived connection logic, and fine-grained business authorization usually belong in backend services, a BFF, or GraphQL. Keep the gateway focused on generic, protocol-level capabilities shared across services to avoid creating a difficult-to-maintain monolithic gateway.
 
-下图来源于[百亿规模 API 网关服务 Shepherd 的设计与实现 - 美团技术团队 - 2021](https://mp.weixin.qq.com/s/iITqdIiHi3XGKq6u6FRVdg)这篇文章。
+The following diagram is from [Design and Implementation of Shepherd, a Large-Scale API Gateway Service (Meituan, 2021)](https://mp.weixin.qq.com/s/iITqdIiHi3XGKq6u6FRVdg).
 
-![](images/shared/up-35e102c633bbe8e0dea1e075ea3fee5dcfb.png)
+![](./images/shared/up-35e102c633bbe8e0dea1e075ea3fee5dcfb.png)
 
-## 有哪些常见的网关系统？
+## Common API Gateway Systems
 
 ### Netflix Zuul
 
-Zuul 是 Netflix 开发的一款提供动态路由、监控、弹性、安全的网关服务，基于 Java 技术栈开发，可以和 Eureka、Ribbon、Hystrix 等组件配合使用。
+Zuul is a Netflix gateway service that provides dynamic routing, monitoring, resilience, and security. It is built on the Java stack and can work with components such as Eureka, Ribbon, and Hystrix.
 
-Zuul 核心架构如下：
+Zuul's core architecture is shown below:
 
-![Zuul 核心架构](images/shared/zuul-core-architecture.webp)
+![Zuul core architecture](./images/shared/zuul-core-architecture.webp)
 
-Zuul 主要通过过滤器（类似于 AOP）来过滤请求，从而实现网关必备的各种功能。
+Zuul uses filters, similar to AOP, to process requests and implement gateway features.
 
-![Zuul 请求生命周期](images/shared/zuul-request-lifecycle.webp)
+![Zuul request lifecycle](./images/shared/zuul-request-lifecycle.webp)
 
-我们可以自定义过滤器来处理请求，并且，Zuul 生态本身就有很多现成的过滤器供我们使用。就比如限流可以使用社区扩展 [spring-cloud-zuul-ratelimit](https://github.com/marcosbarbero/spring-cloud-zuul-ratelimit)（这里只是举例说明）。需要区分的是：Hystrix 主要负责熔断、超时、降级和线程池/信号量隔离，并不是严格意义上的 QPS 限流组件。
+You can write custom filters to process requests, and the Zuul ecosystem includes many ready-made filters. For example, the community extension [spring-cloud-zuul-ratelimit](https://github.com/marcosbarbero/spring-cloud-zuul-ratelimit) can provide rate limiting. Hystrix is primarily responsible for circuit breaking, timeouts, fallbacks, and thread-pool or semaphore isolation; it is not a dedicated QPS rate limiter.
 
 ```xml
 <dependency>
@@ -103,89 +103,89 @@ Zuul 主要通过过滤器（类似于 AOP）来过滤请求，从而实现网�
 </dependency>
 ```
 
-[Zuul 1.x](https://netflixtechblog.com/announcing-zuul-edge-service-in-the-cloud-ab3af5be08ee) 基于同步 IO，性能较差。[Zuul 2.x](https://netflixtechblog.com/open-sourcing-zuul-2-82ea476cb2b3) 基于 Netty 实现了异步 IO，性能得到了大幅改进。
+[Zuul 1.x](https://netflixtechblog.com/announcing-zuul-edge-service-in-the-cloud-ab3af5be08ee) uses synchronous I/O and has lower performance. [Zuul 2.x](https://netflixtechblog.com/open-sourcing-zuul-2-82ea476cb2b3) uses Netty for asynchronous I/O, improving performance substantially.
 
-![Zuul2 架构](images/shared/zuul2-core-architecture.png)
+![Zuul 2 architecture](./images/shared/zuul2-core-architecture.png)
 
-> **重要提示**：Spring Cloud Netflix 中 Zuul 1.x、Ribbon、Hystrix 等模块已进入维护模式，Spring Cloud 主流发行版也早已转向 Spring Cloud Gateway。尽管 Netflix 开源了 Zuul 2.x，但 Zuul 2.x 并未被集成到 Spring Cloud 主流版本中。对于 Spring Cloud 技术栈的新项目，不建议再选用 Zuul 1.x；存量项目应结合重构窗口逐步迁移到 Spring Cloud Gateway 或其他现代网关。
+> **Important:** Zuul 1.x, Ribbon, and Hystrix in Spring Cloud Netflix are in maintenance mode, and mainstream Spring Cloud releases have moved to Spring Cloud Gateway. Netflix open-sourced Zuul 2.x, but it has not been integrated into mainstream Spring Cloud releases. New Spring Cloud projects should avoid Zuul 1.x; existing projects can migrate to Spring Cloud Gateway or another modern gateway as part of planned refactoring.
 
-- GitHub 地址： <https://github.com/Netflix/zuul>
-- 官方 Wiki： <https://github.com/Netflix/zuul/wiki>
+- GitHub: <https://github.com/Netflix/zuul>
+- Official wiki: <https://github.com/Netflix/zuul/wiki>
 
 ### Spring Cloud Gateway
 
-Spring Cloud Gateway 属于 Spring Cloud 生态系统中的网关，其诞生的目标是为了替代老牌网关 **Zuul**（准确说是 Zuul 1.x）。值得注意的是，Spring Cloud Gateway 的起步时间早于 Zuul 2.x，两者属于不同的技术演进路线。
+Spring Cloud Gateway is part of the Spring Cloud ecosystem and was created to replace the established gateway **Zuul**, specifically Zuul 1.x. Spring Cloud Gateway development began before Zuul 2.x; the two followed separate development paths.
 
-#### 为什么 Spring Cloud Gateway 性能更好？
+#### Why Can Spring Cloud Gateway Perform Better?
 
-| 版本                     | IO 模型             | 线程模型     | 吞吐量 | 延迟 |
-| ------------------------ | ------------------- | ------------ | ------ | ---- |
-| **Zuul 1.x**             | 同步阻塞（Servlet） | 每请求一线程 | 低     | 高   |
-| **Zuul 2.x**             | 异步非阻塞（Netty） | 事件循环     | 高     | 低   |
-| **Spring Cloud Gateway** | 异步非阻塞（Netty） | 事件循环     | 高     | 低   |
+| Version                  | I/O model                         | Thread model           | Throughput | Latency |
+| ------------------------ | --------------------------------- | ---------------------- | ---------- | ------- |
+| **Zuul 1.x**             | Synchronous blocking (Servlet)    | One thread per request | Low        | High    |
+| **Zuul 2.x**             | Asynchronous non-blocking (Netty) | Event loop             | High       | Low     |
+| **Spring Cloud Gateway** | Asynchronous non-blocking (Netty) | Event loop             | High       | Low     |
 
-Spring Cloud Gateway 基于 **Spring WebFlux** 实现，而不是传统的 Spring Web MVC。Spring WebFlux 使用 **Reactor** 库来实现响应式编程模型，底层基于 **Netty** 实现异步非阻塞的 I/O。
+Spring Cloud Gateway is built on **Spring WebFlux**, not traditional Spring Web MVC. Spring WebFlux uses the **Reactor** library for its reactive programming model, with **Netty** providing asynchronous, non-blocking I/O.
 
-**响应式编程的优势**：
+**Benefits of reactive programming:**
 
-- **非阻塞 I/O**：无需为每个请求分配独立线程，少量线程即可处理大量并发连接
-- **背压机制**：Reactor 的背压主要作用于网关进程内部的响应式链路，避免 in-flight 请求把自身压垮。端到端的过载保护仍需依赖显式的限流、舱壁、超时和熔断，例如 `RequestRateLimiter`、`CircuitBreaker` 等过滤器
-- **资源利用率高**：线程上下文切换开销大幅降低
+- **Non-blocking I/O**: A separate thread is not needed for every request, so a small thread pool can handle many concurrent connections.
+- **Backpressure**: Reactor backpressure applies mainly within the gateway's reactive pipeline, helping prevent in-flight requests from overwhelming the gateway. End-to-end overload protection still requires explicit rate limits, bulkheads, timeouts, and circuit breakers, such as the `RequestRateLimiter` and `CircuitBreaker` filters.
+- **Efficient resource use**: It reduces the overhead of thread context switching.
 
-#### 核心概念
+#### Core Concepts
 
-Spring Cloud Gateway 的核心组件包括三个部分：
+Spring Cloud Gateway has three core components:
 
-1. **Route（路由）**：网关的基本构建块，由 ID、目标 URI、断言集合和过滤器集合组成
-2. **Predicate（断言）**：基于 Java 8 `Predicate` 函数式接口实现，用于匹配 HTTP 请求（如路径、方法、请求头等）。例如 `Path=/api/users/**`、`Method=GET`、`Header=X-Request-Id, \d+`，多个 Predicate 通过逻辑与组合
-3. **Filter（过滤器）**：`GatewayFilter` 的实例，用于在请求被发送到下游服务之前或之后修改请求和响应
+1. **Route**: The basic building block of a gateway. It consists of an ID, a target URI, a set of predicates, and a set of filters.
+2. **Predicate**: Based on Java 8's `Predicate` functional interface, it matches HTTP requests by path, method, headers, and other attributes. Examples include `Path=/api/users/**`, `Method=GET`, and `Header=X-Request-Id, \d+`. Multiple predicates are combined with logical AND.
+3. **Filter**: An instance of `GatewayFilter` that modifies a request or response before or after the request is sent to a downstream service.
 
-Spring Cloud Gateway 和 Zuul 2.x 都是通过过滤器来处理请求，但 Spring Cloud Gateway 与 Spring 生态系统（如 Eureka、Consul、Config）集成更加紧密。目前，对于 Java 技术栈的新项目，Spring Cloud Gateway 通常是更主流的选择。需要注意的是，Spring Cloud Gateway 4.x/5.x 文档中已经同时提供 Server 与 Proxy Exchange 两类形态，并分别提供 WebFlux 和 Web MVC 兼容路径。熟悉 Servlet 技术栈、暂时不想引入响应式编程复杂度的团队，也可以评估 Spring Cloud Gateway Server MVC。
+Spring Cloud Gateway and Zuul 2.x both process requests with filters, but Spring Cloud Gateway integrates more closely with the Spring ecosystem, including Eureka, Consul, and Config. It is generally the more common choice for new Java projects. The Spring Cloud Gateway 4.x/5.x documentation describes both Server and Proxy Exchange forms, with WebFlux and Web MVC options. Teams familiar with the Servlet stack that want to avoid reactive programming complexity can also evaluate Spring Cloud Gateway Server MVC.
 
-在能力边界上也要说清楚：Spring Cloud Gateway 内置了 `RequestRateLimiter` 过滤器，常见 Redis 实现基于令牌桶算法，但 Redis 限流还需要引入对应的 reactive Redis 依赖；熔断能力则是通过 Spring Cloud CircuitBreaker 适配 Resilience4j，需要额外引入 `spring-cloud-starter-circuitbreaker-reactor-resilience4j` 等依赖。路由配置也不只是“内存配置”，默认可以写在 YAML 中，也可以通过 `RouteDefinitionRepository`、Redis 路由仓库或自定义实现接入外部配置，并结合刷新机制动态生效。
+Be clear about the gateway's boundaries: Spring Cloud Gateway includes the `RequestRateLimiter` filter. Its common Redis implementation uses a token bucket and requires the corresponding reactive Redis dependency. Circuit breaking is provided through Spring Cloud CircuitBreaker adapters for Resilience4j, which require dependencies such as `spring-cloud-starter-circuitbreaker-reactor-resilience4j`. Routes are not limited to in-memory configuration: they can be defined in YAML or loaded from an external source through `RouteDefinitionRepository`, a Redis route repository, or a custom implementation, then applied dynamically with refresh mechanisms.
 
-- GitHub 地址： <https://github.com/spring-cloud/spring-cloud-gateway>
-- 官网： <https://spring.io/projects/spring-cloud-gateway>
+- GitHub: <https://github.com/spring-cloud/spring-cloud-gateway>
+- Website: <https://spring.io/projects/spring-cloud-gateway>
 
 ### OpenResty
 
-根据官方介绍：
+According to the official description:
 
-> OpenResty 是一个基于 Nginx 与 Lua 的高性能 Web 平台，其内部集成了大量精良的 Lua 库、第三方模块以及大多数的依赖项。用于方便地搭建能够处理超高并发、扩展性极高的动态 Web 应用、Web 服务和动态网关。
+> OpenResty is a high-performance web platform based on Nginx and Lua. It integrates many Lua libraries, third-party modules, and dependencies to make it easier to build dynamic web applications, services, and gateways that can handle high concurrency and scale well.
 
-![OpenResty 和 Nginx 以及 Lua 的关系](images/shared/api-gatewaynginx-lua-openresty.png)
+![How OpenResty relates to Nginx and Lua](./images/shared/api-gatewaynginx-lua-openresty.png)
 
-OpenResty 基于 Nginx，主要还是看中了其优秀的高并发能力。不过，由于 Nginx 采用 C 语言开发，二次开发门槛较高。如果想在 Nginx 上实现一些自定义的逻辑或功能，就需要编写 C 语言的模块，并重新编译 Nginx。
+OpenResty is based on Nginx and benefits from its ability to handle high concurrency. However, Nginx is written in C, which makes custom development more difficult. Adding custom logic or features to Nginx requires writing a C module and recompiling Nginx.
 
-为了解决这个问题，OpenResty 集成并维护了 `ngx_http_lua_module`、`ngx_stream_lua_module` 等模块，把 Lua/LuaJIT 整合进了 Nginx，从而让我们能够在 Nginx 内部嵌入 Lua 脚本，使得可以通过简单的 Lua 语言来扩展网关的功能，比如实现自定义的路由规则、过滤器、缓存策略等。
+To address this, OpenResty integrates and maintains modules such as `ngx_http_lua_module` and `ngx_stream_lua_module`, embedding Lua/LuaJIT in Nginx. This lets you extend the gateway with Lua scripts, for example, to implement custom routing rules, filters, and caching strategies.
 
-> Lua 是一种非常快速的动态脚本语言，它的运行速度接近于 C 语言。LuaJIT 是 Lua 的一个即时编译器，它可以显著提高 Lua 代码的执行效率。LuaJIT 将一些常用的 Lua 函数和工具库预编译并缓存，这样在下次调用时就可以直接使用缓存的字节码，从而大大加快了执行速度。
+> Lua is a fast dynamic scripting language with performance close to C. LuaJIT is a just-in-time compiler for Lua that can significantly improve execution speed. It precompiles and caches commonly used Lua functions and libraries so subsequent calls can use cached bytecode.
 
-关于 OpenResty 的入门以及网关安全实战推荐阅读这篇文章：[每个后端都应该了解的 OpenResty 入门以及网关安全实战](https://mp.weixin.qq.com/s/3HglZs06W95vF3tSa3KrXw)。
+For an introduction to OpenResty and practical gateway security, see [OpenResty Fundamentals and Gateway Security for Backend Developers](https://mp.weixin.qq.com/s/3HglZs06W95vF3tSa3KrXw).
 
-- GitHub 地址： <https://github.com/openresty/openresty>
-- 官网地址： <https://openresty.org/>
+- GitHub: <https://github.com/openresty/openresty>
+- Website: <https://openresty.org/>
 
 ### Kong
 
-Kong 是一款基于 [OpenResty](https://github.com/openresty/) （Nginx + Lua）的高性能、云原生、可扩展、生态丰富的网关系统，主要由 3 个组件组成：
+Kong is a high-performance, cloud-native, extensible gateway built on [OpenResty](https://github.com/openresty/) (Nginx + Lua). It has three main components:
 
-- Kong Server：基于 Nginx 的服务器，用来接收 API 请求。
-- PostgreSQL：用来存储操作数据（传统数据库模式）。Kong 早期也支持 Cassandra，但 Kong Gateway 3.4 起已经移除 Cassandra DB 支持，新部署不建议再选 Cassandra。
-- Kong Manager：官方 UI 管理工具，提供可视化的 API 管理、监控和配置功能（有 OSS 开源版和 Enterprise 企业版）。也可使用 RESTful Admin API 进行管理。
+- **Kong Server**: An Nginx-based server that receives API requests.
+- **PostgreSQL**: Stores configuration and operational data in traditional database mode. Kong previously supported Cassandra, but support was removed in Kong Gateway 3.4; Cassandra is not recommended for new deployments.
+- **Kong Manager**: The official UI for API management, monitoring, and configuration. It is available in OSS and Enterprise editions. You can also manage Kong through the RESTful Admin API.
 
-![](images/shared/kong-way.webp)
+![](./images/shared/kong-way.webp)
 
-Kong 传统模式依赖外部数据库存储配置，架构相对复杂，需要额外保障数据库层的高可用。但自 **Kong 1.1** 版本起，已支持 **DB-less 模式（无库模式）**：
+Kong's traditional mode stores configuration in an external database, which adds architectural complexity and requires high availability for the database. Since **Kong 1.1**, Kong has also supported **DB-less mode**:
 
-- **传统模式**：使用 PostgreSQL 存储配置，适合需要通过 Admin API 持久化管理 API 数据的场景
-- **DB-less 模式**：通过声明式配置文件管理，无需部署数据库，架构更加轻量
-- **Hybrid 模式**：控制平面使用数据库管理配置，数据平面不直接连接数据库，适合多集群、跨区域分发配置
-- **Kubernetes Ingress 模式**：通过 ConfigMap 或 CRD（Kubernetes Custom Resource Definitions）管理配置，无需数据库，是 K8s 环境下的主流用法
+- **Traditional mode**: Stores configuration in PostgreSQL. Suitable when API data must be managed persistently through the Admin API.
+- **DB-less mode**: Uses declarative configuration files and does not require a database, resulting in a lighter architecture.
+- **Hybrid mode**: The control plane manages configuration in a database, while the data plane does not connect directly to it. Suitable for distributing configuration across clusters or regions.
+- **Kubernetes Ingress mode**: Manages configuration through ConfigMaps or CRDs (Kubernetes Custom Resource Definitions), without a database. A common approach in Kubernetes environments.
 
-> **注意**：本文后续讨论的 Kong 高可用问题，主要针对传统数据库模式。在 K8s 环境使用 Ingress Controller 模式，或使用 DB-less/Hybrid 模式时，架构和运维关注点会有明显差异。
+> **Note:** The Kong high-availability discussion below mainly concerns traditional database mode. Architecture and operational concerns differ when using an Ingress Controller in Kubernetes or DB-less/Hybrid mode.
 
-Kong 提供了插件机制来扩展其功能，插件在 API 请求响应循环的生命周期中被执行。比如在服务上启用 Zipkin 插件：
+Kong extends its features through plugins, which run during the API request-response lifecycle. For example, enable the Zipkin plugin on a service:
 
 ```shell
 $ curl -X POST http://kong:8001/services/{service}/plugins \
@@ -194,102 +194,102 @@ $ curl -X POST http://kong:8001/services/{service}/plugins \
     --data "config.sample_ratio=0.001"
 ```
 
-Kong 本身就是一个 Lua 应用程序，并且是在 OpenResty 的基础之上做了一层封装的应用。归根结底就是利用 Lua 嵌入 Nginx 的方式，赋予了 Nginx 可编程的能力，这样以插件的形式在 Nginx 这一层能够做到无限想象的事情。例如限流、安全访问策略、路由、负载均衡等等。编写一个 Kong 插件，就是按照 Kong 插件编写规范，写一个自己自定义的 Lua 脚本，然后加载到 Kong 中，最后引用即可。
+Kong is a Lua application built on OpenResty. By embedding Lua in Nginx, it makes Nginx programmable and allows plugins to implement features such as rate limiting, access policies, routing, and load balancing. To create a Kong plugin, write a Lua script that follows the plugin specification, load it into Kong, and configure it for use.
 
-![](images/shared/kong-gateway-overview.png)
+![](./images/shared/kong-gateway-overview.png)
 
-除了 Lua，Kong 还可以基于 Go、JavaScript、Python 等语言开发插件，得益于对应的 PDK（插件开发工具包）。
+In addition to Lua, Kong plugins can be written in Go, JavaScript, Python, and other languages using the corresponding PDKs (Plugin Development Kits).
 
-关于 Kong 插件的详细介绍，推荐阅读官方文档：<https://docs.konghq.com/gateway/latest/kong-plugins/>，写的比较详细。
+For details about Kong plugins, see the [official documentation](https://docs.konghq.com/gateway/latest/kong-plugins/).
 
-- GitHub 地址： <https://github.com/Kong/kong>
-- 官网地址： <https://konghq.com/kong>
+- GitHub: <https://github.com/Kong/kong>
+- Website: <https://konghq.com/kong>
 
-### APISIX
+### Apache APISIX
 
-APISIX 是一款基于 OpenResty 和 etcd 的高性能、云原生、可扩展的网关系统。
+APISIX is a high-performance, cloud-native, extensible gateway based on OpenResty and etcd.
 
-> etcd 是使用 Go 语言开发的一个开源的、高可用的分布式 Key-Value 存储系统，使用 Raft 协议做分布式共识。
+> etcd is an open-source, highly available distributed key-value store written in Go. It uses the Raft protocol for distributed consensus.
 
-与传统 API 网关相比，APISIX 具有动态路由和插件热加载，特别适合微服务系统下的 API 管理。并且，APISIX 与 SkyWalking（分布式链路追踪系统）、Zipkin（分布式链路追踪系统）、Prometheus（监控系统）等 DevOps 生态工具对接都十分方便。
+Compared with traditional API gateways, APISIX supports dynamic routing and hot-reloading plugins, making it well suited to API management in microservices systems. It also integrates with DevOps tools such as SkyWalking and Zipkin for distributed tracing and Prometheus for monitoring.
 
-![APISIX 架构图](images/shared/apisix-architecture.png)
+![APISIX architecture](./images/shared/apisix-architecture.png)
 
-作为 Nginx 和 Kong 的替代项目，APISIX 已于 2020-07-15 成为 Apache 顶级项目。国内目前已经有很多知名企业（比如金山、有赞、爱奇艺、腾讯、贝壳）使用 APISIX 处理核心的业务流量。
+As an alternative to Nginx and Kong, APISIX became an Apache top-level project on 2020-07-15. Companies including Kingsoft, Youzan, iQIYI, Tencent, and Beike use APISIX for core business traffic.
 
-APISIX 在路由动态性、基于 etcd 的配置热更新、插件生态、控制台等方面对 Kong 形成了有力竞争。不过，API 网关的性能对比高度依赖版本、部署拓扑、路由数量、插件链长度、请求体大小、TLS 开关和连接复用方式，建议根据自身场景做基准测试，不要直接照搬任一厂商的营销口径。
+APISIX competes with Kong through dynamic routing, etcd-based configuration hot reloads, its plugin ecosystem, and its dashboard. However, gateway performance comparisons depend heavily on version, deployment topology, route count, plugin chain length, request body size, TLS, and connection reuse. Benchmark your own workload instead of relying on vendor marketing claims.
 
-APISIX 同样支持定制化的插件开发。开发者除了能够使用 Lua 语言开发插件，还能通过下面两种方式开发来避开 Lua 语言的学习成本：
+APISIX also supports custom plugins. Besides Lua, developers can avoid learning Lua by using either of these approaches:
 
-- 通过 Plugin Runner 来支持更多的主流编程语言（比如 Java、Python、Go 等等）。通过这样的方式，可以让后端工程师通过本地 RPC 通信，使用熟悉的编程语言开发 APISIX 的插件。这样做的好处是减少了开发成本，提高了开发效率，但是在性能上会有一些损失。
-- 使用 Wasm（WebAssembly） 开发插件。Wasm 被嵌入到了 APISIX 中，用户可以使用 Wasm 去编译成 Wasm 的字节码在 APISIX 中运行。
+- Use Plugin Runner to write plugins in mainstream languages such as Java, Python, and Go. Backend engineers can use familiar languages and communicate with APISIX over local RPC. This reduces development effort and speeds up development, with some performance cost.
+- Use Wasm (WebAssembly) to develop plugins. APISIX embeds Wasm and can run plugins compiled to Wasm bytecode.
 
-> Wasm 是基于堆栈的虚拟机的二进制指令格式，一种低级汇编语言，旨在非常接近已编译的机器代码，并且非常接近本机性能。Wasm 最初是为浏览器构建的，但是随着技术的成熟，在服务器端看到了越来越多的用例。
+> Wasm is a binary instruction format for a stack-based virtual machine. It is a low-level assembly language designed to run close to compiled machine code and achieve near-native performance. Wasm was initially built for browsers, but its use on servers has grown as the technology has matured.
 
-![](images/shared/up-a240d3b113cde647f5850f4c7cc55d4ff5c.png)
+![](./images/shared/up-a240d3b113cde647f5850f4c7cc55d4ff5c.png)
 
-- GitHub 地址：<https://github.com/apache/apisix>
-- 官网地址： <https://apisix.apache.org/zh/>
+- GitHub: <https://github.com/apache/apisix>
+- Website: <https://apisix.apache.org/zh/>
 
-### ShenYu
+### Apache ShenYu
 
-ShenYu 是一款基于 WebFlux 的可扩展、高性能、响应式网关，Apache 顶级开源项目。
+ShenYu is an extensible, high-performance reactive gateway based on WebFlux and an Apache top-level project.
 
-![ShenYu 架构](images/shared/shenyu-architecture.png)
+![ShenYu architecture](./images/shared/shenyu-architecture.png)
 
-ShenYu 通过插件扩展功能，插件是 ShenYu 的灵魂，并且插件也是可扩展和热插拔的。不同的插件实现不同的功能。ShenYu 自带了诸如限流、熔断、转发、重写、重定向和路由监控等插件。
+ShenYu extends its functionality through plugins, which are extensible and can be added or removed dynamically. Different plugins provide different features. Built-in plugins include rate limiting, circuit breaking, forwarding, rewriting, redirection, and route monitoring.
 
-- GitHub 地址： <https://github.com/apache/shenyu>
-- 官网地址： <https://shenyu.apache.org/>
+- GitHub: <https://github.com/apache/shenyu>
+- Website: <https://shenyu.apache.org/>
 
-### 网关对比一览
+### Gateway Comparison
 
-| 特性           | Zuul 1.x                   | Zuul 2.x         | Spring Cloud Gateway                                   | Kong                          | APISIX           | ShenYu               |
-| -------------- | -------------------------- | ---------------- | ------------------------------------------------------ | ----------------------------- | ---------------- | -------------------- |
-| **IO 模型**    | 同步阻塞                   | 异步非阻塞       | 异步非阻塞                                             | 异步非阻塞                    | 异步非阻塞       | 异步非阻塞           |
-| **底层技术**   | Servlet                    | Netty            | WebFlux/Server MVC + Netty/Servlet 容器                | OpenResty（Nginx + Lua）      | OpenResty + etcd | WebFlux + Netty      |
-| **性能**       | 低                         | 高               | 高                                                     | 很高                          | 很高             | 高                   |
-| **动态配置**   | 默认需重启，可扩展         | 支持，需自建体系 | 支持                                                   | 支持                          | 支持（热更新）   | 支持                 |
-| **配置存储**   | 本地配置/内存              | 自定义           | 默认 YAML/内存，可接 Redis 或自定义路由仓库            | PostgreSQL / YAML / K8s CRD   | etcd（分布式）   | 内存/数据库/注册中心 |
-| **限流熔断**   | 限流靠扩展，熔断靠 Hystrix | 需集成           | 限流内置 `RequestRateLimiter`；熔断需接 CircuitBreaker | 插件                          | 插件             | 插件                 |
-| **生态系统**   | Netflix（维护模式）        | Netflix          | Spring Cloud                                           | Kong / 插件生态               | Apache           | Apache               |
-| **运维复杂度** | 低                         | 中               | 低到中                                                 | 中（DB-less） / 高（DB Mode） | 中               | 中                   |
-| **学习曲线**   | 平缓                       | 平缓             | 平缓到中                                               | 陡峭（Lua）                   | 陡峭（Lua）      | 平缓（Java）         |
-| **适用场景**   | 遗留系统维护               | Netflix 存量体系 | Spring Cloud 生态                                      | 云原生、多语言                | 云原生、高性能   | Java 生态            |
+| Feature                                | Zuul 1.x                                                   | Zuul 2.x                       | Spring Cloud Gateway                                                           | Kong                                    | APISIX                                 | ShenYu                              |
+| -------------------------------------- | ---------------------------------------------------------- | ------------------------------ | ------------------------------------------------------------------------------ | --------------------------------------- | -------------------------------------- | ----------------------------------- |
+| **I/O model**                          | Synchronous, blocking                                      | Asynchronous, non-blocking     | Asynchronous, non-blocking                                                     | Asynchronous, non-blocking              | Asynchronous, non-blocking             | Asynchronous, non-blocking          |
+| **Technology**                         | Servlet                                                    | Netty                          | WebFlux/Server MVC + Netty/Servlet container                                   | OpenResty (Nginx + Lua)                 | OpenResty + etcd                       | WebFlux + Netty                     |
+| **Performance**                        | Low                                                        | High                           | High                                                                           | Very high                               | Very high                              | High                                |
+| **Dynamic configuration**              | Requires restart by default; extensible                    | Supported with a custom system | Supported                                                                      | Supported                               | Supported (hot reload)                 | Supported                           |
+| **Configuration storage**              | Local config/in memory                                     | Custom                         | YAML/in memory by default; Redis or a custom route repository can be used      | PostgreSQL / YAML / Kubernetes CRD      | etcd (distributed)                     | In memory/database/service registry |
+| **Rate limiting and circuit breaking** | Rate limiting via extensions; circuit breaking via Hystrix | Requires integration           | Built-in `RequestRateLimiter`; CircuitBreaker integration for circuit breaking | Plugins                                 | Plugins                                | Plugins                             |
+| **Ecosystem**                          | Netflix (maintenance mode)                                 | Netflix                        | Spring Cloud                                                                   | Kong and plugins                        | Apache                                 | Apache                              |
+| **Operational complexity**             | Low                                                        | Medium                         | Low to medium                                                                  | Medium (DB-less) / high (database mode) | Medium                                 | Medium                              |
+| **Learning curve**                     | Gentle                                                     | Gentle                         | Gentle to moderate                                                             | Steep (Lua)                             | Steep (Lua)                            | Gentle (Java)                       |
+| **Use cases**                          | Maintaining legacy systems                                 | Existing Netflix deployments   | Spring Cloud ecosystem                                                         | Cloud-native, multi-language systems    | Cloud-native, high-performance systems | Java ecosystem                      |
 
-上表中的“性能”只是经验分级，不能替代基准测试。实际性能会受路由数量、插件链长度、请求体大小、TLS 开关、连接复用率、日志采样率、下游延迟等因素影响。选型前建议用 wrk2、vegeta、k6 等工具在自身流量画像下复测，并重点观察 P99/P999 延迟、错误率、CPU/内存占用，而不是只看单纯 QPS。
+The “Performance” ratings above are rough estimates, not a substitute for benchmarking. Actual performance depends on route count, plugin chain length, request body size, TLS, connection reuse, log sampling, and downstream latency. Before choosing a gateway, benchmark it with tools such as wrk2, vegeta, or k6 using your traffic profile. Measure P99/P999 latency, error rate, and CPU and memory use, not just QPS.
 
-## 如何选择？
+## How to Choose
 
-选择 API 网关需要综合考虑技术栈、性能要求、团队能力和运维成本。
+Choose an API gateway based on your technology stack, performance requirements, team skills, and operational costs.
 
-### 双层网关架构
+### Two-Tier Gateway Architecture
 
-在中大型微服务体系中，常见做法是把网关拆成两层：
+Medium and large microservices systems often split gateway responsibilities across two tiers:
 
-- **流量网关**：通常部署在边缘层，可以选择 Kong、APISIX、Nginx/OpenResty、Envoy Gateway 等，负责 SSL 终止、WAF、全局限流、IP 黑白名单、DDoS 防护、协议适配等偏基础设施的能力。
-- **业务网关**：通常部署在内网，可以选择 Spring Cloud Gateway、ShenYu 或自研网关，负责微服务路由、细粒度鉴权、参数校验、灰度路由、业务侧观测等更贴近业务系统的能力。
+- **Traffic gateway**: Usually deployed at the edge. Options include Kong, APISIX, Nginx/OpenResty, and Envoy Gateway. It handles infrastructure concerns such as SSL termination, WAF, global rate limiting, IP allow/deny lists, DDoS protection, and protocol adaptation.
+- **Business gateway**: Usually deployed inside the network. Options include Spring Cloud Gateway, ShenYu, or a custom gateway. It handles capabilities closer to the application, such as microservice routing, fine-grained authorization, parameter validation, canary routing, and application-level observability.
 
-如果系统规模较小、业务域单一、团队人力有限，单层网关通常更简单；当外部流量治理和内部业务路由的职责开始互相干扰时，再拆成双层会更稳妥。如果团队已经全面使用 Service Mesh，也可以评估直接用 Envoy/Istio Ingress 承担南北向流量入口，避免代理层级过多。
+For a small system with one business domain and a limited team, a single gateway is usually simpler. Consider two tiers when external traffic management starts to interfere with internal business routing. Teams that already use a service mesh can also evaluate Envoy or Istio Ingress for north-south traffic to avoid adding too many proxy layers.
 
-| 场景                  | 推荐方案                                                         | 理由                                                                        |
-| --------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| **Spring Cloud 生态** | Spring Cloud Gateway                                             | 与 Spring Boot/Spring Cloud 无缝集成，配置简单                              |
-| **高性能 / 云原生**   | APISIX                                                           | 基于 etcd 的热更新、性能优异、云原生架构                                    |
-| **多语言生态**        | Kong                                                             | 插件丰富、支持多语言开发、社区成熟                                          |
-| **Netflix 存量体系**  | 维持现状并规划迁移                                               | Zuul 1.x、Ribbon、Hystrix 等已进入维护模式，新项目不建议继续扩展            |
-| **双层架构**          | Kong/APISIX/Envoy（流量网关） + Spring Cloud Gateway（业务网关） | 流量网关处理 SSL、WAF、全局限流；业务网关处理微服务鉴权、参数校验、灰度路由 |
+| Scenario                            | Recommended option                                                            | Reason                                                                                                                                            |
+| ----------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Spring Cloud ecosystem**          | Spring Cloud Gateway                                                          | Integrates with Spring Boot and Spring Cloud, with simple configuration.                                                                          |
+| **High performance / cloud native** | APISIX                                                                        | etcd-based hot reloads, strong performance, and a cloud-native architecture.                                                                      |
+| **Multi-language ecosystem**        | Kong                                                                          | Broad plugin support, multi-language development, and an established community.                                                                   |
+| **Existing Netflix deployments**    | Keep the current system and plan a migration.                                 | Zuul 1.x, Ribbon, and Hystrix are in maintenance mode; avoid expanding their use in new projects.                                                 |
+| **Two-tier architecture**           | Kong/APISIX/Envoy (traffic gateway) + Spring Cloud Gateway (business gateway) | The traffic gateway handles SSL, WAF, and global rate limits; the business gateway handles service authorization, validation, and canary routing. |
 
-## 参考
+## References
 
-- Spring Cloud Gateway 官方文档：<https://docs.spring.io/spring-cloud-gateway/reference/>
-- Spring Cloud Netflix 维护模式说明：<https://cloud.spring.io/spring-cloud-netflix/multi/multi__modules_in_maintenance_mode.html>
+- [Spring Cloud Gateway Documentation](https://docs.spring.io/spring-cloud-gateway/reference/)
+- [Spring Cloud Netflix Maintenance Mode](https://cloud.spring.io/spring-cloud-netflix/multi/multi__modules_in_maintenance_mode.html)
 - Kong Gateway 3.4 Breaking Changes：<https://docs.konghq.com/gateway/latest/breaking-changes/34x/>
-- ASF 宣布 Apache APISIX 成为顶级项目：<https://news.apache.org/foundation/entry/the-apache-software-foundation-announces66>
+- [Apache Announces APISIX as a Top-Level Project](https://news.apache.org/foundation/entry/the-apache-software-foundation-announces66)
 - RFC 9113 HTTP/2：<https://www.ietf.org/rfc/rfc9113.html>
-- Kong 插件开发教程[通俗易懂]：<https://cloud.tencent.com/developer/article/2104299>
-- API 网关 Kong 实战：<https://xie.infoq.cn/article/10e4dab2de0bdb6f2c3c93da6>
-- Spring Cloud Gateway 原理介绍和应用：<https://blog.fintopia.tech/60e27b0e2078082a378ec5ed/>
-- 微服务为什么要用到 API 网关？：<https://apisix.apache.org/zh/blog/2023/03/08/why-do-microservices-need-an-api-gateway/>
+- [Kong Plugin Development Tutorial](https://cloud.tencent.com/developer/article/2104299)
+- [A Practical Guide to the Kong API Gateway](https://xie.infoq.cn/article/10e4dab2de0bdb6f2c3c93da6)
+- [Spring Cloud Gateway: Concepts and Applications](https://blog.fintopia.tech/60e27b0e2078082a378ec5ed/)
+- [Why Do Microservices Need an API Gateway?](https://apisix.apache.org/zh/blog/2023/03/08/why-do-microservices-need-an-api-gateway/)
 
 <!-- @include: @article-footer.snippet.md -->

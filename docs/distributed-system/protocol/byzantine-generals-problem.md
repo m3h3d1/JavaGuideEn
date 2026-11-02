@@ -1,262 +1,262 @@
 ---
-title: 拜占庭将军问题详解：分布式共识、3m+1 节点与 BFT 容错
-description: 拜占庭将军问题详解，讲解拜占庭故障、分布式共识、安全性与活性、口信消息 OM(m)、签名消息、3m+1 节点要求、CFT 与 BFT 区别，以及区块链中的应用。
-category: 分布式
+title: "The Byzantine Generals Problem: Distributed Consensus, 3m + 1 Nodes, and BFT"
+description: "An introduction to Byzantine faults and distributed consensus, covering safety and liveness, the OM(m) oral-messages model, signed messages, the 3m + 1 requirement, CFT vs. BFT, and blockchain applications."
+category: Distributed Systems
 tag:
-  - 分布式协议与算法
-  - 共识算法
+  - Distributed Protocols and Algorithms
+  - Consensus Algorithms
   - BFT
 head:
   - - meta
     - name: keywords
-      content: 拜占庭将军问题,拜占庭容错,BFT,PBFT,分布式共识,共识算法,3m+1,OM(m),签名消息,CFT,区块链共识,分布式系统
+      content: Byzantine Generals Problem,Byzantine fault tolerance,BFT,PBFT,distributed consensus,consensus algorithms,3m + 1,OM(m),signed messages,CFT,blockchain consensus,distributed systems
 ---
 
-几个服务节点都说自己是对的，客户端该信谁？
+Several service nodes each claim to be right. Which one should the client trust?
 
-在日常后端系统里，这个问题通常没有这么极端。Redis 主从、ZooKeeper、etcd、Nacos、数据库复制，更多遇到的是机器宕机、网络抖动、磁盘故障、进程重启。节点一般不会故意骗你，它只是没响应、响应慢，或者暂时和集群断开了。
+In everyday backend systems, failures are usually less extreme. Redis replication, ZooKeeper, etcd, Nacos, and database replication more often encounter machine crashes, network jitter, disk failures, and process restarts. A node usually is not trying to deceive you; it may simply stop responding, respond slowly, or become temporarily disconnected from the cluster.
 
-拜占庭将军问题讨论的是更麻烦的一类情况：**系统里有节点会表现得不可预测，甚至可能给不同对象发送互相矛盾的信息**。
+The Byzantine Generals Problem addresses a more difficult case: **some nodes may behave unpredictably or send contradictory information to different participants**.
 
-这就是它在分布式系统里的价值。古代军事故事只是表达手段，真正要讲的是“在不可靠成员中达成一致”。
+That is why the problem matters in distributed systems. The ancient military story is just an analogy; the real question is how to reach agreement among unreliable participants.
 
-如果你正在学习 Raft、ZAB、ZooKeeper、etcd 这类常见协调系统，需要先区分两类故障模型：它们通常处理的是崩溃故障和网络分区，不假设节点恶意撒谎；拜占庭问题讨论的是更强的故障模型。想看非拜占庭场景里的共识，可以继续读 [Raft 算法详解](./raft-algorithm.md) 和 [ZAB 协议详解](./zab.md)。
+When studying common coordination systems such as Raft, ZAB, ZooKeeper, or etcd, distinguish between two failure models. These systems usually handle crash faults and network partitions; they do not assume that nodes lie maliciously. The Byzantine problem uses a stronger failure model. For consensus without Byzantine faults, see [Raft](./raft-algorithm.md) and [ZAB](./zab.md).
 
-## 拜占庭将军问题是什么？
+## What is the Byzantine Generals Problem?
 
-拜占庭将军问题由 Leslie Lamport、Robert Shostak 和 Marshall Pease 在 1982 年发表的论文 [The Byzantine Generals Problem](https://www.microsoft.com/en-us/research/publication/byzantine-generals-problem/) 中提出。论文发表于 ACM Transactions on Programming Languages and Systems，时间是 1982 年 7 月。
+Leslie Lamport, Robert Shostak, and Marshall Pease introduced the Byzantine Generals Problem in their 1982 paper [The Byzantine Generals Problem](https://www.microsoft.com/en-us/research/publication/byzantine-generals-problem/), published in _ACM Transactions on Programming Languages and Systems_ in July 1982.
 
-Lamport 是分布式系统领域绕不开的人。他因为在分布式和并发系统方面的基础贡献获得了 2013 年 ACM A.M. Turing Award，也就是常说的图灵奖。他还是 LaTeX 文档排版系统的最初开发者。
+Lamport is a foundational figure in distributed systems. He received the 2013 ACM A.M. Turing Award for his contributions to distributed and concurrent systems. He also created the original LaTeX document preparation system.
 
-问题的故事版本大致是这样：
+The story goes like this:
 
-多位拜占庭将军分别率领军队包围一座敌城。每支军队分散在不同位置，将军之间不能面对面开会，只能靠信使传递消息。他们需要决定明天到底是进攻还是撤退。单独进攻会失败，只有足够多的军队一起行动才有胜算。
+Several Byzantine generals command armies surrounding an enemy city. The armies are in different locations, so the generals cannot meet in person and must communicate through messengers. They need to decide whether to attack or retreat the next day. A lone army will lose; they need enough armies to act together.
 
-麻烦在于，将军里可能有叛徒。
+The complication is that some generals may be traitors.
 
-叛徒不一定只是“不执行命令”。他可以给 A 将军说进攻，给 B 将军说撤退；也可以伪造自己听到的消息，诱导忠诚将军做出不同决定。放到计算机系统里，类似行为不一定来自主观恶意，也可能来自软件缺陷、状态损坏、内存或磁盘错误、节点被入侵后的异常行为。最后如果一部分忠诚将军进攻，另一部分忠诚将军撤退，整个作战计划就失败了。
+A traitor may do more than disobey. They can tell General A to attack and General B to retreat, or fabricate messages to make loyal generals choose differently. In a computer system, similar behavior can come from software bugs, corrupted state, memory or disk errors, or a compromised node. If some loyal generals attack while others retreat, the plan fails.
 
-放到分布式系统里，将军就是节点，信使就是网络消息，进攻/撤退就是某个要达成一致的值，比如：
+In a distributed system, generals are nodes, messengers are network messages, and the attack-or-retreat decision is a value on which the nodes need to agree. For example:
 
-- 哪个节点成为 Leader？
-- 某条日志是否提交？
-- 某笔交易是否有效？
-- 某个状态机下一步执行什么命令？
+- Which node becomes Leader?
+- Is a log entry committed?
+- Is a transaction valid?
+- Which command should a state machine execute next?
 
-所以，这个问题可以换成一句工程语言：
+In engineering terms, the question is:
 
-> 在部分节点可能故障、撒谎、伪造信息或发送矛盾信息的情况下，如何让所有正常节点对同一个结果达成一致？
+> If some nodes can fail, lie, forge information, or send contradictory messages, how can all correct nodes agree on the same result?
 
-![拜占庭将军问题的基本场景](../images/shared/byzantine-generals-problem-problem-overview.png)
+![Basic scenario in the Byzantine Generals Problem](../images/shared/byzantine-generals-problem-problem-overview.png)
 
-这里有个细节要先说清。国内很多文章会把信使被截杀、消息丢失、消息篡改也一起放进故事里，这样方便理解“通信不可靠”。但 Lamport 论文里的“口信消息”模型为了做形式化证明，反而假设消息系统满足几个条件：发出的消息会被正确送达，接收者知道消息是谁发的，没收到消息这件事也能被检测出来。
+One detail is worth clarifying. Many explanations include messengers being intercepted, or messages being lost or altered, to illustrate unreliable communication. However, the “oral messages” model in Lamport's paper makes several assumptions for its formal proof: messages are delivered correctly, recipients know who sent them, and a missing message can be detected.
 
-所以，论文真正要处理的难点比“网络会丢包”更进一步：**发送消息的人可能作恶**。
+So the paper addresses a harder problem than packet loss: **the sender itself may be malicious**.
 
-## 达成共识到底要满足什么？
+## What properties must consensus satisfy?
 
-拜占庭将军问题里有一个指挥官和若干副官。指挥官要向副官发出进攻或撤退的命令，系统希望满足两个条件：
+In the Byzantine Generals Problem, one commander sends an attack-or-retreat order to several lieutenants. The system needs to satisfy two conditions:
 
-- **一致性（Agreement）**：所有忠诚副官最终执行同一个命令。
-- **有效性（Validity）**：如果指挥官是忠诚的，所有忠诚副官都应该执行指挥官发出的命令。
+- **Agreement:** All loyal lieutenants eventually follow the same order.
+- **Validity:** If the commander is loyal, all loyal lieutenants follow the commander's order.
 
-第一条要求大家别分裂。第二条要求系统别因为防叛徒，把忠诚指挥官的正确命令也搞丢。
+The first condition prevents loyal participants from splitting. The second prevents the protocol from discarding a valid command just because it is designed to handle traitors.
 
-严格来说，Lamport 论文里的指挥官—副官模型更接近 **拜占庭广播（Byzantine Broadcast）** 或 **交互一致性（Interactive Consistency）** 问题。它和一般共识关系很近，但接口不完全一样：一般共识通常允许每个节点都提出初始值，然后要求正常节点决定同一个值；指挥官—副官模型则是由一个指挥官发送命令，副官负责判断该执行什么。
+Strictly speaking, the commander-and-lieutenants model in Lamport's paper is closer to **Byzantine broadcast** or **interactive consistency** than to general consensus. They are closely related, but have different interfaces: in general consensus, each node may propose an initial value and correct nodes must decide on the same value. In the commander-and-lieutenants model, one commander sends an order and the lieutenants decide what to follow.
 
-在更通用的分布式共识问题里，还会关心终止性，也就是正常节点最终要能做出决定，不能无限等下去。有些定义还会加入完整性（Integrity）：一个节点最多只能决定一次。工程系统里，超时、重试、选举轮次、视图切换这些机制，很多都在服务这个目标。
+More general consensus definitions also require termination: correct nodes must eventually decide rather than wait forever. Some definitions include **integrity**, which means a node can decide at most once. Mechanisms such as timeouts, retries, election terms, and view changes help real systems meet these goals.
 
-![忠诚节点多数决示意](../images/shared/byzantine-generals-problem-honest-majority.png)
+![Majority decision among loyal nodes](../images/shared/byzantine-generals-problem-honest-majority.png)
 
-这里先把问题压回将军故事。假设只有 3 位将军 A、B、C，其中 A 是指挥官，B 和 C 是副官。只要 1 个将军是叛徒，事情就会卡住。
+Return to the generals for an example. Suppose there are three generals, A, B, and C. A is the commander, and B and C are lieutenants. If one general is a traitor, the problem becomes difficult.
 
-从忠诚副官 B 的局部视角看，下面两种执行过程可能完全一样：
+From loyal lieutenant B's perspective, these two executions may look identical:
 
-- A 是叛徒：A 对 B 说“进攻”，对 C 说“撤退”；C 忠诚地向 B 转述“撤退”。
-- C 是叛徒：A 是忠诚指挥官，对 B 和 C 都说“进攻”；C 却对 B 谎称 A 说的是“撤退”。
+- A is a traitor: A tells B to attack and C to retreat. Loyal C reports “retreat” to B.
+- C is a traitor: A is a loyal commander and tells both B and C to attack. C lies to B and claims A said “retreat.”
 
-这两种情况下，B 看到的都是：A 直接告诉自己“进攻”，C 转述 A 说“撤退”。只看自己收到的消息，B 无法判断到底是 A 在骗他，还是 C 在撒谎。
+In both cases, B directly hears “attack” from A and hears C report “retreat.” B cannot tell whether A is lying or C is lying based only on the messages received.
 
-这就是 3 将军 1 叛徒的困难之处。忠诚节点并不缺少投票规则，真正缺的是判断“谁在撒谎”的信息。对另一个忠诚副官构造对称场景，就会把两个忠诚副官推向不同决定，最终违反一致性。Lamport 论文提醒过，这类问题很容易被直觉证明带偏；论文最终通过归约证明：在只使用口信消息的情况下，如果要容忍 `m` 个叛徒，至少需要 `3m + 1` 个将军。换句话说，忠诚将军必须超过总数的 `2/3`。
+That is the difficulty with three generals and one traitor. Loyal nodes do not lack a voting rule; they lack enough information to identify who is lying. A symmetric scenario for the other loyal lieutenant can push the two loyal lieutenants toward different decisions, violating agreement. Lamport's paper warns that intuitive arguments about this problem can be misleading. Its reduction proof shows that, using only oral messages, tolerating `m` traitors requires at least `3m + 1` generals. In other words, loyal generals must account for more than two-thirds of the total.
 
-![三个将军无法容忍一个叛徒](../images/shared/byzantine-generals-problem-three-general-impossibility.png)
+![Three generals cannot tolerate one traitor](../images/shared/byzantine-generals-problem-three-general-impossibility.png)
 
-容忍 1 个叛徒，至少要 4 个将军；容忍 2 个叛徒，至少要 7 个将军。
+At least four generals are needed to tolerate one traitor; at least seven are needed to tolerate two.
 
-## 一致不代表一定能继续运行
+## Agreement does not guarantee progress
 
-学习共识协议时，要把两个性质分开看：
+When studying consensus protocols, distinguish two properties:
 
-- **安全性（Safety）**：不能决定两个互相冲突的结果。
-- **活性（Liveness）**：系统最终能够继续推进并作出决定。
+- **Safety:** The system never decides on two conflicting results.
+- **Liveness:** The system eventually makes progress and reaches a decision.
 
-很多协议在异常情况下会优先保护安全性。比如 Raft 集群拿不到多数派时，会停止提交新日志，而不是让两个网络分区各自提交一批互相冲突的日志。停止推进会影响可用性，但至少不会把状态写乱。
+Many protocols prioritize safety during failures. For example, if a Raft cluster cannot reach a majority, it stops committing new log entries instead of letting two network partitions commit conflicting entries. This harms availability, but avoids corrupting the state.
 
-完全异步系统里，消息延迟没有上界。只靠超时，无法严格判断一个节点是真的宕机，还是只是慢了一点。FLP 结果进一步说明：在完全异步模型中，即使只有一个进程可能崩溃，确定性共识协议也存在无法终止的执行过程。
+In a fully asynchronous system, message delays have no upper bound. A timeout alone cannot prove that a node has crashed rather than slowed down. The FLP result further shows that in a fully asynchronous model, a deterministic consensus protocol may fail to terminate even if only one process can crash.
 
-所以，真实系统通常会引入额外假设或机制来恢复活性，比如最终同步、随机化、故障检测器、重试和视图切换。后面说 PBFT 可以运行在互联网这类异步网络里，也要按这个思路理解：安全性和活性不是同一个承诺。
+Real systems introduce additional assumptions or mechanisms to restore liveness, such as eventual synchrony, randomization, failure detectors, retries, and view changes. Claims that PBFT can run on an asynchronous network like the Internet should be understood in this context: safety and liveness are separate guarantees.
 
-![共识协议中的安全性与活性](../images/shared/byzantine-generals-problem-safety-liveness.png)
+![Safety and liveness in consensus protocols](../images/shared/byzantine-generals-problem-safety-liveness.png)
 
-## 口信消息：为什么需要 3m + 1？
+## Oral messages: why are 3m + 1 nodes required?
 
-Lamport 论文先讨论的是 **Oral Messages**，通常翻译成口信消息。
+Lamport's paper first discusses **oral messages**.
 
-口信消息模型有 3 个前提：
+The oral-messages model assumes:
 
-1. 发出的消息会被正确送达。
-2. 接收者知道消息是谁发来的。
-3. 没收到消息这件事可以被检测出来。
+1. A sent message is delivered correctly.
+2. The recipient knows who sent the message.
+3. Failure to receive a message can be detected.
 
-这些假设已经比真实网络强很多了。真实系统里，消息可能丢失，延迟可能不可预测，检测一个节点是真的挂了还是只是慢，通常只能靠超时近似判断。
+These assumptions are much stronger than those of a real network. In practice, messages may be lost or delayed unpredictably, and a timeout can only approximate whether a node has crashed or is merely slow.
 
-即便在这些较强假设下，只要消息没有签名，叛徒仍然可以对不同人说不同的话。为了抵消这件事，协议需要让副官之间互相转述自己听到的命令，并通过多轮消息把矛盾摊开。
+Even under these strong assumptions, traitors can tell different people different things if messages are not signed. The protocol counters this by having lieutenants relay the orders they heard to one another over multiple rounds, exposing contradictions.
 
-口信消息算法通常记为 `OM(m)`，其中 `m` 表示最多有多少个叛徒。
+The oral-messages algorithm is written as `OM(m)`, where `m` is the maximum number of traitors.
 
-当 `m = 0` 时，流程很简单：指挥官把命令发给每个副官，副官照做。
+When `m = 0`, the process is simple: the commander sends an order to each lieutenant, and the lieutenants follow it.
 
-当 `m > 0` 时，流程会递归展开：
+When `m > 0`, the process recurses:
 
-1. 指挥官把命令发给所有副官。
-2. 每个副官把自己收到的命令，再转发给其他副官。
-3. 如果还需要容忍更多叛徒，就继续让收到转述的节点再向外转述。
-4. 最后，每个忠诚副官对收到的一组值使用相同的 `majority` 函数；如果没有多数，可以使用默认值，论文里默认值是撤退。论文也提到，如果值域有序，也可以取中位数。关键是所有忠诚副官使用同一个确定性规则。
+1. The commander sends an order to every lieutenant.
+2. Each lieutenant forwards the order it received to the other lieutenants.
+3. If the protocol needs to tolerate more traitors, the recipients relay the messages again.
+4. Each loyal lieutenant applies the same `majority` function to the values received. If there is no majority, they can use a default value; the paper uses retreat. It also notes that the median can be used when values are ordered. The important point is that all loyal lieutenants use the same deterministic rule.
 
-![口信消息模型 OM(m) 的多轮转述](../images/shared/byzantine-generals-problem-oral-messages.png)
+![Multiple rounds of relaying in the OM(m) oral-messages model](../images/shared/byzantine-generals-problem-oral-messages.png)
 
-可以用 `m = 1` 看这个算法为什么需要 4 个将军。
+The `m = 1` case shows why four generals are required.
 
-假设 A 是指挥官，B、C、D 是副官，系统最多有 1 个叛徒。如果 A 是叛徒，他可能给 B 发进攻，给 C 和 D 发撤退。接下来 B、C、D 会互相转述自己从 A 那里收到的命令：
+Suppose A is the commander, B, C, and D are lieutenants, and the system must tolerate one traitor. If A is a traitor, A may tell B to attack and tell C and D to retreat. B, C, and D then relay the orders they received:
 
-- B 告诉 C、D：A 让我进攻。
-- C 告诉 B、D：A 让我撤退。
-- D 告诉 B、C：A 让我撤退。
+- B tells C and D that A ordered an attack.
+- C tells B and D that A ordered a retreat.
+- D tells B and C that A ordered a retreat.
 
-对 B 来说，他看到的是“进攻、撤退、撤退”，多数是撤退。C 和 D 看到的也是同样的多数结果。这样，哪怕 A 这个指挥官作恶，忠诚副官也能达成一致。
+B sees “attack, retreat, retreat,” so the majority is retreat. C and D reach the same result. Thus the loyal lieutenants agree even if the commander is a traitor.
 
-这里的关键不只是“少数服从多数”。如果指挥官忠诚，忠诚副官会收到并转发同一个值，忠诚者形成多数，从而保证有效性。如果指挥官是叛徒，协议更重要的作用是让所有忠诚副官得到相同的值向量，再对这个值向量应用同一个 `majority` 函数，从而保证一致性。
+The key is more than “follow the majority.” If the commander is loyal, loyal lieutenants receive and relay the same value, and the loyal majority preserves validity. If the commander is a traitor, the protocol's more important job is to give every loyal lieutenant the same vector of values, so they can apply the same `majority` function and preserve agreement.
 
-节点数不够时，忠诚节点看到的局部信息无法区分不同故障场景，投票规则再漂亮也没用。
+If there are too few nodes, the information available to loyal nodes cannot distinguish different failure scenarios. No voting rule can fix that.
 
-不过，`OM(m)` 更像一个帮助理解结论的理论算法，不适合直接搬进业务系统。它要求知道叛徒上限 `m`，需要递归转发多轮消息，通信量会随着节点数和容错数快速膨胀。真实系统通常会换成更工程化的协议。
+`OM(m)` is mainly a theoretical algorithm for understanding the result; it is not suitable for direct use in business systems. It requires a known upper bound `m` and recursively relays messages over multiple rounds, causing communication to grow rapidly with the number of nodes and tolerated faults. Production systems generally use more practical protocols.
 
-## 签名消息：有签名后问题会变简单吗？
+## Signed messages: do signatures make the problem easier?
 
-论文接着讨论 **Signed Messages**，也就是签名消息。
+The paper next discusses **signed messages**.
 
-签名消息在口信消息的基础上增加了两个能力：
+Compared with oral messages, signatures provide two additional guarantees:
 
-- 忠诚将军的签名不能被伪造，消息内容被改动后可以检测出来。
-- 任何人都可以验证签名是否来自对应的将军。
+- A loyal general's signature cannot be forged, and message changes can be detected.
+- Anyone can verify whether a signature belongs to the claimed general.
 
-有了签名之后，叛徒仍然可以撒谎，但他很难替忠诚节点撒谎。B 如果收到一条“C 说 A 让大家撤退”的消息，可以检查这条消息有没有 C 的签名，也可以检查里面转述的 A 的命令有没有 A 的签名。
+Traitors can still lie, but they cannot easily lie on behalf of a loyal node. If B receives a message saying “C reports that A ordered a retreat,” B can verify C's signature and the signature on A's relayed order.
 
-这会削弱叛徒最麻烦的能力：对不同人编造不同版本，还让别人无法追溯。
+This weakens the traitor's most troublesome capability: telling different people conflicting stories that cannot be traced back to their source.
 
-签名解决的是来源认证和消息完整性，不保证签名者诚实。叛徒指挥官仍然可以亲自签署两份互相冲突的命令；区别在于，这两份命令都留下了可验证证据，其他节点可以继续转发这些证据，使所有忠诚副官最终看到同一组矛盾信息。
+Signatures authenticate the source and protect message integrity; they do not make the signer honest. A traitorous commander can still sign two conflicting orders. The difference is that both orders leave verifiable evidence, which other nodes can relay so all loyal lieutenants eventually see the same set of contradictory messages.
 
-在签名消息模型下，Lamport 给出了 `SM(m)` 算法。它可以在最多存在 `m` 个叛徒时满足 IC1 和 IC2，不再需要口信消息模型里的 `3m + 1` 个节点。原论文还指出，如果总节点数少于 `m + 2`，问题是平凡的，因为此时系统可能连 2 个忠诚将军都没有，谈不上有意义的忠诚节点一致性。因此，`n >= m + 2` 更适合理解为“至少存在两个忠诚节点，使问题具有实际意义”，不要把它当成和 `3m + 1` 同类的容错下界。
+For the signed-messages model, Lamport gives the `SM(m)` algorithm. It can satisfy IC1 and IC2 with up to `m` traitors without requiring `3m + 1` nodes as the oral-messages model does. The paper also notes that if the total number of nodes is less than `m + 2`, the problem is trivial because there may not even be two loyal generals; meaningful agreement among loyal nodes is impossible. Thus `n >= m + 2` is best understood as requiring at least two loyal nodes for the problem to be meaningful, not as a fault-tolerance bound comparable to `3m + 1`.
 
-`SM(m)` 最后也不是简单多数决。每个忠诚副官维护一个收到的命令集合 `V`，然后执行共同约定的确定性 `choice(V)` 函数。如果叛徒指挥官分别签了“进攻”和“撤退”，忠诚副官最终拿到相同的集合，再对这个集合执行同一个 `choice`，结果自然一致。
+`SM(m)` does not simply use majority voting. Each loyal lieutenant maintains a set `V` of the orders received and applies a deterministic `choice(V)` function agreed upon by all participants. If a traitorous commander signs both “attack” and “retreat,” loyal lieutenants eventually receive the same set and apply the same `choice` function, reaching the same result.
 
-![签名消息模型 SM(m) 的信息传播](../images/shared/byzantine-generals-problem-signed-messages.png)
+![Information propagation in the SM(m) signed-messages model](../images/shared/byzantine-generals-problem-signed-messages.png)
 
-这不代表现实里的 BFT 系统一律只要 `m + 2` 个节点。这里讨论的是 Lamport 论文中特定模型下的一次交互一致性问题。实际系统还要考虑异步网络、性能、客户端请求、状态机复制、视图切换、恶意客户端、重放攻击等问题。原论文也提到，如果要反复执行 `SM(m)`，需要给值附加序列号，避免旧签名消息被重放。PBFT 这类实用协议通常仍然采用 `3f + 1` 副本来容忍 `f` 个拜占庭故障节点。
+This does not mean that practical BFT systems need only `m + 2` nodes. That result applies to a particular interactive-consistency model in Lamport's paper. Real systems must also consider asynchronous networks, performance, client requests, state machine replication, view changes, malicious clients, and replay attacks. The paper also notes that repeated executions of `SM(m)` need sequence numbers to prevent replaying old signed messages. Practical protocols such as PBFT usually still use `3f + 1` replicas to tolerate `f` Byzantine faults.
 
-这个地方很容易混：签名能让“谁说过什么”变得可验证，但它没有消除法定人数交集、消息无限延迟和状态机复制这些问题。
+This distinction is easy to miss: signatures make it possible to verify who said what, but they do not eliminate quorum intersection, unbounded message delays, or the challenges of state machine replication.
 
-## 拜占庭故障和普通故障有什么区别？
+## How do Byzantine faults differ from ordinary faults?
 
-后端工程里经常说故障，但故障有不同级别。
+Backend engineering uses the word “failure” for several different failure models.
 
-| 故障类型                               | 典型表现                                   | 说明                                 |
-| -------------------------------------- | ------------------------------------------ | ------------------------------------ |
-| 崩溃故障（Crash Fault）                | 进程停止、机器宕机                         | 节点不再继续执行                     |
-| 遗漏/时序故障（Omission/Timing Fault） | 消息丢失、延迟、网络分区、响应过慢         | 节点可能还活着，但通信没有按预期完成 |
-| 拜占庭故障（Byzantine Fault）          | 发送矛盾信息、错误计算、状态损坏、恶意作恶 | 行为可以任意偏离协议                 |
+| Failure type          | Typical behavior                                                                                        | Description                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Crash fault           | A process stops or a machine goes down.                                                                 | The node stops executing.                                                       |
+| Omission/timing fault | Messages are lost or delayed, the network is partitioned, or responses are slow.                        | The node may still be running, but communication does not complete as expected. |
+| Byzantine fault       | A node sends contradictory information, computes incorrectly, has corrupted state, or acts maliciously. | The node may behave arbitrarily and violate the protocol.                       |
 
-![崩溃故障、遗漏时序故障和拜占庭故障](../images/shared/byzantine-generals-problem-fault-models.png)
+![Crash, omission/timing, and Byzantine failure models](../images/shared/byzantine-generals-problem-fault-models.png)
 
-Paxos、Raft、ZAB 通常属于 CFT（Crash Fault Tolerance，崩溃容错）范畴。它们假设节点不会故意作恶，最多是不响应、响应慢、断网或宕机。以 Raft 为例，Raft 官方介绍里给的典型说法是：5 个服务器组成的集群可以在 2 个服务器失败时继续工作；失败更多时系统会停止前进，但不会返回错误结果。
+Paxos, Raft, and ZAB are generally in the CFT (Crash Fault Tolerance) category. They assume nodes do not act maliciously; nodes may stop responding, respond slowly, lose connectivity, or crash. Raft's documentation gives a typical example: a five-server cluster can continue working after two servers fail. If more fail, it stops making progress rather than returning an incorrect result.
 
-BFT（Byzantine Fault Tolerance，拜占庭容错）处理的是更强的故障模型。节点可能还活着，也能正常通信，但它发出的内容不可信。PBFT 是经典的实用拜占庭容错状态机复制协议。Castro 和 Liskov 在 1999 年 OSDI 论文 [Practical Byzantine Fault Tolerance](https://www.usenix.org/conference/osdi-99/practical-byzantine-fault-tolerance) 中实现了一个拜占庭容错 NFS 服务，正常情况下只比标准未复制 NFS 慢 3%。
+BFT (Byzantine Fault Tolerance) handles a stronger failure model. A node may still be running and communicating normally, but its messages cannot be trusted. PBFT is a classic practical Byzantine fault-tolerant state machine replication protocol. In their 1999 OSDI paper [Practical Byzantine Fault Tolerance](https://www.usenix.org/conference/osdi-99/practical-byzantine-fault-tolerance), Castro and Liskov implemented a Byzantine fault-tolerant NFS service that was only 3% slower than a standard unreplicated NFS service under normal conditions.
 
-PBFT 允许网络消息丢失、延迟、重复和乱序，也允许故障节点任意偏离协议。它的安全性不依赖同步假设：即使网络长时间不稳定，正常副本也不会提交彼此冲突的操作。但它的活性依赖较弱的最终同步条件，正常节点和消息不能被无限期延迟。
+PBFT allows network messages to be lost, delayed, duplicated, or reordered, and allows faulty nodes to deviate arbitrarily from the protocol. Its safety does not depend on a synchrony assumption: even during long periods of network instability, correct replicas do not commit conflicting operations. Its liveness does depend on a weaker eventual-synchrony condition: correct nodes and messages cannot be delayed forever.
 
-在标准模型下，PBFT 使用 `3f + 1` 个副本容忍最多 `f` 个拜占庭故障。签名和 MAC 用于认证消息、防止伪造和重放；`3f + 1` 则用于保证法定人数之间存在足够的正常节点交集。两者解决的是不同问题。
+In the standard model, PBFT uses `3f + 1` replicas to tolerate up to `f` Byzantine faults. Signatures and MACs authenticate messages and help prevent forgery and replay; `3f + 1` ensures enough correct nodes in the intersection between quorums. These address different problems.
 
-常见模型可以粗略对比成这样：
+Common models can be summarized as follows:
 
-| 模型                 | 容忍故障数       | 常见最小副本数    | 关键原因                                           |
-| -------------------- | ---------------- | ----------------- | -------------------------------------------------- |
-| CFT                  | `f` 个崩溃故障   | `2f + 1`          | 剩余节点仍需形成多数派                             |
-| 经典 BFT 状态机复制  | `f` 个拜占庭故障 | `3f + 1`          | `2f + 1` 法定人数交集里至少包含 `f + 1` 个正常节点 |
-| Lamport 签名消息模型 | `m` 个叛徒       | 不再要求 `3m + 1` | 签名使矛盾消息可验证和传播                         |
+| Model                                 | Faults tolerated     | Common minimum replicas   | Reason                                                                     |
+| ------------------------------------- | -------------------- | ------------------------- | -------------------------------------------------------------------------- |
+| CFT                                   | `f` crash faults     | `2f + 1`                  | The remaining nodes must still form a majority.                            |
+| Classic BFT state machine replication | `f` Byzantine faults | `3f + 1`                  | A quorum intersection of `2f + 1` includes at least `f + 1` correct nodes. |
+| Lamport's signed-messages model       | `m` traitors         | Does not require `3m + 1` | Signatures make contradictory messages verifiable and relayable.           |
 
-![CFT、BFT 和签名消息模型对比](../images/shared/byzantine-generals-problem-cft-vs-bft.png)
+![Comparison of CFT, BFT, and the signed-messages model](../images/shared/byzantine-generals-problem-cft-vs-bft.png)
 
-这张表只是常见模型总结，不是所有协议都无条件遵循的通用定律。可信硬件、混合故障模型、不同网络假设和不同安全目标，都可能改变副本数要求。
+This table summarizes common models; it is not a universal rule for every protocol. Trusted hardware, hybrid failure models, network assumptions, and security goals can change the replica requirements.
 
-普通 Java 后端系统大多数时候用不到 BFT，因为服务节点通常属于同一个组织、同一套权限体系、同一套运维系统，节点之间默认可信。你要解决的主要问题是高可用、主从切换、日志一致性、脑裂避免，而不是防止自己的节点主动给其他节点撒谎。
+Most Java backend systems do not need BFT. Their service nodes usually belong to one organization and share an authorization and operations environment, so the nodes are trusted by default. The main concerns are high availability, failover, log consistency, and preventing split brain—not protecting against a node deliberately lying to the others.
 
-但在这些场景里，拜占庭故障就不能轻易忽略：
+Byzantine faults matter more in scenarios such as:
 
-- 公链、联盟链、跨机构清结算系统。
-- 多方共同维护账本或状态，但彼此不完全互信。
-- 需要容忍节点被入侵后继续发送合法格式的错误消息。
-- 安全等级很高的复制状态机系统。
+- Public or consortium blockchains and cross-organization settlement systems.
+- A ledger or state maintained jointly by parties that do not fully trust one another.
+- Systems that must tolerate a compromised node sending validly formatted but incorrect messages.
+- Replicated state machine systems with strict security requirements.
 
-有些系统会说自己用了“共识”，但共识算法背后的故障假设差别很大。只说“用了 Raft”不能说明它能防恶意节点；只说“用了签名”也不能说明它完整实现了拜占庭容错。
+Consensus algorithms make different assumptions about failures. Saying a system “uses consensus” is not enough: saying “it uses Raft” does not mean it tolerates malicious nodes, and using signatures alone does not mean it implements full Byzantine fault tolerance.
 
-## 拜占庭将军问题和区块链是什么关系？
+## How does the Byzantine Generals Problem relate to blockchain?
 
-很多人第一次听到拜占庭将军问题，是从区块链文章里看到的。
+Many people first encounter the Byzantine Generals Problem in articles about blockchain.
 
-这个关联没错，但也别把两者画等号。拜占庭将军问题是一个更基础的分布式共识问题，区块链只是其中一类应用场景。公链网络里的节点来自不同主体，节点可能作恶，网络也可能延迟很大，所以它天然要面对拜占庭故障。
+The connection is real, but the two are not interchangeable. The Byzantine Generals Problem is a foundational distributed consensus problem; blockchain is one application area. Public blockchain nodes are operated by different parties, may be malicious, and communicate over networks with substantial delays, so Byzantine faults are part of the model.
 
-不过，区块链里的 PoW、PoS、BFT 类协议和 Lamport 论文里的口信消息、签名消息不是同一层东西：
+However, PoW, PoS, and BFT-style protocols in blockchains are not at the same level as the oral-messages and signed-messages models in Lamport's paper:
 
-- Lamport 论文给的是形式化问题和早期解法，关注忠诚节点如何在叛徒存在时达成一致。
-- PBFT、HotStuff、Tendermint 这类协议更接近工程实现，关注副本复制、投票阶段、视图切换和提交规则。
-- PoW、PoS 还引入了经济成本、权益、概率确认、最长链或最终确定性等设计。
+- Lamport's paper formalizes the problem and early solutions, focusing on how loyal nodes reach agreement despite traitors.
+- Protocols such as PBFT, HotStuff, and Tendermint are closer to engineering implementations; they define replica coordination, voting phases, view changes, and commit rules.
+- PoW and PoS also introduce economic costs, stake, probabilistic confirmation, longest-chain rules, or finality.
 
-区块链里的阈值也不一定按节点数量计算。PoW 通常关心攻击者掌握的算力比例；PoS 和 Tendermint 类协议通常关心恶意验证者掌握的权益或投票权重。一个攻击者即使只控制少量节点，只要控制了足够大的权重，也可能超过协议的安全阈值。
+Blockchain fault thresholds are not always based on node counts. PoW usually considers an attacker's share of total computing power. PoS and Tendermint-style protocols usually consider the stake or voting power controlled by malicious validators. An attacker controlling only a few nodes may still exceed the security threshold if those nodes hold enough weight.
 
-![区块链里的阈值](../images/shared/byzantine-generals-problem-blockchain-weight-thresholds.png)
+![Fault thresholds in blockchain systems](../images/shared/byzantine-generals-problem-blockchain-weight-thresholds.png)
 
-另外，PoW 和 PoS 更像抗女巫、领导者选择和权重分配机制。完整系统还需要区块提议、分叉选择、投票或最终确定性规则，不能把它们单独等同于完整共识协议。
+PoW and PoS are better understood as mechanisms for Sybil resistance, Leader selection, and weight assignment. A complete system also needs block proposal, fork choice, voting, or finality rules; PoW and PoS alone are not complete consensus protocols.
 
-所以，在学习路线里，拜占庭将军问题更适合作为共识算法前置知识。先理解它，再看 Paxos、Raft、ZAB、PBFT、区块链共识，很多概念会顺一些。
+The Byzantine Generals Problem is useful background for studying consensus algorithms. Understanding it first makes Paxos, Raft, ZAB, PBFT, and blockchain consensus easier to compare.
 
-## 面试里怎么回答？
+## How to answer this in an interview
 
-如果面试官问“什么是拜占庭将军问题”，可以按这个顺序回答：
+If an interviewer asks, “What is the Byzantine Generals Problem?”, answer in this order:
 
-1. 先说问题：分布式系统中，部分节点可能故障或作恶，正常节点仍然要对某个值达成一致。
-2. 再说难点：拜占庭节点可以给不同节点发送互相矛盾的信息，正常节点很难判断谁在撒谎。
-3. 补一个关键结论：在只使用口信消息的模型下，要容忍 `m` 个叛徒，至少需要 `3m + 1` 个节点；3 个节点无法容忍 1 个叛徒。
-4. 说明解法方向：Lamport 论文给出了口信消息和签名消息两类解法；实际系统中，CFT 常见算法有 Paxos、Raft、ZAB，BFT 常见算法有 PBFT、HotStuff、Tendermint 等。
-5. 最后落到工程判断：普通后端系统大多采用 CFT，因为节点默认可信；跨机构、区块链、安全敏感场景才更需要考虑 BFT。
+1. State the problem: Some nodes in a distributed system may fail or act maliciously, while correct nodes still need to agree on a value.
+2. Explain the difficulty: Byzantine nodes can send contradictory messages to different nodes, making it hard for correct nodes to identify the truth.
+3. Give a key result: In the oral-messages model, tolerating `m` traitors requires at least `3m + 1` nodes; three nodes cannot tolerate one traitor.
+4. Describe the solution families: Lamport's paper presents oral-message and signed-message algorithms. Common CFT algorithms include Paxos, Raft, and ZAB; BFT algorithms include PBFT, HotStuff, and Tendermint.
+5. Relate it to engineering: Most backend systems use CFT because nodes are trusted by default. Cross-organization, blockchain, and security-sensitive systems may need BFT.
 
-一个比较完整的回答可以这样说：
+A complete answer might be:
 
-> 拜占庭将军问题描述的是分布式系统在存在恶意节点或异常节点时如何达成共识。它比普通宕机故障更难，因为拜占庭节点可以对不同节点发送不同消息，破坏正常节点之间的一致判断。Lamport 论文证明，在口信消息模型下，如果要容忍 `m` 个叛徒，需要至少 `3m + 1` 个节点；签名消息模型不再要求 `3m + 1`，因为矛盾命令可以被验证和传播。Paxos、Raft、ZAB 主要处理崩溃故障，默认节点不会恶意撒谎；PBFT 这类算法处理拜占庭故障，适合节点之间不完全互信的场景，并且通常需要 `3f + 1` 个副本容忍 `f` 个拜占庭故障。
+> The Byzantine Generals Problem asks how a distributed system can reach consensus when some nodes may be malicious or faulty. It is harder than a crash fault because a Byzantine node can send different messages to different nodes and undermine agreement among correct nodes. Lamport's paper shows that the oral-messages model needs at least `3m + 1` nodes to tolerate `m` traitors. The signed-messages model does not require `3m + 1`, because contradictory orders can be verified and relayed. Paxos, Raft, and ZAB primarily handle crash faults and assume nodes do not lie maliciously. Protocols such as PBFT handle Byzantine faults and are suitable when participants do not fully trust one another; they commonly use `3f + 1` replicas to tolerate `f` Byzantine faults.
 
-这已经足够应对大多数后端面试。除非岗位明确涉及区块链、分布式数据库内核、共识协议实现，否则没必要现场推导 `OM(m)` 的完整递归证明。
+This is enough for most backend interviews. Unless the role involves blockchain, distributed database internals, or consensus protocol implementation, you usually do not need to derive the full recursive proof for `OM(m)` on the spot.
 
-## 参考资料
+## References
 
-- [The Byzantine Generals Problem - Microsoft Research](https://www.microsoft.com/en-us/research/publication/byzantine-generals-problem/)
-- [The Byzantine Generals Problem 论文 PDF](https://lamport.azurewebsites.net/pubs/byz.pdf)
-- [Leslie Barry Lamport - A.M. Turing Award Laureate](https://amturing.acm.org/award_winners/lamport_1205376.cfm)
-- [Raft Consensus Algorithm 官方介绍](https://raft.github.io/)
-- [Practical Byzantine Fault Tolerance - USENIX](https://www.usenix.org/conference/osdi-99/practical-byzantine-fault-tolerance)
+- [The Byzantine Generals Problem — Microsoft Research](https://www.microsoft.com/en-us/research/publication/byzantine-generals-problem/)
+- [The Byzantine Generals Problem (PDF)](https://lamport.azurewebsites.net/pubs/byz.pdf)
+- [Leslie Barry Lamport — A.M. Turing Award Laureate](https://amturing.acm.org/award_winners/lamport_1205376.cfm)
+- [Raft Consensus Algorithm](https://raft.github.io/)
+- [Practical Byzantine Fault Tolerance — USENIX](https://www.usenix.org/conference/osdi-99/practical-byzantine-fault-tolerance)
 - [Impossibility of Distributed Consensus with One Faulty Process](https://groups.csail.mit.edu/tds/papers/Lynch/jacm85.pdf)
 - [HotStuff: BFT Consensus in the Lens of Blockchain](https://arxiv.org/abs/1803.05069)
-- [What is Tendermint](https://docs.tendermint.com/master/introduction/what-is-tendermint.html)
-- [有关拜占庭将军问题](https://justinzhangonline.wordpress.com/2010/01/13/%E6%9C%89%E5%85%B3%E6%8B%9C%E5%8D%A0%E5%BA%AD%E5%B0%86%E5%86%9B%E9%97%AE%E9%A2%98/)
-- [图码并茂一文看懂拜占庭将军问题 OM 版](https://marslenjoy.medium.com/%E5%9B%BE%E7%A0%81%E5%B9%B6%E8%8C%82%E4%B8%80%E6%96%87%E7%9C%8B%E6%87%82%E6%8B%9C%E5%8D%A0%E5%BA%AD%E5%B0%86%E5%86%9B%E9%97%AE%E9%A2%98om%E7%89%88-49e2dcbb629c)
-- [拜占庭将军问题 - TheByte](https://www.thebyte.com.cn/consensus/The-Byzantine-General-Problem.html)
+- [What Is Tendermint?](https://docs.tendermint.com/master/introduction/what-is-tendermint.html)
+- [About the Byzantine Generals Problem](https://justinzhangonline.wordpress.com/2010/01/13/%E6%9C%89%E5%85%B3%E6%8B%9C%E5%8D%A0%E5%BA%AD%E5%B0%86%E5%86%9B%E9%97%AE%E9%A2%98/)
+- [The Byzantine Generals Problem with OM: A Visual Explanation](https://marslenjoy.medium.com/%E5%9B%BE%E7%A0%81%E5%B9%B6%E8%8C%82%E4%B8%80%E6%96%87%E7%9C%8B%E6%87%82%E6%8B%9C%E5%8D%A0%E5%BA%AD%E5%B0%86%E5%86%9B%E9%97%AE%E9%A2%98om%E7%89%88-49e2dcbb629c)
+- [The Byzantine Generals Problem — TheByte](https://www.thebyte.com.cn/consensus/The-Byzantine-General-Problem.html)
 
 <!-- @include: @article-footer.snippet.md -->

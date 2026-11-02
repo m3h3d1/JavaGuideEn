@@ -1,138 +1,138 @@
 ---
-title: 分布式系统知识体系：入门、理论协议、RPC、网关、锁、事务与 ID
-description: 分布式系统面试与学习路线，涵盖分布式系统入门、中心化与去中心化、CAP、BASE、拜占庭将军问题、Paxos、Raft、ZAB、Gossip、一致性哈希、RPC、API 网关、分布式锁、分布式事务和 ZooKeeper。
-category: 分布式
+title: "Distributed Systems Guide: Fundamentals, Protocols, RPC, Gateways, Locks, Transactions, and IDs"
+description: A distributed systems learning and interview guide covering CAP, BASE, Byzantine fault tolerance, Paxos, Raft, ZAB, Gossip, consistent hashing, RPC, API gateways, distributed locks and transactions, and ZooKeeper.
+category: Distributed Systems
 tag:
-  - 分布式
-  - 系统设计
-  - 后端面试
+  - Distributed Systems
+  - System Design
+  - Backend Interviews
 sitemap:
   changefreq: weekly
   priority: 0.95
 head:
   - - meta
     - name: keywords
-      content: 分布式系统,分布式系统入门,分布式系统面试题,中心化,去中心化,CAP,BASE,拜占庭将军问题,Paxos,Raft,ZAB,Gossip,RPC,Dubbo,API网关,分布式ID,分布式锁,分布式事务,配置中心,ZooKeeper,后端面试
+      content: distributed systems,distributed systems fundamentals,distributed systems interview questions,centralized,decentralized,CAP,BASE,Byzantine Generals Problem,Paxos,Raft,ZAB,Gossip,RPC,Dubbo,API gateway,distributed ID,distributed lock,distributed transaction,configuration center,ZooKeeper,backend interview
 ---
 
 <!-- @include: @small-advertisement.snippet.md -->
 
-这份 **分布式系统知识体系** 面向后端学习、系统设计和面试复习，按“分布式入门 -> 通信调用 -> 服务治理 -> 一致性与协调 -> 工程实践”的顺序整理本站分布式相关文章。
+This **distributed systems guide** is for backend developers studying system design or preparing for interviews. Its articles follow this path: fundamentals → communication and calls → service management → consistency and coordination → engineering practice.
 
-如果你刚开始学分布式，建议先看 [分布式系统入门](./distributed-system-intro.md)，建立整体认知；如果你时间有限，建议先看 [分布式系统面试题总结](./distributed-system-interview-questions.md)，快速建立高频问题清单。岗位明确考察微服务时，可以再看 [微服务面试题总结](./microservices-interview-questions.md)，串联服务拆分、通信、数据一致性和稳定性。
+If you are new to distributed systems, start with [Distributed Systems Fundamentals](./distributed-system-intro.md) for an overview. If you have limited time, review [Distributed Systems Interview Questions](./distributed-system-interview-questions.md) first. If the role focuses on microservices, continue with [Microservices Interview Questions](./microservices-interview-questions.md) to connect service decomposition, communication, data consistency, and reliability.
 
-## 适合谁看
+## Who This Guide Is For
 
-- 正在系统学习分布式系统的后端开发者。
-- 准备校招、社招、中大厂后端面试的同学。
-- 想补齐分布式理论、工程实践和方案选型能力的工程师。
-- 已经写过业务代码，但对 RPC、分布式锁、分布式事务、配置中心等底层原理不够熟的读者。
+- Backend developers studying distributed systems in depth.
+- Candidates preparing for entry-level or experienced backend interviews.
+- Engineers strengthening their knowledge of distributed systems theory, engineering practice, and technology choices.
+- Developers with application experience who want to better understand RPC, distributed locks and transactions, and configuration centers.
 
-## 学习重点
+## Key Topics
 
-- 分布式系统为什么需要在一致性、可用性、性能和复杂度之间做取舍？
-- CAP、BASE、Paxos、Raft、ZAB、Gossip、一致性哈希分别解决什么问题？
-- RPC、API 网关、配置中心、注册中心在微服务体系里分别承担什么职责？
-- 分布式 ID、分布式锁、分布式事务在真实业务里有哪些常见方案和坑？
-- 面试中如何把“概念、原理、场景、方案对比、落地经验”串成完整回答？
+- Why do distributed systems require tradeoffs among consistency, availability, performance, and complexity?
+- What problems do CAP, BASE, Paxos, Raft, ZAB, Gossip, and consistent hashing solve?
+- What roles do RPC, API gateways, configuration centers, and service registries play in microservices?
+- What approaches and pitfalls arise when using distributed IDs, locks, and transactions in production?
+- How can you connect concepts, mechanisms, use cases, tradeoffs, and practical experience in an interview answer?
 
-## 这组文章怎么串起来？
+## How the Articles Fit Together
 
-这组文章可以按 4 条线一起看。
+The articles can be read along four tracks.
 
-第一条是**理论线**：[分布式系统入门](./distributed-system-intro.md) 先解释多节点系统为什么会变复杂，[CAP 定理与 BASE 理论详解](./protocol/cap-and-base-theorem.md) 解释分区发生时一致性和可用性怎么取舍，[分布式协调详解](./protocol/centralized-and-decentralized.md) 再把 Leader、Quorum、Lease、Fencing Token、Gossip 放到同一条线上。
+The **theory track** starts with [Distributed Systems Fundamentals](./distributed-system-intro.md), which explains why multi-node systems become complex. [CAP and BASE Explained](./protocol/cap-and-base-theorem.md) covers consistency and availability tradeoffs during partitions. [Distributed Coordination](./protocol/centralized-and-decentralized.md) connects Leader, Quorum, Lease, Fencing Token, and Gossip.
 
-第二条是**调用线**：[RPC 远程过程调用专题](./rpc/) 解决服务之间怎么互相调用，[API 网关详解](./api-gateway.md) 解决外部流量怎么进入系统，[Spring Cloud Gateway 面试题总结](./spring-cloud-gateway-questions.md) 则展开 Spring Cloud Gateway 的路由、断言、过滤器和限流。
+The **service call track** covers communication between services in the [RPC guide](./rpc/), how external traffic enters a system in [API Gateways Explained](./api-gateway.md), and routes, predicates, filters, and rate limiting in [Spring Cloud Gateway Interview Questions](./spring-cloud-gateway-questions.md).
 
-第三条是**数据一致性线**：[分布式 ID 生成方案详解](./distributed-id.md) 解决全局唯一标识问题，[分布式 ID 设计实战](./distributed-id-design.md) 把 ID 放到订单号、优惠券、短网址这些业务里，[分布式锁](./distributed-lock.md) 和 [分布式事务](./distributed-transaction.md) 继续处理跨节点互斥和跨服务写入一致性。
+The **data consistency track** covers globally unique identifiers in [Distributed ID Generation](./distributed-id.md), business IDs for orders, coupons, and short URLs in [Distributed ID Design in Practice](./distributed-id-design.md), and cross-node mutual exclusion and cross-service write consistency in [Distributed Locks](./distributed-lock.md) and [Distributed Transactions](./distributed-transaction.md).
 
-第四条是**协调组件线**：[分布式配置中心详解](./distributed-configuration-center.md) 讲配置发布和客户端容灾，[ZooKeeper 专题](./distributed-process-coordination/zookeeper/) 讲协调组件的概念、ZAB、会话、Watcher 和 Curator 实战。
+The **coordination components track** covers configuration publishing and client-side fault tolerance in [Distributed Configuration Centers](./distributed-configuration-center.md), followed by coordination concepts, ZAB, sessions, Watchers, and Curator practice in the [ZooKeeper guide](./distributed-process-coordination/zookeeper/).
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [分布式系统入门](./distributed-system-intro.md)：先理解什么是分布式系统，以及为什么拆成多节点后会引入通信、故障和一致性问题。
-2. [分布式系统面试题总结](./distributed-system-interview-questions.md)：建立高频问题清单，知道面试最常考哪些点。
-3. [微服务面试题总结](./microservices-interview-questions.md)：理解服务拆分、服务通信、数据一致性、稳定性和迁移问题。
-4. [分布式协调详解](./protocol/centralized-and-decentralized.md)：理解 Leader、Quorum、Gossip、Lease、脑裂和 Fencing Token 之间的关系。
-5. [CAP 定理与 BASE 理论详解](./protocol/cap-and-base-theorem.md)：理解分布式系统最核心的取舍逻辑。
-6. [拜占庭将军问题详解](./protocol/byzantine-generals-problem.md)：理解共识问题里的恶意节点、故障假设和 BFT 容错边界。
-7. [RPC 远程过程调用详解](./rpc/rpc-intro.md)：掌握服务之间如何通信，以及 RPC 框架解决了哪些工程问题。
-8. [分布式 ID 生成方案详解](./distributed-id.md)、[分布式锁入门](./distributed-lock.md)、[分布式事务解决方案详解](./distributed-transaction.md)：补齐高频工程实践。
-9. [ZooKeeper 入门指南](./distributed-process-coordination/zookeeper/zookeeper-intro.md) 和 [分布式配置中心详解](./distributed-configuration-center.md)：理解分布式协调和配置治理。
+1. [Distributed Systems Fundamentals](./distributed-system-intro.md): Learn what distributed systems are and why multiple nodes introduce communication, failure, and consistency challenges.
+2. [Distributed Systems Interview Questions](./distributed-system-interview-questions.md): Review common interview topics.
+3. [Microservices Interview Questions](./microservices-interview-questions.md): Study service decomposition, communication, data consistency, reliability, and migration.
+4. [Distributed Coordination](./protocol/centralized-and-decentralized.md): Understand how Leader, Quorum, Gossip, Lease, split brain, and Fencing Token relate.
+5. [CAP and BASE Explained](./protocol/cap-and-base-theorem.md): Learn the core tradeoffs in distributed systems.
+6. [The Byzantine Generals Problem](./protocol/byzantine-generals-problem.md): Understand malicious nodes, failure assumptions, and the limits of BFT.
+7. [RPC Explained](./rpc/rpc-intro.md): Learn how services communicate and which engineering problems RPC frameworks solve.
+8. [Distributed ID Generation](./distributed-id.md), [Distributed Locks](./distributed-lock.md), and [Distributed Transactions](./distributed-transaction.md): Cover common engineering practices.
+9. [ZooKeeper Fundamentals](./distributed-process-coordination/zookeeper/zookeeper-intro.md) and [Distributed Configuration Centers](./distributed-configuration-center.md): Learn about coordination and configuration management.
 
-## 核心文章
+## Core Articles
 
-### 分布式基础与理论协议
+### Distributed Systems Fundamentals and Protocols
 
-这部分适合先建立分布式系统的底层认知，重点理解一致性、可用性、分区容错、共识算法和数据分布。
+Start here to build a foundation in consistency, availability, partition tolerance, consensus algorithms, and data distribution.
 
-- [分布式系统入门](./distributed-system-intro.md)：理解分布式系统的定义、架构演进、典型特征、常见系统和学习路线。
-- [微服务面试题总结](./microservices-interview-questions.md)：串联服务拆分、RPC 与消息、数据归属、分布式事务、容错、观测和迁移。
-- [分布式理论、算法与协议专题](./protocol/)：把 CAP、BASE、Paxos、Raft、ZAB、Gossip 和一致性哈希放在同一条学习线上。
-- [分布式协调详解](./protocol/centralized-and-decentralized.md)：串起 Leader/Quorum、脑裂、Lease、Fencing Token 和 Gossip，理解“谁来做决定、状态怎么传播”这两个问题。
-- [CAP 定理与 BASE 理论详解](./protocol/cap-and-base-theorem.md)：理解一致性、可用性、分区容错和最终一致性。
-- [拜占庭将军问题详解](./protocol/byzantine-generals-problem.md)：理解恶意节点场景下的共识难点、`3m + 1` 节点要求和 BFT 容错。
-- [Raft 算法详解](./protocol/raft-algorithm.md)：用更易理解的共识算法入门 Leader 选举和日志复制。
-- [Paxos 算法详解](./protocol/paxos-algorithm.md)：补齐经典共识算法的角色、流程和难点。
-- [ZAB 协议详解](./protocol/zab.md)：理解 ZooKeeper 的原子广播、崩溃恢复和事务日志机制。
-- [Gossip 协议详解](./protocol/gossip-protocol.md)：理解大规模节点之间的信息传播和最终一致性。
-- [一致性哈希算法详解](./protocol/consistent-hashing.md)：理解分布式缓存、负载均衡和分库分表中的数据分布问题。
+- [Distributed Systems Fundamentals](./distributed-system-intro.md): Learn the definition, architectural evolution, key characteristics, common systems, and study path.
+- [Microservices Interview Questions](./microservices-interview-questions.md): Connect service decomposition, RPC and messaging, data ownership, distributed transactions, fault tolerance, observability, and migration.
+- [Distributed Systems Theory, Algorithms, and Protocols](./protocol/): Study CAP, BASE, Paxos, Raft, ZAB, Gossip, and consistent hashing together.
+- [Distributed Coordination](./protocol/centralized-and-decentralized.md): Connect Leader/Quorum, split brain, Lease, Fencing Token, and Gossip to understand decision-making and state propagation.
+- [CAP and BASE Explained](./protocol/cap-and-base-theorem.md): Learn about consistency, availability, partition tolerance, and eventual consistency.
+- [The Byzantine Generals Problem](./protocol/byzantine-generals-problem.md): Learn about consensus with malicious nodes, the `3m + 1` node requirement, and BFT fault tolerance.
+- [Raft Explained](./protocol/raft-algorithm.md): Use an approachable consensus algorithm to learn about leader election and log replication.
+- [Paxos Explained](./protocol/paxos-algorithm.md): Learn the roles, process, and challenges of a classic consensus algorithm.
+- [ZAB Protocol Explained](./protocol/zab.md): Learn about ZooKeeper's atomic broadcast, crash recovery, and transaction log.
+- [Gossip Protocol Explained](./protocol/gossip-protocol.md): Learn how information propagates among large numbers of nodes and how eventual consistency works.
+- [Consistent Hashing Explained](./protocol/consistent-hashing.md): Learn how data is distributed in distributed caches, load balancing, and database sharding.
 
-### RPC 与服务调用
+### RPC and Service Calls
 
-RPC 解决的是远程服务调用的工程复杂度，包括序列化、网络传输、服务发现、负载均衡、超时重试和服务治理。
+RPC addresses the engineering complexity of remote service calls, including serialization, network transport, service discovery, load balancing, timeouts, retries, and service management.
 
-- [RPC 专题](./rpc/)：从 RPC 基础、Dubbo 到 HTTP 与 RPC 的关系，建立服务调用完整认知。
-- [RPC 远程过程调用详解](./rpc/rpc-intro.md)：理解 RPC 调用流程、动态代理、序列化、网络传输和框架选型。
-- [Dubbo 面试题总结](./rpc/dubbo.md)：串联 Dubbo 架构、服务暴露与引用、SPI、负载均衡和集群容错。
-- [有了 HTTP 协议，为什么还要 RPC？](../cs-basics/network/http-vs-rpc.md)：厘清 HTTP 和 RPC 的层次关系与选型边界。
+- [RPC Guide](./rpc/): Build an understanding of service calls, from RPC fundamentals and Dubbo to the relationship between HTTP and RPC.
+- [RPC Explained](./rpc/rpc-intro.md): Learn the call flow, dynamic proxies, serialization, network transport, and framework selection.
+- [Dubbo Interview Questions](./rpc/dubbo.md): Review Dubbo architecture, service exposure and references, SPI, load balancing, and cluster fault tolerance.
+- [Why Use RPC When We Have HTTP?](../cs-basics/network/http-vs-rpc.md): Understand how HTTP and RPC relate and when to choose each.
 
-### API 网关与流量入口
+### API Gateways and Traffic Entry Points
 
-API 网关负责统一接入、路由转发、认证鉴权、限流熔断、灰度发布和跨域处理，是微服务体系里的重要入口层。
+API gateways provide a unified entry point for routing, authentication and authorization, rate limiting, circuit breaking, canary releases, and cross-origin handling.
 
-- [API 网关详解](./api-gateway.md)：理解请求路由、认证鉴权、限流熔断、负载均衡和双层网关架构。
-- [Spring Cloud Gateway 面试题总结](./spring-cloud-gateway-questions.md)：掌握 Predicate、GatewayFilter、GlobalFilter、限流熔断和常见生产问题。
+- [API Gateways Explained](./api-gateway.md): Learn about request routing, authentication and authorization, rate limiting, circuit breaking, load balancing, and two-tier gateway architecture.
+- [Spring Cloud Gateway Interview Questions](./spring-cloud-gateway-questions.md): Review Predicate, GatewayFilter, GlobalFilter, rate limiting, circuit breaking, and common production issues.
 
-### 分布式 ID、锁与事务
+### Distributed IDs, Locks, and Transactions
 
-这部分偏工程落地，常见于订单、支付、秒杀、库存扣减、数据一致性和跨服务协作场景。
+These engineering practices commonly apply to orders, payments, flash sales, inventory updates, data consistency, and cross-service collaboration.
 
-- [分布式 ID 生成方案详解](./distributed-id.md)：对比 UUID、数据库自增、号段模式、Redis、Snowflake、Leaf、Tinyid 等方案。
-- [分布式 ID 设计实战](./distributed-id-design.md)：结合订单号、支付码、优惠券、一码付等业务场景理解业务 ID 设计。
-- [分布式锁入门](./distributed-lock.md)：理解互斥语义、锁粒度、安全释放、超时续约和 Fencing Token。
-- [分布式锁实现方案详解](./distributed-lock-implementations.md)：对比 Redis、Redisson、Redlock、ZooKeeper 和 Curator 分布式锁。
-- [分布式事务解决方案详解](./distributed-transaction.md)：系统理解 XA、AT、TCC、Saga、本地消息表、事务消息和最大努力通知。
+- [Distributed ID Generation](./distributed-id.md): Compare UUIDs, database auto-increment, segment allocation, Redis, Snowflake, Leaf, and TinyID.
+- [Distributed ID Design in Practice](./distributed-id-design.md): Study business IDs for orders, payment codes, coupons, and one-code payments.
+- [Distributed Locks](./distributed-lock.md): Learn mutual exclusion, lock granularity, safe release, lease renewal, and Fencing Tokens.
+- [Distributed Lock Implementations](./distributed-lock-implementations.md): Compare distributed locks using Redis, Redisson, Redlock, ZooKeeper, and Curator.
+- [Distributed Transaction Solutions](./distributed-transaction.md): Learn about XA, AT, TCC, Saga, the transactional outbox, transaction messages, and best-effort delivery.
 
-### 配置中心与 ZooKeeper
+### Configuration Centers and ZooKeeper
 
-配置中心和 ZooKeeper 主要解决服务配置、注册发现、分布式协调和集群一致性问题。
+Configuration centers and ZooKeeper address service configuration, service registration and discovery, distributed coordination, and cluster consistency.
 
-- [分布式配置中心详解](./distributed-configuration-center.md)：对比 Apollo、Nacos、Spring Cloud Config 和 Kubernetes ConfigMap。
-- [ZooKeeper 专题](./distributed-process-coordination/zookeeper/)：从 ZooKeeper 核心概念讲到 ZAB、Leader 选举、Curator 和分布式锁实践。
-- [ZooKeeper 入门指南](./distributed-process-coordination/zookeeper/zookeeper-intro.md)：掌握 ZNode、Watcher、ACL 和典型应用场景。
-- [ZooKeeper 进阶详解](./distributed-process-coordination/zookeeper/zookeeper-plus.md)：理解 ZAB 协议、Leader 选举、集群部署和会话管理。
-- [ZooKeeper 实战教程](./distributed-process-coordination/zookeeper/zookeeper-in-action.md)：通过 Docker、zkCli、四字命令和 Curator 完成实践。
+- [Distributed Configuration Centers](./distributed-configuration-center.md): Compare Apollo, Nacos, Spring Cloud Config, and Kubernetes ConfigMap.
+- [ZooKeeper Guide](./distributed-process-coordination/zookeeper/): Learn ZooKeeper fundamentals, ZAB, leader election, Curator, and distributed lock implementations.
+- [ZooKeeper Fundamentals](./distributed-process-coordination/zookeeper/zookeeper-intro.md): Learn about ZNodes, Watchers, ACLs, and common use cases.
+- [ZooKeeper Advanced Guide](./distributed-process-coordination/zookeeper/zookeeper-plus.md): Learn about ZAB, leader election, cluster deployment, and session management.
+- [ZooKeeper in Practice](./distributed-process-coordination/zookeeper/zookeeper-in-action.md): Practice with Docker, `zkCli`, four-letter commands, and Curator.
 
-## 高频问题
+## Common Interview Questions
 
-- 分布式系统为什么不能同时完美满足一致性、可用性和分区容错？
-- CAP 和 BASE 是什么关系？最终一致性适合哪些场景？
-- 分布式系统为什么需要协调？中心化和去中心化分别适合哪些场景？
-- Paxos、Raft、ZAB 有什么区别，分别用在什么地方？
-- RPC 和 HTTP 有什么区别？为什么内部服务调用常用 RPC？
-- 分布式 ID 如何保证全局唯一、趋势递增和业务可读？
-- Redis 分布式锁有哪些坑？Redlock 是否一定可靠？
-- 分布式事务有哪些方案？TCC、Saga、本地消息表分别适合什么场景？
-- 配置中心和注册中心有什么区别？Apollo、Nacos、Spring Cloud Config 如何选型？
-- 微服务应该怎样拆分？什么情况下拆分会变成分布式单体？
-- 微服务之间怎样处理通信失败、跨服务数据一致性和灰度发布？
+- Why can't a distributed system perfectly guarantee consistency, availability, and partition tolerance at the same time?
+- How are CAP and BASE related, and when is eventual consistency appropriate?
+- Why do distributed systems need coordination? When are centralized and decentralized approaches suitable?
+- How do Paxos, Raft, and ZAB differ, and where is each used?
+- How do RPC and HTTP differ, and why is RPC common for internal service calls?
+- How can a distributed ID be globally unique, roughly time-ordered, and useful to the business?
+- What are common pitfalls of Redis distributed locks? Is Redlock always reliable?
+- What distributed transaction patterns are available, and when are TCC, Saga, and the transactional outbox appropriate?
+- How do configuration centers differ from service registries? How should you choose among Apollo, Nacos, and Spring Cloud Config?
+- How should microservices be decomposed, and when can they become a distributed monolith?
+- How should microservices handle communication failures, cross-service data consistency, and canary releases?
 
-## 相关专题
+## Related Guides
 
-- [系统设计](../system-design/)
-- [高可用系统设计](../high-availability/)
-- [高性能系统设计](../high-performance/)
-- [计算机网络](../cs-basics/network/)
+- [System Design](../system-design/)
+- [High Availability](../high-availability/)
+- [High Performance](../high-performance/)
+- [Computer Networks](../cs-basics/network/)
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,208 +1,202 @@
 ---
-title: Gossip 协议详解：反熵、谣言传播、SWIM 与最终一致性
-category: 分布式
-description: Gossip 协议详解，讲解去中心化信息传播模型、反熵、谣言传播、Push/Pull 模式、SWIM 协议、最终一致性，以及在 Redis Cluster、Cassandra 等系统中的应用。
+title: "Gossip Protocol Explained: Anti-Entropy, Rumor Mongering, SWIM, and Eventual Consistency"
+category: Distributed Systems
+description: "An introduction to the decentralized Gossip protocol, including anti-entropy, rumor mongering, Push/Pull modes, SWIM, eventual consistency, and its use in Redis Cluster, Cassandra, and other systems."
 tag:
-  - 分布式协议与算法
-  - 数据复制协议
-  - 最终一致性
+  - Distributed Protocols and Algorithms
+  - Data Replication Protocols
+  - Eventual Consistency
 head:
   - - meta
     - name: keywords
-      content: Gossip 协议,SWIM 协议,反熵,谣言传播,最终一致性,去中心化,Redis Cluster,Cassandra,分布式协议,分布式算法
+      content: Gossip protocol,SWIM,anti-entropy,rumor mongering,eventual consistency,decentralized,Redis Cluster,Cassandra,distributed protocols,distributed algorithms
 ---
 
-## 背景
+## Background
 
-在分布式系统中，不同节点间共享状态是一个基本需求。
+Distributed systems need nodes to share state.
 
-一种简单的方法是 **集中式广播**：由中心节点向所有其他节点同步信息。这种方式适合中心化系统，但存在明显缺陷：当节点数量增加时，同步效率下降（O(N) 复杂度），且过度依赖中心节点，存在单点故障风险。
+A simple approach is **centralized broadcast**: one central node synchronizes information with all other nodes. This works in centralized systems, but synchronization becomes less efficient as the cluster grows (O(N) complexity), and the central node becomes a single point of failure.
 
-**分散式传播** 的 **Gossip 协议** 提供了一种去中心化的替代方案。
+The **Gossip protocol** provides a decentralized alternative.
 
-如果你还不清楚 Leader/Quorum 和 Gossip 分别适合解决什么问题，可以先看 [分布式协调详解](./centralized-and-decentralized.md)。这篇 Gossip 文章只展开“状态如何传播并最终收敛”，不负责解释 Leader 选举、脑裂和 Fencing Token 这类强协调问题。
+If you are unsure which problems Leader/Quorum coordination and Gossip address, start with [Distributed Coordination](./centralized-and-decentralized.md). This article focuses on how state is propagated and converges; it does not cover strong coordination problems such as Leader election, split brain, and Fencing Tokens.
 
-![分布式系统通信机制：中心化 vs 去中心化](../images/shared/gossip-centralized-vs-decentralized.png)
+![Centralized vs. decentralized communication in distributed systems](../images/shared/gossip-centralized-vs-decentralized.png)
 
-## Gossip 协议介绍
+## What is the Gossip protocol?
 
-**Gossip**（闲话协议）也称 **Epidemic 协议**（流行病协议），灵感来源于流行病传播的随机特性。其核心思想是：每个节点周期性地随机选择若干其他节点交换信息，使数据像病毒传播一样扩散至整个网络。
+**Gossip**, also called the **epidemic protocol**, is inspired by how information spreads through an epidemic. Each node periodically selects several other nodes at random and exchanges information with them. The data spreads through the network like a virus.
 
-![Gossip 翻译](../images/shared/gossip.png)
+![Gossip protocol](../images/shared/gossip.png)
 
-Gossip 协议最早由 Demers 等人在 1987 年的论文 [《Epidemic Algorithms for Replicated Database Maintenance》](https://dl.acm.org/doi/10.1145/41840.41841) 中提出，用于解决分布式数据库的副本同步问题。
+Demers et al. first described the Gossip protocol in their 1987 paper [“Epidemic Algorithms for Replicated Database Maintenance”](https://dl.acm.org/doi/10.1145/41840.41841), which addressed replica synchronization in distributed databases.
 
-**定义**：Gossip 协议是一种**去中心化**的通信协议，通过节点间的随机信息交换，在**非拜占庭且不存在永久网络分区**、节点持续周期性交换的前提下，使集群内所有节点的状态达到**最终一致性**。
+**Definition:** Gossip is a **decentralized** communication protocol that uses random information exchange between nodes to achieve **eventual consistency** across a cluster. This assumes non-Byzantine nodes, no permanent network partition, and continued periodic exchanges.
 
-> **重要区分**：Gossip 是信息传播协议，**不是共识算法**（如 Raft/Paxos）。共识算法保证强一致性与安全性，Gossip 只保证最终一致性，不适用于选主或状态机复制等需要强一致的场景。
+> **Important distinction:** Gossip is an information propagation protocol, **not a consensus algorithm** such as Raft or Paxos. Consensus algorithms provide stronger consistency and safety guarantees. Gossip provides eventual consistency and is not suitable for tasks such as Leader election or state machine replication that require strong consistency.
 
-**关键特性**：
+**Key properties:**
 
-- **去中心化**：无中心节点，所有节点地位平等
-- **容错性强**：容忍节点宕机、网络分区、动态增删节点
-- **概率收敛**：在均匀随机选点、fanout 为常数的经典模型下，传播轮次期望为 O(log N)（如 N=100 时约 5-7 轮，具体取决于 fanout 与丢包率）
-- **消息冗余**：同一消息可能被多次接收，需去重机制
+- **Decentralized:** There is no central node; all nodes are peers.
+- **Fault tolerant:** It can tolerate node failures, network partitions, and dynamic membership changes.
+- **Probabilistic convergence:** In the classic model, where nodes are selected uniformly at random and fanout is constant, the expected number of rounds is O(log N). For example, N=100 may take about 5–7 rounds, depending on fanout and packet loss.
+- **Redundant messages:** A node may receive the same message multiple times, so deduplication is needed.
 
-## Gossip 协议应用
+## Where Gossip is used
 
-Gossip 协议被广泛应用于分布式系统：
+Gossip is used in many distributed systems:
 
-- **Redis Cluster**：用于节点间状态同步与故障检测
-- **Apache Cassandra**：用于节点成员与状态信息传播；副本修复采用反熵/repair（基于 Merkle Tree）
-- **Consul**：用于成员发现、故障探测与事件广播（基于 SWIM 协议）
-- **Amazon Dynamo**：用于分布式存储的最终一致性
+- **Redis Cluster:** Synchronizes node state and detects failures.
+- **Apache Cassandra:** Propagates membership and node state. Replica repair uses anti-entropy/repair based on Merkle Trees.
+- **Consul:** Handles membership discovery, failure detection, and event broadcast using the SWIM protocol.
+- **Amazon Dynamo:** Supports eventual consistency in distributed storage.
 
-以 **Redis Cluster**（3.0+）为例：
+Consider **Redis Cluster** (version 3.0 and later) as an example.
 
-Redis Cluster 是一个去中心化的分布式缓存方案，各节点通过 Gossip 协议交换集群状态，包括：节点信息、槽位分配、节点状态（在线/PFAIL/FAIL）。
+Redis Cluster is a decentralized distributed cache. Its nodes use Gossip to exchange cluster state, including node information, slot assignments, and node status (`online`, `PFAIL`, or `FAIL`).
 
-![Redis 的官方集群解决方案](../images/shared/up-fcacc1eefca6e51354a5f1fc9f2919f51ec.png)
+![Redis's official cluster solution](../images/shared/up-fcacc1eefca6e51354a5f1fc9f2919f51ec.png)
 
-**Gossip 消息类型**：
+**Gossip message types:**
 
-| 消息类型 | 用途                        |
-| -------- | --------------------------- |
-| MEET     | 将指定节点添加进集群        |
-| PING     | 周期性发送，交换节点状态    |
-| PONG     | 响应 PING，携带自身状态信息 |
-| FAIL     | 广播节点故障标记            |
+| Message | Purpose                                            |
+| ------- | -------------------------------------------------- |
+| `MEET`  | Adds a specified node to the cluster.              |
+| `PING`  | Periodically exchanges node state.                 |
+| `PONG`  | Responds to `PING` and carries the sender's state. |
+| `FAIL`  | Broadcasts a node failure report.                  |
 
-> 注：在实现上，MEET/PING/PONG 共享同一类消息结构；PONG 是对 PING/MEET 的响应，MEET 相当于“强制握手”的 PING。
+> Note: In the implementation, `MEET`, `PING`, and `PONG` share a message structure. `PONG` responds to `PING` or `MEET`; `MEET` is similar to a `PING` that forces a handshake.
 
-**故障检测流程**：
+**Failure detection:**
 
-1. 节点 A 若在 `cluster-node-timeout`（常见为 15s，具体以配置为准）内未收到 B 的响应，将 B 标记为 **PFAIL**（疑似下线）
-2. 若 A 收到其他主节点对 B 的 PFAIL 报告，且**半数以上的主节点**确认 B 为 PFAIL（报告未过期），则 A 将 B 标记为 **FAIL**（已下线）并向集群广播
+1. If node A receives no response from B within `cluster-node-timeout` (commonly 15 seconds, depending on configuration), A marks B as **PFAIL** (possibly failing).
+2. If A receives PFAIL reports for B from other primary nodes, and **more than half of the primary nodes** confirm the report before it expires, A marks B as **FAIL** (failed) and broadcasts the failure to the cluster.
 
-下图就是主从架构的 Redis Cluster 的示意图，图中的虚线代表的就是各个节点之间使用 Gossip 进行通信，实线表示主从复制。
+The diagram below shows a Redis Cluster with primary and replica nodes. Dashed lines indicate Gossip communication; solid lines indicate primary-replica replication.
 
-![Redis Cluster  各个节点之间使用 Gossip 进行通信](../images/shared/redis-cluster-gossip.png)
+![Gossip communication among Redis Cluster nodes](../images/shared/redis-cluster-gossip.png)
 
-> 注：Redis Cluster 主要通过 PING/PONG 的增量 gossip 传播节点/槽位/故障信息（带时间戳/标志位等），而不是采用像 Dynamo 那样基于 Merkle tree 的反熵对账流程。
+> Note: Redis Cluster primarily uses incremental Gossip in `PING`/`PONG` messages to propagate node, slot, and failure information, including timestamps and flags. It does not use a Dynamo-style anti-entropy repair process based on Merkle Trees.
 
-关于 Redis Cluster 的详细介绍，可以查看这篇文章 [Redis 集群详解(付费)](https://javaguide.cn/database/redis/redis-cluster.html)。
+For more details, see [Redis Cluster Explained (paid)](https://javaguide.cn/database/redis/redis-cluster.html).
 
-## Gossip 协议传播模式
+## Gossip propagation modes
 
-Gossip 协议有两种主要传播模式：**反熵** 和 **谣言传播**。
+Gossip has two main propagation modes: **anti-entropy** and **rumor mongering**.
 
-### 反熵
+### Anti-entropy
 
-**定义**：节点间交换**完整数据**（或数据摘要），消除差异，实现最终一致。
+**Definition:** Nodes exchange **complete datasets** (or summaries) to eliminate differences and achieve eventual consistency.
 
-**熵**的物理含义是系统混乱程度；反熵即**降低节点间数据差异，提升一致性**。
+In physics, **entropy** measures disorder. In this context, think of entropy as the differences among node states. Anti-entropy reduces those differences and makes node data more consistent.
 
-根据维基百科：
+According to Wikipedia:
 
-> 熵的概念最早起源于[物理学](https://zh.wikipedia.org/wiki/物理学)，用于度量一个热力学系统的混乱程度。熵最好理解为不确定性的量度而不是确定性的量度，因为越随机的信源的熵越大。
+> Entropy originated in [physics](https://en.wikipedia.org/wiki/Physics), where it measures the disorder of a thermodynamic system. It is best understood as a measure of uncertainty rather than certainty, since a more random source has higher entropy.
 
-在这里，你可以把反熵中的熵理解为节点之间数据的混乱程度/差异性，反熵就是指消除不同节点中数据的差异，提升节点间数据的相似度，从而降低熵值。
+**Three common modes:**
 
-**三种实现方式**：
+| Mode      | Description                                             | Use case                          |
+| --------- | ------------------------------------------------------- | --------------------------------- |
+| Push      | The sender pushes its complete dataset to the receiver. | The sender has new data.          |
+| Pull      | The receiver fetches the sender's complete dataset.     | The receiver's data is stale.     |
+| Push-Pull | Both sides exchange data and compare differences.       | Most efficient and commonly used. |
 
-| 方式      | 描述                               | 适用场景       |
-| --------- | ---------------------------------- | -------------- |
-| Push      | 发送方将自己的全部数据推送给接收方 | 发送方有新数据 |
-| Pull      | 接收方拉取发送方的全部数据         | 接收方数据陈旧 |
-| Push-Pull | 双向交换数据，并比较差异           | 最高效，最常用 |
+![Anti-entropy Push-Pull sequence](../images/shared/gossip-anti-entropy-pushpull.png)
 
-![反熵机制：Push-Pull 交互时序图 (Anti-Entropy)](../images/shared/gossip-anti-entropy-pushpull.png)
+Pseudocode:
 
-伪代码如下：
+![Anti-entropy pseudocode](../images/shared/up-df16e98bf71e872a7e1f01ca31cee93d77b.png)
 
-![反熵伪代码](../images/shared/up-df16e98bf71e872a7e1f01ca31cee93d77b.png)
+**Convergence:** With uniform random peer selection and constant fanout, the expected number of rounds to reach all nodes is O(log N), often estimated at roughly log₂N rounds.
 
-**收敛特性**：在均匀随机选点、fanout 为常数的模型下，期望 O(log N) 轮覆盖全部节点（常见估算可用 log₂N 量级）
+Some systems, such as InfluxDB, use **deterministic closed-loop scheduling** (for example, a ring topology) instead of random selection to synchronize data in a predictable number of rounds. This is an engineering variation of anti-entropy, not a core mechanism of the standard Gossip protocol. Deterministic scheduling trades some fault tolerance for predictable convergence time.
 
-部分系统（如 InfluxDB）采用**确定性闭环调度**（如环形拓扑）代替随机选择，可在确定轮次内完成同步。这属于反熵的**工程衍生实现**，而非标准 Gossip 协议的核心机制。确定性调度牺牲了随机性的容错优势，换取可预测的收敛时间。
+![Deterministic closed-loop scheduling](../images/shared/raft-anti-entropyclosed-loop.png)
 
-![确定性闭环调度](../images/shared/raft-anti-entropyclosed-loop.png)
+1. Node A pushes data to B, and B receives A's latest data.
+2. Node B pushes data to C, and C receives the latest data from A and B.
+3. Node C pushes data to A, and A receives the latest data from B and C.
+4. Node A pushes data to B again, completing the loop so B receives C's latest data.
 
-1. 节点 A 推送数据给节点 B，节点 B 获取到节点 A 中的最新数据。
-2. 节点 B 推送数据给 C，节点 C 获取到节点 A，B 中的最新数据。
-3. 节点 C 推送数据给 A，节点 A 获取到节点 B，C 中的最新数据。
-4. 节点 A 再推送数据给 B 形成闭环，这样节点 B 就获取到节点 C 中的最新数据。
+**Trade-off:** Closed-loop scheduling completes synchronization in a predictable time, but a node failure in the loop can interrupt propagation, and dynamic membership is difficult to handle.
 
-**权衡**：闭环调度可在确定时间内完成同步，但牺牲了**容错性**（环中节点故障影响传播路径），且难以适应节点动态增删。
+**Use case:** Periodic background reconciliation when missed updates should be minimized. For large datasets, incremental comparison using summaries or trees is needed to control the cost.
 
-**适用场景**：需要较低残留率（尽量不漏更新）、允许后台周期性对账修复；数据量大时必须依赖摘要/树等增量比对以控制成本。
+> **Production optimization:** Distributed storage systems such as Cassandra and DynamoDB may store terabytes of data per node, so exchanging full datasets is impractical. They use **Merkle Trees** to identify differences incrementally. Nodes first exchange root hashes; if they differ, they compare subtrees recursively to locate discrepancies in O(log M) tree levels, where M is the number of entries in that range, then transfer only the changed data.
 
-> **生产级优化**：在大规模分布式存储（如 Cassandra、DynamoDB）中，节点数据量可达 TB 级，直接交换完整数据不现实。生产系统使用 **Merkle Tree（默克尔树）** 进行增量差异比对：两节点先交换 Merkle Tree 根哈希，若有差异则递归比对子树，在树高 O(log M) 的层级上定位差异（M 为该范围内条目数），随后仅传输增量数据。
+### Rumor mongering
 
-### 谣言传播
+**Definition:** When a node has **new data**, it becomes active and periodically sends the data to randomly selected nodes until the cluster has received it.
 
-**定义**：当节点有**新数据**时，变为活跃节点，周期性地向随机节点广播该数据，直到所有节点都收到。
+**How it differs from anti-entropy:**
 
-**与反熵的区别**：
+- It propagates only **new data (deltas)**, not the complete dataset.
+- After receiving an update, a node periodically propagates it. It stops according to a policy such as a count, probability, or TTL after contacting nodes that already know the update.
+- It suits systems with **many nodes** and **small incremental updates**.
 
-- 只传播**新增数据**（Delta），非完整数据
-- 节点收到更新后进入活跃状态周期性传播，多次接触到已知该更新的节点后按策略（计数/概率/TTL）停止传播
-- 适合**节点数量大**、**增量数据小**的场景
+> **Deduplication:** Production systems such as Redis Cluster use version numbers or message IDs to avoid processing the same message repeatedly.
 
-> **去重机制**：生产环境（如 Redis Cluster）通过**版本号**或**消息 ID** 去重，避免重复处理相同消息。
+The following diagram is from the article [Introduction to Gossip](https://managementfromscratch.wordpress.com/2016/04/01/introduction-to-gossip/):
 
-如下图所示（下图来自于[INTRODUCTION TO GOSSIP](https://managementfromscratch.wordpress.com/2016/04/01/introduction-to-gossip/) 这篇文章）：
+![Gossip rumor propagation](../images/shared/gossip-rumor-mongering.gif)
 
-![Gossip 传播示意图](../images/shared/gossip-rumor-mongering.gif)
-
-伪代码如下：
+Pseudocode:
 
 ![](../images/shared/20210605170707933.png)
 
-**收敛特性**：在均匀随机选点、fanout 为常数的模型下，O(log N) 轮后以高概率覆盖全部节点。
+**Convergence:** With uniform random peer selection and constant fanout, all nodes are covered with high probability after O(log N) rounds.
 
-**注意事项**：
+**Practical considerations:**
 
-- 控制消息包大小，尽量避免分片（视路径 MTU 而定，通常控制在单个网络包内）
-- 配合去重机制（如消息 ID、版本号）
-- 避免高频更新导致消息风暴
-- 使用 **Jitter（随机抖动）**打散同步时间，避免多节点同时发起传播造成雪崩
+- Keep messages small and avoid fragmentation where possible; account for the path MTU.
+- Use deduplication, such as message IDs or version numbers.
+- Avoid message storms caused by frequent updates.
+- Add **jitter** (randomized timing) to spread out synchronization and avoid many nodes propagating at once.
 
-![Gossip 协议：随机传播与收敛过程](../images/shared/gossip-propagation.png)
+![Random propagation and convergence in Gossip](../images/shared/gossip-propagation.png)
 
-### 总结
+### Summary
 
-| 要点     | 反熵                       | 谣言传播                   |
-| -------- | -------------------------- | -------------------------- |
-| 传播内容 | 完整数据（或摘要）         | 仅新增数据（Delta）        |
-| 适用场景 | 节点数量适中               | 节点数量较多/动态变化      |
-| 消息开销 | 较大                       | 较小                       |
-| 收敛范围 | 收敛到最新数据（全量同步） | 收敛到已知数据（增量传播） |
+| Property         | Anti-entropy                  | Rumor mongering           |
+| ---------------- | ----------------------------- | ------------------------- |
+| Data propagated  | Complete dataset or summary   | New data only (delta)     |
+| Suitable for     | Moderate number of nodes      | Large or dynamic clusters |
+| Message overhead | Higher                        | Lower                     |
+| Convergence      | Synchronizes the full dataset | Propagates known updates  |
 
-## Gossip 协议优势与缺陷
+## Advantages and limitations
 
-**优势**：
+**Advantages:**
 
-1. **实现简单**：协议逻辑简单，易于理解
+1. **Simple:** The protocol is straightforward to understand and implement.
+2. **Fault tolerant:** It can tolerate node failures, network partitions, and dynamic membership changes. Under ideal conditions, a new or restarted node eventually converges with the rest of the cluster.
+3. **Scalable:** Convergence takes O(log N) rounds. For large N (for example, N > 100), parallel propagation is often faster than sending messages from one central node, which takes O(N) rounds. Typical rumor-spreading models use O(N log N) total messages, depending on the implementation and stopping condition, so redundant traffic is a cost.
 
-2. **容错性强**：容忍节点宕机、网络分区、动态增删节点。新增或重启的节点在理想情况下最终一定会和其他节点的状态达到一致。
+**Limitations:**
 
-3. **扩展性好**：收敛时间为 O(log N)，当 N 较大（如 N > 100）时，并行传播通常比中心节点单播更快（后者需 O(N) 轮次）。在典型 rumor spreading 模型下代价是**消息总量为 O(N log N)**（具体取决于实现策略与停止条件），存在冗余开销。
+1. **Eventual consistency:** Multiple rounds are needed to reach the entire network, so temporary inconsistency is possible. Convergence time depends on the network, Gossip interval (often 100 ms–1 s, depending on configuration), and cluster size.
+2. **Not designed for Byzantine failures:** Gossip assumes non-Byzantine nodes and does not handle nodes that maliciously forge or alter messages.
+3. **Redundant messages:** Random propagation may deliver the same message to a node multiple times, so deduplication is needed.
 
-**缺陷**：
+## Summary
 
-1. **最终一致**：消息需通过多轮传播才能覆盖整个网络，存在不一致窗口期。达到一致的具体时间取决于网络状况、gossip 间隔（**视实现配置而定，常见 100ms-1s**）与节点规模。
+- Gossip is a **decentralized** communication protocol that uses random information exchange to bring cluster state to **eventual consistency**.
+- It is **not a consensus algorithm**: Gossip does not guarantee strong or linearizable consistency and cannot be used for Leader election or state machine replication. Algorithms such as Raft and Paxos provide consensus safety and linearizability.
+- Key properties include decentralization, fault tolerance, and O(log N) convergence.
+- The two propagation modes are **anti-entropy** (complete data or summaries) and **rumor mongering** (incremental data).
+- Common uses include metadata propagation in Redis Cluster and eventually consistent storage in Cassandra and DynamoDB.
+- The trade-off is simple, fault-tolerant propagation in exchange for eventual-consistency delays and redundant messages.
 
-2. **不适用拜占庭环境**：Gossip 协议的设计假设是非拜占庭环境，不处理恶意节点的情况（节点不会伪造或篡改消息）。
+## References
 
-3. **消息冗余**：由于传播的随机性，同一节点可能重复收到相同消息，需配合去重机制。
-
-## 总结
-
-- Gossip 协议是一种**去中心化**的通信协议，通过节点间的随机信息交换，使集群内所有节点的状态达到**最终一致性**
-- **不是共识算法**：Gossip 不保证强一致性/线性一致性，不能用于选主或状态机复制；共识算法（Raft/Paxos）才保证安全性与线性一致
-- 核心特性：去中心化、容错性强、O(log N) 收敛
-- 两种传播模式：**反熵**（完整数据/摘要）、**谣言传播**（增量数据）
-- 典型应用：元数据传播（Redis Cluster）、最终一致存储（Cassandra/DynamoDB）
-- 权衡：简单性与容错性 vs 最终一致延迟与消息冗余
-
-## 参考
-
-- [Epidemic Algorithms for Replicated Database Maintenance](https://dl.acm.org/doi/10.1145/41840.41841) - Demers et al., 1987
-- [Amazon Dynamo: All Things Distributed](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf) - DeCandia et al., 2007
+- [Epidemic Algorithms for Replicated Database Maintenance](https://dl.acm.org/doi/10.1145/41840.41841) — Demers et al., 1987
+- [Amazon Dynamo: All Things Distributed](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf) — DeCandia et al., 2007
 - [Redis Cluster Specification](https://redis.io/docs/management/scaling/)
-- 一万字详解 Redis Cluster Gossip 协议：<https://segmentfault.com/a/1190000038373546>
-- 《分布式协议与算法实战》
-- 《Redis 设计与实现》
+- [Redis Cluster Gossip Protocol Explained](https://segmentfault.com/a/1190000038373546)
+- _Distributed Protocols and Algorithms in Practice_
+- _Redis Design and Implementation_
 
 <!-- @include: @article-footer.snippet.md -->
