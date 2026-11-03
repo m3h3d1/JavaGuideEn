@@ -1,436 +1,436 @@
 ---
-title: AI Agent 记忆系统：短期记忆、长期记忆与记忆演化机制
-description: 分清 Agent 记忆的层级与表征（Token/参数/潜在），短长期记忆的读写链路、向量与 Markdown 选型，以及 Claude Code 等轻量化落地方式。
-category: AI 应用开发
+title: AI Agent Memory Systems: Short-Term Memory, Long-Term Memory, and Memory Evolution
+description: Explains Agent memory layers and representations (Token, parameter, and latent), short- and long-term memory lifecycles, vector and Markdown storage, and lightweight approaches such as Claude Code.
+category: AI Application Development
 head:
   - - meta
     - name: keywords
-      content: AI Agent,记忆系统,Memory,短期记忆,长期记忆,上下文工程,Mem0,MemGPT,ZEP,Agent Skills
+      content: AI Agent,Memory,short-term memory,long-term memory,Context Engineering,Mem0,MemGPT,ZEP,Agent Skills
 ---
 
 <!-- @include: @article-header.snippet.md -->
 
-长任务一跑起来，很快就会撞到几件硬约束：上下文窗口有上限，Token 账单会一路涨，Session 结束后如果没有落库，上一轮轨迹默认就跟进程一起消失。模型即使能完成当前推理，也缺少保存和复用历史记录的位置。
+Long-running tasks quickly encounter several hard limits: the context window has a cap, Token costs keep rising, and when a Session ends, the previous trajectory disappears with the process unless it was persisted. Even if the model completes its current reasoning, it has nowhere to save and reuse historical records.
 
-记忆层需要同时保住当前对话的关键事实，并让新 Session 能取回用户偏好、背景和历史决策。文章依次讨论记忆的表征和功能分类、读写生命周期、短期与长期实现、主流产品和检索优化，以及 Markdown 记忆。滑动窗口怎么裁、offload 怎么卸，和同站的 [《上下文工程(Context Engineering) 是什么？和 Prompt Engineering 有什么区别？》](./context-engineering.md) 有交集，两篇可以对着看。
+The memory layer must preserve key facts in the current conversation and let a new Session retrieve user preferences, background, and past decisions. This guide covers memory representations and functional categories, the read/write lifecycle, short- and long-term implementations, common products, retrieval optimization, and Markdown-based memory. Sliding-window trimming and offloading overlap with [Context Engineering: What Is It, and How Does It Differ from Prompt Engineering?](./context-engineering.md), so the two guides can be read together.
 
-## Agent 的记忆系统是如何设计的？
+## How Is an Agent Memory System Designed?
 
-![Agent 记忆分类全景图](../images/shared/agent-memory-memory-taxonomy.svg)
+![Overview of Agent memory categories](../images/shared/agent-memory-memory-taxonomy.svg)
 
-记忆系统通常分两层：短期记忆和长期记忆。短期记忆是 Session 级的，服务当前任务；长期记忆是跨 Session 的，负责把用户偏好、历史决策、过往经验沉淀下来。两者在物理和逻辑上都应该分开，不要混成一锅。
+Memory systems usually have two layers: short-term and long-term memory. Short-term memory exists at the Session level and serves the current task. Long-term memory persists across Sessions and stores user preferences, past decisions, and experience. Keep the two separate, both logically and physically.
 
-![AI Agent 记忆系统架构](../images/shared/agent-memory-arch.png)
+![AI Agent memory system architecture](../images/shared/agent-memory-arch.png)
 
-### 记忆有哪些存储形式？
+### What Forms Can Memory Take?
 
-除了按时间维度拆，记忆还可以按存储位置和表征形式分成三类。
+In addition to grouping memory by time, it can be divided into three types based on storage location and representation:
 
-| 存储形式     | 说明                                     | 典型实现                          |
-| ------------ | ---------------------------------------- | --------------------------------- |
-| Token 级记忆 | 以自然语言或离散符号形式存储在外部数据库 | 向量库中的文本块、结构化 JSON     |
-| 参数化记忆   | 将信息编码进模型参数中                   | 预训练知识、LoRA 适配器、SFT 微调 |
-| 潜在记忆     | 以隐式形式承载在模型内部表示中           | KV Cache、激活值、Hidden States   |
+| Storage form       | Description                                                          | Typical implementation                                |
+| ------------------ | -------------------------------------------------------------------- | ----------------------------------------------------- |
+| Token-level memory | Stored in external databases as natural language or discrete symbols | Text chunks in a vector database, structured JSON     |
+| Parametric memory  | Information encoded in model parameters                              | Pretraining knowledge, LoRA adapters, SFT fine-tuning |
+| Latent memory      | Implicitly represented inside the model                              | KV Cache, activations, Hidden States                  |
 
-这三种形式不是完全割裂的。MemOS 提出的“记忆立方体”框架就支持从纯文本记忆，到激活记忆（KV Cache），再到参数记忆的动态流转。简单说，就是把经常用的热记忆放到更近的位置，把稳定、长期的冷记忆用更重的方式固化下来。
+These forms are not completely separate. MemOS's "Memory Cube" framework supports dynamic transitions from plain-text memory to activation memory (KV Cache) and then to parametric memory. In simple terms, frequently used hot memory is kept closer, while stable, long-term cold memory is consolidated in a more permanent form.
 
-### 记忆在功能上如何分类？
+### How Is Memory Classified by Function?
 
-按功能目的看，Agent 记忆可以分成三类。
+By function, Agent memory can be divided into three types:
 
-| 功能类型 | 核心问题           | 存储内容                     | 典型场景               |
-| -------- | ------------------ | ---------------------------- | ---------------------- |
-| 事实记忆 | 智能体知道什么     | 用户偏好、环境状态、显式事实 | 记住用户的技术栈偏好   |
-| 经验记忆 | 智能体如何改进     | 过往轨迹、成败教训、策略知识 | 从失败的代码审查中学习 |
-| 工作记忆 | 智能体当前思考什么 | 当前推理上下文、任务进展     | 多步推理中的中间状态   |
+| Type            | Core question                        | Stored content                                                          | Example use case                             |
+| --------------- | ------------------------------------ | ----------------------------------------------------------------------- | -------------------------------------------- |
+| Factual memory  | What the Agent knows                 | User preferences, environment state, explicit facts                     | Remember a user's preferred technology stack |
+| Episodic memory | How the Agent can improve            | Past trajectories, lessons from success and failure, strategy knowledge | Learn from a failed code review              |
+| Working memory  | What the Agent is thinking about now | Current reasoning context and task progress                             | Intermediate state in multi-step reasoning   |
 
-按内容性质还可以继续细分：
+Memory can be further classified by content:
 
-- 情景记忆（Episodic Memory）：记录特定时间、场景下的具体事件，回答 “What happened?”。例如：“上周三用户反馈订单超时问题”。
-- 语义记忆（Semantic Memory）：从多个情景中提炼出的通用知识、事实或规律，回答 “What does it mean?”。例如：“该用户对性能问题的敏感度高于功能需求”。
-- 程序记忆（Procedural Memory）：存储技能、规则和习得行为，让 Agent 能自动执行某类任务序列，而不是每次重新推理。例如：“处理该用户的代码审查时，优先检查 OOM 风险”。
+- Episodic memory records specific events in a particular time and context, answering "What happened?" For example: "The user reported an order timeout last Wednesday."
+- Semantic memory extracts general knowledge, facts, or patterns from multiple episodes, answering "What does it mean?" For example: "This user is more sensitive to performance issues than missing features."
+- Procedural memory stores skills, rules, and learned behaviors so the Agent can perform a task sequence automatically instead of reasoning from scratch each time. For example: "When reviewing this user's code, check for OOM risks first."
 
-### 记忆操作的生命周期是怎样的？
+### What Is the Memory Lifecycle?
 
-![记忆操作的生命周期](../images/shared/agent-memory-lifestyle.png)
+![Memory lifecycle](../images/shared/agent-memory-lifestyle.png)
 
-一条记忆从进入系统到最终被淘汰，一般会经历这些环节。不同论文里的名字会有差异，但语义基本能对上。
+From entering the system to eventual removal, a memory generally passes through these stages. Different papers may use different names, but their meanings are similar.
 
 ```text
-编码(Encode) → 存储(Storage) → 提取(Retrieval) → 巩固(Consolidation) → 反思(Reflection) → 遗忘(Forgetting)
+Encoding → Storage → Retrieval → Consolidation → Reflection → Forgetting
 ```
 
-| 操作 | 说明                               | 工程实现                      |
-| ---- | ---------------------------------- | ----------------------------- |
-| 编码 | 将原始交互转化为可存储的结构化信息 | LLM 提取事实三元组、生成摘要  |
-| 存储 | 将编码后的信息持久化               | 写入向量库 / 图数据库 / 参数  |
-| 提取 | 根据上下文检索相关记忆             | 向量检索 + BM25 + 图遍历      |
-| 巩固 | 将短期记忆转化为长期记忆           | 异步任务：对话摘要 → 实体库   |
-| 反思 | 主动回顾评估记忆内容，优化决策     | 任务完成后提取 Meta-Knowledge |
-| 遗忘 | 淘汰低价值或过时记忆               | 权重衰减 + 冲突标记废弃       |
+| Operation     | Description                                                    | Engineering implementation                                      |
+| ------------- | -------------------------------------------------------------- | --------------------------------------------------------------- |
+| Encoding      | Convert raw interactions into structured, storable information | LLM extracts fact triples and generates summaries               |
+| Storage       | Persist encoded information                                    | Write to a vector database, graph database, or model parameters |
+| Retrieval     | Find relevant memories based on context                        | Vector search + BM25 + graph traversal                          |
+| Consolidation | Convert short-term memory into long-term memory                | Async task: conversation summary → entity store                 |
+| Reflection    | Review and assess memory to improve decisions                  | Extract Meta-Knowledge after a task                             |
+| Forgetting    | Remove low-value or outdated memories                          | Weight decay + mark conflicts as obsolete                       |
 
-把每轮对话都送去抽取，寒暄、临时猜测和重复描述也会进入库。用强化学习决定读写时机能减少这类写入，但训练、回放和保留原因的解释成本都不低。
+If every conversation turn is sent for extraction, greetings, temporary guesses, and repeated descriptions will enter the store too. Using reinforcement learning to decide when to read or write can reduce this noise, but the costs of training, replay, and explaining retention decisions are high.
 
-许多系统先用 `importance` 等规则拦住无用内容，再由离线任务处理冲突、重复条目和过期记录。规则需要贴合业务，但每次写入和清理都能留下可检查的结果。
+Many systems first filter low-value content with rules such as `importance`, then use offline jobs to handle conflicts, duplicates, and stale records. The rules should fit the business, and every write and cleanup should produce results that can be inspected.
 
-### 什么是短期记忆（Short-Term Memory / Working Memory）？
+### What Is Short-Term Memory (Working Memory)?
 
-短期记忆是 Agent 在当前单次会话中持有的暂存信息，包括用户提问、模型每轮回复、工具调用的中间结果（Observations）。这些内容会直接进入当轮 Prompt，是当前任务状态的主要载体。宿主机侧的隐藏状态、`state` JSON 如果存在，也应该和这条叙事对齐。
+Short-term memory is the temporary information an Agent holds in the current session, including user questions, model responses from each turn, and intermediate tool results (Observations). This content goes directly into the current Prompt and carries most of the task state. Any host-side hidden state or `state` JSON should also be consistent with this model.
 
-短期记忆主要依托 LLM 自身的上下文窗口。不同型号的上限差异很大，同一产品线也会变化。例如，[Grok 4](https://x.ai/news/grok-4) 的官方上下文窗口是 256K Token，2M Token 对应的是 [Grok 4 Fast](https://x.ai/news/grok-4-fast)，不能只写产品家族名就复用参数。模型选型时应查对应 model ID 的官方 model card 或 API 文档，并记录核对日期；本文不再维护一张容易过期的窗口长度表。
+Short-term memory mainly relies on the LLM's context window. Limits vary widely between models and can change within the same product family. For example, the official context window for [Grok 4](https://x.ai/news/grok-4) is 256K Tokens; 2M Tokens applies to [Grok 4 Fast](https://x.ai/news/grok-4-fast). Do not reuse limits based only on a product-family name. When selecting a model, check the official model card or API documentation for the specific model ID and record the verification date. This guide does not maintain a context-window table that would quickly become outdated.
 
-窗口大，不等于可以无限塞上下文。推理成本会随 Token 数线性增长。《Lost in the Middle》研究也表明，在多文档检索型任务中，模型更容易利用上下文首尾的信息，中间段的信息利用率明显更低。窗口越长，这种位置偏差越明显，所以上下文工程里要主动控制输入信息的分布。
+A larger window does not mean that you can fill it without limit. Reasoning costs grow linearly with the number of Tokens. The Lost in the Middle study also found that in multi-document retrieval tasks, models use information near the beginning and end more effectively than information in the middle. This positional bias becomes more pronounced as context grows, so Context Engineering should control how input information is distributed.
 
-![上下文利用率的 40% 阈值现象](../images/shared/context-utilization-40-percent-threshold-phenomenon.svg)
+![The observed 40% context utilization threshold](../images/shared/context-utilization-40-percent-threshold-phenomenon.svg)
 
-图中的 40% 来自特定模型和任务的观察，不是通用阈值；Lost in the Middle 的位置偏差与上下文增长后信息利用率下降是两件事，不能混为一谈。
+The 40% shown here was observed for a specific model and task, not a universal threshold. The positional bias in Lost in the Middle is different from declining information use as context grows; do not conflate them.
 
-为了控制短期记忆膨胀，框架层常见三种做法，和上下文工程里的 Token 降级、JIT 卸载属于同一类思路。
+Frameworks commonly use three approaches to control short-term memory growth. They follow the same principles as Token-budget fallbacks and Just-in-Time offloading in Context Engineering.
 
-第一种是上下文缩减（Context Reduction）。当对话历史达到预设 Token 阈值时，框架自动丢弃最早的 N 轮消息，也就是滑动窗口；或者调用轻量模型把历史对话压缩成摘要，用信息损耗换上下文空间。
+The first is **Context Reduction**. When conversation history reaches a predefined Token threshold, the framework automatically drops the oldest N messages using a sliding window, or calls a lightweight model to summarize the history, trading some information for context space.
 
-第二种是上下文卸载（Context Offloading）。工具或 Skill 调用可能返回很大的数据，比如完整网页 HTML、CSV 文件内容。这时可以把重型结果放到外部临时存储里，Prompt 里只保留一个短引用，比如 UUID 或文件路径。模型需要深挖细节时，再通过强制关联的 Function Calling 调内部工具读取。读取接口要定义超时和大小上限；超过限制时返回截断结果或明确的降级信息，避免一次工具调用拖垮后续步骤。
+The second is **Context Offloading**. A tool or Skill call may return large amounts of data, such as a full web-page HTML document or CSV file. Store the large result in temporary external storage and keep only a short reference, such as a UUID or file path, in the Prompt. When the model needs details, it can use a corresponding Function Calling tool to retrieve them. Define timeouts and size limits for the retrieval interface; return truncated data or a clear fallback message when a limit is exceeded so a single tool call does not disrupt later steps.
 
-第三种是上下文隔离（Context Isolation）。主 Agent 只把子任务说明和必要片段交给子 Agent。完整对话历史随任务广播，会重复消耗 Token，也会把与子任务无关的消息带进判断过程。
+The third is **Context Isolation**. The main Agent gives a Sub-agent only the task description and necessary excerpts. Passing the entire conversation history along with each task wastes Tokens and brings irrelevant messages into the Sub-agent's decisions.
 
-### 什么是长期记忆（Long-Term Memory）？
+### What Is Long-Term Memory?
 
-长期记忆放在 Session 外部。对话结束后，偏好、事实和决策写入存储；新 Session 只按当前问题取回相关条目，而不把整段聊天记录原样搬回来。
+Long-term memory is stored outside the Session. After a conversation, preferences, facts, and decisions are written to storage. A new Session retrieves only the entries relevant to the current question instead of bringing back the entire chat history.
 
-长期记忆可以理解成 Record & Retrieve 两条链路。
+Long-term memory can be understood as two workflows: Record and Retrieve.
 
-记忆写入（Record）通常发生在对话结束后。框架触发后台异步任务，调用 LLM 对本轮短期记忆做语义提纯：过滤冗余对话噪声，抽取高价值结构化事实，比如“用户的技术栈偏好为 Python + FastAPI”“用户的汇报对象是 CFO，需要非技术化表达风格”，再写入持久化存储。
+Memory recording usually happens after the conversation. The framework starts a background asynchronous task that calls an LLM to distill the current short-term memory: filter redundant conversational noise, extract high-value structured facts such as "the user prefers Python + FastAPI" or "the user's report goes to the CFO and should avoid technical language," and write them to persistent storage.
 
-这条写入链路最好按尽力而为（Best-Effort）来设计。LLM 抽取可能漏掉关键事实，也可能把假设性陈述误写成偏好。写入操作本身还要有幂等 Key，避免重试产生重复记忆。LLM 抽取场景下，幂等 Key 更适合基于源消息 ID + 抽取批次 ID，而不是抽取结果文本，因为温度采样或 Prompt 微调可能导致语义相同但字面不同，字符串哈希并不可靠。多端并发对话时，实体库合并和覆盖还要引入乐观锁或版本控制（MVCC）。
+Design this recording workflow on a best-effort basis. LLM extraction may miss key facts or mistake a hypothetical statement for a preference. The write operation also needs an idempotency key to prevent retries from creating duplicate memories. For LLM extraction, base the key on the source message ID and extraction batch ID rather than the extracted text: temperature sampling or Prompt tuning can produce different wording with the same meaning, making a string hash unreliable. For concurrent conversations across multiple clients, use optimistic locking or multiversion concurrency control (MVCC) when merging and overwriting entities.
 
-记忆检索（Retrieve）通常发生在新 Session 开始时。系统把用户 Query 向量化，再和长期记忆库里的条目做语义相似性检索，将命中率最高的一批条目 prepend 进 System Prompt 或放进平行 slot。首包路径上跑一次向量检索很常见，但 VectorStore 的 P99 会直接吃进 TTFT。常见缓解方式是用 Redis 做预热线，或者把浅层偏好、静态画像全量预载，深度记忆再走异步精排，或者和生成流水线重叠，把等人感压下去。
+Memory retrieval usually happens when a new Session starts. The system converts the user's Query into a vector, performs a semantic similarity search against the long-term memory store, then prepends the highest-ranked entries to the System Prompt or places them in a separate slot. A vector search is often on the first-response path, so VectorStore P99 latency directly increases TTFT. Common mitigations include prewarming with Redis, preloading shallow preferences and static profiles while reranking deeper memories asynchronously, or overlapping retrieval with generation to reduce perceived wait time.
 
-### 长期记忆和 RAG 有什么区别？
+### How Does Long-Term Memory Differ from RAG?
 
-![长期记忆与 RAG（检索增强生成）的区别](../images/shared/agent-memory-rag-vs-memory.svg)
+![Long-term memory compared with RAG (Retrieval-Augmented Generation)](../images/shared/agent-memory-rag-vs-memory.svg)
 
-长期记忆和 RAG 技术上很像，都会用向量库和语义检索。但它们服务的对象不一样。
+Long-term memory and RAG are technically similar: both can use vector databases and semantic retrieval. But they serve different purposes.
 
-RAG 经常挂载公司规章、产品文档和实时数据库查询结果等共享知识源，但它并不天然是“非个性化”的。检索链路可以按租户、用户、角色或会话过滤数据，也可以用用户偏好重排结果。与长期记忆相比，RAG 更强调从外部知识源取回证据；知识源是否共享、是否个性化，要看索引和权限设计。
+RAG often uses shared sources such as company policies, product documentation, and live database query results, but it is not inherently "non-personalized." Retrieval can filter data by tenant, user, role, or session, and user preferences can rerank results. Compared with long-term memory, RAG focuses on retrieving evidence from external knowledge sources. Whether those sources are shared or personalized depends on the index and permission design.
 
-长期记忆管理的是 Agent 与特定用户交互中动态沉淀的个性化经验，比如用户偏好、习惯、历史决策、专属背景。它高度个性化，因人而异。
+Long-term memory manages personalized information accumulated through an Agent's interactions with a particular user, such as preferences, habits, past decisions, and personal context. It is highly personalized and varies by user.
 
-检索时可以分开召回公司规章、产品文档等外部证据，以及用户偏好、历史决策等个人记忆，再统一排序。长期记忆中的实体还能扩展 RAG query，用户偏好也能参与结果重排。
+At retrieval time, external evidence such as company policies and product documentation can be retrieved separately from personal memories such as user preferences and past decisions, then ranked together. Entities in long-term memory can also expand a RAG query, while user preferences can rerank results.
 
-## 主流的记忆技术架构有哪些？
+## What Are the Main Memory Architectures?
 
-向量化存储、语义检索和记忆管理往往会单独拆出来：主 Agent 负责调度，记忆组件负责写入、查询和维护。
+Vector storage, semantic retrieval, and memory management are often separated into a dedicated component: the main Agent orchestrates, while the memory component handles writes, queries, and maintenance.
 
-### 底层存储架构通常包含哪些层级？
+### What Layers Are Usually Included in the Storage Architecture?
 
-底层常见的职责可分为三层。
+The underlying system commonly has three layers of responsibility.
 
-VectorStore 负责向量存储。它把提取出来的记忆文本转成 Embeddings，再存进向量数据库。以单节点 Qdrant 1.x 版本、本地 SSD、HNSW 索引 ef=128、Recall@10 ≥ 0.95 为基准，在低并发场景（如 QPS 小于 50）下，P99 延迟可以控制在数十毫秒级。不同产品在同样 QPS 下 P99 差异可能达到 5-10 倍，比如 Pinecone Serverless、自建 Qdrant、Milvus 之间就会有明显差异。实际选型最好参考 [ann-benchmarks.com](https://ann-benchmarks.com/) 或各厂商 benchmark 报告。常见方案包括 Pinecone、Weaviate、Chroma、Qdrant 等。
+The VectorStore handles vector storage. It converts extracted memory text into Embeddings and stores them in a vector database. As a baseline, a single-node Qdrant 1.x instance with local SSD, HNSW index `ef=128`, and Recall@10 ≥ 0.95 can achieve P99 latency in the tens of milliseconds at low concurrency, such as QPS below 50. At the same QPS, P99 latency can differ by 5–10 times between products such as Pinecone Serverless, self-hosted Qdrant, and Milvus. For selection, consult [ann-benchmarks.com](https://ann-benchmarks.com/) or vendor benchmark reports. Common options include Pinecone, Weaviate, Chroma, and Qdrant.
 
-GraphStore 负责图存储。进阶场景里，可以把记忆建模成“实体-关系”形式的知识图谱，比如用 Neo4j。它更适合需要多跳推理的复杂查询，比如“用户提到的同事 A 和项目 B 之间有什么关联”。
+The GraphStore handles graph storage. In advanced use cases, memory can be modeled as an entity-relationship knowledge graph, for example with Neo4j. This suits complex queries that need multi-hop reasoning, such as "What is the relationship between colleague A mentioned by the user and project B?"
 
-Reranker 负责重排序。向量检索只是初步召回，语义相关性并不总是精确有序。Reranker 通常基于交叉编码器（Cross-Encoder）对候选结果做二次精排，把更相关的记忆排到前面，减少无关内容进入上下文。
+The Reranker reorders results. Vector search provides an initial candidate set, but semantic relevance is not always ranked accurately. A Reranker typically uses a Cross-Encoder to rescore candidates and place more relevant memories first, reducing irrelevant context.
 
-向量库选型要同时核对索引、过滤、隔离、一致性和成本：
+When selecting a vector database, compare indexing, filtering, isolation, consistency, and cost:
 
-| 维度         | 关键考量                          | 说明                                         |
-| ------------ | --------------------------------- | -------------------------------------------- |
-| 索引类型     | HNSW / IVF / DiskANN              | 影响召回率与延迟的 tradeoff                  |
-| 元数据过滤   | pre-filter vs post-filter         | 高过滤率场景下 pre-filter 易破坏图结构连通性 |
-| 多租户隔离   | Namespace / Collection / 物理隔离 | 影响召回率与数据安全                         |
-| 持久化一致性 | 强一致 vs 最终一致                | 影响写入可靠性                               |
-| 成本模型     | Serverless 按量 vs 自建集群       | 影响运营成本                                 |
+| Dimension               | Key consideration                                | Notes                                                                    |
+| ----------------------- | ------------------------------------------------ | ------------------------------------------------------------------------ |
+| Index type              | HNSW / IVF / DiskANN                             | Tradeoff between recall and latency                                      |
+| Metadata filtering      | Pre-filter vs. post-filter                       | With highly selective filters, pre-filtering can harm graph connectivity |
+| Multi-tenant isolation  | Namespace / Collection / physical isolation      | Affects recall and data security                                         |
+| Persistence consistency | Strong vs. eventual consistency                  | Affects write reliability                                                |
+| Cost model              | Serverless pay-as-you-go vs. self-hosted cluster | Affects operating costs                                                  |
 
-模型抽取出的“我可能会……”不能直接固化为稳定偏好。写入前可用 JSON Schema 约束字段，并复查低置信度条目；高 `importance` 条目还应保留源对话和抽取结果，方便追溯来源。
+Do not store a model-extracted "I might..." as a stable preference. Before writing, use JSON Schema to constrain fields and review low-confidence entries. For high-`importance` entries, also retain the source conversation and extraction result so the origin can be traced.
 
-### 主流 Memory 产品如何对比？
+### How Do Popular Memory Products Compare?
 
-下表列出几个公开项目或产品的侧重点。选型还要回到延迟、合规要求和数据形态，不能仅按功能名称对应。
+The table below summarizes the focus of several public projects and products. Selection should also consider latency, compliance requirements, and data shape rather than relying only on feature names.
 
-| 产品                                   | 核心思想                            | 技术亮点                                                                                                                    | 适用场景         |
-| -------------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ---------------- |
-| [Mem0](https://github.com/mem0ai/mem0) | 单次 ADD-only 抽取 + 多信号融合检索 | 单次 LLM 调用完成实体抽取与跨记忆链接；语义 + BM25 + Entity Linking 并行打分；通过可选的 GraphStore 后端启用图记忆（Mem0g） | 通用对话记忆     |
-| LETTA（原 MemGPT）                     | 操作系统虚拟内存分页                | Main Context ↔ External Context 动态交换；递归摘要压缩                                                                     | 长对话上下文管理 |
-| ZEP                                    | 时间感知知识图谱                    | 自研 Graphiti 引擎；情景/语义/社区三层子图；边失效机制                                                                      | 企业级多租户场景 |
-| A-MEM                                  | Zettelkasten 知识管理               | 卡片笔记法；记忆间自动建立语义连接                                                                                          | 知识密集型任务   |
-| MemOS                                  | 三种记忆类型动态转换                | 纯文本 ↔ 激活记忆（KV Cache）↔ 参数记忆（LoRA）                                                                           | 全栈记忆管理     |
-| MIRIX                                  | 六模块分工协作                      | 元记忆管理器路由；不同记忆组件采用不同存储结构                                                                              | 复杂决策支持     |
+| Product                                | Core idea                                                | Technical features                                                                                                                                                                    | Suitable use case                    |
+| -------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| [Mem0](https://github.com/mem0ai/mem0) | Single-pass ADD-only extraction + multi-signal retrieval | One LLM call extracts entities and links memories across entries; parallel scoring with semantics, BM25, and Entity Linking; optional GraphStore backend enables graph memory (Mem0g) | General conversational memory        |
+| LETTA (formerly MemGPT)                | Operating-system virtual memory paging                   | Dynamically swaps Main Context ↔ External Context; recursive summarization                                                                                                           | Long conversation context management |
+| ZEP                                    | Temporal knowledge graph                                 | Graphiti engine; episodic, semantic, and community subgraphs; edge invalidation                                                                                                       | Enterprise multi-tenant use cases    |
+| A-MEM                                  | Zettelkasten knowledge management                        | Note cards; automatically creates semantic links between memories                                                                                                                     | Knowledge-intensive tasks            |
+| MemOS                                  | Dynamic transitions between three memory types           | Plain text ↔ activation memory (KV Cache) ↔ parametric memory (LoRA)                                                                                                                | Full-stack memory management         |
+| MIRIX                                  | Collaboration across six specialized modules             | Meta-memory manager routing; different memory components use different storage structures                                                                                             | Complex decision support             |
 
-### LETTA、ZEP、MemOS 有什么不同？
+### How Do LETTA, ZEP, and MemOS Differ?
 
-LETTA 把上下文想成操作系统里的页。Main Context 放系统指令和当前工作台，FIFO 顶住最新消息；顶不住时，就把旧段落递归摘要后换到 External Context。这个思路很好理解，但它是一条有损路径。递归摘要多轮以后，精确密钥字面量、报错栈、小数点后几位这种细节很容易先被洗掉。看起来像“失忆”，其实是压缩带来的副作用。
+LETTA treats context like pages in an operating system. Main Context holds system instructions and the current workspace, while FIFO preserves the newest messages. When it fills up, older passages are recursively summarized and moved to External Context. The idea is easy to understand, but it is lossy: after multiple rounds of recursive summarization, exact key literals, stack traces, and decimal precision are easily lost. What looks like "forgetting" is actually a side effect of compression.
 
-ZEP 在图上加了三层粒度：情景子图咬住原始 payload，语义子图抽实体关系，社区子图把强连接聚成大块摘要。这个思路和 GraphRAG 的社群层有相似之处。ZEP 更值得借鉴的是边失效机制：新事实和旧边时间重叠时，标记旧边失效并打时间戳。这样既能追新事实，也方便审计旧判断。
+ZEP adds three levels of granularity to a graph: episodic subgraphs retain the original payload, semantic subgraphs extract entity relationships, and community subgraphs group strongly connected entities into larger summaries. This resembles the community layer in GraphRAG. One notable feature is edge invalidation: when a new fact overlaps in time with an old edge, mark the old edge invalid and add a timestamp. This supports both tracking new facts and auditing old decisions.
 
-MemOS 则在论文和宣传里画了“文本 → KV Cache（激活）→ LoRA（参数）”这条梯度。热条目预灌 cache 可以降低冷启动延迟；如果想把记忆固化成权重，就要走离线 SFT，这会变成一笔单独的训练账单。
+MemOS describes a progression of "text → KV Cache (activation) → LoRA (parameters)" in its papers and materials. Preloading frequently used entries into the cache can reduce cold-start latency. To encode memory into weights, offline SFT is required, adding a separate training cost.
 
-这里有个很现实的限制：LoRA 写进去之后不好删。向量库删一行就行，但参数里抠掉某条事实，本质上会碰到 Machine Unlearning 还没完全铺好的深水区。所以参数记忆只适合变化很慢的偏好。多租户场景下，还要依赖 vLLM / TGI 这类支持动态挂载、卸载 adapter 的运行时。
+There is a practical limitation: information written into LoRA is difficult to remove. Deleting a row from a vector database is straightforward, but removing a fact from model parameters enters the still-developing area of Machine Unlearning. Parametric memory is therefore suitable only for slowly changing preferences. Multi-tenant deployments also need runtimes such as vLLM or TGI that support dynamically loading and unloading adapters.
 
 ```text
-纯文本记忆 ──(高频使用)──→ 激活记忆(KV Cache) ──(长期固化)──→ 参数记忆(LoRA)
+Plain-text memory ──(frequent use)──→ Activation memory (KV Cache) ──(long-term consolidation)──→ Parametric memory (LoRA)
      ↑                                                          │
-     └──────────────(知识过时/卸载)─────────────────────────────┘
+     └──────────────(outdated / offloaded)─────────────────────────┘
 ```
 
-## 记忆的高级演化机制有哪些？
+## What Are the Advanced Memory Evolution Mechanisms?
 
-只会写入和检索还不够。生产级 Agent 系统还需要一套代谢机制，让记忆能被反思、合并、清理和遗忘，否则库越大，噪声也越大。
+Writing and retrieving memories is not enough. Production-grade Agent systems also need lifecycle mechanisms for reflecting on, merging, cleaning, and forgetting memories. Otherwise, noise grows along with the store.
 
-![记忆系统的高级演化机制](../images/shared/agent-memory-evolution.png)
+![Advanced memory evolution mechanisms](../images/shared/agent-memory-evolution.png)
 
-### 记忆反思与合成如何实现？
+### How Are Memory Reflection and Synthesis Implemented?
 
-如果系统只是 append，长期记忆很快会变成流水账。真正有价值的，是从流水账里提炼出可复用的规则、偏好和教训。
+If the system only appends entries, long-term memory quickly becomes a logbook. The real value comes from extracting reusable rules, preferences, and lessons from that log.
 
-生产系统里通常会加一层离线或准实时的自省任务。
+Production systems usually add an offline or near-real-time reflection task.
 
-第一类是自我反思（Self-Reflection）。任务完成后，Agent 启动异步任务，复盘本次任务的成败原因，把“教训”提取成一条 Meta-Knowledge。这一机制最早由 Park et al.（2023）的《Generative Agents》系统化提出，可以看作模拟人类“睡眠记忆巩固”的工程化实现。
+The first type is **Self-Reflection**. After a task, the Agent starts an asynchronous job to review why it succeeded or failed and extract a lesson as Meta-Knowledge. Park et al.'s 2023 paper [Generative Agents] systematized this mechanism; it can be seen as an engineering implementation of human-like "memory consolidation during sleep."
 
-例如，代码审查记录若多次显示用户优先处理 OOM 风险，就可以在保留来源和适用范围的前提下，沉淀为后续审查的检查顺序。一次反馈不能直接推出稳定偏好。
+For example, if code review records repeatedly show that a user prioritizes OOM risks, this can inform the order of checks in future reviews, while retaining the source and scope. One piece of feedback is not enough to establish a stable preference.
 
-第二类是细粒度反思闭环（Reflect Loop）。高风险子任务结束后，单独核对事实依据、验收条件和关键数据有没有在节点间丢失；有缺口就退回执行节点补齐，检查通过后再写入长期记忆。低风险任务也套用这层检查，会增加延迟和成本。
+The second type is a **Reflect Loop**. After a high-risk subtask, separately verify that supporting facts, acceptance criteria, and key data were not lost between nodes. If something is missing, return to the execution node to fill the gap; write the memory only after it passes review. Applying this check to low-risk tasks also adds latency and cost.
 
-第三类是记忆聚类与合并（Clustering & Consolidation）。用户反复提及同一项目背景时，将碎片记录归并为带来源的实体条目，检索结果就不会被同一事实的不同说法占满。
+The third type is **Clustering & Consolidation**. When a user repeatedly mentions the same project background, merge fragmented records into a sourced entity entry so retrieval results are not crowded with different phrasings of the same fact.
 
-### 记忆的清理与遗忘机制是怎样的？
+### How Are Memories Cleaned Up and Forgotten?
 
-记忆不是越多越好。无用噪声和过时信息会严重干扰 LLM 判断。
+More memory is not always better. Useless noise and outdated information can seriously interfere with LLM decisions.
 
-一种常见做法是权重衰减。系统为每条记忆维护综合得分：
+A common approach is weight decay. The system maintains a combined score for each memory:
 
 ```text
 score = relevance × importance × decay(t)
 ```
 
-其中 `decay(t)` 通常取指数形式，比如 `e^{-λt}`。这套机制来自《Generative Agents》提出的三维检索模型。实际工程里，不建议每次在向量库里对全量记忆计算时间衰减，更稳的做法是向量库先做静态语义召回，再在 Reranker 阶段实时应用动态调整。
+Here, `decay(t)` is usually exponential, such as `e^{-λt}`. This mechanism comes from the three-dimensional retrieval model in [Generative Agents]. In practice, do not recalculate time decay over every memory in the vector database for each query. A more stable approach is static semantic retrieval followed by dynamic adjustment during reranking.
 
-另一种做法是冲突解决。新事实和旧事实矛盾时，比如用户去年用 Java 8，今年升级到 Java 21，旧记忆应该标记为废弃。注意，主流向量库的软删除可能破坏 HNSW 图结构连通性，所以还需要定期执行 Vacuum 任务清理和重建。
+Another approach is conflict resolution. When a new fact contradicts an old one, such as a user upgrading from Java 8 last year to Java 21 this year, mark the old memory as obsolete. Note that soft deletion in common vector databases may affect the connectivity of an HNSW graph, so periodic Vacuum jobs may be needed to clean up and rebuild it.
 
-这点很多团队一开始会低估。大家舍不得“遗忘”，觉得信息存着总比丢了好。结果向量库里堆了几十万条记忆，每次 Top-K 里混着一堆过时噪音，Agent 给出的建议还停留在三年前。这个体验非常糟糕，而且很难靠调 Prompt 补回来。
+Many teams underestimate this at first. They hesitate to "forget" and assume that keeping information is better than losing it. The vector database then accumulates hundreds of thousands of memories, Top-K results contain outdated noise, and the Agent gives advice based on information from three years ago. This is a poor experience that is difficult to fix by tuning the Prompt.
 
-## 如何优化长期记忆的检索效果？
+## How Can Long-Term Memory Retrieval Be Improved?
 
-在 VectorStore 和 GraphStore 之外，生产环境通常还需要一层混合检索策略。
+In addition to VectorStore and GraphStore, production systems usually need a hybrid retrieval strategy.
 
-![长期记忆的检索优化策略](../images/shared/agent-memory-retrieval-optimization.png)
+![Long-term memory retrieval optimization](../images/shared/agent-memory-retrieval-optimization.png)
 
-### 混合检索与元数据过滤怎么做？
+### How Do Hybrid Retrieval and Metadata Filtering Work?
 
-单纯依赖向量检索，容易产生“虚假关联”。Dense Retrieval 看的是语义相似度，有时会把听起来相近、但业务上没关系的内容召回来。
+Relying on vector search alone can produce "false associations." Dense Retrieval looks at semantic similarity and may retrieve content that sounds related but is not relevant to the business context.
 
-混合检索（Hybrid Search）把 BM25 / Sparse 和 Dense 的候选集合放到一起。专有名词查询可以提高 BM25 权重；意图较模糊时，则多依赖向量召回。融合方式常见如下：
+Hybrid Search combines candidate sets from BM25 / sparse and dense retrieval. Increase the BM25 weight for queries with proper nouns; rely more on vector retrieval when intent is ambiguous. Common fusion methods include:
 
-- RRF（Reciprocal Rank Fusion）：几乎不用调参，适合冷启动，按排名倒数加权融合。
-- Linear weighted（`α·dense + (1-α)·sparse`）：可调，但需要标注数据校准权重。
-- Cross-encoder Reranker：召回阶段取并集，精排阶段统一打分，对长尾 query 更有帮助。
+- RRF (Reciprocal Rank Fusion): Requires little tuning and suits cold starts; combines results using reciprocal rank weights.
+- Linear weighted (`α·dense + (1-α)·sparse`): Tunable, but requires labeled data to calibrate the weights.
+- Cross-encoder Reranker: Takes the union of candidates during retrieval and scores them together during reranking; useful for long-tail queries.
 
-多租户请求进入检索层时，就应带上 UserID、组织 ID、时间范围和业务标签等硬过滤条件。少了这层限制，一个用户的偏好可能出现在另一个用户的结果中；因此隔离条件应由数据访问层统一注入。
+Multi-tenant requests should include hard filters such as UserID, organization ID, time range, and business tags when they enter the retrieval layer. Without these restrictions, one user's preferences might appear in another user's results. The data-access layer should inject isolation conditions consistently.
 
-HNSW 上的强过滤也有代价：在海量图谱里只保留少数租户标签，图的可达路径会减少，召回率可能随之下降。高活跃的核心租户可用独立 Collection 做物理隔离。
+Strict filtering on HNSW also has a cost: retaining only a small number of tenant tags in a large graph reduces reachable paths and may lower recall. Physically isolate high-activity core tenants in separate Collections.
 
-### 为什么检索链路优化往往先于写入策略？
+### Why Optimize Retrieval Before Changing the Write Strategy?
 
-当候选库已有所需信息时，先修检索链路通常比扩大写入更直接。
+When the candidate store already contains the required information, fixing retrieval is usually more direct than increasing writes.
 
-Mem0 在 LoCoMo 上达到 91.6，较旧算法 +20 分；LongMemEval 上达到 93.4，+26 分；BEAM (1M) 上达到 64.1；每次检索约消耗 7K Token，对比全上下文方案的 25K+ 更省。详见 [Mem0 官方 benchmark](https://docs.mem0.ai/core-concepts/memory-evaluation)。
+Mem0 scored 91.6 on LoCoMo, 20 points higher than the older algorithm; it scored 93.4 on LongMemEval, up 26 points; and 64.1 on BEAM (1M). Each retrieval used about 7K Tokens, compared with 25K+ for the full-context approach. See the [Mem0 benchmark](https://docs.mem0.ai/core-concepts/memory-evaluation).
 
-记忆没有生效时，先看 Trace：query 怎样改写、过滤条件是否正确、哪些条目进入候选集、Reranker 如何打分。候选库确实缺少所需信息，再去改抽取规则或增加写入预算。
+When memory does not seem to work, inspect the Trace first: how the query was rewritten, whether filters were correct, which entries entered the candidate set, and how the Reranker scored them. Change extraction rules or increase the write budget only if the candidate store is actually missing the required information.
 
-## 生产级记忆系统架构要关注哪些要点？
+## What Matters in a Production-Grade Memory Architecture?
 
-真正上生产时，要盯住的不只是“能不能记住”，还包括召回精度、合规、性能和成本。
+In production, consider more than whether the system can remember. Recall accuracy, compliance, performance, and cost also matter.
 
-| 维度     | 核心问题    | 解决方案                              |
-| -------- | ----------- | ------------------------------------- |
-| 多维索引 | 召回精度    | Vector + Graph + Keyword 三种索引结合 |
-| 隐私合规 | GDPR 等法规 | 写入前做 PII 脱敏                     |
-| 冷热分离 | 性能与成本  | 高频偏好缓存 + 低频背景 RAG           |
+| Dimension              | Concern                  | Approach                                                                  |
+| ---------------------- | ------------------------ | ------------------------------------------------------------------------- |
+| Multiple indexes       | Retrieval accuracy       | Combine Vector, Graph, and Keyword indexes                                |
+| Privacy and compliance | Regulations such as GDPR | Redact PII before writing                                                 |
+| Hot/cold separation    | Performance and cost     | Cache frequent preferences; use RAG for infrequent background information |
 
-表上每一项背后都是成本。多套索引意味着更高的维护负担，PII 策略需要法务过一遍，冷热边界也很容易在团队里来回争。没到多租户体量之前，单向量链路先把写入幂等、检索 trace、rerank 跑顺，通常更划算。
+Each item in the table has a cost. Multiple indexes increase maintenance work, PII policies need legal review, and teams may debate where to draw the hot/cold boundary. Before reaching multi-tenant scale, it is usually more cost-effective to make a single-vector workflow reliable, including write idempotency, retrieval traces, and reranking.
 
-## 如何用 Markdown 存储 Agent 记忆？
+## How Can Markdown Store Agent Memory?
 
-向量链路太重时，还有一个很土但好用的办法：把 Agent 需要记住的东西写进仓库里的 Markdown。没有 embedding 也没关系，只要信息量可控，并且可读性比语义检索更重要，这条路就能成立。
+When a vector-based workflow is too heavy, there is a simple but useful alternative: write what the Agent needs to remember into Markdown files in the repository. Embeddings are not necessary if the information volume is manageable and readability matters more than semantic retrieval.
 
-### 为什么 Markdown 可以作为 Agent 记忆？
+### Why Use Markdown for Agent Memory?
 
-Markdown 可以看成人机共写的明文长期记忆。不强制上向量检索，只靠目录组织，以及 Claude Code 里的 `@` / `rules` 机制，也能跑起来。
+Markdown can serve as plain-text long-term memory written by both people and Agents. Vector retrieval is not required; directory structure and Claude Code's `@` / `rules` mechanisms may be enough.
 
-它省掉的是可见性和运维成本：
+It reduces costs related to visibility and operations:
 
-- 透明可审计：随时打开文件，就能看到 Agent 记住了什么、写入了什么，没有黑盒。
-- 持久化：文件存在磁盘上，不依赖进程生命周期。进程崩溃或重启后仍可读取；换机器时需要 Git、同步盘或共享存储把文件带过去。
-- 版本控制：记忆可以提交到 Git，回滚、分支、Code Review 都很自然。
-- 零迁移成本：标准格式，没有供应商锁定。换模型、换框架时，复制文件即可。
-- 成本低：托管向量数据库和完整 RAG pipeline 的成本、运维复杂度都不低，Markdown 本地文件几乎没有额外成本。
+- **Transparent and auditable:** Open the files at any time to see what the Agent remembers and writes; there is no black box.
+- **Persistent:** Files live on disk and do not depend on a process lifecycle. They remain available after a crash or restart; moving to another machine requires Git, sync storage, or a shared filesystem.
+- **Version-controlled:** Memory can be committed to Git, making rollback, branching, and Code Review straightforward.
+- **No migration cost:** Markdown is a standard format without vendor lock-in. Copy the files when changing models or frameworks.
+- **Low cost:** Hosted vector databases and full RAG pipelines have significant cost and operational complexity; local Markdown files have almost no additional cost.
 
-Manus 将文件系统作为结构化的外部记忆；Claude Code 则把 `CLAUDE.md` 和 Auto Memory 纳入产品能力。它们采用的机制并不相同，但都把一部分可审阅的信息留在文件里。对项目约定、操作偏好这类数量有限的内容，文件系统加 Markdown 已经能够覆盖需求；面对大量自由文本，仍需要检索层。
+Manus uses the file system as structured external memory, while Claude Code includes `CLAUDE.md` and Auto Memory as product features. Their mechanisms differ, but both keep some reviewable information in files. For a limited set of project conventions and operating preferences, the file system and Markdown may be sufficient; large volumes of free-form text still need a retrieval layer.
 
-### Claude Code 的 `CLAUDE.md` 机制是怎样的？
+### How Does Claude Code's `CLAUDE.md` Mechanism Work?
 
-Claude Code 的记忆系统采用双轨制：人工编写的 `CLAUDE.md`，以及自动积累的 Auto Memory。
+Claude Code's memory system has two tracks: manually written `CLAUDE.md` files and automatically accumulated Auto Memory.
 
-#### `CLAUDE.md` 里该写什么、不该写什么？
+#### What Belongs in `CLAUDE.md`, and What Does Not?
 
-官方建议每个 `CLAUDE.md` 控制在 200 行以内。超过这个限制会降低 Claude 的指令遵守率。通过 `@` 引用拆分文件可以改善可维护性，但不会减少上下文消耗，因为被引用文件在启动时会全量加载。如果指令很长，优先使用 `.claude/rules/` 目录的 path-scoped rules，只在编辑匹配路径时加载对应规则。
+The official recommendation is to keep each `CLAUDE.md` under 200 lines. Exceeding this may reduce Claude's instruction-following rate. Splitting files with `@` references can improve maintainability but does not reduce context usage because referenced files load in full at startup. For longer instructions, prefer path-scoped rules in `.claude/rules/`, which load only when editing matching paths.
 
-`CLAUDE.md` 的作用是交代项目中不能靠通用知识推断的约定。文件臃肿时，重要规则会被稀释，反而降低指令的可用性。
+Use `CLAUDE.md` to describe project conventions that cannot be inferred from general knowledge. When the file becomes bloated, important rules are diluted and the instructions become less useful.
 
-技术栈和版本应写清楚；例如未注明 Spring Boot 版本，Agent 可能套用训练数据中更常见的写法。测试、lint、启动命令放入代码块，能减少命令在转述时被改写。
+Specify the technology stack and versions. For example, if the Spring Boot version is omitted, the Agent may use patterns that are more common in its training data. Put test, lint, and startup commands in code blocks to reduce the chance that they are altered when repeated.
 
-架构规则要带上原因。比如“使用 QueryWrapper”后补充“SQL 审计系统依赖 Wrapper 解析来记录操作日志”，Agent 才能判断类似查询该沿用什么做法。提交信息格式、分支命名和环境变量依赖等项目约定也应记录下来。
+Include reasons for architectural rules. For example, after "Use QueryWrapper," explain that "the SQL auditing system parses Wrapper objects to record operation logs." The Agent can then apply the convention to similar queries. Also document project conventions such as commit-message format, branch naming, and environment-variable dependencies.
 
-格式化工具能强制执行的代码风格不必重复写入；语言或框架的默认行为同样没有必要占用上下文。大段参考资料保留链接即可。
+Do not repeat code-style rules that a formatter can enforce. Language and framework defaults do not need to take up context either. Use links for large reference materials.
 
-审查 `CLAUDE.md` 时，可以逐条核对：删掉这一行后，最近出现过的问题会不会重新发生？没有对应错误的规则通常可以移除。
+When reviewing `CLAUDE.md`, check each line by asking: if this rule were removed, could a recent problem happen again? Rules that do not address a concrete issue can usually be removed.
 
-#### 怎么写才能让 Claude 真正遵守？
+#### How Do You Write Rules Claude Will Follow?
 
-规则要能够验收。“注意代码可读性”无法检查，“函数名使用动词开头、单个函数不超过 40 行”则可以据此判断是否符合要求。
+Rules should be verifiable. "Keep the code readable" is hard to check, but "start function names with verbs and keep each function under 40 lines" provides clear criteria.
 
-字段注入被禁用时，规则还应明确指定构造器注入和可参考的现有实现：
+When field injection is prohibited, explicitly require constructor injection and point to an existing example:
 
 ```markdown
-# 依赖注入
+# Dependency Injection
 
-- 不要使用 @Autowired 字段注入
-- 使用构造器注入，配合 Lombok 的 @RequiredArgsConstructor
-- 参考示例：UserController.java 中的写法
+- Do not use `@Autowired` field injection.
+- Use constructor injection with Lombok's `@RequiredArgsConstructor`.
+- Follow the example in `UserController.java`.
 ```
 
-标记词可以用，但别滥用。如果某条规则 Claude 反复违反，加 `IMPORTANT:` 或 `YOU MUST:` 能稍微提高注意力。但整篇文件到处都是“重要”，最后就等于没有重点。
+Use emphasis markers sparingly. If Claude repeatedly violates a rule, adding `IMPORTANT:` or `YOU MUST:` may draw attention to it. If every line is marked as important, none of them stand out.
 
-同一条规则反复被忽略时，先检查它是否被大量无关内容挤到后面，或是否与其他规则冲突。给句子多加几个感叹号解决不了加载范围和优先级问题；删掉无效规则、把局部约定移到对应的 rules 文件，通常更有效。
+If a rule is repeatedly ignored, check whether irrelevant content pushed it too far down or whether it conflicts with another rule. Adding exclamation marks will not fix load scope or priority issues. Removing ineffective rules and moving local conventions to the corresponding rules file is usually more effective.
 
-标题可沿用 Commands、Structure、Conventions、Testing 等常见名称。它们与 README 的常用结构一致，规则的用途也更容易被识别。
+Use familiar headings such as Commands, Structure, Conventions, and Testing. These match common README structures and make the purpose of each rule easier to recognize.
 
-#### `CLAUDE.md` 文件的层级结构是怎样的？
+#### What Is the `CLAUDE.md` File Hierarchy?
 
-| 层级   | 位置                                      | 作用范围     | 适用场景                                                                 |
-| ------ | ----------------------------------------- | ------------ | ------------------------------------------------------------------------ |
-| 组织级 | 系统目录，如 `/etc/claude-code/CLAUDE.md` | 所有用户     | 公司编码规范、安全策略，任何设置都无法排除                               |
-| 用户级 | `~/.claude/CLAUDE.md`                     | 个人所有项目 | 代码风格偏好、个人工具习惯                                               |
-| 项目级 | `./CLAUDE.md` 或 `./.claude/CLAUDE.md`    | 团队共享     | 项目架构、编码标准、工作流，提交至 Git                                   |
-| 本地级 | `./CLAUDE.local.md`                       | 个人当前项目 | 沙箱 URL、测试数据偏好，需手动加入 `.gitignore`，运行 `/init` 可自动添加 |
+| Level        | Location                                               | Scope                      | Use case                                                                                   |
+| ------------ | ------------------------------------------------------ | -------------------------- | ------------------------------------------------------------------------------------------ |
+| Organization | System directory, such as `/etc/claude-code/CLAUDE.md` | All users                  | Company coding standards and security policies; cannot be overridden by other settings     |
+| User         | `~/.claude/CLAUDE.md`                                  | All of one user's projects | Code style preferences and personal tool habits                                            |
+| Project      | `./CLAUDE.md` or `./.claude/CLAUDE.md`                 | Shared with the team       | Project architecture, coding standards, and workflows; committed to Git                    |
+| Local        | `./CLAUDE.local.md`                                    | One user's current project | Sandbox URLs and test-data preferences; add to `.gitignore` manually or let `/init` add it |
 
-文件加载遵循目录树向上查找规则：从当前工作目录逐级向上。同一目录内，`CLAUDE.local.md` 会追加在 `CLAUDE.md` 之后，越靠近工作目录的规则优先级越高。
+Files load by walking up the directory tree from the current working directory. In the same directory, `CLAUDE.local.md` is appended after `CLAUDE.md`; rules closer to the working directory have higher priority.
 
-`CLAUDE.md` 不适合存大段日志和完整对话记录，也不应该存敏感密钥、Token、账号信息。高频变化的运行时数据、可以实时查询的动态信息，也不适合写进去。
+Do not use `CLAUDE.md` for large logs or full conversation histories, and never store secrets, Tokens, or account information in it. Frequently changing runtime data and information that can be queried in real time also do not belong there.
 
-项目变大后，需要做分层管理。一个人的项目，一份 `CLAUDE.md` 通常够用；团队项目就要拆开。
+As a project grows, manage instructions in layers. One `CLAUDE.md` is usually enough for a personal project; team projects should split the rules into separate files.
 
 ```markdown
-# `CLAUDE.md`（项目根目录）
+# `CLAUDE.md` (project root)
 
 ## Project
 
-Spring Boot 3.2 + MyBatis-Plus + MySQL 8.0 的订单管理服务。
+Order management service using Spring Boot 3.2, MyBatis-Plus, and MySQL 8.0.
 
 ## Commands
 
-- 构建：`mvn clean package`
-- 测试：`mvn test`
+- Build: `mvn clean package`
+- Test: `mvn test`
 
 ## Rules
 
-- API 约定：@docs/api-conventions.md
-- 数据库规范：@docs/database-rules.md
+- API conventions: @docs/api-conventions.md
+- Database rules: @docs/database-rules.md
 ```
 
-可以用 `@path/to/file` 引用外部文件。但要注意，`@` 引用最多支持 5 层递归深度。首次在项目中使用外部引用时，Claude Code 会弹出审批对话框。如果误拒，引用会被永久禁用，需要手动重置。`@` 引用会把整个文件内容嵌入上下文，被引用文件在启动时全量加载，所以不会减少上下文消耗。
+Use `@path/to/file` to reference external files. Note that `@` references support a maximum recursion depth of 5. The first time a project uses an external reference, Claude Code displays an approval dialog. If it is rejected by mistake, the reference is disabled until manually reset. An `@` reference embeds the full file contents into the context, and referenced files load in full at startup, so it does not reduce context usage.
 
-如果需要更细粒度控制，可以用 `.claude/rules/` 目录组织 path-scoped rules。它和 `@` 引用的区别很关键：rules 只在匹配指定路径时加载，属于按需加载；`@` 引用在启动时全量加载。规则只针对特定文件或目录时，比如后端 API 规范、测试配置，优先用 rules，而不是继续往 `CLAUDE.md` 里堆内容。
+For finer-grained control, organize path-scoped rules in `.claude/rules/`. The difference from `@` references is important: rules load only for matching paths, on demand; `@` references load in full at startup. When rules apply only to particular files or directories, such as backend API conventions or test configuration, prefer rules instead of adding more content to `CLAUDE.md`.
 
 ```yaml
 ---
 paths:
   - "src/main/java/**/controller/**/*.java"
 ---
-# Controller 规范
-- 统一使用 Result<T> 包装返回值
-- 所有接口必须添加 Swagger 注解
+# Controller conventions
+- Wrap all return values with `Result<T>`.
+- Add Swagger annotations to every endpoint.
 ```
 
-这样编辑 Controller 时只加载 Controller 规则，编辑 Service 时只加载 Service 规则。
+This way, Controller rules load when editing a Controller, and Service rules load when editing a Service.
 
-#### AGENTS.md 和 CLAUDE.md 是什么关系？
+#### How Do `AGENTS.md` and `CLAUDE.md` Relate?
 
-Claude Code 自动读取的是 `CLAUDE.md`，不是 `AGENTS.md`。多种编码 Agent 共用的约定可以放在 `AGENTS.md`，再由 `CLAUDE.md` 导入；Claude Code 专属规则继续留在后者，基础约定也只需维护一份。
+Claude Code automatically reads `CLAUDE.md`, not `AGENTS.md`. Put conventions shared by multiple coding Agents in `AGENTS.md`, then import it from `CLAUDE.md`. Keep Claude Code-specific rules in the latter so shared conventions need to be maintained only once.
 
 ```markdown
 @AGENTS.md
 
-## Claude Code 特定指令
+## Claude Code-specific instructions
 
-- 使用 plan mode 处理 `src/billing/` 下的改动
+- Use plan mode for changes under `src/billing/`.
 ```
 
-#### Auto Memory 是什么？
+#### What Is Auto Memory?
 
-Auto Memory 会把对话中的调试方式、代码习惯和工作流偏好写成笔记。它位于 `~/.claude/projects/<project>/memory/`；`MEMORY.md` 是入口，细节放在子文件中。
+Auto Memory stores debugging approaches, coding habits, and workflow preferences from conversations as notes. It lives under `~/.claude/projects/<project>/memory/`; `MEMORY.md` is the entry point, with details in separate files.
 
-`MEMORY.md` 只加载前 200 行或 25KB，超出部分不会进入上下文，细节会拆到 Topic 文件。经过 20-30 个会话，笔记可能积累矛盾或过时条目；社区的 dream-skill 会按 Orient、Gather Signal、Consolidate、Prune 四阶段做整合，但并非官方功能。
+Only the first 200 lines or 25 KB of `MEMORY.md` are loaded into context. Details beyond that should go in topic files. After 20–30 sessions, notes may accumulate conflicts or become outdated. The community dream-skill consolidates notes through four stages—Orient, Gather Signal, Consolidate, and Prune—but it is not an official feature.
 
-禁用 Auto Memory 可以使用 `/memory`、`autoMemoryEnabled` 配置，或设置环境变量 `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1`。CI/CD 运行通常不需要沉淀临时笔记，可在该环境中关闭。
+Disable Auto Memory with `/memory`, the `autoMemoryEnabled` setting, or the `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` environment variable. CI/CD runs usually do not need to retain temporary notes, so it can be disabled in that environment.
 
-Auto Memory 需要 Claude Code v2.1.59+，默认开启。
+Auto Memory requires Claude Code v2.1.59 or later and is enabled by default.
 
-### Markdown 记忆如何分层设计？
+### How Should Markdown Memory Be Layered?
 
-一个完整的 Markdown 记忆体系通常会分成几个层级：
+A complete Markdown memory system usually has several layers:
 
-- 用户级记忆：存个人偏好和长期习惯，放在 `~/.claude/CLAUDE.md`，比如 2-space 缩进、先写测试再写代码、不喜欢用 emoji。
-- 项目级记忆：存项目规范、技术栈、目录结构，放在仓库根目录的 `CLAUDE.md`，团队成员共享，通过 Git 同步。
-- 子目录级记忆：存局部模块的专属规则，放在子目录的 `CLAUDE.md`，比如 `backend/` 下的 API 设计规范、`docs/` 下的写作风格要求。
-- 团队共享记忆：需要提交到仓库的共同约定，通常是项目级 `CLAUDE.md` 和 `.claude/rules/` 目录下可版本化的规则文件。
-- 私有记忆：不应该提交的个人工作流，比如 `CLAUDE.local.md`，加入 `.gitignore` 后只留在本地。
+- **User-level memory:** Personal preferences and long-term habits in `~/.claude/CLAUDE.md`, such as 2-space indentation, test-first development, or avoiding emoji.
+- **Project-level memory:** Project conventions, technology stack, and directory structure in the repository-root `CLAUDE.md`, shared with teammates and synchronized through Git.
+- **Subdirectory-level memory:** Rules specific to a module in a subdirectory's `CLAUDE.md`, such as API conventions under `backend/` or writing style under `docs/`.
+- **Team-shared memory:** Shared conventions committed to the repository, usually in the project-level `CLAUDE.md` and versioned rule files under `.claude/rules/`.
+- **Private memory:** Personal workflows that should not be committed, such as `CLAUDE.local.md`, which stays local after being added to `.gitignore`.
 
-### Markdown 记忆和传统长期记忆的边界在哪里？
+### Where Is the Boundary Between Markdown Memory and Traditional Long-Term Memory?
 
-![Markdown 记忆和传统长期记忆的适用边界](../images/shared/agent-memory-markdown-memory-boundary.svg)
+![Suitable use cases for Markdown and traditional long-term memory](../images/shared/agent-memory-markdown-memory-boundary.svg)
 
-Markdown 和向量库各有适用边界，不建议一刀切。
+Markdown and vector databases each have suitable use cases; there is no one-size-fits-all choice.
 
-| 维度       | Markdown 记忆                        | 向量库记忆           | RAG 知识库           | 数据库型框架（Mem0 等） |
-| ---------- | ------------------------------------ | -------------------- | -------------------- | ----------------------- |
-| 检索精度   | 全量注入，无检索机制，启动时全部加载 | 高，语义相似度       | 高，语义检索         | 高，混合策略            |
-| 上下文成本 | 与文件大小线性相关，大文件会挤占空间 | 按需检索，上下文高效 | 按需检索，上下文高效 | 按需检索，上下文高效    |
-| 调试体验   | 极佳，直接读写文件                   | 中等，需向量查询工具 | 中等，需检索日志     | 复杂，需理解框架逻辑    |
-| 部署成本   | 极低，只需文件读写                   | 高，需维护向量服务   | 高，需 RAG pipeline  | 高，需框架运行时        |
-| 版本控制   | 原生集成 Git                         | 需额外同步机制       | 需额外同步机制       | 需额外同步机制          |
-| 迁移成本   | 零，复制文件即可                     | 高，锁定专有格式     | 高，锁定 pipeline    | 极高，绑定框架          |
-| 适用场景   | 偏好、约定、踩坑记录                 | 多样化记忆检索       | 共享知识查询         | 复杂多源记忆管理        |
+| Dimension          | Markdown memory                                          | Vector-database memory                    | RAG knowledge base                  | Database frameworks (e.g. Mem0)               |
+| ------------------ | -------------------------------------------------------- | ----------------------------------------- | ----------------------------------- | --------------------------------------------- |
+| Retrieval accuracy | Entire file loaded at startup; no retrieval              | High; semantic similarity                 | High; semantic retrieval            | High; hybrid strategy                         |
+| Context cost       | Grows linearly with file size; large files take up space | Efficient; retrieve as needed             | Efficient; retrieve as needed       | Efficient; retrieve as needed                 |
+| Debugging          | Excellent; read and edit files directly                  | Moderate; requires vector-query tools     | Moderate; requires retrieval logs   | Complex; requires understanding the framework |
+| Deployment cost    | Very low; file access only                               | High; requires operating a vector service | High; requires a RAG pipeline       | High; requires a framework runtime            |
+| Version control    | Native Git integration                                   | Requires additional synchronization       | Requires additional synchronization | Requires additional synchronization           |
+| Migration cost     | None; copy the files                                     | High; tied to a proprietary format        | High; tied to a pipeline            | Very high; tied to a framework                |
+| Suitable use case  | Preferences, conventions, and lessons learned            | Diverse memory retrieval                  | Shared knowledge queries            | Complex, multi-source memory management       |
 
-文件数量和内容增长后，目录和人工命名很难保证每次都能定位到相关片段。若要从大量非结构化记录中按语义召回内容，就该交给向量检索；把这类数据继续堆进 Markdown，只会让全量加载和维护都变慢。
+As the number and size of files grow, directories and manual naming cannot reliably locate relevant passages. Use vector retrieval to search large volumes of unstructured records by meaning; continuing to accumulate this data in Markdown only makes full loading and maintenance slower.
 
-反过来，如果记忆需求是“记住这个项目的编码规范”“记住用户的报告偏好”这类明确、可结构化的信息，Markdown 的简洁和可维护性通常比复杂系统更合适。
+Conversely, for clear and structured information such as "remember this project's coding conventions" or "remember the user's report preferences," Markdown's simplicity and maintainability are often better than a complex system.
 
-### Markdown 记忆应如何维护？
+### How Should Markdown Memory Be Maintained?
 
-以 `CLAUDE.md` 为例，项目演进后，原有规则也需要重新检查。
+Take `CLAUDE.md` as an example: rules should be reviewed as the project evolves.
 
-只在出现过具体错误、并且新规则能阻止同类错误复发时，再把它加入文件。先记录每次纠正的线索，确认是同一类问题后再归纳为一条简洁规则；删除后行为仍未变化的规则，也不必为了“完整”继续保留。
+Add a rule only after a concrete error has occurred and the rule can prevent the same type of error from recurring. Record each correction, confirm that the failures have the same cause, and then summarize them as one concise rule. There is no need to keep a rule "for completeness" if removing it does not change behavior.
 
-规则已经写明，Claude 却仍为违反它道歉，说明规则表述、位置或加载范围需要检查。同一条规则跨会话反复失效，也常见于文件过长、重点被稀释的情况。此时应缩短文件或拆分局部规则，再观察行为是否变化。
+If Claude apologizes for violating a rule that is already documented, check its wording, location, or loading scope. A rule that fails repeatedly across sessions may be buried in an overly long file. Shorten the file or split out local rules, then observe whether behavior changes.
 
-维护时可以用对话式审查：每隔几周，挑几条 `CLAUDE.md` 里的规则问 Claude，“如果我删掉这条规则，你会改变行为吗？”如果它说不会，这条规则可能就可以删。
+For conversational review, ask Claude every few weeks, "Would your behavior change if I removed this rule from `CLAUDE.md`?" If it says no, the rule might be removable.
 
-不过这个方法只能当启发式参考，不能完全相信 Claude 的自我评估。Claude 无法准确预测缺少某条规则时自己是否会改变行为。更可靠的做法是先备份规则，实际删除后，在几个真实任务上观察行为有没有变化。
+Treat this only as a heuristic; do not rely entirely on Claude's self-assessment. Claude cannot accurately predict whether its behavior would change without a rule. A more reliable approach is to back up the rules, remove one, and observe behavior across several real tasks.
 
-`/init` 也可以用，但不要直接用。自动生成的 `CLAUDE.md` 是一个不错的起点，但里面可能有不准确的项目描述。按上面的原则逐条审查，删掉冗余，补上遗漏。
+You can also use `/init`, but do not accept its output without review. An automatically generated `CLAUDE.md` is a useful starting point, but it may contain inaccurate project descriptions. Review each item using the principles above, remove redundancy, and add anything missing.
 
-最后，团队共享的记忆更新最好走 Git。每次重要记忆更新都 commit，出问题可以回滚，Code Review 也能追溯修改原因。团队共享内容的修改，建议走 PR 流程。
+Finally, manage team-shared memory through Git. Commit important updates so they can be rolled back and reviewed, with the reasons for changes traceable. Use a PR process for changes to shared content.
 
-## 排查记忆问题时先看检索 Trace
+## Check the Retrieval Trace First When Troubleshooting Memory
 
-短期记忆受窗口容量约束，滑动窗口、摘要压缩和重型结果卸载用来控制它；长期记忆则要处理写入幂等、冲突、过期和检索排序。
+Short-term memory is constrained by the context window and managed through sliding windows, summarization, and offloading large results. Long-term memory needs idempotent writes, conflict handling, expiration, and retrieval ranking.
 
-项目约定、编码规范等少量信息可以留在可审阅、可版本化的 Markdown。大量非结构化记录需要按语义查找时，再接入向量检索。两者可以并存。
+Keep small amounts of information, such as project conventions and coding standards, in reviewable, version-controlled Markdown. Add vector retrieval when you need semantic search across large volumes of unstructured records. The two approaches can coexist.
 
-Agent 没有用上已有记忆时，Trace 能区分问题：查询改写、过滤、候选集或重排任何一步出错，都会让已写入的条目失效。确认候选库缺少信息后，再调整抽取规则或写入预算。
+When an Agent fails to use existing memory, the Trace can help isolate the problem: an error in query rewriting, filtering, candidate retrieval, or reranking can make a stored entry ineffective. Change extraction rules or the write budget only after confirming that the candidate store lacks the required information.
 
-## 总结
+## Summary
 
-短期记忆服务当前任务，长期记忆保存跨 Session 仍有价值的信息。前者受窗口限制，后者要处理写入时机、冲突、过期和隐私，不能把全部聊天记录长期留存。
+Short-term memory serves the current task; long-term memory stores information that remains useful across Sessions. The first is limited by the context window. The second requires decisions about when to write, conflict resolution, expiration, and privacy; do not retain entire chat histories indefinitely.
 
-少量、需要人工维护的项目约定适合 Markdown；要从大量非结构化记录中按语义检索时，再使用向量检索或专门的记忆框架。排障从检索 Trace 开始，才能先分清是召回问题还是写入问题。
+Markdown suits a small set of project conventions maintained by people. Use vector retrieval or a dedicated memory framework when searching large volumes of unstructured records by meaning. Start troubleshooting with the retrieval Trace to distinguish a retrieval problem from a write problem.

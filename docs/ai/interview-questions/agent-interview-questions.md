@@ -1,148 +1,148 @@
 ---
-title: AI Agent 面试题总结
-description: 系统整理 AI Agent 高频面试题，覆盖 Agent 核心概念、Agent Loop、Memory、Prompt Engineering、Context Engineering、MCP、Agent Skills、Harness Engineering、Workflow、Graph，以及外层 Loop 的触发、停止与人工接管等工程考点，并附对应参考文章。
+title: AI Agent Interview Questions
+description: Common AI agent interview questions covering agent fundamentals, Agent Loops, memory, prompt and context engineering, MCP, agent skills, harness engineering, workflows, graphs, and outer-loop triggers, stopping, and human handoff, with links to detailed guides.
 category: AI
 tag:
-  - Agent面试
+  - Agent Interviews
   - AI Agent
-  - AI面试
+  - AI Interviews
 head:
   - - meta
     - name: keywords
-      content: AI Agent面试题,Agent面试题,AI Agent面试,Agent Loop面试,Agent Memory面试题,MCP面试题,Prompt工程面试题,Context Engineering面试,Harness Engineering面试,Agent Skills面试题,Workflow面试,Graph Loop面试,外层Loop,Loop Engineering,停止条件,人工接管
+      content: AI agent interview questions,Agent interview questions,AI agent interviews,Agent Loop interviews,Agent memory interview questions,MCP interview questions,prompt engineering interview questions,context engineering interviews,harness engineering interviews,agent skills interview questions,workflow interviews,graph loop interview questions,outer loop,Loop Engineering,stop conditions,human handoff
 ---
 
-Agent 接到任务后，需要读取上下文、决定下一步动作、调用工具、观察结果，再判断继续、结束还是交给人工。AI Agent 面试题基本沿着这条执行链路展开，Memory、MCP、Skills、Harness 和 Workflow 都可以放回链路中理解。
+After receiving a task, an agent reads context, chooses its next action, calls tools, observes the results, and decides whether to continue, finish, or hand off to a person. AI agent interview questions follow this execution path; memory, MCP, skills, harnesses, and workflows can all be understood in that context.
 
-题目按 JavaGuide AI Agent 专题的章节分组。每组都附有详细文章，这里只整理考点和问题，不重复展开答案。
+The questions are grouped by the chapters in JavaGuide's AI agent section. Each group links to a detailed guide; this page collects topics and questions without repeating the answers.
 
-## Agent 基础
+## Agent Fundamentals
 
-相关内容：[《AI Agent 核心概念：Agent Loop、Plan-and-Execute、结构化任务契约、Agentic Workflows、Tools 注册》](../agent/agent-basis.md)、[《多 Agent 协作系统设计：任务拆分、状态共享、冲突处理与失败恢复》](../agent/multi-agent.md)
+Related guides: [AI Agent Fundamentals: Agent Loops, Plan-and-Execute, Task Contracts, Agentic Workflows, and Tool Registration](../agent/agent-basis.md) and [Multi-Agent System Design: Task Decomposition, Shared State, Conflict Handling, and Failure Recovery](../agent/multi-agent.md)
 
-工具调用完整链路、权限、二次确认、幂等、审计、超时和 Java 示例，见 [结构化输出与 Function Calling](../llm-basis/structured-output-function-calling.md)；任务完成率、工具调用和执行轨迹等评测指标，见 [Agent 应用怎么评测](../llm-basis/llm-evaluation.md#agent-应用怎么评测)。
+For the full tool-calling lifecycle, permissions, confirmation, idempotency, auditing, timeouts, and Java examples, see [Structured Output and Function Calling](../llm-basis/structured-output-function-calling.md). For evaluation metrics such as task completion, tool calls, and execution traces, see [How to Evaluate Agent Applications](../llm-basis/llm-evaluation.md#agent-应用怎么评测).
 
-这部分通常从 Agent 的定义开始，随后追问运行循环和编排方式。准备时要能分清 Chatbot、Workflow 与 Agent 在任务路径、状态和工具使用上的差别。
+Questions usually start with the definition of an agent, followed by its execution loop and orchestration. Be ready to distinguish chatbots, workflows, and agents in how they handle task flow, state, and tools.
 
-常见面试题：
+Common interview questions:
 
-- AI Agent 是什么？和普通 Chatbot 有什么区别？
-- Agent = LLM + Planning + Memory + Tools 这条公式怎么理解？
-- Agent Loop 的完整流程是什么？
-- Agent 和传统编程、Workflow 的核心区别是什么？
-- ReAct、Plan-and-Execute、Reflection、Multi-Agent 分别适合什么场景？
-- Tools 注册时，工具 description 为什么很关键？
-- 什么时候用纯 Agent，什么时候用 Workflow 或 Agentic Workflow？
-- Multi-Agent 协作的主要问题是什么？为什么生产里不能盲目上多 Agent？
+- What is an AI agent, and how does it differ from a regular chatbot?
+- How should the formula Agent = LLM + Planning + Memory + Tools be understood?
+- What is the complete Agent Loop?
+- How do agents differ from traditional programs and workflows?
+- Which use cases suit ReAct, Plan-and-Execute, Reflection, and multi-agent systems?
+- Why is a tool description important when registering tools?
+- When should a standalone agent, a workflow, or an agentic workflow be used?
+- What are the main challenges of multi-agent collaboration, and why should multiple agents not be added indiscriminately in production?
 
-![AI Agent 核心架构](../images/shared/agent-core-arch.png)
+![AI agent architecture](../images/shared/agent-core-arch.png)
 
-![Agent Loop 工作流程](../images/shared/agent-loop-flow.png)
+![Agent Loop workflow](../images/shared/agent-loop-flow.png)
 
 ## Agent Memory
 
-相关内容：[《AI Agent 记忆系统：短期记忆、长期记忆与记忆演化机制》](../agent/agent-memory.md)
+Related guide: [AI Agent Memory: Short-Term and Long-Term Memory and How Memory Evolves](../agent/agent-memory.md)
 
-Memory 题会追到信息从哪里来、保存多久、什么时候读取，以及出现过期或冲突后怎么处理。聊天记录、当前任务状态和跨会话记忆需要分别讨论。
+Memory questions ask where information comes from, how long it is retained, when it is retrieved, and how stale or conflicting information is handled. Discuss conversation history, current task state, and cross-session memory separately.
 
-常见面试题：
+Common interview questions:
 
-- Agent 的短期记忆和长期记忆有什么区别？
-- Agent 记忆系统要解决哪些核心问题？
-- 向量记忆和 Markdown 记忆分别适合什么场景？
-- Auto Memory 是什么？它为什么不能无限自动写入？
-- 哪些团队共享记忆适合走 Git 和 Code Review，哪些更适合数据库？
-- 记忆压缩、记忆过期、记忆冲突应该怎么处理？
-- 如何避免长期记忆污染上下文？
-- 面试里怎么讲“有记忆”不是简单保存聊天记录？
+- How does an agent's short-term memory differ from its long-term memory?
+- Which core problems should an agent memory system solve?
+- Which use cases suit vector memory and Markdown-based memory?
+- What is Auto Memory, and why should it not write information automatically without limits?
+- Which forms of shared team memory suit Git and code review, and which are better suited to a database?
+- How should memory compression, expiration, and conflicts be handled?
+- How can long-term memory be prevented from polluting the context?
+- How can you explain in an interview that memory is more than simply saving chat history?
 
-![Agent 记忆分类全景图](../images/shared/agent-memory-memory-taxonomy.svg)
+![Overview of agent memory types](../images/shared/agent-memory-memory-taxonomy.svg)
 
-## Prompt 与 Context Engineering
+## Prompt and Context Engineering
 
-相关内容：[《大模型提示词工程（Prompt Engineering）是什么？提示词技巧有哪些？》](../agent/prompt-engineering.md)、[《上下文工程(Context Engineering) 是什么？和 Prompt Engineering 有什么区别？》](../agent/context-engineering.md)
+Related guides: [What Is Prompt Engineering, and Which Prompting Techniques Are Useful?](../agent/prompt-engineering.md) and [What Is Context Engineering, and How Does It Differ from Prompt Engineering?](../agent/context-engineering.md)
 
-Prompt 题关注指令如何表达，Context 题还会涉及历史状态、工具结果、检索证据和任务计划的装载。长任务中的裁剪、压缩和隔离也是常见追问。
+Prompt questions focus on how instructions are expressed. Context questions also cover loading historical state, tool results, retrieval evidence, and task plans. Trimming, compression, and isolation for long-running tasks are common follow-ups.
 
-常见面试题：
+Common interview questions:
 
-- Prompt Engineering 和 Context Engineering 有什么区别？
-- Prompt 四要素 Role、Task、Context、Format 分别解决什么问题？
-- Few-Shot、CoT、任务分解、结构化输出分别适合什么场景？
-- Prompt 注入攻击是什么？常见防护方式有哪些？
-- 为什么 Agent 场景下只优化 Prompt 不够？
-- Context Engineering 要解决哪些问题？
-- 静态规则、动态信息、工具结果、记忆应该如何进入上下文？
-- 长任务上下文溢出时，Compaction、结构化笔记、Sub-agent 分别怎么用？
+- How do prompt engineering and context engineering differ?
+- What problems do the four prompt elements—Role, Task, Context, and Format—each address?
+- Which use cases suit few-shot prompting, CoT, task decomposition, and structured output?
+- What is prompt injection, and how can it commonly be defended against?
+- Why is prompt optimization alone insufficient for agent use cases?
+- Which problems should context engineering solve?
+- How should static rules, dynamic information, tool results, and memory be added to context?
+- When context overflows in a long-running task, how should compaction, structured notes, and sub-agents be used?
 
 ![Prompt engineering vs. context engineering](../images/shared/context-engineering-vs-prompt-engineering.webp)
 
-## MCP 与 Agent Skills
+## MCP and Agent Skills
 
-相关内容：[《什么是 Model Context Protocol (MCP)？和 Function Calling、Agent 什么关系？》](../agent/mcp.md)、[《Agent Skills 是什么？和 Prompt、MCP 到底差在哪？》](../agent/skills.md)
+Related guides: [What Is the Model Context Protocol (MCP), and How Does It Relate to Function Calling and Agents?](../agent/mcp.md) and [What Are Agent Skills, and How Do They Differ from Prompts and MCP?](../agent/skills.md)
 
-Function Calling、MCP 和 Skills 位于不同环节：模型需要表达调用意图，宿主需要接入工具，Agent 还要加载完成任务所需的流程与资料。这组题经常继续追问权限、参数校验、超时和审计。
+Function Calling, MCP, and skills serve different stages: the model expresses the call intent, the host connects to tools, and the agent loads the procedures and information needed to complete the task. Follow-up questions often cover authorization, parameter validation, timeouts, and auditing.
 
-常见面试题：
+Common interview questions:
 
-- MCP 解决什么问题？为什么常被类比成 AI 领域的 USB-C？
-- MCP Client、MCP Server、Host 分别是什么？
-- MCP 的 Tools、Resources、Prompts 分别解决什么问题？
-- MCP 和 Function Calling 有什么区别？
-- 生产级 MCP Server 要做哪些安全治理？
-- Agent Skills 是什么？它和 Prompt、MCP、Function Calling 的边界是什么？
-- Skills 为什么要延迟加载？
-- Skill 路由怎么做？为什么它和 RAG 相似但目标不同？
-- 写一个 `SKILL.md` 最容易踩哪些坑？
+- What problem does MCP solve, and why is it often compared to USB-C for AI?
+- What are an MCP Client, MCP Server, and Host?
+- What problems do MCP Tools, Resources, and Prompts each solve?
+- How does MCP differ from Function Calling?
+- What security controls should a production MCP Server have?
+- What are Agent Skills, and how do they differ from prompts, MCP, and Function Calling?
+- Why should skills be loaded on demand?
+- How should skills be routed, and why are their goals similar to but different from RAG?
+- What common pitfalls should be avoided when writing a `SKILL.md` file?
 
 ## Harness Engineering
 
-相关内容：[《Harness Engineering：六层检查框架、上下文管理与工程实践》](../agent/harness-engineering.md)
+Related guide: [Harness Engineering: A Six-Layer Checklist, Context Management, and Engineering Practices](../agent/harness-engineering.md)
 
-Harness Engineering 把注意力放到模型外部的执行环境，包括任务管理、上下文供给、工具反馈、验证和错误恢复。相关问题通常要求把这些抽象概念落到具体组件。
+Harness engineering focuses on the execution environment around the model, including task management, context provision, tool feedback, verification, and error recovery. Questions often ask how to implement these concepts with concrete components.
 
-常见面试题：
+Common interview questions:
 
-- Harness Engineering 是什么？它和 Prompt Engineering、Context Engineering 有什么关系？
-- 为什么说 Agent = Model + Harness？
-- JavaGuide AI Agent 专题归纳的 Harness 六层检查框架分别解决什么问题？
-- 模型能力升级后，Harness 里的某些机制为什么需要重新验证？
-- 上下文污染、代码熵积累、工具调用可靠性分别怎么治理？
-- Agent 工程里为什么需要评测器、验证器和任务状态管理？
-- 一线团队做 Agent 工程化时，共同遇到的难点是什么？
+- What is harness engineering, and how does it relate to prompt and context engineering?
+- Why is an agent described as Model + Harness?
+- What problems do the six layers in JavaGuide's harness checklist each address?
+- Why should some harness mechanisms be revalidated when model capabilities improve?
+- How should context contamination, code entropy, and tool-call reliability be managed?
+- Why do agent systems need evaluators, validators, and task-state management?
+- What engineering challenges do teams commonly encounter when building agents?
 
-![Harness 和 Prompt/Context Engineering 的关系](../images/shared/harness-engineering-layers-arch.png)
+![Relationship between harness, prompt, and context engineering](../images/shared/harness-engineering-layers-arch.png)
 
-## Workflow、Graph 与 Loop
+## Workflows, Graphs, and Loops
 
-相关内容：[《AI 工作流中的 Workflow、Graph 与 Loop：从概念到实现》](../agent/workflow-graph-loop.md)、[《Loop Engineering 是什么？为什么说它是新瓶装旧酒？》](../agent/loop-engineering.md)
+Related guides: [Workflow, Graph, and Loop in AI Workflows: From Concepts to Implementation](../agent/workflow-graph-loop.md) and [What Is Loop Engineering? Is It Just Old Wine in a New Bottle?](../agent/loop-engineering.md)
 
-工作流题主要检查流程结构、状态保存和循环控制。除了解释 Node、Edge、State，还要准备中断恢复、并行更新和停止条件等工程问题。外层 Loop Engineering 在这里指把已有循环接到 CI、定时任务和停止条件上的工程实践，重点是如何调度、验证和停止。
+Workflow questions examine process structure, state persistence, and loop control. In addition to explaining nodes, edges, and state, be ready to discuss interruption recovery, concurrent updates, and stop conditions. Here, outer-loop engineering means connecting an existing loop to CI, scheduled jobs, and stop conditions, with a focus on scheduling, verification, and stopping.
 
-常见面试题：
+Common interview questions:
 
-- 为什么 AI 系统需要工作流？
-- Workflow、Graph、Loop 三者是什么关系？
-- Graph Loop 和 Agent Loop 有什么区别？
-- 外层 Loop 由谁触发下一轮：CI 事件、定时任务、目标检查还是人工审批？
-- 外层 Loop 与一次任务内部的 Agent Loop 有什么区别，状态和验证结果怎样交接？
-- 哪些任务不适合无人值守？缺少可靠验收信号、涉及高风险写操作或需要业务判断时，怎样停止并转人工？
-- Loop 如何防止死循环？
-- State 的更新策略怎么选？Replace、Append、Reducer 分别适合什么字段？
-- 条件边和动态路由有什么区别？
-- 工具调用失败时，哪些错误适合重试？认证失败和非幂等写操作怎么处理？
-- 工作流中断后怎么恢复？
-- 工作流有哪些特有的安全风险？
+- Why do AI systems need workflows?
+- How are workflows, graphs, and loops related?
+- How does a graph loop differ from an Agent Loop?
+- What triggers the next outer-loop iteration: a CI event, scheduled job, goal check, or human approval?
+- How does an outer loop differ from the Agent Loop within a task, and how are state and verification results handed off?
+- Which tasks are unsuitable for unattended execution? How should work stop and be handed to a person when there is no reliable acceptance signal, a high-risk write, or a need for business judgment?
+- How can an infinite loop be prevented?
+- How should state-update strategies be selected? Which fields suit Replace, Append, or a Reducer?
+- How do conditional edges differ from dynamic routing?
+- When a tool call fails, which errors are retryable? How should authentication failures and non-idempotent writes be handled?
+- How should an interrupted workflow be resumed?
+- What security risks are specific to workflows?
 
-## 综合设计题
+## Integrated Design Questions
 
-项目面试除了考概念，还会继续追问架构、选型依据、效果证据和线上失败。完整的回答组织方法可以参考 [《Agent 项目面试怎么讲？从系统架构、技术选型到 Badcase 复盘》](./agent-project-interview-guide.md)。
+Project interviews also ask about architecture, the rationale for choices, evidence of results, and production failures. For a full approach to structuring an answer, see [How to Present an Agent Project: Architecture, Technology Choices, and Bad-Case Analysis](./agent-project-interview-guide.md).
 
-综合题会把前面的组件放进同一个任务里，重点检查选型和故障处理：
+Integrated questions combine the components above in one task and focus on design choices and failure handling:
 
-- 如果让 Agent 完成一次需要调用多个工具的长任务，你会如何拆分执行步骤？
-- 哪些节点适合交给模型判断，哪些节点应该由规则或代码控制？
-- Agent 的计划、工具结果和中间状态如何保存？中断后怎样恢复？
-- 工具包含写操作时，权限、参数校验、二次确认和审计怎么设计？
-- 什么情况下需要 Multi-Agent？如何控制通信成本和状态一致性？
-- 你会记录哪些 Trace，并用哪些指标评估任务完成率、工具调用和执行轨迹？
+- If an agent must complete a long task using multiple tools, how would you break down the execution steps?
+- Which decisions should be made by the model, and which should be controlled by rules or code?
+- How should an agent's plan, tool results, and intermediate state be stored and recovered after interruption?
+- If tools perform write operations, how should authorization, parameter validation, confirmation, and auditing be designed?
+- When are multiple agents needed, and how can communication costs and state consistency be managed?
+- Which traces would you record, and which metrics would you use to evaluate task completion, tool calls, and execution paths?

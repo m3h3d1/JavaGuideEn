@@ -1,284 +1,284 @@
 ---
-title: 性能测试和压力测试入门：RPS、QPS、TPS、P99 与压测工具
-description: 性能测试入门指南，讲解 RPS、QPS、TPS、RT、P90/P99/P999、Little's Law、容量评估、曲棍球棒曲线、背压与自愈验证，以及负载测试、压力测试、稳定性测试和 JMeter、Gatling、k6、Locust、ab、wrk 等压测工具。
-category: 高可用
+title: "Introduction to Performance and Load Testing: RPS, QPS, TPS, P99, and Load-Testing Tools"
+description: An introduction to performance testing, covering RPS, QPS, TPS, RT, P90/P99/P999, Little's Law, capacity planning, the hockey-stick curve, backpressure, recovery validation, test types, and tools such as JMeter, Gatling, k6, Locust, ab, and wrk.
+category: High Availability
 icon: "mdi:speedometer"
 tag:
-  - 性能测试
-  - 压力测试
+  - Performance Testing
+  - Load Testing
 head:
   - - meta
     - name: keywords
-      content: 性能测试,压力测试,负载测试,稳定性测试,RPS,QPS,TPS,RT 响应时间,P99,容量评估,并发数,吞吐量,背压,利特尔法则,JMeter,Gatling,k6,Locust,ab 压测,wrk 压测,性能测试面试题
+      content: performance testing,stress testing,load testing,stability testing,RPS,QPS,TPS,response time,P99,capacity planning,concurrency,throughput,backpressure,Little's Law,JMeter,Gatling,k6,Locust,ab,wrk,performance testing interview questions
 ---
 
-性能测试通常由专业的测试团队负责，那还需要我们开发学这个干嘛呢？了解性能测试的指标、分类以及工具等知识有助于我们更好地去写出性能更好的程序，另外作为开发这个角色，如果你会性能测试的话，相信也会为你的履历加分不少。
+Performance testing is often handled by a dedicated QA team, so why should developers learn about it? Understanding its metrics, types, and tools helps us write better-performing software. Performance-testing experience can also strengthen a developer's résumé.
 
-本文结合了笔者的实践经验以及向测试团队请教所得，除此之外，我还借鉴了一些优秀书籍，希望对你有帮助。
+This guide draws on my experience, discussions with QA teams, and several useful books. I hope you find it helpful.
 
-平时大家说“压测”，很多时候其实是在泛指性能测试相关工作：用工具模拟用户请求，观察系统在不同压力下的吞吐量、响应时间、错误率和资源使用情况。实际做压测时，先说清楚这次要验证什么。
+The term "load test" is often used broadly for performance testing: tools simulate user requests while we observe throughput, response times, error rates, and resource use under different loads. Before running a test, define what it should verify.
 
-## 不同角色看网站性能
+## How Different Roles View Website Performance
 
-### 用户
+### Users
 
-当用户打开一个网站的时候，最关注的是什么？当然是 **网站响应速度的快慢**。比如我们点击了淘宝的主页，淘宝需要多久将首页的内容呈现在我的面前，我点击了提交订单按钮需要多久返回结果等等。
+When users open a website, they care most about **how quickly it responds**. For example, how long does Taobao take to show its home page? How long does it take to respond after a user submits an order?
 
-所以，用户在体验我们系统的时候往往根据你的响应速度的快慢来评判你的网站的性能。
+Users often judge a website's performance by its response speed.
 
-### 开发人员
+### Developers
 
-用户与开发人员都关注速度，这个速度实际上就是我们的系统 **处理用户请求的速度**。
+Both users and developers care about speed, which is essentially how quickly the system **processes user requests**.
 
-开发人员一般情况下很难直观的去评判自己网站的性能，我们往往会根据网站当前的架构以及基础设施情况给一个大概的值，比如：
+Developers may find it hard to assess a website's performance directly, so they often estimate it based on the architecture and infrastructure. For example:
 
-1. 项目架构是分布式的吗？
-2. 用到了缓存和消息队列没有？
-3. 高并发的业务有没有特殊处理？
-4. 数据库设计是否合理？
-5. 系统用到的算法是否还需要优化？
-6. 系统是否存在内存泄漏的问题？
-7. 项目使用的 Redis 缓存多大？服务器性能如何？用的是机械硬盘还是固态硬盘？
+1. Is the project distributed?
+2. Does it use a cache and message queue?
+3. Are high-concurrency workflows handled specially?
+4. Is the database design sound?
+5. Can the algorithms be optimized?
+6. Does the system have memory leaks?
+7. How large is the Redis cache? How powerful are the servers? Do they use HDDs or SSDs?
 8. ……
 
-### 测试人员
+### QA Engineers
 
-测试人员一般会根据性能测试工具来测试，然后一般会做出一个表格。这个表格可能会涵盖下面这些重要的内容：
+QA engineers usually run performance tests with specialized tools and summarize results in a report. It may include:
 
-1. 响应时间；
-2. 请求成功率；
-3. 吞吐量；
+1. Response time.
+2. Request success rate.
+3. Throughput.
 4. ……
 
-### 运维人员
+### Operations Engineers
 
-运维人员会倾向于根据 **基础设施和资源的利用率** 来判断网站的性能，比如我们的服务器资源使用是否合理、数据库资源是否存在滥用的情况、当然，这是传统的运维人员，现在 Devops 火起来后，单纯干运维的很少了。我们这里暂且还保留有这个角色。
+Operations engineers tend to judge performance by **infrastructure and resource utilization**: whether server resources are used efficiently and whether the database is overloaded. The role has evolved as DevOps has become more common, but it remains useful to consider it separately here.
 
-## 性能测试需要注意的点
+## What to Consider Before Performance Testing
 
-几乎没有文章在讲性能测试的时候提到这个问题，大家都会讲如何去性能测试，有哪些性能测试指标这些东西。
+Many performance-testing guides explain how to test and which metrics to use but overlook the following considerations.
 
-### 明确压测目标
+### Define the Test Objective
 
-压测之前先想清楚目标，否则很容易变成“工具跑起来了，报告也生成了，但不知道结论是什么”。
+Define the objective first. Otherwise, you may end up with a running tool and a report but no clear conclusion.
 
-常见目标有三类：
+Common objectives include:
 
-1. **上线前容量评估**：验证当前机器规格、实例数量、数据库配置和缓存策略是否能支撑预期流量。
-2. **优化后效果验证**：确认慢 SQL、缓存、线程池、JVM 参数或架构调整之后，吞吐量、RT、错误率是否真的变好了。
-3. **瓶颈定位**：通过逐步加压观察 CPU、内存、GC、数据库连接池、线程池、MQ 堆积等指标，找出最先扛不住的环节。
+1. **Pre-release capacity planning**: Verify that the current machine specifications, instance count, database configuration, and cache strategy can handle expected traffic.
+2. **Validate an optimization**: Confirm whether throughput, RT, or error rate improved after changes to slow SQL, caches, thread pools, JVM settings, or architecture.
+3. **Find bottlenecks**: Increase load gradually and monitor CPU, memory, GC, database connection pools, thread pools, and MQ backlogs to find the first constraint.
 
-这三类目标对应的压测方法不一样。容量评估关注峰值水位和安全冗余，优化验证关注前后对比，瓶颈定位则需要更细的监控和链路追踪。
+These objectives require different tests. Capacity planning focuses on peak load and safety margins; optimization validation compares results before and after a change; bottleneck analysis needs detailed monitoring and tracing.
 
-### 了解系统的业务场景
+### Understand the Business Workload
 
-**性能测试之前更需要你了解当前的系统的业务场景。** 对系统业务了解得不够深刻，我们很容易犯测试方向偏执的错误，从而导致我们忽略了对系统某些更需要性能测试的地方进行测试。
+**Understand the system's business workload before testing.** Without that context, it is easy to test the wrong part of the system and overlook the areas that need performance testing most.
 
-比如我们的系统可以为用户提供发送邮件的功能，用户配置成功邮箱后只需输入相应的邮箱之后就能发送，系统每天大概能处理上万次发邮件的请求。很多人看到这个可能就直接开始使用相关工具测试邮箱发送接口，但是，发送邮件这个场景可能不是当前系统的性能瓶颈，这么多人用我们的系统发邮件，还可能有很多人一起发邮件，单单这个场景就这么人用，那用户管理可能才是性能瓶颈吧！
+For example, a system may let users configure email addresses and send emails, processing tens of thousands of email requests each day. It may seem natural to test the email endpoint first, but email delivery may not be the bottleneck. If many users send emails, user management could be the real bottleneck.
 
-### 历史数据非常有用
+### Use Historical Data
 
-当前系统所留下的历史数据非常重要，一般情况下，我们可以通过一些历史数据初步判定这个系统哪些接口调用的比较多、哪些服务承受的压力最大，这样的话，我们就可以针对这些地方进行更细致的性能测试与分析。
+Historical data is valuable. It can reveal which endpoints receive the most calls and which services carry the most load, helping you focus performance tests and analysis.
 
-另外，这些地方也就像这个系统的一个短板一样，优化好了这些地方会为我们的系统带来质的提升。
+These components may be the system's weak points; improving them can make a significant difference.
 
-### 请求模型要尽量贴近真实流量
+### Model Realistic Traffic
 
-单接口压测只能说明这个接口在当前条件下的表现，不能直接代表系统真实容量。真实用户访问系统时，通常会先登录、浏览、查询、下单、支付或提交表单，不同接口之间有顺序、比例和数据依赖。
+A single-endpoint load test shows only how that endpoint performs under current conditions; it does not represent the system's real capacity. Users log in, browse, search, order, pay, or submit forms, and these endpoints have dependencies, sequences, and different traffic proportions.
 
-因此，压测脚本最好按照真实业务链路来设计：高频接口多打一点，低频接口少打一点；读多写少的系统不要把写接口比例放得过高；需要鉴权、库存、订单状态流转的接口，也要提前准备合法的测试数据。否则，测出来的 QPS 很高，线上一到真实流量还是可能出问题。
+Design test scripts around real business flows: send more traffic to frequent endpoints and less to infrequent ones. Do not overstate write traffic in a read-heavy system. Prepare valid test data for endpoints that require authentication, inventory, or order-state transitions. Otherwise, a high measured QPS may still fail to predict production behavior.
 
-### 先准备退出机制
+### Prepare a Stop Mechanism
 
-压测尤其是线上压测，开始前必须准备好停止手段和保护阈值，例如最大 QPS、最大并发数、错误率阈值、P99 RT 阈值、CPU/内存阈值、数据库连接池阈值等。
+Before any load test, especially one against production, prepare stop controls and safety thresholds: maximum QPS and concurrency, error rate, P99 RT, CPU and memory, and database connection-pool limits.
 
-一旦系统出现大量 5xx、RT 持续飙升、队列堆积不下降、数据库连接耗尽等情况，要能快速停止压测或自动熔断。压测的目的是发现问题，不是把线上服务打穿。
+If 5xx responses surge, RT keeps rising, queues stop draining, or database connections are exhausted, the test must stop quickly or trip an automatic circuit breaker. The goal is to find problems, not to take production offline.
 
-## 常见性能指标
+## Common Performance Metrics
 
-做压测时，指标不能孤立看。RT、吞吐量和并发数放在一起，才能判断系统是在正常处理请求，还是已经开始排队。
+Do not interpret load-test metrics in isolation. RT, throughput, and concurrency together show whether the system is processing requests normally or beginning to queue them.
 
-![QPS、并发数与 RT 的关系](./images/shared/performance-test-metrics-relation.png)
+![Relationship between QPS, concurrency, and RT](./images/shared/performance-test-metrics-relation.png)
 
-### 响应时间
+### Response Time
 
-响应时间要先区分观测位置。对于后端接口压测，**响应时间 RT（Response Time）** 通常指压测客户端发出请求到收到响应的时间，包含网络传输、网关、服务端处理和响应返回。对于前端页面性能，用户体感还会受到 HTML 解析、JS 执行、资源加载、渲染和交互延迟影响，这类问题更适合用 Lighthouse、Chrome DevTools、WebPageTest 等工具分析。
+First, define where response time is measured. For backend API load tests, **RT (Response Time)** usually measures the time from when the load-testing client sends a request until it receives the response, including network transfer, gateway handling, server processing, and the return trip. Frontend experience also depends on HTML parsing, JavaScript execution, resource loading, rendering, and interaction latency; use tools such as Lighthouse, Chrome DevTools, or WebPageTest for those issues.
 
-平均 RT 只能看整体趋势。用户体感更容易被 P95、P99 这些长尾请求影响。接口压测和线上监控一般会同时看 **P50、P90、P95、P99**；核心链路在请求样本足够大时，再看 **P999**。
+Average RT shows only the overall trend. User experience is more affected by tail latency such as P95 and P99. API load tests and production monitoring usually track **P50, P90, P95, and P99**. For critical paths, also track **P999** when the sample size is large enough.
 
-例如 P99 = 500ms，表示 99% 的请求能在 500ms 内返回。剩下 1% 的慢请求，可能来自 Cache Miss、慢 SQL 或 GC STW，它们会长时间占用连接和工作线程。并发高的时候，线程池被占满，新请求开始排队或被拒绝；上游再继续超时重试，流量还会被放大。大量超快响应会拉低平均值，长尾问题就被平均 RT 掩盖掉了。
+For example, P99 = 500 ms means 99% of requests return within 500 ms. The slowest 1% may result from cache misses, slow SQL, or GC stop-the-world pauses, and can occupy connections and worker threads for a long time. Under high concurrency, the thread pool fills up and new requests queue or get rejected. Upstream retries can amplify the traffic. Many fast responses lower the average and hide the tail-latency problem.
 
-下面只是一个低延迟在线接口的示例目标，不是所有系统通用标准：
+These are example targets for a low-latency online API, not universal standards:
 
-| 分位值 | 示例目标 | 说明                     |
-| ------ | -------- | ------------------------ |
-| P90    | < 200ms  | 大多数用户的正常体验     |
-| P99    | < 500ms  | 长尾体验与线程占用风险   |
-| P999   | < 1s     | 高流量核心链路的极端长尾 |
+| Percentile | Example target | Description                                         |
+| ---------- | -------------- | --------------------------------------------------- |
+| P90        | < 200 ms       | Typical experience for most users                   |
+| P99        | < 500 ms       | Tail experience and thread-occupancy risk           |
+| P999       | < 1 s          | Extreme tail latency on high-traffic critical paths |
 
-阈值最好从业务 SLO、用户体验要求、上游超时时间、下游依赖能力和历史基线里推出来。另外，P999 对样本量比较敏感。如果一次测试只有几千个请求，P999 很容易被偶发抖动影响；如果接口本身 QPS 很低，P999 的统计意义也有限。这类接口可以先看 P99，或者拉长压测时间收集更多样本。
+Derive thresholds from the business SLO, user-experience requirements, upstream timeouts, downstream capacity, and historical baselines. P999 is sensitive to sample size: with only a few thousand requests, occasional jitter can distort it. It is also of limited value for a low-QPS endpoint. For these cases, start with P99 or run the test longer to collect more samples.
 
-> **失败模式**：当下游偶发抖动导致 P999 飙升时，如果上游没有合理超时、限流和熔断，请求会长时间占用连接、线程或协程。进一步叠加重试后，可能出现线程池耗尽、连接池耗尽、队列堆积、错误率上升，严重时才可能触发 OOM。
+> **Failure mode**: If a downstream service briefly jitters and P999 spikes, missing timeouts, rate limits, or circuit breakers can leave requests holding connections, threads, or coroutines for too long. Retries can then exhaust thread and connection pools, grow queues, and increase errors; in severe cases, the system may run out of memory.
 
-### 并发数
+### Concurrency
 
-**并发数指系统在同一时刻正在处理的请求数量**。
+**Concurrency is the number of requests the system is handling at the same time.**
 
-并发数反映了系统的 **负载能力**。需要注意区分以下概念：
+Concurrency reflects system **load capacity**. Distinguish these terms:
 
-- **并发用户数**：同时在线的用户数量。
-- **并发请求数**：同一时刻系统正在处理的请求数量。
-- **最大并发数**：系统能够承受的最大并发请求数，超过此值系统可能出现性能下降或崩溃。
+- **Concurrent users**: The number of users online at the same time.
+- **Concurrent requests**: The number of requests being processed at the same time.
+- **Maximum concurrency**: The maximum number of concurrent requests the system can handle before performance degrades or it fails.
 
-### RPS、QPS 和 TPS
+### RPS, QPS, and TPS
 
-- **RPS（Requests Per Second）**：服务器每秒处理的 HTTP/RPC 请求数，更适合接口压测。
-- **QPS（Queries Per Second）**：服务器每秒处理的查询次数，常用于数据库查询、搜索查询，也常被宽泛地当作请求吞吐量。
-- **TPS（Transactions Per Second）**：服务器每秒完成的业务事务数，例如一次下单、一次支付、一次注册。
+- **RPS (Requests Per Second)**: HTTP/RPC requests handled by the server each second; commonly used for API load tests.
+- **QPS (Queries Per Second)**: Queries handled each second. Commonly used for database and search queries, and sometimes broadly for request throughput.
+- **TPS (Transactions Per Second)**: Business transactions completed per second, such as an order, payment, or registration.
 
-> QPS vs TPS：TPS 更偏业务语义。比如一次下单可以算 1 个 TPS，但它背后可能包含查询库存、创建订单、扣减库存、调用支付 4 次 HTTP/RPC 请求，对后端服务来说可能就是 4 RPS，还可能产生更多次数据库 QPS。
+> QPS vs. TPS: TPS has a business meaning. One order may count as one TPS but involve four HTTP/RPC requests for inventory lookup, order creation, inventory deduction, and payment. That may count as four RPS and generate even more database queries per second.
 
-### 吞吐量
+### Throughput
 
-**吞吐量** 指系统单位时间内处理的请求数量。RPS、QPS、TPS 都是常用量化指标。
+**Throughput** is the number of requests a system processes per unit of time. RPS, QPS, and TPS are common measures.
 
-**Little's Law（利特尔法则）**：在系统未饱和的稳态下，`平均在途请求数 ≈ 吞吐量 × 平均响应时间`。这里的并发数指系统中正在处理或排队的平均请求数，不是在线用户数；RT 使用平均响应时间，不是 P99；吞吐量使用完成请求的平均速率。
+**Little's Law**: In a stable system below saturation, `average in-flight requests ≈ throughput × average response time`. Here, concurrency means the average number of requests being processed or queued, not the number of online users. Use average response time, not P99, and the average completion rate for throughput.
 
-例如平均 QPS 为 500，平均 RT 为 200ms（0.2s），系统内平均在途请求数约为 `500 × 0.2 = 100`。
+For example, with an average of 500 QPS and an average RT of 200 ms (0.2 s), the average number of in-flight requests is about `500 × 0.2 = 100`.
 
-这个公式只能用在线性响应区间。并发继续上去后，CPU 调度、锁争用（Lock Contention）和排队时间会一起放大，RT 往往非线性上升，吞吐量到达拐点后进入平台期甚至下降。图里的“曲棍球棒曲线”（Hockey Stick Curve）就是在说明这个现象：拐点之后 QPS 不升反降，系统已经进入非线性区。
+This formula applies only in the linear response range. As concurrency rises further, CPU scheduling, lock contention, and queueing amplify one another. RT often increases nonlinearly, while throughput plateaus or drops after a tipping point. The **hockey-stick curve** illustrates this: after the turning point, QPS falls as the system enters the nonlinear range.
 
-![QPS 与并发数的曲棍球棒曲线](./images/shared/performance-test-hockey-stick-curve.png)
+![Hockey-stick curve for QPS and concurrency](./images/shared/performance-test-hockey-stick-curve.png)
 
-所以，生产容量不能只靠公式推算，还要通过全链路压测验证真实极限。
+Therefore, formulas alone cannot determine production capacity; validate the real limits with end-to-end load testing.
 
-## 系统活跃度指标
+## User Activity Metrics
 
-### PV（Page View）
+### PV (Page Views)
 
-**访问量**，即页面浏览量或点击量，衡量网站用户访问的网页数量；在一定统计周期内用户每打开或刷新一个页面就记录 1 次，多次打开或刷新同一页面则浏览量累计。PV 从网页打开的数量/刷新的次数的角度来统计的。
+**Page views** count how often users view or click pages. Each page open or refresh during the reporting period counts once, including repeated views of the same page. PV measures page loads and refreshes.
 
-### UV（Unique Visitor）
+### UV (Unique Visitors)
 
-**独立访客**，统计 1 天内访问某站点的用户数。1 天内相同访客多次访问网站，只计算为 1 个独立访客。UV 是从用户个体的角度来统计的。
+**Unique visitors** count the number of users who visit a site in one day. Multiple visits by the same user on that day count as one UV. UV measures activity by individual users.
 
-### DAU（Daily Active User）
+### DAU (Daily Active Users)
 
-**日活跃用户数量**，指一天内登录或使用产品的用户数（去重）。
+**Daily active users** are the unique users who log in to or use a product in one day.
 
-### MAU（Monthly Active Users）
+### MAU (Monthly Active Users)
 
-**月活跃用户人数**，指一个月内登录或使用产品的用户数（去重）。
+**Monthly active users** are the unique users who log in to or use a product in one month.
 
-### 实战计算示例
+### Capacity-Planning Example
 
-> **生产级容量评估**：只用 DAU 乘固定系数估峰值，很容易低估活动流量。整点秒杀、大促开抢这类场景，峰值通常和日均流量不是一个量级。可以先用历史日均请求量估算日均 QPS，再结合业务峰值倍数（如日均的 3～10 倍，视业务而定）得到初步峰值 QPS，最后根据 Little's Law 反推目标并发数并加上 1.5～2 倍安全冗余。这个结果只能作为压测目标的起点，最终还要通过 **全链路压测**（结合真实流量录制与回放，如 [GoReplay](https://goreplay.org/)）摸底真实吞吐量，而不是停在纸面估算。
+> **Production capacity planning**: Estimating peak traffic from DAU and a fixed multiplier can underestimate campaign traffic. Flash sales and scheduled launches can peak far above average daily traffic. Estimate average QPS from historical daily requests, then apply a business-specific peak multiplier (for example, 3–10 times average) to get an initial peak QPS. Use Little's Law to estimate target concurrency and add a safety margin of 1.5–2 times. This is only a starting point for load testing. Measure actual throughput with **end-to-end load tests**, using recorded and replayed traffic with a tool such as [GoReplay](https://goreplay.org/).
 
-## 性能测试分类
+## Types of Performance Tests
 
-| 测试类型                         | 目的                         | 常见做法                                 |
-| -------------------------------- | ---------------------------- | ---------------------------------------- |
-| **基准测试（Benchmark）**        | 建立性能基线，方便前后对比   | 固定环境、固定脚本、固定数据             |
-| **负载测试（Load Test）**        | 验证预期负载下是否达标       | 按预估流量模型逐步加压到目标水位         |
-| **容量测试（Capacity Test）**    | 找到当前系统可承载上限       | 逐步加压，观察吞吐拐点和资源瓶颈         |
-| **压力测试（Stress Test）**      | 观察超限后的退化、保护和恢复 | 超过预期负载，验证限流、熔断、自愈       |
-| **稳定性测试（Soak/Endurance）** | 验证长时间运行稳定性         | 以接近真实负载持续运行较长时间           |
-| **峰值测试（Spike Test）**       | 验证突增流量承受能力         | 短时间快速升压，再快速回落，观察恢复情况 |
+| Test type               | Goal                                                         | Typical approach                                                                   |
+| ----------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| **Benchmark**           | Establish a baseline for comparison                          | Keep environment, script, and data fixed                                           |
+| **Load test**           | Verify the system meets targets under expected load          | Gradually increase traffic according to the expected model                         |
+| **Capacity test**       | Find the system's current capacity limit                     | Increase load and observe throughput turning points and resource bottlenecks       |
+| **Stress test**         | Observe degradation, protection, and recovery above capacity | Exceed expected load and verify rate limiting, circuit breaking, and self-recovery |
+| **Soak/endurance test** | Verify long-term stability                                   | Run for an extended period near realistic load                                     |
+| **Spike test**          | Verify tolerance for sudden traffic increases                | Raise traffic quickly, then lower it and observe recovery                          |
 
-![性能测试分类：压力水位怎么区分](./images/shared/performance-test-type-boundaries.webp)
+![Performance-test types and load levels](./images/shared/performance-test-type-boundaries.webp)
 
-这几类测试主要差在加压加到哪里：负载测试看目标流量能不能扛住；容量测试继续往上压，找拐点；压力测试越过预期负载，看系统怎么失败、怎么恢复。
+The main difference is how far the load is increased: load testing checks whether the target traffic is supported; capacity testing goes further to find the limit; stress testing exceeds expected load to observe failure and recovery.
 
-### 基准测试
+### Benchmark Testing
 
-基准测试强调环境、脚本、数据和参数固定，方便比较优化前后的变化。比如同一接口在同一台机器上，改索引前后分别跑一轮，看平均 RT、P99、吞吐量和 CPU 水位是否变化。
+Benchmark testing keeps the environment, script, data, and parameters fixed to compare performance before and after an optimization. For example, test the same endpoint on the same machine before and after adding an index, then compare average RT, P99, throughput, and CPU utilization.
 
-### 负载测试
+### Load Testing
 
-负载测试是在预期流量模型下验证系统是否达标。比如按照线上历史比例组合登录、查询、下单、支付等请求，逐步加压到目标 QPS，看响应时间、错误率和资源使用是否满足要求。
+Load testing verifies that the system meets requirements under an expected traffic model. Combine login, search, order, and payment requests according to historical production proportions, then increase load to the target QPS and check response times, error rates, and resource use.
 
-### 容量测试
+### Capacity Testing
 
-容量测试会继续加大请求压力，直到服务器的某个资源达到饱和，或者系统响应时间、错误率已经不满足要求。它更关注当前架构和资源配置下的承载上限。
+Capacity testing keeps increasing request load until a server resource saturates or response times and error rates exceed requirements. It focuses on the limits of the current architecture and resource configuration.
 
-### 压力测试
+### Stress Testing
 
-压力测试会故意把流量推过设计水位。这个阶段可以接受快速失败，比如返回 429 或 503；不能接受请求一直挂着，连接不释放、线程池排队、队列越积越多，上游还在继续重试。测试时要看令牌桶、信号量、队列长度限制、熔断降级这些保护措施有没有真的生效；流量撤掉后，连接、线程、队列和吞吐量能不能回到正常水平。
+Stress testing deliberately pushes traffic beyond the designed capacity. Fast failures such as 429 or 503 responses are acceptable; requests hanging indefinitely, unreleased connections, thread-pool queues, growing backlogs, and continued upstream retries are not. Verify that token buckets, semaphores, queue limits, circuit breakers, and fallback work. After removing the load, check that connections, threads, queues, and throughput return to normal.
 
-### 稳定性测试
+### Stability Testing
 
-稳定性测试主要看长时间趋势。系统刚启动时一切正常，跑几个小时后才暴露的问题，通常就藏在这里。可以用接近线上比例的流量跑几个小时、一天或更久，重点盯趋势：堆内存是否只涨不回落、Full GC 是否变密、连接池是否长期打满、线程数是否持续增长、MQ 或本地队列是否越积越多、错误率是否一点点抬头。7×24 小时只是高要求场景里的常见做法，不是固定答案。
+Stability testing focuses on long-term trends. Some problems appear only after hours of normal operation. Run traffic close to production levels for hours, a day, or longer, and watch for heap growth that never recedes, more frequent Full GCs, persistently saturated connection pools, steadily increasing thread counts, growing MQ or local queues, and gradually rising error rates. A 7×24-hour test is common for demanding workloads, but is not a universal requirement.
 
-### 峰值测试
+### Spike Testing
 
-峰值测试适合模拟活动开场、整点秒杀、消息推送这类突然涌进来的流量。压测时先把流量在很短时间内拉高，再降回正常水位，看限流、排队、降级有没有按预期触发，以及流量回落后 RT、错误率、线程池和队列能不能降下来。
+Spike testing simulates sudden traffic bursts, such as a campaign launch, scheduled flash sale, or message push. Increase traffic sharply over a short period, then return it to normal. Check whether rate limiting, queueing, and fallback behave as expected, and whether RT, error rate, thread pools, and queues recover afterward.
 
-## 全链路压测
+## End-to-End Load Testing
 
-单接口压测只能告诉你某个接口在当前脚本下能跑到多少吞吐。复杂系统出问题时，瓶颈经常不在入口接口本身：网关鉴权没问题，库存服务开始排队；订单接口还能返回，MQ 已经堆积；应用 CPU 不高，数据库连接池先被打满。一次下单可能经过网关、鉴权、商品、库存、订单、支付、消息队列、缓存和数据库，任何一个环节先到瓶颈，最终都会反映到用户请求上。
+A single-endpoint test only shows that endpoint's throughput under a particular script. In complex systems, the bottleneck may be downstream: gateway authentication works while inventory queues requests; the order API responds while the MQ backlog grows; application CPU is low while the database connection pool saturates. An order may pass through the gateway, authentication, catalog, inventory, order, payment, message queue, cache, and database. A bottleneck anywhere in that path affects the user request.
 
-![全链路压测：先把护栏搭好](./images/shared/full-link-performance-test-guardrails.webp)
+![End-to-end load testing: set up safeguards first](./images/shared/full-link-performance-test-guardrails.webp)
 
-做全链路压测时，流量从系统入口进来，沿着真实业务链路往后走，每个服务、组件和基础设施都会被带上压力。这种方式比单接口压测更接近线上流量，也更容易误伤真实数据和服务，所以先把几件事准备好：
+End-to-end load testing sends traffic through the real business path from the system's entry point, putting load on every service, component, and infrastructure layer. It is closer to production traffic than a single-endpoint test, but it can also affect real data and services. Prepare the following:
 
-1. **压测数据隔离**：使用压测账号、压测标识、影子表或影子库，避免污染真实订单、支付、库存等核心数据。
-2. **压测流量识别**：让网关、服务、日志、监控、链路追踪都能识别压测流量，便于统计和快速止损。
-3. **链路监控完整**：同时观察应用指标、机器指标、数据库指标、缓存指标、MQ 堆积、慢 SQL、GC 和线程池状态。
-4. **熔断和限流可用**：压测前确认限流、降级、熔断、队列长度限制等保护机制已经生效。
-5. **压测结果可复盘**：记录每一轮压测的并发数、QPS、P90/P99、错误率、资源水位和瓶颈点，方便和优化后的结果对比。
+1. **Isolate test data**: Use test accounts and labels, shadow tables, or shadow databases to avoid polluting real orders, payments, and inventory.
+2. **Identify test traffic**: Ensure gateways, services, logs, monitoring, and traces can identify load-test traffic for measurement and quick mitigation.
+3. **Monitor the full path**: Observe application, host, database, and cache metrics, MQ backlogs, slow SQL, GC, and thread-pool state.
+4. **Enable circuit breakers and rate limits**: Confirm that rate limiting, fallback, circuit breaking, and queue limits are active before testing.
+5. **Record results for review**: For each run, record concurrency, QPS, P90/P99, error rate, resource utilization, and bottlenecks to compare with later optimizations.
 
-如果业务还没到需要线上全链路压测平台的阶段，先用 JMeter、Gatling、wrk 等工具把核心链路脚本跑清楚，能定位瓶颈、能保护数据、能快速停止，就已经能覆盖大部分容量评估和瓶颈定位场景。等业务复杂到需要频繁线上压测，再考虑专门的平台化建设。
+If the business does not yet need a production end-to-end testing platform, start with JMeter, Gatling, or wrk to test the critical paths. A setup that can find bottlenecks, protect data, and stop quickly covers most capacity-planning and bottleneck-analysis needs. Consider building a dedicated platform when frequent production tests become necessary.
 
-## 常用性能测试工具
+## Common Performance-Testing Tools
 
-### 后端常用
+### Backend Tools
 
-既然系统设计涉及到系统性能方面的问题，那在面试的时候，面试官就很可能会问：**你是如何进行性能测试的？**
+Since system design includes performance, interviewers may ask: **How do you performance-test a system?**
 
-推荐几个比较常用的性能测试工具：
+Common tools include:
 
-| 工具           | 语言/脚本                                   | 特点                                                 | 适用场景                         |
-| -------------- | ------------------------------------------- | ---------------------------------------------------- | -------------------------------- |
-| **JMeter**     | Java，GUI + CLI                             | 功能全面，GUI 适合编写和调试脚本，正式压测建议用 CLI | 企业复杂场景、接口链路压测       |
-| **Gatling**    | Java、JavaScript、TypeScript、Scala、Kotlin | 代码驱动，报告和 CI 集成友好                         | 开发团队维护压测脚本、CI/CD 集成 |
-| **k6**         | JavaScript 脚本，Go 引擎                    | 指标、阈值和 CI 集成友好                             | API 压测、SLO 回归               |
-| **Locust**     | Python                                      | Python 编写用户行为，支持分布式扩展                  | Python 团队、复杂用户行为建模    |
-| **wrk**        | C，支持 Lua 脚本                            | 轻量高性能                                           | HTTP 接口高并发基准测试          |
-| **ab**         | C                                           | 简单轻量，Apache 自带                                | 快速冒烟或粗略基准测试           |
-| **LoadRunner** | 商业套件                                    | 协议支持和管理能力强                                 | 企业级大规模测试                 |
+| Tool           | Language/script                             | Features                                                                                                       | Suitable for                                      |
+| -------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| **JMeter**     | Java, GUI + CLI                             | Full-featured; GUI is useful for writing and debugging scripts, while CLI is recommended for formal load tests | Complex enterprise scenarios and API-chain tests  |
+| **Gatling**    | Java, JavaScript, TypeScript, Scala, Kotlin | Code-driven; integrates well with reports and CI                                                               | Script maintenance by development teams and CI/CD |
+| **k6**         | JavaScript scripts, Go engine               | Good integration with metrics, thresholds, and CI                                                              | API load tests and SLO regression                 |
+| **Locust**     | Python                                      | Define user behavior in Python; supports distributed scaling                                                   | Python teams and complex user behavior models     |
+| **wrk**        | C, with Lua scripting support               | Lightweight and high-performance                                                                               | High-concurrency HTTP benchmarks                  |
+| **ab**         | C                                           | Simple, lightweight, included with Apache                                                                      | Quick smoke or rough benchmark tests              |
+| **LoadRunner** | Commercial suite                            | Broad protocol support and management features                                                                 | Large-scale enterprise testing                    |
 
-没记错的话，除了 **LoadRunner**，上面几款都有开源或免费版本。
+Except for **LoadRunner**, the tools above have open-source or free versions.
 
-**选型建议：**
+**Choosing a tool:**
 
-- **快速验证**：使用 `ab` 或 `wrk` 进行简单的接口压测。
-- **复杂场景**：使用 `JMeter`，支持录制脚本、参数化、断言等功能。
-- **代码驱动**：使用 `Gatling` 或 `k6`，适合开发人员维护脚本并接入 CI。
-- **复杂用户行为建模**：使用 `Locust`，适合用 Python 描述用户行为。
+- **Quick checks**: Use `ab` or `wrk` for simple endpoint tests.
+- **Complex scenarios**: Use `JMeter`, which supports script recording, parameterization, and assertions.
+- **Code-driven tests**: Use `Gatling` or `k6` to maintain scripts as code and integrate them with CI.
+- **Complex user behavior**: Use `Locust` to model user behavior in Python.
 
-### 前端常用
+### Frontend Tools
 
-| 工具                            | 主要用途                                                 |
-| ------------------------------- | -------------------------------------------------------- |
-| **Chrome DevTools Performance** | 录制并分析页面运行时性能、长任务、JS 执行和渲染瓶颈      |
-| **Lighthouse**                  | 自动审计页面性能、可访问性、最佳实践、SEO 等，并生成报告 |
-| **WebPageTest**                 | 从真实浏览器、不同网络或地域视角测试页面加载体验         |
-| **Fiddler/Charles**             | 抓包、改包、调试 HTTP 请求                               |
+| Tool                            | Main use                                                                                            |
+| ------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **Chrome DevTools Performance** | Record and analyze runtime performance, long tasks, JavaScript execution, and rendering bottlenecks |
+| **Lighthouse**                  | Audit page performance, accessibility, best practices, and SEO, then generate a report              |
+| **WebPageTest**                 | Test page loading in real browsers across networks and regions                                      |
+| **Fiddler/Charles**             | Capture, modify, and debug HTTP requests                                                            |
 
-## 常见的性能优化策略
+## Common Performance-Optimization Checks
 
-优化前先把请求链路跑清楚：入口网关、应用线程池、缓存、数据库、MQ、外部接口，哪个地方先排队，就先看哪里。
+Before optimizing, trace the request path: ingress gateway, application thread pool, cache, database, MQ, and external APIs. Start with the first place where requests queue.
 
-下面是一些性能优化时，我经常拿来自问的一些问题：
+Use these questions to guide performance work:
 
-| 优化方向   | 检查项                                                   |
-| ---------- | -------------------------------------------------------- |
-| **缓存**   | 系统是否需要缓存？热点数据是否已缓存？                   |
-| **架构**   | 系统架构本身是不是就有问题？是否需要读写分离、分库分表？ |
-| **并发**   | 系统是否存在死锁的地方？锁的粒度是否合理？               |
-| **内存**   | 系统是否存在内存泄漏？GC 是否频繁？                      |
-| **数据库** | 数据库索引使用是否合理？是否存在慢 SQL？                 |
-| **算法**   | 核心算法的时间复杂度是否可以优化？                       |
-| **IO**     | 是否存在不必要的网络调用？是否可以批量操作？             |
+| Area             | Questions to ask                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------- |
+| **Caching**      | Does the system need a cache? Are hot keys cached?                                    |
+| **Architecture** | Is the architecture itself a bottleneck? Are read/write splitting or sharding needed? |
+| **Concurrency**  | Are there deadlocks? Is lock granularity appropriate?                                 |
+| **Memory**       | Are there memory leaks? Is GC too frequent?                                           |
+| **Database**     | Are indexes used effectively? Are there slow queries?                                 |
+| **Algorithms**   | Can the time complexity of core algorithms be improved?                               |
+| **I/O**          | Are there unnecessary network calls? Can operations be batched?                       |
 
 <!-- @include: @article-footer.snippet.md -->

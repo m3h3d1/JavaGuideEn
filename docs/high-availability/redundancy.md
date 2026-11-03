@@ -1,216 +1,216 @@
 ---
-title: 冗余设计详解：RTO/RPO、高可用集群、同城灾备与异地多活
-description: 冗余设计详解，讲解硬件冗余、服务冗余、数据冗余和地域冗余，覆盖 RTO/RPO、高可用集群、主备模式、主主模式、同城灾备、异地灾备、同城多活、异地多活和故障转移。
-category: 高可用
+title: "Redundancy Design: RTO/RPO, High-Availability Clusters, and Disaster Recovery"
+description: A guide to hardware, service, data, and geographic redundancy, covering RTO/RPO, high-availability clusters, active-standby and active-active modes, disaster recovery, multi-site active-active deployments, and failover.
+category: High Availability
 icon: "mdi:server-network-outline"
 tag:
-  - 冗余设计
-  - 容灾
+  - Redundancy Design
+  - Disaster Recovery
 head:
   - - meta
     - name: keywords
-      content: 冗余设计,高可用集群,RTO,RPO,服务冗余,数据冗余,容灾架构,同城灾备,异地灾备,同城多活,异地多活,故障转移,主备模式,主主模式
+      content: redundancy design,high-availability cluster,RTO,RPO,service redundancy,data redundancy,disaster recovery architecture,same-city disaster recovery,geo-disaster recovery,same-city active-active,geo-active-active,failover,active-standby,active-active
 ---
 
-不管是硬件故障、机房断电，还是某个服务突然挂掉，单点永远是系统里最脆弱的环节。想让系统在各种意外情况下还能扛得住，最基本也最有效的办法就是 **冗余**——关键资源多备几份，坏了一份还有其他的顶上。
+Whether the problem is a hardware failure, a data-center outage, or a service crash, a single point of failure is the system's weakest link. One basic and effective way to tolerate failures is **redundancy**: keep extra copies of critical resources so another can take over if one fails.
 
-这篇文章会把冗余设计的核心概念和常见方案梳理一遍：从 RTO/RPO 这两个容灾指标，到高可用集群、同城灾备、异地多活，再到 Redis Sentinel、Keepalived 这些具体的故障转移方案。
+This guide covers the core ideas and common approaches to redundancy, from the disaster-recovery metrics RTO and RPO to high-availability clusters, disaster recovery across sites, geo-active-active architectures, and failover tools such as Redis Sentinel and Keepalived.
 
-## 什么是冗余？
+## What Is Redundancy?
 
-**冗余（Redundancy）** 是提升系统可用性和数据持久性的常见手段，其核心思想是 **通过部署多份相同的资源，当某一份资源出现故障时，其他资源可以接管其工作，从而保证系统的持续可用**。
+**Redundancy** is a common way to improve system availability and data durability. Its core idea is to **deploy multiple copies of a resource so that another can take over if one fails, keeping the system available**.
 
-冗余是提升系统可用性的基础手段，但冗余本身不等于高可用。只有配合故障检测、流量切换、数据复制、恢复演练和监控告警，才能真正降低故障影响。
+Redundancy is a foundation for availability, but it does not provide high availability by itself. It must be paired with failure detection, traffic switching, data replication, recovery drills, monitoring, and alerts to reduce the impact of failures.
 
-冗余设计可以从以下几个维度来理解：
+Redundancy can be considered across several dimensions:
 
-![冗余设计类型](./images/shared/redundancy-optimized-redundancy-types.png)
+![Types of redundancy](./images/shared/redundancy-optimized-redundancy-types.png)
 
-| 冗余类型     | 说明                   | 典型实现                                                     |
-| ------------ | ---------------------- | ------------------------------------------------------------ |
-| **硬件冗余** | 关键硬件设备部署多份   | 双电源、双网卡、RAID                                         |
-| **软件冗余** | 应用服务部署多个实例   | 集群部署、容器化多副本                                       |
-| **数据冗余** | 数据存储多份副本       | 数据库主从复制、分布式存储多副本                             |
-| **网络冗余** | 网络链路和设备冗余     | 多运营商接入、双核心交换机、双链路、负载均衡主备或多实例部署 |
-| **地域冗余** | 在不同地理位置部署系统 | 同城灾备、异地灾备、同城多活、异地多活                       |
+| Type           | Description                           | Typical implementations                                                   |
+| -------------- | ------------------------------------- | ------------------------------------------------------------------------- |
+| **Hardware**   | Multiple copies of critical hardware  | Redundant power supplies, network cards, RAID                             |
+| **Software**   | Multiple application instances        | Cluster deployment, multiple container replicas                           |
+| **Data**       | Multiple copies of stored data        | Database replication, replicas in distributed storage                     |
+| **Network**    | Redundant network links and devices   | Multiple carriers, dual core switches and links, redundant load balancers |
+| **Geographic** | Deploy systems in different locations | Same-city or geo-disaster recovery, same-city or geo-active-active        |
 
-**服务冗余**：同一个服务部署两个或多个实例，故障时自动切换到健康实例，大大减少系统的不可用时间，提高系统的可用性。
+**Service redundancy** deploys two or more instances of a service and switches to a healthy instance when one fails, reducing downtime and improving availability.
 
-**数据冗余**：同一数据存储多份副本，任一副本丢失仍可从其他副本恢复，从而提升数据持久性与可用性。
+**Data redundancy** stores multiple copies of the same data. If one copy is lost, another can restore it, improving data durability and availability.
 
-实际上，日常生活中也有很多冗余设计的例子。拿我自己来说，我对于重要文件的保存方法就是冗余思想的应用。我日常所使用的重要文件都会同步一份在 GitHub 以及个人云盘上，这样就可以保证即使电脑硬盘损坏，我也可以通过 GitHub 或者个人云盘找回自己的重要文件。
+Redundancy is common in everyday life too. For example, I sync important files to both GitHub and a personal cloud drive so I can recover them if my computer's disk fails.
 
-## 容灾核心指标：RTO 和 RPO
+## Core Disaster-Recovery Metrics: RTO and RPO
 
-在讨论容灾架构之前，需要先理解两个核心指标：
+Before discussing disaster-recovery architectures, understand these two key metrics:
 
-![RTO 与 RPO](./images/shared/redundancy-optimized-rto-rpo-timeline.png)
+![RTO and RPO](./images/shared/redundancy-optimized-rto-rpo-timeline.png)
 
-- **RPO（Recovery Point Objective，恢复点目标）**：系统在灾难发生后可接受的数据丢失窗口，也可以理解为恢复时数据最多允许回退到多久之前。RPO 越小，对同步复制、日志复制、跨站点一致性和写入延迟的要求越高。RPO = 0 通常意味着写入必须在多个故障域确认后才能返回，或者有等价的强一致提交机制；代价是写入延迟上升，并且在网络分区时需要在可用性和一致性之间做取舍。
-- **RTO（Recovery Time Objective，恢复时间目标）**：可容忍的 **最大恢复时间**，即从故障发生到系统恢复正常服务的时间。RTO=0 表示目标上不允许可感知中断，但在真实系统中更常见的表述是接近 0 或用户无感切换，仍要看故障检测、流量切换和客户端重试行为。
+- **RPO (Recovery Point Objective)**: The acceptable data-loss window after a disaster, or how far back restored data may go. A lower RPO places greater demands on synchronous replication, log replication, cross-site consistency, and write latency. RPO = 0 usually requires writes to be acknowledged by multiple failure domains or an equivalent strongly consistent commit mechanism. This increases write latency and requires a trade-off between availability and consistency during a network partition.
+- **RTO (Recovery Time Objective)**: The **maximum acceptable recovery time**, from the start of a failure until normal service resumes. RTO = 0 means no perceptible interruption is allowed by the target. In practice, teams more often aim for near-zero recovery or a seamless switch, which still depends on failure detection, traffic switching, and client retries.
 
-> **RTO/RPO 是目标，不是结果**。它们是业务对容灾能力的约束，实际恢复能力取决于故障检测速度、切换自动化程度、数据复制延迟、人工流程和运维能力。声明了某个 RPO/RTO 不等于生产环境一定能做到，必须通过定期演练和压测来验证。另外，不同业务链路可以有不同的 RTO/RPO 要求，不必全站统一。
+> **RTO and RPO are targets, not guarantees.** They express business requirements for disaster recovery. Actual recovery depends on detection speed, failover automation, replication lag, manual procedures, and operational capability. Stating an RTO or RPO does not prove that production can meet it; verify it with regular drills and load tests. Different business paths can have different targets.
 
-下面的 RPO/RTO 是典型配置下的 **量级参考**，实际结果取决于复制方式（同步/异步）、故障检测阈值、切换自动化程度和团队运维能力。多活是否能做到秒级 RTO/RPO，取决于流量调度、数据复制、故障检测、客户端重试、冲突解决和演练成熟度。
+The following RPO/RTO values are **rough references** for typical configurations. Actual results depend on replication mode (synchronous or asynchronous), failure-detection thresholds, failover automation, and operational capability. Whether an active-active system can achieve second-level RTO/RPO depends on traffic routing, data replication, failure detection, client retries, conflict resolution, and drill maturity.
 
-| 架构方案   | RPO            | RTO          | 成本 |
-| ---------- | -------------- | ------------ | ---- |
-| 单机无备份 | 可能全部丢失   | 不可预估     | 低   |
-| 本地备份   | 取决于备份周期 | 小时级       | 低   |
-| 同城灾备   | 秒级～分钟级   | 分钟～小时级 | 中   |
-| 异地灾备   | 分钟～小时级   | 小时级       | 中高 |
-| 同城多活   | 秒级           | 秒级         | 高   |
-| 异地多活   | 秒级           | 秒级         | 很高 |
+| Architecture                | RPO                        | RTO              | Cost        |
+| --------------------------- | -------------------------- | ---------------- | ----------- |
+| Single instance, no backup  | Potentially all data       | Unpredictable    | Low         |
+| Local backup                | Depends on backup interval | Hours            | Low         |
+| Same-city disaster recovery | Seconds to minutes         | Minutes to hours | Medium      |
+| Geo-disaster recovery       | Minutes to hours           | Hours            | Medium-high |
+| Same-city active-active     | Seconds                    | Seconds          | High        |
+| Geo-active-active           | Seconds                    | Seconds          | Very high   |
 
-## 冗余架构方案对比
+## Redundancy Architecture Patterns
 
-高可用集群（High Availability Cluster，简称 HA Cluster）、同城灾备、异地灾备、同城多活和异地多活是冗余思想在高可用系统设计中最典型的应用。
+High-availability clusters (HA clusters), same-city and geo-disaster recovery, and same-city and geo-active-active deployments are common applications of redundancy in high-availability design.
 
-![容灾架构对比](./images/shared/redundancy-optimized-disaster-recovery-comparison.png)
+![Comparison of disaster-recovery architectures](./images/shared/redundancy-optimized-disaster-recovery-comparison.png)
 
-### 高可用集群
+### High-Availability Clusters
 
-**高可用集群** 是指同一个服务部署两个或多个实例，当正在使用的服务突然挂掉的话，可以切换到另外一台服务，从而保证服务的高可用。
+A **high-availability cluster** runs two or more instances of a service and switches to another instance if the one in use fails.
 
-高可用集群有两种常见模式：
+Two common cluster modes are:
 
-![主备与主主模式](./images/shared/redundancy-optimized-ha-cluster-modes.png)
+![Active-standby and active-active modes](./images/shared/redundancy-optimized-ha-cluster-modes.png)
 
-| 模式                           | 说明                       | 优点                     | 缺点                                                |
-| ------------------------------ | -------------------------- | ------------------------ | --------------------------------------------------- |
-| **主备模式（Active-Standby）** | 主节点提供服务，备节点待命 | 实现简单，单主写入易控制 | 资源利用率低，备节点闲置                            |
-| **主主模式（Active-Active）**  | 多个节点同时提供服务       | 资源利用率高，无单点故障 | 写入冲突需要应用层解决；自增 ID、唯一约束等可能冲突 |
+| Mode               | Description                                    | Advantages                                        | Disadvantages                                                                                        |
+| ------------------ | ---------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Active-standby** | The primary serves requests; the standby waits | Simple; single-writer behavior is easy to control | Low resource utilization; standby is idle                                                            |
+| **Active-active**  | Multiple nodes serve requests at the same time | High resource utilization; no single active node  | The application must resolve write conflicts; auto-increment IDs and unique constraints may conflict |
 
-主备模式通常更容易控制写入路径；如果是同步复制，一致性更好但写延迟更高；如果是异步复制，切换时可能丢失尚未复制的数据。高可用集群单纯是服务的冗余，**并没有强调地域**。同城灾备、异地灾备、同城多活和异地多活实现了地域上的冗余。
+Active-standby usually makes the write path easier to control. Synchronous replication improves consistency but increases write latency; asynchronous replication may lose data that has not reached the standby when failover occurs. An HA cluster provides service redundancy but **does not specify geographic separation**. Same-city or geo-disaster recovery and active-active deployments add geographic redundancy.
 
-### 同城灾备
+### Same-City Disaster Recovery
 
-**同城灾备** 不是简单地将服务冗余部署在同一个机房内，而是将主服务和备用服务分别部署在 **同一个城市的不同机房** 中。同城灾备通常指主备站点位于同一城市不同机房，常见形态是 active/passive：主站点处理生产流量，备站点平时不承载或只承载少量验证流量，故障时接管。具体是冷备、温备还是热备，要看成本和 RTO 要求。
+**Same-city disaster recovery** means deploying the primary and standby services in **separate data centers in the same city**, not merely in different racks in one data center. A common active-passive setup sends production traffic to the primary site; the standby handles no traffic or only a small amount of validation traffic until failover. Whether it is cold, warm, or hot standby depends on cost and RTO requirements.
 
-这样可以避免单个机房出现停电、火灾等故障时导致服务完全不可用。
+This prevents an outage at one data center, such as a power failure or fire, from making the service completely unavailable.
 
-- **适用场景**：对 RTO 要求较高（分钟级），成本有限的企业。
-- **典型配置**：同城双机房距离和延迟没有统一标准，通常需要通过专线时延、故障域隔离、供电和运营商路径独立性来评估。同步复制是否可接受，要以实际 RTT 和写入延迟预算为准。
+- **Suitable for**: Organizations with minute-level RTO requirements and limited budgets.
+- **Typical setup**: There is no universal distance or latency standard for two sites in one city. Evaluate dedicated-link latency, failure-domain separation, independent power, and carrier paths. Decide whether synchronous replication is acceptable based on actual RTT and the write-latency budget.
 
-### 异地灾备
+### Geo-Disaster Recovery
 
-**异地灾备** 类似于同城灾备，不同的是，相同服务部署在 **异地（通常距离较远，甚至是在不同的城市或者国家）的不同机房中**。
+**Geo-disaster recovery** is similar to same-city disaster recovery, but deploys the same services in data centers **far apart, often in different cities or countries**.
 
-- **适用场景**：需要防范区域性灾难（地震、洪水）的核心业务系统。
-- **挑战**：网络延迟较大，数据同步通常采用异步方式，可能存在数据丢失。
+- **Suitable for**: Critical systems that need protection from regional disasters such as earthquakes or floods.
+- **Challenge**: Network latency is higher, so data is usually replicated asynchronously and some data loss may occur.
 
-### 同城多活
+### Same-City Active-Active
 
-**同城多活** 类似于同城灾备，但不再区分纯主备，多个同城机房都可以承载生产流量，这样可以充分利用系统资源，提高系统的并发。
+**Same-city active-active** resembles same-city disaster recovery, but multiple data centers in the city handle production traffic instead of using a primary and standby. This uses resources more fully and can increase system throughput.
 
-- **适用场景**：对性能和可用性都有较高要求的系统。
-- **技术要点**：需要解决数据同步、流量调度、会话管理等问题。
+- **Suitable for**: Systems with high performance and availability requirements.
+- **Technical considerations**: Data replication, traffic routing, and session management.
 
-### 异地多活
+### Geo-Active-Active
 
-**异地多活** 将服务部署在 **异地的不同机房** 中，并且，它们可以 **同时对外提供服务**。
+**Geo-active-active** deploys services in **data centers in different regions**, with all sites **serving traffic at the same time**.
 
-和传统的灾备设计相比，同城多活和异地多活最明显的改变在于 **"多活"**，即所有站点都是同时在对外提供服务的。异地多活是为了应对突发状况，比如火灾、地震等自然或者人为灾害，以及区域性网络中断、机房级故障、合规要求等场景。
+Compared with traditional disaster recovery, the key feature of same-city and geo-active-active is that **all sites serve traffic simultaneously**. Geo-active-active can help with fires, earthquakes, regional network outages, data-center failures, and regulatory requirements.
 
-同城和异地的主要区别在于 **机房之间的距离**。异地通常距离较远，甚至是在不同的城市或者国家。
+The main difference between same-city and geo-active-active is **the distance between data centers**. Geo deployments are farther apart, often in different cities or countries.
 
-### 冷备 / 温备 / 热备 / 多活的层次
+### Cold, Warm, and Hot Standby, and Active-Active
 
-从容灾等级来看，从低到高可以形成如下连续光谱：
+Disaster-recovery levels form a spectrum from lower to higher readiness:
 
-![容灾等级光谱](./images/shared/redundancy-optimized-dr-level-spectrum.png)
+![Disaster-recovery readiness spectrum](./images/shared/redundancy-optimized-dr-level-spectrum.png)
 
-| 容灾等级 | 资源状态                       | 恢复速度 | 成本 | 典型场景                   |
-| -------- | ------------------------------ | -------- | ---- | -------------------------- |
-| **冷备** | 备用资源未运行，需手动启动     | 小时～天 | 低   | 非核心业务                 |
-| **温备** | 部分资源常驻运行，需扩容接管   | 分钟级   | 中   | 一般业务容灾               |
-| **热备** | 资源和数据持续同步，可快速切换 | 秒～分钟 | 高   | 核心业务                   |
-| **多活** | 多站点同时承载生产流量         | 接近实时 | 很高 | 对可用性要求极高的核心业务 |
+| Level             | Resource state                                                      | Recovery time      | Cost      | Typical use case                                        |
+| ----------------- | ------------------------------------------------------------------- | ------------------ | --------- | ------------------------------------------------------- |
+| **Cold standby**  | Backup resources are stopped and must be started manually           | Hours to days      | Low       | Noncritical services                                    |
+| **Warm standby**  | Some resources run continuously and must be scaled up on takeover   | Minutes            | Medium    | General disaster recovery                               |
+| **Hot standby**   | Resources and data are continuously synchronized for quick failover | Seconds to minutes | High      | Critical services                                       |
+| **Active-active** | Multiple sites serve production traffic                             | Near real time     | Very high | Critical services with strict availability requirements |
 
-不同业务可以采用不同等级，不必全系统追求多活。关键在于根据业务影响面、故障概率和建设成本做取舍。
+Different services can use different levels; there is no need to make the entire system active-active. Choose based on business impact, failure probability, and implementation cost.
 
-## 故障转移机制
+## Failover
 
-光有冗余还不够，还需要配合 **故障转移（Failover）** 机制。所谓故障转移，简单来说就是 **将流量从故障节点快速切换到健康节点**。
+Redundancy alone is not enough; it needs a **failover** mechanism. Failover **quickly moves traffic from a failed node to a healthy one**.
 
-故障转移可以是自动的，也可以是自动检测后人工确认。对无状态服务和缓存系统，通常追求自动切换；对数据库主切、跨地域切流、资金链路等高风险场景，很多团队会保留人工确认或审批步骤。
+Failover can be fully automatic or require manual confirmation after automatic detection. Stateless services and caches usually favor automatic switching. For high-risk operations such as database promotion, cross-region traffic shifts, or financial workflows, teams may retain human confirmation or approval.
 
-故障转移通常包含以下几个步骤：
+Failover usually includes these steps:
 
-![故障转移流程](./images/shared/redundancy-optimized-failover-process.png)
+![Failover process](./images/shared/redundancy-optimized-failover-process.png)
 
-1. **故障检测**：通过心跳检测、健康检查等机制发现故障节点。检测阈值要权衡误判和漏判，太敏感容易误切，太保守会延长故障时间。
-2. **故障确认**：避免误判，通常需要多次检测确认，并通过多数派投票、仲裁节点或租约机制防止脑裂。
-3. **故障切换**：将流量切换到备用节点。
-4. **故障通知**：发送告警通知运维人员。
-5. **故障恢复**：故障节点恢复后重新加入集群。
+1. **Failure detection**: Detect the failed node with heartbeats or health checks. Set thresholds to balance false positives and missed failures: overly sensitive checks cause unnecessary failovers, while overly conservative checks prolong outages.
+2. **Failure confirmation**: Use repeated checks to avoid false positives, and use quorum voting, an arbitrator, or leases to prevent split brain.
+3. **Failover**: Move traffic to a standby node.
+4. **Notification**: Alert operations staff.
+5. **Recovery**: Rejoin the recovered node to the cluster.
 
-对于有状态系统，还需要 **fencing 机制**，确保旧主在失联或恢复后不能继续对共享资源写入。否则即使新主切换成功，也可能出现双主写入和脑裂问题。常见手段包括 fencing token、STONITH（Shoot The Other Node In The Head）、写入令牌和租约。故障恢复后旧主不能直接重新加入写路径，需要先同步数据并通过仲裁确认。
+Stateful systems also need **fencing** to prevent the old primary from writing to shared resources after a disconnection or recovery. Without it, a successful promotion can still lead to dual-primary writes and split brain. Common techniques include fencing tokens, STONITH (Shoot The Other Node In The Head), write tokens, and leases. After recovery, the old primary must not rejoin the write path until its data is synchronized and quorum approval is obtained.
 
-![Fencing 防脑裂](./images/shared/redundancy-optimized-stateful-failover-fencing.png)
+![Fencing to prevent split brain](./images/shared/redundancy-optimized-stateful-failover-fencing.png)
 
-### Redis 哨兵模式示例
+### Redis Sentinel Example
 
-Redis Sentinel 可以监控 primary（旧文档中也常称 master）节点，在多数 Sentinel 判断 primary 故障后选举并提升某个 replica（旧文档中也常称 slave）为新的 primary；但它不保证 RPO=0。由于 Redis 复制通常是异步的，故障切换时可能丢失尚未复制到 replica 的数据。
+Redis Sentinel monitors the primary (also called master in older documentation). After a majority of Sentinels consider it down, they elect and promote a replica (called a slave in older documentation) to primary. Sentinel does not guarantee RPO = 0: Redis replication is usually asynchronous, so failover may lose data that has not reached the replica.
 
-生产常见部署至少 3 个 Sentinel。需要注意 quorum 只表示多少 Sentinel 同意 primary 客观下线；实际发起 failover 还涉及 Sentinel 多数派和 leader 选举，因此不要把 quorum 简单理解成 Sentinel 总数的一半。重点关注 `down-after-milliseconds`（实例不可达多久后被认为下线）、`failover-timeout`（failover 超时时间）等参数。
+Production deployments commonly use at least three Sentinels. `quorum` specifies how many Sentinels must agree that the primary is objectively down; initiating failover also requires a Sentinel majority and leader election. Do not treat `quorum` as simply half the total number of Sentinels. Pay attention to settings such as `down-after-milliseconds` (how long an instance must be unreachable before being considered down) and `failover-timeout` (the failover timeout).
 
-生产环境使用 Redis Sentinel 时，建议关注以下观测指标：
+For Redis Sentinel in production, monitor:
 
-| 指标类别   | 具体指标                                           |
-| ---------- | -------------------------------------------------- |
-| 复制延迟   | replica 相对 primary 的 replication lag            |
-| 故障检测   | `down-after-milliseconds` 触发次数                 |
-| 切换耗时   | failover 从触发到完成的时间                        |
-| 客户端感知 | 客户端重连耗时、主从切换期间写失败率               |
-| 集群状态   | Sentinel quorum / majority 状态、Sentinel 节点存活 |
+| Category          | Metrics                                                          |
+| ----------------- | ---------------------------------------------------------------- |
+| Replication lag   | Replica lag relative to the primary                              |
+| Failure detection | Number of `down-after-milliseconds` triggers                     |
+| Failover duration | Time from failover initiation to completion                      |
+| Client impact     | Client reconnection time and write-failure rate during promotion |
+| Cluster status    | Sentinel quorum and majority status; Sentinel availability       |
 
-![Redis 哨兵模式](./images/shared/redundancy-optimized-redis-sentinel.png)
+![Redis Sentinel](./images/shared/redundancy-optimized-redis-sentinel.png)
 
-### Nginx + Keepalived 示例
+### Nginx and Keepalived Example
 
-Nginx 可以结合 Keepalived 来实现高可用。Keepalived 基于 VRRP 管理 VIP，可以让 VIP 在主备节点之间漂移，解决入口 IP 高可用问题。如果 Nginx 主服务器宕机的话，Keepalived 可以基于 VRRP 协议自动进行故障转移，备用 Nginx 服务器升级为主服务。由于使用的是 **虚拟 IP（VIP）**，对外 IP 不会改变。
+Nginx can use Keepalived for high availability. Keepalived manages a virtual IP (VIP) with VRRP and can move it between primary and standby nodes, providing a highly available ingress IP. If the primary Nginx server fails, Keepalived can automatically fail over through VRRP and promote the standby Nginx server. The external IP remains the same because the setup uses a **VIP**.
 
-需要注意的是：
+Keep in mind:
 
-- **Keepalived 不保证已有 TCP 连接无损迁移**，切换还受 ARP / 邻居表刷新、二层网络、云厂商 VIP 支持和健康检查脚本影响。
-- 适合单机房或同二层网络下 VIP 漂移，不适合直接解决跨地域流量调度。
-- 云环境下要确认是否支持自定义 VIP 和 ARP / 路由切换。
-- 健康检查脚本要检查 Nginx 进程和业务端口，而不只是 Keepalived 进程本身。
-- 生产中还要根据业务选择抢占或非抢占模式，避免主节点恢复后发生不必要的二次切换。
+- **Keepalived does not guarantee lossless migration of existing TCP connections.** Failover also depends on ARP or neighbor-table refresh, the Layer 2 network, cloud-provider VIP support, and health-check scripts.
+- VIP movement is suited to one data center or a shared Layer 2 network; it does not directly solve cross-region traffic routing.
+- In a cloud environment, confirm support for custom VIPs and ARP or route switching.
+- Health checks should verify the Nginx process and service port, not only the Keepalived process.
+- Choose preemptive or non-preemptive mode based on the workload to avoid an unnecessary second failover when the primary recovers.
 
-![Nginx 高可用架构](./images/shared/redundancy-optimized-nginx-keepalived.png)
+![Nginx high-availability architecture](./images/shared/redundancy-optimized-nginx-keepalived.png)
 
-## 异地多活的挑战
+## Challenges of Geo-Active-Active
 
-异地多活架构实施起来非常难，需要考虑的因素非常多：
+Geo-active-active architectures are difficult to implement and involve many considerations:
 
-![异地多活挑战](./images/shared/redundancy-optimized-geo-active-active-challenges.png)
+![Challenges of geo-active-active](./images/shared/redundancy-optimized-geo-active-active-challenges.png)
 
-| 挑战           | 说明                           | 解决思路                                                                                                        |
-| -------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------- |
-| **数据一致性** | 多个机房数据如何保持一致       | 单元化路由、最终一致性、TCC/Saga、冲突解决机制                                                                  |
-| **网络延迟**   | 异地机房之间网络延迟较大       | 就近接入、数据分区                                                                                              |
-| **流量调度**   | 如何将用户请求分配到合适的机房 | DNS 智能解析、GSLB                                                                                              |
-| **会话管理**   | 用户会话如何在多机房之间共享   | 优先做无状态设计或按用户单元路由固定到同一站点；跨地域共享 session 虽然可行，但会引入延迟、一致性和故障隔离问题 |
-| **成本**       | 多机房建设和运维成本高         | 按业务重要性分级部署                                                                                            |
+| Challenge              | Description                                   | Possible approach                                                                                                                                                                  |
+| ---------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Data consistency**   | Keep data consistent across sites             | Cell-based routing, eventual consistency, TCC/Saga, and conflict resolution                                                                                                        |
+| **Network latency**    | High latency between distant sites            | Route users to nearby sites and partition data                                                                                                                                     |
+| **Traffic routing**    | Assign users to the appropriate site          | Smart DNS and GSLB                                                                                                                                                                 |
+| **Session management** | Share user sessions across sites              | Prefer stateless design or route each user to the same cell and site. Cross-region session sharing is possible, but adds latency and consistency and failure-isolation challenges. |
+| **Cost**               | High cost to build and operate multiple sites | Deploy by business criticality                                                                                                                                                     |
 
-异地多活的核心取舍可以用 CAP 来理解：跨地域网络延迟和分区不可避免，系统必须在强一致性和可用性之间取舍。但异地多活的工程难点不仅限于 CAP，还包括跨地域延迟、流量调度、数据分片、冲突解决、成本、合规和演练复杂度。常见做法是按用户或地域做单元化分片，让大部分读写落在同一机房；跨单元操作再通过 TCC / Saga、对账补偿或业务冲突解决保证最终一致。
+The core trade-offs in geo-active-active can be understood through CAP: cross-region latency and network partitions are unavoidable, so systems must trade off strong consistency and availability. The engineering challenges extend beyond CAP to latency, traffic routing, data partitioning, conflict resolution, cost, compliance, and operational drills. A common approach is to partition into cells by user or region so most reads and writes stay within one site. Cross-cell operations then use TCC or Saga, reconciliation and compensation, or business-level conflict resolution to achieve eventual consistency.
 
-**并不是所有业务都需要异地多活**。以下类型的业务要慎重评估：
+**Not every business needs geo-active-active.** Evaluate these cases carefully:
 
-- 强一致写入频繁且跨地域冲突多的业务
-- 无法按用户 / 地域 / 租户切分的数据模型
-- 对账补偿能力不足的资金链路
-- 团队没有演练和运维能力支撑
-- 建设成本高于故障损失预期的系统
+- Workloads with frequent strongly consistent writes and many cross-region conflicts.
+- Data models that cannot be partitioned by user, region, or tenant.
+- Financial workflows without adequate reconciliation and compensation.
+- Teams without the operational capability to run drills and maintain the system.
+- Systems whose implementation cost exceeds the expected cost of failures.
 
-通常要按业务影响面、故障概率、建设成本综合评估。
+Evaluate business impact, failure probability, and implementation cost together.
 
-如果你想要深入学习异地多活相关的知识，推荐以下资料：
+For further reading on geo-active-active architectures:
 
-- [搞懂异地多活，看这篇就够了 - 水滴与银弹 - 2021](https://mp.weixin.qq.com/s/T6mMDdtTfBuIiEowCpqu6Q)
-- [四步构建异地多活](https://mp.weixin.qq.com/s/hMD-IS__4JE5_nQhYPYSTg)
-- [《从零开始学架构》— 28 | 业务高可用的保障：异地多活架构](http://gk.link/a/10pKZ)
+- [Geo-Active-Active Explained: One Guide to Get Started — Shui Di and Silver Bullet, 2021](https://mp.weixin.qq.com/s/T6mMDdtTfBuIiEowCpqu6Q)
+- [Build a Geo-Active-Active Architecture in Four Steps](https://mp.weixin.qq.com/s/hMD-IS__4JE5_nQhYPYSTg)
+- [Learn Architecture from Scratch — 28: Geo-Active-Active for Business Availability](http://gk.link/a/10pKZ)
 
 <!-- @include: @article-footer.snippet.md -->

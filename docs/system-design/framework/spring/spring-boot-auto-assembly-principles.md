@@ -1,37 +1,36 @@
 ---
-title: SpringBoot 自动装配原理详解
-description: SpringBoot自动装配原理深度解析，详解@EnableAutoConfiguration、SpringFactories加载机制及条件注解工作原理。
-category: 框架
+title: How Spring Boot Auto-Configuration Works
+description: An explanation of Spring Boot auto-configuration, including @EnableAutoConfiguration, SpringFactories loading, conditional annotations, and creating a custom starter.
+category: Frameworks
 tag:
-  - SpringBoot
+  - Spring Boot
 head:
   - - meta
     - name: keywords
-      content: Spring Boot自动装配,AutoConfiguration,EnableAutoConfiguration,SpringFactories,条件注解,Starter,Spring Boot原理
+      content: Spring Boot Auto-Configuration,AutoConfiguration,EnableAutoConfiguration,SpringFactories,Conditional Annotations,Starter,Spring Boot Internals
 ---
 
-> 作者：[Miki-byte-1024](https://github.com/Miki-byte-1024) & [Snailclimb](https://github.com/Snailclimb)
+> Authors: [Miki-byte-1024](https://github.com/Miki-byte-1024) and [Snailclimb](https://github.com/Snailclimb)
 
-每次问到 Spring Boot， 面试官非常喜欢问这个问题：“讲述一下 SpringBoot 自动装配原理？”。
+Interviewers often ask about Spring Boot: “Can you explain how Spring Boot auto-configuration works?”
 
-我觉得我们可以从以下几个方面回答：
+I would answer by covering these questions:
 
-1. 什么是 SpringBoot 自动装配？
-2. SpringBoot 是如何实现自动装配的？如何实现按需加载？
-3. 如何实现一个 Starter？
+1. What is Spring Boot auto-configuration?
+2. How does Spring Boot implement auto-configuration and load configurations only when needed?
+3. How do you create a starter?
 
-篇幅问题，这篇文章并没有深入，小伙伴们也可以直接使用 debug 的方式去看看 SpringBoot 自动装配部分的源代码。
+To keep the article concise, it does not cover every detail. You can also use a debugger to inspect Spring Boot's auto-configuration source code directly.
 
-## 前言
+## Introduction
 
-使用过 Spring 的小伙伴，一定有被 XML 配置统治的恐惧。即使 Spring 后面引入了基于注解的配置，我们在开启某些 Spring 特性或者引入第三方依赖的时候，还是需要用 XML 或 Java 进行显式配置。
+Anyone who has used Spring may remember feeling overwhelmed by XML configuration. Even after Spring introduced annotation-based configuration, enabling some Spring features or adding a third-party dependency still required explicit XML or Java configuration.
 
-举个例子。没有 Spring Boot 的时候，我们写一个 RestFul Web 服务，还首先需要进行如下配置。
+For example, before Spring Boot, a RESTful Web service required configuration like this:
 
 ```java
 @Configuration
-public class RESTConfiguration
-{
+public class RESTConfiguration {
     @Bean
     public View jsonTemplate() {
         MappingJackson2JsonView view = new MappingJackson2JsonView();
@@ -46,11 +45,12 @@ public class RESTConfiguration
 }
 ```
 
-`spring-servlet.xml`
+`spring-servlet.xml`:
 
 ```xml
 <beans xmlns="http://www.springframework.org/schema/beans"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context"
     xmlns:mvc="http://www.springframework.org/schema/mvc"
     xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
     http://www.springframework.org/schema/context/ http://www.springframework.org/schema/context/spring-context.xsd
@@ -59,14 +59,13 @@ public class RESTConfiguration
     <context:component-scan base-package="com.howtodoinjava.demo" />
     <mvc:annotation-driven />
 
-    <!-- JSON Support -->
-    <bean name="viewResolver" class="org.springframework.web.servlet.view.BeanNameViewResolver"/>
-    <bean name="jsonTemplate" class="org.springframework.web.servlet.view.json.MappingJackson2JsonView"/>
-
+    <!-- JSON support -->
+    <bean name="viewResolver" class="org.springframework.web.servlet.view.BeanNameViewResolver" />
+    <bean name="jsonTemplate" class="org.springframework.web.servlet.view.json.MappingJackson2JsonView" />
 </beans>
 ```
 
-但是，Spring Boot 项目，我们只需要添加相关依赖，无需配置，通过启动下面的 `main` 方法即可。
+In a Spring Boot project, you can add the relevant dependencies and start the application without writing this configuration:
 
 ```java
 @SpringBootApplication
@@ -77,17 +76,17 @@ public class DemoApplication {
 }
 ```
 
-并且，我们通过 Spring Boot 的全局配置文件 `application.properties`或`application.yml`即可对项目进行设置比如更换端口号，配置 JPA 属性等等。
+You can also configure the project through Spring Boot's global configuration file, `application.properties` or `application.yml`, for example to change the port or configure JPA properties.
 
-**为什么 Spring Boot 使用起来这么酸爽呢？** 这得益于其自动装配。**自动装配可以说是 Spring Boot 的核心，那究竟什么是自动装配呢？**
+**Why is Spring Boot so convenient to use?** Auto-configuration is a major reason. **It is one of Spring Boot's core features. What exactly is auto-configuration?**
 
-## 什么是 SpringBoot 自动装配？
+## What Is Spring Boot Auto-Configuration?
 
-我们现在提到自动装配的时候，一般会和 Spring Boot 联系在一起。但是，实际上 Spring Framework 早就实现了这个功能。Spring Boot 只是在其基础上，通过 SPI 的方式，做了进一步优化。
+Auto-configuration is often associated with Spring Boot, but the Spring Framework had similar capabilities earlier. Spring Boot builds on them and further improves the process through SPI mechanisms.
 
-> 在 Spring Boot 2.6 及更早版本中，自动配置类主要通过外部 jar 包中的 `META-INF/spring.factories` 注册。Spring Boot 2.7 引入了 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`，同时兼容旧的注册方式；Spring Boot 3.0 移除了通过 `spring.factories` 中 `EnableAutoConfiguration` key 注册自动配置类的支持，但 `spring.factories` 的其他用途不受影响。
+> In Spring Boot 2.6 and earlier, auto-configuration classes were mainly registered through `META-INF/spring.factories` in external JARs. Spring Boot 2.7 introduced `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` and supported both registration mechanisms. Spring Boot 3.0 removed support for registering auto-configuration classes under the `EnableAutoConfiguration` key in `spring.factories`, but other uses of `spring.factories` are unaffected.
 
-没有 Spring Boot 的情况下，如果我们需要引入第三方依赖，需要手动配置，非常麻烦。但是，Spring Boot 中，我们直接引入一个 starter 即可。比如你想要在项目中使用 redis 的话，直接在项目中引入对应的 starter 即可。
+Without Spring Boot, adding a third-party dependency often requires manual configuration. With Spring Boot, you can add a starter. For example, to use Redis, add the corresponding starter to the project:
 
 ```xml
 <dependency>
@@ -96,55 +95,54 @@ public class DemoApplication {
 </dependency>
 ```
 
-引入 starter 之后，我们通过少量注解和一些简单的配置就能使用第三方组件提供的功能了。
+After adding the starter, a small amount of configuration and a few annotations are usually enough to use the third-party component.
 
-在我看来，自动装配可以简单理解为：**通过注解或者一些简单的配置就能在 Spring Boot 的帮助下实现某块功能。**
+In simple terms, auto-configuration means **using annotations or a small amount of configuration to enable a feature with Spring Boot's help**.
 
-## SpringBoot 是如何实现自动装配的？
+## How Does Spring Boot Implement Auto-Configuration?
 
-我们先看一下 SpringBoot 的核心注解 `SpringBootApplication` 。
+First, consider Spring Boot's core `@SpringBootApplication` annotation:
 
 ```java
-@Target({ElementType.TYPE})
+@Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Inherited
-<1.>@SpringBootConfiguration
-<2.>@ComponentScan
-<3.>@EnableAutoConfiguration
+@SpringBootConfiguration // 1
+@ComponentScan          // 2
+@EnableAutoConfiguration // 3
 public @interface SpringBootApplication {
-
 }
 
-@Target({ElementType.TYPE})
+@Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Configuration //实际上它也是一个配置类
+@Configuration // This is also a configuration class.
 public @interface SpringBootConfiguration {
 }
 ```
 
-大概可以把 `@SpringBootApplication`看作是 `@Configuration`、`@EnableAutoConfiguration`、`@ComponentScan` 注解的集合。根据 SpringBoot 官网，这三个注解的作用分别是：
+You can think of `@SpringBootApplication` as a combination of `@Configuration`, `@EnableAutoConfiguration`, and `@ComponentScan`. According to the Spring Boot documentation, they have these roles:
 
-- `@EnableAutoConfiguration`：启用 SpringBoot 的自动配置机制
-- `@Configuration`：允许在上下文中注册额外的 bean 或导入其他配置类
-- `@ComponentScan`：扫描被`@Component` (`@Service`,`@Controller`)注解的 bean，注解默认会扫描启动类所在的包下所有的类 ，可以自定义不扫描某些 bean。如下图所示，容器中将排除`TypeExcludeFilter`和`AutoConfigurationExcludeFilter`。
+- `@EnableAutoConfiguration`: Enables Spring Boot's auto-configuration mechanism.
+- `@Configuration`: Allows additional beans to be registered in the context or other configuration classes to be imported.
+- `@ComponentScan`: Scans for beans annotated with `@Component`, `@Service`, or `@Controller`. By default, it scans the package containing the application class and its subpackages. You can customize the scan to exclude beans. As shown below, the container excludes `TypeExcludeFilter` and `AutoConfigurationExcludeFilter`.
 
 ![](../../images/shared/bcc73490afbe4c6ba62acde6a94ffdfd-tplv-k3u1fbpfcp-watermark.png)
 
-`@EnableAutoConfiguration` 是实现自动装配的重要注解，我们以这个注解入手。
+`@EnableAutoConfiguration` is central to auto-configuration, so let's start there.
 
-### @EnableAutoConfiguration:实现自动装配的核心注解
+### `@EnableAutoConfiguration`: The Core Auto-Configuration Annotation
 
-`EnableAutoConfiguration` 只是一个简单地注解，自动装配核心功能的实现实际是通过 `AutoConfigurationImportSelector`类。
+`@EnableAutoConfiguration` is a simple annotation. The core functionality is implemented by `AutoConfigurationImportSelector`.
 
 ```java
-@Target({ElementType.TYPE})
+@Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Inherited
-@AutoConfigurationPackage //作用：将main包下的所有组件注册到容器中
-@Import({AutoConfigurationImportSelector.class}) //加载自动装配类 xxxAutoconfiguration
+@AutoConfigurationPackage // Registers components from the main package in the container.
+@Import(AutoConfigurationImportSelector.class) // Loads auto-configuration classes.
 public @interface EnableAutoConfiguration {
     String ENABLED_OVERRIDE_PROPERTY = "spring.boot.enableautoconfiguration";
 
@@ -154,126 +152,137 @@ public @interface EnableAutoConfiguration {
 }
 ```
 
-我们现在重点分析下`AutoConfigurationImportSelector` 类到底做了什么？
+What does `AutoConfigurationImportSelector` do?
 
-### AutoConfigurationImportSelector:加载自动装配类
+### `AutoConfigurationImportSelector`: Loading Auto-Configuration Classes
 
-下面以 Spring Boot 2.1.x 的源码节选为例分析 `AutoConfigurationImportSelector`。这些代码省略了部分不影响流程的实现，不能作为独立类直接编译。Spring Boot 2.7 及以上版本的候选自动配置类主要从 `AutoConfiguration.imports` 文件读取，具体源码结构与下面的旧版本代码有所不同。
+The following excerpt from Spring Boot 2.1.x illustrates `AutoConfigurationImportSelector`. Some implementation details are omitted, so this is not a complete class that can be compiled independently. In Spring Boot 2.7 and later, candidate auto-configuration classes are primarily read from `AutoConfiguration.imports`, so the source code differs from the older versions shown below.
 
-`AutoConfigurationImportSelector`类的继承体系如下：
+The class hierarchy of `AutoConfigurationImportSelector` is:
 
 ```java
-public class AutoConfigurationImportSelector implements DeferredImportSelector, BeanClassLoaderAware, ResourceLoaderAware, BeanFactoryAware, EnvironmentAware, Ordered {
-
+public class AutoConfigurationImportSelector implements
+        DeferredImportSelector,
+        BeanClassLoaderAware,
+        ResourceLoaderAware,
+        BeanFactoryAware,
+        EnvironmentAware,
+        Ordered {
 }
 
 public interface DeferredImportSelector extends ImportSelector {
-
 }
 
 public interface ImportSelector {
-    String[] selectImports(AnnotationMetadata var1);
+    String[] selectImports(AnnotationMetadata metadata);
 }
 ```
 
-可以看出，`AutoConfigurationImportSelector` 类实现了 `ImportSelector`接口，也就实现了这个接口中的 `selectImports`方法，该方法主要用于**获取所有符合条件的类的全限定类名，这些类需要被加载到 IoC 容器中**。
+`AutoConfigurationImportSelector` implements `ImportSelector` and its `selectImports()` method. This method **gets the fully qualified class names of configurations that meet the conditions and should be loaded into the IoC container**.
 
 ```java
 private static final String[] NO_IMPORTS = new String[0];
 
 public String[] selectImports(AnnotationMetadata annotationMetadata) {
-        // <1>.判断自动装配开关是否打开
-        if (!this.isEnabled(annotationMetadata)) {
-            return NO_IMPORTS;
-        } else {
-          //<2>.获取所有需要装配的bean
-            AutoConfigurationMetadata autoConfigurationMetadata = AutoConfigurationMetadataLoader.loadMetadata(this.beanClassLoader);
-            AutoConfigurationImportSelector.AutoConfigurationEntry autoConfigurationEntry = this.getAutoConfigurationEntry(autoConfigurationMetadata, annotationMetadata);
-            return StringUtils.toStringArray(autoConfigurationEntry.getConfigurations());
-        }
+    // 1. Check whether auto-configuration is enabled.
+    if (!this.isEnabled(annotationMetadata)) {
+        return NO_IMPORTS;
     }
+
+    // 2. Find the candidate configurations.
+    AutoConfigurationMetadata autoConfigurationMetadata =
+            AutoConfigurationMetadataLoader.loadMetadata(this.beanClassLoader);
+    AutoConfigurationImportSelector.AutoConfigurationEntry autoConfigurationEntry =
+            this.getAutoConfigurationEntry(autoConfigurationMetadata, annotationMetadata);
+    return StringUtils.toStringArray(autoConfigurationEntry.getConfigurations());
+}
 ```
 
-这里我们需要重点关注一下`getAutoConfigurationEntry()`方法，这个方法主要负责加载自动配置类的。
+The key method here is `getAutoConfigurationEntry()`, which loads the auto-configuration classes.
 
-该方法调用链如下：
+Its call flow is shown below:
 
 ![](../../images/shared/3c1200712655443ca4b38500d615bb70-tplv-k3u1fbpfcp-watermark.png)
 
-现在我们结合`getAutoConfigurationEntry()`的源码来详细分析一下：
+Now let's examine the `getAutoConfigurationEntry()` source:
 
 ```java
 private static final AutoConfigurationEntry EMPTY_ENTRY = new AutoConfigurationEntry();
 
-AutoConfigurationEntry getAutoConfigurationEntry(AutoConfigurationMetadata autoConfigurationMetadata, AnnotationMetadata annotationMetadata) {
-        //<1>.
-        if (!this.isEnabled(annotationMetadata)) {
-            return EMPTY_ENTRY;
-        } else {
-            //<2>.
-            AnnotationAttributes attributes = this.getAttributes(annotationMetadata);
-            //<3>.
-            List<String> configurations = this.getCandidateConfigurations(annotationMetadata, attributes);
-            //<4>.
-            configurations = this.removeDuplicates(configurations);
-            Set<String> exclusions = this.getExclusions(annotationMetadata, attributes);
-            this.checkExcludedClasses(configurations, exclusions);
-            configurations.removeAll(exclusions);
-            configurations = this.filter(configurations, autoConfigurationMetadata);
-            this.fireAutoConfigurationImportEvents(configurations, exclusions);
-            return new AutoConfigurationImportSelector.AutoConfigurationEntry(configurations, exclusions);
-        }
+AutoConfigurationEntry getAutoConfigurationEntry(
+        AutoConfigurationMetadata autoConfigurationMetadata,
+        AnnotationMetadata annotationMetadata) {
+    // 1. Check whether auto-configuration is enabled.
+    if (!this.isEnabled(annotationMetadata)) {
+        return EMPTY_ENTRY;
     }
+
+    // 2. Read the annotation attributes.
+    AnnotationAttributes attributes = this.getAttributes(annotationMetadata);
+
+    // 3. Find the candidate configuration classes.
+    List<String> configurations =
+            this.getCandidateConfigurations(annotationMetadata, attributes);
+
+    // 4. Remove duplicates, exclusions, and configurations that do not match.
+    configurations = this.removeDuplicates(configurations);
+    Set<String> exclusions = this.getExclusions(annotationMetadata, attributes);
+    this.checkExcludedClasses(configurations, exclusions);
+    configurations.removeAll(exclusions);
+    configurations = this.filter(configurations, autoConfigurationMetadata);
+    this.fireAutoConfigurationImportEvents(configurations, exclusions);
+    return new AutoConfigurationImportSelector.AutoConfigurationEntry(configurations, exclusions);
+}
 ```
 
-**第 1 步**:
+**Step 1:**
 
-判断自动装配开关是否打开。默认`spring.boot.enableautoconfiguration=true`，可在 `application.properties` 或 `application.yml` 中设置
+Check whether auto-configuration is enabled. By default, `spring.boot.enableautoconfiguration=true`. It can be set in `application.properties` or `application.yml`.
 
 ![](../../images/shared/77aa6a3727ea4392870f5cccd09844ab-tplv-k3u1fbpfcp-watermark.png)
 
-**第 2 步**：
+**Step 2:**
 
-用于获取`EnableAutoConfiguration`注解中的 `exclude` 和 `excludeName`。
+Read the `exclude` and `excludeName` attributes from `@EnableAutoConfiguration`.
 
 ![](../../images/shared/3d6ec93bbda1453aa08c52b49516c05a-tplv-k3u1fbpfcp-zoom-1.png)
 
-**第 3 步**
+**Step 3:**
 
-在本文采用的 Spring Boot 2.1.x 源码中，获取需要自动装配的所有配置类时会读取 `META-INF/spring.factories`：
+In the Spring Boot 2.1.x source shown here, the candidate auto-configuration classes are loaded from `META-INF/spring.factories`:
 
-```plain
+```text
 spring-boot/spring-boot-project/spring-boot-autoconfigure/src/main/resources/META-INF/spring.factories
 ```
 
 ![](../../images/shared/58c51920efea4757aa1ec29c6d5f9e36-tplv-k3u1fbpfcp-watermark.png)
 
-从下图可以看到这个文件的配置内容都被我们读取到了。`XXXAutoConfiguration`的作用就是按需加载组件。
+The entries in this file are read. Each `XXXAutoConfiguration` class configures a component when its conditions are met.
 
 ![](../../images/shared/94d6e1a060ac41db97043e1758789026-tplv-k3u1fbpfcp-watermark.png)
 
-不光是这个依赖下的 `META-INF/spring.factories` 会被读取，类路径中其他 jar 包的同名资源也会被 `SpringFactoriesLoader` 合并读取。需要注意，Starter 通常只是用于聚合依赖的 jar，自动配置代码和注册文件可以放在独立的 autoconfigure 模块中，也可以和 Starter 合并，并不是每个 Starter 都必须包含 `spring.factories`。
+`SpringFactoriesLoader` reads and combines same-named `META-INF/spring.factories` resources from other JARs on the classpath, not just from this dependency. Note that a starter is usually a JAR that aggregates dependencies. Auto-configuration code and its registration file may be in a separate auto-configuration module or combined with the starter; not every starter must contain `spring.factories`.
 
-所以，你可以清楚滴看到， druid 数据库连接池的 Spring Boot Starter 就创建了`META-INF/spring.factories`文件。
+For example, the Spring Boot starter for the Druid connection pool contains a `META-INF/spring.factories` file.
 
-如果要为 Spring Boot 2.6 及更早版本编写自动配置，需要使用这种注册方式；面向 Spring Boot 3.x 的自动配置应改用 `AutoConfiguration.imports`。
+For Spring Boot 2.6 and earlier, use this registration mechanism. For Spring Boot 3.x, register auto-configuration through `AutoConfiguration.imports`.
 
 ![](../../images/shared/68fa66aeee474b0385f94d23bcfe1745-tplv-k3u1fbpfcp-watermark.png)
 
-**第 4 步**：
+**Step 4:**
 
-到这里可能面试官会问你:“`spring.factories`中这么多配置，每次启动都要全部加载么？”。
+An interviewer may ask: “There are so many entries in `spring.factories`. Are they all loaded every time the application starts?”
 
-很明显，这是不现实的。我们 debug 到后面你会发现，`configurations` 的值变小了。
+Clearly, that would not be practical. If you debug the process, you will see the `configurations` list become smaller.
 
 ![](../../images/shared/267f8231ae2e48d982154140af6437b0-tplv-k3u1fbpfcp-watermark.png)
 
-因为，这一步有经历了一遍筛选，`@ConditionalOnXXX` 中的所有条件都满足，该类才会生效。
+The list is filtered. A class is enabled only if all of its `@ConditionalOn...` conditions are satisfied.
 
 ```java
 @Configuration
-// 检查相关的类：RabbitTemplate 和 Channel是否存在
-// 存在才会加载
+// Check whether RabbitTemplate and Channel are available.
+// Load this configuration only if both classes are present.
 @ConditionalOnClass({ RabbitTemplate.class, Channel.class })
 @EnableConfigurationProperties(RabbitProperties.class)
 @Import(RabbitAnnotationDrivenConfiguration.class)
@@ -281,51 +290,51 @@ public class RabbitAutoConfiguration {
 }
 ```
 
-有兴趣的童鞋可以详细了解下 Spring Boot 提供的条件注解
+Spring Boot provides several conditional annotations:
 
-- `@ConditionalOnBean`：当容器里有指定 Bean 的条件下
-- `@ConditionalOnMissingBean`：当容器里没有指定 Bean 的情况下
-- `@ConditionalOnSingleCandidate`：当指定 Bean 在容器中只有一个，或者虽然有多个但是指定首选 Bean
-- `@ConditionalOnClass`：当类路径下有指定类的条件下
-- `@ConditionalOnMissingClass`：当类路径下没有指定类的条件下
-- `@ConditionalOnProperty`：指定的属性是否有指定的值
-- `@ConditionalOnResource`：类路径是否有指定的值
-- `@ConditionalOnExpression`：基于 SpEL 表达式作为判断条件
-- `@ConditionalOnJava`：基于 Java 版本作为判断条件
-- `@ConditionalOnJndi`：在 JNDI 存在的条件下差在指定的位置
-- `@ConditionalOnNotWebApplication`：当前项目不是 Web 项目的条件下
-- `@ConditionalOnWebApplication`：当前项目是 Web 项 目的条件下
+- `@ConditionalOnBean`: Matches when the specified bean is present in the container.
+- `@ConditionalOnMissingBean`: Matches when the specified bean is absent from the container.
+- `@ConditionalOnSingleCandidate`: Matches when there is one bean of the specified type, or when one of multiple beans is marked as the primary candidate.
+- `@ConditionalOnClass`: Matches when the specified class is on the classpath.
+- `@ConditionalOnMissingClass`: Matches when the specified class is not on the classpath.
+- `@ConditionalOnProperty`: Matches based on whether a property has a specified value.
+- `@ConditionalOnResource`: Matches when a specified resource is available.
+- `@ConditionalOnExpression`: Matches based on a SpEL expression.
+- `@ConditionalOnJava`: Matches based on the Java version.
+- `@ConditionalOnJndi`: Matches when a specified JNDI location is available.
+- `@ConditionalOnNotWebApplication`: Matches when the current application is not a Web application.
+- `@ConditionalOnWebApplication`: Matches when the current application is a Web application.
 
-## 如何实现一个 Starter
+## How to Create a Starter
 
-光说不练假把式，现在就来撸一个 starter，实现自定义线程池
+Let's put the ideas into practice by creating a custom thread-pool starter.
 
-第一步，创建`threadpool-spring-boot-starter`工程
+First, create a `threadpool-spring-boot-starter` project.
 
 ![](../../images/shared/1ff0ebe7844f40289eb60213af72c5a6-tplv-k3u1fbpfcp-watermark.png)
 
-第二步，引入 Spring Boot 相关依赖
+Second, add the Spring Boot dependencies.
 
 ![](../../images/shared/5e14254276604f87b261e5a80a354cc0-tplv-k3u1fbpfcp-watermark.png)
 
-第三步，创建`ThreadPoolAutoConfiguration`
+Third, create `ThreadPoolAutoConfiguration`.
 
 ![](../../images/shared/1843f1d12c5649fba85fd7b4e4a59e39-tplv-k3u1fbpfcp-watermark.png)
 
-第四步，注册自动配置类。对于 Spring Boot 2.6 及更早版本，在`threadpool-spring-boot-starter`工程的 resources 包下创建`META-INF/spring.factories`文件；Spring Boot 2.7 及以上版本应使用 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`，面向 Spring Boot 3.x 时自动配置类通常使用 `@AutoConfiguration` 标注。
+Fourth, register the auto-configuration class. For Spring Boot 2.6 and earlier, create `META-INF/spring.factories` under the `resources` directory of the `threadpool-spring-boot-starter` project. For Spring Boot 2.7 and later, use `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`. For Spring Boot 3.x, auto-configuration classes are usually annotated with `@AutoConfiguration`.
 
 ![](../../images/shared/97b738321f1542ea8140484d6aaf0728-tplv-k3u1fbpfcp-watermark.png)
 
-最后新建工程引入`threadpool-spring-boot-starter`
+Finally, create another project and add the `threadpool-spring-boot-starter` dependency.
 
 ![](../../images/shared/edcdd8595a024aba85b6bb20d0e3fed4-tplv-k3u1fbpfcp-watermark.png)
 
-测试通过！！！
+The test passes!
 
 ![](../../images/shared/9a265eea4de742a6bbdbbaa75f437307-tplv-k3u1fbpfcp-watermark.png)
 
-## 总结
+## Summary
 
-Spring Boot 通过`@EnableAutoConfiguration`开启自动装配，并加载类路径中注册的候选自动配置类。Spring Boot 2.6 及更早版本主要通过 `spring.factories` 注册，Spring Boot 2.7 及以上版本使用 `AutoConfiguration.imports`。自动配置类会结合 `@Conditional` 系列注解按需生效；Starter 的主要作用是聚合常用依赖，并不是自动配置生效所要求的固定包名。
+Spring Boot enables auto-configuration through `@EnableAutoConfiguration` and loads candidate auto-configuration classes registered on the classpath. Spring Boot 2.6 and earlier mainly used `spring.factories`; Spring Boot 2.7 and later use `AutoConfiguration.imports`. Auto-configuration classes take effect as needed through the `@Conditional` annotations. A starter mainly aggregates commonly used dependencies; it does not require a specific package name for auto-configuration to work.
 
 <!-- @include: @article-footer.snippet.md -->

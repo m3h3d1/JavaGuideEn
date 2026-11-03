@@ -1,20 +1,20 @@
 ---
-title: 设计模式常见面试题总结
-description: 设计模式(Design pattern)代表了最佳的实践，通常被有经验的面向对象 的软件开发人员所采用。设计模式是软件开发人员在软件开发过程中面临 的一般问题的解决方案。这些解决方案是众多软件开发人员经过相当⻓的 一段时间的试验和错误总结出来的。
-category: 系统设计
+title: Design Pattern Interview Questions
+description: Design patterns are proven practices commonly used by experienced object-oriented software developers. They are general solutions to common software development problems, refined through trial and error by many developers over time.
+category: System Design
 icon: "mdi:tools"
 head:
   - - meta
     - name: keywords
-      content: 设计模式,单例模式,工厂模式,代理模式,责任链模式,策略模式,观察者模式,面试题
+      content: design patterns,singleton pattern,factory pattern,proxy pattern,chain of responsibility pattern,strategy pattern,observer pattern,interview questions
 ---
 
-**设计模式** 相关的面试题已经整理到了 PDF 手册中，你可以在我的公众号“**JavaGuide**”后台回复“**PDF**” 获取。
+Questions about **design patterns** are included in a PDF handbook. To get it, reply **PDF** to the **JavaGuide** account on WeChat.
 
-![JavaGuide 官方公众号](../javaguide/images/shared/gongzhonghaoxuanchuan.png)
+![JavaGuide official WeChat account](../javaguide/images/shared/gongzhonghaoxuanchuan.png)
 
-**《设计模式》PDF 电子书内容概览**：
+**Contents of the _Design Patterns_ PDF handbook:**
 
-![《设计模式》PDF文档概览](./images/shared/design-pattern-pdf.png)
+![Overview of the *Design Patterns* PDF handbook](./images/shared/design-pattern-pdf.png)
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,264 +1,242 @@
 ---
-title: 分布式系统详解：核心概念、架构演进、典型特征与学习路线
-description: 分布式系统入门详解，讲解什么是分布式系统、为什么需要分布式系统、单体到分布式架构的演进、典型特征、常见类型、核心难点和学习路线。
-category: 分布式
+title: "Distributed Systems: Core Concepts, Architecture, and Learning Path"
+description: "An introduction to distributed systems, their architecture, characteristics, common types, challenges, and learning path."
+category: Distributed Systems
 tag:
-  - 分布式
-  - 系统设计
+  - Distributed Systems
+  - System Design
 head:
   - - meta
     - name: keywords
-      content: 分布式系统,什么是分布式系统,分布式架构,微服务,集群,远程调用,分布式一致性,数据分片,副本复制,分布式系统学习路线
+      content: distributed systems,distributed architecture,microservices,clusters,remote calls,consistency,sharding,replication,learning path
 ---
 
-刚接触分布式系统时，很多人会先被一串名词砸中：CAP、BASE、Paxos、Raft、分布式锁、分布式事务。
+When starting with distributed systems, you may encounter CAP, BASE, Paxos, Raft, distributed locks, and distributed transactions all at once.
 
-这些概念都绕不开，但入门时直接钻进去，容易把分布式系统学成一堆互不相干的术语。更好的切入口是一个更土但更实用的问题：原来一台机器、一个进程、一个数据库就能完成的事情，为什么后来要拆到多台机器上？拆完以后，为什么一个超时、一次重试、一条消息重复投递，都会牵出这么多设计问题？
+These concepts matter, but a practical starting point is to ask why work once handled by one machine, process, and database is split across machines—and why a timeout, retry, or duplicate message creates new design problems.
 
-这篇文章先把“分布式系统是什么”讲清楚。Paxos、Raft、分布式事务不会展开推导，只把它们放回主线里，知道它们大概在解决哪类麻烦。
+This article explains what a distributed system is and where concepts such as Paxos, Raft, and distributed transactions fit, without deriving those protocols in detail.
 
-## 什么是分布式系统？
+## What is a distributed system?
 
-《分布式系统概念与设计》这本书对分布式系统的定义是：
+_Distributed Systems: Concepts and Design_ defines a distributed system as hardware or software components on networked computers that communicate and coordinate solely by passing messages.
 
-> 分布式系统是这样一种系统：位于联网计算机上的硬件或软件组件，仅通过消息传递进行通信并协调行动。
+In practice, **a distributed system consists of relatively independent computing units that communicate over a network and cooperate to provide a complete service**.
 
-工程里可以这样理解：**分布式系统由多个相对独立的计算单元组成，这些计算单元靠网络通信和协作，对外提供一项完整服务。**
+Independence does not mean each node exclusively owns a CPU, memory, disk, and operating system. A node can be a physical machine, virtual machine, container, or process. Processes on one machine share underlying hardware, and containers often share the host kernel. Independence here means that a node has its own execution state and local data, can run separately, and may independently stall, restart, or lose connectivity.
 
-这里的“独立”别理解成每个节点都独占 CPU、内存、磁盘和操作系统。节点可以是物理机、虚拟机、容器，也可以只是一个软件进程。同一台机器上的两个进程会共享底层 CPU 和物理内存，容器也常共享宿主机内核。说它独立，主要是说它有自己的执行状态和局部数据，可以单独运行，也可能单独卡住、重启或丢失连接。
+Nodes do not share one process address space. After a system is split, a local method call may become an RPC, HTTP request, message delivery, or replica synchronization. Networks add latency and packet loss: a request may reach the server while its response is lost. A client timeout does not prove the server did not execute it.
 
-麻烦也从这里开始。
+No node can instantly observe the true state of the entire system. Each sees its local state and received messages. Clocks also differ; even NTP cannot provide a perfectly synchronized global clock.
 
-节点之间不共享同一个进程地址空间，原来的本地方法调用，拆出去后可能变成一次 RPC、一次 HTTP 请求、一次消息投递，或者一次数据库副本同步。网络有延迟，会丢包，请求可能到了服务端但响应丢了；客户端看到的“超时”，并不能证明服务端没有执行。
+A user clicking “submit order” sees one request. The backend may pass it through a gateway and user, product, order, inventory, coupon, and payment services, while writing to a database, sending messages, and updating a cache.
 
-多台机器还带来另一个限制：没有哪个节点能在某个瞬间看到整个系统的真实状态。每个节点看到的是本地状态和已经收到的消息。节点时钟也会有偏差，即使用 NTP 做同步，也不能当作完全一致的全局时钟来用。
+![Distributed system overview](./images/shared/distributed-system-overview.webp)
 
-比如用户点击“提交订单”，页面上只是一次请求，服务端可能已经经过网关、用户服务、商品服务、订单服务、库存服务、优惠券服务、支付服务，还可能写数据库、发消息、更新缓存。用户看到的是一个按钮，后端看到的是一串跨节点协作。
+| Aspect          | Single machine or process              | Distributed system                                     |
+| --------------- | -------------------------------------- | ------------------------------------------------------ |
+| Communication   | Method calls and shared memory         | RPC, messages, network protocols                       |
+| Failure scope   | Often one shared failure boundary      | Nodes can fail independently                           |
+| Time            | Mainly one machine's clock             | Node clocks can differ                                 |
+| State           | Easier to observe globally             | Nodes generally have local views                       |
+| Transactions    | Local database transactions are common | Cross-service coordination, compensation, or consensus |
+| Scaling         | Primarily vertical                     | Add nodes horizontally                                 |
+| Troubleshooting | One process's logs and stack traces    | Logs, metrics, tracing, and cross-node state           |
 
-![分布式系统概览](./images/shared/distributed-system-overview.webp)
+## Why use distributed systems?
 
-| 维度     | 单机或单进程系统     | 分布式系统                       |
-| -------- | -------------------- | -------------------------------- |
-| 通信方式 | 方法调用、共享内存   | RPC、消息、网络协议              |
-| 故障范围 | 往往共享一个故障边界 | 节点可以独立故障                 |
-| 时间视图 | 主要依赖同一机器时钟 | 多节点时钟存在偏差               |
-| 状态观察 | 较容易观察整体状态   | 节点通常只有局部视图             |
-| 事务处理 | 本地数据库事务更常见 | 跨服务协调、补偿或共识           |
-| 扩容方式 | 纵向升级为主         | 横向增加节点                     |
-| 问题排查 | 单进程日志和调用栈   | 日志、指标、链路追踪和跨节点状态 |
+A monolith is a valid choice. An administrative application or low-traffic system with one application and one database can be easier to develop, deploy, and troubleshoot. Splitting too early can add complexity before it provides a benefit.
 
-## 为什么需要分布式系统？
+Distributed systems often become necessary as pressure grows.
 
-单体应用并不低级。一个管理后台、一个访问量不大的业务系统，用一个应用加一台数据库，反而更容易开发、部署和排查问题。很多系统真正出问题，不是因为一开始用了单体，而是拆得太早，复杂度先涨上来，收益还没出现。
+**Compute capacity:** One machine has limits on CPU, memory, and disk I/O. Vertical scaling is constrained by cost, hardware limits, and single-point-of-failure risk. Distributing requests across machines increases capacity.
 
-分布式系统一般是在压力出现后才变得有必要。
+**Storage capacity:** When an order table grows from one million to one billion rows, queries, backups, index maintenance, and recovery become harder. Sharding splits different data among nodes, for example by user or order ID. Replication keeps copies to improve availability and disaster recovery and can distribute reads. Both introduce cross-shard queries, replica synchronization, and consistency challenges.
 
-**先是计算压力。** 一台机器的 CPU、内存、磁盘 I/O 都有上限。机器配置可以往上堆，但价格、硬件规格和单点风险都会把纵向扩容拦住。把请求分摊到多台机器上，才是多数业务系统后面会走的路。
+**Availability:** If one application server or database fails, the service may stop. Multiple instances, replicas, and availability zones can preserve some or all functionality during partial failures.
 
-**存储压力也类似。** 一张订单表从 100 万行涨到 10 亿行，查询、备份、索引维护、故障恢复都会变重。所有数据继续压在一台机器上，成本和风险都会升高。数据分片会把不同数据拆到不同节点，比如按用户 ID 或订单 ID 分片；副本复制会把同一份数据保存多份，用来提高可用性、容灾能力，顺便分担一部分读请求。它们能解决容量和故障问题，也会把跨分片查询、副本同步、数据一致性带进来。
+Common motivations include:
 
-**可用性也会逼着系统往多节点走。** 如果只有一台应用服务器，它挂了服务就停；如果只有一台数据库，磁盘损坏或主机故障都会直接影响业务。多个实例、多个副本、多个可用区，至少能让系统在部分节点出问题时继续服务，或者保住一部分能力。
+- **Insufficient performance:** Spread requests across machines.
+- **Insufficient storage capacity:** Use shards or replicas when storage, indexing, backup, and recovery exceed one machine's practical limits.
+- **Failure risk:** Use redundancy, failover, and degradation to reduce the effect of a single failure.
 
-放到业务里，常见动机大概是这几类：
+Geography, organizations, and security boundaries can also motivate distribution. Deploying closer to users reduces latency and supports regional disaster recovery. Independent deployment across teams, business domains, or security domains avoids one shared release window and failure boundary.
 
-- **性能撑不住**：单机处理不了那么多请求，需要多台机器分担计算。
-- **数据放不下**：单机存储、索引、备份和恢复成本太高，需要分片或副本。
-- **故障扛不住**：单点故障影响太大，需要冗余、故障转移和降级。
+**Distribution addresses capacity, availability, isolation, and coordination, while introducing network, failure, consistency, and troubleshooting costs.**
 
-也有一些系统不是被单机容量逼出来的，而是被地域、组织和安全边界推着走。服务和数据部署到离用户更近的地域，可以降低访问延迟，也方便做跨区域容灾；不同团队、业务域或安全域独立部署，可以避免所有功能共享同一个发布窗口和故障边界。
+## From a monolith to distributed e-commerce
 
-所以，**分布式不是“加机器”这么简单。它解决的是容量、可用性、隔离和协作问题，同时把网络、故障、数据一致性和排障成本一起带进系统。**
+Imagine an early e-commerce system with user, product, order, inventory, and payment logic in one Spring Boot application and one MySQL instance.
 
-## 从单体电商到分布式电商
+Initially, placing an order is a local call chain: validate the user, look up the product, decrement stock, create the order, and initiate payment. Code runs in one process and the transaction uses one database. One application log and one database can usually help diagnose a problem.
 
-假设有一个早期电商系统，用户、商品、订单、库存、支付都写在一个 Spring Boot 应用里，数据放在同一个 MySQL 实例中。
+As traffic grows, product reads, order writes, inventory contention, and payment reliability place different demands on the application. A slow module can affect the whole system.
 
-业务刚开始时，这种结构很舒服。一次下单就是一条本地调用链：校验用户，查商品，扣库存，创建订单，发起支付。代码在一个进程里，事务在一个库里完成。出了问题，看一个应用日志和一个数据库，基本就能把事情查清。
+A team may first scale horizontally: deploy three or more application instances behind Nginx, a gateway, or a load balancer. Keeping the application largely stateless lets the instances share traffic.
 
-访问量上来后，压力会先落到几个地方：商品详情页查询量高，订单创建写入量高，库存扣减并发冲突多，支付链路又不能随便失败。继续把所有逻辑塞在一个应用里，任何一个模块变慢，都可能拖住整个系统。
+Later, it may split responsibilities:
 
-这时很多团队会先横向扩容：部署 3 个甚至更多应用实例，用 Nginx、网关或负载均衡器分发请求。只要应用尽量无状态，多加实例就能分担一部分流量。
+- The product service handles product information and prices.
+- The order service creates orders and manages order state.
+- The inventory service handles decrements, rollbacks, and stock records.
+- The payment service integrates with payment providers.
+- A message queue asynchronously delivers payment, inventory, and shipping events.
 
-再往后，系统可能会继续拆：
+![From monolithic to distributed e-commerce](./images/shared/monolith-to-distributed-ecommerce.webp)
 
-- 商品服务负责商品信息和价格展示；
-- 订单服务负责订单创建、订单状态流转；
-- 库存服务负责库存扣减、库存回滚和库存流水；
-- 支付服务负责对接第三方支付渠道；
-- 消息队列负责把支付成功、库存变更、物流通知等事件异步传出去。
+This allows the product service to scale independently, the payment service to use its own rate limits, retries, and circuit breakers, and the inventory service to use data structures and locks tailored to contention.
 
-![单体到分布式电商](./images/shared/monolith-to-distributed-ecommerce.webp)
+It also raises questions. If the inventory call times out, should the order service retry? Did the request fail to leave the client, or did the decrement succeed while the response was lost? How should stock be restored if order creation fails? Could a duplicate payment message update an order twice?
 
-拆分后的好处很直接。商品服务访问量大，可以单独扩容；支付服务对稳定性要求高，可以单独做限流、重试和熔断；库存服务并发冲突多，可以围绕库存扣减设计专门的数据结构和锁策略。
+These problems can exist in monoliths too, but distribution magnifies them. Once there is no single process, memory space, or transaction context, operations that were previously straightforward need redesign.
 
-麻烦也很快出现。
+## Typical characteristics
 
-订单服务调用库存服务扣库存，如果请求超时了，订单服务到底该不该重试？上一次扣库存是没发出去，还是已经扣成功但响应丢了？如果库存扣成功了，订单创建失败了，库存怎么补？支付成功消息重复投递，订单状态会不会被重复更新？
+The number of machines alone does not explain distributed complexity. The following characteristics do.
 
-这些问题在单体里也可能出现，只是分布式系统会把它们放大。系统不再只有一个进程、一份内存、一个事务上下文，很多原来“顺手就做了”的事情，拆开后都要重新设计。
+### Multiple nodes cooperate
 
-## 分布式系统有哪些典型特征？
+One order request may pass through a gateway, order, inventory, and payment services, a message queue, and a database. Each node handles only part of the workflow.
 
-只看机器数量不够。下面这些特征，才是分布式系统复杂度的来源。
+Longer chains amplify latency and failures. An exhausted thread pool, slow database query, or network jitter may appear to the user as a loading order screen.
 
-### 多节点协作
+### Concurrent nodes have no instantaneous global view
 
-一个请求往往要多个节点一起完成。下单请求可能经过网关、订单服务、库存服务、支付服务、消息队列和数据库。每个节点只负责一小段逻辑，拼起来才是一条完整业务链路。
+Nodes run concurrently and see only local state and received messages. One may have a new configuration while another still has the old version. One may believe the Leader is alive while another has timed out and started an election. Different observations at different times can create problems even when the code is correct.
 
-链路拉长后，延迟和故障都会被放大。某个节点线程池打满、数据库慢查询、网络抖动，用户看到的可能只是“下单转圈”。
+### Network communication
 
-### 节点并发执行，没有瞬时全局视图
+Unlike local memory, a network does not guarantee that a request arrives or a response returns within the expected time. A remote call may be in any of these states:
 
-节点是并发运行的。每个节点只能直接看到自己的本地状态，以及已经收到的消息，不能在某个瞬间读取整个系统的真实状态。
+- The request has not left the client.
+- The server received it but has not finished execution.
+- The server succeeded, but its response did not reach the client.
+- The client timed out while the server continued executing.
+- The server failed, but its error response was also lost.
 
-于是就会出现一些看起来矛盾、但都能解释得通的判断：一个节点已经拿到最新配置，另一个节点还停留在旧版本；一个节点认为 Leader 还活着，另一个节点因为超时已经开始选举。很多分布式问题不一定是代码写错了，而是不同节点在不同时间看到了不同信息。
+Timeouts, retries, idempotency, circuit breakers, and fallbacks address these cases. They should be designed before remote calls become part of a critical production path.
 
-### 网络通信
+### Partial failures
 
-节点之间要靠网络交换数据。网络和本地内存不是一类东西，它不保证请求一定到达，也不保证响应按预期时间返回。
+A distributed system may be partly healthy: some nodes or requests succeed while others fail; service A may be unable to reach B while C can still reach B.
 
-一次远程调用可能出现这些情况：
+A missing response does not necessarily mean a crash. Network jitter, a GC pause, an exhausted thread pool, or blocked disk I/O can make a node temporarily appear dead. Treating every missed response as a crash can produce false positives.
 
-- 请求尚未离开客户端；
-- 请求已经到达服务端，但尚未执行完成；
-- 服务端已经执行成功，但响应没有到达客户端；
-- 客户端已经超时，服务端仍在继续执行；
-- 服务端执行失败，但错误响应也没有成功返回。
+### Replication and sharding
 
-超时、重试、幂等、熔断和降级，就是为这些情况准备的。远程调用进入主链路后，这些设计不能等线上报错以后再补。
+Sharding distributes different data across nodes, often by user ID, order ID, region, or hash. It reduces individual-node load but complicates cross-shard queries, transactions, and scaling.
 
-### 局部故障
+Replication stores multiple copies, as with MySQL or Redis replication, Kafka partition replicas, and ZooKeeper nodes. Replicas can improve availability and distribute reads, but synchronization takes time. After a primary accepts a write, a replica may lag; a subsequent read from that replica can return an old value.
 
-单机系统里，进程挂了，问题边界相对清晰。分布式系统里经常是半边好、半边坏：一部分节点正常，一部分节点异常；一部分请求成功，一部分请求失败；A 服务访问不了 B 服务，但 C 服务还能访问 B 服务。
+![Sharding, replication, and consistency](./images/shared/sharding-replication-consistency.webp)
 
-一个节点没响应，也不一定就是宕机了。网络抖动、GC 暂停、线程池打满、磁盘 I/O 卡住，都可能让它短时间“像死了一样”。系统如果只靠“有没有响应”判断故障，很容易误判。
+### No perfectly synchronized global clock
 
-### 数据复制和数据分片
+Each machine has a physical clock subject to offset and drift. NTP and GPS reduce error but cannot guarantee identical time on every node at every instant.
 
-数据规模和可用性上来后，系统很容易走到分片和复制。
+Distributed systems rarely rely solely on wall-clock time to order events. Logical clocks such as Lamport clocks and vector clocks can express causality; terms, epochs, versions, and monotonically increasing sequences are also used for replication, elections, and state changes.
 
-分片是把不同数据分散到不同节点，常见规则包括用户 ID、订单 ID、地域、哈希值。分片之后，单个节点压力小了，跨分片查询、跨分片事务、分片扩容会变麻烦。
+Physical time is still needed for logs, timeouts, leases, and cache expiration. Designs must account for acceptable clock error and drift. Logical clocks help order events but cannot directly replace physical-time requirements such as when a lock expires.
 
-复制是把同一份数据保存多份，比如 MySQL 主从复制、Redis 主从复制、Kafka 分区副本、ZooKeeper 多节点副本。有了副本，节点故障时更容易继续服务，读请求也可能分摊到多个副本上。代价是副本同步有延迟：主节点写成功后，从节点可能还没追上；用户刚写完数据，下一次读请求如果落到旧副本，就可能读到旧值。
+## Common distributed systems
 
-![分片复制与一致性](./images/shared/sharding-replication-consistency.webp)
+Distributed systems are a category of architecture, not one middleware product.
 
-### 没有完美同步的全局时钟
+| Type                   | Problems addressed                                                             | Examples                            |
+| ---------------------- | ------------------------------------------------------------------------------ | ----------------------------------- |
+| Coordination           | Leader election, configuration, discovery, locks                               | ZooKeeper, etcd, Consul             |
+| Database               | Sharding, replication, horizontal scaling                                      | TiDB, CockroachDB, Cassandra, HBase |
+| Cache                  | Multi-node caching and capacity                                                | Redis Cluster, Memcached clusters   |
+| Message queue          | Asynchronous decoupling, traffic smoothing, events                             | Kafka, RocketMQ, Pulsar             |
+| File or object storage | Large files, replication, high-throughput I/O                                  | HDFS, Ceph, MinIO                   |
+| RPC framework          | Interface definitions, serialization, remote requests and responses            | gRPC, Apache Thrift                 |
+| Service governance     | Discovery, load balancing, traffic management, circuit breaking, configuration | Dubbo, Spring Cloud                 |
 
-每台机器都有自己的物理时钟，但时钟会有偏差和漂移。NTP、GPS 这类时间同步机制可以缩小误差，不能保证所有节点在任意时刻都有完全一致的时间视图。
+These systems often work together. An order system might use Redis for caching, RocketMQ for events, ZooKeeper or Nacos for discovery, sharded MySQL for orders, and tracing to follow requests across services.
 
-分布式系统很少只靠墙上时钟判断事件先后。表达因果关系时，可以使用 Lamport Clock、Vector Clock 等逻辑时钟；做复制、选举和状态变更时，也常用 term、epoch、版本号或单调递增序列。
+When studying a component, ask what problem it solves and what complexity it leaves to the application rather than memorizing settings alone.
 
-物理时间依然有用，日志、超时、租约、缓存过期都离不开它。只是依赖物理时间时，要知道自己能接受多大的时钟误差和漂移。逻辑时钟解决事件顺序问题，不能直接替代“锁多久后过期”这类物理时间需求。
+## Distributed systems, clusters, and microservices
 
-## 常见的分布式系统有哪些？
+A **cluster** describes deployment: multiple machines provide a service. Three Nginx instances, five Redis nodes, or three application instances are examples. Nodes may perform the same role or use primary-replica, sharding, or election roles.
 
-分布式系统不是某一种中间件，而是一类系统形态。常见类型有这些。
+A **distributed system** emphasizes cooperation among nodes that communicate over a network and present a unified service. A cluster can form part of a distributed system, whose concerns also include replication, consistency, fault tolerance, scheduling, and coordination.
 
-| 类型                | 解决的问题                               | 常见例子                            |
-| ------------------- | ---------------------------------------- | ----------------------------------- |
-| 分布式协调系统      | 选主、配置管理、服务发现、分布式锁       | ZooKeeper、etcd、Consul             |
-| 分布式数据库        | 数据分片、副本复制、水平扩展             | TiDB、CockroachDB、Cassandra、HBase |
-| 分布式缓存          | 多节点缓存、热点数据加速、缓存容量扩展   | Redis Cluster、Memcached 集群       |
-| 分布式消息队列      | 异步解耦、削峰填谷、事件驱动             | Kafka、RocketMQ、Pulsar             |
-| 分布式文件/对象存储 | 大文件存储、多副本、高吞吐读写           | HDFS、Ceph、MinIO                   |
-| RPC 框架            | 接口定义、序列化、跨服务请求响应         | gRPC、Apache Thrift                 |
-| 服务治理体系        | 注册发现、负载均衡、流量管理、熔断、配置 | Dubbo、Spring Cloud                 |
+**Microservices** are an application architecture in which services are organized around business capabilities and can be developed, deployed, and scaled independently. They are usually distributed because they communicate over a network. Distributed systems are not necessarily microservices: Kafka, HDFS, and ZooKeeper are distributed systems but not business microservices.
 
-这些系统解决的问题不同，但经常一起出现在一个业务架构里。一个订单系统可能用 Redis 做缓存，用 RocketMQ 传递订单事件，用 ZooKeeper 或 Nacos 做注册发现，用 MySQL 分库分表存订单，再用链路追踪系统排查一次请求经过了哪些服务。
+A monolithic application can also depend on distributed infrastructure such as Redis Cluster, Kafka, Elasticsearch, and MySQL replication without itself being split into microservices.
 
-学分布式系统时，不要只盯着某个中间件背参数。要问它放在系统里解决了什么问题，又把哪些复杂度留给了业务方。
+## What makes distributed systems difficult?
 
-## 分布式系统、集群和微服务有什么区别？
+Networks make operation outcomes uncertain, and independent failures give nodes different views of system state.
 
-这几个词经常混在一起，但指向的不是同一件事。
+A local call shares a process or failure boundary with its caller, so its result is relatively easier to determine. A remote timeout says only that the client did not receive a response in time. The request may never have been sent, or it may have succeeded and lost its response. This distinction affects retry design.
 
-**集群**更强调部署形态。多台机器一起提供服务，就可以叫集群。比如 3 个 Nginx 实例、5 个 Redis 节点、3 个应用实例。它们可能做同样的事情，也可能有主从、分片、选主等分工。
+![Remote call uncertainty](./images/shared/remote-call-uncertainty.webp)
 
-**分布式系统**更强调节点之间的协作。多个节点靠网络通信，共同完成一个任务，对外表现为一个整体。集群可以是分布式系统的一种形态，但分布式系统还会涉及数据复制、一致性、容错、调度和协调。
+Suppose an order service calls an inventory service with a two-second timeout. If no response arrives, it could:
 
-**微服务**是一种应用架构风格。它把业务系统拆成多个围绕业务能力组织的服务，每个服务可以独立开发、部署和扩容。微服务系统一般也是分布式系统，因为服务之间要走网络调用。不过，分布式系统不一定是微服务。Kafka、HDFS、ZooKeeper 本身都是分布式系统，但不是业务微服务。
+- Assume the decrement failed and cancel the order.
+- Retry the inventory call.
+- Query inventory records to determine whether the earlier call succeeded.
+- Mark the order as processing and use a message or scheduled task for later compensation.
 
-还有一种情况也很常见：一个业务应用还是单体，但它依赖 Redis Cluster、Kafka、Elasticsearch、MySQL 主从。这个业务应用本身没有拆成微服务，但它运行在一组分布式基础设施之上。
+Each choice has a cost. Cancellation may be wrong if stock was already decremented; retrying may decrement twice; querying requires an idempotency identifier and accessible records; asynchronous compensation exposes a processing state that the product experience must support.
 
-## 分布式系统难在哪里？
+Idempotency matters because timeouts and retries can cause one business request to be processed multiple times. The server must recognize the same operation and avoid duplicate charges, stock decrements, or coupons. Remote writes with side effects also need business idempotency keys, result lookup, bounded retries, exponential backoff, and jitter so retry traffic does not overwhelm a failing dependency.
 
-分布式系统难，不是因为概念听起来高级，而是失败情况太多。网络会让一次操作的结果变得不确定，独立故障又会让不同节点同时看到不同的系统状态。
+Consistency presents a similar challenge. A monolith can update order and inventory tables in one database transaction. After splitting them into services, their databases no longer share that transaction. Coordinating success or failure may require distributed transactions, transactional messages, TCC, Saga, or a local message table.
 
-本地调用和调用方处在同一个进程或故障范围内，执行结果相对好判断。远程调用多了一层不确定性：超时只说明客户端在指定时间内没有收到响应，不能证明服务端没有执行。请求可能没发出去，也可能已经执行成功但响应丢了。这个差别会直接影响重试策略。
+Many cross-service workflows accept temporary inconsistency and use messaging, retries, compensation, and reconciliation until order, inventory, and payment states satisfy business constraints. This is often called “eventual consistency” in engineering. It differs from replica eventual consistency, which means replicas converge when no new writes occur; the business use concerns asynchronous coordination across services.
 
-![远程调用不确定性](./images/shared/remote-call-uncertainty.webp)
+Troubleshooting also becomes harder. A request passing through six services is difficult to trace when logs are inconsistent, tracing is missing, or error codes are unclear. Without observability, it is hard to identify where a request stalled or an error began.
 
-比如订单服务调用库存服务扣库存，客户端设置了 2 秒超时。2 秒后订单服务没收到响应，它有几种选择：
+## Common capabilities in business systems
 
-- 直接认为扣库存失败，取消订单；
-- 重新调用一次库存服务；
-- 查询库存扣减流水，确认上一次请求是否成功；
-- 先把订单置为处理中，后续通过消息或定时任务补偿。
+These capabilities support microservices and online systems; they are not part of the definition of a distributed system. Membership does not always require a separate registry: DNS, static configuration, Gossip, or a cluster protocol may be sufficient.
 
-每种选择都有代价。直接取消订单可能误判，因为库存服务也许已经扣成功；直接重试可能重复扣库存；查询流水要求库存服务提供幂等号和可查询记录；异步补偿会让用户看到“处理中”状态，产品体验也要配合。
+- **Service discovery and load balancing:** Instances scale and restart, so callers should not hard-code addresses. A registry records instances and a load balancer selects an available one.
+- **Timeouts, retries, and idempotency:** Set timeouts for remote calls. Retry only suitable operations with idempotency protection. Payments, stock decrements, and coupon issuance need a business key or idempotency table.
+- **Circuit breaking, rate limiting, and fallback:** When a downstream service slows down or fails, upstream services should not wait or retry indefinitely; otherwise, failures can spread along the call chain. Circuit breakers fail fast, rate limits control incoming load, and fallbacks preserve the primary request path.
+- **Configuration management and dynamic changes:** As the number of services grows, configuration cannot be managed by manually editing local files alone. A configuration center manages settings centrally and supports staged releases, dynamic refresh, and rollback.
+- **Logs, metrics, and tracing:** Logs answer “What happened?”, metrics answer “Is the system healthy now?”, and traces show “Which services did this request pass through?” Together, these three kinds of data help locate distributed failures.
+- **Data consistency and compensation:** For writes across nodes, decide in advance how to handle failures: require strong or eventual consistency, or allow temporary inconsistency? Should failures be handled with retries, manual intervention, reconciliation, or business rollback? These decisions should be made before an incident occurs.
 
-幂等就是在这种场景下变得重要的。只要存在超时和重试，同一个业务请求就可能被处理多次。服务端必须能识别“这是同一次业务操作”，不能因为客户端重试就重复扣款、重复扣库存、重复发券。对有副作用的远程写操作，还要设计业务幂等号、结果查询、有限重试，以及指数退避和随机抖动，避免下游故障时被重试流量继续压垮。
+## How to study distributed systems
 
-数据一致性也是类似问题。单体应用里，一个数据库事务可以同时更新订单表和库存表；拆成订单服务和库存服务后，订单库和库存库不在同一个事务里。想让它们要么都成功、要么都失败，就需要分布式事务、事务消息、TCC、Saga、本地消息表等方案。
+Start with engineering problems before memorizing algorithm names.
 
-很多跨服务业务会接受短时间状态不一致，再用事务消息、重试、补偿和对账，让订单、库存、支付等状态最终满足业务约束。工程里也常把这种方案叫“最终一致性”。它和副本一致性模型里的 eventual consistency 不是同一个语境：后者强调不再发生新写入时，多个数据副本最终收敛；前者更偏向跨服务业务流程的异步协调。
+1. **Start with network communication:** HTTP, RPC, TCP, timeouts, retries, connection pools, and serialization determine how services communicate. Without these basics, service governance is difficult to understand.
+2. **Study service decomposition and governance:** Understand why services are split, then study discovery, load balancing, rate limiting, circuit breaking, tracing, version compatibility, and staged releases. Many day-to-day microservice problems arise here.
+3. **Study the data layer:** Cover replication, sharding, caches, message queues, distributed IDs, locks, and transactions. Ask what happens when messages are delivered more than once, a cache and database disagree, or a lock expires before the work finishes.
+4. **Then study theory and protocols:** Cover CAP, BASE, centralized and decentralized coordination, Paxos, Raft, ZAB, Gossip, and consistent hashing. Focus on why systems such as ZooKeeper, etcd, Kafka, Redis Cluster, and distributed databases make their design choices.
 
-排查问题也会变慢。一次请求经过 6 个服务，任何一个服务日志不规范、链路追踪缺失、错误码设计混乱，定位都会很费劲。生产环境里缺少观测能力时，很难判断请求卡在哪个节点，错误最早从哪里冒出来。
+[Distributed Coordination](./protocol/centralized-and-decentralized.md) connects Leader, Quorum, split brain, Lease, Fencing Token, and Gossip. It explains who decides, how state spreads, and what happens on failure before you study the protocols in detail.
 
-## 业务型分布式系统常见的基础能力
+Distinguish consensus from distributed transactions. Paxos, Raft, and ZAB coordinate replicas on log order, Leaders, or state changes. TCC, Saga, and transactional messages coordinate commits and compensation among business participants. Both can appear in one system, but solve different problems.
 
-下面这些能力常见于微服务和在线业务系统，属于工程配套，不是分布式系统定义的一部分。服务成员关系也不一定非要靠独立注册中心维护，DNS、静态配置、Gossip 或集群协议都可能用得上。
+At the introductory stage, be able to explain:
 
-**服务发现和负载均衡**：服务实例会扩容、缩容、重启，调用方不能把服务地址写死。注册中心记录服务实例，负载均衡从可用实例里选一个进行调用。
+1. Why split a single-machine system across nodes?
+2. How do remote and local calls differ?
+3. Why does a timeout not necessarily mean failure?
+4. Why do replicas introduce consistency problems?
+5. Why do cross-service writes need idempotency, compensation, and eventual consistency?
+6. Why do some systems need a Leader while others use Gossip to propagate state?
 
-**超时、重试和幂等**：远程调用必须设置超时。重试要谨慎，只适合可重试且有幂等保护的操作。支付、扣库存、发券这类操作，一定要有业务唯一号或幂等表兜底。
+## References
 
-**熔断、限流和降级**：下游服务变慢或失败时，上游不能无限等待和重试，否则故障会沿着调用链扩散。熔断用于快速失败，限流用于控制入口压力，降级用于保住主链路。
-
-**配置管理和动态变更**：服务数量多了以后，配置不能只靠本地文件手动改。配置中心可以统一管理配置，并支持灰度发布、动态刷新和回滚。
-
-**日志、指标和链路追踪**：日志回答“发生了什么”，指标回答“现在健康吗”，链路追踪回答“一次请求经过了哪里”。这 3 类数据放在一起，排查分布式问题才有抓手。
-
-**数据一致性和补偿机制**：跨节点写数据时，要提前设计失败后的处理方式。是强一致、最终一致，还是允许短时间不一致？失败后靠重试、人工处理、对账修复，还是业务回滚？这些问题不能等线上出错后再补。
-
-## 分布式系统怎么学？
-
-学习分布式系统，不建议一上来背算法名。先从工程问题往理论走，会顺很多。
-
-第一步看网络通信。HTTP、RPC、TCP、超时、重试、连接池、序列化，这些内容决定服务之间怎么说话。没有这部分基础，后面看服务治理会很虚。
-
-第二步看服务拆分和服务治理。服务为什么要拆，拆完以后怎么注册发现、负载均衡、限流熔断、链路追踪，怎么处理版本兼容和灰度发布。微服务的大部分日常问题都在这一层。
-
-第三步补数据层：复制、分片、缓存、消息队列、分布式 ID、分布式锁、分布式事务。这里要多问异常场景，比如消息重复投递怎么办、缓存和数据库不一致怎么办、锁过期但业务还没执行完怎么办。
-
-最后再看 CAP、BASE、中心化与去中心化、Paxos、Raft、ZAB、Gossip、一致性哈希这些理论和协议。学习这些内容，重点是理解 ZooKeeper、etcd、Kafka、Redis Cluster、分布式数据库这些系统为什么这样设计。
-
-这里建议先读 [分布式协调详解](./protocol/centralized-and-decentralized.md)。它把 Leader、Quorum、脑裂、Lease、Fencing Token 和 Gossip 放在同一条主线里，能帮你在进入 Raft、ZAB、Gossip 细节之前，先明白“谁来做决定、状态怎么传播、错了会怎样”。
-
-还要分清共识和分布式事务。Paxos、Raft、ZAB 主要解决一组副本如何对日志顺序、Leader 或状态变更达成一致；TCC、Saga、事务消息主要解决多个业务参与方之间如何协调提交和补偿。它们可能出现在同一个系统里，但处理的问题不同。
-
-入门阶段先把这 5 个问题讲清楚，比背一串术语更有用：
-
-1. 为什么单机系统要拆成多节点？
-2. 远程调用和本地调用有什么差别？
-3. 为什么分布式系统里超时不能简单等同于失败？
-4. 为什么多副本会引入一致性问题？
-5. 为什么跨服务写数据通常要考虑幂等、补偿和最终一致性？
-6. 为什么有些系统需要 Leader，有些系统更适合用 Gossip 传播状态？
-
-## 参考资料
-
-- [什么是分布式系统，如何学习分布式系统](https://www.cnblogs.com/xybaby/p/7787034.html)
-- [现在主流开源分布式系统架构都有哪些？](https://www.zhihu.com/question/19832447/answer/91660607)
-- [常见分布式系统设计图解（汇总）](https://www.raychase.net/6364)
+- [What are distributed systems and how should you study them?](https://www.cnblogs.com/xybaby/p/7787034.html)
+- [Common open-source distributed system architectures](https://www.zhihu.com/question/19832447/answer/91660607)
+- [Illustrated distributed system designs](https://www.raychase.net/6364)
 - [A brief introduction to distributed systems](https://www.researchgate.net/publication/306241722_A_brief_introduction_to_Distributed_Systems)
 - [MIT 6.824 Distributed Systems](https://pdos.csail.mit.edu/6.824/)
 - [Time, Clocks, and the Ordering of Events in a Distributed System](https://www.microsoft.com/en-us/research/publication/time-clocks-ordering-events-distributed-system/)
 - [Timeouts, retries and backoff with jitter](https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/)
 - [Eventually Consistent - Revisited](https://www.allthingsdistributed.com/2008/12/eventually_consistent.html)
 - [Raft Consensus Algorithm](https://raft.github.io/)
-- 《Designing Data-Intensive Applications》
-- 《分布式系统概念与设计》
+- _Designing Data-Intensive Applications_
+- _Distributed Systems: Concepts and Design_
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,391 +1,391 @@
 ---
-title: ZooKeeper 进阶详解：ZAB 协议、Leader 选举、集群部署与会话机制
-category: 分布式
-description: ZooKeeper 进阶详解，深入讲解 ZAB 协议、Leader 选举、集群部署策略、奇数节点原则、会话管理、Watcher 机制和与 Eureka、Nacos 等注册中心的对比。
+title: "ZooKeeper in Depth: ZAB, Leader Election, Cluster Deployment, and Sessions"
+category: Distributed Systems
+description: A detailed guide to ZooKeeper, covering the ZAB protocol, leader election, cluster deployment, odd-numbered clusters, session management, watchers, and comparisons with service registries such as Eureka and Nacos.
 tag:
   - ZooKeeper
 head:
   - - meta
     - name: keywords
-      content: ZooKeeper,ZooKeeper 进阶,ZAB 协议,Leader 选举,集群部署,会话管理,Watcher,Eureka 对比,Nacos 对比,分布式协调,CP 系统
+      content: ZooKeeper,ZooKeeper advanced,ZAB protocol,leader election,cluster deployment,session management,watcher,Eureka comparison,Nacos comparison,distributed coordination,CP system
 ---
 
-> [FrancisQ](https://juejin.im/user/5c33853851882525ea106810) 投稿。
+> Submitted by [FrancisQ](https://juejin.im/user/5c33853851882525ea106810).
 
-## 什么是 ZooKeeper
+## What Is ZooKeeper?
 
-`ZooKeeper` 由 `Yahoo` 开发，后来捐赠给了 `Apache` ，现已成为 `Apache` 顶级项目。`ZooKeeper` 是一个开源的分布式应用程序协调服务器，其为分布式系统提供一致性服务。其一致性是通过专门为 ZooKeeper 设计的 **ZAB（ZooKeeper Atomic Broadcast）** 协议完成的。其主要功能包括：配置维护、分布式同步、集群管理等。
+`ZooKeeper` was developed by `Yahoo` and later donated to `Apache`, where it became a top-level project. It is an open-source coordination server for distributed applications that provides consistency services to distributed systems. It achieves consistency with **ZAB (ZooKeeper Atomic Broadcast)**, a protocol designed specifically for ZooKeeper. Its main functions include configuration maintenance, distributed synchronization, and cluster management.
 
-简单来说， `ZooKeeper` 是一个 **分布式协调服务框架** 。分布式？协调服务？这啥玩意？🤔🤔
+Simply put, `ZooKeeper` is a **distributed coordination service framework**. Distributed? Coordination service? What does that mean? 🤔🤔
 
-其实解释到分布式这个概念的时候，我发现有些同学并不是能把 **分布式和集群** 这两个概念很好的理解透。前段时间有同学和我探讨起分布式的东西，他说分布式不就是加机器吗？一台机器不够用再加一台抗压呗。当然加机器这种说法也无可厚非，你一个分布式系统必定涉及到多个机器，但是你别忘了，计算机学科中还有一个相似的概念—— `Cluster` ，集群不也是加机器吗？但是 集群 和 分布式 其实就是两个完全不同的概念。
+When explaining distributed systems, I have noticed that some people do not clearly distinguish **a distributed system from a cluster**. Recently, someone told me that a distributed system is just adding machines: if one is not enough, add another to handle the load. Adding machines is part of it, of course; a distributed system does involve multiple machines. But there is another related concept in computer science: a `Cluster`. A cluster also involves adding machines, but a cluster and a distributed system are not the same thing.
 
-比如，我现在有一个秒杀服务，并发量太大单机系统承受不住，那我加几台服务器也 **一样** 提供秒杀服务，这个时候就是 **`Cluster` 集群** 。
+For example, suppose a flash-sale service cannot handle the traffic on one machine. If I add several servers that all provide the **same** service, that is a **`Cluster`**.
 
 ![cluster](../../images/shared/60263e969b9e4a0f81724b1f4d5b3d58-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-但是，我现在换一种方式，我将一个秒杀服务 **拆分成多个子服务** ，比如创建订单服务，增加积分服务，扣优惠券服务等等，**然后我将这些子服务都部署在不同的服务器上** ，这个时候就是 **`Distributed` 分布式** 。
+Now consider a different approach: **split the flash-sale service into multiple services**, such as order creation, reward points, and coupon redemption, **then deploy each service on a different server**. This is a **`Distributed` system**.
 
 ![distributed](../../images/shared/0d42e7b4249144b3a77a0c519216ae3d-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-而我为什么反驳同学所说的分布式就是加机器呢？因为我认为加机器更加适用于构建集群，因为它真是只有加机器。而对于分布式来说，你首先需要将业务进行拆分，然后再加机器（不仅仅是加机器那么简单），同时你还要去解决分布式带来的一系列问题。
+Why do I disagree that a distributed system is just adding machines? Adding machines is more directly associated with building a cluster. A distributed system requires splitting the business into services before adding machines, and it also requires solving a range of problems introduced by distribution.
 
 ![](../../images/shared/e3662ca1a09c4444b07f15dbf85c6ba8-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-比如各个分布式组件如何协调起来，如何减少各个系统之间的耦合度，分布式事务的处理，如何去配置整个分布式系统等等。`ZooKeeper` 主要就是解决这些问题的。
+These problems include coordinating distributed components, reducing coupling between systems, handling distributed transactions, and configuring the overall system. `ZooKeeper` is designed to help solve such problems.
 
-## 一致性问题
+## The Consistency Problem
 
-设计一个分布式系统必定会遇到一个问题—— **因为分区容忍性（partition tolerance）的存在，就必定要求我们需要在系统可用性（availability）和数据一致性（consistency）中做出权衡** 。这就是著名的 `CAP` 定理。
+One challenge in designing a distributed system is that **partition tolerance requires a trade-off between system availability and data consistency**. This is the well-known `CAP` theorem.
 
-理解起来其实很简单，比如说把一个班级作为整个系统，而学生是系统中的一个个独立的子系统。这个时候班里的小红小明偷偷谈恋爱被班里的大嘴巴小花发现了，小花欣喜若狂告诉了周围的人，然后小红小明谈恋爱的消息在班级里传播起来了。当在消息的传播（散布）过程中，你抓到一个同学问他们的情况，如果回答你不知道，那么说明整个班级系统出现了数据不一致的问题（因为小花已经知道这个消息了）。而如果他直接不回答你，因为整个班级有消息在进行传播（为了保证一致性，需要所有人都知道才可提供服务），这个时候就出现了系统的可用性问题。
+Here is a simple analogy. Imagine the class is the whole system and each student is an independent subsystem. Xiaohua discovers that Xiaohong and Xiaoming are secretly dating, then excitedly tells the students around her. The news starts spreading through the class. If you ask a student what happened during this propagation and they say they do not know, the class has a data consistency problem because Xiaohua already knows. If the student refuses to answer while the news is still spreading (because everyone must know before the system can serve requests), the system has an availability problem.
 
 ![](../../images/shared/38b9ff4b193e4487afe32c9710c6d644-tplv-k3u1fbpfcp-zoom-1-20230717160254318-20230717160259975.jpg)
 
-而上述前者就是 `Eureka` 的处理方式，它保证了 AP（可用性），后者就是我们今天所要讲的 `ZooKeeper` 的处理方式，它保证了 CP（数据一致性）。
+The first approach is how `Eureka` behaves: it favors AP (availability). The second approach is how `ZooKeeper` behaves: it favors CP (data consistency).
 
-## 一致性协议和算法
+## Consistency Protocols and Algorithms
 
-而为了解决数据一致性问题，在科学家和程序员的不断探索中，就出现了很多的一致性协议和算法。比如 2PC（两阶段提交），3PC（三阶段提交），Paxos 算法等等。
+Researchers and engineers have developed many protocols and algorithms to address data consistency, including 2PC (Two-Phase Commit), 3PC (Three-Phase Commit), and Paxos.
 
-这时候请你思考一个问题，同学之间如果采用传纸条的方式去传播消息，那么就会出现一个问题——我咋知道我的小纸条有没有传到我想要传递的那个人手中呢？万一被哪个小家伙给劫持篡改了呢，对吧？
+Consider another question: if students pass notes to spread the news, how can you know that your note reached the intended person? What if someone intercepts and alters it?
 
 ![](../../images/shared/8c73e264d28b4a93878f4252e4e3e43c-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-这个时候就引申出一个概念—— **拜占庭将军问题** 。它意指 **在不可靠信道上试图通过消息传递的方式达到一致性是不可能的**， 所以所有的一致性算法的 **必要前提** 就是安全可靠的消息通道。
+This leads to the **Byzantine Generals Problem**. It states that **achieving consensus through message passing over an unreliable channel is impossible**. A **necessary assumption** for consistency algorithms is therefore a secure and reliable communication channel.
 
-而为什么要去解决数据一致性的问题？你想想，如果一个秒杀系统将服务拆分成了下订单和加积分服务，这两个服务部署在不同的机器上了，万一在消息的传播过程中积分系统宕机了，总不能你这边下了订单却没加积分吧？你总得保证两边的数据需要一致吧？
+Why do we need to solve data consistency? Suppose a flash-sale system is split into order placement and reward-point services running on different machines. If the points service crashes while a message is being delivered, a customer might place an order but receive no points. The data in both services needs to remain consistent.
 
-### 2PC（两阶段提交）
+### 2PC (Two-Phase Commit)
 
-两阶段提交是一种保证分布式系统数据一致性的协议，现在很多数据库都是采用的两阶段提交协议来完成 **分布式事务** 的处理。
+Two-Phase Commit is a protocol for maintaining data consistency in distributed systems. Many databases use it to handle **distributed transactions**.
 
-在介绍 2PC 之前，我们先来想想分布式事务到底有什么问题呢？
+Before discussing 2PC, let's consider the problem that distributed transactions need to solve.
 
-还拿秒杀系统的下订单和加积分两个系统来举例吧（我想你们可能都吐了 🤮🤮🤮），我们此时下完订单会发个消息给积分系统告诉它下面该增加积分了。如果我们仅仅是发送一个消息也不收回复，那么我们的订单系统怎么能知道积分系统的收到消息的情况呢？如果我们增加一个收回复的过程，那么当积分系统收到消息后返回给订单系统一个 `Response` ，但在中间出现了网络波动，那个回复消息没有发送成功，订单系统是不是以为积分系统消息接收失败了？它是不是会回滚事务？但此时积分系统是成功收到消息的，它就会去处理消息然后给用户增加积分，这个时候就会出现积分加了但是订单没下成功。
+Let's reuse the flash-sale example with order placement and reward points (you may be tired of it by now 🤮🤮🤮). After placing an order, the order service sends a message telling the points service to add points. If it sends the message without waiting for a response, how does the order service know whether the points service received it? Suppose the points service sends a `Response`, but a network issue prevents the response from arriving. The order service may assume delivery failed and roll back, while the points service has already received the message and adds the points. The customer then gets points without a successful order.
 
-所以我们所需要解决的是在分布式系统中，整个调用链中，我们所有服务的数据处理要么都成功要么都失败，即所有服务的 **原子性问题** 。
+The problem to solve is **atomicity** across the call chain: either all services process their data successfully, or all of them fail.
 
-在两阶段提交中，主要涉及到两个角色，分别是协调者和参与者。
+Two-Phase Commit involves two main roles: the coordinator and the participants.
 
-第一阶段：当要执行一个分布式事务的时候，事务发起者首先向协调者发起事务请求，然后协调者会给所有参与者发送 `prepare` 请求（其中包括事务内容）告诉参与者你们需要执行事务了，如果能执行我发的事务内容那么就先执行但不提交，执行后请给我回复。然后参与者收到 `prepare` 消息后，他们会开始执行事务（但不提交），并将 `Undo` 和 `Redo` 信息记入事务日志中，之后参与者就向协调者反馈是否准备好了。
+**Phase 1:** To execute a distributed transaction, the initiator first sends a request to the coordinator. The coordinator then sends every participant a `prepare` request containing the transaction details. Participants execute the transaction without committing it, record `Undo` and `Redo` information in their transaction logs, and report whether they are ready.
 
-第二阶段：第二阶段主要是协调者根据参与者反馈的情况来决定接下来是否可以进行事务的提交操作，即提交事务或者回滚事务。
+**Phase 2:** The coordinator uses the participants' responses to decide whether to commit or roll back the transaction.
 
-比如这个时候 **所有的参与者** 都返回了准备好了的消息，这个时候就进行事务的提交，协调者此时会给所有的参与者发送 **`Commit` 请求** ，当参与者收到 `Commit` 请求的时候会执行前面执行的事务的 **提交操作** ，提交完毕之后将给协调者发送提交成功的响应。
+If **all participants** report that they are ready, the coordinator commits the transaction by sending every participant a **`Commit` request**. Each participant commits its transaction and sends a success response to the coordinator.
 
-而如果在第一阶段并不是所有参与者都返回了准备好了的消息，那么此时协调者将会给所有参与者发送 **回滚事务的 `rollback` 请求**，参与者收到之后将会 **回滚它在第一阶段所做的事务处理** ，然后再将处理情况返回给协调者，最终协调者收到响应后便给事务发起者返回处理失败的结果。
+If not all participants report readiness in Phase 1, the coordinator sends every participant a **`rollback` request**. Each participant **rolls back the work it performed in Phase 1** and reports the result. After receiving their responses, the coordinator reports failure to the transaction initiator.
 
-![2PC流程](../../images/shared/1a7210167f1d4d4fb97afcec19902a59-tplv-k3u1fbpfcp-zoom-1.jpg)
+![2PC workflow](../../images/shared/1a7210167f1d4d4fb97afcec19902a59-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-个人觉得 2PC 实现得还是比较鸡肋的，因为事实上它只解决了各个事务的原子性问题，随之也带来了很多的问题。
+In my view, 2PC is limited in practice: it addresses atomicity across transactions, but also introduces several problems.
 
 ![](../../images/shared/cc534022c7184770b9b82b2d0008432a-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-- **单点故障问题**，如果协调者挂了那么整个系统都处于不可用的状态了。
-- **阻塞问题**，即当协调者发送 `prepare` 请求，参与者收到之后如果能处理那么它将会进行事务的处理但并不提交，这个时候会一直占用着资源不释放，如果此时协调者挂了，那么这些资源都不会再释放了，这会极大影响性能。
-- **数据不一致问题**，比如当第二阶段，协调者只发送了一部分的 `commit` 请求就挂了，那么也就意味着，收到消息的参与者会进行事务的提交，而后面没收到的则不会进行事务提交，那么这时候就会产生数据不一致性问题。
+- **Single point of failure**: If the coordinator crashes, the entire system may become unavailable.
+- **Blocking**: After receiving a `prepare` request, a participant that can proceed performs the transaction without committing it and holds its resources. If the coordinator crashes, those resources may not be released, which can severely affect performance.
+- **Inconsistent data**: If the coordinator crashes after sending `commit` requests to only some participants in Phase 2, those participants commit while the others do not, leaving inconsistent data.
 
-### 3PC（三阶段提交）
+### 3PC (Three-Phase Commit)
 
-因为 2PC 存在的一系列问题，比如单点，容错机制缺陷等等，从而产生了 **3PC（三阶段提交）** 。那么这三阶段又分别是什么呢？
+**3PC (Three-Phase Commit)** was developed to address some 2PC problems, such as its single point of failure and limited fault tolerance. What are its three phases?
 
-> 千万不要吧 PC 理解成个人电脑了，其实他们是 phase-commit 的缩写，即阶段提交。
+> Do not mistake PC for “personal computer.” It abbreviates “phase commit.”
 
-1. **CanCommit 阶段**：协调者向所有参与者发送 `CanCommit` 请求，参与者收到请求后会根据自身情况查看是否能执行事务，如果可以则返回 YES 响应并进入预备状态，否则返回 NO 。
-2. **PreCommit 阶段**：协调者根据参与者返回的响应来决定是否可以进行下面的 `PreCommit` 操作。如果上面参与者返回的都是 YES，那么协调者将向所有参与者发送 `PreCommit` 预提交请求，**参与者收到预提交请求后，会进行事务的执行操作，并将 `Undo` 和 `Redo` 信息写入事务日志中** ，最后如果参与者顺利执行了事务则给协调者返回成功的响应。如果在第一阶段协调者收到了 **任何一个 NO** 的信息，或者 **在一定时间内** 并没有收到全部的参与者的响应，那么就会中断事务，它会向所有参与者发送中断请求（abort），参与者收到中断请求之后会立即中断事务，或者在一定时间内没有收到协调者的请求，它也会中断事务。
-3. **DoCommit 阶段**：这个阶段其实和 `2PC` 的第二阶段差不多，如果协调者收到了所有参与者在 `PreCommit` 阶段的 YES 响应，那么协调者将会给所有参与者发送 `DoCommit` 请求，**参与者收到 `DoCommit` 请求后则会进行事务的提交工作**，完成后则会给协调者返回响应，协调者收到所有参与者返回的事务提交成功的响应之后则完成事务。若协调者在 `PreCommit` 阶段 **收到了任何一个 NO 或者在一定时间内没有收到所有参与者的响应** ，那么就会进行中断请求的发送，参与者收到中断请求后则会 **通过上面记录的回滚日志** 来进行事务的回滚操作，并向协调者反馈回滚状况，协调者收到参与者返回的消息后，中断事务。
+1. **CanCommit phase**: The coordinator sends every participant a `CanCommit` request. Each participant checks whether it can execute the transaction and replies YES if it can, entering a prepared state; otherwise, it replies NO.
+2. **PreCommit phase**: The coordinator uses the participants' responses to decide whether to proceed. If every participant replied YES, the coordinator sends a `PreCommit` request to all of them. **After receiving the request, participants execute the transaction and write `Undo` and `Redo` information to their transaction logs.** If execution succeeds, they report success to the coordinator. If the coordinator receives **any NO** in Phase 1 or does not receive every response **within a specified time**, it aborts the transaction and sends an abort request to all participants. A participant aborts immediately when it receives the request or after timing out while waiting for the coordinator.
+3. **DoCommit phase**: This is similar to the second phase of `2PC`. If the coordinator receives YES from every participant in the `PreCommit` phase, it sends every participant a `DoCommit` request. **Participants commit the transaction** and respond to the coordinator. The transaction ends after the coordinator receives successful commit responses from all participants. If the coordinator receives **any NO during `PreCommit` or fails to receive all responses within the timeout**, it sends abort requests. Participants **roll back using the rollback logs recorded earlier**, report the result, and abort the transaction.
 
-![3PC流程](../../images/shared/80854635d48c42d896dbaa066abf5c26-tplv-k3u1fbpfcp-zoom-1.jpg)
+![3PC workflow](../../images/shared/80854635d48c42d896dbaa066abf5c26-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-> 这里是 `3PC` 在成功的环境下的流程图，你可以看到 `3PC` 在很多地方进行了超时中断的处理，比如协调者在指定时间内未收到全部的确认消息则进行事务中断的处理，这样能 **减少同步阻塞的时间** 。还有需要注意的是，**`3PC` 在 `DoCommit` 阶段参与者如未收到协调者发送的提交事务的请求，它会在一定时间内进行事务的提交**。为什么这么做呢？是因为这个时候我们肯定**保证了在第一阶段所有的协调者全部返回了可以执行事务的响应**，这个时候我们有理由**相信其他系统都能进行事务的执行和提交**，所以**不管**协调者有没有发消息给参与者，进入第三阶段参与者都会进行事务的提交操作。
+> This diagram shows the successful `3PC` workflow. `3PC` uses timeouts to abort transactions in several situations. For example, if the coordinator does not receive all acknowledgments within the specified time, it aborts the transaction, which **reduces synchronous blocking time**. Also note that **if a participant does not receive the coordinator's commit request during `DoCommit`, it commits after a timeout**. Why? By this point, **all participants confirmed in the first phase that they could execute the transaction**, so it is reasonable to **assume the other systems can execute and commit it**. Therefore, **regardless** of whether the coordinator sent the message, participants commit in the third phase.
 
-总之，`3PC` 通过一系列的超时机制很好的缓解了阻塞问题，但是最重要的一致性并没有得到根本的解决，比如在 `DoCommit` 阶段，当一个参与者收到了请求之后其他参与者和协调者挂了或者出现了网络分区，这个时候收到消息的参与者都会进行事务提交，这就会出现数据不一致性问题。
+In short, `3PC` uses timeouts to reduce blocking, but it does not fundamentally solve the consistency problem. For example, during `DoCommit`, if one participant receives a request while the coordinator and other participants crash or become separated by a network partition, the participant that received the message commits, which can leave the data inconsistent.
 
-所以，要解决一致性问题还需要靠 `Paxos` 算法 ⭐️ ⭐️ ⭐️ 。
+So, solving consistency still requires an algorithm such as `Paxos` ⭐️ ⭐️ ⭐️.
 
-### `Paxos` 算法
+### The `Paxos` Algorithm
 
-`Paxos` 算法是基于**消息传递且具有高度容错特性的一致性算法**，是目前公认的解决分布式一致性问题最有效的算法之一，**其解决的问题就是在分布式系统中如何就某个值（决议）达成一致** 。
+`Paxos` is a **message-passing consensus algorithm with high fault tolerance**. It is widely regarded as one of the most effective algorithms for distributed consistency. **It solves the problem of reaching agreement on a value (a decision) in a distributed system.**
 
-在 `Paxos` 中主要有三个角色，分别为 `Proposer提案者`、`Acceptor表决者`、`Learner学习者`。`Paxos` 算法和 `2PC` 一样，也有两个阶段，分别为 `Prepare` 和 `accept` 阶段。
+`Paxos` has three main roles: `Proposer`, `Acceptor`, and `Learner`. Like `2PC`, the algorithm has two phases: `Prepare` and `Accept`.
 
-#### prepare 阶段
+#### Prepare Phase
 
-- `Proposer提案者`：负责提出 `proposal`，每个提案者在提出提案时都会首先获取到一个 **具有全局唯一性的、递增的提案编号 N**，即在整个集群中是唯一的编号 N，然后将该编号赋予其要提出的提案，在**第一阶段是只将提案编号发送给所有的表决者**。
-- `Acceptor表决者`：每个表决者在 `accept` 某提案后，会将该提案编号 N 记录在本地，这样每个表决者中保存的已经被 accept 的提案中会存在一个**编号最大的提案**，其编号假设为 `maxN`。每个表决者仅会 `accept` 编号大于自己本地 `maxN` 的提案，在批准提案时表决者会将以前接受过的最大编号的提案作为响应反馈给 `Proposer` 。
+- `Proposer`: Proposes a `proposal`. Before proposing, each proposer obtains a **globally unique, increasing proposal number N** and assigns it to its proposal. **In the first phase, it sends only the proposal number to all acceptors.**
+- `Acceptor`: After accepting a proposal, each acceptor records its number `N` locally. Among the proposals it has accepted, it tracks the one with the **largest number**, called `maxN`. It accepts only proposals numbered higher than its local `maxN`. When it promises to accept a proposal, it reports the highest-numbered proposal it previously accepted to the `Proposer`.
 
-> 下面是 `prepare` 阶段的流程图，你可以对照着参考一下。
+> The following diagram shows the `Prepare` phase.
 
-![paxos第一阶段](../../images/shared/cd1e5f78875b4ad6b54013738f570943-tplv-k3u1fbpfcp-zoom-1.jpg)
+![Paxos Phase 1](../../images/shared/cd1e5f78875b4ad6b54013738f570943-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-#### accept 阶段
+#### Accept Phase
 
-当一个提案被 `Proposer` 提出后，如果 `Proposer` 收到了超过半数的 `Acceptor` 的批准（`Proposer` 本身同意），那么此时 `Proposer` 会给所有的 `Acceptor` 发送真正的提案（你可以理解为第一阶段为试探），这个时候 `Proposer` 就会发送提案的内容和提案编号。
+After a `Proposer` makes a proposal, if it receives promises from a majority of `Acceptors` (including its own vote), it sends the actual proposal to all `Acceptors`. In other words, the first phase is a probe; in this phase, the `Proposer` sends both the proposal value and its number.
 
-表决者收到提案请求后会再次比较本身已经批准过的最大提案编号和该提案编号，如果该提案编号 **大于等于** 已经批准过的最大提案编号，那么就 `accept` 该提案（此时执行提案内容但不提交），随后将情况返回给 `Proposer` 。如果不满足则不回应或者返回 NO 。
+After receiving a proposal request, an acceptor compares its number with the largest proposal number it has already promised. If the new number is **greater than or equal to** that number, it `accept`s the proposal (accepting its value without committing it) and reports the result to the `Proposer`. Otherwise, it does not respond or returns NO.
 
-![paxos第二阶段1](../../images/shared/dad7f51d58b24a72b249278502ec04bd-tplv-k3u1fbpfcp-zoom-1.jpg)
+![Paxos Phase 2, step 1](../../images/shared/dad7f51d58b24a72b249278502ec04bd-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-当 `Proposer` 收到超过半数的 `accept` ，那么它这个时候会向所有的 `acceptor` 发送提案的提交请求。需要注意的是，因为上述仅仅是超过半数的 `acceptor` 批准执行了该提案内容，其他没有批准的并没有执行该提案内容，所以这个时候需要**向未批准的 `acceptor` 发送提案内容和提案编号并让它无条件执行和提交**，而对于前面已经批准过该提案的 `acceptor` 来说 **仅仅需要发送该提案的编号** ，让 `acceptor` 执行提交就行了。
+After the `Proposer` receives `accept` responses from a majority, it sends all `Acceptors` a request to commit the proposal. Note that only a majority of `Acceptors` accepted its value; the others have not applied it. Therefore, **send the proposal value and number to the unaccepting `Acceptors` and have them apply and commit it unconditionally**. For `Acceptors` that already accepted the proposal, **send only its number** so they can commit it.
 
-![paxos第二阶段2](../../images/shared/9359bbabb511472e8de04d0826967996-tplv-k3u1fbpfcp-zoom-1.jpg)
+![Paxos Phase 2, step 2](../../images/shared/9359bbabb511472e8de04d0826967996-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-而如果 `Proposer` 如果没有收到超过半数的 `accept` 那么它将会将 **递增** 该 `Proposal` 的编号，然后 **重新进入 `Prepare` 阶段** 。
+If the `Proposer` does not receive `accept` responses from a majority, it **increments** the proposal number and **restarts the `Prepare` phase**.
 
-> 对于 `Learner` 来说如何去学习 `Acceptor` 批准的提案内容，这有很多方式，读者可以自己去了解一下，这里不做过多解释。
+> There are several ways for a `Learner` to learn the proposal value accepted by the `Acceptors`; readers can explore them further. They are beyond the scope of this section.
 
-#### paxos 算法的死循环问题
+#### The Paxos Livelock Problem
 
-其实就有点类似于两个人吵架，小明说我是对的，小红说我才是对的，两个人据理力争的谁也不让谁 🤬🤬。
+This is a bit like two people arguing: Xiaoming says he is right, Xiaohong says she is right, and neither will back down 🤬🤬.
 
-比如说，此时提案者 P1 提出一个方案 M1，完成了 `Prepare` 阶段的工作，这个时候 `acceptor` 则批准了 M1，但是此时提案者 P2 同时也提出了一个方案 M2，它也完成了 `Prepare` 阶段的工作。然后 P1 的方案已经不能在第二阶段被批准了（因为 `acceptor` 已经批准了比 M1 更大的 M2），所以 P1 自增方案变为 M3 重新进入 `Prepare` 阶段，然后 `acceptor` ，又批准了新的 M3 方案，它又不能批准 M2 了，这个时候 M2 又自增进入 `Prepare` 阶段。。。
+For example, proposer P1 proposes M1 and completes the `Prepare` phase, so an `Acceptor` promises to M1. At the same time, proposer P2 proposes M2 and also completes `Prepare`. P1's proposal can no longer be accepted in Phase 2 because the `Acceptor` has promised a higher-numbered proposal, M2. P1 increments its number to M3 and restarts `Prepare`. The `Acceptor` promises M3, so it can no longer accept M2. P2 then increments its number and restarts `Prepare`...
 
-就这样无休无止的永远提案下去，这就是 `paxos` 算法的死循环问题。
+The proposals can continue indefinitely. This is the livelock problem in `Paxos`.
 
 ![](../../images/shared/bc3d45941abf4fca903f7f4b69405abf-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-那么如何解决呢？很简单，人多了容易吵架，我现在 **就允许一个能提案** 就行了。
+How can it be resolved? Simply put, since too many proposers can conflict, **allow only one proposer**.
 
-## 引出 ZAB
+## Introducing ZAB
 
-### Zookeeper 架构
+### ZooKeeper Architecture
 
-作为一个优秀高效且可靠的分布式协调框架，`ZooKeeper` 在解决分布式数据一致性问题时并没有直接使用 `Paxos` ，而是专门定制了一致性协议叫做 `ZAB(ZooKeeper Atomic Broadcast)` 原子广播协议，该协议能够很好地支持 **崩溃恢复** 。
+As an efficient and reliable distributed coordination framework, `ZooKeeper` does not use `Paxos` directly to maintain distributed data consistency. Instead, it uses a custom consensus protocol called `ZAB (ZooKeeper Atomic Broadcast)`, an atomic broadcast protocol that supports **crash recovery**.
 
-![Zookeeper架构](../../images/shared/07bf6c1e10f84fc58a2453766ca6bd18-tplv-k3u1fbpfcp-zoom-1.png)
+![ZooKeeper architecture](../../images/shared/07bf6c1e10f84fc58a2453766ca6bd18-tplv-k3u1fbpfcp-zoom-1.png)
 
-### ZAB 中的三个角色
+### The Three ZAB Roles
 
-和介绍 `Paxos` 一样，在介绍 `ZAB` 协议之前，我们首先来了解一下在 `ZAB` 中三个主要的角色，`Leader 领导者`、`Follower跟随者`、`Observer观察者` 。
+As with `Paxos`, first let's look at the three main roles in `ZAB`: `Leader`, `Follower`, and `Observer`.
 
-- `Leader`：集群中 **唯一的写请求处理者** ，能够发起投票（投票也是为了进行写请求）。
-- `Follower`：能够接收客户端的请求，如果是读请求则可以自己处理，**如果是写请求则要转发给 `Leader`** 。在选举过程中会参与投票，**有选举权和被选举权** 。
-- `Observer`：就是没有选举权和被选举权的 `Follower` 。
+- `Leader`: The cluster's **only write request processor**. It can initiate votes, which are used to process write requests.
+- `Follower`: Receives client requests and handles reads locally, but **forwards writes to the `Leader`**. It votes in elections and **can be elected Leader**.
+- `Observer`: A `Follower` with no voting rights and that cannot be elected Leader.
 
-在 `ZAB` 协议中对 `zkServer`(即上面我们说的三个角色的总称) 还有两种模式的定义，分别是 **消息广播** 和 **崩溃恢复** 。
+The `ZAB` protocol also defines two modes for a `zkServer` (the general term for the three roles above): **message broadcast** and **crash recovery**.
 
-### 消息广播模式
+### Message Broadcast Mode
 
-说白了就是 `ZAB` 协议是如何处理写请求的，上面我们不是说只有 `Leader` 能处理写请求嘛？那么我们的 `Follower` 和 `Observer` 是不是也需要 **同步更新数据** 呢？总不能数据只在 `Leader` 中更新了，其他角色都没有得到更新吧？
+This mode describes how `ZAB` handles write requests. Only the `Leader` can process writes, but the `Follower` and `Observer` also need to **synchronize their data**. Otherwise, updates would exist only on the `Leader`.
 
-不就是 **在整个集群中保持数据的一致性** 嘛？如果是你，你会怎么做呢？
+The goal is to **keep data consistent throughout the cluster**. How would you do it?
 
-废话，第一步肯定需要 `Leader` 将写请求 **广播** 出去呀，让 `Leader` 问问 `Followers` 是否同意更新，如果超过半数以上的同意那么就进行 `Follower` 和 `Observer` 的更新（和 `Paxos` 一样）。当然这么说有点虚，画张图理解一下。
+The first step is for the `Leader` to **broadcast** the write request and ask the `Followers` whether they agree to the update. If a majority agrees, the `Follower` and `Observer` nodes are updated, as in `Paxos`. The diagram below illustrates the process.
 
-![消息广播](../../images/shared/b64c7f25a5d24766889da14260005e31-tplv-k3u1fbpfcp-zoom-1.jpg)
+![Message broadcast](../../images/shared/b64c7f25a5d24766889da14260005e31-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-嗯。。。看起来很简单，貌似懂了 🤥🤥🤥。这两个 `Queue` 哪冒出来的？答案是 **`ZAB` 需要让 `Follower` 和 `Observer` 保证顺序性** 。何为顺序性，比如我现在有一个写请求 A，此时 `Leader` 将请求 A 广播出去，因为只需要半数同意就行，所以可能这个时候有一个 `Follower` F1 因为网络原因没有收到，而 `Leader` 又广播了一个请求 B，因为网络原因，F1 竟然先收到了请求 B 然后才收到了请求 A，这个时候请求处理的顺序不同就会导致数据的不同，从而 **产生数据不一致问题** 。
+Looks simple, right? 🤥🤥🤥 But where do the two `Queue`s come from? The answer is that **`ZAB` must preserve ordering for `Followers` and `Observers`**. For example, suppose the `Leader` broadcasts write request A. Since only a majority must agree, `Follower` F1 might not receive it because of a network issue. Then the `Leader` broadcasts request B, which F1 receives before A. Processing requests in a different order could produce different data and **cause inconsistency**.
 
-所以在 `Leader` 这端，它为每个其他的 `zkServer` 准备了一个 **队列** ，采用先进先出的方式发送消息。由于协议是 **通过 `TCP`** 来进行网络通信的，保证了消息的发送顺序性，接受顺序性也得到了保证。
+Therefore, the `Leader` maintains a **queue** for each other `zkServer` and sends messages in first-in, first-out order. Since communication uses **`TCP`**, message order is preserved during both sending and delivery.
 
-除此之外，在 `ZAB` 中还定义了一个 **全局单调递增的事务 ID `ZXID`** ，它是一个 64 位 long 型，其中高 32 位表示 `epoch` 年代，低 32 位表示事务 id。`epoch` 是会根据 `Leader` 的变化而变化的，当一个 `Leader` 挂了，新的 `Leader` 上位的时候，年代（`epoch`）就变了。而低 32 位可以简单理解为递增的事务 id。
+Additionally, `ZAB` defines a **globally monotonically increasing transaction ID, `ZXID`**. It is a 64-bit `long`: the upper 32 bits represent the `epoch`, and the lower 32 bits represent the transaction ID. The `epoch` changes when the `Leader` changes. When a `Leader` fails and a new one takes over, the epoch advances. The lower 32 bits can be understood as an increasing transaction ID.
 
-定义这个的原因也是为了顺序性，每个 `proposal` 在 `Leader` 中生成后需要 **通过其 `ZXID` 来进行排序** ，才能得到处理。
+This ID also preserves ordering: each `proposal` created by the `Leader` must be **ordered by its `ZXID`** before it is processed.
 
-### 崩溃恢复模式
+### Crash Recovery Mode
 
-说到崩溃恢复我们首先要提到 `ZAB` 中的 `Leader` 选举算法，当系统出现崩溃影响最大应该是 `Leader` 的崩溃，因为我们只有一个 `Leader` ，所以当 `Leader` 出现问题的时候我们势必需要重新选举 `Leader` 。
+Crash recovery requires discussing `ZAB`'s leader election. A `Leader` failure has the greatest impact because there is only one Leader, so the cluster must elect a replacement when it fails.
 
-`Leader` 选举可以分为两个不同的阶段，第一个是我们提到的 `Leader` 宕机需要重新选举，第二则是当 `Zookeeper` 启动时需要进行系统的 `Leader` 初始化选举。下面我先来介绍一下 `ZAB` 是如何进行初始化选举的。
+Leader election can happen in two situations: a failed `Leader` must be replaced, or the system must elect its initial `Leader` when `ZooKeeper` starts. First, let's look at how `ZAB` performs the initial election.
 
-假设我们集群中有 3 台机器，那也就意味着我们需要两台以上同意（超过半数）。比如这个时候我们启动了 `server1` ，它会首先 **投票给自己** ，投票内容为服务器的 `myid` 和 `ZXID` ，因为初始化所以 `ZXID` 都为 0，此时 `server1` 发出的投票为 (1,0)。但此时 `server1` 的投票仅为 1，所以不能作为 `Leader` ，此时还在选举阶段所以整个集群处于 **`Looking` 状态**。
+Suppose the cluster has three servers, so at least two votes (a majority) are required. When `server1` starts, it first **votes for itself**, with its `myid` and `ZXID` as the vote. Since the cluster is initializing, its `ZXID` is 0, so `server1` votes `(1,0)`. With only one vote, it cannot become the `Leader`; the cluster remains in the election phase, in the **`Looking` state**.
 
-接着 `server2` 启动了，它首先也会将投票选给自己(2,0)，并将投票信息广播出去（`server1`也会，只是它那时没有其他的服务器了），`server1` 在收到 `server2` 的投票信息后会将投票信息与自己的作比较。**首先它会比较 `ZXID` ，`ZXID` 大的优先为 `Leader`，如果相同则比较 `myid`，`myid` 大的优先作为 `Leader`**。所以此时`server1` 发现 `server2` 更适合做 `Leader`，它就会将自己的投票信息更改为(2,0)然后再广播出去，之后`server2` 收到之后发现和自己的一样无需做更改，并且自己的 **投票已经超过半数** ，则 **确定 `server2` 为 `Leader`**，`server1` 也会将自己服务器设置为 `Following` 变为 `Follower`。整个服务器就从 `Looking` 变为了正常状态。
+Then `server2` starts, votes for itself `(2,0)`, and broadcasts the vote (as `server1` did, although no other servers were available then). After receiving `server2`'s vote, `server1` compares it with its own. **It compares `ZXID` first; the higher `ZXID` is preferred for Leader. If they are equal, the higher `myid` is preferred.** `server1` therefore finds `server2` to be the better candidate, changes its vote to `(2,0)`, and broadcasts it. `server2` receives the matching vote and needs no change. It now has a **majority**, so **`server2` is elected Leader**. `server1` changes to the `Following` state and becomes a `Follower`. The cluster leaves the `Looking` state.
 
-当 `server3` 启动发现集群没有处于 `Looking` 状态时，它会直接以 `Follower` 的身份加入集群。
+When `server3` starts and sees that the cluster is no longer in the `Looking` state, it joins directly as a `Follower`.
 
-还是前面三个 `server` 的例子，如果在整个集群运行的过程中 `server2` 挂了，那么整个集群会如何重新选举 `Leader` 呢？其实和初始化选举差不多。
+Consider the same three-server example. If `server2` fails while the cluster is running, how does the cluster elect a new `Leader`? The process is similar to the initial election.
 
-首先毫无疑问的是剩下的两个 `Follower` 会将自己的状态 **从 `Following` 变为 `Looking` 状态** ，然后每个 `server` 会向初始化投票一样首先给自己投票（这不过这里的 `zxid` 可能不是 0 了，这里为了方便随便取个数字）。
+The two remaining `Followers` first change their state **from `Following` to `Looking`**. Each `server` then votes for itself, as in the initial election. Their `zxid` values may no longer be zero; the example below uses arbitrary values for simplicity.
 
-假设 `server1` 给自己投票为(1,99)，然后广播给其他 `server`，`server3` 首先也会给自己投票(3,95)，然后也广播给其他 `server`。`server1` 和 `server3` 此时会收到彼此的投票信息，和一开始选举一样，他们也会比较自己的投票和收到的投票（`zxid` 大的优先，如果相同那么就 `myid` 大的优先）。这个时候 `server1` 收到了 `server3` 的投票发现没自己的合适故不变，`server3` 收到 `server1` 的投票结果后发现比自己的合适于是更改投票为(1,99)然后广播出去，最后 `server1` 收到了发现自己的投票已经超过半数就把自己设为 `Leader`，`server3` 也随之变为 `Follower`。
+Suppose `server1` votes `(1,99)` for itself and broadcasts its vote. `server3` votes `(3,95)` and broadcasts that vote too. They receive each other's votes and compare them as during the initial election: the higher `zxid` takes priority, followed by the higher `myid` if the `zxid` values match. `server1` keeps its vote because `server3` is a weaker candidate. `server3` changes its vote to `(1,99)` and broadcasts it. `server1` now has a majority and becomes `Leader`; `server3` becomes a `Follower`.
 
-> 请注意 `ZooKeeper` 为什么要设置奇数个结点？比如这里我们是三个，挂了一个我们还能正常工作，挂了两个我们就不能正常工作了（已经没有超过半数的节点数了，所以无法进行投票等操作了）。而假设我们现在有四个，挂了一个也能工作，**但是挂了两个也不能正常工作了**，这是和三个一样的，而三个比四个还少一个，带来的效益是一样的，所以 `Zookeeper` 推荐奇数个 `server` 。
+> Why does `ZooKeeper` recommend an odd number of nodes? In this three-node example, the cluster keeps working if one node fails, but not if two fail because it can no longer reach a majority to vote. With four nodes, it can also tolerate one failure, **but still cannot work if two fail**. Four nodes provide the same fault tolerance as three, so `ZooKeeper` recommends an odd number of `servers`.
 
-那么说完了 `ZAB` 中的 `Leader` 选举方式之后我们再来了解一下 **崩溃恢复** 是什么玩意？
+Now that we have covered `ZAB` leader election, let's look at **crash recovery**.
 
-其实主要就是 **当集群中有机器挂了，我们整个集群如何保证数据一致性？**
+The main question is: **when a machine in the cluster fails, how does the cluster keep its data consistent?**
 
-如果只是 `Follower` 挂了，而且挂的没超过半数的时候，因为我们一开始讲了在 `Leader` 中会维护队列，所以不用担心后面的数据没接收到导致数据不一致性。
+If a `Follower` fails and the number of failed nodes is less than half, data inconsistency from missing later updates is not a concern because, as discussed earlier, the `Leader` maintains a queue for each server.
 
-如果 `Leader` 挂了那就麻烦了，我们肯定需要先暂停服务变为 `Looking` 状态然后进行 `Leader` 的重新选举（上面我讲过了），但这个就要分为两种情况了，分别是 **确保已经被 Leader 提交的提案最终能够被所有的 Follower 提交** 和 **跳过那些已经被丢弃的提案** 。
+If the `Leader` fails, the cluster must pause service, enter the `Looking` state, and elect a new `Leader`, as described above. Two requirements must be handled: **ensure that every proposal committed by the Leader is eventually committed by all Followers**, and **skip proposals that were discarded**.
 
-确保已经被 Leader 提交的提案最终能够被所有的 Follower 提交是什么意思呢？
+What does it mean to ensure that every proposal committed by the Leader is eventually committed by all Followers?
 
-假设 `Leader (server2)` 发送 `commit` 请求（忘了请看上面的消息广播模式），他发送给了 `server3`，然后要发给 `server1` 的时候突然挂了。这个时候重新选举的时候我们如果把 `server1` 作为 `Leader` 的话，那么肯定会产生数据不一致性，因为 `server3` 肯定会提交刚刚 `server2` 发送的 `commit` 请求的提案，而 `server1` 根本没收到所以会丢弃。
+Suppose `Leader (server2)` sends a `commit` request (see the message broadcast section above) to `server3`, then crashes before sending it to `server1`. If `server1` were elected as the new `Leader`, the data would become inconsistent: `server3` would commit the proposal from `server2`, while `server1`, which never received the request, would discard it.
 
-![崩溃恢复](../../images/shared/4b8365e80bdf441ea237847fb91236b7-tplv-k3u1fbpfcp-zoom-1.jpg)
+![Crash recovery](../../images/shared/4b8365e80bdf441ea237847fb91236b7-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-那怎么解决呢？
+How is this resolved?
 
-聪明的同学肯定会质疑，**这个时候 `server1` 已经不可能成为 `Leader` 了，因为 `server1` 和 `server3` 进行投票选举的时候会比较 `ZXID` ，而此时 `server3` 的 `ZXID` 肯定比 `server1` 的大了**。(不理解可以看前面的选举算法)
+An observant reader may notice that **`server1` cannot become the `Leader` in this situation. When `server1` and `server3` vote, they compare their `ZXID` values, and `server3` has the higher `ZXID`**. See the election algorithm above for details.
 
-那么跳过那些已经被丢弃的提案又是什么意思呢？
+What does it mean to skip proposals that were discarded?
 
-假设 `Leader (server2)` 此时同意了提案 N1，自身提交了这个事务并且要发送给所有 `Follower` 要 `commit` 的请求，却在这个时候挂了，此时肯定要重新进行 `Leader` 的选举，比如说此时选 `server1` 为 `Leader` （这无所谓）。但是过了一会，这个 **挂掉的 `Leader` 又重新恢复了** ，此时它肯定会作为 `Follower` 的身份进入集群中，需要注意的是刚刚 `server2` 已经同意提交了提案 N1，但其他 `server` 并没有收到它的 `commit` 信息，所以其他 `server` 不可能再提交这个提案 N1 了，这样就会出现数据不一致性问题了，所以 **该提案 N1 最终需要被抛弃掉** 。
+Suppose `Leader (server2)` accepts proposal N1, commits the transaction locally, and is about to send a `commit` request to every `Follower`, but crashes. A new `Leader` must be elected; for example, `server1` may become the new Leader. Later, the **failed `Leader` recovers** and rejoins as a `Follower`. Although `server2` had accepted and committed N1, the other servers never received its `commit` message and cannot commit N1. To avoid inconsistent data, **proposal N1 must ultimately be discarded**.
 
-![崩溃恢复](../../images/shared/99cdca39ad6340ae8b77e8befe94e36e-tplv-k3u1fbpfcp-zoom-1.jpg)
+![Crash recovery](../../images/shared/99cdca39ad6340ae8b77e8befe94e36e-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-## Zookeeper 的几个理论知识
+## A Few ZooKeeper Concepts
 
-了解了 `ZAB` 协议还不够，它仅仅是 `Zookeeper` 内部实现的一种方式，而我们如何通过 `Zookeeper` 去做一些典型的应用场景呢？比如说集群管理，分布式锁，`Master` 选举等等。
+Understanding the `ZAB` protocol is not enough; it is only one part of ZooKeeper's internal implementation. How can we use `ZooKeeper` for common use cases such as cluster management, distributed locks, and `Master` election?
 
-这就涉及到如何使用 `Zookeeper` 了，但在使用之前我们还需要掌握几个概念。比如 `Zookeeper` 的 **数据模型**、**会话机制**、**ACL**、**Watcher 机制** 等等。
+That brings us to using `ZooKeeper`. Before doing so, we need to understand several concepts, including its **data model**, **session mechanism**, **ACLs**, and **watcher mechanism**.
 
-### 数据模型
+### Data Model
 
-`zookeeper` 数据存储结构与标准的 `Unix` 文件系统非常相似，都是在根节点下挂很多子节点(树型)。但是 `zookeeper` 中没有文件系统中目录与文件的概念，而是 **使用了 `znode` 作为数据节点** 。`znode` 是 `zookeeper` 中的最小数据单元，每个 `znode` 上都可以保存数据，同时还可以挂载子节点，形成一个树形化命名空间。
+The `zookeeper` data structure is similar to a standard `Unix` file system: both use a tree of child nodes under a root. However, `zookeeper` has no distinction between directories and files; it **uses `znodes` as data nodes**. A `znode` is the smallest data unit in `zookeeper`. It can store data and have child nodes, forming a tree-shaped namespace.
 
-![zk数据模型](../../images/shared/663240470d524dd4ac6e68bde0b666eb-tplv-k3u1fbpfcp-zoom-1.jpg)
+![ZooKeeper data model](../../images/shared/663240470d524dd4ac6e68bde0b666eb-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-每个 `znode` 都有自己所属的 **节点类型** 和 **节点状态**。
+Each `znode` has a **node type** and a **node state**.
 
-其中节点类型可以分为 **持久节点**、**持久顺序节点**、**临时节点** 和 **临时顺序节点**。
+Node types are **persistent**, **persistent sequential**, **ephemeral**, and **ephemeral sequential**.
 
-- 持久节点：一旦创建就一直存在，直到将其删除。
-- 持久顺序节点：一个父节点可以为其子节点 **维护一个创建的先后顺序** ，这个顺序体现在 **节点名称** 上，是节点名称后自动添加一个由 10 位数字组成的数字串，从 0 开始计数。
-- 临时节点：临时节点的生命周期是与 **客户端会话** 绑定的，**会话消失则节点消失** 。临时节点 **只能做叶子节点** ，不能创建子节点。
-- 临时顺序节点：父节点可以创建一个维持了顺序的临时节点(和前面的持久顺序性节点一样)。
+- **Persistent nodes**: Remain until deleted.
+- **Persistent sequential nodes**: A parent node **maintains the creation order of its children**. The order appears in the **node name** as a 10-digit number appended automatically, starting at 0.
+- **Ephemeral nodes**: Their lifetime is bound to the **client session**; **when the session ends, the node is deleted**. Ephemeral nodes **can only be leaf nodes** and cannot have children.
+- **Ephemeral sequential nodes**: A parent can create an ephemeral node whose name includes a sequence number, like a persistent sequential node.
 
-节点状态中包含了很多节点的属性比如 `czxid`、`mzxid` 等等，在 `zookeeper` 中是使用 `Stat` 这个类来维护的。下面我列举一些属性解释。
+Node state contains many properties, such as `czxid` and `mzxid`, which are maintained by the `Stat` class in `zookeeper`. Here are some of these properties:
 
-- `czxid`：`Created ZXID`，该数据节点被 **创建** 时的事务 ID。
-- `mzxid`：`Modified ZXID`，节点 **最后一次被更新时** 的事务 ID。
-- `ctime`：`Created Time`，该节点被创建的时间。
-- `mtime`：`Modified Time`，该节点最后一次被修改的时间。
-- `version`：节点的版本号。
-- `cversion`：**子节点** 的版本号。
-- `aversion`：节点的 `ACL` 版本号。
-- `ephemeralOwner`：创建该节点的会话的 `sessionID` ，如果该节点为持久节点，该值为 0。
-- `dataLength`：节点数据内容的长度。
-- `numChildre`：该节点的子节点个数，如果为临时节点为 0。
-- `pzxid`：该节点子节点列表最后一次被修改时的事务 ID，注意是子节点的 **列表** ，不是内容。
+- `czxid`: `Created ZXID`, the transaction ID when the data node was **created**.
+- `mzxid`: `Modified ZXID`, the transaction ID when the node was **last updated**.
+- `ctime`: `Created Time`, when the node was created.
+- `mtime`: `Modified Time`, when the node was last modified.
+- `version`: The node's version number.
+- `cversion`: The version of the node's **children**.
+- `aversion`: The node's `ACL` version.
+- `ephemeralOwner`: The `sessionID` of the session that created the node; `0` for persistent nodes.
+- `dataLength`: The length of the node's data.
+- `numChildren`: The number of child nodes; always `0` for ephemeral nodes.
+- `pzxid`: The transaction ID of the last change to the node's child list. This refers to the **list** of children, not their contents.
 
-### 会话
+### Sessions
 
-我想这个对于后端开发的朋友肯定不陌生，不就是 `session` 吗？只不过 `zk` 客户端和服务端是通过 **`TCP` 长连接** 维持的会话机制，其实对于会话来说你可以理解为 **保持连接状态** 。
+Backend developers are probably familiar with a `session`. The `zk` client and server maintain a session over a **persistent `TCP` connection**; you can think of it as **keeping the connection active**.
 
-在 `zookeeper` 中，会话还有对应的事件，比如 `CONNECTION_LOSS 连接丢失事件`、`SESSION_MOVED 会话转移事件`、`SESSION_EXPIRED 会话超时失效事件` 。
+In `zookeeper`, sessions also have associated events, such as `CONNECTION_LOSS` (connection lost), `SESSION_MOVED` (session moved), and `SESSION_EXPIRED` (session expired).
 
-### ACL
+### ACLs
 
-`ACL` 为 `Access Control Lists` ，它是一种权限控制。在 `zookeeper` 中定义了 5 种权限，它们分别为：
+`ACL` stands for `Access Control List` and is used to control permissions. `zookeeper` defines five permissions:
 
-- `CREATE`：创建子节点的权限。
-- `READ`：获取节点数据和子节点列表的权限。
-- `WRITE`：更新节点数据的权限。
-- `DELETE`：删除子节点的权限。
-- `ADMIN`：设置节点 ACL 的权限。
+- `CREATE`: Permission to create child nodes.
+- `READ`: Permission to read node data and list child nodes.
+- `WRITE`: Permission to update node data.
+- `DELETE`: Permission to delete child nodes.
+- `ADMIN`: Permission to set the node's ACL.
 
-### Watcher 机制
+### Watcher Mechanism
 
-`Watcher` 为事件监听器，是 `zk` 非常重要的一个特性，很多功能都依赖于它，它有点类似于订阅的方式，即客户端向服务端 **注册** 指定的 `watcher` ，当服务端符合了 `watcher` 的某些事件或要求则会 **向客户端发送事件通知** ，客户端收到通知后找到自己定义的 `Watcher` 然后 **执行相应的回调方法** 。
+`Watcher` is an event listener and an important `zk` feature used by many functions. It works like a subscription: a client **registers** a `watcher` with the server, and when an event matching its conditions occurs, the server **sends an event notification to the client**. The client then finds its `Watcher` and **executes the corresponding callback**.
 
-![watcher机制](../../images/shared/ac87b7cff7b44c63997ff0f6a7b6d2eb-tplv-k3u1fbpfcp-zoom-1.jpg)
+![Watcher mechanism](../../images/shared/ac87b7cff7b44c63997ff0f6a7b6d2eb-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-## Zookeeper 的几个典型应用场景
+## Typical ZooKeeper Use Cases
 
-前面说了这么多的理论知识，你可能听得一头雾水，这些玩意有啥用？能干啥事？别急，听我慢慢道来。
+After all that theory, you may be wondering what it is for and what it can do. Let's look at some examples.
 
 ![](../../images/shared/dbc1a52b0c304bb093ef08fb1d4c704c-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-### 选主
+### Leader Election
 
-还记得上面我们的所说的临时节点吗？因为 `Zookeeper` 的强一致性，能够很好地在保证 **在高并发的情况下保证节点创建的全局唯一性** (即无法重复创建同样的节点)。
+Remember ephemeral nodes? Because `Zookeeper` provides strong consistency, it can **guarantee that node creation is globally unique even under high concurrency**; the same node cannot be created twice.
 
-利用这个特性，我们可以 **让多个客户端创建一个指定的节点** ，创建成功的就是 `master`。
+We can use this property to have **multiple clients create the same specified node**. The client that succeeds becomes the `master`.
 
-但是，如果这个 `master` 挂了怎么办？？？
+But what if the `master` crashes?
 
-你想想为什么我们要创建临时节点？还记得临时节点的生命周期吗？`master` 挂了是不是代表会话断了？会话断了是不是意味着这个节点没了？还记得 `watcher` 吗？我们是不是可以 **让其他不是 `master` 的节点监听节点的状态** ，比如说我们监听这个临时节点的父节点，如果子节点个数变了就代表 `master` 挂了，这个时候我们 **触发回调函数进行重新选举** ，或者我们直接监听节点的状态，我们可以通过节点是否已经失去连接来判断 `master` 是否挂了等等。
+Why do we create an ephemeral node? Remember its lifecycle: if the `master` crashes, its session ends and the node is removed. We can use a `watcher` to **let the non-master nodes watch the node's state**. For example, they can watch its parent; if the number of children changes, the `master` may have crashed, so they **trigger a callback to elect a new one**. Alternatively, they can watch the node's connection state to detect whether the `master` is down.
 
-![选主](../../images/shared/00468757fb8f4f51875f645fbb7b25a2-tplv-k3u1fbpfcp-zoom-1.jpg)
+![Leader election](../../images/shared/00468757fb8f4f51875f645fbb7b25a2-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-总的来说，我们可以完全 **利用 临时节点、节点状态 和 `watcher` 来实现选主的功能**，临时节点主要用来选举，节点状态和`watcher` 可以用来判断 `master` 的活性和进行重新选举。
+In short, **ephemeral nodes, node states, and `watchers` can implement leader election**. Ephemeral nodes are used for election, while node states and `watchers` detect whether the `master` is alive and trigger a new election.
 
-### 数据发布/订阅
+### Data Publish/Subscribe
 
-还记得 Zookeeper 的 `Watcher` 机制吗？ Zookeeper 通过这种推拉相结合的方式实现客户端与服务端的交互：客户端向服务端注册节点，一旦相应节点的数据变更，服务端就会向“监听”该节点的客户端发送 `Watcher` 事件通知，客户端接收到通知后需要 **主动** 到服务端获取最新的数据。基于这种方式，Zookeeper 实现了 **数据发布/订阅** 功能。
+Remember ZooKeeper's `Watcher` mechanism? ZooKeeper combines push and pull to let clients and servers interact: a client registers a watcher on a node, and when that node's data changes, the server sends a `Watcher` event to the clients watching it. After receiving the notification, clients must **actively** fetch the latest data from the server. This is how ZooKeeper implements **data publish/subscribe**.
 
-一个典型的应用场景为 **全局配置信息的集中管理**。 客户端在启动时会主动到 Zookeeper 服务端获取配置信息，同时 **在指定节点注册一个** `Watcher` **监听**。当配置信息发生变更，服务端通知所有订阅的客户端重新获取配置信息，实现配置信息的实时更新。
+A typical use case is **centralized management of global configuration**. On startup, a client fetches configuration from the ZooKeeper server and **registers a `Watcher` on the specified node**. When the configuration changes, the server notifies all subscribed clients to fetch it again, keeping their configuration up to date.
 
-上面所提到的全局配置信息通常包括机器列表信息、运行时的开关配置、数据库配置信息等。需要注意的是，这类全局配置信息通常具备以下特性：
+Global configuration often includes server lists, runtime feature flags, and database settings. Such configuration usually has these properties:
 
-- 数据量较小
-- 数据内容在运行时动态变化
-- 集群中机器共享一致配置
+- Small data volume.
+- Data may change dynamically at runtime.
+- Machines in the cluster share consistent configuration.
 
-### 负载均衡
+### Load Balancing
 
-可以通过 Zookeeper 的 **临时节点** 实现负载均衡。回顾一下临时节点的特性：当创建节点的客户端与服务端之间断开连接，即客户端会话（session）消失时，对应节点也会自动消失。因此，我们可以使用临时节点来维护 Server 的地址列表，从而保证请求不会被分配到已停机的服务上。
+ZooKeeper **ephemeral nodes** can be used for load balancing. Recall that an ephemeral node is automatically removed when the creating client's session ends because the client disconnects from the server. We can use ephemeral nodes to maintain a list of server addresses and avoid routing requests to stopped services.
 
-具体地，我们需要在集群的每一个 Server 中都使用 Zookeeper 客户端连接 Zookeeper 服务端，同时用 Server **自身的地址信息**在服务端指定目录下创建临时节点。当客户端请求调用集群服务时，首先通过 Zookeeper 获取该目录下的节点列表 （即所有可用的 Server），随后根据不同的负载均衡策略将请求转发到某一具体的 Server。
+Each server in the cluster connects to the ZooKeeper server using a ZooKeeper client and creates an ephemeral node under a specified path using its **own address**. When a client requests the cluster service, it first gets the child-node list from ZooKeeper (all available servers), then forwards the request to a specific server using a load-balancing strategy.
 
-### 分布式锁
+### Distributed Locks
 
-分布式锁的实现方式有很多种，比如 `Redis`、数据库、`zookeeper` 等。个人认为 `zookeeper` 在实现分布式锁这方面是非常非常简单的。
+Distributed locks can be implemented in several ways, including `Redis`, databases, and `zookeeper`. In my view, `zookeeper` makes distributed locks very easy to implement.
 
-上面我们已经提到过了 **zk 在高并发的情况下保证节点创建的全局唯一性**，这玩意一看就知道能干啥了。实现互斥锁呗，又因为能在分布式的情况下，所以能实现分布式锁呗。
+As noted above, **`zk` guarantees globally unique node creation under high concurrency**. This property can be used to implement a mutex and, in a distributed environment, a distributed lock.
 
-如何实现呢？这玩意其实跟选主基本一样，我们也可以利用临时节点的创建来实现。
+How? Much like leader election, we can use ephemeral nodes.
 
-首先肯定是如何获取锁，因为创建节点的唯一性，我们可以让多个客户端同时创建一个临时节点，**创建成功的就说明获取到了锁** 。然后没有获取到锁的客户端也像上面选主的非主节点创建一个 `watcher` 进行节点状态的监听，如果这个互斥锁被释放了（可能获取锁的客户端宕机了，或者那个客户端主动释放了锁）可以调用回调函数重新获得锁。
+First, consider lock acquisition. Since node creation is unique, multiple clients can try to create the same ephemeral node; **the client that succeeds has acquired the lock**. Clients that fail can register a `watcher`, as non-leader nodes do during leader election. When the mutex is released (either because the lock-holding client crashed or released it), a callback can try to acquire the lock again.
 
-> `zk` 中不需要向 `redis` 那样考虑锁得不到释放的问题了，因为当客户端挂了，节点也挂了，锁也释放了。是不是很简单？
+> With `zk`, you do not need to worry about a lock remaining unreleased as you do with `redis`: when the client crashes, its node is removed and the lock is released. Simple, right?
 
-那能不能使用 `zookeeper` 同时实现 **共享锁和独占锁** 呢？答案是可以的，不过稍微有点复杂而已。
+Can `zookeeper` implement both **shared and exclusive locks**? Yes, though the implementation is a little more involved.
 
-还记得 **有序的节点** 吗？
+Remember **sequential nodes**?
 
-这个时候我规定所有创建节点必须有序，当你是读请求（要获取共享锁）的话，如果 **没有比自己更小的节点，或比自己小的节点都是读请求** ，则可以获取到读锁，然后就可以开始读了。**若比自己小的节点中有写请求** ，则当前客户端无法获取到读锁，只能等待前面的写请求完成。
+Require all nodes to be created sequentially. For a read request (shared lock), the client can acquire the read lock and start reading if **there are no nodes with a lower sequence number, or all lower-numbered nodes are read requests**. **If any lower-numbered node is a write request**, the client must wait for that write to complete.
 
-如果你是写请求（获取独占锁），若 **没有比自己更小的节点** ，则表示当前客户端可以直接获取到写锁，对数据进行修改。若发现 **有比自己更小的节点，无论是读操作还是写操作，当前客户端都无法获取到写锁** ，等待所有前面的操作完成。
+For a write request (exclusive lock), the client can acquire the write lock and modify data if **there are no lower-numbered nodes**. If **any lower-numbered nodes exist, whether reads or writes, the client cannot acquire the write lock** until all earlier operations complete.
 
-这就很好地同时实现了共享锁和独占锁，当然还有优化的地方，比如当一个锁得到释放它会通知所有等待的客户端从而造成 **羊群效应** 。此时你可以通过让等待的节点只监听他们前面的节点。
+This implements both shared and exclusive locks. It can be optimized: when a lock is released, notifying all waiting clients causes a **thundering herd**. Instead, have each waiting node watch only the node immediately before it.
 
-具体怎么做呢？其实也很简单，你可以让 **读请求监听比自己小的最后一个写请求节点，写请求只监听比自己小的最后一个节点** ，感兴趣的小伙伴可以自己去研究一下。
+Specifically, **a read request watches the last lower-numbered write request, while a write request watches the last lower-numbered node**. You can explore the details further.
 
-### 命名服务
+### Naming Service
 
-如何给一个对象设置 ID，大家可能都会想到 `UUID`，但是 `UUID` 最大的问题就在于它太长了。。。(太长不一定是好事，嘿嘿嘿)。那么在条件允许的情况下，我们能不能使用 `zookeeper` 来实现呢？
+When assigning an ID to an object, you might think of a `UUID`. The main problem with a `UUID` is that it is very long (and long is not always good). Could `zookeeper` be used instead, when the requirements allow it?
 
-我们之前提到过 `zookeeper` 是通过 **树形结构** 来存储数据节点的，那也就是说，对于每个节点的 **全路径**，它必定是唯一的，我们可以使用节点的全路径作为命名方式了。而且更重要的是，路径是我们可以自己定义的，这对于我们对有些有语意的对象的 ID 设置可以更加便于理解。
+As mentioned earlier, `zookeeper` stores data nodes in a **tree structure**, so each node's **full path** is unique and can be used as its name. More importantly, paths can be defined by the user, making IDs for some semantically meaningful objects easier to understand.
 
-### 集群管理和注册中心
+### Cluster Management and Service Registry
 
-看到这里是不是觉得 `zookeeper` 实在是太强大了，它怎么能这么能干！
+By now, `zookeeper` may seem remarkably powerful!
 
-别急，它能干的事情还很多呢。可能我们会有这样的需求，我们需要了解整个集群中有多少机器在工作，我们想对集群中的每台机器的运行时状态进行数据采集，对集群中机器进行上下线操作等等。
+It can do even more. For example, we may need to know how many machines in a cluster are running, collect runtime status from each machine, or add and remove machines from the cluster.
 
-而 `zookeeper` 天然支持的 `watcher` 和 临时节点能很好的实现这些需求。我们可以为每条机器创建临时节点，并监控其父节点，如果子节点列表有变动（我们可能创建删除了临时节点），那么我们可以使用在其父节点绑定的 `watcher` 进行状态监控和回调。
+`zookeeper`'s built-in `watcher` and ephemeral node features work well for these needs. Create an ephemeral node for each machine and watch the parent node. If its child list changes (because an ephemeral node was created or deleted), use a `watcher` registered on the parent for state monitoring and callbacks.
 
-![集群管理](../../images/shared/f3d70709f10f4fa6b09125a56a976fda-tplv-k3u1fbpfcp-zoom-1.jpg)
+![Cluster management](../../images/shared/f3d70709f10f4fa6b09125a56a976fda-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-至于注册中心也很简单，我们同样也是让 **服务提供者** 在 `zookeeper` 中创建一个临时节点并且将自己的 `ip、port、调用方式` 写入节点，当 **服务消费者** 需要进行调用的时候会 **通过注册中心找到相应的服务的地址列表(IP 端口什么的)** ，并缓存到本地(方便以后调用)，当消费者调用服务时，不会再去请求注册中心，而是直接通过负载均衡算法从地址列表中取一个服务提供者的服务器调用服务。
+The service registry works similarly. Each **service provider** creates an ephemeral node in `zookeeper` and writes its `IP`, `port`, and invocation method to it. When a **service consumer** needs to make a call, it **gets the service address list (IP, port, and so on) from the registry** and caches it locally. For later calls, it does not query the registry again; it uses a load-balancing algorithm to select a provider from the cached list.
 
-当服务提供者的某台服务器宕机或下线时，相应的地址会从服务提供者地址列表中移除。同时，注册中心会将新的服务地址列表发送给服务消费者的机器并缓存在消费者本机（当然你可以让消费者进行节点监听，我记得 `Eureka` 会先试错，然后再更新）。
+When a provider server crashes or goes offline, its address is removed from the provider list. The registry sends the updated list to the consumer machines, where it is cached locally. (Consumers could also watch the node directly; as I recall, `Eureka` first tries the existing address and then updates the list.)
 
-![注册中心](../../images/shared/469cebf9670740d1a6711fe54db70e05-tplv-k3u1fbpfcp-zoom-1.jpg)
+![Service registry](../../images/shared/469cebf9670740d1a6711fe54db70e05-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-## 总结
+## Summary
 
-看到这里的同学实在是太有耐心了 👍👍👍 不知道大家是否还记得我讲了什么 😒。
+Thanks for sticking with the article this far 👍👍👍 I wonder how much you still remember 😒.
 
 ![](../../images/shared/912c1aa6b7794d4aac8ebe6a14832cae-tplv-k3u1fbpfcp-zoom-1.jpg)
 
-这篇文章中我带大家入门了 `zookeeper` 这个强大的分布式协调框架。现在我们来简单梳理一下整篇文章的内容。
+This article introduced `zookeeper`, a powerful distributed coordination framework. Here is a brief recap:
 
-- 分布式与集群的区别
+- The difference between distributed systems and clusters.
 
-- `2PC`、`3PC` 以及 `paxos` 算法这些一致性框架的原理和实现。
+- The principles and implementation of the consistency protocols `2PC`, `3PC`, and `paxos`.
 
-- `zookeeper` 专门的一致性算法 `ZAB` 原子广播协议的内容（`Leader` 选举、崩溃恢复、消息广播）。
+- The `ZAB` atomic broadcast protocol, ZooKeeper's consistency protocol, including `Leader` election, crash recovery, and message broadcasting.
 
-- `zookeeper` 中的一些基本概念，比如 `ACL`，数据节点，会话，`watcher`机制等等。
+- Basic `zookeeper` concepts, such as `ACL`, data nodes, sessions, and the `watcher` mechanism.
 
-- `zookeeper` 的典型应用场景，比如选主，注册中心等等。
+- Typical `zookeeper` use cases, such as leader election and service registries.
 
-  如果忘了可以回去看看再次理解一下，如果有疑问和建议欢迎提出 🤝🤝🤝。
+  If anything is unclear, review the relevant section. Questions and suggestions are welcome 🤝🤝🤝.
 
 <!-- @include: @article-footer.snippet.md -->

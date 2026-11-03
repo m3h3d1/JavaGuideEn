@@ -1,112 +1,112 @@
 ---
-title: 给想成长为高级别开发同学的七条建议
-description: "给想成长为高级别开发同学的七条建议：围绕技术知识与面试总结梳理关键概念、常见问题与实践要点，帮助你高效学习与备战面试。"
-category: 技术文章精选集
+title: Seven Tips for Becoming a Senior Engineer
+description: Seven practical suggestions for programmers aiming to become senior engineers or technical experts, covering requirements, efficiency, fundamentals, performance, production, systems thinking, and reflection.
+category: Curated Technical Articles
 author: Kaito
 tag:
-  - 练级攻略
+  - Growth and Learning
 head:
   - - meta
     - name: keywords
-      content: 程序员成长,高级开发,需求评审,技术内功,性能优化,线上问题排查,归纳总结,职业发展
+      content: programmer growth,senior engineer,requirements review,fundamentals,performance optimization,production troubleshooting,reflection,career development
 ---
 
-> **推荐语**：普通程序员要想成长为高级程序员甚至是专家等更高级别，应该注意在哪些方面注意加强？开发内功修炼号主飞哥在这篇文章中就给出了七条实用的建议。
+> **Editor's note:** What should an average programmer focus on to grow into a senior engineer or expert? Feige, author of the _Strengthening Engineering Fundamentals_ account, offers seven practical suggestions.
 >
-> **内容概览**：
+> **Overview:**
 >
-> 1. 刻意加强需求评审能力
-> 2. 主动思考效率
-> 3. 加强内功能力
-> 4. 思考性能
-> 5. 重视线上
-> 6. 关注全局
-> 7. 归纳总结能力
+> 1. Deliberately improve at reviewing requirements.
+> 2. Look for ways to improve efficiency.
+> 3. Strengthen your technical fundamentals.
+> 4. Think about performance.
+> 5. Pay attention to production.
+> 6. See the bigger picture.
+> 7. Build your ability to summarize and reflect.
 >
-> **原文地址**：<https://mp.weixin.qq.com/s/8lMGzBzXine-NAsqEaIE4g>
+> **Original article:** <https://mp.weixin.qq.com/s/8lMGzBzXine-NAsqEaIE4g>
 
-### 建议 1：刻意加强需求评审能力
+### Tip 1: Deliberately Improve at Reviewing Requirements
 
-先从需求评审开始说。在互联网公司，需求评审是开发工作的主要入口。
+Let's start with requirements reviews. At internet companies, they are a major entry point for development work.
 
-对于普通程序员来说，一般就是根据产品经理提的需求细节，开始设想这个功能要怎么实现，开发成本大概需要多长时间。把自己当成了需求到代码之间的翻译官。很少去思考需求的合理性，对于自己做的事情有多大价值，不管也不问。
+An average programmer usually takes the product manager's requirements and starts figuring out how to implement the feature and estimate the effort. They act as a translator from requirements to code. They rarely question whether a requirement makes sense or how much value the work will bring.
 
-而对于高级别的程序员来说，并不会一开始就陷入细节，而是会更多地会从产品本身出发，询问产品经理为啥要做这个细节，目的是啥。换个说法，就是会先考虑这个需求是不是合理。
+A senior engineer doesn't jump straight into implementation details. They start with the product and ask why the product manager wants this feature and what it is meant to achieve. In other words, they first consider whether the requirement is reasonable.
 
-如果需求高级不合理就进行 PK ，要么对需求进行调整，要么就砍掉。不过要注意的是 PK 和调整需求不仅仅砍需求，还有另外一个方向，那就是对需求进行加强。
+If a requirement is unreasonable, discuss it and either adjust or drop it. But negotiation doesn't only mean cutting scope; it can also mean strengthening the requirement.
 
-产品同学由于缺乏技术背景，很可能想的并不够充分，这个时候如果你有更好的想法，也完全可以提出来，加到需求里，让这个需求变得更有价值。
+Product managers may not have a technical background, so they might not have considered every possibility. If you have a better idea, suggest adding it to make the requirement more valuable.
 
-总之，高级程序员并不会一五一十地按产品经理的需求文档来进行后面的开发，而是**一切从有利于业务的角度出发思考，对产品经理的需求进行删、改、增。**
+In short, senior engineers don't blindly implement every line of the product manager's document. They think about what benefits the business and **remove, change, or add to requirements accordingly**.
 
-这样的工作表面看似和开发无关，但是只有这样才能保证后续所有开发同学都是有价值的，而不是做一堆无用功。无用功做的多了会极大的挫伤开发的成就感。
+This may not look like development work, but it helps ensure that the team builds something valuable instead of wasting effort. Too much wasted work also undermines developers' sense of achievement.
 
-所以，**普通程序员要想成长为更高级别的开发，一定要加强需求评审能力的培养**。
+So, **if you want to grow as a developer, deliberately improve your ability to review requirements**.
 
-### 建议 2：主动思考效率
+### Tip 2: Look for Ways to Improve Efficiency
 
-普通的程序员，按部就班的去写代码，有活儿来我就干，没活儿的时候我就呆着。很少去深度思考现有的这些代码为什么要这么写，这么写的好处是啥，有哪些地方存在瓶颈，我是否可以把它优化一些。
+An average programmer follows instructions: if there is work, they do it; if not, they wait. They rarely ask why the existing code works the way it does, what its benefits are, where it has bottlenecks, or whether it can be improved.
 
-而高级一点程序员，并不会局限于把手头的活儿开发就算完事。他们会主动去琢磨，现在这种开发模式是不是不够的好。那么我是否能做一个什么东西能把这个效率给提升起来。
+A more experienced programmer doesn't consider a task finished as soon as the assigned code is written. They ask whether the current development process could be better and whether they can build something to make the team more efficient.
 
-举一个小例子，我 6 年前接手一个项目的时候，我发现运营一个月会找我四次，就是找我给她发送一个推送。她说以前的开发都是这么帮他弄的。虽然这个需求处理起来很简单，改两行发布一下就完事。但是烦啊，你想象一下你正专心写代码呢，她又双叒来找你了，思路全被她中断了。而且频繁地操作线上本来就会引入不确定的风险，万一那天手一抽抽搞错了，线上就完蛋了。
+For example, when I took over a project six years ago, an operations colleague would ask me four times a month to send a push notification. Previous developers had always done this for her. The request was simple: make a small change and deploy it. But it was disruptive when I was focused on coding. More importantly, frequent manual changes to production add risk; one mistake could bring the service down.
 
-我的做法就是，我专门抽了一周的时间，给她做了一套运营后台。这样以后所有的运营推送她就直接在后台上操作就完事了。我倒出精力去做其它更有价值的事情去了。
+I spent a week building an operations dashboard. After that, she could send notifications herself, and I could spend my time on more valuable work.
 
-所以，**第二个建议就是要主动思考一下现有工作中哪些地方效率有改进的空间，想到了就主动去改进它！**
+So, **look for inefficiencies in your work and take the initiative to fix them**.
 
-### 建议 3：加强内功能力
+### Tip 3: Strengthen Your Technical Fundamentals
 
-哪些算是内功呢，我想内功修炼的读者们肯定也都很熟悉的了，指的就是大家学校里都学过的操作系统、网络等这些基础。
+What are technical fundamentals? Readers of the _Strengthening Engineering Fundamentals_ account are probably familiar with the term. It refers to subjects such as operating systems and networking that you studied in school.
 
-普通的程序员会觉得，这些基础知识我都会好么，我大学可是足足学了四年的。工作了以后并不会刻意来回头再来加强自己在这些基础上的深层次的提升。
+An average programmer may think, “I already know these basics. I studied them for four years at university.” After starting work, they may not deliberately revisit those subjects or deepen their understanding.
 
-高级的程序员，非常清楚自己当年学的那点知识太皮毛了。工作之余也会深入地去研究 Linux、研究网络等方向的底层实现。
+Senior engineers know that what they learned in school was only an introduction. In their spare time, they study topics such as Linux and the internals of networking.
 
-事实上，互联网业界的技术大牛们很大程度是因为对这些基础的理解相当是深厚，具备了深厚的内功以后才促使他们成长为了技术大牛。
+Many prominent engineers in the industry have grown through a deep understanding of these fundamentals. That strong foundation helped them become technical leaders.
 
-我很难相信一个不理解底层，只会 CURD，只会用别人框架的开发将来能在技术方向成长为大牛。
+It's hard to believe that a developer who doesn't understand the underlying systems and only knows CRUD and how to use other people's frameworks can become a technical expert.
 
-所以，**还建议多多锻炼底层技术内功能力**。如果你不知道怎么练，那就坚持看「开发内功修炼」公众号。
+**Keep strengthening your understanding of low-level systems.** If you don't know how to start, follow the _Strengthening Engineering Fundamentals_ account and keep learning.
 
-### 建议 4：思考性能
+### Tip 4: Think About Performance
 
-普通程序员往往就是把需求开发完了就不管了，只要需求实现了，测试通过了就可以交付了。将来流量会有多大，没想过。自己的服务 QPS 能支撑多少，不清楚。
+An average programmer often stops thinking once the requirement is implemented and tests pass. They may not consider future traffic or know how much QPS their service can handle.
 
-而高级的程序员往往会关注自己写出来的代码的性能。
+Senior engineers pay attention to the performance of their code.
 
-在需求评审的时候，他们一般就会估算大概的请求流量有多大。进而设计阶段就会根据这个量设计符合性能要求的方案。
+During requirements review, they estimate request volume and then design an implementation that meets performance needs.
 
-在上线之前也会进行性能压测，检验一下在性能上是否符合预期。如果性能存在问题，瓶颈在哪儿，怎么样能进行优化一下。
+Before release, they run load tests to check whether the results meet expectations. If not, they find the bottleneck and determine how to optimize it.
 
-所以，**第四个建议就是一定要多多主动你所负责业务的性能，并多多进行优化和改进**。我想这个建议的重要程度非常之高。但这是需要你具备深厚的内功才可以办的到的，否则如果你连网络是怎么工作的都不清楚，谈何优化！
+So, **actively consider and improve the performance of the services you own**. This is important, but requires strong fundamentals. If you don't understand how networking works, how can you optimize it?
 
-### 建议 5：重视线上
+### Tip 5: Pay Attention to Production
 
-普通程序员往往对线上的事情很少去关注，手里记录的服务器就是自己的开发机和发布机，线上机器有几台，流量多大，最近有没有波动这些可能都不清楚。
+An average programmer may pay little attention to production. They know their development and deployment machines but may not know how many production servers there are, how much traffic they handle, or whether traffic has changed recently.
 
-而高级的程序员深深的明白，有条件的话，会尽量多多观察自己的线上服务，观察一下代码跑的咋样，有没有啥 error log。请求峰值的时候 CPU、内存的消耗咋样。网络端口消耗的情况咋样，是否需要调节一些参数配置。
+Senior engineers understand that, when possible, they should monitor their production services: how the code is running, whether there are errors in the logs, CPU and memory usage during traffic peaks, network port usage, and whether any configuration should be adjusted.
 
-当性能不尽如人意的时候，可能会回头再来思考出性能的改进方案，重新开发和上线。
+If performance is unsatisfactory, they revisit the design, implement improvements, and deploy them.
 
-你会发现在线上出问题的时候，能紧急扑上前线救火的都是高级一点的程序员。
+When a production issue occurs, more senior engineers are often the ones who can quickly step in and resolve it.
 
-所以，**飞哥给的第五个建议就是要多多观察线上运行情况**。只有多多关注线上，当线上出故障的时候，你才能承担的起快速排出线上问题的重任。
+Feige's fifth suggestion is to **monitor production regularly**. When an incident occurs, familiarity with production helps you diagnose and resolve it quickly.
 
-### 建议 6：关注全局
+### Tip 6: See the Bigger Picture
 
-普通程序员是你分配给我哪个模块，我就干哪个模块，给自己的工作设定了非常小的一个边界，自己所有的眼光都聚集在这个小框框内。
+An average programmer may work only on the module assigned to them, setting a narrow boundary around their responsibilities and focusing only on that small area.
 
-高级程序员是团队内所有项目模块，哪怕不是他负责的，他也会去熟悉，去了解。具备这种思维的同学无论在技术上，无论是在业务上，成长的也都是最快的。在职级上得到晋升，或者是职位上得到提拔的往往都是这类同学。
+A senior engineer learns about all the project's modules, even those they don't own. People with this mindset often grow fastest, both technically and in their understanding of the business. They are also more likely to earn a promotion or take on a more senior role.
 
-甚至有更高级别的同学，还不止于把目光放在团队内，甚至还会关注公司内其它团队，甚至是业界的业务和技术栈。写到这里我想起了张一鸣说过的，不给自己的工作设边界。
+Some experienced engineers look beyond their team too, following the work and technology stacks of other teams and the wider industry. This brings to mind Zhang Yiming's advice not to set boundaries around your work.
 
-所以，**建议要有大局观，不仅仅是你负责的模块，整个项目其实你都应该去关注**。而不是连自己组内同学做的是啥都不知道。
+**Think about the whole project, not just your own module.** You should know what your teammates are working on too.
 
-### 建议 7：归纳总结能力
+### Tip 7: Build Your Ability to Summarize and Reflect
 
-普通程序员往往是工作的事情做完就拉到，很少回头去对自己的技术，对业务进行归纳和总结。
+An average programmer finishes a task and moves on, rarely reviewing what they learned about the technology or business.
 
-而高级的程序员往往都会在一件比较大的事情做完之后总结一下，做个 ppt，写个博客啥的记录下来。这样既对自己的工作是一个归纳，也可以分享给其它同学，促进团队的共同成长。
+Senior engineers often reflect after completing a major piece of work. They might create a presentation or write a blog post to record what they learned. This helps them consolidate their knowledge and share it with colleagues, supporting the growth of the whole team.
 
 <!-- @include: @article-footer.snippet.md -->

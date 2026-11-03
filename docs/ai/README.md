@@ -1,12 +1,12 @@
 ---
-title: AI 应用开发知识体系：大模型、Agent、RAG、MCP、Prompt 工程与系统设计
-description: AI 应用开发面试与学习路线，面向后端开发者梳理大模型调用、Agent、RAG、Skills、MCP、Prompt 工程、向量数据库、评测和系统设计。
+title: "AI Application Development: LLMs, Agents, RAG, MCP, Prompt Engineering, and System Design"
+description: A learning path for AI application development interviews and practice, covering LLM calls, agents, RAG, skills, MCP, prompt engineering, vector databases, evaluation, and system design for backend developers.
 category: AI
 tag:
   - AI
-  - 大模型
-  - AI 应用开发
-  - 后端面试
+  - Large Language Models
+  - AI Application Development
+  - Backend Interviews
 icon: mdi:robot-outline
 sitemap:
   changefreq: weekly
@@ -14,140 +14,140 @@ sitemap:
 head:
   - - meta
     - name: keywords
-      content: AI应用开发,AI应用开发面试,AI工程师面试,大模型,大模型面试,LLM,LLM面试,Agent,Agent面试,RAG,RAG面试,MCP,Prompt工程,向量数据库,AI系统设计,AI编程面试
+      content: AI application development,AI application development interviews,AI engineering interviews,large language models,LLM interviews,LLM,Agent,Agent interviews,RAG,RAG interviews,MCP,prompt engineering,vector databases,AI system design,AI coding interviews
   - - meta
     - property: og:title
-      content: AI 应用开发知识体系：大模型、Agent、RAG、MCP、Prompt 工程与系统设计
+      content: AI Application Development: LLMs, Agents, RAG, MCP, Prompt Engineering, and System Design
   - - meta
     - property: og:description
-      content: 从大模型调用、Agent、RAG、MCP、Prompt 工程到评测和系统设计，梳理后端开发者进入 AI 应用开发需要补齐的关键知识。
+      content: Key knowledge backend developers need for AI application development, from LLM calls, agents, RAG, MCP, and prompt engineering to evaluation and system design.
 ---
 
 <!-- @include: @small-advertisement.snippet.md -->
 
-做 AI 应用不是把 Prompt 塞进接口就结束了。真到项目里，马上会遇到上下文长度、结构化输出、RAG 召回、工具权限、评测回归、成本和稳定性这些问题。
+Building an AI application involves more than putting a prompt behind an API. Real projects quickly run into context limits, structured output, RAG retrieval, tool permissions, evaluation regressions, cost, and reliability.
 
-这些问题没法各解各的。大模型基础、Agent、RAG、工具调用、系统设计必须连起来理解——只懂调用 API，到了架构评审会卡住；只熟 RAG 论文，到了知识库维护还是不知道怎么处理增量更新和版本去重。
+These problems cannot be handled in isolation. LLM fundamentals, agents, RAG, tool calling, and system design need to be understood together. Knowing only how to call an API is not enough for an architecture review; knowing RAG research without understanding incremental updates and version deduplication leaves practical knowledge-base maintenance unanswered.
 
-如果时间有限，先看 [AI 应用开发面试指南](./interview-questions/ai-interview-guide.md)，把大模型、Agent、RAG、Skills、MCP 和 AI 系统设计里最容易被追问的问题过一遍；如果你还没确定学习顺序，或者正从后端开发转向 AI 应用开发，可以先看 [Java/Go 开发者 AI 应用开发与 Agent 学习路线（2026 最新版）](../roadmap/java-to-ai-roadmap.md) 和 [后端开发者转型 AI Agent 学习建议（2026 最新版）](../roadmap/backend-to-ai-agent-roadmap.md)；如果想补得扎实一些，再按下面的阅读顺序推进。
+If you are short on time, start with the [AI Application Development Interview Guide](./interview-questions/ai-interview-guide.md) and review common follow-up questions about LLMs, agents, RAG, skills, MCP, and AI system design. If you have not chosen a study order or are moving from backend development into AI, see the [2026 AI Application Development and Agent Roadmap for Java/Go Developers](../roadmap/java-to-ai-roadmap.md) and [2026 Guide for Backend Developers Moving into AI Agent Development](../roadmap/backend-to-ai-agent-roadmap.md). For a deeper study path, follow the order below.
 
-专题内容按大模型基础、Agent、RAG 和系统设计组织，文章之间通过阅读顺序和相关链接串联：
+This section is organized around LLM fundamentals, agents, RAG, and system design. The guides are connected through a suggested reading order and related links:
 
-![AIGuide 内容概览，大量配图](./images/shared/aiguide-overview.png)
+![AIGuide content overview](./images/shared/aiguide-overview.png)
 
-本专栏内容同时收录在开源 AIGuide 项目中：
+This section is also included in the open-source AIGuide project:
 
-- **项目地址**：[https://github.com/Snailclimb/AIGuide](https://github.com/Snailclimb/AIGuide)
-- **在线阅读**：[https://javaguide.cn/ai/](https://javaguide.cn/ai/)
+- **Repository:** [https://github.com/Snailclimb/AIGuide](https://github.com/Snailclimb/AIGuide)
+- **Read online:** [https://javaguide.cn/ai/](https://javaguide.cn/ai/)
 
-文章会随 API、框架和模型能力变化持续校订，涉及版本、价格和产品能力时请同时核对对应官方文档。
+The guides are updated as APIs, frameworks, and model capabilities change. For versions, prices, and product capabilities, also check the relevant official documentation.
 
-## 适合谁看
+## Who Should Read This?
 
-- 正在从后端开发转向 AI 应用开发，想补齐大模型、Agent、RAG 和系统设计主线的工程师。
-- 准备 AI 工程师、AI 应用开发、后端转 AI 相关岗位面试的同学。
-- 做过 Prompt Demo，但对模型调用链路、结构化输出、RAG 检索优化和评测闭环还不够熟的开发者。
-- 想把 MCP、Function Calling、Tool Calling、向量数据库、模型网关这些概念放到真实项目里理解的读者。
-- 已经在项目中接入大模型，但开始遇到稳定性、成本、安全治理和质量回归问题的团队成员。
+- Engineers moving from backend development to AI application development who want to learn LLMs, agents, RAG, and system design.
+- Candidates preparing for AI engineering, AI application development, or backend-to-AI roles.
+- Developers who have built prompt demos but want to better understand model-call workflows, structured output, RAG retrieval optimization, and evaluation loops.
+- Readers who want to understand MCP, Function Calling, Tool Calling, vector databases, and model gateways in real projects.
+- Team members who have integrated LLMs into projects and are starting to face reliability, cost, security, and quality-regression issues.
 
-## 几个容易踩坑的地方
+## Common Pitfalls
 
-大模型真不能只当成一个黑盒 API 来调。Token 被截断、采样参数一变输出就飘、说好返回 JSON 结果还是乱了，这些问题靠 Prompt 很难彻底兜住。你在提示词里加一句“请严格按照 JSON 输出”，只能算第一层约束，真正上线时还是得在调用链路里做格式校验、重试、兜底和异常处理。
+An LLM should not be treated as a black-box API. Token truncation, output variability when sampling parameters change, and malformed JSON responses cannot be fully addressed with prompts. Adding "Return strictly valid JSON" is only a first constraint. A production call path still needs format validation, retries, fallbacks, and error handling.
 
-Agent 也不是能自动调工具就完事了。真正难的是 Memory 和 Context Engineering。上下文没管好，Agent 跑几轮之后就容易偏题，前面说过什么、当前任务做到哪一步、哪些工具结果还能用，全都可能乱掉。长任务里更明显，有时候它不是不会做，而是循环几次之后自己把自己绕进去了，一直跑到 token 快耗完才停。
+An agent is more than something that can call tools automatically. Memory and context engineering are the harder parts. Without good context management, an agent can lose track after a few turns: what was said, how far the task has progressed, and which tool results are still useful. This is even more apparent in long-running tasks. The agent may know how to proceed but get stuck in a loop and continue until its token budget is nearly exhausted.
 
-RAG 答非所问，很多时候也别急着怪模型。大部分问题其实出在召回阶段：Chunk 切得太粗、Query 没改写、关键词检索和向量检索没结合、重排没做好。这个时候一项一项排查召回链路，往往比直接换一个更贵的模型有用。
+When RAG gives an irrelevant answer, the model may not be the cause. Many problems start during retrieval: chunks are too coarse, the query is not rewritten, keyword and vector search are not combined, or reranking is ineffective. Checking the retrieval pipeline stage by stage is often more useful than switching to a more expensive model.
 
-MCP、Function Calling、Tool Calling 这些东西，解决的是工具怎么接进来的问题。协议统一之后，接工具确实方便了，但真到生产环境，麻烦的地方反而在后面：谁能调用这个工具、能操作哪些数据、调用记录怎么审计、失败了怎么回滚。这些如果没设计好，协议再标准也不够用。
+MCP, Function Calling, and Tool Calling address how tools are integrated. Standard protocols make integration easier, but production systems still need to decide who can call each tool, which data it can access, how calls are audited, and how failures are rolled back. A standard protocol alone does not solve these problems.
 
-AI 应用一旦上线，稳定性、可观测、成本控制、质量回归这些问题都会冒出来。Demo 阶段通常感受不到，因为调用量小、场景也干净。等真正接到业务流量里，第一次做生产级 AI 应用的团队，基本都会被这些问题教育一次。
+Once an AI application is live, reliability, observability, cost control, and quality regression become real concerns. They are easy to miss in a demo, where traffic is low and scenarios are simple. Teams building their first production AI application usually encounter these issues once real business traffic arrives.
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [AI 核心概念总览](./ai-core-concepts.md)：先把 LLM、Token、Agent、RAG、MCP、Skills、ReAct 这些概念放到同一条链路里。
-2. [AI 应用开发面试指南](./interview-questions/ai-interview-guide.md)：建立高频问题清单，知道面试和项目复盘最常被追问哪些点。
-3. [LLM 运行机制](./llm-basis/llm-operation-mechanism.md)、[大模型 API 调用工程实践](./llm-basis/llm-api-engineering.md)：理解模型调用链路、上下文和结构化返回。
-4. [AI Agent 核心概念](./agent/agent-basis.md)、[大模型提示词工程](./agent/prompt-engineering.md)、[上下文工程](./agent/context-engineering.md)：建立 Agent 和 Prompt/Context 的基础认知。
-5. [多 Agent 协作系统设计](./agent/multi-agent.md)：继续学习任务拆分、状态共享、冲突处理和失败恢复。
+1. [AI Core Concepts](./ai-core-concepts.md): Connect LLMs, tokens, agents, RAG, MCP, skills, and ReAct in one workflow.
+2. [AI Application Development Interview Guide](./interview-questions/ai-interview-guide.md): Build a list of common questions for interviews and project reviews.
+3. [How LLMs Work](./llm-basis/llm-operation-mechanism.md) and [Engineering LLM API Calls](./llm-basis/llm-api-engineering.md): Understand model-call workflows, context, and structured responses.
+4. [AI Agent Fundamentals](./agent/agent-basis.md), [Prompt Engineering](./agent/prompt-engineering.md), and [Context Engineering](./agent/context-engineering.md): Learn the fundamentals of agents, prompts, and context.
+5. [Multi-Agent System Design](./agent/multi-agent.md): Continue with task decomposition, shared state, conflict handling, and failure recovery.
 
-   Memory、MCP、Skills、Harness、Workflow、Loop 的完整顺序见 [Agent 专题 README](./agent/README.md)。
+   For the full reading order for memory, MCP, skills, harnesses, workflows, and loops, see the [AI Agent section index](./agent/README.md).
 
-6. [RAG 基础概念](./rag/rag-basis.md)、[RAG 文档处理与切分策略](./rag/rag-document-processing.md)、[RAG 检索优化](./rag/rag-optimization.md)：补齐企业知识库问答主线。
-7. [AI 应用系统设计](./system-design/ai-application-architecture.md)、[LLM/Agent 安全实战](./system-design/llm-security.md)、[大模型网关详解](./system-design/llm-gateway.md)、[AI 应用评测体系](./llm-basis/llm-evaluation.md)：把 Demo 放进真实后端系统里，补齐权限、安全、网关、评测和治理。
+6. [RAG Fundamentals](./rag/rag-basis.md), [RAG Document Processing and Chunking Strategies](./rag/rag-document-processing.md), and [RAG Retrieval Optimization](./rag/rag-optimization.md): Learn the core workflow for enterprise knowledge-base Q&A.
+7. [AI Application System Design](./system-design/ai-application-architecture.md), [LLM and Agent Security in Practice](./system-design/llm-security.md), [LLM Gateways](./system-design/llm-gateway.md), and [AI Application Evaluation](./llm-basis/llm-evaluation.md): Take a demo into a real backend system and cover authorization, security, gateways, evaluation, and operations.
 
-## 核心文章
+## Core Guides
 
-### 面试与复习路线
+### Interview Preparation and Roadmaps
 
-- [Java/Go 开发者 AI 应用开发与 Agent 学习路线（2026 最新版）](../roadmap/java-to-ai-roadmap.md)：按大模型基础、LLM API、Prompt、RAG、Agent、工程化和项目实战拆解学习路径。
-- [后端开发者转型 AI Agent 学习建议（2026 最新版）](../roadmap/backend-to-ai-agent-roadmap.md)：先判断是否适合转型，再看 Java AI 与 Python AI 怎么选、能投什么岗位、应该如何学习。
-- [AI 核心概念总览](./ai-core-concepts.md)：按大模型基础、Agent 和 RAG 三条主线串联 LLM、Token、MCP、Skills、ReAct、Embedding、GraphRAG 等核心概念。
-- [AI 应用开发面试题专题](./interview-questions/)：按大模型基础、AI Agent、RAG 和 AI 系统设计组织复习路线。
-- [AI 应用开发面试指南](./interview-questions/ai-interview-guide.md)：把 AI 应用开发常见追问放到一条复习路线里，适合先看。
-- [大模型基础面试题总结](./interview-questions/llm-interview-questions.md)：覆盖 Token、上下文窗口、采样参数、API 调用、结构化输出和评测体系。
-- [AI Agent 面试题总结](./interview-questions/agent-interview-questions.md)：覆盖 Agent Loop、Memory、Prompt、Context、MCP、Skills、Harness Engineering 和工作流。
-- [Agent 项目面试怎么讲？](./interview-questions/agent-project-interview-guide.md)：从系统架构、技术选型、效果证据讲到 Badcase 复盘，适合把真实项目整理成完整面试回答。
-- [RAG 面试题总结](./interview-questions/rag-interview-questions.md)：覆盖 RAG 基础、向量数据库、文档处理、检索优化、GraphRAG、知识库更新和评测。
-- [AI 系统设计面试题总结](./interview-questions/ai-system-design-interview-questions.md)：覆盖生产级 AI 应用架构、模型网关、可观测、评测、安全治理和实时语音 Agent。
+- [2026 AI Application Development and Agent Roadmap for Java/Go Developers](../roadmap/java-to-ai-roadmap.md): A study path covering LLM fundamentals, APIs, prompts, RAG, agents, engineering, and project practice.
+- [2026 Guide for Backend Developers Moving into AI Agent Development](../roadmap/backend-to-ai-agent-roadmap.md): Assess the transition, compare Java and Python AI development, review target roles, and plan your studies.
+- [AI Core Concepts](./ai-core-concepts.md): Connects LLMs, tokens, MCP, skills, ReAct, embeddings, and GraphRAG across LLM, agent, and RAG fundamentals.
+- [AI Application Development Interview Questions](./interview-questions/): Organizes interview preparation around LLM fundamentals, agents, RAG, and AI system design.
+- [AI Application Development Interview Guide](./interview-questions/ai-interview-guide.md): A review path for common AI application development questions.
+- [LLM Fundamentals Interview Questions](./interview-questions/llm-interview-questions.md): Covers tokens, context windows, sampling parameters, API calls, structured output, and evaluation.
+- [AI Agent Interview Questions](./interview-questions/agent-interview-questions.md): Covers Agent Loops, memory, prompts, context, MCP, skills, harness engineering, and workflows.
+- [How to Present an Agent Project in an Interview](./interview-questions/agent-project-interview-guide.md): Organizes real project experience around architecture, technology choices, evidence of results, and bad-case analysis.
+- [RAG Interview Questions](./interview-questions/rag-interview-questions.md): Covers RAG fundamentals, vector databases, document processing, retrieval optimization, GraphRAG, knowledge-base updates, and evaluation.
+- [AI System-Design Interview Questions](./interview-questions/ai-system-design-interview-questions.md): Covers production architecture, model gateways, observability, evaluation, security, and real-time voice agents.
 
-### 大模型基础
+### LLM Fundamentals
 
-- [大模型基础专题](./llm-basis/)：从模型运行机制、API 调用、结构化输出到 AI 应用评测，先把调用链路看明白。
-- [LLM 运行机制：Token、上下文窗口与采样参数怎么影响输出](./llm-basis/llm-operation-mechanism.md)：把 Token、上下文窗口、Temperature 等概念还原为清晰、可控的工程参数。
-- [大模型 API 调用工程实践](./llm-basis/llm-api-engineering.md)：拆解 Prompt 组装、模型网关、流式响应、重试限流和结构化返回。
-- [大模型结构化输出详解](./llm-basis/structured-output-function-calling.md)：讲清 JSON Schema、Function Calling、Tool Calling 与 MCP 的底层链路。
-- [AI 应用评测体系](./llm-basis/llm-evaluation.md)：覆盖 Golden Set、LLM-as-Judge、RAG/Agent 指标、Trace 回放和线上灰度闭环。
+- [LLM Fundamentals](./llm-basis/): Learn model behavior, API calls, structured output, and AI application evaluation.
+- [How Tokens, Context Windows, and Sampling Parameters Affect LLM Output](./llm-basis/llm-operation-mechanism.md): Turn tokens, context windows, and Temperature into clear, controllable engineering parameters.
+- [Engineering LLM API Calls](./llm-basis/llm-api-engineering.md): Covers prompt assembly, model gateways, streaming responses, retries, rate limiting, and structured output.
+- [Structured Output for LLMs](./llm-basis/structured-output-function-calling.md): Explains the underlying workflow for JSON Schema, Function Calling, Tool Calling, and MCP.
+- [AI Application Evaluation](./llm-basis/llm-evaluation.md): Covers Golden Sets, LLM-as-Judge, RAG and agent metrics, trace replay, and online canary feedback loops.
 
-### AI Agent
+### AI Agents
 
-- [AI Agent 专题](./agent/)：从 Agent 基础概念、Memory、Prompt、Context 到 MCP、Skills 和 Harness Engineering。
-- [AI Agent 核心概念](./agent/agent-basis.md)：理解 Agent 和传统编程、Workflow 的区别，以及 Agent Loop、Tools 注册等核心概念。
-- [AI Agent 记忆系统](./agent/agent-memory.md)：深入理解短期记忆、长期记忆、记忆生命周期和生产级优化策略。
-- [多 Agent 协作系统设计](./agent/multi-agent.md)：讲清什么时候需要多 Agent，以及任务拆分、状态共享、冲突处理和失败恢复如何落地。
-- [大模型提示词工程](./agent/prompt-engineering.md)：掌握 Prompt 四要素、常见技巧和 Prompt 注入防护。
-- [上下文工程](./agent/context-engineering.md)：理解静态规则编排、动态信息挂载、Token 预算降级和上下文持久化。
-- [万字拆解 MCP 协议](./agent/mcp.md)：理解 MCP 的分层架构、核心能力和 MCP Server 生产实践。
-- [万字详解 Agent Skills](./agent/skills.md)：理解 Skills 与 Prompt、MCP、Function Calling 的本质区别。
-- [Harness Engineering：六层检查框架、上下文管理与工程实践](./agent/harness-engineering.md)：拆解 Model + Harness 的工程化架构和团队实践。
-- [AI 工作流中的 Workflow、Graph 与 Loop](./agent/workflow-graph-loop.md)：理解 AI 工作流的节点、边、状态、安全边界和实现方式。
-- [Loop Engineering 是什么？为什么说它是新瓶装旧酒？](./agent/loop-engineering.md)：说明代码 Agent 外层循环的触发、上下文、验证、状态和停止条件。
+- [AI Agent Guides](./agent/): Covers agent fundamentals, memory, prompts, context, MCP, skills, and harness engineering.
+- [AI Agent Fundamentals](./agent/agent-basis.md): Explains agents versus traditional programming and workflows, along with Agent Loops and tool registration.
+- [AI Agent Memory](./agent/agent-memory.md): Covers short-term and long-term memory, memory lifecycles, and production optimizations.
+- [Multi-Agent System Design](./agent/multi-agent.md): Explains when multiple agents are needed and how to implement task decomposition, shared state, conflict handling, and failure recovery.
+- [Prompt Engineering](./agent/prompt-engineering.md): Covers the four elements of a prompt, common techniques, and prompt-injection defenses.
+- [Context Engineering](./agent/context-engineering.md): Covers static rule orchestration, dynamic context, Token-budget fallbacks, and context persistence.
+- [A Detailed Look at MCP](./agent/mcp.md): Explains MCP's layered architecture, capabilities, and production practices for MCP servers.
+- [A Detailed Guide to Agent Skills](./agent/skills.md): Explains how skills differ from prompts, MCP, and Function Calling.
+- [Harness Engineering](./agent/harness-engineering.md): Explains the Model + Harness architecture and engineering practices.
+- [Workflow, Graph, and Loop in AI Workflows](./agent/workflow-graph-loop.md): Covers workflow nodes, edges, state, security boundaries, and implementation.
+- [What Is Loop Engineering? Is It Just Old Wine in a New Bottle?](./agent/loop-engineering.md): Explains the triggers, context, verification, state, and stop conditions of the outer loop in coding agents.
 
-### RAG 检索增强生成
+### Retrieval-Augmented Generation (RAG)
 
-- [RAG 专题](./rag/)：围绕企业知识库问答，梳理文档处理、向量数据库、GraphRAG、检索优化和知识库更新。
-- [RAG 基础概念](./rag/rag-basis.md)：理解 RAG 是什么、为什么需要它、核心优势和局限性。
-- [RAG 文档处理与切分策略](./rag/rag-document-processing.md)：覆盖文档解析、清洗、结构化、Chunking 和多模态内容处理。
-- [RAG 向量索引算法和向量数据库](./rag/rag-vector-store.md)：掌握 HNSW、IVFFLAT 等索引算法和向量数据库选型。
-- [RAG 检索优化](./rag/rag-optimization.md)：覆盖 Chunk 策略、Hybrid Search、Query Rewrite、Rerank 和上下文压缩。
-- [GraphRAG](./rag/graphrag.md)：理解实体、关系、社区发现、全局检索与局部检索。
-- [RAG 知识库文档更新策略](./rag/rag-knowledge-update.md)：掌握增量更新、版本控制、去重和全量重建。
+- [RAG Guides](./rag/): Covers document processing, vector databases, GraphRAG, retrieval optimization, and knowledge-base updates for enterprise Q&A.
+- [RAG Fundamentals](./rag/rag-basis.md): Learn what RAG is, why it is used, and its main benefits and limitations.
+- [RAG Document Processing and Chunking Strategies](./rag/rag-document-processing.md): Covers document parsing, cleaning, structuring, chunking, and multimodal content.
+- [RAG Vector Indexes and Vector Databases](./rag/rag-vector-store.md): Learn index algorithms such as HNSW and IVFFlat and how to choose a vector database.
+- [RAG Retrieval Optimization](./rag/rag-optimization.md): Covers chunking, hybrid search, query rewriting, reranking, and context compression.
+- [GraphRAG](./rag/graphrag.md): Learn about entities, relationships, community detection, and global and local retrieval.
+- [RAG Knowledge-Base Update Strategies](./rag/rag-knowledge-update.md): Covers incremental updates, versioning, deduplication, and full rebuilds.
 
-### AI 系统设计
+### AI System Design
 
-- [AI 系统设计专题](./system-design/)：把 Prompt Demo 放进真实后端系统里看，重点关注架构、模型网关、语音链路、可观测、评测和安全治理。
-- [AI 应用系统设计](./system-design/ai-application-architecture.md)：把 Prompt Demo 放进生产链路，覆盖 Prompt 管理、模型网关、RAG、Memory、Tool 调用、可观测、评测和安全合规。
-- [LLM/Agent 安全实战](./system-design/llm-security.md)：覆盖直接与间接 Prompt Injection、工具越权、MCP 授权、敏感数据、代码沙箱、供应链和安全回归。
-- [大模型网关详解](./system-design/llm-gateway.md)：理解 LLM Gateway 的多模型路由、fallback、限流配额、成本归因、观测审计和缓存策略。
-- [AI 语音技术详解](./system-design/ai-voice.md)：拆解 VAD、ASR、LLM、TTS、流式播放、打断处理和端云混合选型。
+- [AI System-Design Guides](./system-design/): Covers architecture, model gateways, voice workflows, observability, evaluation, and security for production AI systems.
+- [AI Application System Design](./system-design/ai-application-architecture.md): Takes a prompt demo into production, covering prompt management, model gateways, RAG, memory, tool calls, observability, evaluation, and security compliance.
+- [LLM and Agent Security in Practice](./system-design/llm-security.md): Covers direct and indirect prompt injection, tool privilege escalation, MCP authorization, sensitive data, code sandboxes, supply chains, and security regression testing.
+- [LLM Gateways](./system-design/llm-gateway.md): Explains multi-model routing, fallbacks, rate limits and quotas, cost attribution, observability, auditing, and caching.
+- [AI Voice Technology](./system-design/ai-voice.md): Covers VAD, ASR, LLM, TTS, streaming playback, interruption handling, and edge-cloud deployment choices.
 
-## 高频问题
+## Common Questions
 
-- 大模型的 Token、上下文窗口、Temperature、Top P 分别会影响什么？
-- 为什么结构化输出不能只依赖 Prompt？JSON Schema、Function Calling 和服务端校验分别解决什么问题？
-- Agent 和 Workflow 有什么区别？Agent Loop 中观察、规划、行动、反思如何协作？
-- Prompt Engineering 和 Context Engineering 有什么区别？
-- MCP 解决了什么问题？它和 Function Calling、Tool Calling 是什么关系？
-- RAG 为什么会答非所问？应该从召回、排序、上下文压缩还是生成阶段排查？
-- 向量数据库如何选型？HNSW、IVFFLAT 这些索引适合什么场景？
-- AI 应用怎么评测？Golden Set、LLM-as-Judge、线上灰度和 Trace 回放如何串起来？
-- 生产级 AI 应用为什么需要模型网关？如何做限流、fallback、成本控制和审计？
+- How do tokens, context windows, Temperature, and Top P affect LLM output?
+- Why is a prompt alone insufficient for structured output? What roles do JSON Schema, Function Calling, and server-side validation play?
+- How do agents differ from workflows? How do observation, planning, action, and reflection work together in an Agent Loop?
+- How do prompt engineering and context engineering differ?
+- What problem does MCP solve, and how does it relate to Function Calling and Tool Calling?
+- Why can RAG return irrelevant answers? Should you investigate retrieval, ranking, context compression, or generation?
+- How should a vector database be selected? Which use cases suit indexes such as HNSW and IVFFlat?
+- How should an AI application be evaluated? How do Golden Sets, LLM-as-Judge, online canary releases, and trace replay fit together?
+- Why does a production AI application need a model gateway, and how should it handle rate limits, fallbacks, cost, and auditing?
 
-## 相关专题
+## Related Topics
 
-- [AI 编程实战指南](../ai-coding/)
-- [系统设计](../system-design/)
-- [高可用系统知识体系](../high-availability/)
-- [高性能系统知识体系](../high-performance/)
-- [分布式系统知识体系](../distributed-system/)
+- [AI Coding in Practice](../ai-coding/)
+- [System Design](../system-design/)
+- [High Availability](../high-availability/)
+- [High Performance](../high-performance/)
+- [Distributed Systems](../distributed-system/)
 
 <!-- @include: @article-footer.snippet.md -->

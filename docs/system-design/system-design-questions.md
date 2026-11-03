@@ -1,26 +1,26 @@
 ---
-title: 系统设计常见面试题总结(付费)
-description: 系统设计高频面试题解析，涵盖短链系统、秒杀系统、海量数据处理等场景题的设计思路与解决方案。
-category: Java面试指北
+title: System Design Interview Questions (Paid)
+description: A guide to common system design interview questions, including URL shorteners, flash-sale systems, and large-scale data processing.
+category: Java Interview Handbook
 icon: "mdi:palette-swatch-outline"
 head:
   - - meta
     - name: keywords
-      content: 系统设计面试题,场景题,短链系统,秒杀系统,海量数据,限流,缓存,分布式锁,一致性
+      content: system design interview questions,scenario questions,URL shortener,flash-sale system,large-scale data,rate limiting,caching,distributed locks,consistency
 ---
 
-**系统设计** 相关的面试题为我的[知识星球](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html)（点击链接即可查看详细介绍以及加入方法）专属内容，已经整理到了[《后端面试高频系统设计&场景题》](https://javaguide.cn/zhuanlan/back-end-interview-high-frequency-system-design-and-scenario-questions.html)中。
+**System design** interview questions are exclusive to my [Knowledge Planet](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html) community (follow the link for details and instructions on joining) and are included in [_High-Frequency System Design and Scenario Questions for Backend Interviews_](https://javaguide.cn/zhuanlan/back-end-interview-high-frequency-system-design-and-scenario-questions.html).
 
-**《后端面试高频系统设计&场景题》** 包含了常见的系统设计案例比如短链系统、秒杀系统以及高频的场景题比如海量数据去重、第三方授权登录。
+**This series** covers common system design examples such as URL shorteners and flash-sale systems, as well as popular scenario questions such as deduplicating large datasets and third-party authorization.
 
-![《后端面试高频系统设计&场景题》](../zhuanlan/images/shared/back-end-interview-high-frequency-system-design-and-scenario-questions-fengmian.png)
+![High-Frequency System Design and Scenario Questions for Backend Interviews](../zhuanlan/images/shared/back-end-interview-high-frequency-system-design-and-scenario-questions-fengmian.png)
 
-近年来，随着国内的技术面试越来越卷，越来越多的公司开始在面试中考察系统设计和场景问题，以此来更全面的考察求职者，不论是校招还是社招。不过，正常面试全是场景题的情况还是极少的，面试官一般会在面试中穿插一两个系统设计和场景题来考察你。
+As technical interviews in China become more competitive, more companies ask system design and scenario questions to assess candidates more broadly, for both new-graduate and experienced-hire roles. Interviews made up entirely of scenario questions are still uncommon, though; interviewers usually include one or two such questions.
 
-于是，我总结了这份《后端面试高频系统设计&场景题》，包含了常见的系统设计案例比如短链系统、秒杀系统以及高频的场景题比如海量数据去重、第三方授权登录。
+That is why I put together this series. It covers common system design examples such as URL shorteners and flash-sale systems, and popular scenario questions such as deduplicating large datasets and third-party authorization.
 
-即使不是准备面试，我也强烈推荐你认真阅读这一系列文章，这对于提升自己系统设计思维和解决实际问题的能力还是非常有帮助的。并且，涉及到的很多案例都可以用到自己的项目上比如抽奖系统设计、第三方授权登录、Redis 实现延时任务的正确方式。
+Even if you are not preparing for an interview, I recommend reading the series. It can help you improve your system design thinking and ability to solve practical problems. Many of its examples can also be applied to your own projects, including lottery system design, third-party authorization, and implementing delayed tasks with Redis.
 
-《后端面试高频系统设计&场景题》本身是属于[《Java 面试指北》](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html)的一部分，后面由于内容篇幅较多，因此被单独提了出来。
+The series was originally part of [_Java Interview Handbook_](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html), but was moved to its own page as it grew.
 
 <!-- @include: @planet.snippet.md -->

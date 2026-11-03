@@ -1,289 +1,285 @@
 ---
-title: 10 道 AI 编程相关的开放性面试问题
-description: 涵盖 Cursor、Claude Code、Trae 等 AI 编程 IDE 使用技巧，Spec Coding 与 Vibe Coding 区别，以及 AI 对后端开发影响等高频面试问题。
-category: AI 应用开发
+title: 10 Open-Ended Interview Questions About AI Coding
+description: Interview questions about AI coding tools such as Cursor, Claude Code, and TRAE, the differences between Spec Coding and Vibe Coding, and AI's impact on backend development.
+category: AI Application Development
 icon: "mdi:code-tags"
 head:
   - - meta
     - name: keywords
-      content: AI 编程,Cursor,Claude Code,Spec Coding,Vibe Coding,AI IDE,编程工具,后端开发
+      content: AI Coding,Cursor,Claude Code,Spec Coding,Vibe Coding,AI IDE,Coding Tools,Backend Development
 ---
 
-腾讯面试的时候，面试官问我：“用过什么 AI 编程工具？”。我说：“Trae。”
+In a Tencent interview, the interviewer asked, “Which AI coding tools have you used?” I said, “TRAE.”
 
-空气突然安静了两秒。我搞不清楚为什么面试官沉默了，当时我还在想：“是不是我回答得不够高级？”。
+The room went quiet for two seconds. I did not know why the interviewer had stopped talking, and wondered whether my answer sounded unsophisticated.
 
-面试被挂后才意识到：Trae 是字节的，腾讯家的是 CodeBuddy，阿里家的是 Qoder。
+Only after failing the interview did I realize: TRAE is ByteDance's product, Tencent has CodeBuddy, and Alibaba has Qoder.
 
-段子归段子！今天小 G 分享 9 道当下校招和社招技术面试中经常会被问到的 AI 编程开放性问题，希望对你有帮助。
+Jokes aside, today Xiao G shares nine open-ended AI coding questions that often come up in campus and experienced-hire interviews. I hope they help.
 
-1. ⭐ **AI 编程 IDE**：Cursor、Claude Code 等工具的使用技巧
-2. ⭐ **AI 对后端开发的影响**：AI 会淘汰初级程序员吗？最大风险是什么？
-3. ⭐ **未来核心竞争力**：3 年后端工程师的核心竞争力是什么？
+1. ⭐ **AI coding IDEs:** Practical tips for tools such as Cursor and Claude Code.
+2. ⭐ **AI's impact on backend development:** Will AI replace junior programmers? What is the biggest risk?
+3. ⭐ **Future core skills:** What will be the core strengths of a backend engineer in three years?
 
-## AI 编程 IDE 使用技巧
+## Tips for Using AI Coding IDEs
 
-### 用过什么 AI 编程 IDE 吗？什么感觉？
+### Which AI coding IDEs have you used? What did you think of them?
 
-目前整体感觉是：AI 编程能力进步很快。它已经从几年前简单的代码补全，进化成了一个可以深度协作的工程助手。
+My overall impression is that AI coding capabilities are advancing quickly. AI has evolved from simple code completion a few years ago into an engineering assistant that can collaborate deeply.
 
-我总结了一套自己的使用方法论：
+Here is the approach I use:
 
-1. 在接手复杂项目或模块时，我不会直接让 AI 写代码，而是先让 Cursor 分析整个代码库，生成一份包含核心架构、模块职责和数据流的文档。这一步非常关键，因为它决定了后续协作的质量。只有当我和 AI 对项目有一致理解时，后续产出才会稳定、高质量。
-2. 对于每个独立的开发任务，开启一个新的对话，并提供必要的上下文，包括需求背景、涉及模块和约束条件。这种方式能减少上下文污染，让 AI 生成的代码更精准。
-3. 定期删除冗余实现和废弃代码。旧代码会误导 AI 的判断，增加上下文噪音。
+1. When taking over a complex project or module, I do not ask AI to write code immediately. I first ask Cursor to analyze the codebase and create a document describing the core architecture, module responsibilities, and data flow. This step is critical because it affects the quality of all later collaboration. When the AI and I share an understanding of the project, the results are more consistent and useful.
+2. Start a new conversation for each independent task and provide the necessary context, including the requirement, relevant modules, and constraints. This reduces context contamination and helps AI generate more relevant code.
+3. Regularly remove redundant implementations and deprecated code. Old code can mislead AI and add noise to its context.
 
-### AI 编程的核心原则
+### Core Principles for AI Coding
 
-AI 是一个强大的知识库和辅助工具，可以帮我们快速实现功能、学习新知识。但如果完全依赖 AI 写代码而不理解其原理，个人技术能力可能会退化。
+AI is a powerful knowledge base and assistant. It can help us implement features quickly and learn new things. But if we depend on it completely and do not understand how the code works, our own technical ability may decline.
 
-几个原则：
+Keep these principles in mind:
 
-- AI 生成代码之后必须人工 Review。
-- 关键逻辑必要时自己重写。
-- 核心路径必须做压测和边界测试。
+- Always review AI-generated code manually.
+- Rewrite critical logic yourself when needed.
+- Load test critical paths and test their edge cases.
 
-我希望效率提升，但不以牺牲技术能力为代价。
+I want to work more efficiently without sacrificing my technical skills.
 
-### ⭐ Cursor 实战技巧
+### ⭐ Practical Cursor Tips
 
-> 这里是以 Cursor 为例，其他 AI IDE 都是类似的。
+> Cursor is used as an example; the same ideas apply to other AI IDEs.
 
-1. **先理架构再动手**：无论是自己写代码还是让 AI 生成代码，都必须先明确需求、整体架构和模块边界。如果在架构模糊的情况下直接编码，很容易出现重复实现或职责冲突，后期修改成本反而更高。
-2. **单 Chat 专注单功能**：新功能或大改动开启新的 Chat，并在开头引入项目结构说明或关键文档作为上下文。这样可以避免历史对话干扰。
-3. **功能落地后写指南**：让 AI 总结实现过程，抽象出通用步骤。比如新增接口的标准流程、文件导出的统一实现方式等。这些内容可以在后续类似需求中快速复用。
-4. **不依赖 AI，主动复盘**：AI 仅作辅助，代码生成后需认真 Review，理解原理、优化不合理处。
-5. **定期删无用代码**：清理冗余代码，减少对 AI 的误导和上下文干扰，提升开发效率。
-6. **用好配置文件**：`.cursorrules` 定义 AI 生成代码的规则、风格和常用片段；`.cursorignore` 指定不允许 AI 修改的文件 / 目录，保护核心代码。
-7. **持续维护文档**：项目重大变更后，让 AI 同步更新文档、记录 “踩坑” 经验。
-8. **让 AI 先“学”项目**：大型项目先让 Cursor 分析代码库，生成含架构、目录职责、核心类的结构文档，作为后续开发的基础上下文。
+1. **Understand the architecture before coding.** Whether you write code yourself or ask AI to generate it, first clarify the requirements, overall architecture, and module boundaries. Coding while the architecture is unclear can lead to duplicated implementations or conflicting responsibilities, making later changes more expensive.
+2. **Use one chat per feature.** Start a new chat for each new feature or major change. Include the project structure or key documents as context at the beginning to prevent earlier conversation history from interfering.
+3. **Document how to implement a feature.** Ask AI to summarize the implementation and extract reusable steps, such as the standard process for adding an API or exporting files. You can reuse these steps for similar tasks later.
+4. **Review and reflect instead of relying on AI.** AI is an assistant. After code is generated, review it carefully, understand the principles, and improve anything unreasonable.
+5. **Remove unused code regularly.** Cleaning up redundant code reduces misleading context and improves development efficiency.
+6. **Use configuration files.** `.cursorrules` defines code-generation rules, style, and common snippets. `.cursorignore` lists files and directories AI must not change, protecting critical code.
+7. **Keep documentation current.** After major project changes, ask AI to update the documentation and record lessons learned.
+8. **Let AI learn the project first.** For a large project, ask Cursor to analyze the codebase and document its architecture, directory responsibilities, and core classes. Use this as context for later development.
 
-### ⭐Claude Code 使用技巧
+### ⭐ Claude Code Tips
 
-1. **上下文窗口是你最贵的资源**——所有技巧本质上都在帮你把这块白板用得更高效。
-2. **先规划后执行**——Plan Mode 投资的是后面的时间。
-3. **`CLAUDE.md` 自我进化**——把纠正转化为规则，让 AI 越用越顺手。
-4. **并行是最大的效率杠杆**——多实例 + Worktree + 子代理。
-5. **验证优于信任**——给 Claude 验收标准，让它自己检查。
-6. **`/compact` 比反复纠正更有效**——上下文被污染后，压缩或清空重来更好。
+1. **The context window is your most valuable resource.** Every technique should help you use this scratchpad more efficiently.
+2. **Plan before you execute.** Time spent in Plan Mode can save time later.
+3. **Let `CLAUDE.md` improve over time.** Turn corrections into rules so AI works better with each use.
+4. **Parallel work offers major efficiency gains.** Use multiple instances, Worktrees, and subagents.
+5. **Verification is better than trust.** Give Claude acceptance criteria and ask it to check its work.
+6. **`/compact` is better than repeated corrections.** If the context is contaminated, compact it or start fresh.
 
-Claude Code 详细内容我单独分享过：[Claude Code 使用指南](https://javaguide.cn/ai-coding/claudecode-tips.html)。
+I have written a separate guide: [Claude Code User Guide](https://javaguide.cn/ai-coding/claudecode-tips.html).
 
-## AI 编程对程序员的影响
+## AI's Impact on Programmers
 
-### 你如何看待 AI 对后端开发的影响
+### How Do You See AI Affecting Backend Development?
 
-AI 不会取代后端工程师，但会改变后端工程师的工作方式和能力结构。
+AI will not replace backend engineers, but it will change how they work and which skills they need.
 
-AI 能帮我们处理重复的、模式化的工作：
+AI can handle repetitive, pattern-based work:
 
-- **在编码层面**：AI 工具在生成**模式化代码（Boilerplate）**方面表现不错，CRUD、单元测试、胶水代码的编写效率可提升 50%~70%。但在**分布式约束**（如分布式锁的超时续租、消息队列的 Exactly-once 语义、接口幂等性设计）上，AI 存在显著的**“幻觉”风险**——它往往只给出 Happy Path 代码，忽略了生产环境中的异常补偿逻辑、竞态条件处理和分布式事务边界控制。
-- **在架构层面**：AI 正在催生新的应用范式，比如智能体（Agent）驱动的自动化业务流程，后端需要提供更灵活、更原子化的能力接口。传统的“大而全”接口正逐步拆解为可被 AI 调用的原子化能力。
-- **在运维与排障层面**：AI 可以辅助分析日志、监控告警，甚至预测系统瓶颈。例如，基于 AIOps 的工具可以自动分析异常日志模式，定位根因。
+- **Coding:** AI tools are effective at generating boilerplate. They can increase the speed of writing CRUD code, unit tests, and glue code by 50–70%. But they can hallucinate about **distributed constraints**, such as lease renewal for distributed locks, exactly-once semantics in message queues, and API idempotency. They often provide code for the happy path and miss production concerns such as compensating for failures, race conditions, and distributed transaction boundaries.
+- **Architecture:** AI is enabling new approaches, such as agent-driven automation of business processes. Backend systems need to expose more flexible and atomic capabilities. Traditional “do-everything” APIs are gradually being broken into atomic operations that AI can call.
+- **Operations and troubleshooting:** AI can help analyze logs and alerts and may even predict system bottlenecks. For example, AIOps tools can analyze unusual log patterns and identify root causes automatically.
 
-AI 让后端工程师能更专注于业务建模、复杂系统设计和架构决策这些更具创造性的核心工作。
+AI lets backend engineers focus more on creative work such as business modeling, complex system design, and architectural decisions.
 
-拿我自己来说，我经常会和 AI 讨论业务和技术方案，它总能给我不错的启发——尤其是在需求拆解和技术选型时，AI 能提供多角度的思考。
+I often discuss business and technical approaches with AI and get useful ideas, especially for decomposing requirements and selecting technologies.
 
-从实战经验来看，AI 辅助编程的能力可以归纳为两个维度：
+From hands-on experience, AI-assisted coding can be viewed in two ways:
 
-- **从 0 到 1 的规划与交付**：给出需求描述，AI 可以自主完成技术选型和架构设计，适合快速验证构想，但方案仍需人工评审。
-- **既有代码的增量优化**：在已有复杂度的代码库中，AI 能够理解既有架构、定位问题、完成优化。但 AI 给出的方案“看起来对”，上生产就翻车的情况并不少见。
+- **Planning and delivery from zero to one:** Given a requirement, AI can propose technology choices and an architecture. This is useful for quickly validating an idea, but the result still needs human review.
+- **Incremental improvements to existing code:** In a complex codebase, AI can understand the existing architecture, locate problems, and make improvements. However, solutions that “look right” but fail in production are not uncommon.
 
-### 前后端开发者的核心竞争力已经变了
+### Core Skills Have Changed for Frontend and Backend Developers
 
-说句实话，前后端开发者的核心竞争力已经变了。
+Honestly, the core skills for frontend and backend developers have changed.
 
-以前前端拼手速和还原度，后端拼 CRUD 和八股文。现在这些东西 AI 全能做，而且又快又不喊累，就废点 Token。你花半天切的页面，AI 十分钟搞定；你写两小时的增删改查，AI 三分钟交卷。不是说这些技能没用了，而是不稀缺了，就不值钱。
+Frontend developers used to compete on coding speed and visual accuracy; backend developers competed on CRUD and memorized interview material. AI can do these tasks quickly and without getting tired, apart from using tokens. AI can build a page in ten minutes that might take you half a day, or write CRUD code in three minutes that might take you two hours. These skills still matter, but they are less scarce and therefore less valuable on their own.
 
-前端受冲击最直接。页面还原、组件编写、样式调整，模式化程度太高，大模型最擅长这类活。但死掉的不是前端这个岗位，是“只会写页面”的前端。
+Frontend work has felt the impact most directly. Reproducing pages, writing components, and adjusting styles are highly repetitive tasks that large language models handle well. The frontend role will not disappear, but frontend developers who only know how to build pages will be at risk.
 
-有竞争力的前端往两个方向走：要么往深扎——性能优化、渲染管线分析、工程化基建，AI 替代不了；要么往难走——WebGL、大规模可视化、跨端底层原理，AI 生成质量差，反而是护城河。
+Competitive frontend developers can go deeper into performance optimization, rendering-pipeline analysis, and engineering infrastructure, which are harder to replace. Or they can take on more difficult work in WebGL, large-scale visualization, and cross-platform fundamentals, where AI output is less reliable and expertise creates an advantage.
 
-后端稍好，但也别乐观。AI 写单个接口已经很强了，它的短板是系统级思考——服务怎么拆、数据模型怎么设计、缓存一致性怎么保证、容量瓶颈在哪。这些需要结合业务场景和技术债综合判断，AI 给的方案“看起来对”，上生产就翻车。
+Backend developers may be less affected, but should not be complacent. AI is already good at writing individual APIs. Its weakness is system-level reasoning: how to split services, design data models, maintain cache consistency, and find capacity bottlenecks. These decisions depend on business context and technical debt. A solution that “looks right” may fail in production.
 
-后端的核心竞争力在往系统设计、稳定性治理、复杂业务建模转。
+Backend engineers' core strengths are shifting toward system design, reliability engineering, and complex business modeling.
 
-不管前端后端，有一件事已经是基本功：高效跟 AI 协作。不是会用 ChatGPT 就行，而是能拆解问题、引导输出、判断结果靠不靠谱、识别安全隐患。你从“写代码的人”变成了“AI 的技术审核官”。
+For both frontend and backend developers, working effectively with AI has become a basic skill. Knowing how to use ChatGPT is not enough. You need to break down problems, guide the output, judge whether it is reliable, and identify security issues. Your role shifts from “person who writes code” to “technical reviewer for AI.”
 
-那些生成代码不看逻辑的人，短期效率高，长期在给自己埋雷——线上出问题只会反复问 AI，自己毫无排查思路。
+People who accept generated code without understanding it may be faster in the short term, but they are creating risks for themselves. When production problems occur, they may keep asking AI instead of knowing how to investigate.
 
-### AI 会淘汰初级程序员吗
+### Will AI Replace Junior Programmers?
 
-短期内不会淘汰，但会彻底改变初级程序员的能力结构。
+Not in the short term, but it will fundamentally change the skills expected of junior programmers.
 
-以前初级工程师的价值在于：
+Junior engineers used to contribute by:
 
-- 写 CRUD 增删改查
-- 写基础接口
-- 写 SQL 查询语句
-- 写基础工具类/配置
+- Writing CRUD operations.
+- Implementing basic APIs.
+- Writing SQL queries.
+- Creating basic utility classes and configuration.
 
-现在这些工作 AI 都能做得很好，甚至更高效、更少出错。但初级程序员不会被淘汰，只是价值创造点发生了迁移。
+AI can now handle these tasks well, often faster and with fewer mistakes. But junior programmers will not disappear; where they create value is changing.
 
-未来初级工程师需要具备：
+Future junior engineers will need:
 
-- **需求拆解能力**：将模糊的业务需求转化为清晰的技术任务。
-- **业务理解能力**：理解领域模型和业务规则，而不仅是“翻译需求”。
-- **架构感知能力**：理解系统整体架构，知道自己代码在系统中的位置。
-- **Prompt 表达能力**：能精准地描述问题，从 AI 获取高质量答案。
+- **Requirement decomposition:** Turn vague business requests into clear technical tasks.
+- **Business understanding:** Understand domain models and business rules rather than merely “translating requirements.”
+- **Architectural awareness:** Understand the overall system and where their code fits.
+- **Prompting skills:** Describe problems clearly to get useful results from AI.
 
-AI 让编程门槛变低，但对“理解能力”的要求反而更高。未来的初级工程师更像是一个“AI 协调者”，而非单纯的“代码编写者”。
+AI lowers the barrier to programming, but raises the bar for understanding. Junior engineers will act more like “AI coordinators” than simply “code writers.”
 
-从企业招聘角度看，纯编码能力的需求会减少，但对“能利用 AI 快速交付业务价值”的工程师需求会增加。
+From an employer's perspective, demand for pure coding ability may fall, while demand for engineers who can use AI to deliver business value quickly may rise.
 
-### AI 带来的最大风险是什么
+### What Is the Biggest Risk of AI?
 
-我认为主要有三个层面：
+I see four main areas of risk.
 
-**1. 技术能力退化**
+**1. Declining technical ability**
 
-过度依赖 AI 会导致工程师自身技术能力的退化，尤其是：
+Overreliance on AI may weaken engineers' own skills, especially:
 
-- **调试能力下降**：习惯让 AI 排查问题，自身对底层原理的理解变浅。
-- **代码敏感度下降**：对“好代码”和“坏代码”的判断能力变弱，甚至不知道什么是好代码。
-- **架构思维退化**：长期只关注功能实现，忽视架构设计和扩展性。
+- **Debugging:** Relying on AI to find problems can weaken understanding of underlying principles.
+- **Code judgment:** It becomes harder to distinguish good code from bad code, or even to define good code.
+- **Architectural thinking:** Focusing on feature implementation can lead people to neglect architecture and extensibility.
 
-**2. 架构失控**
+**2. Loss of architectural control**
 
-AI 生成的代码往往关注“当前功能可用”，容易忽视长期架构健康度。这很大程度上源于 **Vibe Coding（氛围编程）**——依赖模糊意图让 AI“自由发挥”。
+AI-generated code often focuses on making the current feature work and may neglect long-term architectural health. This is partly driven by **Vibe Coding**: giving AI vague intent and letting it “figure things out.”
 
-- **模块边界模糊**：AI 倾向于“快速完成功能”，可能将多个职责混入同一模块。建议在编码前明确模块职责（DDD 风格的 Context Boundary），通过预先定义的接口契约约束 AI 生成范围。
+- **Unclear module boundaries:** AI may put multiple responsibilities in one module to finish quickly. Define module responsibilities before coding—for example, using DDD-style context boundaries—and constrain generation with predefined interface contracts.
+- **Accumulating technical debt:** To implement features quickly, AI may use hard-coded values, bypass standard error handling, or introduce unnecessary circular dependencies. These patterns make refactoring more expensive as the project grows.
+- **Inconsistent style:** Different chat sessions may generate different naming conventions, error-handling patterns, and log formats. Use **Spec Coding** to define shared technical standards and code style in advance, for example in `.cursorrules`.
+- **Poor resource management:** AI may not consider connection-pool size, thread-pool queue length, or cache expiration. It may create many threads with an unbounded queue, risking out-of-memory failures during traffic spikes, or use default database pool settings that become bottlenecks under high concurrency.
+- **Poor fit with engineering conventions:** Generated code may have a reasonable structure but still conflict with existing file organization, style, or dependency-management practices. Such code can create friction in a team even when it appears correct.
 
-- **技术债务累积**：为快速实现功能，AI 可能使用硬编码、绕过标准异常处理、引入不必要的循环依赖等反模式。这些债务在项目规模增长后会显著增加重构成本。
+**3. Security risks (especially important)**
 
-- **风格一致性缺失**：不同 Chat 会话中生成的代码可能采用不同的命名规范、错误处理模式和日志格式。建议通过 **Spec Coding** 的方式，预先定义统一的技术规范和代码风格（如 `.cursorrules`），让 AI 始终在同一套规则下工作。
+- **Vulnerable code:** AI may generate common security flaws, including:
+  - **SQL injection:** String concatenation instead of parameterized queries.
+  - **XSS:** Failure to HTML-escape user input.
+  - **Missing authorization checks:** No endpoint-level or method-level permission checks.
+  - **Sensitive data exposure:** Logging keys, tokens, or passwords.
+  - **Vulnerable dependencies:** Adding third-party libraries with known CVEs.
+- **Data leakage:** Improper use may expose company code and business logic to external models, especially hosted services.
+- **Supply-chain risks:** Dependencies recommended by AI may contain known vulnerabilities or malicious code.
+- **Credential leaks:** Generated code may hard-code secrets or tokens.
 
-- **资源治理缺失**：AI 不会自动考虑连接池大小、线程池队列长度、缓存过期策略等资源约束。例如，生成的代码可能创建大量线程但无界队列，在流量激增时导致内存溢出；或使用默认数据库连接池配置，在高并发下成为瓶颈。
+**4. Failure modes in distributed systems (especially dangerous)**
 
-- **工程规范适配**：AI 生成的代码架构虽然合理，但与既有工程规范的适配往往需要人工把关。比如文件名组织、代码风格差异、依赖管理策略——这些“看起来没问题”的代码，可能在团队协作中制造麻烦。
+AI-generated code may overlook important distributed-system constraints and cause production incidents:
 
-**3. 安全风险（尤其需要重视）**
+| Failure mode                                   | Common AI mistake                                                | Production risk                                                         |
+| ---------------------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **Missing idempotency**                        | Does not account for idempotency; inserts or updates directly    | Retries after timeouts create duplicate data or charge customers twice  |
+| **Concurrency races**                          | Omits distributed locks or CAS                                   | Oversold inventory, lost concurrent updates, and incorrect metrics      |
+| **Unclear distributed transaction boundaries** | Does not define transaction boundaries or rollback strategy      | Inconsistent data, partial failures, and difficult investigations       |
+| **Missing timeouts and fallback**              | Sets only a default timeout; omits circuit breaking and fallback | Cascading failures, cascading overload, and service outages             |
+| **Connection-pool leaks**                      | Fails to release connections or configures pool size incorrectly | Pool exhaustion, unresponsive services, and recovery only after restart |
 
-- **代码漏洞**：AI 可能生成包含安全漏洞的代码，常见问题包括：
-  - **SQL 注入**：使用字符串拼接而非参数化查询
-  - **XSS**：未对用户输入进行 HTML 转义
-  - **权限校验缺失**：缺少接口级/方法级权限检查
-  - **敏感信息泄露**：日志中打印密钥、Token 或密码
-  - **依赖漏洞**：引入存在已知 CVE 的第三方库
-- **数据泄露**：不当使用可能泄露公司代码、业务逻辑给外部模型（尤其是云端托管的 AI 服务）。
-- **供应链风险**：AI 推荐的依赖包可能存在已知漏洞或恶意代码。
-- **密钥泄露**：AI 生成的代码可能硬编码密钥、Token 等敏感信息。
+**Example:** When asked to generate code that decrements inventory, AI may write only `UPDATE stock SET count = count - 1 WHERE id = ?` and ignore:
 
-**4. 分布式场景下的失效模式（尤其危险）**
+- Row locks or distributed locks under concurrency.
+- Idempotency when stock is insufficient, so the same request cannot decrement it more than once.
+- Compensation if a downstream service times out.
+- Database connection timeouts and circuit breaking.
 
-AI 生成的代码在分布式环境中极易忽略关键约束，导致生产事故：
+**Mitigations:**
 
-| 失效模式               | AI 常见问题                    | 生产风险                               |
-| ---------------------- | ------------------------------ | -------------------------------------- |
-| **幂等性缺失**         | 未考虑接口幂等，直接插入或更新 | 网络超时重试导致重复数据、资金重复扣款 |
-| **并发竞态**           | 缺乏分布式锁或 CAS 机制        | 库存超卖、并发修改覆盖、统计口径错误   |
-| **分布式事务边界模糊** | 未明确事务边界和回滚策略       | 数据不一致、部分成功部分失败、难以追溯 |
-| **超时与降级缺失**     | 仅设置默认超时，无熔断降级逻辑 | 级联故障、雪崩效应、服务整体不可用     |
-| **连接池泄漏**         | 未及时释放连接或连接数配置不当 | 连接池耗尽、服务假死、重启才能恢复     |
+- **State constraints explicitly in the spec:** Ask AI to generate templates for distributed locks, idempotency checks, and compensation logic.
+- **Require code review:** Focus on cross-service calls, transaction boundaries, and error-handling paths.
+- **Validate with chaos engineering:** Inject failures to test resilience in distributed scenarios.
 
-**典型案例**：AI 生成“扣减库存”代码时，通常只写 `UPDATE stock SET count = count - 1 WHERE id = ?`，而忽略：
+Companies also need a supporting security governance system:
 
-- 并发场景下的行锁或分布式锁
-- 库存不足时的幂等性保证（同一请求多次扣减不应重复）
-- 下游服务超时时的补偿机制
-- 数据库连接超时与熔断策略
+- **Require code review:** AI-generated code must be reviewed by a person.
+- **Automate scanning:** Integrate SAST and SCA tools, and scan for AI-related risks with tools such as `git-secrets` and TruffleHog.
+- **Guard the architecture:** Use Spec Coding with tools such as ArchUnit to automatically test architectural constraints.
 
-**应对策略**：
+### Is AI Coding Making Programmers More Tired and More Competitive?
 
-- 在 Spec 中**显式约束**：要求 AI 生成分布式锁、幂等校验、补偿逻辑的代码模板
-- **强制 Code Review**：重点关注跨服务调用、事务边界、异常处理分支
-- **混沌工程验证**：通过故障注入测试分布式场景下的容错能力
+Some people say, “You thought AI would make work easier? Think again. It has not made you more relaxed; it has just convinced your boss that one person can do the work of three.”
 
-企业必须建立配套的安全治理体系：
+That sounds harsh, but many people feel that way.
 
-- **强制代码审查**：AI 生成的代码必须经过人工 Review。
-- **自动化扫描**：集成 SAST/SCA 工具，并增加针对 AI 特有风险的扫描（如 git-secrets, TruffleHog）。
-- **架构守护**：配合 Spec Coding，使用 ArchUnit 等工具进行架构约束的自动化测试。
+AI amplifies what you can do. Before, writing three APIs in a day felt productive. Now, you might write ten and also produce the architecture design, test cases, and documentation. The dopamine rush can make you take on more work because AI has increased your confidence in what you can handle.
 
-### AI 编程正在让程序员更累、更卷？
+But as productivity rises, so do managers' expectations. The “one person is a team” illusion can cut hiring plans in half and put more pressure on those who remain. Instead of focusing on one module, you may have to handle frontend and backend work, concurrent tasks, and multiple agents.
 
-有人说：“以为有了 AI 提效就能轻松点？清醒点，它没让你变轻松，它只是让老板觉得你一个人能顶三个人用。”
+The strange part is that there are fewer jobs but more work. You write code, review AI's code, fix AI's bugs, and explain to management why AI-generated code failed in production. Sometimes it is hard to tell whether you are using AI or AI is using you.
 
-这话听着扎心，但确实是很多人的真实感受。
+### ⭐ What Will Be the Core Skills of a Backend Engineer in Three Years?
 
-AI 把你的能力放大了，以前一天写三个接口就觉得自己挺能干，现在一天能写十个，还能顺手把架构设计、测试用例、文档全部搞定。多巴胺疯狂分泌，你会忍不住接更多的活儿，因为“我能搞定”的信心被 AI 撑大了。
+I think the focus will shift from “ability to write code” to four areas:
 
-但问题来了：效率越高，老板欲望膨胀得越快。“一人即团队”的幻觉让招聘名额先砍一半，剩下的兄弟往死里用。以前你只需深耕一个模块，现在要同时应付前后端、多线程任务、甚至一堆 Agent。
+**1. System design**
 
-更魔幻的是岗位少了，活多了。你不仅要写代码，还要审 AI 的代码、改 AI 的 Bug，最后还得给领导解释为什么 AI 生成的代码上线就崩。有时候分不清楚是自己用 AI 还是 AI 用自己。
+AI is very good at generating code for individual features, but engineers still need to lead **system-level design**, including:
 
-### ⭐ 未来 3 年后端工程师的核心竞争力是什么
+- Service decomposition and module boundaries.
+- Trade-offs between microservices and monolithic architecture.
+- Data-model design and consistency strategies.
+- API versioning and evolution.
+- Distributed transactions and idempotency.
 
-我认为核心竞争力的焦点会从“写代码能力”转向以下四个维度：
+**2. Complex business modeling**
 
-**1. 系统设计能力**
+People used to say AI was poor at domain modeling, but that has changed. AI is now strong at decomposing requirements, organizing rules, and exploring scenarios.
 
-AI 非常擅长生成单个功能的代码，但**系统级设计**仍需工程师主导：
+However, engineers still need to turn business rules into designs that can be implemented in the current project, including:
 
-- 服务拆分与模块边界划分
-- 微服务与单体架构权衡
-- 数据模型设计与一致性策略
-- 接口版本演进策略
-- 分布式事务与幂等设计
+- Domain-Driven Design (DDD) modeling.
+- Business process abstraction and state-machine design.
+- Bounded-context design.
 
-**2. 复杂业务建模能力**
+**3. Performance and reliability engineering**
 
-过去我们说 AI 不擅长领域建模，但现在情况已经变了。AI 在需求拆解、规则梳理、场景推演等方面已经很强。
+AI-generated code often focuses on functional correctness but misses production performance characteristics:
 
-不过，还是需要工程师配合将业务规则转化为适合当前项目可执行的设计：
+- **P99 latency:** AI may generate N+1 queries, SQL without indexes, or synchronous blocking calls, increasing tail latency.
+- **Memory escapes:** Poor object creation or closure use may trigger frequent garbage collection or an `OutOfMemoryError`.
+- **Connection-pool growth:** Unbounded concurrency or missing timeouts may exhaust the pool and trigger cascading failures.
 
-- 领域驱动设计（DDD）建模
-- 业务流程抽象与状态机设计
-- 边界上下文划分
+Engineers need **performance measurement and tuning** skills:
 
-**3. 性能与稳定性治理能力**
+- Optimize slow SQL queries and design indexes using `EXPLAIN` to inspect query plans.
+- Design caching strategies and maintain consistency, whether using a local or distributed cache.
+- Make operations asynchronous and tune thread pools, including core thread counts, queue capacity, and rejection policies.
+- Design fallback, circuit-breaker, and rate-limiting strategies using tools such as Sentinel or Hystrix.
+- Plan capacity and auto-scaling based on load-test QPS measurements.
 
-AI 生成的代码往往只关注功能正确性，而忽视生产环境的性能特征：
+**How to verify:** After AI generates code, use load tests such as JMeter or Gatling to validate P95 and P99 latency. Use JVM tools such as MAT or Arthas to investigate memory leaks rather than relying only on functional tests.
 
-- **P99 延迟**：AI 可能生成 N+1 查询、未加索引的 SQL、同步阻塞调用，导致长尾延迟激增
-- **内存逃逸**：不恰当的对象创建和闭包使用可能导致频繁的 GC 甚至 OOM
-- **连接池膨胀**：未限制并发数、未设置超时可能导致连接池耗尽，引发级联故障
+**4. AI collaboration**
 
-工程师需要具备**性能度量与调优**能力：
+Working effectively with AI is itself a core skill:
 
-- SQL 慢查询优化与索引设计（EXPLAIN 分析执行计划）
-- 缓存策略设计与一致性保障（本地缓存 vs 分布式缓存）
-- 异步化改造与线程池参数调优（核心线程数、队列容量、拒绝策略）
-- 服务降级、熔断、限流方案（Sentinel、Hystrix 应用）
-- 容量规划与弹性伸缩（压测评估 QPS 水位、自动扩缩容）
+- **Express requirements precisely (prompting):** Use a structured prompt with background, task, constraints, and output format.
+- **Break down problems and guide AI:** Split complex work into independently verifiable tasks and use Chain-of-Thought to guide reasoning.
+- **Assess output quality:** Use a code-review checklist for correctness, security, performance, and maintainability.
+- **Check security and compliance:** Know the OWASP Top 10 and identify security issues in generated code.
+- **Use the AI toolchain:** Configure and use `.cursorrules`, custom Skills, and IDE plugins.
 
-**验证手段**：AI 生成代码后，必须通过压测（JMeter、Gatling）验证 P95/P99 延迟，通过 JVM 监控（MAT、Arthas）排查内存泄漏，而非仅依赖功能测试。
+This is a shift from “code writer” to “AI collaboration engineer.”
 
-**4. AI 协作能力**
+Future success will depend less on code output speed and more on system design quality and delivering business value.
 
-如何高效地与 AI 协作本身就是一种核心竞争力：
+## Summary
 
-- **精准表达需求（Prompt 能力）**：使用结构化 Prompt（背景-任务-约束-输出格式），避免模糊指令
-- **拆分问题并引导 AI**：将复杂任务拆解为可独立验证的子任务，利用 Chain-of-Thought 引导推理
-- **判断 AI 输出质量**：建立代码 Review checklist，关注正确性、安全性、性能、可维护性
-- **代码安全与合规校验**：熟悉 OWASP Top 10，能够识别 AI 生成代码中的安全风险
-- **结合 AI 工具链**：掌握 `.cursorrules`、自定义 Skills、IDE 插件的配置与使用
+AI coding tools are changing how developers work. Cursor, Claude Code, and TRAE have evolved from code-completion tools into engineering assistants that can collaborate deeply.
 
-这本质上是从“代码编写者”向“AI 协作工程师”的角色转变。
+In only four years, coding has shifted from a programmer's craft toward an agent's “standard operation,” from prompts to harnesses. Some people say that a CTO might eventually manage all the agents and have them write code, deploy, and fix bugs. That sounds radical, but it may not be impossible.
 
-未来竞争的关键不再是“代码产出速度”，而是“系统设计质量”和“业务价值交付能力”。
+**What determines your career is how you use these tools and whether you continue to think deeply about technology while using them.**
 
-## 总结
+Honestly, I have been anxious about AI's development since this time last year, especially in coding. Now that progress is so fast, I feel a little more at ease. Writing code is becoming a basic skill rather than a core differentiator, much like knowing how to use Excel. What matters is defining problems, designing solutions, ensuring quality, and delivering business value.
 
-AI 编程工具正在深刻改变开发者的工作方式。Cursor、Claude Code、Trae 等工具，已经从代码补全进化到了可以深度协作的工程助手。
+Here is some advice for people preparing for interviews:
 
-从 Prompt 到 Harness，短短四年，写代码这件事正在从程序员的“手艺”变成 Agent 的“标准操作”。有人说：“未来可能一个 CTO 就能管所有 Agent，让它产出所有代码、部署、改 bug。”这话听着激进，但你仔细想想，好像也不是完全没可能。
+1. **Use the tools before discussing them:** Interviewers do not want to hear “I have heard of it but never used it.” Even using Cursor for a few small projects is better than only reading tutorials.
+2. **Develop your own approach:** Do more than say you can use a tool. Have your own lessons and best practices to share; this can help in an interview.
+3. **Think critically:** Reviewing AI-generated code is a basic professional skill. Showing this attitude in an interview demonstrates that you are a dependable engineer.
+4. **Follow trends without becoming anxious:** AI will change a lot, but system design, architectural thinking, and business understanding will remain valuable.
 
-**真正决定你职业发展的，是你如何使用这些工具，以及你在使用过程中是否保持了对技术的深度思考。**
-
-说实话，从去年这个时候开始就挺焦虑 AI 发展，尤其是 Coding 方向。到今天，进化速度这么快，我反而有些释然了。会写代码正在从核心技能变成基础素养，就像会用 Excel 不算竞争力一样。真正值钱的是定义问题、设计方案、把控质量、交付业务价值。
-
-最后给正在准备面试的几点建议：
-
-1. **实际使用过才能回答好**：面试官问 AI 编程工具，最怕的就是“听说过没用过”。哪怕只是用 Cursor 写过几个小项目，也比只看过教程强。
-2. **建立自己的方法论**：不要只是“会用”，要有自己的使用心得和最佳实践，这是面试中的加分项。
-3. **保持批判性思维**：AI 生成代码后必须 Review，这是基本素养。面试中展示这种态度，会让面试官觉得你是一个靠谱的工程师。
-4. **关注技术趋势但不要焦虑**：AI 会改变很多，但系统设计、架构思维、业务理解这些核心能力不会过时。
-
-用好 AI 工具 + 保持独立思考，这两者缺一不可。AI 时代，程序员的未来说不定会在各行各业发光。共勉！
+Use AI tools well and keep thinking independently. Both are essential. Programmers may find ways to contribute in many fields in the AI era. Let's keep learning together.

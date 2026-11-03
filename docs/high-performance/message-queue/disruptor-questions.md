@@ -1,167 +1,167 @@
 ---
-title: Disruptor常见问题总结
-description: 本文总结 Disruptor 高性能内存队列的核心知识与面试要点，涵盖 Disruptor 架构（RingBuffer/Sequencer/WaitStrategy）、高性能原理（无锁设计/缓存行填充/预分配内存）、与 ArrayBlockingQueue 对比、生产者消费者模式等，助力 Disruptor 学习与面试。
-category: 高性能
+title: Disruptor Interview Questions
+description: An overview of Disruptor's architecture (RingBuffer, Sequencer, and WaitStrategy), performance principles (lock-free design, cache-line padding, and preallocated memory), comparison with ArrayBlockingQueue, and producer-consumer patterns.
+category: High Performance
 tag:
-  - 消息队列
+  - Message Queues
 head:
   - - meta
     - name: keywords
-      content: Disruptor,高性能队列,RingBuffer,无锁队列,缓存行填充,LMAX,内存队列,Disruptor面试
+      content: Disruptor,high-performance queue,RingBuffer,lock-free queue,cache-line padding,LMAX,in-memory queue,Disruptor interview questions
 ---
 
-Disruptor 是一个相对冷门一些的知识点，不过，如果你的项目经历中用到了 Disruptor 的话，那面试中就很可能会被问到。
+Disruptor is a relatively specialized topic, but if you have used it in a project, you may be asked about it in an interview.
 
-一位球友之前投稿的面经（社招）中就涉及一些 Disruptor 的问题，文章传送门：[圆梦！顺利拿到字节、淘宝、拼多多等大厂 offer！](https://mp.weixin.qq.com/s/C5QMjwEb6pzXACqZsyqC4A) 。
+A reader's interview report for experienced roles included several Disruptor questions: [How I landed offers from ByteDance, Taobao, Pinduoduo, and other major companies](https://mp.weixin.qq.com/s/C5QMjwEb6pzXACqZsyqC4A).
 
 ![](../images/shared/disruptor-interview-questions.png)
 
-这篇文章可以看作是对 Disruptor 做的一个简单总结，每个问题都不会扯太深入，主要针对面试或者速览 Disruptor。
+This article is a brief overview of Disruptor. The questions are intended for interview preparation or a quick introduction rather than an in-depth treatment.
 
-## Disruptor 是什么？
+## What Is Disruptor?
 
-Disruptor 是一个开源的高性能内存队列，诞生初衷是为了解决内存队列的性能和内存安全问题，由英国外汇交易公司 LMAX 开发。
+Disruptor is an open-source, high-performance in-memory queue developed by the UK foreign-exchange trading company LMAX. It was created to address performance and memory-safety issues in in-memory queues.
 
-根据 Disruptor 官方介绍，基于 Disruptor 开发的系统 LMAX（新的零售金融交易平台），单线程就能支撑每秒 600 万订单。Martin Fowler 在 2011 年写的一篇文章 [The LMAX Architecture](https://martinfowler.com/articles/lmax.html) 中专门介绍过这个 LMAX 系统的架构，感兴趣的可以看看这篇文章。。
+According to the Disruptor project, LMAX, a retail financial trading platform built with Disruptor, can process six million orders per second on a single thread. Martin Fowler described the system's architecture in his 2011 article, [The LMAX Architecture](https://martinfowler.com/articles/lmax.html).
 
-LMAX 公司 2010 年在 QCon 演讲后，Disruptor 获得了业界关注，并获得了 2011 年的 Oracle 官方的 Duke's Choice Awards(Duke 选择大奖)。
+After LMAX presented at QCon in 2010, Disruptor gained industry attention and received Oracle's 2011 Duke's Choice Award.
 
 ![](../images/shared/640.png)
 
-> “Duke 选择大奖”旨在表彰过去一年里全球个人或公司开发的、最具影响力的 Java 技术应用，由甲骨文公司主办。含金量非常高！
+> The Duke's Choice Awards, hosted by Oracle, recognize influential Java technology applications developed around the world during the previous year.
 
-我专门找到了 Oracle 官方当年颁布获得 Duke's Choice Awards 项目的那篇文章（文章地址：<https://blogs.oracle.com/java/post/and-the-winners-arethe-dukes-choice-award）> 。从文中可以看出，同年获得此大奖荣誉的还有大名鼎鼎的 Netty、JRebel 等项目。
+Oracle's announcement of that year's Duke's Choice Award winners is available [here](https://blogs.oracle.com/java/post/and-the-winners-arethe-dukes-choice-award). Other recipients that year included Netty and JRebel.
 
-![2011 年的 Oracle 官方的 Duke's Choice Awards](../images/shared/image-20211015152323898.png)
+![Oracle's 2011 Duke's Choice Awards](../images/shared/image-20211015152323898.png)
 
-Disruptor 提供的功能优点类似于 Kafka、RocketMQ 这类分布式队列，不过，其作为范围是 JVM(内存)。
+Disruptor provides some capabilities similar to distributed queues such as Kafka and RocketMQ, but it operates within a JVM and stores events in memory.
 
-- Github 地址：<https://github.com/LMAX-Exchange/disruptor>
-- 官方教程： <https://lmax-exchange.github.io/disruptor/user-guide/index.html>
+- GitHub: <https://github.com/LMAX-Exchange/disruptor>
+- Official guide: <https://lmax-exchange.github.io/disruptor/user-guide/index.html>
 
-关于如何在 Spring Boot 项目中使用 Disruptor，可以看这篇文章：[Spring Boot + Disruptor 实战入门](https://mp.weixin.qq.com/s/0iG5brK3bYF0BgSjX4jRiA) 。
+For an introduction to using Disruptor in a Spring Boot project, see [Getting Started with Spring Boot and Disruptor](https://mp.weixin.qq.com/s/0iG5brK3bYF0BgSjX4jRiA).
 
-## 为什么要用 Disruptor？
+## Why Use Disruptor?
 
-Disruptor 主要解决了 JDK 内置线程安全队列的性能和内存安全问题。
+Disruptor addresses performance and memory-safety concerns associated with the thread-safe queues built into the JDK.
 
-**JDK 中常见的线程安全的队列如下**：
+**Common thread-safe queues in the JDK include:**
 
-| 队列名字                | 锁                      | 是否有界 |
-| ----------------------- | ----------------------- | -------- |
-| `ArrayBlockingQueue`    | 加锁（`ReentrantLock`） | 有界     |
-| `LinkedBlockingQueue`   | 加锁（`ReentrantLock`） | 有界     |
-| `LinkedTransferQueue`   | 无锁（`CAS`）           | 无界     |
-| `ConcurrentLinkedQueue` | 无锁（`CAS`）           | 无界     |
+| Queue                   | Synchronization              | Bounded? |
+| ----------------------- | ---------------------------- | -------- |
+| `ArrayBlockingQueue`    | Lock-based (`ReentrantLock`) | Yes      |
+| `LinkedBlockingQueue`   | Lock-based (`ReentrantLock`) | Yes      |
+| `LinkedTransferQueue`   | Lock-free (`CAS`)            | No       |
+| `ConcurrentLinkedQueue` | Lock-free (`CAS`)            | No       |
 
-从上表中可以看出：这些队列要不就是加锁有界，要不就是无锁无界。而加锁的队列势必会影响性能，无界的队列又存在内存溢出的风险。
+As the table shows, these queues are either bounded and lock-based or unbounded and lock-free. Locking can affect performance, while an unbounded queue risks exhausting memory.
 
-因此，一般情况下，我们都是不建议使用 JDK 内置线程安全队列。
+The article therefore advises against using the JDK's built-in thread-safe queues in general.
 
-**Disruptor 就不一样了！它在无锁的情况下还能保证队列有界，并且还是线程安全的。**
+**Disruptor differs in that it provides a bounded, thread-safe queue without locks.**
 
-下面这张图是 Disruptor 官网提供的 Disruptor 和 ArrayBlockingQueue 的延迟直方图对比。
+The following chart from the Disruptor website compares the latency distributions of Disruptor and `ArrayBlockingQueue`.
 
 ![disruptor-latency-histogram](../images/shared/disruptor-latency-histogram.png)
 
-Disruptor 真的很快，关于它为什么这么快这个问题，会在后文介绍到。
+Disruptor can be very fast; the reasons are described later in this article.
 
-此外，Disruptor 还提供了丰富的扩展功能比如支持批量操作、支持多种等待策略。
+Disruptor also supports features such as batch operations and multiple wait strategies.
 
-## Kafka 和 Disruptor 什么区别？
+## How Do Kafka and Disruptor Differ?
 
-- **Kafka**：分布式消息队列，一般用在系统或者服务之间的消息传递，还可以被用作流式处理平台。
-- **Disruptor**：内存级别的消息队列，一般用在系统内部中线程间的消息传递。
+- **Kafka**: A distributed message queue, generally used to pass messages between systems or services. It can also serve as a stream-processing platform.
+- **Disruptor**: An in-memory queue, generally used for communication between threads within a system.
 
-它们解决的问题不是一个层级：
+They address problems at different levels:
 
-| 对比维度     | Kafka/RocketMQ/RabbitMQ      | Disruptor                        |
-| ------------ | ---------------------------- | -------------------------------- |
-| 使用范围     | 跨进程、跨机器、跨服务       | 单 JVM 进程内                    |
-| 是否持久化   | 通常支持                     | 不负责持久化                     |
-| 是否支持重放 | 通常支持                     | 不负责历史重放                   |
-| 重点能力     | 可靠投递、削峰、解耦、消费组 | 低延迟、少锁竞争、高吞吐事件处理 |
-| 典型场景     | 订单事件、日志采集、异步解耦 | 异步日志、撮合、进程内流水线     |
+| Dimension         | Kafka/RocketMQ/RabbitMQ                                           | Disruptor                                                           |
+| ----------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Scope             | Across processes, machines, and services                          | Within a single JVM process                                         |
+| Persistence       | Usually supported                                                 | Not provided                                                        |
+| Replay            | Usually supported                                                 | Historical replay is not provided                                   |
+| Main capabilities | Reliable delivery, traffic smoothing, decoupling, consumer groups | Low latency, less lock contention, high-throughput event processing |
+| Typical use cases | Order events, log collection, asynchronous decoupling             | Asynchronous logging, matching engines, in-process pipelines        |
 
-所以，Disruptor 不能替代 Kafka、RocketMQ 这类分布式消息队列。它更适合放在服务内部，用来把一段高频事件处理链路做得更快。
+Disruptor cannot replace distributed message queues such as Kafka and RocketMQ. It is better suited to speeding up high-frequency event-processing paths within a service.
 
-## 哪些组件用到了 Disruptor？
+## Which Projects Use Disruptor?
 
-用到 Disruptor 的开源项目还是挺多的，这里简单举几个例子：
+Several open-source projects use Disruptor. A few examples:
 
-- **Log4j2**：Log4j2 是一款常用的日志框架，它基于 Disruptor 来实现异步日志。
-- **SOFATracer**：SOFATracer 是蚂蚁金服开源的分布式应用链路追踪工具，它基于 Disruptor 来实现异步日志。
-- **Storm** : Storm 是一个开源的分布式实时计算系统，它基于 Disruptor 来实现工作进程内发生的消息传递（同一 Storm 节点上的线程间，无需网络通信）。
-- **HBase**：HBase 是一个分布式列存储数据库系统，它基于 Disruptor 来提高写并发性能。
-- ……
+- **Log4j2**: A commonly used logging framework that uses Disruptor for asynchronous logging.
+- **SOFATracer**: An open-source distributed tracing tool from Ant Group that uses Disruptor for asynchronous logging.
+- **Storm**: An open-source distributed real-time computation system that uses Disruptor for messaging within a worker process, between threads on the same Storm node without network communication.
+- **HBase**: A distributed column-oriented database that uses Disruptor to improve concurrent write performance.
+- ...
 
-## Disruptor 核心概念有哪些？
+## What Are Disruptor's Core Concepts?
 
-- **Event**：你可以把 Event 理解为存放在队列中等待消费的消息对象。
-- **EventFactory**：事件工厂用于生产事件，我们在初始化 `Disruptor` 类的时候需要用到。
-- **EventHandler**：Event 在对应的 Handler 中被处理，你可以将其理解为生产消费者模型中的消费者。
-- **EventProcessor**：EventProcessor 持有特定消费者(Consumer)的 Sequence，并提供用于调用事件处理实现的事件循环(Event Loop)。
-- **Disruptor**：事件的生产和消费需要用到 `Disruptor` 对象。
-- **RingBuffer**：RingBuffer（环形数组）用于保存事件。
-- **WaitStrategy**：等待策略。决定了没有事件可以消费的时候，事件消费者如何等待新事件的到来。
-- **Producer**：生产者，只是泛指调用 `Disruptor` 对象发布事件的用户代码，Disruptor 没有定义特定接口或类型。
-- **ProducerType**：指定是单个事件发布者模式还是多个事件发布者模式（发布者和生产者的意思类似，我个人比较喜欢用发布者）。
-- **Sequencer**：Sequencer 是 Disruptor 的真正核心。此接口有两个实现类 `SingleProducerSequencer`、`MultiProducerSequencer` ，它们定义在生产者和消费者之间快速、正确地传递数据的并发算法。
+- **Event**: A message object stored in the queue until it is consumed.
+- **EventFactory**: Creates events and is used when initializing the `Disruptor` class.
+- **EventHandler**: Processes an event; it plays a role similar to the consumer in a producer-consumer model.
+- **EventProcessor**: Holds a particular consumer's `Sequence` and provides the event loop that invokes the event handler.
+- **Disruptor**: The object used to publish and consume events.
+- **RingBuffer**: A circular array that stores events.
+- **WaitStrategy**: Determines how consumers wait for new events when none are available.
+- **Producer**: User code that publishes events through a `Disruptor` object. Disruptor does not define a specific producer interface or type.
+- **ProducerType**: Specifies whether there is a single event publisher or multiple publishers. The terms publisher and producer are similar; this article uses publisher where appropriate.
+- **Sequencer**: The core of Disruptor. Its `SingleProducerSequencer` and `MultiProducerSequencer` implementations define concurrent algorithms for transferring data quickly and correctly between producers and consumers.
 
-下面这张图摘自 Disruptor 官网，展示了 LMAX 系统使用 Disruptor 的示例。
+The following diagram from the Disruptor website shows an example of how LMAX uses Disruptor.
 
-![LMAX 系统使用 Disruptor 的示例](../images/shared/disruptor-models.png)
+![Example of Disruptor in the LMAX system](../images/shared/disruptor-models.png)
 
-## Disruptor 等待策略有哪些？
+## What Wait Strategies Does Disruptor Provide?
 
-**等待策略（WaitStrategy）** 决定了没有事件可以消费的时候，事件消费者如何等待新事件的到来。
+**A wait strategy (`WaitStrategy`)** determines how consumers wait for new events when none are available.
 
-常见的等待策略有下面这些：
+Common wait strategies include:
 
-![Disruptor 等待策略](../images/shared/disruptorwaitstrategy.png)
+![Disruptor wait strategies](../images/shared/disruptorwaitstrategy.png)
 
-- `BlockingWaitStrategy`：基于 `ReentrantLock`+`Condition` 来实现等待和唤醒操作，实现代码非常简单，是 Disruptor 默认的等待策略。虽然最慢，但也是 CPU 使用率最低和最稳定的选项生产环境推荐使用；
-- `BusySpinWaitStrategy`：性能很好，存在持续自旋的风险，使用不当会造成 CPU 负载 100%，慎用；
-- `LiteBlockingWaitStrategy`：基于 `BlockingWaitStrategy` 的轻量级等待策略，在没有锁竞争的时候会省去唤醒操作，但是作者说测试不充分，因此不建议使用;
-- `TimeoutBlockingWaitStrategy`：带超时的等待策略，超时后会执行业务指定的处理逻辑;
-- `LiteTimeoutBlockingWaitStrategy`：基于`TimeoutBlockingWaitStrategy`的策略，当没有锁竞争的时候会省去唤醒操作;
-- `SleepingWaitStrategy`：三段式策略，第一阶段自旋，第二阶段执行 Thread.yield 让出 CPU，第三阶段睡眠执行时间，反复的睡眠；
-- `YieldingWaitStrategy`：二段式策略，第一阶段自旋，第二阶段执行 Thread.yield 交出 CPU;
-- `PhasedBackoffWaitStrategy`：四段式策略，第一阶段自旋指定次数，第二阶段自旋指定时间，第三阶段执行 `Thread.yield` 交出 CPU，第四阶段调用成员变量的`waitFor`方法，该成员变量可以被设置为`BlockingWaitStrategy`、`LiteBlockingWaitStrategy`、`SleepingWaitStrategy`三个中的一个。
+- `BlockingWaitStrategy`: Uses `ReentrantLock` and `Condition` for waiting and signaling. It is simple to implement and is Disruptor's default strategy. It is the slowest, but uses the least CPU and is stable; it is recommended for production.
+- `BusySpinWaitStrategy`: Offers high performance but continuously spins. Misuse can drive CPU utilization to 100%, so use it with care.
+- `LiteBlockingWaitStrategy`: A lightweight version of `BlockingWaitStrategy` that skips signaling when there is no lock contention. The author says it has not been tested sufficiently and does not recommend it.
+- `TimeoutBlockingWaitStrategy`: Waits with a timeout and runs the application-defined handling logic when the timeout expires.
+- `LiteTimeoutBlockingWaitStrategy`: A `TimeoutBlockingWaitStrategy` variant that skips signaling when there is no lock contention.
+- `SleepingWaitStrategy`: Uses three phases: spin, call `Thread.yield()` to yield the CPU, then sleep repeatedly.
+- `YieldingWaitStrategy`: Uses two phases: spin, then call `Thread.yield()` to yield the CPU.
+- `PhasedBackoffWaitStrategy`: Uses four phases: spin a specified number of times, spin for a specified duration, call `Thread.yield()`, then invoke the `waitFor` method on a fallback strategy. The fallback can be `BlockingWaitStrategy`, `LiteBlockingWaitStrategy`, or `SleepingWaitStrategy`.
 
-等待策略本质是在延迟和 CPU 消耗之间做取舍：
+Wait strategies trade off latency against CPU usage:
 
-- 延迟极敏感、机器资源独占时，可以评估 `BusySpinWaitStrategy` 或 `YieldingWaitStrategy`。
-- 普通业务服务更推荐从 `BlockingWaitStrategy` 开始，稳定性和资源占用更可控。
-- 如果既希望降低空转，又希望在短时间内快速响应，可以评估 `SleepingWaitStrategy` 或 `PhasedBackoffWaitStrategy`。
+- For latency-sensitive workloads with dedicated machine resources, consider `BusySpinWaitStrategy` or `YieldingWaitStrategy`.
+- For typical business services, start with `BlockingWaitStrategy` for predictable stability and resource use.
+- To reduce busy waiting while retaining a fast response, consider `SleepingWaitStrategy` or `PhasedBackoffWaitStrategy`.
 
-不要在共享业务机器上盲目使用忙等策略，否则很容易把 CPU 打满，影响同机其他服务。
+Avoid using busy-wait strategies blindly on shared application servers; they can saturate the CPU and affect other services on the same machine.
 
-## Disruptor 为什么这么快？
+## Why Is Disruptor So Fast?
 
-- **RingBuffer（环形数组）** : Disruptor 内部的 RingBuffer 是通过数组实现的。由于这个数组中的所有元素在初始化时一次性全部创建，因此这些元素的内存地址一般来说是连续的。这样做的好处是，当生产者不断往 RingBuffer 中插入新的事件对象时，这些事件对象的内存地址就能够保持连续，从而利用 CPU 缓存的局部性原理，将相邻的事件对象一起加载到缓存中，提高程序的性能。这类似于 MySQL 的预读机制，将连续的几个页预读到内存里。除此之外，RingBuffer 基于数组还支持批量操作（一次处理多个元素）、还可以避免频繁的内存分配和垃圾回收（RingBuffer 是一个固定大小的数组，当向数组中添加新元素时，如果数组已满，则新元素将覆盖掉最旧的元素）。
-- **避免了伪共享问题**：CPU 缓存内部是按照 Cache Line（缓存行）管理的，一般的 Cache Line 大小在 64 字节左右。Disruptor 为了确保目标字段独占一个 Cache Line，会在目标字段前后增加字节填充（前 56 个字节和后 56 个字节），这样可以避免 Cache Line 的伪共享（False Sharing）问题。同时，为了让 RingBuffer 存放数据的数组独占缓存行，数组的设计为 无效填充（128 字节）+ 有效数据。
-- **无锁设计**：Disruptor 采用无锁设计，避免了传统锁机制带来的竞争和延迟。Disruptor 的无锁实现起来比较复杂，主要是基于 CAS、内存屏障（Memory Barrier）、RingBuffer 等技术实现的。
+- **RingBuffer (circular array)**: Disruptor's RingBuffer is implemented as an array. All its elements are created during initialization, so their memory addresses are generally contiguous. As producers add events, this layout can use CPU-cache locality by loading nearby event objects together, improving performance. This is similar to MySQL read-ahead, which loads adjacent pages into memory. The array also supports batch operations and avoids frequent memory allocation and garbage collection. The RingBuffer has a fixed size; when it is full, a new element overwrites the oldest one.
+- **Avoiding false sharing**: CPU caches are managed in cache lines, typically around 64 bytes. To give a target field its own cache line, Disruptor adds padding before and after it (56 bytes on each side), reducing false sharing. The array used by the RingBuffer is also designed with padding (128 bytes) around the data.
+- **Lock-free design**: Disruptor avoids contention and latency from traditional locks through a more complex lock-free implementation based mainly on CAS, memory barriers, and the RingBuffer.
 
-综上所述，Disruptor 之所以能够如此快，是基于一系列优化策略的综合作用，既充分利用了现代 CPU 缓存结构的特点，又避免了常见的并发问题和性能瓶颈。
+Disruptor's performance comes from combining several optimizations that use modern CPU-cache behavior and reduce common concurrency problems and bottlenecks.
 
-不过，Disruptor 的性能优势也有前提：事件处理逻辑不能太重，消费者不能长时间阻塞，RingBuffer 容量要结合峰值流量评估。如果消费者里调用慢接口、慢 SQL 或长时间加锁，再快的队列也会被下游处理能力拖住。
+Disruptor's performance also has prerequisites: event handlers should be lightweight, consumers should not block for long periods, and RingBuffer capacity should be sized for peak traffic. Slow API calls, slow SQL, or long-held locks in consumers can make downstream processing the bottleneck regardless of queue speed.
 
-关于 Disruptor 高性能队列原理的详细介绍，可以查看这篇文章：[Disruptor 高性能队列原理浅析](https://qin.news/disruptor/) （参考了美团技术团队的[高性能队列——Disruptor](https://tech.meituan.com/2016/11/18/disruptor.html)这篇文章）。
+For more detail on Disruptor's high-performance queue design, see [An Introduction to Disruptor's High-Performance Queue](https://qin.news/disruptor/), which references Meituan's article [High-Performance Queue: Disruptor](https://tech.meituan.com/2016/11/18/disruptor.html).
 
-🌈 这里额外补充一点：**数组中对象元素地址连续为什么可以提高性能？**
+🌈 One additional point: **Why can contiguous object addresses in an array improve performance?**
 
-CPU 缓存是通过将最近使用的数据存储在高速缓存中来实现更快的读取速度，并使用预取机制提前加载相邻内存的数据以利用局部性原理。
+CPU caches speed up reads by storing recently used data. They also use prefetching to load nearby memory in advance, taking advantage of locality.
 
-在计算机系统中，CPU 主要访问高速缓存和内存。高速缓存是一种速度非常快、容量相对较小的内存，通常被分为多级缓存，其中 L1、L2、L3 分别表示一级缓存、二级缓存、三级缓存。越靠近 CPU 的缓存，速度越快，容量也越小。相比之下，内存容量相对较大，但速度较慢。
+In a computer system, the CPU primarily accesses caches and main memory. A cache is much faster but smaller than main memory. Caches are usually organized into levels: L1, L2, and L3. The closer a cache is to the CPU, the faster and smaller it tends to be. Main memory has greater capacity but is slower.
 
-![CPU 缓存模型示意图](../../database/images/shared/cpu-cache.png)
+![CPU cache model](../../database/images/shared/cpu-cache.png)
 
-为了加速数据的读取过程，CPU 会先将数据从内存中加载到高速缓存中，如果下一次需要访问相同的数据，就可以直接从高速缓存中读取，而不需要再次访问内存。这就是所谓的 **缓存命中** 。另外，为了利用 **局部性原理** ，CPU 还会根据之前访问的内存地址预取相邻的内存数据，因为在程序中，连续的内存地址通常会被频繁访问到，这样做可以提高数据的缓存命中率，进而提高程序的性能。
+To speed up reads, the CPU loads data from main memory into a cache. If the same data is needed again, it can be read from the cache without another main-memory access; this is a **cache hit**. To take advantage of **locality**, the CPU may also prefetch data near previously accessed addresses. Programs often access nearby addresses, so prefetching can improve the cache hit rate and performance.
 
-## 参考
+## References
 
-- Disruptor 高性能之道-等待策略：<http://wuwenliang.net/2022/02/28/Disruptor>
-- 《Java 并发编程实战》- 40 | 案例分析（三）：高性能队列 Disruptor：<https://time.geekbang.org/column/article/98134>
+- Disruptor performance: wait strategies: <http://wuwenliang.net/2022/02/28/Disruptor>
+- _Java Concurrency in Practice_, Part 40: Case Study (3), the Disruptor high-performance queue: <https://time.geekbang.org/column/article/98134>
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,258 +1,258 @@
 ---
-title: CDN工作原理详解
-description: 本文详解 CDN（内容分发网络）的核心原理，涵盖 GSLB 全局负载均衡调度机制、CDN 缓存策略（预热/回源/刷新）、命中率与回源率优化，以及 Referer 防盗链与时间戳防盗链等安全机制，帮助你全面掌握 CDN 加速技术。
-category: 高性能
+title: "How CDNs Work"
+description: A guide to content delivery networks, covering GSLB scheduling, CDN cache strategies such as prefetching, origin pulls, and purging, cache-hit and origin-request optimization, and hotlink protection with Referer and timestamp signatures.
+category: High Performance
 head:
   - - meta
     - name: keywords
-      content: CDN,内容分发网络,GSLB,CDN缓存,CDN回源,CDN预热,防盗链,时间戳防盗链,静态资源加速
+      content: CDN,content delivery network,GSLB,CDN caching,CDN origin pull,CDN prefetch,hotlink protection,timestamp-based hotlink protection,static content acceleration
 ---
 
-## 什么是 CDN ？
+## What Is a CDN?
 
-**CDN** 全称是 Content Delivery Network/Content Distribution Network，翻译过的意思是 **内容分发网络** 。
+**CDN** stands for Content Delivery Network or Content Distribution Network.
 
-我们可以将内容分发网络拆开来看：
+The name describes two parts:
 
-- **内容**：指的是静态资源，包括图片、视频、文档、JS、CSS、HTML 等。
-- **分发网络**：指的是将这些静态资源分发到位于多个不同地理位置机房中的服务器上，从而实现**就近访问**——例如北京的用户直接访问北京机房的数据。
+- **Content**: Static resources such as images, videos, documents, JavaScript, CSS, and HTML.
+- **Delivery network**: Servers in multiple geographic locations that distribute these resources for **nearby access**. For example, a user in Beijing can fetch data from a Beijing data center.
 
-简单来说，**CDN 就是将静态资源分发到多个不同的地方以实现就近访问，进而加快静态资源的访问速度，减轻源站服务器以及带宽的负担。**
+In short, **a CDN distributes static resources to multiple locations so users can access them nearby, improving load speed and reducing load and bandwidth use at the origin server.**
 
-类似于京东建立的庞大仓储运输体系，京东物流在全国拥有非常多的仓库，仓储网络几乎覆盖全国所有区县。这样的话，用户下单的第一时间，商品就从距离用户最近的仓库直接发往对应的配送站，再由京东小哥送到你家。
+Think of JD's extensive warehousing and delivery network. Its warehouses cover almost every county in China. As soon as a customer places an order, the product ships from the nearest warehouse to a local delivery station, then to the customer's home.
 
-![京东仓配系统](./images/shared/jingdong-wuliu-cangpei.png)
+![JD's warehousing and delivery network](./images/shared/jingdong-wuliu-cangpei.png)
 
-你可以将 CDN 看作是服务上一层的**特殊缓存服务**，分布在全国各地，主要用来处理静态资源的请求。
+You can think of a CDN as a **specialized cache layer** distributed across regions, mainly serving requests for static resources.
 
-![CDN 简易示意图](./images/shared/cdn-101.png)
+![Simple CDN diagram](./images/shared/cdn-101.png)
 
-我们经常拿全站加速和内容分发网络做对比，不要把两者搞混了！**全站加速**（不同云服务商叫法不同，腾讯云叫 ECDN、阿里云叫 DCDN）既可以加速静态资源又可以加速动态资源，而**内容分发网络（CDN）** 主要针对的是 **静态资源** 。
+Do not confuse whole-site acceleration with a content delivery network. **Whole-site acceleration** (called ECDN by Tencent Cloud and DCDN by Alibaba Cloud) can accelerate both static and dynamic content. A traditional **CDN** mainly serves **static resources**.
 
-![阿里云文档：https://help.aliyun.com/document_detail/64836.html](./images/shared/cdn-aliyun-dcdn.png)
+![Alibaba Cloud documentation: https://help.aliyun.com/document_detail/64836.html](./images/shared/cdn-aliyun-dcdn.png)
 
-绝大部分公司都会在项目开发中使用 CDN 服务，但很少会有自建 CDN 服务的公司。基于成本、稳定性和易用性考虑，建议直接选择专业的云厂商（比如阿里云、腾讯云、华为云、青云）或者 CDN 厂商（比如网宿、蓝汛）提供的开箱即用的 CDN 服务。
+Most companies use a CDN, but few build and operate one themselves. For cost, reliability, and ease of use, choose a ready-to-use CDN from a cloud provider such as Alibaba Cloud, Tencent Cloud, Huawei Cloud, or QingCloud, or a CDN provider such as ChinaNetCenter or ChinaCache.
 
-## 为什么不直接将服务部署在多个不同的地方？
+## Why Not Deploy the Entire Service in Multiple Locations?
 
-很多朋友可能要问了：**既然是就近访问，为什么不直接将服务部署在多个不同的地方呢？**
+You may ask: **If nearby access is the goal, why not deploy the entire service in multiple locations?**
 
-这涉及到**静态资源与动态请求的架构分离**问题：
+This comes down to separating the architecture for **static resources and dynamic requests**:
 
-1. **成本问题**：多地部署完整服务需要部署多套应用、数据库、中间件，成本极高；而 CDN 只需存储静态资源，成本可控。
-2. **资源特性不同**：静态资源（图片、JS、CSS）具有**体积大、访问频繁、内容不变**的特点，非常适合缓存分发；动态请求需要实时计算，必须回源处理。
-3. **系统资源消耗**：如果用应用服务器直接处理静态资源请求，会大量占用 CPU、内存和带宽资源，可能影响核心业务的正常运行。
-4. **专业优化**：CDN 针对静态资源传输进行了大量优化（如智能压缩、协议优化、边缘计算），这些能力是普通应用服务器不具备的。
+1. **Cost**: Deploying the full application, databases, and middleware in multiple locations is expensive. A CDN only needs to store static resources, keeping costs manageable.
+2. **Different resource characteristics**: Static resources such as images, JavaScript, and CSS are large, frequently accessed, and unchanging, so they are well suited to caching. Dynamic requests need real-time computation and must be sent to the origin.
+3. **Resource use**: Serving static resources directly from application servers consumes CPU, memory, and bandwidth that may be needed for core business workloads.
+4. **Specialized optimization**: CDNs optimize static-resource delivery with features such as compression, protocol optimization, and edge computing, which ordinary application servers may not provide.
 
-> **注意**：同一个服务在多个不同地方部署多份（比如同城灾备、异地灾备、同城多活、异地多活）是为了实现系统的**高可用**，而不是就近访问。
+> **Note**: Deploying multiple copies of the same service in different locations—for same-city or geo-disaster recovery, or same-city or geo-active-active—is intended to provide **high availability**, not simply nearby access.
 
-## CDN 工作原理是什么？
+## How Does a CDN Work?
 
-理解 CDN 的工作原理，需要搞懂以下三个核心问题：
+To understand how a CDN works, answer these three questions:
 
-1. 静态资源是如何被缓存到 CDN 节点中的？
-2. 如何找到最合适的 CDN 节点？
-3. 如何防止静态资源被盗用？
+1. How are static resources cached on CDN nodes?
+2. How does a user find the best CDN node?
+3. How can static resources be protected from unauthorized use?
 
-在生产环境里，还要额外关注两个指标：
+In production, also monitor:
 
-- **缓存命中率**：命中率越高，用户越少回源，源站压力越小。
-- **回源耗时和回源错误率**：一旦回源链路变慢或源站错误增多，CDN 节点也会被拖慢。
+- **Cache hit rate**: A higher hit rate means fewer requests reach the origin and less pressure on it.
+- **Origin latency and error rate**: Slow origin requests or more origin errors can also slow down CDN nodes.
 
-所以，CDN 不是“接上就一定快”。如果缓存规则配置不合理、静态资源 URL 不稳定、频繁刷新缓存，反而可能让大量请求集中回源，源站压力比不用 CDN 时更大。
+A CDN does not guarantee better performance by itself. Poor cache rules, unstable static-resource URLs, or frequent cache purges can send many requests to the origin at once, increasing its load beyond what it would face without a CDN.
 
-### 静态资源是如何被缓存到 CDN 节点中的？
+### How Are Static Resources Cached on CDN Nodes?
 
-CDN 缓存静态资源的方式主要有两种：**预热**和**回源**。
+CDNs cache static resources in two main ways: **prefetching** and **origin pulls**.
 
-- **预热（Prefetch）**：主动将源站的资源推送到 CDN 节点中。这样用户首次请求资源时可以直接从 CDN 节点获取，无需回源，适用于大促活动、热点内容发布等场景。
+- **Prefetch**: Proactively push origin resources to CDN nodes. Users can then fetch them from a CDN node on their first request without an origin pull. Useful before major sales and popular content releases.
 
-- **回源（Origin Pull）**：当 CDN 节点上没有用户请求的资源或该资源的缓存已过期时，CDN 节点需要从源站获取最新的资源内容。
+- **Origin pull**: When a requested resource is missing from a CDN node or its cached copy has expired, the node fetches the latest version from the origin.
 
-> **注意**：当用户请求触发回源时，该请求的响应速度会比未使用 CDN 还慢，因为相比于直接访问源站，多了一层 CDN 节点的调用流程。因此，提高**缓存命中率**是 CDN 优化的关键目标。
+> **Note**: A request that triggers an origin pull may be slower than a direct request to the origin because it adds a CDN hop. Improving the **cache hit rate** is therefore a key CDN optimization goal.
 
-CDN 缓存的完整生命周期如下图所示：
+The diagram below shows the full CDN cache lifecycle:
 
-![CDN 缓存的完整生命周期](./images/shared/cdn-full-life-cycle-of-cdn-cache.png)
+![CDN cache lifecycle](./images/shared/cdn-full-life-cycle-of-cdn-cache.png)
 
-如果资源有更新，可以对其进行**刷新**操作，删除 CDN 节点上缓存的旧资源，并强制 CDN 节点在下次请求时回源获取最新资源。
+When a resource changes, **purge** the old copy from CDN nodes so the next request fetches the latest version from the origin.
 
-几乎所有云厂商提供的 CDN 服务都具备缓存的刷新和预热功能（下图是阿里云 CDN 服务提供的相应功能）：
+Nearly all cloud CDN services support cache purging and prefetching. The image below shows these features in Alibaba Cloud CDN:
 
-![CDN 缓存的刷新和预热](./images/shared/cdn-refresh-warm-up.png)
+![CDN cache purging and prefetching](./images/shared/cdn-refresh-warm-up.png)
 
-**命中率**和**回源率**是衡量 CDN 服务质量的两个核心指标：
+**Cache hit rate** and **origin-request rate** are two key measures of CDN quality:
 
-- **命中率**：用户请求直接由 CDN 节点响应的比例，**越高越好**。
-- **回源率**：用户请求需要回源站获取的比例，**越低越好**。
+- **Hit rate**: The proportion of user requests served directly by a CDN node. **Higher is better.**
+- **Origin-request rate**: The proportion of requests that need to fetch content from the origin. **Lower is better.**
 
-常见的命中率优化手段：
+Common ways to improve the hit rate:
 
-- **静态资源文件名带内容 hash**：例如 `app.8f3a1c.js`，内容变化后文件名变化，适合设置较长缓存时间。
-- **入口文件短缓存**：HTML、sitemap、robots 等入口文件不适合长期缓存，避免引用到已经删除的旧资源。
-- **热点资源提前预热**：大促、活动页、安装包发布前，将热点资源提前推送到 CDN 节点。
-- **减少无意义刷新**：全站刷新会让大量边缘节点同时回源，建议按 URL 或目录精确刷新。
-- **保留旧版本资源一段时间**：部署新版本后不要立即删除旧 hash 文件，避免旧 HTML 访问旧资源时出现 404。
+- **Add a content hash to static filenames**: For example, `app.8f3a1c.js`. When the content changes, the filename changes, allowing a longer cache duration.
+- **Use short cache lifetimes for entry files**: Avoid long caching for HTML, sitemaps, and `robots.txt` so they do not reference old resources that have been deleted.
+- **Prefetch popular resources**: Push hot resources to CDN nodes before a major sale, campaign, or software release.
+- **Avoid unnecessary purges**: A full-site purge can make many edge nodes fetch from the origin at once. Purge specific URLs or directories instead.
+- **Keep old versions temporarily**: Do not delete old hash-named resources immediately after deploying a new version; older HTML may still reference them and otherwise get a 404.
 
-如果命中率突然下降，可以优先排查缓存规则是否变更、资源 URL 是否带随机参数、是否发生了全量刷新、源站是否返回了禁止缓存的响应头。
+If the hit rate suddenly drops, check for changes to cache rules, random query parameters in resource URLs, a full-site purge, or origin response headers that prevent caching.
 
-### 如何找到最合适的 CDN 节点？
+### How Does a User Find the Best CDN Node?
 
-**GSLB（Global Server Load Balance，全局负载均衡）** 是 CDN 的大脑，负责多个 CDN 节点之间的协调调度，最常用的实现方式是**基于 DNS 的 GSLB**。
+**GSLB (Global Server Load Balancing)** is the brain of a CDN. It coordinates traffic across CDN nodes and is most commonly implemented through DNS.
 
-CDN 请求的完整调度流程如下图所示：
+The diagram below shows the full CDN request-routing process:
 
 ```mermaid
 sequenceDiagram
-    participant User as 用户浏览器
-    participant LocalDNS as 本地 DNS
-    participant AuthDNS as 权威 DNS
-    participant GSLB as CDN 全局负载均衡
-    participant Edge as CDN 边缘节点
-    participant Origin as 源站服务器
+    participant User as User browser
+    participant LocalDNS as Local DNS
+    participant AuthDNS as Authoritative DNS
+    participant GSLB as CDN global load balancer
+    participant Edge as CDN edge node
+    participant Origin as Origin server
 
-    User->>LocalDNS: 1. 请求解析 cdn.example.com
-    LocalDNS->>AuthDNS: 2. 查询域名
-    AuthDNS-->>LocalDNS: 3. 返回 CNAME 记录指向 CDN
-    LocalDNS->>GSLB: 4. 请求 CDN 域名解析
+    User->>LocalDNS: 1. Resolve cdn.example.com
+    LocalDNS->>AuthDNS: 2. Query the domain
+    AuthDNS-->>LocalDNS: 3. Return a CNAME record pointing to the CDN
+    LocalDNS->>GSLB: 4. Resolve the CDN hostname
 
-    Note over GSLB: 根据用户 IP、节点负载、<br/>网络状况等选择最优节点
+    Note over GSLB: Select the best node based on user IP,<br/>node load, network conditions, and other factors
 
-    GSLB-->>LocalDNS: 5. 返回最优 CDN 节点 IP
-    LocalDNS-->>User: 6. 返回 CDN 节点 IP
-    User->>Edge: 7. 请求静态资源
+    GSLB-->>LocalDNS: 5. Return the best CDN node IP
+    LocalDNS-->>User: 6. Return the CDN node IP
+    User->>Edge: 7. Request a static resource
 
-    alt 缓存命中
-        Edge-->>User: 8a. 直接返回缓存资源
-    else 缓存未命中
-        Edge->>Origin: 8b. 回源请求
-        Origin-->>Edge: 9. 返回资源
-        Note over Edge: 缓存资源
-        Edge-->>User: 10. 返回资源
+    alt Cache hit
+        Edge-->>User: 8a. Return the cached resource
+    else Cache miss
+        Edge->>Origin: 8b. Fetch from the origin
+        Origin-->>Edge: 9. Return the resource
+        Note over Edge: Cache the resource
+        Edge-->>User: 10. Return the resource
     end
 ```
 
-**详细流程说明**：
+**Detailed flow:**
 
-1. 用户浏览器向本地 DNS 服务器发送域名解析请求。
-2. 本地 DNS 向权威 DNS 查询，发现该域名配置了 **CNAME（Canonical Name）别名记录**，指向 CDN 服务商的域名。
-3. 本地 DNS 继续向 CDN 的 **GSLB** 发起解析请求。
-4. GSLB 根据**用户 IP 地址、CDN 节点状态（负载、性能、响应时间、带宽）** 等指标，综合判断并返回最优 CDN 节点的 IP 地址。
-5. 用户浏览器直接向该 CDN 节点（边缘服务器）发起资源请求。
-6. CDN 节点检查本地缓存，若命中则直接返回；若未命中或已过期，则回源获取后再返回给用户。
+1. The user's browser sends a DNS lookup request to its local DNS server.
+2. The local DNS server queries authoritative DNS and finds a **CNAME (Canonical Name) record** pointing to the CDN provider's domain.
+3. The local DNS server asks the CDN's **GSLB** to resolve the CDN hostname.
+4. GSLB evaluates the **user's IP address and CDN node status, including load, performance, response time, and bandwidth**, then returns the best node's IP address.
+5. The browser requests the resource directly from that CDN edge node.
+6. The CDN node checks its cache. It returns a hit directly; on a miss or expiration, it fetches from the origin and then returns the resource.
 
-> **补充说明**：上图做了一定简化。实际上，GSLB 内部可以看作是 **CDN 专用 DNS 服务器**和**负载均衡系统**的组合。CDN 专用 DNS 服务器会返回负载均衡系统的 IP 地址，浏览器通过该 IP 请求负载均衡系统，进而找到对应的 CDN 节点。
+> **Additional detail**: The diagram is simplified. GSLB can be viewed as a combination of a **CDN-specific DNS server** and a **load-balancing system**. The DNS server returns the load balancer's IP address, and the browser requests that IP to reach the appropriate CDN node.
 
-### 如何防止资源被盗刷？
+### How Can Unauthorized Use of Resources Be Prevented?
 
-如果静态资源被其他用户或网站非法盗刷，将会产生大量额外的带宽费用。常见的防盗链机制有以下几种：
+Unauthorized use of static resources by other users or websites can create substantial bandwidth costs. Common hotlink-protection mechanisms include:
 
-| 防盗链机制         | 原理                                          | 安全强度 | 实现成本 | 绕过难度                   |
-| ------------------ | --------------------------------------------- | -------- | -------- | -------------------------- |
-| **Referer 防盗链** | 根据 HTTP 请求头中的 Referer 字段判断请求来源 | 低       | 低       | 低（可伪造或置空 Referer） |
-| **时间戳防盗链**   | URL 中携带签名和过期时间，过期后 URL 失效     | 中       | 中       | 中（需要获取签名算法）     |
-| **IP 黑白名单**    | 限制或允许特定 IP 地址访问                    | 中       | 低       | 中（可通过代理绕过）       |
-| **Token 鉴权**     | 业务服务器生成 Token，CDN 节点校验            | 高       | 高       | 高                         |
+| Mechanism                  | How it works                                                              | Security | Implementation cost | Bypass difficulty                                 |
+| -------------------------- | ------------------------------------------------------------------------- | -------- | ------------------- | ------------------------------------------------- |
+| **Referer protection**     | Check the Referer field in the HTTP request header                        | Low      | Low                 | Low (Referer can be forged or omitted)            |
+| **Timestamp signature**    | Put a signature and expiration time in the URL; the URL expires afterward | Medium   | Medium              | Medium (requires obtaining the signing algorithm) |
+| **IP allowlist/blocklist** | Allow or block specific IP addresses                                      | Medium   | Low                 | Medium (can be bypassed with a proxy)             |
+| **Token authentication**   | The application server generates a token that the CDN validates           | High     | High                | High                                              |
 
-#### Referer 防盗链
+#### Referer-Based Hotlink Protection
 
-通过检查 HTTP 请求头中的 **Referer** 字段来判断请求来源是否合法。可以配置允许访问的域名白名单，非白名单来源的请求将被拒绝。
+Check the **Referer** field in the HTTP request header to determine whether the request source is allowed. Configure an allowlist of domains and reject requests from other sources.
 
-CDN 服务提供商几乎都支持这种基础的防盗链机制：
+Nearly all CDN providers support this basic hotlink-protection mechanism:
 
-![腾讯云 CDN Referer 防盗链配置](./images/shared/cnd-tencent-cloud-anti-theft.png)
+![Tencent Cloud CDN Referer hotlink-protection settings](./images/shared/cnd-tencent-cloud-anti-theft.png)
 
-> **注意**：如果防盗链配置允许 Referer 为空，攻击者可以通过隐藏 Referer 的方式绕过防盗链检查。因此，Referer 防盗链通常需要配合其他机制一起使用。
+> **Note**: If the rules allow an empty Referer, an attacker can omit the field and bypass the check. Referer protection should usually be combined with other mechanisms.
 
-#### 时间戳防盗链
+#### Timestamp-Based Hotlink Protection
 
-**时间戳防盗链**的安全性更强，其核心原理是：URL 中携带**签名字符串**和**过期时间**，CDN 节点在处理请求时会校验签名并检查是否过期，过期的 URL 将被拒绝访问。
+**Timestamp-based hotlink protection** is stronger. The URL contains a **signature** and **expiration time**. The CDN node validates the signature and checks its expiration before serving the request; expired URLs are rejected.
 
-签名字符串通常通过对**加密密钥 + 请求路径 + 过期时间**进行 MD5 哈希计算得到。
+The signature is usually an MD5 hash of the **secret key, request path, and expiration time**.
 
-时间戳防盗链 URL 示例：
+Example timestamp-protected URL:
 
 ```plain
 http://cdn.example.com/video/123.mp4?wsSecret=79aead3bd7b5db4adeffb93a010298b5&wsTime=1601026312
 ```
 
-- `wsSecret`：签名字符串，由服务端根据密钥和请求信息计算生成。
-- `wsTime`：过期时间戳（Unix 时间戳格式）。
+- `wsSecret`: Signature generated by the server from the secret key and request details.
+- `wsTime`: Expiration time in Unix timestamp format.
 
 ![](./images/shared/timestamp-anti-theft.png)
 
-绝大部分 CDN 服务提供商都支持开箱即用的时间戳防盗链机制：
+Most CDN providers support timestamp-based hotlink protection out of the box:
 
-![七牛云时间戳防盗链配置](./images/shared/qiniuyun-timestamp-anti-theft.png)
+![Qiniu Cloud timestamp-based hotlink-protection settings](./images/shared/qiniuyun-timestamp-anti-theft.png)
 
-> **推荐实践**：生产环境建议采用 **Referer 防盗链 + 时间戳防盗链**的组合方案，兼顾安全性与实现成本。对于安全性要求极高的场景（如付费内容），可进一步引入 Token 鉴权机制。
+> **Recommendation**: In production, combine **Referer checks and timestamp-based hotlink protection** to balance security and implementation cost. For highly sensitive resources such as paid content, add token authentication.
 
-## CDN 如何加速动态资源？
+## How Does a CDN Accelerate Dynamic Content?
 
-传统的 CDN 主要针对静态资源（如图片、CSS、JS）进行缓存加速，而对于**动态资源**（如 API 接口、实时查询、支付请求、`.jsp`/`.asp`/`.php` 等动态页面），内容实时变化无法缓存，传统 CDN 往往直接回源，加速效果有限。
+Traditional CDNs cache static resources such as images, CSS, and JavaScript. **Dynamic content**—such as API endpoints, real-time queries, payment requests, and `.jsp`, `.asp`, or `.php` pages—changes in real time and cannot usually be cached, so a traditional CDN often forwards it directly to the origin with limited acceleration.
 
-**动态加速（Dynamic Content Acceleration）** 正是为了解决这一问题而设计。它不缓存内容，而是通过智能路由、协议优化等技术，提升动态请求的传输速度和稳定性。
+**Dynamic Content Acceleration** addresses this problem. Instead of caching content, it improves the speed and reliability of dynamic requests through smart routing and protocol optimization.
 
-动态加速主要通过以下三种技术手段实现：
+Dynamic acceleration mainly uses these techniques:
 
-1. **智能路由选路（最优链路探测）**：动态请求从用户端发出后，先到达离用户最近的 CDN 边缘节点。CDN 内部通过**实时网络监测技术**，探测全网链路质量（包括延迟、丢包率、带宽负载），避开公网中的拥堵或质量较差的节点，选择一条最优的传输路径到达源站。
+1. **Smart routing and path selection**: A dynamic request first reaches the CDN edge node nearest the user. The CDN uses **real-time network monitoring** to assess latency, packet loss, and bandwidth load, avoid congested or poor-quality public-network routes, and choose an optimal path to the origin.
 
-2. **传输协议优化**：
+2. **Transport protocol optimization**:
 
-   - **TCP 优化**：优化 TCP 慢启动、拥塞控制算法，在高延迟或丢包环境下提升传输效率。
-   - **连接复用**：边缘节点与源站之间保持长连接（Keep-Alive），减少频繁握手带来的延迟。
+   - **TCP optimization**: Tune TCP slow start and congestion control to improve transmission efficiency in high-latency or lossy networks.
+   - **Connection reuse**: Keep connections (Keep-Alive) open between edge nodes and the origin to reduce repeated handshake latency.
 
-3. **动静态混合加速**：现代 CDN（如阿里云 DCDN、腾讯云 ECDN）能够自动识别用户请求的资源类型：
-   - **静态资源**：直接从边缘节点缓存返回。
-   - **动态资源**：通过智能路由回源获取。
+3. **Combined static and dynamic acceleration**: Modern CDNs such as Alibaba Cloud DCDN and Tencent Cloud ECDN can identify the type of resource requested:
+   - **Static resources**: Return them from the edge cache.
+   - **Dynamic resources**: Use smart routing to fetch them from the origin.
 
-> **一句话总结**：动态加速 = 智能探测 + 动态选路 + 协议优化，让动态请求跑得又快又稳。
+> **In short**: Dynamic acceleration combines smart probing, dynamic route selection, and protocol optimization to make dynamic requests faster and more reliable.
 
-动态加速也有边界：它优化的是网络传输链路，不会减少业务计算、数据库查询或第三方接口调用耗时。如果接口本身慢在 SQL、锁竞争或下游依赖，单靠动态加速解决不了根因。面试时可以这样回答：静态资源优先靠缓存命中，动态请求主要靠链路优化和源站自身性能治理，两者不是一类问题。
+Dynamic acceleration has limits: it optimizes the network path but does not reduce business computation, database query time, or third-party API latency. If an endpoint is slow because of SQL, lock contention, or a downstream dependency, dynamic acceleration does not address the root cause. A useful distinction is that static resources benefit mainly from cache hits, while dynamic requests depend on path optimization and origin performance.
 
-## CDN 如何优化 HTTPS 访问速度？
+## How Can a CDN Improve HTTPS Performance?
 
-HTTPS 虽然安全，但 TLS 握手和加解密过程会增加延迟。CDN 通过多种技术手段对 HTTPS 进行加速优化，在保障安全的同时提升访问速度。
+HTTPS is secure, but the TLS handshake and encryption add latency. CDNs use several techniques to improve HTTPS performance while preserving security.
 
-| 优化技术          | 原理说明                                                                               | 效果                           |
-| ----------------- | -------------------------------------------------------------------------------------- | ------------------------------ |
-| **会话复用**      | 用户首次建立 HTTPS 连接后，节点缓存会话信息；再次访问时复用会话参数，减少完整 TLS 握手 | 减少握手延迟                   |
-| **OCSP Stapling** | 由 CDN 节点定期缓存证书状态，在 TLS 握手时一并发给浏览器，避免浏览器单独查询 CA 机构   | 提升握手效率                   |
-| **False Start**   | 在 TLS 握手尚未完全完成时就开始传输加密数据                                            | 减少一个 RTT 开销              |
-| **HTTP/2**        | 支持多路复用、头部压缩                                                                 | 减少连接数和传输延迟           |
-| **QUIC**          | 基于 UDP 的传输协议，0-RTT 建立连接                                                    | 减少连接建立时间，改善弱网体验 |
+| Technique              | How it works                                                                                                                          | Effect                                                         |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| **Session resumption** | The node caches session data after the first HTTPS connection and reuses it on later visits, reducing full TLS handshakes             | Lower handshake latency                                        |
+| **OCSP stapling**      | The CDN node caches certificate status and sends it during the TLS handshake, so the browser does not need to query the CA separately | Faster handshakes                                              |
+| **False Start**        | Send encrypted data before the TLS handshake is fully complete                                                                        | Save one RTT                                                   |
+| **HTTP/2**             | Supports multiplexing and header compression                                                                                          | Fewer connections and lower transfer latency                   |
+| **QUIC**               | UDP-based transport protocol with 0-RTT connection setup                                                                              | Faster connection setup and better experience on weak networks |
 
-**CDN 证书托管的优势**：
+**Benefits of CDN certificate management:**
 
-CDN 服务商（如腾讯云、阿里云）通常提供**免费 SSL 证书**和**自动续期**服务，具有以下优势：
+CDN providers such as Tencent Cloud and Alibaba Cloud often provide **free SSL certificates** and **automatic renewal**, with benefits including:
 
-- **免运维**：用户无需手动更新证书，避免因证书过期导致的访问失败。
-- **灵活配置**：支持在 CDN 控制台上传证书，或一键申请免费证书。
-- **多种加密模式**：可选择“**半程加密**”（用户到 CDN 为 HTTPS，CDN 到源站为 HTTP）或“**全程加密**”（两端均为 HTTPS）。
+- **Less maintenance**: No manual certificate renewal, reducing failures caused by expiration.
+- **Flexible configuration**: Upload a certificate in the CDN console or request a free one.
+- **Multiple encryption modes**: Choose **partial encryption** (HTTPS from the user to the CDN, HTTP from the CDN to the origin) or **end-to-end encryption** (HTTPS on both connections).
 
-**HTTPS 加速的配置建议**：
+**HTTPS acceleration configuration tips:**
 
-1. **基础配置**：在 CDN 控制台开启 HTTPS，并配置证书。
-2. **性能优化**：开启 **OCSP Stapling** 和 **HTTP/2**。
-3. **安全增强**：如需更高安全等级，可开启 **HSTS**（强制浏览器使用 HTTPS 访问）。
-4. **弱网优化**：开启 **QUIC** 协议支持，改善移动端弱网环境下的访问体验。
+1. **Basic setup**: Enable HTTPS in the CDN console and configure a certificate.
+2. **Performance**: Enable **OCSP stapling** and **HTTP/2**.
+3. **Security**: Enable **HSTS** to force browsers to use HTTPS when stronger security is required.
+4. **Weak-network performance**: Enable **QUIC** to improve mobile access on unreliable networks.
 
-生产环境还要注意证书和回源协议的一致性。如果用户到 CDN 是 HTTPS，但 CDN 到源站走 HTTP，链路中间仍然存在明文传输风险；如果源站强制 HTTPS，CDN 回源也要配置正确的证书校验和 SNI，否则容易出现回源失败。
+In production, ensure the certificate and origin protocol are configured consistently. If user-to-CDN traffic uses HTTPS but CDN-to-origin traffic uses HTTP, the latter remains unencrypted. If the origin requires HTTPS, configure certificate validation and SNI correctly for origin pulls to avoid failures.
 
-## 总结
+## Summary
 
-- **CDN 的核心价值**：将静态资源分发到多个不同的地方以实现**就近访问**，加快静态资源的访问速度，减轻源站服务器及带宽的负担。
-- **CDN 服务选型**：基于成本、稳定性和易用性考虑，建议直接选择专业的云厂商（如阿里云、腾讯云、华为云）或 CDN 厂商（如网宿、蓝汛）提供的开箱即用服务。
-- **GSLB 的作用**：GSLB（全局负载均衡）是 CDN 的大脑，负责根据用户位置、节点状态等因素，将用户请求调度到**最优的 CDN 节点**。
-- **核心指标**：**命中率**越高越好，**回源率**越低越好。
-- **防盗链机制**：推荐采用 **Referer 防盗链 + 时间戳防盗链**的组合方案，平衡安全性与实现成本。
-- **动态加速**：通过**智能路由选路**、**传输协议优化**、**动静态混合加速**三种技术手段，提升动态请求（API 接口、实时查询等）的传输速度和稳定性。
-- **HTTPS 加速**：通过**会话复用**、**OCSP Stapling**、**False Start**、**HTTP/2**、**QUIC** 等技术优化 TLS 握手和传输过程，在保障安全的同时提升访问速度。
+- **Core value**: Distribute static resources to multiple locations for **nearby access**, faster delivery, and lower origin-server load and bandwidth use.
+- **Choosing a CDN**: For cost, reliability, and ease of use, use a managed service from a cloud or CDN provider.
+- **Role of GSLB**: Route users to the **best CDN node** based on location, node status, and other factors.
+- **Key metrics**: A higher **cache hit rate** is better; a lower **origin-request rate** is better.
+- **Hotlink protection**: Combine **Referer checks and timestamp signatures** to balance security and implementation cost.
+- **Dynamic acceleration**: Improve dynamic request speed and reliability with **smart routing**, **protocol optimization**, and **combined static/dynamic acceleration**.
+- **HTTPS acceleration**: Optimize TLS handshakes and transfers with **session resumption**, **OCSP stapling**, **False Start**, **HTTP/2**, and **QUIC**.
 
-## 参考
+## References
 
-- 时间戳防盗链 - 七牛云 CDN：<https://developer.qiniu.com/fusion/kb/1670/timestamp-hotlinking-prevention>
-- CDN 是个啥玩意？一文说个明白：<https://mp.weixin.qq.com/s/Pp0C8ALUXsmYCUkM5QnkQw>
-- 《透视 HTTP 协议》- 37 | CDN：加速我们的网络服务：<http://gk.link/a/11yOG>
+- Timestamp-based hotlink protection — Qiniu Cloud CDN: <https://developer.qiniu.com/fusion/kb/1670/timestamp-hotlinking-prevention>
+- What Is a CDN? A Complete Guide: <https://mp.weixin.qq.com/s/Pp0C8ALUXsmYCUkM5QnkQw>
+- Understanding HTTP — 37: CDN, Accelerating Network Services: <http://gk.link/a/11yOG>
 
 <!-- @include: @article-footer.snippet.md -->

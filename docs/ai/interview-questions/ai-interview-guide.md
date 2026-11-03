@@ -1,78 +1,78 @@
 ---
-title: 2026 大模型面试题 | Agent 面试题 | RAG 面试题 | AI 应用开发面试指南（含答案与图解）
-description: 2026 AI 应用开发面试指南，系统整理大模型面试题、AI Agent 面试题、RAG 面试题、AI 系统设计面试题、MCP 面试题、Prompt 工程面试题等高频考点，包含答案思路、图解和参考文章。
+title: "2026 AI Application Development Interview Guide: LLMs, Agents, RAG, Answers, and Diagrams"
+description: A 2026 AI application development interview guide covering LLMs, AI agents, RAG, AI system design, MCP, and prompt engineering, with answer guidance, diagrams, and references.
 category: AI
 tag:
-  - AI面试
-  - 大模型面试
-  - Agent面试
-  - RAG面试
+  - AI Interviews
+  - LLM Interviews
+  - Agent Interviews
+  - RAG Interviews
 head:
   - - meta
     - name: keywords
-      content: 2026大模型面试题,大模型面试题,Agent面试题,RAG面试题,AI应用开发面试指南,AI面试题,AI面试,AI应用开发面试,大模型面试,LLM面试题,Agent面试,RAG面试,AI系统设计面试题,MCP面试题,Prompt工程面试题,向量数据库面试题
+      content: 2026 LLM interview questions,LLM interview questions,Agent interview questions,RAG interview questions,AI application development interview guide,AI interview questions,AI interviews,AI application development interviews,LLM interviews,Agent interviews,RAG interviews,AI system design interview questions,MCP interview questions,prompt engineering interview questions,vector database interview questions
   - - meta
     - property: og:title
-      content: 2026 大模型、Agent、RAG 与 AI 系统设计面试指南
+      content: 2026 Interview Guide to LLMs, Agents, RAG, and AI System Design
   - - meta
     - property: og:description
-      content: 按大模型基础、AI Agent、RAG 和 AI 系统设计整理常见面试问题，并链接到对应专题文章。
+      content: Common interview questions about LLM fundamentals, AI agents, RAG, and AI system design, with links to detailed guides.
 ---
 
 <!-- @include: @article-header.snippet.md -->
 
-AI 应用开发面试通常从一次模型调用问起，再延伸到 RAG、Agent、工具调用和系统设计。除了概念，面试中还会检查你能否解释完整链路，定位效果问题，并处理成本、稳定性和权限风险。
+AI application development interviews often begin with a model call and expand into RAG, agents, tool calling, and system design. Interviewers assess whether you can explain the full workflow, diagnose quality problems, and manage cost, reliability, and authorization risks.
 
-这篇文章是 AI 面试题的总入口。四篇题目页负责集中列出问题，详细原理、代码、图解和工程方案放在对应专题文章中。
+This is the main index for AI interview questions. Four question pages collect the questions; detailed principles, code, diagrams, and engineering solutions are in their corresponding guides.
 
-## 面试题目录
+## Interview Question Index
 
-| 面试题模块                                                         | 主要内容                                                                                                                   | 适合重点复习的人群                       |
-| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| [大模型基础面试题总结](./llm-interview-questions.md)               | Token、上下文窗口、采样参数、API 调用、流式输出、结构化输出、Function Calling、AI 应用评测                                 | 所有准备 AI 应用开发面试的人             |
-| [AI Agent 面试题总结](./agent-interview-questions.md)              | Agent Loop、Memory、Prompt Engineering、Context Engineering、MCP、Agent Skills、Harness Engineering、Workflow、Graph、Loop | 准备 Agent、工具调用和工作流相关岗位的人 |
-| [RAG 面试题总结](./rag-interview-questions.md)                     | RAG 基础、Embedding、向量数据库、文档处理、Hybrid Search、Query Rewrite、Rerank、GraphRAG、知识库更新与评测                | 准备知识库问答和搜索增强生成相关岗位的人 |
-| [AI 系统设计面试题总结](./ai-system-design-interview-questions.md) | 生产级架构、模型网关、调用治理、可观测、评测、安全合规、实时语音 Agent                                                     | 有项目经验或需要准备系统设计面试的人     |
+| Interview section                                                                 | Topics                                                                                                                                                           | Recommended for                                                              |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| [LLM Fundamentals Interview Questions](./llm-interview-questions.md)              | Tokens, context windows, sampling parameters, API calls, streaming, structured output, Function Calling, AI application evaluation                               | Anyone preparing for AI application development interviews                   |
+| [AI Agent Interview Questions](./agent-interview-questions.md)                    | Agent Loops, memory, prompt and context engineering, MCP, agent skills, harness engineering, workflows, graphs, and loops                                        | Candidates for agent, tool-calling, and workflow roles                       |
+| [RAG Interview Questions](./rag-interview-questions.md)                           | RAG fundamentals, embeddings, vector databases, document processing, hybrid search, query rewriting, reranking, GraphRAG, knowledge-base updates, and evaluation | Candidates for knowledge-base Q&A and retrieval-augmented generation roles   |
+| [AI System-Design Interview Questions](./ai-system-design-interview-questions.md) | Production architecture, model gateways, call management, observability, evaluation, security compliance, and real-time voice agents                             | Candidates with project experience or preparing for system-design interviews |
 
-## 四个模块怎么串起来
+## How the Four Sections Fit Together
 
-大模型基础决定一次调用如何运行。Token 和上下文窗口影响容量与成本，采样参数影响输出波动，Streaming、重试、限流和结构化输出决定后端能否稳定接住模型结果。这部分可以先看 [大模型基础面试题总结](./llm-interview-questions.md)。
+LLM fundamentals explain how a model call works. Tokens and context windows affect capacity and cost; sampling parameters affect output variability; streaming, retries, rate limits, and structured output determine whether the backend can handle results reliably. Start with [LLM Fundamentals Interview Questions](./llm-interview-questions.md).
 
-RAG 和 Agent 处理的是两类不同问题。RAG 从外部知识源中检索证据，Agent 根据任务状态决定下一步动作并调用工具。企业知识库、智能客服和数据分析助手通常会同时使用二者，对应题目在 [RAG 面试题总结](./rag-interview-questions.md) 和 [AI Agent 面试题总结](./agent-interview-questions.md) 中。
+RAG and agents address different problems. RAG retrieves evidence from external knowledge sources, while an agent chooses its next action based on task state and calls tools. Enterprise knowledge bases, customer-service systems, and data-analysis assistants often use both. See [RAG Interview Questions](./rag-interview-questions.md) and [AI Agent Interview Questions](./agent-interview-questions.md).
 
-模型调用、检索和工具进入真实业务后，还要补上模型网关、权限、审计、评测、灰度和回滚。这些内容会在 [AI 系统设计面试题总结](./ai-system-design-interview-questions.md) 中集中出现。
+Once model calls, retrieval, and tools enter a real business system, the design must also cover model gateways, authorization, auditing, evaluation, canary releases, and rollback. These topics are collected in [AI System-Design Interview Questions](./ai-system-design-interview-questions.md).
 
-## 按经验选择复习深度
+## Choose Review Depth by Experience
 
-| 经验阶段        | 复习重点                                         | 回答需要达到的程度                                           |
-| --------------- | ------------------------------------------------ | ------------------------------------------------------------ |
-| 应届生、0～1 年 | 大模型基础、RAG 链路、Agent Loop、简单的应用架构 | 能解释主要概念，并说清一次模型调用或知识库问答的完整流程     |
-| 2～3 年         | API 调用工程、RAG 排查、工具治理、状态与可观测   | 能根据失败现象定位环节，说明方案选择和异常处理               |
-| 3 年以上        | 模型网关、成本、安全、评测、灰度、回滚和架构演进 | 能设计完整系统，说明容量、权限、故障恢复、质量验证和后续演进 |
+| Experience             | Focus                                                                                             | Expected depth                                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| New graduate, 0–1 year | LLM fundamentals, RAG workflows, Agent Loops, basic application architecture                      | Explain the main concepts and walk through a model call or knowledge-base Q&A workflow.                           |
+| 2–3 years              | API engineering, RAG troubleshooting, tool governance, state, and observability                   | Diagnose failures by stage and explain solution choices and error handling.                                       |
+| More than 3 years      | Model gateways, cost, security, evaluation, canary releases, rollback, and architecture evolution | Design a complete system and explain capacity, authorization, recovery, quality validation, and future evolution. |
 
-工作年限只影响追问深度。简历里写了企业知识库、Agent 平台或 AI 客服，面试官通常会沿着项目继续问数据来源、权限、效果指标、异常处理和上线后的维护方式。
+Years of experience mainly affect the depth of follow-up questions. If your resume mentions an enterprise knowledge base, agent platform, or AI customer service, expect questions about data sources, authorization, quality metrics, error handling, and post-launch maintenance.
 
-## 面试题页和专题文章怎么配合
+## How to Use Question Pages and Guides Together
 
-可以先快速过一遍题目页，把暂时讲不清的问题标出来，再进入对应专题文章查看完整上下文。例如：
+Skim the question pages first and mark questions you cannot yet explain. Then read the corresponding guides for full context. For example:
 
-- Token、上下文窗口和采样参数可以回到 [大模型基础专题](../llm-basis/)；
-- Agent Loop、Memory、MCP 和 Skills 可以回到 [AI Agent 专题](../agent/)；
-- Chunk、向量检索、Rerank 和知识库更新可以回到 [RAG 专题](../rag/)；
-- 模型网关、实时语音和生产架构可以回到 [AI 系统设计专题](../system-design/)。
+- For tokens, context windows, and sampling parameters, return to [LLM Fundamentals](../llm-basis/).
+- For Agent Loops, memory, MCP, and skills, return to [AI Agent Guides](../agent/).
+- For chunking, vector search, reranking, and knowledge-base updates, return to [RAG](../rag/).
+- For model gateways, real-time voice, and production architecture, return to [AI System Design](../system-design/).
 
-看完原文后，再回到题目复述一遍。答案需要包含具体机制、适用场景和限制，涉及项目时还要补上当时的业务约束、数据规模和故障处理方式。
+After reading a guide, return to the question and explain it in your own words. Include the mechanism, appropriate use cases, and limitations. For project questions, also explain the business constraints, data volume, and failure-handling approach.
 
-如果已经有 Agent 项目，可以继续看 [《Agent 项目面试怎么讲？从系统架构、技术选型到 Badcase 复盘》](./agent-project-interview-guide.md)。这篇文章不再按知识点列题，而是演示如何把真实经历整理成“背景约束 → 架构链路 → 选型取舍 → 效果证据 → 失败复盘”的完整回答。
+If you have worked on an agent project, continue with [How to Present an Agent Project: Architecture, Technology Choices, and Bad-Case Analysis](./agent-project-interview-guide.md). Instead of listing concepts, it shows how to build an answer from real experience: constraints, architecture, trade-offs, evidence of results, and failure analysis.
 
-## 项目经历常见追问
+## Common Project Follow-Ups
 
-- 项目为什么选择当前模型？更换模型需要比较哪些指标？
-- RAG 出现召回不到、排序错误或答案不忠实时，分别怎么排查？
-- Agent 调错工具、参数不合法或写操作超时时，系统如何处理？
-- 如何证明一次 Prompt、模型或检索配置调整带来了改善？
-- 模型供应商限流或不可用时，如何排队、降级和切换？
-- 知识库和工具调用如何做租户隔离、权限校验与审计？
-- 项目上线后记录了哪些质量、成本、延迟和错误指标？
+- Why did the project choose its current model, and which metrics should be compared when switching models?
+- How should RAG retrieval misses, incorrect ranking, or ungrounded answers be diagnosed?
+- What should the system do if an agent selects the wrong tool, provides invalid parameters, or times out during a write operation?
+- How can you prove that a prompt, model, or retrieval-configuration change improved results?
+- How should requests be queued, degraded, or routed elsewhere when a model provider is rate-limiting or unavailable?
+- How should tenant isolation, authorization checks, and auditing work for knowledge bases and tool calls?
+- Which quality, cost, latency, and error metrics were recorded after launch?
 
-这些问题都能在四篇题目页中找到对应模块。准备项目经历时，优先使用自己项目里的真实约束和处理过程，专题文章中的方案用于补充原理与备选做法，不要编造并不存在的数据和职责。
+The four question pages cover these topics. When discussing project experience, focus on actual constraints and decisions from your work. Use the guides to explain principles and alternatives; do not invent data or responsibilities.

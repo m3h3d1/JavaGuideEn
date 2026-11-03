@@ -1,148 +1,132 @@
 ---
-title: Spring Cloud Gateway 面试题总结：路由、Predicate、Filter、限流熔断与工作原理
-category: 分布式
-description: Spring Cloud Gateway 高频面试题总结，覆盖核心概念、路由匹配、Predicate、GatewayFilter、GlobalFilter、限流熔断、负载均衡、跨域处理和常见生产问题。
+title: "Spring Cloud Gateway Interview Questions: Routes, Predicates, Filters, and Rate Limiting"
+category: Distributed Systems
+description: "Common Spring Cloud Gateway questions covering routing, predicates, filters, rate limiting, circuit breaking, load balancing, CORS, and production issues."
 tag:
-  - API 网关
+  - API Gateway
   - Spring Cloud
 head:
   - - meta
     - name: keywords
-      content: Spring Cloud Gateway,Spring Cloud Gateway 面试题,API 网关,Predicate,GatewayFilter,GlobalFilter,网关限流,网关熔断,微服务网关
+      content: Spring Cloud Gateway,interview questions,API gateway,Predicate,GatewayFilter,GlobalFilter,rate limiting,circuit breaking,microservice gateway
 ---
 
-> 本文重构完善自[6000 字 | 16 图 | 深入理解 Spring Cloud Gateway 的原理 - 悟空聊架构](https://mp.weixin.qq.com/s/XjFYsP1IUqNzWqXZdJn-Aw)这篇文章。
+> This article was adapted from [Understanding Spring Cloud Gateway's Principles](https://mp.weixin.qq.com/s/XjFYsP1IUqNzWqXZdJn-Aw).
 
-这篇文章只展开 Spring Cloud Gateway 的面试高频点。如果你还没搞清楚 API 网关为什么存在、网关和 RPC 的关系、Zuul / Gateway / Kong / APISIX 怎么选，建议先看 [API 网关详解](./api-gateway.md)。
+This guide covers common Spring Cloud Gateway interview topics. For why gateways exist, their relationship to RPC, and choosing among Zuul, Gateway, Kong, and APISIX, start with [API Gateways](./api-gateway.md).
 
-## 什么是 Spring Cloud Gateway？
+## What is Spring Cloud Gateway?
 
-Spring Cloud Gateway 属于 Spring Cloud 生态系统中的网关，其诞生的目标主要是为了替代 **Zuul 1.x**。Zuul 1.x 基于 Servlet 阻塞 I/O 架构，在高并发场景下性能有限。而 Zuul 2.x 虽然采用了 Netty 非阻塞架构，但 Spring Cloud 官方并未正式集成 Zuul 2.x。Spring Cloud Gateway 起步要比 Zuul 2.x 更早。
+Spring Cloud Gateway is a gateway in the Spring Cloud ecosystem, created primarily as an alternative to **Zuul 1.x**. Zuul 1.x uses blocking Servlet I/O, which can limit performance under high concurrency. Zuul 2.x uses nonblocking Netty I/O, but Spring Cloud did not officially integrate it. Spring Cloud Gateway began before Zuul 2.x.
 
-为了提升网关的性能，Spring Cloud Gateway 基于 Spring WebFlux 。Spring WebFlux 使用 Reactor 库来实现响应式编程模型，底层基于 Netty 实现同步非阻塞的 I/O。
+Gateway is based on Spring WebFlux, which uses Reactor for reactive programming and Netty for nonblocking I/O.
 
-![](./images/shared/springcloud-gateway-demo.png)
+![Spring Cloud Gateway](./images/shared/springcloud-gateway-demo.png)
 
-Spring Cloud Gateway 不仅提供统一的路由方式，并且基于 Filter 链的方式提供了网关基本的功能，例如：安全，监控/指标，限流。
+It provides routing and a filter chain for gateway functions such as security, monitoring, metrics, and rate limiting. Like Zuul 2.x, it processes requests with filters; the source recommends Gateway because of its closer Spring Cloud integration.
 
-Spring Cloud Gateway 和 Zuul 2.x 的差别不大，也是通过过滤器来处理请求。不过，目前更加推荐使用 Spring Cloud Gateway 而非 Zuul，Spring Cloud 生态对其支持更加友好。
+- [GitHub](https://github.com/spring-cloud/spring-cloud-gateway)
+- [Official website](https://spring.io/projects/spring-cloud-gateway)
 
-- GitHub 地址： <https://github.com/spring-cloud/spring-cloud-gateway>
-- 官网： <https://spring.io/projects/spring-cloud-gateway>
+## How does a request flow through Gateway?
 
-## Spring Cloud Gateway 的工作流程？
+![Spring Cloud Gateway workflow](./images/shared/spring-cloud-gateway-workflow.png)
 
-Spring Cloud Gateway 的工作流程如下图所示：
+The diagram comes from the [Spring blog](https://spring.io/blog/2022/08/26/creating-a-custom-spring-cloud-gateway-filter):
 
-![Spring Cloud Gateway 的工作流程](./images/shared/spring-cloud-gateway-workflow.png)
+1. **Route matching:** Gateway Handler Mapping evaluates predicates to find a route mapped to a backend service.
+2. **Request filtering:** Gateway Web Handler runs the filter chain. Filters can intercept or change the request, for example by adding headers or validating parameters, before forwarding it. These are logically called pre-filters.
+3. **Service processing:** The backend handles the request.
+4. **Response filtering:** The response passes through filters again, logically called post-filters.
+5. **Return:** The filtered response goes back to the client.
 
-这是 Spring 官方博客中的一张图，原文地址：<https://spring.io/blog/2022/08/26/creating-a-custom-spring-cloud-gateway-filter>。
+In short, Gateway matches a route, filters and forwards the request, then filters the backend response before returning it.
 
-具体的流程分析：
+## What is a predicate?
 
-1. **路由判断**：客户端的请求到达网关后，先经过 Gateway Handler Mapping 处理，这里面会做断言（Predicate）判断，看下符合哪个路由规则，这个路由映射后端的某个服务。
-2. **请求过滤**：然后请求到达 Gateway Web Handler，这里面有很多过滤器，组成过滤器链（Filter Chain），这些过滤器可以对请求进行拦截和修改，比如添加请求头、参数校验等等，有点像净化污水。然后将请求转发到实际的后端服务。这些过滤器逻辑上可以称作 Pre-Filters，Pre 可以理解为“在...之前”。
-3. **服务处理**：后端服务会对请求进行处理。
-4. **响应过滤**：后端处理完结果后，返回给 Gateway 的过滤器再次做处理，逻辑上可以称作 Post-Filters，Post 可以理解为“在...之后”。
-5. **响应返回**：响应经过过滤处理后，返回给客户端。
+A predicate tests a request condition. If true, the request matches the route; if false, Gateway can try other routes. A matching route forwards the request to its configured service.
 
-总结：客户端的请求先通过匹配规则找到合适的路由，就能映射到具体的服务。然后请求经过过滤器处理后转发给具体的服务，服务处理后，再次经过过滤器处理，最后返回给客户端。
+The example configures two routes. A request URL containing `api/thirdparty` matches `route_thirdparty`:
 
-## Spring Cloud Gateway 的断言是什么？
+![Predicate configuration example](./images/shared/spring-cloud-gateway-predicate-example.png)
 
-断言（Predicate）这个词听起来比较抽象，它可以理解为对请求条件做一次判断：结果为真就匹配当前路由，结果为假就继续匹配其他路由。
+Common route predicate rules:
 
-在 Gateway 中，如果客户端发送的请求满足了断言的条件，则映射到指定的路由器，就能转发到指定的服务上进行处理。
+![Spring Cloud Gateway predicate rules](./images/shared/spring-cloud-gateway-predicate-rules.webp)
 
-断言配置的示例如下，配置了两个路由规则，有一个 predicates 断言配置，当请求 url 中包含 `api/thirdparty`，就匹配到了第一个路由 `route_thirdparty`。
+## How do routes and predicates relate?
 
-![断言配置示例](./images/shared/spring-cloud-gateway-predicate-example.png)
+![Routes and predicates](./images/shared/spring-cloud-gateway-predicate-route.png)
 
-常见的路由断言规则如下图所示：
+- **One to many:** A route can contain multiple predicates, as Route1 does in the diagram.
+- **All must match:** Route2 matches only if the request satisfies both configured predicates.
+- **First match:** If a request matches more than one route, the first matching route is selected. In the diagram, the request matches Route3 and Route4, but Route3 appears earlier in the configuration.
 
-![Spring Cloud GateWay 路由断言规则](./images/shared/spring-cloud-gateway-predicate-rules.webp)
+## How can routes be updated dynamically?
 
-## Spring Cloud Gateway 的路由和断言是什么关系？
+The basic documentation examples configure routes in files or code. As an entry point for microservices, a gateway should support runtime configuration changes without requiring a restart for each change.
 
-Route 路由和 Predicate 断言的对应关系如下：：
+One approach uses Nacos. Gateway can obtain service metadata, such as service names and paths, from the registry and generate route rules. As service instances are added, removed, or updated, the gateway can discover changes and adjust routing without manually maintaining every route.
 
-![路由和断言的对应关系](./images/shared/spring-cloud-gateway-predicate-route.png)
+Nacos Server and Spring Cloud Alibaba Nacos Config can support dynamic configuration changes. See the [Nacos Config documentation](https://github.com/alibaba/spring-cloud-alibaba/wiki/Nacos-config).
 
-- **一对多**：一个路由规则可以包含多个断言。如上图中路由 Route1 配置了三个断言 Predicate。
-- **同时满足**：如果一个路由规则中有多个断言，则需要同时满足才能匹配。如上图中路由 Route2 配置了两个断言，客户端发送的请求必须同时满足这两个断言，才能匹配路由 Route2。
-- **第一个匹配成功**：如果一个请求可以匹配多个路由，则映射第一个匹配成功的路由。如上图所示，客户端发送的请求满足 Route3 和 Route4 的断言，但是 Route3 的配置在配置文件中靠前，所以只会匹配 Route3。
+## What filters are available?
 
-## Spring Cloud Gateway 如何实现动态路由？
+By request phase:
 
-在使用 Spring Cloud Gateway 的时候，官方文档提供的方案总是基于配置文件或代码配置的方式。
+- **Pre-filters** intercept or modify requests before they reach a service, for example for parameter validation, authorization, traffic monitoring, logging, or protocol conversion.
+- **Post-filters** process responses after the service handles a request, for example to modify response bodies or headers, log, or monitor traffic.
 
-Spring Cloud Gateway 作为微服务的入口，需要尽量避免重启，而现在配置更改需要重启服务不能满足实际生产过程中的动态刷新、实时变更的业务需求，所以我们需要在 Spring Cloud Gateway 运行时动态配置网关。
+By scope:
 
-实现动态路由的方式有很多种，其中一种推荐的方式是基于 Nacos 注册中心来做。 Spring Cloud Gateway 可以从注册中心获取服务的元数据（例如服务名称、路径等），然后根据这些信息自动生成路由规则。这样，当你添加、移除或更新服务实例时，网关会自动感知并相应地调整路由规则，无需手动维护路由配置。
+- **GatewayFilter:** A route-specific filter applied to one route or a group of routes. Common filters are highlighted in red in the source diagram.
+- **GlobalFilter:** A filter applied to all routes.
 
-其实这些复杂的步骤并不需要我们手动实现，通过 Nacos Server 和 Spring Cloud Alibaba Nacos Config 即可实现配置的动态变更，官方文档地址：<https://github.com/alibaba/spring-cloud-alibaba/wiki/Nacos-config> 。
+### Route-specific filters
 
-## Spring Cloud Gateway 的过滤器有哪些？
+![Gateway filters](./images/shared/spring-cloud-gateway-gatewayfilters.png)
 
-过滤器 Filter 按照请求和响应可以分为两种：
-
-- **Pre 类型**：在请求被转发到微服务之前，对请求进行拦截和修改，例如参数校验、权限校验、流量监控、日志输出以及协议转换等操作。
-- **Post 类型**：微服务处理完请求后，返回响应给网关，网关可以再次进行处理，例如修改响应内容或响应头、日志输出、流量监控等。
-
-另外一种分类是按照过滤器 Filter 作用的范围进行划分：
-
-- **GatewayFilter**：局部过滤器，应用在单个路由或一组路由上的过滤器。标红色表示比较常用的过滤器。
-- **GlobalFilter**：全局过滤器，应用在所有路由上的过滤器。
-
-### 局部过滤器
-
-常见的局部过滤器如下图所示：
-
-![](./images/shared/spring-cloud-gateway-gatewayfilters.png)
-
-具体怎么用呢？这里有个示例，如果 URL 匹配成功，则去掉 URL 中的 “api”。
+This example removes `api` from a matching URL:
 
 ```yaml
-filters: #过滤器
-  - RewritePath=/api/(?<segment>.*),/$\{segment} # 将跳转路径中包含的 “api” 替换成空
+filters: # Filters
+  - RewritePath=/api/(?<segment>.*),/$\{segment} # Remove the api prefix
 ```
 
-当然我们也可以自定义过滤器，本篇不做展开。
+Custom filters can also be implemented; they are outside this article's scope.
 
-### 全局过滤器
+### Global filters
 
-常见的全局过滤器如下图所示：
+![Global filters](./images/shared/spring-cloud-gateway-globalfilters.png)
 
-![](./images/shared/spring-cloud-gateway-globalfilters.png)
-
-全局过滤器最常见的用法是进行负载均衡。配置如下所示：
+A common global-filter use is load balancing:
 
 ```yaml
 spring:
   cloud:
     gateway:
       routes:
-        - id: route_member # 第三方微服务路由规则
-          uri: lb://passjava-member # 负载均衡，将请求转发到注册中心注册的 passjava-member 服务
-          predicates: # 断言
-            - Path=/api/member/** # 如果前端请求路径包含 api/member，则应用这条路由规则
-          filters: #过滤器
-            - RewritePath=/api/(?<segment>.*),/$\{segment} # 将跳转路径中包含的api替换成空
+        - id: route_member # Microservice route
+          uri: lb://passjava-member # Load-balance requests to the registered service
+          predicates: # Predicates
+            - Path=/api/member/** # Match this request path
+          filters: # Filters
+            - RewritePath=/api/(?<segment>.*),/$\{segment} # Remove the api prefix
 ```
 
-这里有个关键字 `lb`，用到了全局过滤器 `LoadBalancerClientFilter`，当匹配到这个路由后，会将请求转发到 passjava-member 服务，且支持负载均衡转发，也就是先将 passjava-member 解析成实际的微服务的 host 和 port，然后再转发给实际的微服务。
+The `lb` URI uses `LoadBalancerClientFilter`. When the route matches, the service name `passjava-member` is resolved to a host and port, and the request is forwarded with load balancing.
 
-## Spring Cloud Gateway 支持限流吗？
+## Does Gateway support rate limiting?
 
-Spring Cloud Gateway 自带了限流过滤器，对应的接口是 `RateLimiter`，`RateLimiter` 接口只有一个实现类 `RedisRateLimiter` （基于 Redis + Lua 实现的限流），提供的限流功能比较简易且不易使用。
+Gateway includes a rate-limiting filter and a `RateLimiter` interface. The source describes `RedisRateLimiter`, based on Redis and Lua, as its built-in implementation and notes that its capabilities are relatively simple.
 
-从 Sentinel 1.6.0 版本开始，Sentinel 引入了 Spring Cloud Gateway 的适配模块，可以提供两种资源维度的限流：route 维度和自定义 API 维度。也就是说，Spring Cloud Gateway 可以结合 Sentinel 实现更强大的网关流量控制。
+Since Sentinel 1.6.0, Sentinel has provided a Spring Cloud Gateway adapter supporting rate limits by route or custom API, enabling more advanced gateway traffic control.
 
-## Spring Cloud Gateway 如何自定义全局异常处理？
+## How can global exceptions be handled?
 
-在 SpringBoot 项目中，我们捕获全局异常只需要在项目中配置 `@RestControllerAdvice`和 `@ExceptionHandler`就可以了。不过，这种方式在 Spring Cloud Gateway 下不适用。
+In a Spring Boot application, global exception handling commonly uses `@RestControllerAdvice` and `@ExceptionHandler`. The source notes that this approach does not apply to Spring Cloud Gateway.
 
-Spring Cloud Gateway 提供了多种全局处理的方式，比较常用的一种是实现`ErrorWebExceptionHandler`并重写其中的`handle`方法。
+One common option is to implement `ErrorWebExceptionHandler` and override `handle`:
 
 ```java
 @Order(-1)
@@ -153,15 +137,15 @@ public class GlobalErrorWebExceptionHandler implements ErrorWebExceptionHandler 
 
     @Override
     public Mono<Void> handle(ServerWebExchange exchange, Throwable ex) {
-    // ...
+        // ...
     }
 }
 ```
 
-## 参考
+## References
 
-- Spring Cloud Gateway 官方文档：<https://cloud.spring.io/spring-cloud-gateway/reference/html/>
-- Creating a custom Spring Cloud Gateway Filter：<https://spring.io/blog/2022/08/26/creating-a-custom-spring-cloud-gateway-filter>
-- 全局异常处理: <https://zhuanlan.zhihu.com/p/347028665>
+- [Spring Cloud Gateway documentation](https://cloud.spring.io/spring-cloud-gateway/reference/html/)
+- [Creating a Custom Spring Cloud Gateway Filter](https://spring.io/blog/2022/08/26/creating-a-custom-spring-cloud-gateway-filter)
+- [Global exception handling](https://zhuanlan.zhihu.com/p/347028665)
 
 <!-- @include: @article-footer.snippet.md -->

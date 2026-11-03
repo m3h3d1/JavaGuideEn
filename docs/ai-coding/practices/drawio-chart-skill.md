@@ -1,208 +1,208 @@
 ---
-title: JavaGuide 专属 draw.io 绘图 Skill 开源：用 Agent 自动生成可编辑的 draw.io 技术图
-description: 分享 drawio-chart Skill 的设计思路、安装方式和使用流程，说明为什么技术文章配图更适合保留 draw.io 源文件，以及如何让 Agent 生成可维护的流程图、架构图和模块关系图。
-category: AI 编程实战
+title: "Open-Sourcing a draw.io Skill for JavaGuide: Let Agents Generate Editable Technical Diagrams"
+description: How the drawio-chart Skill is designed, installed, and used to generate maintainable flowcharts, architecture diagrams, and module diagrams, while keeping editable draw.io source files.
+category: AI Coding in Practice
 tag:
-  - AI 编程
+  - AI Coding
   - Skills
   - draw.io
   - Codex
-  - 技术写作
+  - Technical Writing
 head:
   - - meta
     - name: keywords
-      content: draw.io,drawio-chart,Agent Skills,AI编程,技术文章配图,Codex,diagrams.net
+      content: draw.io,drawio-chart,Agent Skills,AI Coding,Technical Article Diagrams,Codex,diagrams.net
 ---
 
-你好，我是小 G。很多时候我感叹 AI 时代给我带来的冲击，是从一些小事引起的。
+Hi, I'm Xiao G. The impact of AI on my work often becomes clear through small things.
 
-在过去，我写一篇技术文章最少需要花费一周，长一点的甚至要一个月。其中，有 1/3 的时间都花费在了枯燥的配图上。
+It used to take me at least a week to write a technical article, and sometimes a month. About a third of that time went into the tedious work of creating diagrams.
 
-熟悉我的读者朋友应该知道，[JavaGuide](https://mp.weixin.qq.com/s/MP8_Td9h72jAhTntVV4DxQ) 上的很多配图都是用 draw.io 手动绘制的。每一篇文章都有大量的图解，帮助理解。
+Readers who know my work may have noticed that many diagrams on [JavaGuide](https://mp.weixin.qq.com/s/MP8_Td9h72jAhTntVV4DxQ) are drawn manually in draw.io. Each article has many diagrams to help explain its concepts.
 
-![Java 基础常见面试题](../images/shared/java-basic-questions-01-overview.png)
+![Common Java interview questions](../images/shared/java-basic-questions-01-overview.png)
 
-![MySQL 常见面试题总结](../images/shared/mysql-questions-01.png)
+![MySQL interview questions](../images/shared/mysql-questions-01.png)
 
-但是到了 AI 时代就彻底变了，尤其是对于 draw.io 配图来说。
+AI has changed the process, especially for draw.io diagrams.
 
-在去年 Skill 还没火的时候，我是用 AI 直接生成对应的 XML，然后导入到 draw.io 中。
+Before Skills became popular last year, I used AI to generate XML and then imported it into draw.io.
 
-到了今天，得益于 Skill 的诞生，生成 draw.io 配图变得更加自动化了。
+Today, Skills have made draw.io diagram generation more automated.
 
-这篇文章会分享我平时用的自定义 draw.io 绘图 Skill：[`drawio-chart`](https://github.com/Snailclimb/AIGuide/tree/main/skills/drawio-chart)，也会顺带聊聊为什么我没有完全转向图片生成模型，而是继续保留 `.drawio` 这种可编辑源文件。
+This article introduces the custom draw.io Skill I use: [`drawio-chart`](https://github.com/Snailclimb/AIGuide/tree/main/skills/drawio-chart). I will also explain why I have not switched entirely to image-generation models and still keep editable `.drawio` source files.
 
-## 为什么选择 draw.io？
+## Why Choose draw.io?
 
-图不能只看生成时漂不漂亮，后面能不能改也很重要。
+A diagram should not only look good when it is generated; it should also be easy to edit later.
 
-技术文章发出去以后，标题、节点、箭头、术语经常会调整。如果手里只剩一张 PNG，要么重新生成，要么硬改图片，最后风格还不一定能对上。
+After a technical article is published, its title, nodes, arrows, and terminology may change. If you only have a PNG, you must either generate it again or edit the image manually—and the style may no longer match.
 
-所以我现在更愿意保留一份可编辑源文件。
+That is why I prefer to keep an editable source file.
 
-比如我本地会把这些 `.drawio` 源文件单独留在素材目录里，后面要改某张图，直接打开对应文件就行。
+I keep `.drawio` source files in a local assets directory. When I need to change a diagram, I can open its source directly.
 
-![本地留存的 draw.io 配图源文件](../images/shared/local-drawio-source-files.png)
+![Locally stored draw.io source files](../images/shared/local-drawio-source-files.png)
 
-`draw.io` 的好处就在这里：`.drawio` 可以继续在 diagrams.net 或 draw.io 桌面版里改，导出 PNG、SVG、PDF 也方便。流程图、架构图、状态图这些技术图，源文件通常不大，放进仓库或素材目录也没什么压力。
+That is the advantage of `draw.io`: you can continue editing `.drawio` files in diagrams.net or the draw.io desktop app, and export them as PNG, SVG, or PDF. Technical diagrams such as flowcharts, architecture diagrams, and state diagrams usually have small source files, so storing them in a repository or assets directory is easy.
 
-导出时也不用额外折腾，菜单里可以直接选 PNG、JPEG、WebP、SVG、PDF 等常见格式。
+You can also export common formats such as PNG, JPEG, WebP, SVG, and PDF directly from the menu.
 
-![draw.io 导出格式选择](../images/shared/drawio-export-format-options.png)
+![draw.io export format options](../images/shared/drawio-export-format-options.png)
 
-Skill 刚诞生那会，我就把这套流程整理成了一个 Skill：[`drawio-chart`](https://github.com/Snailclimb/AIGuide/tree/main/skills/drawio-chart)。
+When Skills first appeared, I organized this workflow into a Skill: [`drawio-chart`](https://github.com/Snailclimb/AIGuide/tree/main/skills/drawio-chart).
 
-现在你在 [javaguide.cn](https://javaguide.cn/) 上看到的不少 AI 编程、Spec Coding、Claude Code 相关文章配图，基本都是这套思路做出来的：
+Many diagrams in recent AI coding, Spec Coding, and Claude Code articles on [javaguide.cn](https://javaguide.cn/) use this approach:
 
-- 先让 Agent 抽结构、排节点、生成 `.drawio`，再按文章需要导出图片；
-- 需要更强视觉表现时，再搭配 GPT-IMG2 做进一步处理。
+- Ask the agent to identify the structure, arrange the nodes, and generate a `.drawio` file; then export it in the format needed for the article.
+- For stronger visual presentation, refine the result with GPT-IMG2.
 
-## 为什么不只用图片生成？
+## Why Not Use Image Generation Alone?
 
-我之前也试过几个方向。
+I have tried several alternatives.
 
-[`tt-a1i/archify`](https://github.com/tt-a1i/archify) 更像是用自然语言生成自包含的 HTML 技术图，支持主题切换和多格式导出，也有校验、渲染流程。
+[`tt-a1i/archify`](https://github.com/tt-a1i/archify) generates self-contained technical diagrams in HTML from natural-language prompts. It supports theme switching and multiple export formats, along with validation and rendering workflows.
 
-[`coleam00/excalidraw-diagram-skill`](https://github.com/coleam00/excalidraw-diagram-skill) 走 Excalidraw 风格，适合白板感和观点表达，还会用 Playwright 检查文字重叠、箭头错位、间距失衡这些问题。
+[`coleam00/excalidraw-diagram-skill`](https://github.com/coleam00/excalidraw-diagram-skill) uses an Excalidraw style, which suits whiteboard-like explanations and visualizing ideas. It also uses Playwright to check for overlapping text, misaligned arrows, and uneven spacing.
 
-[`DayuanJiang/next-ai-draw-io`](https://github.com/DayuanJiang/next-ai-draw-io) 更像一套 AI 绘图产品，把 AI 接进 draw.io，支持在线 Demo、桌面应用、Docker、本地安装、MCP Server 和多模型配置。我当时用起来体感有点卡，画图效率也不高。不过这个项目现在还在更新，我没有重新压测，就不评价当前性能了。
+[`DayuanJiang/next-ai-draw-io`](https://github.com/DayuanJiang/next-ai-draw-io) is closer to a standalone AI drawing product. It connects AI to draw.io and offers an online demo, desktop app, Docker, local installation, an MCP server, and multi-model configuration. When I tried it, it felt a little slow and drawing was not very efficient. The project is still being updated, but I have not benchmarked it again, so I cannot comment on its current performance.
 
-这几个项目各有侧重。Archify 成品感更强，Excalidraw 更适合白板表达，next-ai-draw-io 更像独立产品。
+Each project has a different focus. Archify produces a more finished result, Excalidraw suits whiteboard-style explanations, and next-ai-draw-io is more like a standalone product.
 
-但放到 JavaGuide 的技术文章里，我更常遇到的是这些需求：
+For JavaGuide's technical articles, I more often need to:
 
-- 图里有很多中文术语，后续经常要微调。
-- 同一批文章里的配色、字体、节点风格要尽量统一。
-- 图要能插进 Markdown、公众号、网页和仓库文档。
-- 文章更新后，最好只改几个节点，而不是整张重来。
+- Use Chinese technical terms in diagrams and revise them later.
+- Keep colors, fonts, and node styles consistent across a set of articles.
+- Insert diagrams into Markdown, WeChat articles, webpages, and repository documentation.
+- Update a few nodes when an article changes instead of redrawing the whole diagram.
 
-这时候 `.drawio` 源文件更顺手。
+Editable `.drawio` source files work better for these needs.
 
-单独打开一个绘图系统，对文章配图来说有点重。Coding Agent 本来就在读文章、改文件、跑命令、整理素材，让它顺手调用 Skill 生成 `.drawio`，再批量导出，链路会短很多。
+Opening a separate drawing system can add overhead when making article illustrations. A coding agent already reads articles, edits files, runs commands, and organizes assets. Letting it call a Skill to generate `.drawio` files and export them in batches shortens the workflow.
 
-图片生成模型适合增强视觉表现，但不太适合长期维护。今天改一个词，明天加一个分支，你很难只让它精准动那一小块，还保持整张图不变形。
+Image-generation models are useful for improving visual presentation, but the results are harder to maintain over time. If you change a term or add a branch, it is difficult to ask the model to update only that part while keeping the rest of the diagram unchanged.
 
-draw.io 没有那么“生成即大片”，但节点、连线、容器、文字都能继续改。对技术图来说，这点很值钱。
+draw.io may not produce a spectacular image in one step, but its nodes, connectors, containers, and text remain editable. That matters for technical diagrams.
 
-## 我现在的绘图流程
+## My Diagram Workflow
 
-我现在更常用的流程大概是这样：
+My current workflow is roughly:
 
-1. 先写文章，或者至少把文章的主线、流程、概念关系整理出来。
-2. 让 Agent 判断这篇文章里哪些地方值得画图。
-3. 用 `$drawio-chart` 生成 `.drawio` 源文件。
-4. 需要发布时导出 PNG / SVG / PDF。
-5. 如果某张图需要更强的视觉表现，再搭配 GPT-IMG2 做进一步处理。
+1. Write the article, or at least outline its main thread, process, and relationships between concepts.
+2. Ask the agent to identify which parts would benefit from a diagram.
+3. Use `$drawio-chart` to generate `.drawio` source files.
+4. Export them as PNG, SVG, or PDF when preparing to publish.
+5. Refine a diagram with GPT-IMG2 if it needs stronger visual presentation.
 
-我更在意的是把结构和表现拆开。
+I prefer to separate structure from presentation.
 
-`drawio-chart` 负责结构化图表：流程怎么走，模块怎么连，状态怎么迁移，哪些节点属于一组。GPT-IMG2 更适合处理位图层面的表达，比如让一张图更像文章配图、更有视觉完整度。
+`drawio-chart` handles structured diagrams: process flow, module connections, state transitions, and grouping. GPT-IMG2 is better for bitmap-level presentation, such as making an image feel more complete as an article illustration.
 
-结构还留在 `.drawio` 里，后面要改就能改。
+The structure stays in the `.drawio` file, so it remains editable.
 
-下面这张就是一次实际生成 `.drawio` 的过程。Agent 读完需求后直接写出源文件，最后返回文件路径和结构说明。
+The example below shows the Skill generating a `.drawio` file. After reading the request, the agent writes the source file and returns its path with a description of the structure.
 
-![Codex 使用 drawio-chart 生成 draw.io 源文件](../images/shared/codex-generate-drawio-source.png)
+![Codex generates a draw.io source file with drawio-chart](../images/shared/codex-generate-drawio-source.png)
 
-打开以后，它仍然是标准 draw.io 文件。节点、连线、文字都能继续手动调，不会被锁死在一张图片里。
+When opened, it is still a standard draw.io file. Nodes, connectors, and text can all be adjusted manually instead of being locked into an image.
 
-![draw.io 中打开生成的 SKILL.md 结构图](../images/shared/drawio-open-generated-source.png)
+![Opening the generated SKILL.md diagram in draw.io](../images/shared/drawio-open-generated-source.png)
 
-这就是绘图之后没有改动的原图，可以看到线条还是有一些小细节需要手动调整优化。这也是比较正常的。
+This is the diagram before any manual edits. Some details in the connectors still need adjustment, which is normal.
 
-下面来看看用这个 Skill 画的一些图片。
+Here are some diagrams created with the Skill.
 
-这张 `CLAUDE.md` 维护决策流程图，就是典型的流程判断类配图：
+This decision flowchart for maintaining `CLAUDE.md` is a typical process diagram:
 
-![CLAUDE.md 维护决策流程](../images/shared/claude-md-best-practices-maintenance-flow.png)
+![CLAUDE.md maintenance decision flow](../images/shared/claude-md-best-practices-maintenance-flow.png)
 
-Multi-Agent 协作这种内容，如果只用文字写，读者很容易看成一堆角色名。画成流水线后，每个 Agent 负责什么、信息怎么流转，会直观很多。
+When explaining multi-agent collaboration in text alone, readers may see only a list of role names. A pipeline diagram makes each agent's responsibilities and information flow much clearer.
 
-![Multi-Agent 三代理协作流水线](../images/shared/spec-coding-multi-agent-pipeline.png)
+![Three-agent collaboration pipeline](../images/shared/spec-coding-multi-agent-pipeline.png)
 
-Spec Coding 这类文章也类似。它讲的是一套工作流，不是一个孤立概念。图里把需求、Spec、实现、验证串起来，读者就能先抓住整体，再回到正文看细节。
+Spec Coding articles also describe a workflow rather than a single concept. The diagram connects requirements, specs, implementation, and verification, helping readers grasp the whole process before returning to the details.
 
-![Spec Coding 规范驱动编程流水线](../images/shared/spec-coding-pipeline-flow.png)
+![Spec Coding workflow](../images/shared/spec-coding-pipeline-flow.png)
 
-还有 Spec 管理策略这种图，文字解释会比较绕。分层过滤、精准召回、上下文控制这些词放到一张图里，反而更容易理解。
+Strategies for managing specs can be hard to explain in prose. A diagram of layered filtering, precise retrieval, and context control can make these ideas easier to understand.
 
-![Spec 管理策略：分层过滤 + 精准召回](../images/shared/spec-coding-spec-management-strategy.png)
+![Spec management strategy: layered filtering and precise retrieval](../images/shared/spec-coding-spec-management-strategy.png)
 
-这些图不一定每张都要靠 AI 一次性做完。省时间的地方主要在前半段：Agent 先帮你搭出结构，后续人再按文章语境修。
+Not every diagram needs to be generated entirely by AI. The main time savings come early in the process: the agent drafts the structure, then a person refines it for the article.
 
-技术文章配图一旦和文章脱节，就会很麻烦。图里的节点、标题、箭头如果不能和正文对上，再漂亮也没用。
+Diagrams become a problem when they drift away from the article. No matter how polished a diagram looks, it is not useful if its nodes, title, and arrows do not match the text.
 
-## `drawio-chart` 这个 Skill 做了什么？
+## What Does the `drawio-chart` Skill Do?
 
-我之前在 [《Agent Skills 是什么？和 Prompt、MCP 到底差在哪？》](https://javaguide.cn/ai/agent/skills.html) 里讲过，Skill 更像一份按需加载的任务说明。
+In [“What Are Agent Skills, and How Do They Differ from Prompts and MCP?”](https://javaguide.cn/ai/agent/skills.html), I described a Skill as task instructions that load when needed.
 
-它不负责发明一个新工具，也不等同于 Function Calling 或 MCP。它解决的是：某类任务怎么做、什么时候做、哪些步骤不能漏、需要哪些参考资料。
+A Skill does not create a new tool, nor is it the same as Function Calling or MCP. It explains how and when to perform a task, which steps must not be skipped, and which references are needed.
 
-`drawio-chart` 就是把“给技术文章画 draw.io 图”这件事沉淀成了 Skill。
+`drawio-chart` captures the workflow for creating draw.io diagrams for technical articles.
 
-它的主文件是 [`SKILL.md`](https://github.com/Snailclimb/AIGuide/blob/main/skills/drawio-chart/SKILL.md)，里面只放几类信息：
+Its main file is [`SKILL.md`](https://github.com/Snailclimb/AIGuide/blob/main/skills/drawio-chart/SKILL.md), which contains a few types of guidance:
 
-- 什么时候应该用它，比如 draw.io、diagrams.net、流程图、架构图、时序图、ER 图、状态机图、思维导图。
-- 什么时候不该用它，比如用户只想要 Mermaid 代码，或者要的是位图插画、海报、白板风配图。
-- 绘图前要收集什么信息，比如主题、图表类型、关键节点、节点关系、是否导出。
-- 生成 `.drawio` 时按什么顺序走，比如标题、容器、核心节点、连线、标签。
-- 交付前检查什么，比如节点是否齐全、关系是否画对、连线标签是否过长、文件名是否规范。
+- When to use it: for draw.io, diagrams.net, flowcharts, architecture diagrams, sequence diagrams, ER diagrams, state diagrams, and mind maps.
+- When not to use it: when the user only wants Mermaid code, or needs a bitmap illustration, poster, or whiteboard-style image.
+- What to clarify before drawing: the topic, diagram type, key nodes and relationships, and whether the diagram should be exported.
+- In what order to generate a `.drawio` file: title, containers, main nodes, connectors, and labels.
+- What to check before delivery: whether all nodes are present, relationships are correct, connector labels are short enough, and the filename follows conventions.
 
-更细的东西没有全塞进 `SKILL.md`。
+The `SKILL.md` file does not contain every detail.
 
-它拆了几个 `references/` 文件：
+Instead, it refers to files under `references/`:
 
-| 文件                  | 放什么                                         |
-| --------------------- | ---------------------------------------------- |
-| `style-spec.md`       | 配色、字体、节点语义、连线风格                 |
-| `xml-and-layout.md`   | draw.io XML 结构、节点模板、连线模板、布局建议 |
-| `export-and-files.md` | PNG / SVG / PDF 导出命令、文件命名、交付规则   |
-| `use-cases.md`        | 常见 prompt、多图文章配图模式、页面命名建议    |
+| File                  | Contents                                                                                 |
+| --------------------- | ---------------------------------------------------------------------------------------- |
+| `style-spec.md`       | Colors, fonts, node meanings, and connector styles                                       |
+| `xml-and-layout.md`   | draw.io XML structure, node and connector templates, and layout guidance                 |
+| `export-and-files.md` | PNG, SVG, and PDF export commands, filenames, and delivery rules                         |
+| `use-cases.md`        | Common prompts, patterns for illustrating multiple articles, and page naming suggestions |
 
-这个拆法和 Skills 的设计思路是一致的。
+This follows the design of Skills.
 
-主文件不要写成超长 README。Agent 先知道这个 Skill 能干什么；命中任务以后，再根据当前需求读取对应参考文件。
+The main file should not become a long README. The agent first learns what the Skill does, then reads the relevant reference when a task calls for it.
 
-比如只是生成一张流程图，不一定要读完整导出规范。如果用户明确要求导出 PNG，再去看 `export-and-files.md` 就够了。需要控制样式时，再读 `style-spec.md`。
+For example, generating a flowchart does not require reading the full export guide. If the user asks for a PNG, read `export-and-files.md`. If the style needs to be controlled, read `style-spec.md`.
 
-这样上下文不会被无关细节挤满，执行也更稳定。
+This keeps irrelevant details out of the context and makes execution more consistent.
 
-## 我给它加了哪些约束？
+## Constraints I Added
 
-画图这件事很容易失控。
+Diagram generation can easily get out of hand.
 
-Agent 生成图时，常见问题有几个：节点文字太长，连线标签压在箭头上；一张图里颜色乱用，看起来像随机上色；流程图里每条线都带很长的解释；XML 里混进 HTML 标签，后面渲染或编辑时容易出问题。
+Common problems include long node labels and connector labels overlapping arrows; arbitrary color choices that make the diagram look random; long explanations on every connector; and HTML tags in XML that can cause rendering or editing problems.
 
-所以 `drawio-chart` 里写了不少很具体的约束。
+So `drawio-chart` includes specific constraints.
 
-比如样式上，Agent 不需要现场随便选颜色。规则会按语义分配：入口、业务服务、基础设施、客户端、外部依赖、数据库、缓存、消息队列、异常状态分别有对应色值。这样同一批图放在一起时，读者不会每张都重新理解颜色。
+For styles, the agent should not choose colors arbitrarily. Rules assign colors by meaning: entry points, business services, infrastructure, clients, external dependencies, databases, caches, message queues, and error states each have defined colors. This keeps diagrams in the same article consistent and helps readers interpret them.
 
-文字上，它要求 `mxCell.value` 默认使用纯文本，需要换行时用 XML 换行实体，不在节点值里塞 `<br>`、`<b>` 这类 HTML 标签。
+For text, `mxCell.value` should use plain text by default. Use XML line-break entities for new lines, and do not put HTML tags such as `<br>` or `<b>` inside node values.
 
-连线标签也要短。短连接线不要放长说明，能写进节点就写进节点，能放旁注就放旁注。技术图里很多凌乱感，都是从“每条线都想解释一句”开始的。
+Connector labels should be short. Do not put long explanations on short connectors. Put text in a node when possible, or use a side note. Many cluttered technical diagrams start with the desire to explain something on every line.
 
-导出上，它默认先保留 `.drawio`，再按需要导出。即使导出失败，也不能删源文件。
+For export, keep the `.drawio` source first and export other formats as needed. Never delete the source file if export fails.
 
-## 怎么安装和使用？
+## How to Install and Use It
 
-我已经把这个 Skill 放到了 [AIGuide：AI 应用开发、AI 编程实战与面试指南](https://github.com/Snailclimb/AIGuide) 仓库里：
+I have added the Skill to the [AIGuide: AI Application Development, AI Coding Practice, and Interview Guide](https://github.com/Snailclimb/AIGuide) repository:
 
-- 仓库入口：**<https://github.com/Snailclimb/AIGuide/tree/main/skills>**
-- Skill 目录：**<https://github.com/Snailclimb/AIGuide/tree/main/skills/drawio-chart>**
+- Repository: **<https://github.com/Snailclimb/AIGuide/tree/main/skills>**
+- Skill directory: **<https://github.com/Snailclimb/AIGuide/tree/main/skills/drawio-chart>**
 
-如果你在用 `npx skills` 生态，可以这样安装：
+If you use the `npx skills` ecosystem, install it with:
 
 ```bash
 npx skills add Snailclimb/AIGuide/skills/drawio-chart
 ```
 
-如果只想安装给 Codex，也可以直接指定 agent：
+To install it only for Codex, specify the agent:
 
 ```bash
 npx -y skills add Snailclimb/AIGuide/skills/drawio-chart --agent codex --yes
 ```
 
-如果你主要在 Codex 里用，也可以从 GitHub 安装：
+If you mainly use Codex, you can also install it from GitHub:
 
 ```bash
 python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
@@ -210,43 +210,43 @@ python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-githu
   --path skills/drawio-chart
 ```
 
-这里要注意一下，`skills@1.5.15` 这类版本里，`npx skills add Snailclimb/AIGuide --path skills/drawio-chart` 可能仍会先扫描到仓库里的全部 Skill。更稳的写法是把 `skills/drawio-chart` 直接写进 source，也就是上面的 `Snailclimb/AIGuide/skills/drawio-chart`。
+Note that in versions such as `skills@1.5.15`, running `npx skills add Snailclimb/AIGuide --path skills/drawio-chart` may still scan all Skills in the repository first. A more reliable approach is to include `skills/drawio-chart` directly in the source path, as in `Snailclimb/AIGuide/skills/drawio-chart` above.
 
-安装时会看到它识别仓库来源、找到 `drawio-chart`，再让你选择安装到哪个 agent 和作用范围。
+During installation, the CLI detects the repository, finds `drawio-chart`, and asks which agent and scope to install it for.
 
-![使用 Skills CLI 安装 drawio-chart](../images/shared/skills-cli-install-drawio-chart.png)
+![Installing drawio-chart with the Skills CLI](../images/shared/skills-cli-install-drawio-chart.png)
 
-Codex 有时不会立刻重新扫描新装的 Skill，我一般会重启一下再用。
+Codex does not always rescan newly installed Skills immediately, so I usually restart it before use.
 
-刚开始别让 Agent 猜。直接点名 `$drawio-chart`，它更容易进到正确的工作流里。比如画一个登录流程图，我会这么写：
-
-```text
-使用 $drawio-chart 画一个用户登录流程图，包含：
-输入账号密码 -> 验证账号密码 -> 成功跳转首页 -> 失败提示错误并允许重试。
-要求导出 PNG。
-```
-
-给整篇文章配图时，我通常不会先规定“必须画几张”。更顺的做法是把文章路径交给它，让它先从文章里挑真正值得画的结构，再把格式要求补上：
+At first, name `$drawio-chart` explicitly instead of asking the agent to guess. For example, to draw a login flowchart:
 
 ```text
-使用 $drawio-chart 读取这篇文章，为文章生成几张合适的技术配图。
-所有配图放到同一个 draw.io 文件里，每张子图作为一个 diagram page。
-主文件名和文章文件名保持一致，页面名用英文小写中横线。
-配图风格遵循 drawio-chart 的统一规范。
+Use $drawio-chart to draw a user login flowchart with these steps:
+Enter username and password -> Validate credentials -> On success, go to the home page -> On failure, show an error and allow a retry.
+Export the diagram as PNG.
 ```
 
-这里不要只丢一句“帮我画个架构图”。微服务架构图至少要说清楚有哪些服务、哪些存储、哪些外部依赖，请求从哪里进来，哪些调用是同步的，哪些链路走异步消息。
+When illustrating a whole article, I usually do not prescribe a number of diagrams. It works better to give the agent the article and let it identify the structures worth illustrating, then specify the output format:
 
-你给它的是一段明确的图表需求，它产出的才更接近可用稿。只给一个很虚的标题，后面大概率还是要人手动返工。
+```text
+Use $drawio-chart to read this article and create appropriate technical diagrams.
+Put all diagrams in one draw.io file, with each diagram as a separate page.
+Use the same base filename as the article and lowercase kebab-case page names.
+Follow the shared style rules in drawio-chart.
+```
 
-## 哪些图适合 draw.io？
+Do not just say, “Draw an architecture diagram.” A microservice architecture diagram should specify its services, data stores, and external dependencies; where requests enter; which calls are synchronous; and which flows use asynchronous messaging.
 
-我现在主要把三类图交给 `drawio-chart`。
+Give the agent a clear diagram specification to get a useful draft. A vague title will probably require substantial manual rework.
 
-一类是文章里的流程图。比如 Spec Coding、CLAUDE.md 维护策略、Agent 协作流水线，这些图都有清晰的步骤和分支，draw.io 很适合后续微调。
+## Which Diagrams Suit draw.io?
 
-一类是架构图和模块关系图。这里最烦的是风格不统一：同一篇文章里，服务节点一个颜色，存储节点一个颜色，外部依赖再单独区分，读者看起来会轻松很多。
+I mainly use `drawio-chart` for three types of diagrams.
 
-还有一类是会反复改的图。文章上线后，标题、节点名、箭头方向、导出尺寸都可能调整。只要 `.drawio` 还在，改起来就不算麻烦。
+First, flowcharts in articles, such as Spec Coding workflows, `CLAUDE.md` maintenance strategies, and agent collaboration pipelines. These have clear steps and branches, and are easy to refine in draw.io.
 
-我不太会拿它做封面图、海报、产品氛围图，这些交给 GPT-IMG2 更合适。想要白板手绘风，Excalidraw 那套更贴近；想要带主题切换、自包含 HTML 和网页交互，Archify 也值得看看。
+Second, architecture and module diagrams. Consistent styles are important: use one color for service nodes, another for storage, and a separate style for external dependencies. This makes the diagram easier to read.
+
+Third, diagrams that will be revised repeatedly. After an article is published, its title, node labels, arrow direction, and export dimensions may change. As long as the `.drawio` file remains, these edits are manageable.
+
+I would not use it for cover images, posters, or product mood boards; GPT-IMG2 is more suitable for those. Excalidraw is a better fit for a hand-drawn whiteboard style. For themed, self-contained HTML and interactive webpages, Archify is also worth exploring.

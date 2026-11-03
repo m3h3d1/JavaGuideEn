@@ -1,114 +1,127 @@
 ---
-title: 从校招入职腾讯的四年工作总结
-description: "从校招入职腾讯的四年工作总结：围绕技术知识与面试总结梳理关键概念、常见问题与实践要点，帮助你高效学习与备战面试。"
-category: 技术文章精选集
+title: Four Years at Tencent: A Work Retrospective
+description: A retrospective on four years at Tencent, covering projects, performance reviews, the EPC engineering productivity platform, workplace culture, and career growth.
+category: Curated Technical Articles
 author: pioneeryi
 tag:
-  - 个人经历
+  - Personal Experience
 head:
   - - meta
     - name: keywords
-      content: 腾讯工作经验,四年总结,绩效考核,EPC度量,嫡系文化,职业发展,技术成长,互联网职场
+      content: Tencent Work Experience,Four-Year Retrospective,Performance Review,EPC Metrics,Workplace Culture,Career Development,Technical Growth,Tech Industry
 ---
 
-程序员是一个流动性很大的职业，经常会有新面孔的到来，也经常会有老面孔的离开，有主动离开的，也有被动离职的。
+Software engineering has high turnover. New people join, and others leave, sometimes by choice and sometimes not.
 
-再加上这几年卷得厉害，做的事更多了，拿到的却更少了，互联网好像也没有那么香了。
+Competition has also intensified in recent years. People do more work for less in return, and the tech industry may not seem as attractive as it once did.
 
-人来人往，变动无常的状态，其实也早已习惯。
+After a while, the constant changes start to feel normal.
 
-打工人的唯一出路，无外乎精进自己的专业技能，提升自己的核心竞争力，这样无论有什么变动，走到哪里，都能有口饭吃。
+For most employees, the best way forward is to keep improving their skills and building expertise. That way, whatever changes and wherever they go, they can still make a living.
 
-今天分享一位博主，校招入职腾讯，工作四年后，离开的故事。
+Today, I am sharing the story of a blogger who joined Tencent through campus recruitment, worked there for four years, and then left.
 
-至于为什么离开，我也不清楚，可能是有其他更好的选择，或者是觉得当前的工作对自己的提升有限。
+I do not know why the author left. Perhaps a better opportunity came along, or the job no longer offered enough room to grow.
 
-**下文中的“我”，指这位作者本人。**
+**In the article below, “I” refers to the original author.**
 
-> 原文地址：<https://zhuanlan.zhihu.com/p/602517682>
+> Original article: <https://zhuanlan.zhihu.com/p/602517682>
 
-研究生毕业后， 一直在腾讯工作，不知不觉就过了四年。个人本身没有刻意总结的习惯，以前只顾着往前奔跑了，忘了停下来思考总结。记得看过一个职业规划文档，说的三年一个阶段，五年一个阶段的说法，现在恰巧是四年，同时又从腾讯离开，该做一个总结了。
+I joined Tencent after graduate school and ended up working there for four years. I am not used to reflecting on my progress; I was so focused on moving forward that I rarely stopped to think. I once read a career-planning document that described three-year and five-year stages. Now, after four years and a departure from Tencent, it seems like a good time to look back.
 
-先对自己这四年做一个简单的评价吧：个人认为，没有完全的浪费和辜负这四年的光阴。为何要这么说了？因为我发现和别人对比，好像意义不大，比我混的好的人很多；比我混的差的人也不少。说到底，我只是一个普普通通的人，才不惊人，技不压众，接受自己的平凡，然后看自己做的，是否让自己满意就好。
+Here is my brief assessment: I do not think I wasted these four years. Comparing myself with others does not mean much—many people are doing better than me, and many are doing worse. I am an ordinary person, neither exceptionally talented nor outstanding. I have accepted that and focus instead on whether I am satisfied with what I have done.
 
-下面具体谈几点吧，我主要想聊下工作，绩效，EPC，嫡系看法，最后再谈下收获。
+I will cover my work, performance reviews, EPC, workplace culture, and what I learned.
 
-## 工作情况
+## Work and Projects
 
-我在腾讯内部没有转过岗，但是做过的项目也还是比较丰富的，包括：BUGLY、分布式调用链（Huskie)、众包系统（SOHO)，EPC 度量系统。其中一些是对外的，一些是内部系统，可能有些大家不知道。还是比较感谢这些项目经历，既有纯业务的系统，也有偏框架的系统，让我学到了不少知识。
+I did not transfer to another role within Tencent, but I worked on a range of projects: BUGLY, the distributed tracing system Huskie, the crowdsourcing system SOHO, and the EPC engineering productivity metrics platform. Some were external products and others were internal systems that readers may not know. I am grateful for these experiences. I worked on both business applications and framework-oriented systems and learned a lot from them.
 
-接下来，简单介绍一下每个项目吧，毕竟每一个项目都付出了很多心血的：
+Here is a brief overview of the projects, each of which took a great deal of effort:
 
-BUGLY，这是一个终端 Crash 联网上报的系统，很多 APP 都接入了。Huskie，这是一个基于 zipkin 搭建的分布式调用链跟踪项目。SOHO，这是一个众包系统，主要是将数据标准和语音采集任务众包出去，让人家做。EPC 度量系统，这是研发效能度量系统，主要是度量研发效能情况的。这里我谈一下对于业务开发的理解和认识，很多人可能都跟我最开始一样，有一个疑惑，整天做业务开发如何成长？换句话说，就是说整天做 CRUD，如何成长？我开始也有这样的疑惑，后来我转变了观念。
+- **BUGLY** collects and reports application crashes over the network. Many apps use it.
+- **Huskie** is a distributed tracing system built on Zipkin.
+- **SOHO** is a crowdsourcing platform for data labeling and voice collection tasks.
+- **EPC** measures engineering productivity.
 
-我觉得对于系统的复杂度，可以粗略的分为技术复杂度和业务复杂度，对于业务系统，就是业务复杂度高一些，对于框架系统就是技术复杂度偏高一些。解决这两种复杂度，都具有很大的挑战。
+These projects shaped how I think about business development. Like many developers, I used to wonder how to grow when doing business development every day—in other words, when writing CRUD code all the time. My perspective changed.
 
-此前做过的众包系统，就是各种业务逻辑，搞过去，搞过来，其实这就是业务复杂度高。为了解决这个问题，我们开始探索和实践领域驱动（DDD），确实带来了一些帮助，不至于系统那么混乱了。同时，我觉得这个过程中，自己对于 DDD 的感悟，对于我后来的项目系统划分和设计以及开发都带来了帮助。
+I think system complexity can be roughly divided into technical complexity and business complexity. Business systems tend to have more business complexity, while framework systems tend to have more technical complexity. Both can be challenging to solve.
 
-当然 DDD 不是银弹，我也不是吹嘘它有多好，只是了解了它后，有时候设计和开发时，能换一种思路。
+The crowdsourcing system involved many interconnected business rules, which made it business-complex. To address this, we explored and applied Domain-Driven Design (DDD). It helped keep the system from becoming so chaotic. What I learned about DDD later helped me divide, design, and develop other systems.
 
-可以发现，其实平时咱们做业务，想做好，其实也没那么容易，如果可以多探索多实践，将一些好的方法或思想或架构引入进来，与个人和业务都会有有帮助。
+DDD is not a silver bullet, and I do not claim it is universally best. Learning it simply gave me another way to approach design and development.
 
-## 绩效情况
+Business development can be difficult to do well. Exploring and applying useful methods, ideas, and architectures can benefit both the developer and the business.
 
-我在腾讯工作四年，腾讯半年考核一次，一共考核八次，回想了下，四年来的绩效情况为:三星，三星，五星，三星，五星，四星，四星，三星。统计一下， 四五星占比刚好一半。
+## Performance Reviews
+
+Tencent reviewed performance twice a year. During my four years there, I had eight reviews: three-star, three-star, five-star, three-star, five-star, four-star, four-star, and three-star. Four of the eight ratings were four or five stars.
 
 ![](../images/shared/640.png)
 
-PS：还好以前有奖杯，不然一点念想都没了。(现在腾讯似乎不发了）
+Fortunately, I still had a few trophies to remember those achievements. Tencent may no longer give them out.
 
-印象比较深的是两次五星获得经历。第一次五星是工作的第二年，那一年是在做众包项目，因为项目本身难度不大，因此我把一些精力投入到了团队的基础建设中，帮团队搭建了 java 以及 golang 的项目脚手架，又做了几次中心技术分享，最终 Leader 觉得我表现比较突出，因此给了我五星。看来，主动一些，与个人与团队都是有好处的，最终也能获得一些回报。
+I remember how I earned the two five-star ratings. The first came in my second year, when I was working on the crowdsourcing project. The project itself was not especially difficult, so I spent some time improving the team's foundations: I set up Java and Go project templates and gave several internal technical talks. My manager felt I had stood out, so I received a five-star rating. Taking initiative helped both me and the team, and it brought some recognition.
 
-第二次五星，就是与 EPC 有关了。说一个搞笑的事，我也是后来才知道的，项目初期，总监去汇报时，给老板演示系统，加载了很久指标才刷出来，总监很不好意思的说正在优化；过了一段时间，又去汇报演示，结果又很尴尬的刷了很久才出来，总监无赖表示还是在优化。没想到，自己曾经让总监这么丢脸，哈哈。好吧，说一下结果，最终，我自己写了一个查询引擎替换了 Mondrian，之后再也没有出现那种尴尬的情况了。随之而来，也给了好绩效鼓励。做 EPC 度量项目，我觉得自己成长很大，比如抗压能力，当你从零到一搭建一个系统时，会有一个先扛住再优化的过程，此外如果你的项目很重要，尤其是数据相关，那么任何一点问题，都可能让你神经紧绷，得想尽办法降低风险和故障。此外，另一个不同的感受就是，以前得项目，我大多是开发者，而这个系统，我是 Owner 负责人，当你 Owner 一个系统时，你得时刻负责，同时还需要思考系统的规划和方向，此外还需要分配好需求和把控进度，角色体验跟以前完全不一样。
+The second five-star rating was related to EPC. Here is a funny story I learned later. Early in the project, our director demonstrated the system to senior management, but the metrics took a long time to load. The director apologized and said we were optimizing it. At a later demo, the metrics were still slow, and the director awkwardly said we were still working on it. I had apparently embarrassed the director twice! In the end, I wrote a query engine to replace Mondrian, and the issue did not recur. I was rewarded with a strong performance rating.
 
-## 谈谈 EPC
+The EPC project helped me grow, especially in handling pressure. When you build a system from scratch, the first step is to keep it running; optimization comes later. If your project is important, especially when it involves data, even a small problem can be stressful. You have to find ways to reduce risk and prevent incidents.
 
-很多人都骂 EPC，或者笑 EPC，作为度量平台核心开发者之一，我来谈谈客观的看法。
+I also had a different sense of responsibility. On previous projects, I was mostly a developer. For EPC, I was the system owner. Owning a system meant being accountable for it, planning its direction, assigning work, and tracking progress. It was a very different role.
 
-其实 EPC 初衷是好的，希望通过全方位多维度的研效指标，来度量研发效能各环节的质量，进而反推业务，提升研发效能。然而，最终在实践的过程中，才发现，客观条件并不支持（工具还没建设好）；此外，一味的追求指标数据，使得下面的人想方设法让指标好看，最终违背了初衷。
+## EPC
 
-为什么，说 EPC 好了，其实如果你仔细了解下 EPC，你就会发现，他是一套相当完善且比较先进的指标度量体系。覆盖了需求，代码，缺陷，测试，持续集成，运营部署各个环节。
+Many people criticize or mock EPC. As one of the core developers of its metrics platform, I want to offer an objective perspective.
 
-此外，这个过程中，虽然一些人和一些业务做弊，但绝大多数业务还是做出了改变的，比如微视那边的人反馈是，以前的代码写的跟屎一样，当有了 EPC 后，代码质量好了很多。虽然最后微视还是亡了，但是大厦将倾，EPC 是救不了的，亡了也更不能怪 EPC。
+The original goal was good: measure engineering quality across multiple dimensions and stages, then use those metrics to improve the business and engineering productivity. In practice, however, the tools were not ready, and the focus on metric scores encouraged people to make the numbers look better, undermining the original goal.
 
-## 谈谈嫡系
+Why say anything good about EPC? If you look closely, you will find a fairly complete and advanced metrics framework. It covered requirements, code, defects, testing, continuous integration, operations, and deployment.
 
-大家都说腾讯，嫡系文化盛行。但其实我觉得在那个公司都一样吧。这也符合事物的基本规律，人们只相信自己信任并熟悉的人。作为领导，你难道会把把重要的事情交给自己不熟悉的人吗？
+Some people and teams manipulated metrics, but many teams did make improvements. For example, people on the Weishi team said their code had been very poor, but its quality improved after EPC was introduced. Weishi eventually shut down, but EPC could not save a business already in decline, and its closure should not be blamed on EPC.
 
-其实我也不知道我算不算嫡系，脉脉上有人问过”怎么知道自己算不算嫡系”，下面有一个回答，我觉得很妙：如果你不知道你是不是嫡系，那你就不是。哈哈，这么说来，我可能不是。
+## Workplace Culture and “Inner Circles”
 
-但另一方面，后来我负责了团队内很重要的事情，应该是中心内都算很重要的事，我独自负责一个方向，直接向总监汇报，似乎又有点像。
+People often say that Tencent has a strong inner-circle culture. I think this exists in every company. People tend to trust those they already know. As a manager, would you give important work to someone you do not know well?
 
-网上也有其他说法，一针见血，是不是嫡系，就看钱到不到位，这么说也有道理。我在 7 级时，就发了股票，自我感觉，还是不错的。我当时以为不出意外的话，我以后的钱途和发展是不是就会一帆风顺。不出意外就出了意外，第二年，EPC 不达预期，部门总经理和总监都被换了，中心来了一个新的总监。
+I do not know whether I was part of an inner circle. Someone once asked on Maimai how to tell. One answer was memorable: “If you do not know whether you are in the inner circle, you are not.” By that logic, perhaps I was not.
 
-好吧，又要重新建立信任了。再到后来，是不是嫡系已经不重要了，因为大环境不好，又加上裁员，大家主动的被动的差不多都走了。
+On the other hand, later I was responsible for important work across the center, owned a direction independently, and reported directly to a director. That might suggest otherwise.
 
-总结一下，嫡系的存在，其实情有可原。怎么样成为嫡系了？其实我也不知道。不过，我觉得，与其思考怎么成为嫡系，不如思考怎么展现自己的价值和能力，当别人发现你的价值和能力了，那自然更多的机会就会给予你，有了机会，只要把握住了，那就有更多的福利了。
+Another blunt take online is that you can tell by how much you are paid. I received stock when I reached level 7, which felt pretty good. I thought my career and earnings might keep going well if nothing unexpected happened. Something did happen: EPC did not meet expectations the following year, and both the department general manager and the director were replaced. A new director joined the center.
 
-## 再谈收获
+I had to build trust again. Later, it stopped mattering whether I was considered part of the inner circle. The industry was struggling, layoffs followed, and most people left, voluntarily or otherwise.
 
-收获，什么叫做收获了？个人觉得无论是外在的物质，技能，职级；还是内在的感悟，认识，都算收获。
+To sum up, inner circles have understandable reasons for existing. I do not know exactly how to become part of one. But instead of focusing on that, it is better to show your value and ability. When people recognize them, more opportunities are likely to come your way. Make the most of those opportunities and you may receive greater rewards.
 
-先说一些可量化的吧，我觉得有:
+## What I Gained
 
-- 级别上，升上了九级，高级工程师。虽然大家都在说腾讯职级缩水，但是有没有高工的能力自己其实是知道的，我个人感觉，通过我这几年的努力，我算是达到了我当时认为的我需要在高工时达到的状态；
-- 绩效上，自我评价，个人不是一个特别卷的人，或者说不会为了卷而卷。但是，如果我认定我应该把它做好得，我的 Owner 意识，以及负责态度，我觉得还是可以的。最终在腾讯四年的绩效也还算过的去。再谈一些其他软技能方面:
+What counts as a gain? I would include both external things—compensation, skills, and job level—and internal ones, such as insights and perspective.
 
-**1、文档能力**
+First, some measurable gains:
 
-作为程序员，文档能力其实是一项很重要的能力。其实我也没觉得自己文档能力有多好，但是前后两任总监，都说我的文档不错，那看来，我可能在平均水准之上。
+- **Level:** I was promoted to level 9, Senior Engineer. People say Tencent's levels have lost some of their prestige, but I know what a senior engineer should be capable of. I feel that my effort brought me to the level I once thought I needed to reach.
+- **Performance:** I would not describe myself as someone who pushes hard just for its own sake. But when I decide something needs to be done well, I take ownership and responsibility. I think my performance over four years was reasonable.
 
-**2、明确方向**
+I also gained some other skills.
 
-最后，说一个更虚的，但是我觉得最有价值的收获: 我逐渐明确了，或者确定了以后的方向和路，那就是走数据开发。
+**1. Documentation**
 
-其实，找到并确定一个目标很难，身边有清晰目标和方向的人很少，大多数是迷茫的。
+Documentation is an important skill for programmers. I did not think I was especially good at it, but both of my directors said my documents were good. Perhaps I was above average after all.
 
-前一段时间，跟人聊天，谈到职业规划，说是可以从两个角度思考：
+**2. A Clearer Direction**
 
-- 选一个业务方向，比如电商，广告，不断地积累业务领域知识和业务相关技能，随着经验的不断积累，最终你就是这个领域的专家。
-- 深入一个技术方向，不断钻研底层技术知识，这样就有希望成为此技术专家。坦白来说，虽然我深入研究并实践过领域驱动设计，也用来建模和解决了一些复杂业务问题，但是发自内心的，我其实更喜欢钻研技术，同时，我又对大数据很感兴趣。因此，我决定了，以后的方向，就做数据相关的工作。
+Finally, I gained something less tangible but, to me, more valuable: I gradually clarified the direction I wanted to take—data engineering.
 
-腾讯的四年，是我的第一份工作经历，认识了很多厉害的人，学到了很多。最后自己主动离开，也算走的体面（即使损失了大礼包），还是感谢腾讯。
+Finding and committing to a goal is difficult. Few people around me had a clear direction; most were uncertain.
+
+In a recent conversation about career planning, someone suggested thinking about it in two ways:
+
+- Choose a business domain, such as e-commerce or advertising, and keep building domain knowledge and related skills. With enough experience, you can become an expert in that field.
+- Go deep in a technical area and keep studying the underlying technology, with the goal of becoming a technical expert.
+
+Although I had studied and applied DDD to model and solve complex business problems, I was more interested in exploring technology. I was also interested in big data, so I decided to pursue data-related work.
+
+My four years at Tencent were my first job. I met many talented people and learned a lot. I chose to leave, and I am glad I did so on my own terms—even though I gave up a generous severance package. I am still grateful to Tencent.
 
 <!-- @include: @article-footer.snippet.md -->

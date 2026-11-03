@@ -1,52 +1,52 @@
 ---
-title: 什么是 Model Context Protocol (MCP)？和 Function Calling、Agent 什么关系？
-description: MCP（Model Context Protocol）核心概念、四层分层架构、JSON-RPC 2.0 通信机制及生产级 MCP Server 开发实践。
-category: AI 应用开发
+title: What Is the Model Context Protocol (MCP)? How Does It Relate to Function Calling and Agents?
+description: Explains the Model Context Protocol (MCP), its layered architecture, JSON-RPC 2.0 communication, and production-grade MCP Server development.
+category: AI Application Development
 head:
   - - meta
     - name: keywords
-      content: MCP,Model Context Protocol,JSON-RPC,Function Calling,AI Agent,工具接入,Anthropic
+      content: MCP,Model Context Protocol,JSON-RPC,Function Calling,AI Agent,tool integration,Anthropic
 ---
 
-同一个 Git 工具接到 Claude Desktop、Cursor 和自建 Agent 时，往往要各写一层适配。工具参数、鉴权方式或版本一变，接入它的多个客户端都得跟着改。
+Connecting the same Git tool to Claude Desktop, Cursor, and a custom Agent often requires a separate adapter for each. When tool parameters, authentication, or versions change, every client integration must be updated.
 
-MCP 约定外部系统以 Server 形式暴露能力，支持该协议的 Host 通过 Client 发现并调用这些能力。它处理的是工具和数据源的接入；模型如何决定调用、任务如何编排，仍属于 Function Calling 和 Agent 的职责。
+MCP standardizes how external systems expose capabilities as Servers. A compatible Host discovers and calls them through a Client. MCP handles tool and data-source integration; Function Calling and the Agent still determine whether to call a tool and how to orchestrate the task.
 
-![MCP 图解](../images/shared/mcp-simple-diagram.png)
+![MCP diagram](../images/shared/mcp-simple-diagram.png)
 
-> 本文以当前稳定的 [2026-07-28 revision](https://modelcontextprotocol.io/specification/2026-07-28) 为主。上一代 `2025-11-25` revision 使用初始化握手和传输层会话；`2026-07-28` 改为无状态、自描述请求，移除了 `initialize`/`initialized` 握手和 `Mcp-Session-Id`，并将 Tasks 移至 `io.modelcontextprotocol/tasks` 扩展。兼容旧版的客户端和 SDK 可能仍使用 `2025-11-25`，接入前要同时确认协议 revision、SDK 版本和 Host 能力。
+> This guide focuses on the current stable [2026-07-28 revision](https://modelcontextprotocol.io/specification/2026-07-28). The previous `2025-11-25` revision used an initialization handshake and transport-level sessions. Revision `2026-07-28` switches to stateless, self-describing requests, removes the `initialize`/`initialized` handshake and `Mcp-Session-Id`, and moves Tasks to the `io.modelcontextprotocol/tasks` extension. Clients and SDKs that support older revisions may still use `2025-11-25`. Before integration, confirm the protocol revision, SDK version, and Host capabilities.
 
-## MCP 到底是什么？
+## What Is MCP?
 
-MCP 全称是 Model Context Protocol，中文一般叫“模型上下文协议”。
+MCP stands for Model Context Protocol.
 
-把 MCP 的全称拆开来看，其实就很清晰了：
+The name describes its purpose:
 
-- Model：面向大模型应用；
-- Context：把外部上下文、工具和数据源带给模型；
-- Protocol：用一套标准协议把交互方式定下来。
+- **Model:** It is designed for applications built around large language models.
+- **Context:** It brings external context, tools, and data sources to the model.
+- **Protocol:** It standardizes how these components interact.
 
-不过，也不要把 MCP 理解成给模型加插件这么简单。之前在星球群里看大家讨论 MCP 的时候，有不少同学都是这样认为的。
+However, MCP is more than a way to add plugins to a model.
 
-更准确一点说，MCP 是 **MCP Client 和 MCP Server 之间的通信协议**。Host 负责承载用户交互和模型调用，Client 负责和 Server 说话，Server 负责把具体能力暴露出来。
+More precisely, MCP is a **communication protocol between an MCP Client and an MCP Server**. The Host handles user interaction and model calls, the Client communicates with Servers, and Servers expose specific capabilities.
 
-举个很常见的场景。
+Consider a common scenario.
 
-G 友问：“帮我看看这个项目最近一次提交改了什么。”
+A user asks, "Show me what changed in the latest commit to this project."
 
-你用的模型或者 Agent 当然不知道你本地 Git 仓库的提交记录。它得借助外部能力读取 Git 日志。
+The model or Agent cannot see the commit history in your local Git repository. It needs an external capability to read the Git log.
 
-没有 MCP 时，每个 AI 应用都得自己定义一套“怎么连 Git 工具、怎么传参数、怎么拿结果”的方式。
+Without MCP, every AI application must define its own way to connect to Git tools, pass parameters, and receive results.
 
-有了 MCP 之后，Git 相关能力可以被封装成一个 MCP Server。Host 里的 MCP Client 连上它，先发现有哪些工具，再按协议调用工具，最后把结果交给模型继续分析。
+With MCP, Git capabilities can be packaged as an MCP Server. The Host's MCP Client connects to it, discovers the available tools, calls them using the protocol, and returns the results to the model for further analysis.
 
-Git 工具的协议适配集中在 Server 一侧，Agent 或 AI 应用只需理解用户问题、选择工具并组织结果。两边不必为每个客户端重新约定一套私有接口。
+Protocol adaptation for Git tools is handled on the Server side. The Agent or AI application only needs to understand the user's question, select a tool, and organize the result. Each client does not need its own private interface.
 
-## MCP、Function Calling、Agent 到底是什么关系？
+## How Do MCP, Function Calling, and Agents Relate?
 
-一次“读取仓库最新提交”的任务，Function Calling、MCP 和 Agent 可能同时出现，但分别卡在不同位置：模型先给出结构化的调用意图，Host 再把它送到实际工具，Agent 则根据返回结果决定要不要继续。
+Function Calling, MCP, and an Agent may all be involved in a task such as "read the latest commit," but at different points: the model produces a structured call intent, the Host routes it to a tool, and the Agent uses the result to decide whether to continue.
 
-以模型输出的调用意图为例：
+For example, the model might return this call intent:
 
 ```json
 {
@@ -57,100 +57,100 @@ Git 工具的协议适配集中在 Server 一侧，Agent 或 AI 应用只需理�
 }
 ```
 
-OpenAI 把这类机制称为 Function Calling，Anthropic 称为 Tool Use。模型借它输出“调用 `read_file`，参数是这个路径”这样的结构化数据。
+OpenAI calls this mechanism Function Calling, while Anthropic calls it Tool Use. The model can return structured data such as "call `read_file` with this path."
 
-MCP 负责把这个意图接到外部系统：工具从哪个 Server 发现、请求如何传输、结果如何返回。
+MCP connects this intent to an external system: it defines which Server exposes the tool, how the request is sent, and how the result is returned.
 
-Agent 关心任务的下一步。它会读取工具结果，继续调用、结束任务，或等待人工确认；规划、记忆和循环也属于这一层。
-![FC/MCP/Agent 三层关系图](../images/shared/mcp-fc-agent-layer.png)
+The Agent manages the next step of the task. It reads tool results and decides whether to make another call, finish, or wait for human approval. Planning, memory, and loops also belong to this layer.
+![Relationship between Function Calling, MCP, and Agents](../images/shared/mcp-fc-agent-layer.png)
 
-把三者放在一条请求链路里看更直观：Function Calling 产生命令，MCP 传递命令并连接工具，Agent 决定这条链路何时继续、何时结束。
+The request flow makes their roles clear: Function Calling produces the command, MCP carries it to the tool, and the Agent decides whether the flow continues or ends.
 
-不同场景的关注重点如下：
+The primary concern varies by scenario:
 
-| 场景                           | 更关键的东西     | 原因                                   |
-| ------------------------------ | ---------------- | -------------------------------------- |
-| 让模型判断要不要查天气         | Function Calling | 重点是模型把意图转成结构化参数         |
-| 让 Claude Desktop 读取本地文件 | MCP              | 重点是宿主和本地文件系统之间有标准接口 |
-| 让 AI 自动排查线上故障         | Agent            | 重点是多步决策、工具调用和结果反馈     |
+| Scenario                                          | Primary concern  | Reason                                                                |
+| ------------------------------------------------- | ---------------- | --------------------------------------------------------------------- |
+| Let the model decide whether to check the weather | Function Calling | The model must turn intent into structured parameters                 |
+| Let Claude Desktop read local files               | MCP              | A standard interface is needed between the Host and local file system |
+| Have AI investigate a production incident         | Agent            | The task requires multi-step decisions, tool calls, and feedback      |
 
-实际项目里三者通常会一起出现，表格只是用来区分主要责任边界。
+Real projects usually use all three. The table distinguishes their primary responsibilities.
 
-## MCP 里到底有哪些东西？
+## What Are the Components of MCP?
 
-MCP 的通信链路由 Host、Client 和 Server 组成。
+The MCP communication flow consists of a Host, Client, and Server.
 
-![MCP 四层架构](../images/shared/mcp-four-layer-architecture.png)
+![MCP layered architecture](../images/shared/mcp-four-layer-architecture.png)
 
-Host 是用户使用的 AI 应用，例如 Claude Desktop、Cursor、VS Code 中的 AI 插件或自建 Agent 平台。
+The Host is the AI application used by the user, such as Claude Desktop, Cursor, an AI extension in VS Code, or a custom Agent platform.
 
-Client 位于 Host 内部，负责与 MCP Server 交换协议消息。对于 `2025-11-25` 及更早 revision，Client 通过初始化握手建立会话；`2026-07-28` 则使用无状态请求，不再建立 MCP 传输会话。一个 Host 可以连接多个 Server，通常每个 Server 对应一个 Client。
+The Client runs inside the Host and exchanges protocol messages with MCP Servers. For revision `2025-11-25` and earlier, the Client establishes a session through an initialization handshake. Revision `2026-07-28` uses stateless requests and does not establish an MCP transport session. A Host can connect to multiple Servers, usually with one Client per Server.
 
-开发者主要编写 Server。文件读取、SQL 查询、GitHub Issue 查询和内部工单查询等能力，都可以由它向 Host 暴露。
+Developers primarily build Servers. A Server can expose capabilities such as reading files, querying SQL, searching GitHub Issues, and looking up internal tickets.
 
-Server 后面才是实际的数据源：本地文件、数据库、内部平台、GitHub 或第三方 API。它们不属于 MCP 的协议角色。Host 只通过 Client 调用 Server；查库、请求 API 等底层实现留在 Server 内部处理。
+Behind the Server are the actual data sources: local files, databases, internal platforms, GitHub, or third-party APIs. These are not MCP protocol roles. The Host calls the Server through the Client; implementation details such as database queries and API requests remain inside the Server.
 
-## 一次 MCP 调用大概怎么走？
+## How Does an MCP Call Work?
 
-还是拿“分析这个仓库的最新提交”举例。
+Consider the task "analyze the latest commit in this repository."
 
-![MCP 调用时序图](../images/shared/mcp-call-seq.png)
+![MCP call sequence diagram](../images/shared/mcp-call-seq.png)
 
-模型发现自己缺少 Git 日志后，先生成工具调用。Host 把调用交给 MCP Client，Client 通过 JSON-RPC 请求 Server；Server 查询 Git，再把结果沿原路径返回，模型据此组织回答。
+When the model recognizes that it needs the Git log, it generates a tool call. The Host passes the call to the MCP Client, which sends a JSON-RPC request to the Server. The Server queries Git and returns the result along the same path, and the model uses it to form a response.
 
-工具的名称、`description`、参数说明和禁用场景会直接影响模型的选择。Server 接收到的参数也必须视为不可信输入：文件读取要限制目录，SQL 要参数化，高危操作要审批，返回数据要脱敏。
+Tool names, `description` fields, parameter explanations, and prohibited use cases directly affect the model's choices. Treat parameters received by a Server as untrusted input: restrict file access to allowed directories, parameterize SQL, require approval for high-risk operations, and redact returned data.
 
-在 `2026-07-28` revision 中，MCP 不再要求 `initialize`/`initialized` 握手或 `Mcp-Session-Id`。每个请求都自包含协议版本和客户端能力；[规范要求](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning) Server 必须实现 `server/discover`，但 Client 可以不调用，直接发送其他请求。使用 `2025-11-25` 或更早 revision 的兼容客户端仍会执行初始化握手。排查工具未出现时，先确认 Client 和 Server 选用的 revision，再检查现代请求的能力元数据或旧版握手结果。
+In revision `2026-07-28`, MCP no longer requires the `initialize`/`initialized` handshake or `Mcp-Session-Id`. Each request includes the protocol version and client capabilities. The [specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning) requires Servers to implement `server/discover`, but Clients are not required to call it and can send other requests directly. Compatible Clients using revision `2025-11-25` or earlier still perform the initialization handshake. If a tool does not appear, first confirm the revision selected by the Client and Server, then inspect capability metadata in modern requests or the legacy handshake result.
 
-## MCP 暴露的能力只有 Tools 吗？
+## Does MCP Expose Only Tools?
 
-技术群里很多读者聊 MCP 时只讲 Tools，这也正常，因为工具调用最直观。但 MCP 里不只有工具。
+Many discussions of MCP focus only on Tools, which is understandable because tool calls are the most visible feature. MCP also exposes other capabilities.
 
-### Resources、Tools 和 Prompts
+### Resources, Tools, and Prompts
 
-Server 可以提供 Resources、Tools 和 Prompts 三类能力。
+A Server can provide three types of capabilities: Resources, Tools, and Prompts.
 
-Resources 用于提供只读上下文，例如本地文件、日志片段、数据库 Schema 或配置记录。
+Resources provide read-only context, such as local files, log excerpts, database Schemas, or configuration records.
 
-Tools 用于执行动作，例如查询数据库、发送消息、创建工单或调用业务接口。会主动执行逻辑、可能改变外部状态的能力，应当放在 Tools 中。
+Tools perform actions such as querying databases, sending messages, creating tickets, or calling business APIs. Capabilities that execute logic or may change external state belong in Tools.
 
-Prompts 是可复用的提示词模板，例如“按团队规范做代码审查”或“把接口文档整理成测试用例”。
+Prompts are reusable prompt templates, such as "review code using team conventions" or "turn API documentation into test cases."
 
-Tools 通常由模型选择并调用；Resources 和 Prompts 的展示、选择方式还可以由 Host、用户界面或应用逻辑决定。
+The model usually selects and calls Tools. The Host, user interface, or application logic can determine how Resources and Prompts are presented and selected.
 
-用一个生活例子理解 Resources、Tools、Prompts。
+Consider a household example to understand Resources, Tools, and Prompts.
 
-G 友说：“我想吃凉拌黄瓜。”
+A user says, "I want to make cucumber salad."
 
-LLM 扮演厨师，它知道凉拌黄瓜大概怎么做，但它还需要外部条件：
+The LLM acts as the chef. It knows roughly how to make cucumber salad, but still needs external information and capabilities:
 
-- Resources 像食材和菜谱，比如冰箱里有什么、家里有没有黄瓜、调料放在哪里；
-- Tools 像具体动作，比如切菜、拌料、开火、下单买菜；
-- Prompts 像家里的固定偏好，比如少放辣、必须放香菜、不能放蒜。
+- Resources are like ingredients and recipes: what is in the fridge, whether there are cucumbers, and where the seasonings are.
+- Tools are actions: chop ingredients, mix them, turn on the stove, or order groceries.
+- Prompts are household preferences: use less chili, always add cilantro, or do not use garlic.
 
-如果工具描述写错了，比如把“黄瓜”描述成“西红柿”，模型就可能选错东西。
+If a tool description is wrong—for example, if it describes a cucumber as a tomato—the model may choose the wrong item.
 
-落到生产环境，工具名、参数描述和返回结构都直接影响 Agent 的选择和后续判断。Server 能启动只是开始，能力边界还要让模型能准确理解。
+In production, tool names, parameter descriptions, and return structures all affect the Agent's choices and later decisions. Starting a Server is only the first step; the model must also understand its capability boundaries accurately.
 
-### Roots、Sampling 和 Elicitation
+### Roots, Sampling, and Elicitation
 
-除了 Server 侧能力，Client 侧也可以提供一些能力给 Server 使用，比如 Roots、Sampling、Elicitation。`2026-07-28` 将 Roots、Sampling 和 Logging 标记为 deprecated（仍会保留至少十二个月）；Tasks 则移至 `io.modelcontextprotocol/tasks` 扩展。新实现应先确认目标 Client/Host 对这些能力或扩展的支持情况。
+In addition to Server-side capabilities, the Client can provide capabilities for the Server to use, such as Roots, Sampling, and Elicitation. Revision `2026-07-28` marks Roots, Sampling, and Logging as deprecated (they will remain available for at least twelve months); Tasks moved to the `io.modelcontextprotocol/tasks` extension. New implementations should first confirm that the target Client/Host supports these capabilities or extensions.
 
-Roots 由 Host 通过 Client 告诉 Server：当前工作范围预期在哪些文件系统根目录内。例如，Host 可以只公布当前项目目录，不公布用户主目录。它是能力协商和范围提示，不会自动形成文件系统沙箱；Server 仍要做路径规范化、越界检查和操作系统级权限隔离。
+Roots tell the Server, through the Client, which file-system root directories are expected to be in scope. For example, a Host can expose only the current project directory, not the user's home directory. Roots provide capability negotiation and scope hints; they do not create a file-system sandbox. The Server still needs path normalization, boundary checks, and operating-system-level permission isolation.
 
-Sampling 比较特殊，它允许 Server 请求 Host 侧的 LLM 做一次生成。比如 Server 读取到一段日志后，希望借助模型做摘要或分类。
+Sampling is unusual because it lets a Server request a generation from the Host-side LLM. For example, after reading a log excerpt, a Server may request a model-generated summary or classification.
 
-Elicitation 则是 Server 在执行过程中向用户补充询问信息的能力。比如参数不完整、选项有歧义、执行前需要用户确认，就可以由 Host 侧展示交互。
+Elicitation lets a Server ask the user for additional information during execution. The Host can present an interaction when parameters are missing, options are ambiguous, or confirmation is needed before execution.
 
-这些能力要按场景选择。大多数 MCP Server 可以先只提供 Tools；需要只读上下文或可复用任务入口时，再考虑 Resources、Prompts。Roots、Sampling、Elicitation 以及 Tasks 扩展都取决于对应 Client/Host 是否实现，不能只看 Server SDK 有无接口。
+Choose these capabilities based on the use case. Most MCP Servers can start by providing Tools only; add Resources and Prompts when read-only context or reusable task entry points are needed. Roots, Sampling, Elicitation, and the Tasks extension depend on implementation by the relevant Client/Host; support in a Server SDK alone is not enough.
 
-## 为什么 MCP 用 JSON-RPC？
+## Why Does MCP Use JSON-RPC?
 
-MCP 底层通信使用 JSON-RPC 2.0。
+MCP uses JSON-RPC 2.0 for communication.
 
-REST 更偏资源，比如 `/users/1`、`/orders/100`。JSON-RPC 更偏方法调用，比如 `tools/call`、`resources/read`。AI 工具调用天然就是“我要执行某个动作”，所以 JSON-RPC 和 MCP 的使用场景比较贴。
+REST is resource-oriented, with endpoints such as `/users/1` and `/orders/100`. JSON-RPC is method-oriented, with calls such as `tools/call` and `resources/read`. Since AI tool use is naturally about "performing an action," JSON-RPC is a good fit for MCP.
 
-按 [2026-07-28 规范的请求元数据字段](https://modelcontextprotocol.io/specification/2026-07-28/basic/index)，工具调用请求可以写成下面这样。`_meta` 位于 `params` 内，与 `name`、`arguments` 同级；这里的 `my-app` 和 `1.0` 是示例客户端的名称与版本，空能力对象表示本次请求不声明可选客户端能力：
+According to the [request metadata fields in the 2026-07-28 specification](https://modelcontextprotocol.io/specification/2026-07-28/basic/index), a tool-call request can look like this. `_meta` is inside `params`, at the same level as `name` and `arguments`. `my-app` and `1.0` are example client name and version; an empty capability object means this request does not declare optional client capabilities:
 
 ```json
 {
@@ -174,7 +174,7 @@ REST 更偏资源，比如 `/users/1`、`/orders/100`。JSON-RPC 更偏方法调
 }
 ```
 
-响应可能是这样：
+The response may look like this:
 
 ```json
 {
@@ -185,14 +185,14 @@ REST 更偏资源，比如 `/users/1`、`/orders/100`。JSON-RPC 更偏方法调
     "content": [
       {
         "type": "text",
-        "text": "文件内容..."
+        "text": "File contents..."
       }
     ]
   }
 }
 ```
 
-失败时才返回 `error`：
+An `error` is returned only on failure:
 
 ```json
 {
@@ -205,19 +205,19 @@ REST 更偏资源，比如 `/users/1`、`/orders/100`。JSON-RPC 更偏方法调
 }
 ```
 
-成功响应只返回 `result`，失败响应才返回 `error`；不要在成功响应中再附上 `error: null`。
+Successful responses return only `result`; failed responses return `error`. Do not add `error: null` to a successful response.
 
-JSON-RPC 的消息是文本格式，便于记录日志，也不绑定具体传输方式。代价是它没有 gRPC 那样的强 IDL 和编译期类型约束。MCP 虽然能用 JSON Schema 描述工具参数，但 Schema 既是运行时校验规则，也是给模型的提示；Server 仍需对所有参数做严格校验。
+JSON-RPC messages are text-based, easy to log, and independent of a specific transport. The tradeoff is that JSON-RPC lacks the strong IDL and compile-time type constraints of gRPC. Although MCP uses JSON Schema to describe tool parameters, the Schema is both a runtime validation rule and a prompt to the model; the Server must still validate all parameters strictly.
 
-## stdio 和 Streamable HTTP 怎么选？
+## Choosing Between stdio and Streamable HTTP
 
-本地 Server 通常使用 stdio。Host 将它作为子进程启动，再通过 stdin/stdout 交换消息；Claude Desktop 中的很多本地 Server 都采用这种方式。它没有额外的网络部署成本，但 Server 运行在本机，文件、Shell 和数据库权限要单独收紧。
+Local Servers usually use stdio. The Host starts the Server as a subprocess and exchanges messages through stdin/stdout. Many local Servers in Claude Desktop use this method. It avoids network deployment costs, but the Server runs on the user's machine, so file, Shell, and database permissions must be restricted separately.
 
-如果是第三方 Server，最好别直接裸跑。至少先看源码，或者用 Docker、cgroups、namespace 这类方式隔离一下。尤其是文件系统、Shell、数据库相关的 Server，权限一旦给大，后面很难补。
+Avoid running a third-party Server without isolation. At a minimum, review its source code or isolate it with Docker, cgroups, or namespaces. This is especially important for Servers that access file systems, Shells, or databases; excessive permissions are difficult to take back later.
 
-stdio 模式下，stdout 是 JSON-RPC 消息通道，不能用于打印调试日志。一行 `print()` 输出就可能破坏消息格式，导致 Host 解析失败或 Server 断连。调试日志应写入 stderr 或文件；排查“Server 启动失败”时，也要确认 stdout 中没有混入日志。
+In stdio mode, stdout is the JSON-RPC message channel and must not be used for debug logs. A single `print()` can corrupt the message format, causing the Host to fail parsing or disconnect from the Server. Write debug logs to stderr or a file. When investigating a Server startup failure, check that logs have not leaked into stdout.
 
-远程 Server 更适合使用 Streamable HTTP。MCP 早期远程传输常见 HTTP + SSE，后来转向 Streamable HTTP；旧版 HTTP+SSE 已被标记为 deprecated。`2026-07-28` 继续使用 Streamable HTTP，但采用无状态请求，并要求请求携带 `Mcp-Method` 和 `Mcp-Name` 头，认证、负载均衡和网关接入可以沿用普通 HTTP 服务的运维方式。
+Remote Servers are better suited to Streamable HTTP. Early MCP remote transports commonly used HTTP + SSE, then moved to Streamable HTTP; the older HTTP+SSE transport is deprecated. Revision `2026-07-28` continues to use Streamable HTTP with stateless requests and requires `Mcp-Method` and `Mcp-Name` headers. Authentication, load balancing, and gateway integration can follow standard HTTP service operations.
 
 ```http
 POST /mcp HTTP/1.1
@@ -229,89 +229,89 @@ Mcp-Method: tools/call
 Mcp-Name: read_file
 ```
 
-以上是前面 `read_file` 调用对应的 HTTP 请求头，请求体使用前面的 JSON；`Mcp-Method` 与方法名、`Mcp-Name` 与工具名保持一致，参见 [官方版本说明](https://blog.modelcontextprotocol.io/posts/2026-07-28/)。响应可能是普通 JSON，也可能是 SSE 流，取决于请求类型。
+These are the HTTP headers for the earlier `read_file` call; the request body uses the JSON shown above. `Mcp-Method` matches the method name, and `Mcp-Name` matches the tool name. See the [official revision notes](https://blog.modelcontextprotocol.io/posts/2026-07-28/). The response may be regular JSON or an SSE stream, depending on the request type.
 
-选择传输方式时，可以按部署位置和访问范围判断：
+Choose a transport based on deployment location and access scope:
 
-- 本地工具、本地文件、个人使用，优先 stdio。
-- 团队服务、远程 API、多用户访问，优先 Streamable HTTP。
-- 涉及写操作和敏感数据时，不管哪种传输方式，都要额外做鉴权、限流和审计。
+- For local tools, local files, and personal use, prefer stdio.
+- For team services, remote APIs, and multi-user access, prefer Streamable HTTP.
+- For write operations and sensitive data, add authentication, rate limiting, and auditing regardless of transport.
 
-![MCP 传输方式选择](../images/shared/mcp-transport-decision.png)
+![Choosing an MCP transport](../images/shared/mcp-transport-decision.png)
 
-## MCP 的意义只是让模型会调接口吗？
+## Is MCP Only About Letting Models Call APIs?
 
-Function Calling 已经可以让模型表达“调用哪个接口”。MCP 解决的是同一个工具交付给多个 Host 时的重复集成。
+Function Calling already lets a model express which API to call. MCP addresses the duplicated integration work when the same tool must be made available to multiple Hosts.
 
-例如，内部工单系统接入一个 Agent 后，换成另一个 Host 往往还要重写连接、参数和结果处理。将能力封装为 MCP Server 后，支持 MCP Client 的应用可以按同一套发现和调用方式接入。
+For example, after an internal ticketing system is connected to one Agent, moving it to another Host may require rewriting the connection, parameter handling, and result processing. Package the capability as an MCP Server, and any application with an MCP Client can discover and call it in the same way.
 
-这个边界和前后端通过接口契约协作相似：Agent 开发关注任务和交互，工具开发关注能力实现、数据权限和操作边界。
+This separation resembles how frontend and backend teams collaborate through API contracts: Agent developers focus on tasks and interaction, while tool developers focus on capability implementation, data permissions, and operation boundaries.
 
-团队里的操作手册、值班文档、故障复盘和排查脚本常分散在文档库、Wiki 或脚本仓库中。把可授权的查询和排查能力整理成 Server 后，Agent 才能在既定范围内查文档、读配置或运行工具，而不是只给出一段泛泛的说明。
+Team runbooks, on-call documentation, incident reviews, and troubleshooting scripts are often scattered across document stores, Wikis, or script repositories. Organize authorized query and investigation capabilities into a Server so the Agent can search documents, read configuration, or run tools within a defined scope instead of returning only generic advice.
 
-## MCP 接进来之后，就能直接上生产吗？
+## Is an MCP Integration Ready for Production?
 
-不能。Demo 中“装一个 Server，问一句话，拿到结果”的链路很短；生产环境要补齐接口约束、审计和运行治理。
+No. A demo's flow—install a Server, ask a question, and get a result—is short. Production systems also need API constraints, auditing, and operational controls.
 
-时间字段是 ISO-8601 还是时间戳、金额单位是元还是分、分页默认值是什么，都要写进 Schema、字段说明和示例。Server 要据此校验参数，并返回模型能够据以修正请求的错误信息。
+Specify whether time fields use ISO 8601 or timestamps, whether monetary values are in dollars or cents, and what the default pagination is in the Schema, field descriptions, and examples. The Server must validate parameters accordingly and return errors that help the model correct its request.
 
-一条 Agent 回答可能经过多个 Server 和工具。Trace ID、结构化日志和调用链需要记录调用参数、耗时、结果摘要与错误码，才能定位哪一步影响了最终回答。
+An Agent response may pass through multiple Servers and tools. Trace IDs, structured logs, and call traces should record parameters, duration, result summaries, and error codes so you can identify which step affected the final answer.
 
-本地 stdio 可能获得用户机器上的文件权限，远程 Server 可能连到内部系统。文件目录、可查询的表、是否可写生产 API、是否允许发送邮件都应明确授权。删除、修改、发送和生产调用等写操作还需要二次确认、审计和回滚预案。
+Local stdio Servers may access files on the user's machine, while remote Servers may connect to internal systems. Explicitly authorize file directories, queryable tables, write access to production APIs, and email sending. Write operations such as deleting, modifying, sending, or calling production systems need additional confirmation, auditing, and rollback plans.
 
-Server 的 `description`、Prompt 模板和返回内容同样需要审核：恶意或粗糙的内容可能夹带提示词注入，引导模型读取更多文件或外传信息。Server 来源、依赖包、权限范围和更新记录都属于上线审查范围。
+Review the Server's `description`, Prompt templates, and returned content too: malicious or poorly written content may contain prompt injection that directs the model to read additional files or expose information. Server provenance, dependencies, permission scope, and update history are all part of deployment review.
 
-模型 Token、向量检索、第三方 API 和云资源都会产生费用。调用应能关联到用户、业务线和工具，否则费用上升时无法判断成本来自哪里。
+Model Tokens, vector retrieval, third-party APIs, and cloud resources all incur costs. Calls should be attributable to a user, business unit, and tool; otherwise, it is difficult to identify the source of increased costs.
 
-工具接口的字段、枚举或返回结构发生不兼容变更，也会改变模型的判断。工具级版本、灰度、旧版本保留和自动化兼容性测试应与 Server 一起维护。
+Incompatible changes to tool fields, enums, or return structures can also affect the model's decisions. Maintain tool-level versions, staged rollouts, old-version support, and automated compatibility tests together with the Server.
 
-## 企业落地 MCP 前，应该先检查哪些问题？
+## What Should You Check Before Deploying MCP in an Organization?
 
-### Schema 和版本
+### Schema and Versioning
 
-- 每个工具是否有明确输入输出 Schema？
-- 字段单位、时间格式、枚举值、默认值是否写清楚？
-- 工具接口是否有版本号？
-- 不兼容变更有没有灰度和回滚方案？
-- 是否能基于 Schema 做自动化校验？
+- Does every tool have a clear input and output Schema?
+- Are field units, time formats, enum values, and defaults documented?
+- Are tool interfaces versioned?
+- Is there a staged rollout and rollback plan for incompatible changes?
+- Can the Schema be used for automated validation?
 
-### 权限和安全
+### Permissions and Security
 
-- Server 能访问哪些文件、目录、数据库和 API？
-- 是否区分只读工具和写操作工具？
-- 高危操作是否需要人工确认？
-- 返回结果是否做了脱敏？
-- 是否防路径遍历、SQL 注入、命令注入？
-- 第三方 MCP Server 是否经过源码、依赖和权限审核？
+- Which files, directories, databases, and APIs can the Server access?
+- Are read-only tools separated from write-operation tools?
+- Do high-risk operations require human confirmation?
+- Are returned results redacted?
+- Are path traversal, SQL injection, and command injection prevented?
+- Have third-party MCP Servers been reviewed for source, dependencies, and permissions?
 
-### 可观测性
+### Observability
 
-- 每次用户请求是否有 Trace ID？
-- 工具调用参数、耗时、结果摘要、错误码是否有结构化日志？
-- 是否能还原一次 Agent 回答背后的完整工具调用链？
-- 是否有超时、限流、熔断和重试策略？
+- Does every user request have a Trace ID?
+- Are tool parameters, duration, result summaries, and error codes recorded in structured logs?
+- Can you reconstruct the full tool-call chain behind an Agent response?
+- Are there timeout, rate-limiting, circuit-breaker, and retry policies?
 
-### 成本归因
+### Cost Attribution
 
-- 每次调用是否能关联到用户、业务线、工具和会话？
-- Token 成本、API 成本、云资源成本是否能拆分统计？
-- 是否有配额和预算告警？
-- 模型循环调用工具时，是否有调用次数上限？
+- Can each call be associated with a user, business unit, tool, and session?
+- Can Token, API, and cloud-resource costs be tracked separately?
+- Are quota and budget alerts configured?
+- Are there call limits when the model loops through tools?
 
-### 依赖治理
+### Dependency Governance
 
-- MCP SDK、第三方库、第三方 Server 是否有维护者和更新记录？
-- 安全漏洞谁负责跟进？
-- Server 升级是否有测试环境和回滚策略？
-- 是否避免把核心能力押在无人维护的三方扩展上？
+- Do MCP SDKs, third-party libraries, and third-party Servers have maintainers and update records?
+- Who handles security vulnerabilities?
+- Do Server upgrades have a test environment and rollback plan?
+- Are core capabilities kept independent of unmaintained third-party extensions?
 
-这些检查项和普通后端服务没有本质区别。MCP 改变了工具接入方式，不会替代鉴权、审计、日志、版本和限流。
+These checks are no different in principle from those for ordinary backend services. MCP changes how tools are integrated; it does not replace authentication, auditing, logging, versioning, or rate limiting.
 
-## 写 MCP Server 时，有什么需要注意的？
+## What Should You Consider When Building an MCP Server?
 
-### 别先追求大而全
+### Do Not Start by Building a General-Purpose Server
 
-一个 Server 常见的错误，是用少量“万能工具”承载所有操作：
+A common mistake is to use a few "do-everything tools" for every operation:
 
 ```text
 execute_sql(sql)
@@ -319,7 +319,7 @@ file_operation(op, path, data)
 call_api(url, method, body)
 ```
 
-`execute_sql`、`file_operation` 这类接口把操作范围和权限都交给模型猜，参数越多，误用和越权的空间越大。按业务动作拆分后，Schema、权限和审计规则才能分别落到具体工具上：
+Interfaces such as `execute_sql` and `file_operation` leave the model to guess the operation scope and permissions. The more parameters they have, the greater the chance of misuse or privilege escalation. Split tools by business action so Schemas, permissions, and auditing rules can be defined for each:
 
 ```text
 get_user_by_id(id)
@@ -328,31 +328,31 @@ read_file(path)
 write_report(path, content)
 ```
 
-工具名可以采用动词加名词，`description` 则说明适用条件、必填参数和禁用场景。
+Name tools with a verb and noun. Use `description` to specify valid conditions, required parameters, and prohibited use cases.
 
-例如，查慢 SQL 的工具除了“查询慢 SQL 日志”，还应写明：服务响应慢、数据库超时、CPU 飙升且怀疑与数据库相关时使用；用户询问网络或内存问题时不要调用它。这样的约束能减少模型把相近问题送到错误工具的情况。
+For example, a slow-SQL query tool should say more than "query slow SQL logs." It should specify when to use it: a slow service response, database timeout, or CPU spike suspected to be database-related. It should also say not to call the tool for network or memory questions. Such constraints reduce the chance that the model routes a similar-sounding problem to the wrong tool.
 
-### 大文件和长文本要小心
+### Handle Large Files and Long Text Carefully
 
-日志、Markdown 文档、网页 HTML 和 CSV 文件可能远超模型上下文。资源接口可以先返回文件名、大小、更新时间、摘要和可读取范围；需要内容时再按 chunk 读取。
+Logs, Markdown documents, web-page HTML, and CSV files may exceed the model's context window. A resource endpoint can first return the filename, size, last-modified time, summary, and readable ranges; retrieve the content in chunks only when needed.
 
-chunk 大小应按上下文预算、响应大小限制和服务端资源预算确定；大资源先只返回引用、摘要和可选读取方式，需要时再分块读取，不直接返回全文。这样既避免一次请求塞满上下文，也能防止 Server 因大文件消耗过多内存或网络资源。
+Choose chunk sizes based on the context budget, response-size limit, and Server resource budget. For large resources, initially return only a reference, summary, and retrieval options; fetch chunks as needed instead of returning the full content. This prevents one request from filling the context and avoids excessive memory or network use by the Server.
 
-不要把限制绑定到某个模型的 tokenizer。不同模型的 token 计算不同，Server 用字符数或字节数做粗粒度控制即可；上下文裁剪由 Host 或上层应用负责。
+Do not tie limits to a specific model's tokenizer. Tokenization differs between models, so the Server can use character or byte counts for coarse control; context trimming is the responsibility of the Host or an upper-level application.
 
-### 安全问题不能靠相信模型解决
+### Do Not Rely on the Model to Handle Security
 
-文件读取要在路径规范化后检查目录边界，不能让 `../` 越出允许范围。SQL 查询使用参数化语句，不能将模型生成的字符串直接执行。
+For file reads, normalize paths and verify directory boundaries so `../` cannot escape the allowed scope. Use parameterized SQL queries; never execute a string generated by the model directly.
 
-手机号、邮箱、Token、密钥和内部链接等返回数据需要脱敏。删除文件、修改数据库、发送邮件和调用生产接口等写操作默认收紧权限，并设置人工确认与审计。
+Redact returned data such as phone numbers, email addresses, Tokens, keys, and internal links. Restrict write operations such as deleting files, modifying databases, sending email, or calling production APIs by default; require human confirmation and auditing.
 
-模型进入循环时可能反复调用同一工具。限速、超时、熔断和配额要由 Server 自身落实，不能假设 Host 一定会兜底。
+The model may repeatedly call the same tool in a loop. The Server itself must enforce rate limits, timeouts, circuit breakers, and quotas; do not assume the Host will provide them.
 
-Prompt Injection、Token Passthrough、资源级鉴权、本地 Server 隔离和第三方 Skill/MCP 供应链的完整链路，可以继续看 [LLM/Agent 安全实战](../system-design/llm-security.md)。
+For prompt injection, Token passthrough, resource-level authorization, local Server isolation, and the third-party Skill/MCP supply chain, see [LLM and Agent Security in Practice](../system-design/llm-security.md).
 
-### MCP Server 最小示例：先跑通一个工具
+### Minimal MCP Server Example: Start with One Tool
 
-用 Python SDK 的 FastMCP 风格写一个天气 Server，大概是这样。下面的导入路径和启动方式需要按项目锁定的 SDK 版本核对，这里未验证它们与支持 `2026-07-28` 的 SDK 版本一致：
+Here is a simple weather Server using the Python SDK's FastMCP style. Verify the import paths and startup command against the SDK version pinned by your project; they have not been verified here against an SDK version that supports `2026-07-28`:
 
 ```python
 from mcp.server.fastmcp import FastMCP
@@ -361,19 +361,19 @@ mcp = FastMCP("weather-server")
 
 @mcp.tool()
 def get_weather(city: str) -> str:
-    """获取指定城市的天气信息"""
-    return f"{city} 今天晴天，温度 25°C"
+    """Get the weather for a specified city."""
+    return f"Sunny in {city} today, with a temperature of 25°C."
 
 @mcp.resource("weather://forecast")
 def weather_forecast() -> str:
-    """返回未来一周天气预报"""
-    return "未来七天天气预报..."
+    """Return the forecast for the next seven days."""
+    return "Seven-day forecast..."
 
 if __name__ == "__main__":
     mcp.run()
 ```
 
-Claude Desktop 里可以这样配：
+Configure it in Claude Desktop as follows:
 
 ```json
 {
@@ -386,7 +386,7 @@ Claude Desktop 里可以这样配：
 }
 ```
 
-本地调试建议直接用 MCP Inspector：
+For local debugging, use MCP Inspector:
 
 ```bash
 # Python Server
@@ -396,47 +396,47 @@ npx @modelcontextprotocol/inspector uv run --with mcp /path/to/weather_server.py
 npx @modelcontextprotocol/inspector node build/index.js
 ```
 
-它可以模拟 Host 发请求。Server 是否能连接、工具能不能被发现、参数校验有没有报错，基本都能先在这里看出来。
+It can simulate requests from a Host. Use it to check whether the Server connects, whether tools can be discovered, and whether parameter validation reports errors.
 
-生产环境别依赖全局 `python` 里刚好装了 `mcp`。用虚拟环境解释器，或者像上面这样用 `uv run --with mcp ...` 显式声明依赖，会稳一点。如果 Claude Desktop 启动失败，先看 `mcp.log`，别一上来怀疑协议有问题，很多时候只是路径或依赖没配对。
+In production, do not rely on the global `python` environment happening to have `mcp` installed. Use a virtual-environment interpreter or explicitly declare the dependency with a command such as `uv run --with mcp ...`. If Claude Desktop fails to start the Server, check `mcp.log` first; the cause is often a path or dependency mismatch, not a protocol issue.
 
-## 用 Inspector 验证远程 Server
+## Verify a Remote Server with Inspector
 
-上面的例子通过 stdio 启动本地进程。要观察远程 Server 的连接协商、工具发现和调用，可以继续用 [MCP Inspector](https://github.com/modelcontextprotocol/inspector)，换成 Streamable HTTP 连接。
+The previous example starts a local process over stdio. To inspect connection negotiation, tool discovery, and calls for a remote Server, use [MCP Inspector](https://github.com/modelcontextprotocol/inspector) with a Streamable HTTP connection.
 
-这里以 [Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp) 为例。它提供网页搜索 `web_search` 和网页内容提取 `web_fetch`，匿名入口是 `https://search.parallel.ai/mcp`，不需要 Parallel 账号或 API Key，免费访问有速率限制。
+This example uses [Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp). It provides web search through `web_search` and page extraction through `web_fetch`. Its anonymous endpoint is `https://search.parallel.ai/mcp`; no Parallel account or API Key is required, but free access is rate-limited.
 
-下面使用 Inspector 2.5.0，需要 Node.js 22.19.0 或更高版本。在终端先列出工具：
+The following example uses Inspector 2.5.0 and requires Node.js 22.19.0 or later. First, list the tools in a terminal:
 
 ```bash
 npx --yes @modelcontextprotocol/inspector@2.5.0 --cli \
   https://search.parallel.ai/mcp --transport http --method tools/list
 ```
 
-`--transport http` 指定 Streamable HTTP。Inspector 会根据 Server 支持的协议 revision 选择现代无状态流程或兼容的旧版初始化流程，然后发送 `tools/list`；返回结果中应能看到 `web_search`、`web_fetch` 及其参数 Schema。这个匿名示例不传 `Authorization` 请求头。
+`--transport http` selects Streamable HTTP. Inspector checks which protocol revisions the Server supports, chooses either the modern stateless flow or the compatible legacy initialization flow, and then sends `tools/list`. The response should list `web_search`, `web_fetch`, and their parameter Schemas. This anonymous example does not send an `Authorization` header.
 
-接着调用一次搜索工具，查找 Java 虚拟线程的官方资料：
+Next, call the search tool to find official documentation about Java virtual threads:
 
 ```bash
 npx --yes @modelcontextprotocol/inspector@2.5.0 --cli \
   https://search.parallel.ai/mcp --transport http \
   --method tools/call --tool-name web_search \
-  --tool-arg 'objective=查找 OpenJDK 关于 Java 虚拟线程的官方说明' \
+  --tool-arg 'objective=Find the official OpenJDK documentation about Java virtual threads' \
   --tool-arg 'search_queries=["OpenJDK JEP 444 virtual threads"]'
 ```
 
-`objective` 和 `search_queries` 都是必填参数，后者是 JSON 数组。工具结果会包含来源 URL 和内容摘录，可以沿着链接核对答案。排查时要区分连接失败、JSON-RPC 错误和工具返回的 `isError: true`；仅收到 HTTP 200 不代表工具执行成功。
+Both `objective` and `search_queries` are required; the latter is a JSON array. The tool result includes source URLs and excerpts that you can follow to verify the answer. When troubleshooting, distinguish connection failures, JSON-RPC errors, and a tool result with `isError: true`. An HTTP 200 response alone does not mean the tool call succeeded.
 
-执行搜索或提取时，查询词、目标 URL 和传入的目标描述等上下文会发送给 Parallel，请只使用适合交给第三方处理的内容。这里的 CLI 命令执行完会断开连接，不会给其他 Host 安装服务；如果之后在 Agent 中启用这些工具，Agent 也可能按任务需要自行调用，用完可在对应 Host 中禁用或移除连接。
+When searching or extracting a page, context such as the query, target URL, and objective is sent to Parallel. Only submit content that is appropriate to share with a third party. This CLI command disconnects when it finishes and does not install a service for other Hosts. If you later enable these tools in an Agent, it may call them as needed for a task. Disable or remove the connection from that Host when you no longer need it.
 
-## 接入时记录协议 revision
+## Record the Protocol Revision During Integration
 
-MCP 统一了 Host 与外部工具、数据源之间的发现和调用方式，但不会替代业务鉴权、数据权限和执行审计。一个 Server 在某个 Host 中可用，也不代表换到另一个 Host 后仍支持 Sampling、Elicitation、Tasks 等可选能力。
+MCP standardizes how a Host discovers and calls external tools and data sources, but it does not replace application authentication, data access controls, or execution audits. A Server working in one Host does not guarantee that another Host supports optional capabilities such as Sampling, Elicitation, or Tasks.
 
-实现最小 Server 时，先固定协议 revision 和 SDK 版本，使用 Inspector 验证连接协商、能力发现、参数校验和错误响应。准备接入远程服务后，再补 OAuth、限流、Trace、版本兼容和回滚；文件与命令工具还要在 Server 侧落实目录校验和沙箱。
+When implementing a minimal Server, pin the protocol revision and SDK version, then use Inspector to verify connection negotiation, capability discovery, parameter validation, and error responses. Before integrating a remote service, add OAuth, rate limiting, tracing, version compatibility, and rollback. File and command tools also need Server-side path validation and sandboxing.
 
-## 总结
+## Summary
 
-MCP 为 Host、Client 和 Server 建立了统一的能力发现与调用方式，解决的是外部工具和数据源的接入问题。模型如何决定调用、业务如何编排、请求是否被授权，仍分别由 Function Calling、Agent/Workflow 和业务安全策略负责。
+MCP provides a standard way for Hosts, Clients, and Servers to discover and invoke capabilities, addressing how external tools and data sources are integrated. Function Calling determines whether the model makes a call, the Agent or Workflow orchestrates the task, and application security policies determine whether the request is authorized.
 
-接入时先确认协议 revision、SDK 与 Host 的能力协商结果，用最小 Server 验证连接、Schema 和错误处理。进入生产环境后，工具权限、数据脱敏、目录或 SQL 校验、限流、审计和版本兼容都需要由 Server 与宿主共同落实。
+Before integration, confirm the protocol revision, SDK, and negotiated Host capabilities. Use a minimal Server to verify connectivity, Schemas, and error handling. In production, the Server and Host must enforce tool permissions, data redaction, path or SQL validation, rate limiting, auditing, and version compatibility.

@@ -1,127 +1,127 @@
 ---
-title: RocketMQ 常见问题总结
-description: RocketMQ 常见面试题与知识点总结，涵盖 RocketMQ 架构（NameServer/Broker/Proxy）、消息类型（普通/顺序/事务/定时消息）、消息存储机制（CommitLog/ConsumeQueue）、高性能原理（零拷贝/顺序写）、消息可靠性保障、RocketMQ 5.x 新特性等内容。
-category: 高性能
+title: RocketMQ Interview Questions
+description: A guide to RocketMQ architecture, message types, storage, performance, reliability, and RocketMQ 5.x features.
+category: High Performance
 tag:
   - RocketMQ
-  - 消息队列
+  - Message Queues
 head:
   - - meta
     - name: keywords
-      content: RocketMQ,消息队列,NameServer,Broker,Proxy,顺序消息,事务消息,定时消息,消息存储,RocketMQ面试,RocketMQ5.x
+      content: RocketMQ,message queues,NameServer,Broker,Proxy,ordered messages,transactional messages,scheduled messages,message storage,interview questions,RocketMQ 5.x
 ---
 
-> 本文由 FrancisQ 投稿！相比原文主要进行了下面这些完善：
+> Contributed by FrancisQ, with the following improvements over the original article:
 >
-> - [分析了 RocketMQ 高性能读写的原因和顺序消费的具体实现](https://github.com/Snailclimb/JavaGuide/pull/2133)
-> - [增加了消息类型、消费者类型、消费者组和生产者组的介绍](https://github.com/Snailclimb/JavaGuide/pull/2134)
-> - [RocketMQ 5.x 支持按消息粒度分配](https://github.com/Snailclimb/JavaGuide/issues/2778)
+> - [Explained the reasons for RocketMQ's high-performance reads and writes, and how ordered consumption works](https://github.com/Snailclimb/JavaGuide/pull/2133)
+> - [Added descriptions of message types, consumer types, consumer groups, and producer groups](https://github.com/Snailclimb/JavaGuide/pull/2134)
+> - [Added RocketMQ 5.x support for message-level assignment](https://github.com/Snailclimb/JavaGuide/issues/2778)
 
-## 消息队列扫盲
+## Message Queue Fundamentals
 
-RocketMQ 面试一般不会停在“消息队列是什么”。更常见的追问是：NameServer 为什么可以做得很轻，Broker 主从怎么同步，CommitLog 和 ConsumeQueue 各自负责什么，顺序消息、事务消息、定时消息又分别靠什么实现。
+RocketMQ interviews rarely stop at “What is a message queue?” Common follow-up questions include: Why can the NameServer be lightweight? How does Broker replication work? What roles do the CommitLog and ConsumeQueue play? How are ordered, transactional, and scheduled messages implemented?
 
-如果你还没系统用过 MQ，先把三个场景记住：异步、解耦、削峰。后面讲 RocketMQ 架构、存储和消费模型，基本都绕不开这三个问题。
+If you have not used a message queue in depth, start with three use cases: asynchronous processing, decoupling, and traffic smoothing. These ideas recur throughout RocketMQ's architecture, storage, and consumption models.
 
-### 消息队列为什么会出现？
+### Why Use a Message Queue?
 
-单体应用里，接口之间直接调用最省事；系统拆成多个服务后，调用链一长，同步调用就会把响应时间、故障和流量峰值一起传递下去。消息队列插在中间，先把消息存起来，让下游按自己的节奏消费。
+In a monolithic application, direct calls between components are straightforward. Once a system is split into services, long chains of synchronous calls propagate latency, failures, and traffic spikes. A message queue stores messages so downstream services can consume them at their own pace.
 
-### 消息队列能用来干什么？
+### What Are Message Queues Used For?
 
-#### 异步
+#### Asynchronous Processing
 
-你可能会问，应用之间的通信又不是只能由消息队列解决，为什么中间非要插一个消息队列？直接进行通信不行吗？
+You might ask: Message queues are not the only way for applications to communicate, so why add one between them? Why not communicate directly?
 
-这就引出了另一个概念——**同步通信**。比如业界使用较多的 Dubbo 就是一个适用于各个系统之间同步通信的 RPC 框架。
+This brings us to **synchronous communication**. Dubbo, for example, is a widely used RPC framework for synchronous communication between systems.
 
-以购票系统为例，需求是用户在购买完成之后能接收到购买完成的短信通知。
+Consider a ticket-booking system that sends users an SMS confirmation after a purchase.
 
 ![](../images/shared/16ef37fee7e09230.jpg)
 
-我们省略中间的网络通信时间消耗，假如购票系统处理需要 150ms ，短信系统处理需要 200ms ，那么整个处理流程的时间消耗就是 150ms + 200ms = 350ms。
+Ignoring network latency, suppose the booking system takes 150 ms and the SMS service takes 200 ms. The full request takes 150 ms + 200 ms = 350 ms.
 
-当然，乍看没什么问题。但仔细分析会发现问题：用户购票在购票系统处理完成时就已经完成了购买动作，而现在通过同步调用非要让整个请求时间变长。短信系统只是一个辅助功能，用于增强用户体验感，并非核心业务。整个调用流程显得 **头重脚轻**——购票是一个不太耗时的流程，但因为同步调用，必须等待发送短信这个较耗时的操作完成才能返回结果。如果再加一个发送邮件的需求呢？
+At first this may seem fine, but the purchase is complete as soon as the booking system finishes. A synchronous call makes the request wait for an auxiliary feature that is not part of the core transaction. The flow becomes **unbalanced**: booking is quick, but the response must wait for the slower SMS operation. What if you also need to send an email?
 
 ![](../images/shared/16ef380429cf373e.jpg)
 
-这样整个系统的调用链又变长了，整个时间就变成了 550ms。
+The call chain grows, and the total time becomes 550 ms.
 
-当我们在食堂排队打饭时，我们和食堂工作人员之间就是一个同步模型。
+The cafeteria queue is an example of a synchronous model.
 
-我们需要告诉工作人员：“请帮我加个鸡腿，再加个酸辣土豆丝，多打点饭”。
+We tell the staff, “Please add a chicken drumstick and spicy potatoes, and give me extra rice.”
 
-然后工作人员帮我们打饭配菜，我们需要等待这个过程完成。
+The staff serve the food, and we wait for them to finish.
 
-最终我们从工作人员手中接过饭菜然后去寻找座位。
+Then we collect the meal and find a seat.
 
-回想一下，我们在传达需求之后是 **同步等待工作人员配好饭菜** 的。如果增加更多菜品，工作人员打饭配菜的流程就会变长，我们等待的时间也会相应增加。
+We **wait synchronously for the staff to prepare the meal** after placing the order. Adding more items takes longer to prepare and increases our wait.
 
-而在餐厅用餐时，我们告诉服务员来一碗牛肉面加个荷包蛋 **(传达一个消息)** ，然后可以在餐桌上做自己的事情 **(干自己其他事情)** ，等到牛肉面上桌我们再开始用餐。虽然做面的时间没有变短，但是我们只需要传达一个消息就可以干其他事情了，这就是 **异步** 的概念。
+At a restaurant, we order beef noodles with a fried egg **(send a message)**, then do something else at the table **(continue other work)** until the food arrives. The noodles take just as long to prepare, but we can do other things after placing the order. That is **asynchronous processing**.
 
-所以，为了解决这一个问题，聪明的程序员在中间也加了个类似于服务员的中间件——消息队列。这个时候我们就可以把模型给改造了。
+To avoid blocking on this work, developers add middleware between the systems: a message queue. The flow then looks like this:
 
 ![](../images/shared/16ef38124f55eaea.jpg)
 
-这样，我们在将消息存入消息队列之后我们就可以直接返回了(我们告诉服务员我们要吃什么然后玩手机)，所以整个耗时只是 150ms + 10ms = 160ms。
+Once the message is stored in the queue, the request can return immediately (we place our order and use our phone). The response time is now just 150 ms + 10 ms = 160 ms.
 
-> 但是你需要注意的是，整个流程的时长是没变的，就像你仅仅告诉服务员要吃什么是不会影响到做面的速度的。
+> Note that the total processing time has not changed, just as placing an order does not make the noodles cook faster.
 
-#### 解耦
+#### Decoupling
 
-回到最初同步调用的过程，我们写个伪代码简单概括一下。
+Let's return to the synchronous flow and summarize it with a diagram.
 
 ![](../images/shared/16ef381a505d3e1f.png)
 
-那么第二步，我们又添加了一个发送邮件，我们就得重新去修改代码，如果我们又加一个需求：用户购买完还需要给他加积分，这个时候我们是不是又得改代码？
+If we add email notifications, we have to change the code again. If we also need to award points after a purchase, we have to change it once more.
 
 ![](../images/shared/16ef381c4e1b1ac7.png)
 
-如果还觉得可以接受，那么当需要移除发送邮件服务时，是不是又得改代码、又得重启应用？
+And if the email service is removed, do we have to change the code and restart the application again?
 
 ![](../images/shared/16ef381f273a66bd.jpg)
 
-这样频繁改动代码显然很麻烦，此时可以 **使用消息队列进行解耦** 。需要注意的是，后面的发送短信、发送邮件、添加积分等操作都依赖于 `result`，即购票的处理结果（如订单号、用户账号等），也就是说后续服务都需要相同的消息来进行处理。因此可以通过 **“广播消息”** 模式来实现。
+Frequent changes like this are cumbersome. **A message queue can decouple these systems.** SMS, email, and points services all depend on `result`, the booking result (such as the order ID and user account). They can each process the same message using a **publish-subscribe** pattern.
 
-这里所说的“广播”并不是真正的广播，而是下游系统作为消费者去 **订阅** 特定的主题。比如主题可以命名为 `订票`，购买系统作为生产者将消息发送到消息队列，消费者订阅该主题后，从消息队列中拉取消息并消费。在生产者端只需要关注 **生产消息到指定主题** ，**消费者只需要关注从指定主题中拉取消息** 。
+“Broadcast” here does not mean network broadcast. Downstream systems act as consumers and **subscribe** to a topic. For example, the topic could be named `ticket-booking`. The booking system publishes a message to the queue, and subscribers pull and consume messages from that topic. The producer only needs to **publish messages to the topic**; **consumers only need to pull messages from it**.
 
 ![](../images/shared/16ef382674b66892.jpg)
 
-> 如果没有消息队列，每当一个新的业务接入，我们都要在主系统调用新接口、或者当我们取消某些业务，我们也得在主系统删除某些接口调用。有了消息队列，我们只需要关心消息是否送达了队列，至于谁希望订阅，接下来收到消息如何处理，是下游的事情，无疑极大地减少了开发和联调的工作量。
+> Without a message queue, each new business integration requires adding a call to the main system, and removing a business requires deleting one. With a queue, the producer only needs to ensure the message reaches it. Downstream services decide whether to subscribe and how to handle each message, reducing development and integration work.
 
-#### 削峰
+#### Traffic Smoothing
 
-回到同步调用系统的场景，思考一下：如果此时有大量用户请求购票，整个系统会变成什么样？
+Return to the synchronous system. What happens if many users try to book tickets at once?
 
 ![](../images/shared/16ef382a9756bb1c.jpg)
 
-假设有一万个请求进入购票系统，运行主业务的服务器配置通常较好，购票系统可以承受这一万个用户请求。但这意味着同时也会产生一万个调用短信服务的请求。短信系统并非主要业务，配备的硬件资源不会太高。此时短信系统能否承受这一万的峰值？很可能系统会 **直接崩溃** 。
+Suppose 10,000 requests reach the booking system. Its servers may be powerful enough to handle them, but the same spike generates 10,000 requests to the SMS service. Since SMS is not the core business, its servers may have fewer resources and could **fail under the load**.
 
-短信业务并非主业务，能否 **折中处理** ？如果我们把购买完成的信息发送到消息队列中，而短信系统 **尽自己所能地去消息队列中取消息和消费消息** ，即使处理速度慢一点也无所谓，只要系统没有崩溃就可以接受。
+SMS is not the core business, so can we **handle it asynchronously**? Put completed purchase messages in a queue and let the SMS service **consume them at the rate it can handle**. A slower delivery is acceptable as long as the system stays available.
 
-系统可用性是最重要的，验证码短信的延迟几秒到达用户手机，通常是可以接受的。
+System availability matters most. A delay of a few seconds for a verification code is usually acceptable.
 
-### 消息队列能带来什么好处？
+### What Benefits Do Message Queues Provide?
 
-总结起来就是三个关键词：**异步、解耦、削峰**。这不仅是消息队列的核心价值，更是分布式架构设计的重要思想。
+The three key benefits are **asynchronous processing, decoupling, and traffic smoothing**. They are central to message queues and important ideas in distributed-system design.
 
 ```mermaid
 flowchart LR
-    subgraph MQ["消息队列三大应用场景"]
+    subgraph MQ["Three Message Queue Use Cases"]
         style MQ fill:#F0F2F5,stroke:#E0E6ED,stroke-width:1.5px
-        Async["异步处理"]
-        Decouple["解耦"]
-        Peak["削峰"]
+        Async["Asynchronous processing"]
+        Decouple["Decoupling"]
+        Peak["Traffic smoothing"]
     end
 
-    Async --> A1["提高响应速度"]
-    Async --> A2["提升用户体验"]
+    Async --> A1["Faster responses"]
+    Async --> A2["Better user experience"]
 
-    Decouple --> D1["降低系统耦合"]
-    Decouple --> D2["提高扩展性"]
+    Decouple --> D1["Lower system coupling"]
+    Decouple --> D2["Better extensibility"]
 
-    Peak --> P1["缓解系统压力"]
-    Peak --> P2["保证系统稳定"]
+    Peak --> P1["Reduce system load"]
+    Peak --> P2["Improve system stability"]
 
     classDef app fill:#4CA497,color:#fff,rx:10,ry:10
     classDef benefit fill:#00838F,color:#fff,rx:10,ry:10
@@ -132,75 +132,75 @@ flowchart LR
     linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-### 消息队列会带来副作用吗？
+### Do Message Queues Have Drawbacks?
 
-没有哪一门技术是“银弹”，消息队列也有它的副作用。
+No technology is a silver bullet, and message queues have trade-offs.
 
-比如，本来好好的两个系统之间的调用，我中间加了个消息队列，如果消息队列挂了怎么办呢？是不是 **降低了系统的可用性** ？
+For example, adding a message queue between two systems introduces another dependency. What happens if the queue fails? Could it **reduce system availability**?
 
-那这样是不是要保证 HA(高可用)？是不是要搞集群？那么我 **整个系统的复杂度是不是上升了** ？
+You may need high availability (HA) and a cluster. **Does this increase the overall system complexity?**
 
-抛开上面的问题不讲，万一我发送方发送失败了，然后执行重试，这样就可能产生重复的消息。
+Also, if a producer fails to send a message and retries, it may create duplicate messages.
 
-或者我消费端处理失败了，请求重发，这样也会产生重复的消息。
+If a consumer fails while processing a message and it is redelivered, that can also result in duplicates.
 
-对于一些微服务来说，消费重复消息会带来更大的麻烦，比如增加积分，这个时候我加了多次是不是对其他用户不公平？
+Duplicate messages can cause serious problems in microservices. For example, processing a points-award message more than once could unfairly give a user extra points.
 
-那么，又 **如何解决重复消费消息的问题** 呢？
+So **how can duplicate message processing be prevented?**
 
-如果我们此时的消息需要保证严格的顺序性怎么办呢？比如生产者生产了一系列的有序消息(对一个 id 为 1 的记录进行删除增加修改)，但是我们知道在发布订阅模型中，对于主题是无顺序的，那么这个时候就会导致对于消费者消费消息的时候没有按照生产者的发送顺序消费，比如这个时候我们消费的顺序为修改删除增加，如果该记录涉及到金额的话是不是会出大事情？
+What if messages must be processed in strict order? Suppose a producer sends ordered operations for a record with ID 1: delete, add, and update. Messages within a topic are not inherently ordered, so a consumer might process them as update, delete, add. If the record involves money, this could cause serious problems.
 
-那么，又 **如何解决消息的顺序消费问题** 呢？
+So **how can messages be consumed in order?**
 
-就拿我们上面所讲的分布式系统来说，用户购票完成之后是不是需要增加账户积分？在同一个系统中我们一般会使用事务来进行解决，如果用 `Spring` 的话我们在上面伪代码中加入 `@Transactional` 注解就好了。但是在不同系统中如何保证事务呢？总不能这个系统我扣钱成功了你那积分系统积分没加吧？或者说我这扣钱明明失败了，你那积分系统给我加了积分。
+In the ticket-booking example, should the user's account receive points after a purchase? Within one system, a transaction can handle this; with Spring, you might add `@Transactional` to the pseudocode above. But how do you guarantee a transaction across separate systems? You cannot allow the payment system to charge successfully while the points system fails to award points, or award points when the payment fails.
 
-那么，又如何 **解决分布式事务问题** 呢？
+So **how can distributed transactions be handled?**
 
-我们刚刚说了，消息队列可以进行削峰操作，那如果我的消费者如果消费很慢或者生产者生产消息很快，这样是不是会将消息堆积在消息队列中？
+Message queues can smooth traffic spikes. But what if consumers are slow or producers publish messages quickly? Messages may accumulate in the queue.
 
-那么，又如何 **解决消息堆积的问题** 呢？
+So **how can message backlogs be handled?**
 
-可用性降低、复杂度上升，同时还带来重复消费、顺序消费、分布式事务、消息堆积等一系列问题。这些问题如何解决？
+Message queues can reduce availability and increase complexity. They also raise questions about duplicate and ordered consumption, distributed transactions, and message backlogs. How can these problems be solved?
 
 ![](../images/shared/16ef382d709abc9d.jpg)
 
-下面我们逐一讨论这些问题的解决方案。
+We will discuss solutions to these problems one by one.
 
-## RocketMQ 是什么？
+## What Is RocketMQ?
 
-![RocketMQ 官网介绍](../images/shared/16ef383014430799.png)
+![RocketMQ overview from its official website](../images/shared/16ef383014430799.png)
 
-在讨论上述问题的解决方案之前，我们先来了解一下 RocketMQ 的内部构造。建议带着问题去阅读和了解。
+Before discussing solutions, let's look at RocketMQ's internal design. Keep the questions above in mind as you read.
 
-RocketMQ 是一个基于 **Topic 的发布订阅消息系统**，Topic 下可以包含多个 MessageQueue，MessageQueue 是消息存储和传输的最小队列单元。它具有**高性能、高可靠、高实时、分布式** 的特点，采用 Java 语言开发，由阿里巴巴团队在 2016 年底贡献给 Apache，成为 Apache 顶级项目。在阿里内部，RocketMQ 很好地服务了集团大大小小上千个应用，在每年的双十一当天，更有万亿级消息通过 RocketMQ 流转。
+RocketMQ is a **topic-based publish-subscribe messaging system**. A topic can contain multiple MessageQueues, the smallest queue units for storing and transferring messages. Written in Java, RocketMQ is designed for **high performance, reliability, low latency, and distributed operation**. Alibaba contributed it to Apache at the end of 2016, where it became a top-level project. Within Alibaba, it serves thousands of applications and handles trillions of messages during the annual Singles' Day shopping event.
 
-RocketMQ 具备高吞吐、低延迟、高可用的特点，经过了双十一等大规模场景的验证。
+RocketMQ offers high throughput, low latency, and high availability, and has been tested in large-scale events such as Singles' Day.
 
-从 RocketMQ 5.x 开始，官方更强调云原生架构：Proxy 层支持 gRPC、多语言 SDK 和多协议接入，Broker 更专注消息存储和高可用。这意味着新项目选型时，除了看传统的 NameServer、Broker、Producer、Consumer，也要关注是否需要 Proxy、gRPC SDK、Kubernetes 部署和云原生可观测能力。
+Starting with RocketMQ 5.x, the project emphasizes cloud-native architecture. The Proxy layer supports gRPC, SDKs for multiple languages, and multiple protocols, while Brokers focus on message storage and availability. When choosing RocketMQ for a new project, consider not only the traditional NameServer, Broker, Producer, and Consumer, but also whether you need a Proxy, gRPC SDKs, Kubernetes deployment, and cloud-native observability.
 
-## 队列模型和主题模型是什么？
+## Queue and Topic Models
 
-在谈 RocketMQ 的技术架构之前，我们先来了解一下两个名词概念——**队列模型** 和 **主题模型** 。
+Before looking at RocketMQ's architecture, let's clarify two concepts: the **queue model** and the **topic model**.
 
-首先，为什么消息队列叫消息队列？
+First, why are messaging systems often called message queues?
 
-实际上，早期的消息中间件是通过 **队列** 这一模型来实现的，可能是历史原因，我们都习惯把消息中间件称为消息队列。
+Early messaging middleware used a **queue** model. For historical reasons, we still commonly call messaging middleware “message queues.”
 
-但是，如今例如 RocketMQ、Kafka 这些优秀的消息中间件不仅仅是通过一个 **队列** 来实现消息存储的。
+Modern messaging systems such as RocketMQ and Kafka do not store messages in just one **queue**.
 
-### 队列模型
+### Queue Model
 
-就像我们理解队列一样，消息中间件的队列模型就真的只是一个队列。
+The queue model works like a conventional queue.
 
 ![](../images/shared/16ef3834ae653469.jpg)
 
-队列模型的特点：**一个消息只能被一个消费者消费**。
+In this model, **each message is consumed by only one consumer**.
 
 ```mermaid
 flowchart LR
-    P["生产者"] --> Q["队列"]
-    Q --> C1["消费者1"]
-    Q --> C2["消费者2"]
+    P["Producer"] --> Q["Queue"]
+    Q --> C1["Consumer 1"]
+    Q --> C2["Consumer 2"]
 
     classDef producer fill:#4CA497,color:#fff,rx:10,ry:10
     classDef queue fill:#E99151,color:#fff,rx:10,ry:10
@@ -213,31 +213,31 @@ flowchart LR
     linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-在一开始我跟你提到了一个 **“广播”** 的概念，也就是说如果我们此时我们需要将一个消息发送给多个消费者(比如此时我需要将信息发送给短信系统和邮件系统)，这个时候单个队列即不能满足需求了。
+Earlier, we mentioned **broadcasting**. If a message needs to reach multiple consumers, such as both an SMS service and an email service, a single queue is not enough.
 
-当然你可以让 Producer 生产消息放入多个队列中，然后每个队列去对应每一个消费者。问题是可以解决，创建多个队列并且复制多份消息是会很影响资源和性能的。而且，这样子就会导致生产者需要知道具体消费者个数然后去复制对应数量的消息队列，这就违背我们消息中间件的 **解耦** 这一原则。
+You could have the producer copy a message into multiple queues, one for each consumer. But creating queues and duplicate messages consumes resources and can hurt performance. It also requires the producer to know how many consumers there are, which goes against the **decoupling** principle of messaging middleware.
 
-### 主题模型
+### Topic Model
 
-那么有没有好的方法去解决这一个问题呢？有，那就是 **主题模型** 或者可以称为 **发布订阅模型** 。
+The **topic model**, also called the **publish-subscribe model**, solves this problem.
 
-> 感兴趣的同学可以去了解一下设计模式里面的观察者模式并且手动实现一下，我相信你会有所收获的。
+> If you are interested, learn about the Observer design pattern and try implementing it yourself.
 
-在主题模型中，消息的生产者称为 **发布者(Publisher)** ，消息的消费者称为 **订阅者(Subscriber)** ，存放消息的容器称为 **主题(Topic)** 。
+In the topic model, message producers are **publishers**, message consumers are **subscribers**, and the message container is a **topic**.
 
-其中，发布者将消息发送到指定主题中，订阅者需要 **提前订阅主题** 才能接受特定主题的消息。
+Publishers send messages to a topic. Subscribers must **subscribe to the topic in advance** to receive its messages.
 
 ![](../images/shared/16ef3837887d9a54sds.jpg)
 
-主题模型的特点：**一个 Topic 可以被多个消费者组订阅，每个消费者组都有独立的消费进度**。在集群消费模式下，同一消费者组内通常只由一个消费者实例处理某条消息；在广播消费模式下，同一消费者组内的每个消费者都会收到消息。
+In the topic model, **multiple consumer groups can subscribe to one topic, and each group tracks its own consumption progress**. In clustering mode, typically one consumer instance in a group handles a given message. In broadcasting mode, every consumer in the group receives it.
 
 ```mermaid
 flowchart LR
-    P1["发布者1"] --> T["主题"]
-    P2["发布者2"] --> T
-    T --> S1["订阅者1"]
-    T --> S2["订阅者2"]
-    T --> S3["订阅者3"]
+    P1["Publisher 1"] --> T["Topic"]
+    P2["Publisher 2"] --> T
+    T --> S1["Subscriber 1"]
+    T --> S2["Subscriber 2"]
+    T --> S3["Subscriber 3"]
 
     classDef publisher fill:#4CA497,color:#fff,rx:10,ry:10
     classDef topic fill:#E99151,color:#fff,rx:10,ry:10
@@ -250,47 +250,47 @@ flowchart LR
     linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-### RocketMQ 中的消息模型
+### RocketMQ's Message Model
 
-RocketMQ 中的消息模型就是按照 **主题模型** 所实现的。那么 **主题** 到底是怎么实现的呢？
+RocketMQ implements the **topic model**. How does it implement topics?
 
-其实对于主题模型的实现来说每个消息中间件的底层设计都是不一样的，就比如 Kafka 中的 **分区** ，RocketMQ 中的 **队列** ，RabbitMQ 中的 Exchange 。我们可以理解为 **主题模型/发布订阅模型** 就是一个标准，那些中间件只不过照着这个标准去实现而已。
+Each messaging system implements the topic model differently. Kafka uses **partitions**, RocketMQ uses **queues**, and RabbitMQ uses exchanges. The **topic/publish-subscribe model** is a general pattern that each system implements in its own way.
 
-所以，RocketMQ 中的 **主题模型** 到底是如何实现的呢？先看一张图：
+So how does RocketMQ implement the **topic model**? Start with this diagram:
 
 ![](../images/shared/16ef383d3e8c9788.jpg)
 
-我们可以看到在整个图中有 `Producer Group`、Topic、`Consumer Group` 三个角色。这个图更接近早期和兼容模型，理解 5.x 时要记住：新版领域模型里生产者本身是轻量、匿名的，生产者组不再是重点概念。
+The diagram shows three roles: `Producer Group`, Topic, and `Consumer Group`. It reflects an older and compatibility model. For RocketMQ 5.x, remember that producers in the newer domain model are lightweight and anonymous, so producer groups are no longer a central concept.
 
-- `Producer Group` 生产者组：在早期客户端和兼容场景中代表某一类生产者，比如我们有多个秒杀系统作为生产者，这多个合在一起就是一个 `Producer Group` 生产者组，它们一般生产相同的消息。
-- `Consumer Group` 消费者组：代表某一类的消费者，比如我们有多个短信系统作为消费者，这多个合在一起就是一个 `Consumer Group` 消费者组，它们一般消费相同的消息。
-- Topic 主题：代表一类消息，比如订单消息，物流消息等等。
+- `Producer Group`: In older clients and compatibility scenarios, this represents a type of producer. For example, several flash-sale systems may form one producer group and publish the same type of messages.
+- `Consumer Group`: Represents a type of consumer. For example, several SMS services may form one consumer group and consume the same type of messages.
+- Topic: Represents a category of messages, such as order or shipping messages.
 
-你可以看到图中生产者组中的生产者会向主题发送消息，而 **主题中存在多个队列**，生产者每次生产消息之后会把消息发送到指定主题下的某个队列。
+Producers in a group publish messages to a topic. **A topic contains multiple queues**, and each message is sent to one of those queues.
 
-每个主题中都有多个队列(分布在不同的 Broker 中，如果是集群的话，Broker 又分布在不同的服务器中)，集群消费模式下，一个消费者集群多台机器共同消费一个 `topic` 的多个队列。
+Each topic has multiple queues, distributed across Brokers and, in a cluster, across servers. In clustering mode, multiple consumer instances work together to consume the queues for a `topic`.
 
-**负载均衡策略对比**
+**Load-Balancing Strategies**
 
-下面对比的是**同一消费者组内的集群消费（共享消费）**。负载均衡粒度取决于客户端类型和消费协议，不能只看 Broker 的版本：传统 3.x/4.x Remoting SDK 的消费者采用队列粒度；5.x 新版 SDK 的 PushConsumer、SimpleConsumer 采用消息粒度；PullConsumer 仍采用队列粒度。
+The comparison below covers **clustering (shared) consumption within one consumer group**. Load-balancing granularity depends on the client type and consumption protocol, not only the Broker version: consumers using the traditional 3.x/4.x Remoting SDK assign work by queue; the newer 5.x SDK's PushConsumer and SimpleConsumer assign by message; PullConsumer still assigns by queue.
 
 ```mermaid
 flowchart TB
-    subgraph Queue["队列粒度：3 个队列，4 个消费者"]
+    subgraph Queue["Queue-level: 3 queues, 4 consumers"]
         style Queue fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
         direction TB
-        Q1["队列1"] --> C1["消费者1"]
-        Q2["队列2"] --> C2["消费者2"]
-        Q3["队列3"] --> C3["消费者3"]
-        C4["消费者4<br/>(无队列可分配)"]
+        Q1["Queue 1"] --> C1["Consumer 1"]
+        Q2["Queue 2"] --> C2["Consumer 2"]
+        Q3["Queue 3"] --> C3["Consumer 3"]
+        C4["Consumer 4<br/>(no queue assigned)"]
     end
 
-    subgraph Message["消息粒度：同一队列的不同普通消息由组内消费者分担"]
+    subgraph Message["Message-level: consumers in the group share regular messages from one queue"]
         style Message fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
         direction TB
-        MQ1["队列1"] --> MC1["消费者1<br/>消费消息1"]
-        MQ1 --> MC2["消费者2<br/>消费消息2"]
-        MQ1 --> MC3["消费者3<br/>消费消息3"]
+        MQ1["Queue 1"] --> MC1["Consumer 1<br/>consumes message 1"]
+        MQ1 --> MC2["Consumer 2<br/>consumes message 2"]
+        MQ1 --> MC3["Consumer 3<br/>consumes message 3"]
     end
 
     classDef queue fill:#4CA497,color:#fff,rx:10,ry:10
@@ -304,74 +304,74 @@ flowchart TB
     linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-- **队列粒度负载均衡**：在分配稳定时，同一消费者组内，一个队列只分配给一个消费者实例；一个消费者可以分到多个队列。如果某个消费者挂掉，会通过重平衡把它的队列分配给组内其他消费者。如果消费者数多于队列数，就会有消费者分不到队列。这种模式容易出现负载不均：某个消费者处理速度较慢，或者分到的队列消息较多，就可能出现该消费者积压、其他消费者空闲的情况。不同消费者组可以分别消费同一个队列，不受组内独占分配的限制。
-- **消息粒度负载均衡**：5.x 新版 SDK 的 PushConsumer、SimpleConsumer 可以让同一消费者组内的多个消费者分担同一个队列中的不同消息。图中只是一次分配示例，消息不会固定绑定到某个消费者。消息被取走后，在不可见时间内不会再投递给**同组**其他消费者；消费失败或超时仍可能触发重试，因此不代表绝不会重复消费。这种方式可以缓解队列分配不均和消费者处理能力差异造成的积压，但不能消除业务处理慢等所有瓶颈。顺序消息还受消息组顺序约束，不能把同一消息组内的消息任意并行处理。
+- **Queue-level load balancing:** Once assignment stabilizes, each queue is assigned to one consumer instance within a group, while a consumer can receive multiple queues. If a consumer fails, its queues are reassigned to other consumers. If there are more consumers than queues, some receive no queue. Load can become uneven: a slower consumer or one assigned more messages may accumulate a backlog while others are idle. Different consumer groups can consume the same queue independently.
+- **Message-level load balancing:** PushConsumer and SimpleConsumer in the newer 5.x SDK allow multiple consumers in one group to share different messages from the same queue. The diagram shows one possible assignment; messages are not permanently bound to a consumer. After a message is taken, it is not delivered to another consumer in the **same group** during its invisibility period. Failures or timeouts may still trigger retries, so duplicates remain possible. This can reduce backlogs caused by uneven queue assignment or differences in consumer capacity, but it cannot remove every bottleneck, such as slow application processing. Ordered messages are constrained by message-group ordering and cannot be processed arbitrarily in parallel within one group.
 
-下面这张图仅适用于**队列粒度负载均衡**。消费者个数小于队列个数并不是问题，一个消费者可以消费多个队列；如果希望扩容后的消费者都能分到队列，就需要有足够的队列。消息粒度负载均衡下，消费者实例数则不受队列数的直接限制。
+The diagram below applies only to **queue-level load balancing**. Having fewer consumers than queues is not a problem; one consumer can handle multiple queues. To ensure every consumer receives a queue after scaling out, configure enough queues. With message-level load balancing, the number of consumer instances is not directly limited by the number of queues.
 
 ![](../images/shared/16ef3850c808d707.jpg)
 
-**为什么不同消费者组要分别记录每个队列的消费进度？**
+**Why does each consumer group track its own progress for every queue?**
 
-因为不同消费者组订阅同一个 Topic 时，需要各自消费这些消息，消费速度也可能不同。以传统队列粒度的集群消费为例，消费位点按 **消费者组 + Topic + 队列** 分别记录，组内消费者共享该进度；发生重平衡时，接手队列的消费者可以从已提交的位点继续消费。
+Different consumer groups subscribing to the same topic each need to consume its messages, and they may do so at different rates. In traditional queue-level clustering, offsets are tracked for each **consumer group + topic + queue** combination and shared by consumers in the group. During rebalancing, a consumer assigned a queue can resume from its committed offset.
 
-消费位点（ConsumerOffset）表示该组在该队列上下一次继续消费的位置。它不是消息 ID，也不是整个 Topic 共用的序号。下面假设两个组订阅同一个 Topic，没有过滤和重试，消息按队列顺序消费并已提交位点：
+The consumer offset (`ConsumerOffset`) is the position where the group will resume consuming a queue. It is not a message ID or a sequence number shared by the entire topic. The table below assumes two groups subscribe to the same topic, with no filtering or retries, and consume messages in queue order with offsets committed:
 
-| 消费者组 | 队列 Q0 的消费进度                        | 队列 Q1 的消费进度                        |
-| -------- | ----------------------------------------- | ----------------------------------------- |
-| Group A  | offset 为 3：已消费 0～2，下一条从 3 开始 | offset 为 1：已消费 0，下一条从 1 开始    |
-| Group B  | offset 为 1：已消费 0，下一条从 1 开始    | offset 为 4：已消费 0～3，下一条从 4 开始 |
+| Consumer group | Progress on queue Q0                     | Progress on queue Q1                     |
+| -------------- | ---------------------------------------- | ---------------------------------------- |
+| Group A        | Offset 3: consumed 0–2; next starts at 3 | Offset 1: consumed 0; next starts at 1   |
+| Group B        | Offset 1: consumed 0; next starts at 1   | Offset 4: consumed 0–3; next starts at 4 |
 
-Q0 和 Q1 的 offset 分别在各自队列内递增。Group A 推进 Q0 的位点，不会改变 Group B 的位点，也不会改变自身 Q1 的位点。
+Offsets for Q0 and Q1 advance independently. Advancing Group A's offset for Q0 does not change Group B's offset or Group A's offset for Q1.
 
-**位点更新不能简单理解为“每成功一条就加一”，也不能保证不重复消费。** 批量拉取、并发处理、消息过滤和位点提交都会影响进度的推进；例如前面的消息还没处理完，后面的消息即使先完成，也不能直接越过前面的消息提交进度。消费已成功但位点尚未持久化时发生故障，就可能再次消费。5.x 新版 SDK 的 PushConsumer、SimpleConsumer 通过逐条消息确认，由服务端管理消费状态，也不能套用“客户端每成功一条就将 offset 加一”的解释。
+**Offset updates are not simply “add one for each successful message,” and they do not guarantee that a message will never be consumed twice.** Batch pulls, concurrent processing, filtering, and offset commits all affect progress. For example, a later message may finish before an earlier one, but the committed offset cannot skip the unfinished message. If a failure occurs after processing succeeds but before the offset is persisted, the message may be consumed again. PushConsumer and SimpleConsumer in the newer 5.x SDK acknowledge messages individually and have the server manage consumption state, so the explanation “the client increments the offset after each successful message” does not apply to them.
 
-消息被某个组消费成功后不会立即从存储中删除，也不是必须等所有组都消费完才删除。RocketMQ 按保存时间、存储空间等清理策略回收消息，未消费的消息也可能被清理。消费进度管理、消息保留和业务幂等是不同的问题。
+Messages are not deleted immediately after one group consumes them, nor does RocketMQ have to wait for every group to finish. It reclaims messages according to retention policies such as age and storage usage, so unconsumed messages may also be removed. Consumption progress, message retention, and application-level idempotency are separate concerns.
 
-参考官方文档：[消费者负载均衡](https://rocketmq.apache.org/zh/docs/featureBehavior/08consumerloadbalance/)、[消费进度管理](https://rocketmq.apache.org/zh/docs/featureBehavior/09consumerprogress/)、[消息存储和清理机制](https://rocketmq.apache.org/zh/docs/featureBehavior/11messagestorepolicy/)。
+See the official documentation on [consumer load balancing](https://rocketmq.apache.org/zh/docs/featureBehavior/08consumerloadbalance/), [consumption progress](https://rocketmq.apache.org/zh/docs/featureBehavior/09consumerprogress/), and [message storage and cleanup](https://rocketmq.apache.org/zh/docs/featureBehavior/11messagestorepolicy/).
 
-可能你还有一个问题，**为什么一个主题中需要维护多个队列** ？
+You may also wonder: **Why does a topic need multiple queues?**
 
-答案是 **提高并发能力**。每个主题中只存在一个队列也是可行的，不同消费者组仍可以分别订阅它，并维护各自的消费进度。下图展示的是队列粒度负载均衡下的单队列场景。
+The answer is **to increase concurrency**. A topic can have only one queue, and different consumer groups can still subscribe to it and track their progress independently. The diagram below shows a single-queue setup with queue-level load balancing.
 
 ![](../images/shared/16ef38600cdb6d4b.jpg)
 
-只有一个队列时，生产者的消息都写入这个队列，无法利用多个队列分散到不同 Broker。在队列粒度负载均衡下，同组也只有一个消费者实例能分到该队列，其他实例无法分担；这是队列分配策略的限制，不是维护消费位点必然导致的。消息粒度负载均衡允许组内多个消费者分担单队列中的不同消息，多队列仍有利于存储和读写负载的分散。
+With one queue, all producer messages go to that queue, so they cannot be distributed across multiple Brokers. Under queue-level load balancing, only one consumer instance in a group can be assigned that queue; other instances cannot share its work. This is a limitation of queue assignment, not an inherent consequence of tracking offsets. Message-level load balancing lets multiple consumers in a group share different messages from one queue, while multiple queues still help distribute storage and read/write load.
 
-所以总结来说，RocketMQ 通过**使用在一个 Topic 中配置多个队列并且每个队列维护每个消费者组的消费位置** 实现了 **主题模式/发布订阅模式** 。
+In summary, RocketMQ implements the **topic/publish-subscribe model** by **configuring multiple queues in a topic and tracking each consumer group's position in every queue**.
 
-## RocketMQ 架构
+## RocketMQ Architecture
 
-讲完了消息模型，我们理解起 RocketMQ 的技术架构起来就容易多了。
+With the message model covered, RocketMQ's technical architecture is easier to understand.
 
-RocketMQ 的核心组件包括 **NameServer、Broker、Producer、Consumer**，在 5.0 版本中还引入了 **Proxy** 组件。
+RocketMQ's core components are **NameServer, Broker, Producer, and Consumer**. Version 5.0 also introduced the **Proxy** component.
 
 ```mermaid
 flowchart TB
-    subgraph RocketMQ["RocketMQ 系统架构"]
+    subgraph RocketMQ["RocketMQ Architecture"]
         direction TB
         style RocketMQ fill:#F0F2F5,stroke:#E0E6ED,stroke-width:1.5px
 
-        subgraph Components["核心组件"]
+        subgraph Components["Core Components"]
             direction TB
             style Components fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-            NS["NameServer<br/>注册中心"]
-            BK["Broker<br/>消息存储"]
-            PX["Proxy<br/>代理层（5.0+）"]
-            PD["Producer<br/>生产者"]
-            CM["Consumer<br/>消费者"]
+            NS["NameServer<br/>Registry"]
+            BK["Broker<br/>Message storage"]
+            PX["Proxy<br/>Proxy layer (5.0+)"]
+            PD["Producer"]
+            CM["Consumer"]
         end
 
-        subgraph Protocol["通信协议"]
+        subgraph Protocol["Communication Protocols"]
             direction LR
             style Protocol fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-            RP["Remoting<br/>私有协议"]
-            GP["gRPC<br/>云原生协议"]
+            RP["Remoting<br/>Proprietary protocol"]
+            GP["gRPC<br/>Cloud-native protocol"]
         end
 
-        subgraph Network["网络层"]
+        subgraph Network["Network Layer"]
             style Network fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-            NB["Netty<br/>高性能通信框架"]
+            NB["Netty<br/>High-performance networking"]
         end
     end
 
@@ -381,8 +381,8 @@ flowchart TB
     PD <--> PX
     CM <--> PX
     PX <--> BK
-    PD -.->|Remoting 直连| BK
-    CM -.->|Remoting 直连| BK
+    PD -.->|Direct Remoting connection| BK
+    CM -.->|Direct Remoting connection| BK
     BK --> NB
     RP --> NB
     GP --> NB
@@ -408,37 +408,37 @@ flowchart TB
     linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-### 核心组件要点
+### Core Component Summary
 
-| 组件           | 技术要点                                 |
-| -------------- | ---------------------------------------- |
-| **NameServer** | 轻量级注册中心，各节点无数据同步         |
-| **Broker**     | 消息存储与投递，支持主从部署             |
-| **Proxy**      | 5.0 新增，协议适配与计算卸载（可选组件） |
-| **Producer**   | 同步、异步、单向多种发送方式             |
-| **Consumer**   | Push/Pull/Simple 三种消费模式            |
+| Component      | Key details                                                    |
+| -------------- | -------------------------------------------------------------- |
+| **NameServer** | Lightweight registry; nodes do not synchronize data            |
+| **Broker**     | Stores and delivers messages; supports primary-replica setup   |
+| **Proxy**      | Added in 5.0; optional protocol adaptation and compute offload |
+| **Producer**   | Supports synchronous, asynchronous, and one-way sends          |
+| **Consumer**   | Supports Push, Pull, and Simple consumption modes              |
 
-### NameServer（注册中心）
+### NameServer (Registry)
 
-NameServer 负责元数据的存储，扮演着集群“中枢神经系统”的角色，其核心作用是为生产者和消费者提供路由信息，帮助它们找到对应的 Broker 地址。
+NameServer stores metadata and acts as the cluster's control center. It provides routing information to producers and consumers so they can find the relevant Broker addresses.
 
-**核心功能：**
+**Core functions:**
 
-1. **Broker 管理**：Broker 启动时主动连接 NameServer，上报元数据信息。
-2. **路由信息管理**：生产者和消费者从 NameServer 获取 Broker 路由表。
+1. **Broker management:** A Broker connects to NameServer on startup and registers its metadata.
+2. **Route management:** Producers and consumers retrieve Broker routing information from NameServer.
 
-**心跳机制：**
+**Heartbeat mechanism:**
 
 ```mermaid
 flowchart LR
-    subgraph Heartbeat["心跳机制"]
+    subgraph Heartbeat["Heartbeat Mechanism"]
         style Heartbeat fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
         direction TB
-        BK["Broker"] -->|启动时| Reg["注册元数据"]
-        BK -->|每隔30秒| HB["发送心跳包"]
-        HB --> NS["NameServer<br/>更新路由表"]
-        NS -->|每隔10秒检查| Check["检查心跳<br/>(120秒超时)"]
-        Check -->|超时| Down["标记Broker宕机"]
+        BK["Broker"] -->|On startup| Reg["Register metadata"]
+        BK -->|Every 30 seconds| HB["Send heartbeat"]
+        HB --> NS["NameServer<br/>Update routing table"]
+        NS -->|Check every 10 seconds| Check["Check heartbeat<br/>(120-second timeout)"]
+        Check -->|Timed out| Down["Mark Broker as unavailable"]
     end
 
     classDef broker fill:#4CA497,color:#fff,rx:10,ry:10
@@ -456,44 +456,44 @@ flowchart LR
     linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-**元数据包含：**
+**Metadata includes:**
 
-- Broker 的地址、名称、BrokerId
-- 主节点地址
-- 该 Broker 上的所有 Topic 的队列配置
+- Broker address, name, and BrokerId
+- Primary node address
+- Queue configuration for all topics on the Broker
 
-### Broker（消息存储）
+### Broker (Message Storage)
 
-Broker 负责消息的存储、投递和查询以及服务高可用保证。
+The Broker stores, delivers, and retrieves messages, and helps ensure service availability.
 
-**存储机制：**
+**Storage mechanism:**
 
-1. **消息写入**：收到消息后顺序追加到 CommitLog 文件
-2. **文件分割**：文件超过固定大小（默认 1G）生成新文件
-3. **逻辑分片**：MessageQueue 是逻辑分片，ConsumeQueue 是消息索引
+1. **Message writes:** Append messages sequentially to the CommitLog.
+2. **File rollover:** Create a new file when the current file exceeds a fixed size (1 GB by default).
+3. **Logical partitions:** MessageQueues are logical partitions, and ConsumeQueues index messages.
 
-**一个 Topic 分布在多个 Broker 上，一个 Broker 可以配置多个 Topic ，它们是多对多的关系**。
+**A topic can span multiple Brokers, and a Broker can host multiple topics; this is a many-to-many relationship.**
 
-如果某个 Topic 消息量很大，应该给它多配置几个队列(上文中提到了提高并发能力)，并且 **尽量多分布在不同 Broker 上，以减轻某个 Broker 的压力** 。
+If a topic has a high message volume, configure more queues for it to increase concurrency, as described above, and **spread them across Brokers where possible to reduce the load on any one Broker**.
 
-Topic 消息量都比较均匀的情况下，如果某个 Broker 上的队列越多，则该 Broker 压力越大。
+If message volumes are similar across topics, a Broker with more queues will generally carry more load.
 
 ![](../images/shared/16ef38687488a5a4.jpg)
 
-### Producer（生产者）
+### Producer
 
-**发送流程：**
+**Send flow:**
 
 ```mermaid
 flowchart TB
-    subgraph ProducerFlow["生产者发送流程"]
+    subgraph ProducerFlow["Producer Send Flow"]
         direction TB
         style ProducerFlow fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
 
-        P["Producer 启动"] -->|1.建立长连接| NS1["连接 NameServer<br/>获取路由表"]
-        NS1 -->|2.选择队列| LB["负载均衡算法<br/>选择 MessageQueue"]
-        LB -->|3.建立连接| BK["与 Broker 建立长连接"]
-        BK -->|4.发送消息| MSG["发送消息到<br/>MessageQueue"]
+        P["Producer starts"] -->|1. Establish a long-lived connection| NS1["Connect to NameServer<br/>Get routing table"]
+        NS1 -->|2. Select a queue| LB["Load-balancing algorithm<br/>Select MessageQueue"]
+        LB -->|3. Connect| BK["Establish a long-lived connection to Broker"]
+        BK -->|4. Send message| MSG["Send message to<br/>MessageQueue"]
     end
 
     classDef producer fill:#00838F,color:#fff,rx:10,ry:10
@@ -511,26 +511,26 @@ flowchart TB
     linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-**三种发送方式：**
+**Three send modes:**
 
-- **单向发送（Oneway）**：发送后立即返回，不关心是否成功
-- **同步发送（Sync）**：发送后等待响应
-- **异步发送（Async）**：发送后立即返回，在回调方法中处理响应
+- **One-way:** Return immediately after sending without checking whether it succeeded.
+- **Synchronous:** Wait for a response after sending.
+- **Asynchronous:** Return immediately and handle the response in a callback.
 
-### Consumer（消费者）
+### Consumer
 
-**消费流程：**
+**Consumption flow:**
 
 ```mermaid
 flowchart TB
-    subgraph ConsumerFlow["消费者消费流程"]
+    subgraph ConsumerFlow["Consumer Flow"]
         direction TB
         style ConsumerFlow fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
 
-        C["Consumer 启动"] -->|1.建立长连接| NS2["连接 NameServer<br/>获取路由表"]
-        NS2 -->|2.建立连接| BK2["与 Broker 建立连接"]
-        BK2 -->|3.消费消息| CONS["开始消费消息"]
-        CONS -->|4.提交位点| OFFSET["提交消费位点<br/>保存消费进度"]
+        C["Consumer starts"] -->|1. Establish a long-lived connection| NS2["Connect to NameServer<br/>Get routing table"]
+        NS2 -->|2. Connect| BK2["Connect to Broker"]
+        BK2 -->|3. Consume messages| CONS["Start consuming messages"]
+        CONS -->|4. Commit offset| OFFSET["Commit consumption offset<br/>Save progress"]
     end
 
     classDef consumer fill:#7E57C2,color:#fff,rx:10,ry:10
@@ -548,92 +548,92 @@ flowchart TB
     linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-**三种消费模式：**
+**Three consumption modes:**
 
-- **拉取模式（Pull）**：消费者主动向 Broker 发送拉取请求
-- **推模式（Push）**：长轮询机制，Broker 有消息时才返回
-- **无状态模式（Pop）**：RocketMQ 5.0 新增，服务端管理重平衡和位点
+- **Pull:** The consumer sends pull requests to the Broker.
+- **Push:** Uses long polling; the Broker responds when messages are available.
+- **Pop:** Added in RocketMQ 5.0; the server manages rebalancing and offsets.
 
-### 网络协议
+### Network Protocols
 
-RocketMQ 目前常见的是 Remoting 和 gRPC 两类接入方式：
+RocketMQ commonly supports two connection methods: Remoting and gRPC.
 
-| 对比项     | Remoting（传统协议）                | gRPC（5.x 新版 SDK）                      |
-| ---------- | ----------------------------------- | ----------------------------------------- |
-| **成熟度** | Java 生态使用时间长，路径短         | 适合多语言和云原生接入，通常经 Proxy 接入 |
-| **扩展性** | 多语言接入需要分别适配              | 基于标准协议，客户端生态和网关治理更友好  |
-| **取舍**   | 适合已有 4.x 客户端和内部高性能链路 | 链路多一层 Proxy 时，要额外关注延迟和容量 |
+| Comparison        | Remoting (traditional protocol)                                    | gRPC (newer 5.x SDK)                                                            |
+| ----------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| **Maturity**      | Long-established in Java, with a shorter path                      | Suited to multi-language and cloud-native access, usually through a Proxy       |
+| **Extensibility** | Each language needs its own integration                            | Standard protocol with a broader client ecosystem and easier gateway management |
+| **Trade-off**     | Suited to existing 4.x clients and high-performance internal paths | An additional Proxy hop requires attention to latency and capacity              |
 
-### 网络模块（基于 Netty）
+### Networking (Netty)
 
-RocketMQ 的 RPC 通信采用 Netty 作为底层通信库，基于 Reactor 多线程模型进行了深度扩展和优化。
+RocketMQ uses Netty for RPC communication and extends and optimizes the Reactor multithreaded model.
 
-**线程模型总结：**
+**Thread model:**
 
-- **Reactor 主线程**：1 个，负责监听连接
-- **Reactor 线程池**：默认 3 个，负责网络数据处理
-- **业务线程池**：动态调整，根据 CPU 核心数
+- **Reactor main thread:** One thread listens for connections.
+- **Reactor worker pool:** Three threads by default, for processing network data.
+- **Business thread pool:** Adjusted dynamically based on the number of CPU cores.
 
-### Proxy（代理层，5.0 新增）
+### Proxy (Added in 5.0)
 
-RocketMQ 5.0 引入了 **Proxy** 组件，这是 **计算与存储分离** 架构的核心体现。Proxy 作为客户端与 Broker 之间的代理层，将客户端协议适配、权限管理、消费管理等计算逻辑从 Broker 中剥离出来，使 Broker 更专注于消息存储和高可用。这种设计对于云原生架构非常重要，使得计算层可以独立弹性扩展。
+RocketMQ 5.0 introduced the **Proxy** component as a key part of its **compute-storage separation** architecture. The Proxy sits between clients and Brokers, moving client protocol adaptation, access control, and consumption management out of the Broker. This lets the Broker focus on message storage and availability. This design is useful in cloud-native deployments because the compute layer can scale independently.
 
-**两种部署模式：**
+**Two deployment modes:**
 
-| 模式             | 说明                                            | 适用场景                                 |
-| ---------------- | ----------------------------------------------- | ---------------------------------------- |
-| **Local 模式**   | Proxy 和 Broker 同进程部署，只需新增 Proxy 配置 | 从旧版本平滑升级，或无特殊需求的场景     |
-| **Cluster 模式** | Proxy 和 Broker 分别独立部署                    | 需要弹性扩展或对协议适配有定制需求的场景 |
+| Mode             | Description                                                       | Use case                                                                          |
+| ---------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **Local mode**   | Proxy and Broker run in the same process; add Proxy configuration | Smooth upgrade from an older version, or deployments with no special requirements |
+| **Cluster mode** | Proxy and Broker run as separate processes                        | Independent scaling or customized protocol adaptation                             |
 
-**核心作用：**
+**Core functions:**
 
-- **协议适配**：支持 gRPC 协议接入，方便多语言客户端接入
-- **计算卸载**：将认证鉴权、消费管理等计算逻辑从 Broker 剥离，降低 Broker 负载
-- **弹性扩展**：Proxy 无状态，可独立水平扩展
+- **Protocol adaptation:** Supports gRPC, making it easier to connect clients written in different languages.
+- **Compute offload:** Moves authentication, authorization, and consumption management out of the Broker to reduce its load.
+- **Elastic scaling:** The stateless Proxy can scale horizontally on its own.
 
-> **注意**：在 5.0 版本中，使用新版 SDK（gRPC 协议）的客户端需要通过 Proxy 接入，而旧版 SDK（Remoting 协议）仍然可以直连 Broker。
+> **Note:** In version 5.0, clients using the newer SDK and gRPC protocol must connect through a Proxy. Older SDKs using Remoting can still connect directly to a Broker.
 
-Proxy 的价值不只是“多一层代理”。在云原生场景下，它可以把协议接入、认证鉴权、流量治理、消费管理这类计算逻辑从 Broker 中剥离出来，让 Broker 更稳定地承担存储职责。代价是链路多了一跳，需要额外关注 Proxy 的水平扩容、延迟、限流和监控。
+The Proxy's value is more than adding another hop. In cloud-native deployments, it moves protocol access, authentication, traffic management, and consumption management out of the Broker so the Broker can focus on storage. The trade-off is an extra network hop, so monitor Proxy scaling, latency, rate limits, and health.
 
-### 为什么必须要 NameServer？
+### Why Is NameServer Needed?
 
-先看一个简单的架构模型：
+Consider this simplified architecture:
 
 ![](../images/shared/16ef386c6d1e8bdb.jpg)
 
-你可能会发现一个问题：NameServer 是做什么的？直接让 Producer、Consumer 和 Broker 进行生产和消费消息不行吗？
+You might ask: What does NameServer do? Could Producers and Consumers not publish and consume messages directly with Brokers?
 
-Broker 需要保证高可用，如果整个系统仅靠一个 Broker 来维持，压力会非常大，所以需要使用多个 Broker 来保证 **负载均衡**。如果消费者和生产者直接和多个 Broker 相连，当 Broker 变更时会牵连每个生产者和消费者，产生耦合问题。NameServer 注册中心就是用来解决这个问题的。
+Brokers need to be highly available. Relying on one Broker would put too much load on it, so multiple Brokers are used for **load balancing**. If every Producer and Consumer connected directly to multiple Brokers, a Broker change would affect them all and create tight coupling. NameServer solves this by acting as a registry.
 
-**NameServer 的设计哲学：**
+**NameServer's design:**
 
-NameServer 是 **无状态的、各节点之间互不通信** 的。这与 ZooKeeper 的强一致性（需要选举机制）形成了鲜明对比，体现了 RocketMQ 追求 **极致性能和简单架构** 的设计哲学。每个 Broker 与所有 NameServer 保持长连接，定期上报自身信息，即使某个 NameServer 节点宕机，也不会影响整个集群的可用性。
+NameServer is **stateless, and its nodes do not communicate with one another**. This contrasts with ZooKeeper's strong consistency and election mechanism, reflecting RocketMQ's focus on **performance and architectural simplicity**. Each Broker keeps a long-lived connection to every NameServer and periodically reports its information. If one NameServer goes down, the cluster can remain available.
 
-下面是官网的架构图：
+The following diagram is from the official documentation:
 
 ![](../images/shared/16ef386fa3be1e53.jpg)
 
-和前面的简化架构图相比，主要是一些细节上的差别：
+Compared with the simplified diagram above, this one adds a few details:
 
-第一、Broker **做了集群并且还进行了主从部署** ，由于消息分布在各个 Broker 上，一旦某个 Broker 宕机，则该 Broker 上的消息读写都会受到影响。所以 RocketMQ 提供了 `master/slave` 的结构，`slave` 定时从 `master` 同步数据(同步刷盘或者异步刷盘)，如果 `master` 宕机，**则 `slave` 提供消费服务，但是不能写入消息** (后面还会详细说明)。
+First, Brokers run in a cluster with primary-replica deployment. Since messages are distributed across Brokers, a Broker failure affects reads and writes for its messages. RocketMQ supports a `master/slave` structure in which the `slave` periodically synchronizes data from the `master` (with synchronous or asynchronous disk flushing). If the `master` fails, **the `slave` can serve consumers but cannot accept message writes**; this is explained in more detail later.
 
-第二、为了保证 HA，NameServer 也做了集群部署，但它是 **去中心化** 的。也就意味着它没有主节点，可以明显看出 NameServer 的所有节点之间没有进行 `Info Replicate`。在 RocketMQ 中，**单个 Broker 和所有 NameServer 保持长连接**，并且 **每隔 30 秒** Broker 会向所有 NameServer 发送心跳，心跳包含了自身的 Topic 配置信息。NameServer **每隔 10 秒** 检查一次心跳，如果某个 Broker **超过 120 秒** 没有心跳，则认为该 Broker 已宕机。
+Second, NameServer is also deployed as a cluster for high availability, but it is **decentralized** and has no primary node. NameServer nodes do not replicate information with one another. In RocketMQ, **each Broker keeps a long-lived connection to every NameServer** and sends a heartbeat to each one **every 30 seconds**, including its topic configuration. NameServer checks heartbeats **every 10 seconds** and considers a Broker unavailable if it has not received a heartbeat for **more than 120 seconds**.
 
-第三、在生产者需要向 Broker 发送消息的时候，**需要先从 NameServer 获取关于 Broker 的路由信息**，然后通过 **轮询** 的方法去向每个队列中生产数据以达到 **负载均衡** 的效果。
+Third, before sending messages to Brokers, a Producer **retrieves Broker routing information from NameServer** and uses **round-robin selection** across queues for **load balancing**.
 
-第四、消费者通过 NameServer 获取所有 Broker 的路由信息后，向 Broker 发送 `Pull` 请求来获取消息数据。Consumer 可以以两种模式启动—— **广播（Broadcast）和集群（Cluster）**。广播模式下，一条消息会发送给 **同一个消费组中的所有消费者** ，集群模式下消息只会发送给一个消费者。
+Fourth, Consumers retrieve Broker routes from NameServer and send `Pull` requests to Brokers. A Consumer can run in **broadcast** or **clustering** mode. In broadcast mode, a message is delivered to **every consumer in the same group**; in clustering mode, it is delivered to only one consumer in the group.
 
-## RocketMQ 消息
+## RocketMQ Messages
 
-### 普通消息
+### Regular Messages
 
-普通消息一般应用于微服务解耦、事件驱动、数据集成等场景，这些场景大多数要求数据传输通道具有可靠传输的能力，且对消息的处理时机、处理顺序没有特别要求。以在线的电商交易场景为例，上游订单系统将用户下单支付这一业务事件封装成独立的普通消息并发送至 RocketMQ 服务端，下游按需从服务端订阅消息并按照本地消费逻辑处理下游任务。每个消息之间都是相互独立的，且不需要产生关联。另外还有日志系统，以离线的日志收集场景为例，通过埋点组件收集前端应用的相关操作日志，并转发到 RocketMQ 。
+Regular messages are commonly used for microservice decoupling, event-driven systems, and data integration. These use cases usually require reliable message delivery but do not require precise processing times or ordering. For example, in an online store, the order system can package a purchase event as a regular message and send it to RocketMQ. Downstream services subscribe to the message and process it according to their own logic. Messages are independent and do not need to be related. A logging system is another example: an instrumentation component collects user activity logs from a frontend application and forwards them to RocketMQ for offline processing.
 
-**普通消息生命周期**
+**Regular message lifecycle**
 
 ```mermaid
   flowchart LR
-      N1["初始化"] --> N2["待消费"] --> N3["消费中"] --> N4["消费提交"] --> N5["消息删除"]
+      N1["Initialized"] --> N2["Ready for consumption"] --> N3["Being consumed"] --> N4["Consumption committed"] --> N5["Message deleted"]
 
       classDef default fill:#4CA497,color:#fff,rx:10,ry:10
       classDef final fill:#00838F,color:#fff,rx:10,ry:10
@@ -644,54 +644,54 @@ NameServer 是 **无状态的、各节点之间互不通信** 的。这与 ZooKe
       linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-- 初始化：消息被生产者构建并完成初始化，待发送到服务端的状态。
-- 待消费：消息被发送到服务端，对消费者可见，等待消费者消费的状态。
-- 消费中：消息被消费者获取，并按照消费者本地的业务逻辑进行处理的过程。 此时服务端会等待消费者完成消费并提交消费结果，如果一定时间后没有收到消费者的响应，RocketMQ 会对消息进行重试处理。
-- 消费提交：消费者完成消费处理，并向服务端提交消费结果；如果消费失败或超时，消息会按重试策略重新投递，超过最大重试次数后可能进入死信队列。RocketMQ 不会因为某个消费组消费成功就立即删除消息，而是按照消息保存机制滚动清理，消息在保存时间到期或存储空间不足被删除前，消费者仍然可以回溯消息重新消费。
-- 消息删除：RocketMQ 按照消息保存机制滚动清理最早的消息数据，将消息从物理文件中删除。
+- **Initialized:** The producer has created and initialized the message; it is ready to be sent to the server.
+- **Ready for consumption:** The message has been sent to the server and is visible to consumers.
+- **Being consumed:** A consumer receives and processes the message according to its local business logic. The server waits for the consumer to finish and submit the result. If no response arrives within a certain period, RocketMQ retries the message.
+- **Consumption committed:** The consumer finishes processing and submits the result to the server. On failure or timeout, the message is redelivered according to the retry policy and may enter a dead-letter queue after the retry limit. RocketMQ does not immediately delete a message when one consumer group succeeds. It removes old messages according to retention policies; until then, consumers can seek back and consume them again.
+- **Message deleted:** RocketMQ removes the oldest message data from physical files according to its retention policy.
 
-### 定时/延时消息
+### Scheduled and Delayed Messages
 
-> **备注：定时消息和延时消息本质相同，都是服务端根据消息设置的定时时间在某一固定时刻将消息投递给消费者消费。**
+> **Note:** Scheduled and delayed messages work in the same way: the server delivers the message to consumers at a specified time.
 
-在分布式定时调度触发、任务超时处理等场景，需要实现精准、可靠的定时事件触发。使用 RocketMQ 的定时消息可以简化定时调度任务的开发逻辑，实现高性能、可扩展、高可靠的定时触发能力。
+Distributed scheduling and task-timeout handling require accurate and reliable event triggering. RocketMQ scheduled messages can simplify scheduling logic and provide high-performance, scalable, and reliable triggers.
 
-**典型场景一：分布式定时调度**
+**Use case 1: Distributed scheduling**
 
-在分布式定时调度场景下，需要实现各类精度的定时任务，例如每天 5 点执行文件清理，每隔 2 分钟触发一次消息推送等需求。传统基于数据库的定时调度方案在分布式场景下，性能不高，实现复杂。
+Distributed schedulers run tasks at different intervals, such as cleaning up files every day at 5 a.m. or sending a notification every two minutes. Traditional database-based scheduling can be complex and perform poorly in distributed environments.
 
-**典型场景二：任务超时处理**
+**Use case 2: Task timeout handling**
 
-以电商交易场景为例，订单下单后暂未支付，此时不可以直接关闭订单，而是需要等待一段时间后才能关闭订单。使用 RocketMQ 定时消息可以实现超时任务的检查触发。
+For example, an unpaid order should not be closed immediately after it is placed; the system must wait for a period first. A RocketMQ scheduled message can trigger the timeout check.
 
-基于定时消息的超时任务处理具备如下优势：
+Scheduled messages offer these advantages for timeout handling:
 
-- **精度更灵活、开发门槛低**：5.x 不再只依赖固定延迟等级，可以按时间戳设置投递时间；但默认投递粒度仍是秒级，不能理解为严格毫秒级准时触发。
-- **高性能可扩展**：传统的数据库扫描方式较为复杂，需要频繁调用接口扫描，容易产生性能瓶颈。RocketMQ 的定时消息具有高并发和水平扩展的能力。
+- **Flexible scheduling with less implementation effort:** Version 5.x is no longer limited to fixed delay levels and can schedule delivery by timestamp. However, default delivery granularity is still at the second level; this is not a guarantee of exact millisecond-level timing.
+- **High performance and scalability:** Database polling is complex and requires frequent scans that can become a bottleneck. RocketMQ scheduled messages support high concurrency and horizontal scaling.
 
-**定时时间设置原则**
+**Setting a scheduled time**
 
-RocketMQ 定时消息设置的定时时间是一个预期触发的系统时间戳，延时时间也需要转换成当前系统时间后的某一个时间戳，而不是一段延时时长。
+The scheduled time is a system timestamp for the expected delivery time. A delay must also be converted into a timestamp in the future, rather than specified as a duration.
 
-- **时间格式**：毫秒级的 Unix 时间戳
-- **定时时长最大值**：默认为 24 小时，不支持自定义修改
-- **定时时间必须设置在当前时间之后**，否则定时不生效，服务端会立即投递消息
+- **Format:** Unix timestamp in milliseconds.
+- **Maximum scheduling horizon:** 24 hours by default; this limit cannot be customized.
+- **The scheduled time must be in the future.** Otherwise, scheduling has no effect and the server delivers the message immediately.
 
-**示例**：
+**Examples:**
 
-- 定时消息：当前系统时间为 2022-06-09 17:30:00，希望消息在 19:20:00 投递，则定时时间戳为 1654773600000
-- 延时消息：当前系统时间为 2022-06-09 17:30:00，希望延时 1 小时后投递，则定时时间戳为 1654770600000
+- Scheduled message: If the current time is 2022-06-09 17:30:00 and the message should be delivered at 19:20:00, use timestamp `1654773600000`.
+- Delayed message: If the current time is 2022-06-09 17:30:00 and the message should be delivered one hour later, use timestamp `1654770600000`.
 
-**4.x 版本与 5.x 版本的区别**
+**Differences between versions 4.x and 5.x**
 
-- **4.x 版本**：只支持延时消息，默认分为 18 个等级（1s 5s 10s 30s 1m 2m 3m 4m 5m 6m 7m 8m 9m 10m 20m 30m 1h 2h），也可以在配置文件中增加自定义的延时等级和时长。
-- **5.x 版本**：支持通过毫秒级 Unix 时间戳设置投递时间，相比 4.x 固定延迟等级更灵活；但默认定时粒度为 1000ms，实际投递还会受服务端负载、存储恢复等因素影响，不能理解为严格毫秒级准时触发。
+- **Version 4.x:** Supports delayed messages with 18 default levels (1s, 5s, 10s, 30s, 1m, 2m, 3m, 4m, 5m, 6m, 7m, 8m, 9m, 10m, 20m, 30m, 1h, and 2h). Custom delay levels and durations can also be added in the configuration file.
+- **Version 5.x:** Supports delivery timestamps in milliseconds, which is more flexible than the fixed delay levels in 4.x. However, the default scheduling precision is 1,000 ms, and actual delivery also depends on server load and storage recovery. It does not guarantee exact millisecond-level timing.
 
-**定时消息生命周期**
+**Scheduled message lifecycle**
 
 ```mermaid
   flowchart LR
-      T1["初始化"] --> T2["定时中"] --> T3["待消费"] --> T4["消费中"] --> T5["消费提交"] --> T6["消息删除"]
+      T1["Initialized"] --> T2["Scheduled"] --> T3["Ready for consumption"] --> T4["Being consumed"] --> T5["Consumption committed"] --> T6["Message deleted"]
 
       classDef default fill:#E99151,color:#fff,rx:10,ry:10
       classDef final fill:#00838F,color:#fff,rx:10,ry:10
@@ -702,72 +702,72 @@ RocketMQ 定时消息设置的定时时间是一个预期触发的系统时间�
       linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-- **初始化**：消息被生产者构建并完成初始化，待发送到服务端的状态。
-- **定时中**：消息被发送到服务端，和普通消息不同的是，服务端不会直接构建消息索引，而是会将定时消息**单独存储在定时存储系统中**，等待定时时刻到达。
-- **待消费**：定时时刻到达后，服务端将消息重新写入普通存储引擎，对下游消费者可见，等待消费者消费的状态。
-- **消费中**：消息被消费者获取，并按照消费者本地的业务逻辑进行处理的过程。此时服务端会等待消费者完成消费并提交消费结果，如果一定时间后没有收到消费者的响应，RocketMQ 会对消息进行重试处理。
-- **消费提交**：消费者完成消费处理，并向服务端提交消费结果；如果消费失败或超时，消息会按重试策略重新投递，超过最大重试次数后可能进入死信队列。RocketMQ 不会因为某个消费组消费成功就立即删除消息，而是按照消息保存机制滚动清理。
-- **消息删除**：Apache RocketMQ 按照消息保存机制滚动清理最早的消息数据，将消息从物理文件中删除。
+- **Initialized:** The producer has created and initialized the message; it is ready to be sent to the server.
+- **Scheduled:** The server stores the scheduled message **in a dedicated scheduling store** instead of immediately building a regular message index. It waits until the scheduled time.
+- **Ready for consumption:** When the scheduled time arrives, the server writes the message to the regular storage engine, making it visible to downstream consumers.
+- **Being consumed:** A consumer processes the message according to its local business logic. The server waits for the result and retries if it does not receive a response in time.
+- **Consumption committed:** The consumer submits the result. On failure or timeout, the message is redelivered according to the retry policy and may enter a dead-letter queue after the retry limit. RocketMQ does not immediately delete a message when one group consumes it; messages are removed according to retention policies.
+- **Message deleted:** Apache RocketMQ removes the oldest message data from physical files according to its retention policy.
 
-**使用限制**
+**Restrictions**
 
-1. **消息类型一致性**：定时消息仅支持在 MessageType 为 Delay 的主题内使用
-2. **定时精度约束**：定时时长参数精确到毫秒级，但默认精度为 1000ms（秒级精度）
+1. **Message type:** Scheduled messages can only be used with topics whose `MessageType` is `Delay`.
+2. **Scheduling precision:** The duration parameter is specified in milliseconds, but the default precision is 1,000 ms (one second).
 
-**使用建议**
+**Recommendation**
 
-定时消息的实现逻辑需要先经过定时存储等待触发，定时时间到达后才会被投递给消费者。因此，如果将大量定时消息的定时时间设置为同一时刻，则到达该时刻后会有大量消息同时需要被处理，会造成系统压力过大，导致消息分发延迟，影响定时精度。
+Scheduled messages wait in scheduled storage until their delivery time. If many messages are scheduled for the same time, they may all need processing at once, increasing system load, delaying delivery, and reducing scheduling accuracy.
 
-### 顺序消息
+### Ordered Messages
 
-**什么是顺序消息**
+**What are ordered messages?**
 
-顺序消息是 Apache RocketMQ 提供的一种高级消息类型，支持消费者按照发送消息的先后顺序获取消息，从而实现业务场景中的顺序处理。
+Ordered messages are an advanced Apache RocketMQ message type. They let consumers receive messages in the order they were sent so applications can process events in sequence.
 
-**应用场景**
+**Use cases**
 
-在有序事件处理、撮合交易、数据实时增量同步等场景下，异构系统间需要维持强一致的状态同步，上游的事件变更需要按照顺序传递到下游进行处理。
+Ordered event processing is useful in trade matching and real-time incremental data synchronization, where different systems must maintain consistent state and process upstream changes in order.
 
-- **撮合交易**：以证券、股票交易撮合场景为例，对于出价相同的交易单，坚持按照先出价先交易的原则，下游处理订单的系统需要严格按照出价顺序来处理订单。
-- **数据实时增量同步**：以数据库变更增量同步场景为例，上游源端数据库按需执行增删改操作，将二进制操作日志作为消息，通过 RocketMQ 传输到下游搜索系统，下游系统按顺序还原消息数据，实现状态数据按序刷新。
+- **Trade matching:** For securities and stock trading, orders with the same price follow a first-come, first-served rule. The downstream order-processing system must process them in that order.
+- **Real-time incremental synchronization:** A source database performs inserts, updates, and deletes. Its binary operation logs are sent through RocketMQ to a downstream search system, which replays them in order to refresh its state.
 
-**如何保证消息的顺序性**
+**How ordering is guaranteed**
 
-RocketMQ 的消息顺序性分为两部分：**生产顺序性**和**消费顺序性**。
+Message ordering in RocketMQ has two parts: **production order** and **consumption order**.
 
-**生产顺序性**
+**Production order**
 
-如需保证消息生产的顺序性，则必须满足以下条件：
+To preserve production order, meet these conditions:
 
-1. **单一生产者**：消息生产的顺序性仅支持单一生产者
-2. **串行发送**：生产者使用多线程并行发送时，不同线程间产生的消息将无法判定其先后顺序
+1. **Single producer:** Ordered production is supported only for a single producer.
+2. **Serial sends:** If a producer sends messages concurrently from multiple threads, their order cannot be determined.
 
-满足以上条件的生产者，将顺序消息发送至 RocketMQ 后，会保证设置了同一**消息组**的消息，按照发送顺序存储在同一队列中。
+When these conditions are met, RocketMQ stores messages with the same **message group** in the same queue, in the order they were sent.
 
-**消息组（MessageGroup）**
+**Message groups (`MessageGroup`)**
 
-RocketMQ 顺序消息的顺序关系通过消息组（MessageGroup）判定和识别，发送顺序消息时需要为每条消息设置归属的消息组。
+RocketMQ uses message groups to determine ordering. Set a message group for every ordered message.
 
-- **相同消息组**的多条消息之间遵循先进先出的顺序关系
-- **不同消息组**、无消息组的消息之间不涉及顺序性
+- Messages in the **same message group** follow first-in, first-out order.
+- Messages in **different groups** or without a group have no ordering relationship.
 
-基于消息组的顺序判定逻辑，支持按照业务逻辑做细粒度拆分，可以在满足业务局部顺序的前提下提高系统的并行度和吞吐能力。
+Message groups let you partition ordering by business entity. This preserves local ordering while increasing system parallelism and throughput.
 
 ```mermaid
 flowchart TB
-    subgraph Order["订单系统"]
+    subgraph Order["Order System"]
         style Order fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-        O1["订单A<br/>消息组: orderA"]
-        O2["订单B<br/>消息组: orderB"]
-        O3["订单C<br/>消息组: orderC"]
+        O1["Order A<br/>Message group: orderA"]
+        O2["Order B<br/>Message group: orderB"]
+        O3["Order C<br/>Message group: orderC"]
     end
 
-    subgraph Queue["队列"]
+    subgraph Queue["Queue"]
         style Queue fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-        Q["队列1<br/>(混合存储不同消息组)"]
+        Q["Queue 1<br/>(stores messages from different groups)"]
     end
 
-    subgraph Storage["存储顺序"]
+    subgraph Storage["Storage order"]
         style Storage fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
         direction LR
         S1["orderA-M1<br/>↓"]
@@ -797,104 +797,104 @@ flowchart TB
     linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-**说明**：
+**Notes:**
 
-- orderA 消息组的 M1、M2 保持顺序
-- orderB 消息组的 M1、M2 保持顺序
-- 不同消息组可以混合存储在同一个队列中
+- M1 and M2 in the `orderA` group stay in order.
+- M1 and M2 in the `orderB` group stay in order.
+- Messages from different groups can be stored together in one queue.
 
-**消费顺序性**
+**Consumption order**
 
-如需保证消息消费的顺序性，则必须满足以下条件：
+To preserve consumption order, meet these conditions:
 
-1. **投递顺序**：RocketMQ 通过客户端 SDK 和服务端通信协议保障消息按照服务端存储顺序投递
-2. **有限重试**：顺序消息投递仅在重试次数限定范围内，超过最大重试次数后将不再重试，跳过这条消息消费
+1. **Delivery order:** The RocketMQ client SDK and server protocol deliver messages in the order stored by the server.
+2. **Bounded retries:** Ordered delivery retries only up to a limit. After the maximum retry count is reached, RocketMQ stops retrying and skips that message.
 
-**消费者类型对顺序消费的影响**
+**How consumer type affects ordered consumption**
 
-- **PushConsumer**：RocketMQ 保证消息按照存储顺序一条一条投递给消费者
-- **SimpleConsumer**：消费者可能一次拉取多条消息，此时消息消费的顺序性需要由业务方自行保证
+- **PushConsumer:** RocketMQ delivers messages to the consumer one at a time in storage order.
+- **SimpleConsumer:** A consumer may pull multiple messages at once, so the application must preserve their processing order.
 
-**生产顺序性和消费顺序性组合**
+**Combining production and consumption ordering**
 
-| 生产顺序                     | 消费顺序 | 顺序性效果                               |
-| ---------------------------- | -------- | ---------------------------------------- |
-| 设置消息组，保证消息顺序发送 | 顺序消费 | 按照消息组粒度，严格保证消息顺序         |
-| 设置消息组，保证消息顺序发送 | 并发消费 | 并发消费，尽可能按时间顺序处理           |
-| 未设置消息组，消息乱序发送   | 顺序消费 | 只能保证队列存储顺序，不保证业务发送顺序 |
-| 未设置消息组，消息乱序发送   | 并发消费 | 并发消费，尽可能按照时间顺序处理         |
+| Production order                             | Consumption order | Ordering behavior                                      |
+| -------------------------------------------- | ----------------- | ------------------------------------------------------ |
+| Message group set; messages sent in order    | Ordered           | Strict ordering within each message group              |
+| Message group set; messages sent in order    | Concurrent        | Concurrent processing; order is best-effort            |
+| No message group; messages sent out of order | Ordered           | Preserves queue storage order, not business send order |
+| No message group; messages sent out of order | Concurrent        | Concurrent processing; order is best-effort            |
 
-**使用限制**
+**Restrictions**
 
-1. **消息类型一致性**：顺序消息仅支持在 MessageType 为 FIFO 的主题内使用；RocketMQ 5.x 中还要为有序消息设置 MessageGroup，并把消费者组配置为顺序投递，否则仍可能按并发方式投递
-2. 顺序消息消费失败进行消费重试时，为保障消息的顺序性，后续消息不可被消费，必须等待前面的消息消费完成后才能被处理
+1. **Message type:** Ordered messages are supported only on topics whose `MessageType` is `FIFO`. In RocketMQ 5.x, also set `MessageGroup` for ordered messages and configure the consumer group for ordered delivery; otherwise, messages may still be delivered concurrently.
+2. If ordered message processing fails and is retried, later messages cannot be consumed until the earlier message succeeds, preserving order.
 
-**使用建议**
+**Recommendations**
 
-1. **串行消费**：消息消费建议串行处理，避免一次消费多条消息导致乱序
-2. **消息组尽可能打散**：建议将业务以消息组粒度进行拆分，例如将订单 ID、用户 ID 作为消息组关键字，可实现同一终端用户的消息按照顺序处理，不同用户的消息无需保证顺序
+1. **Process serially:** Consume messages serially to avoid reordering when handling multiple messages at once.
+2. **Distribute messages across groups:** Partition by a business key, such as order ID or user ID. This preserves ordering for one user while allowing messages for different users to be processed independently.
 
-### 事务消息
+### Transactional Messages
 
-**什么是事务消息**
+**What are transactional messages?**
 
-事务消息是 Apache RocketMQ 提供的一种高级消息类型，支持在分布式场景下保障消息生产和本地事务的最终一致性。简单来讲，就是将本地事务（数据库的 DML 操作）与发送消息合并在同一个事务中。
+Transactional messages are an advanced Apache RocketMQ message type that helps maintain eventual consistency between message production and a local transaction in a distributed system. In simple terms, they coordinate a local transaction (database DML operations) with message publication.
 
-**应用场景**
+**Use case**
 
-在分布式系统调用的特点为一个核心业务逻辑的执行，同时需要调用多个下游业务进行处理。如何保证核心业务和多个下游业务的执行结果完全一致，是分布式事务需要解决的主要问题。
+In a distributed system, a core operation may also require work from multiple downstream services. A key challenge for distributed transactions is keeping the results of the core operation and downstream work consistent.
 
-以电商交易场景为例，用户支付订单这一核心操作的同时会涉及到下游物流发货、积分变更、购物车状态清空等多个子系统的变更：
+For example, paying for an order in an online store may require updates to several downstream systems:
 
-- **主分支订单系统状态更新**：由未支付变更为支付成功
-- **物流系统状态新增**：新增待发货物流记录，创建订单物流记录
-- **积分系统状态变更**：变更用户积分，更新用户积分表
-- **购物车系统状态变更**：清空购物车，更新用户购物车记录
+- **Order system:** Change the order status from unpaid to paid.
+- **Logistics system:** Create a pending-shipment record for the order.
+- **Points system:** Update the user's points balance and record.
+- **Shopping cart system:** Clear the cart and update the user's cart record.
 
-**传统方案的问题**
+**Problems with traditional approaches**
 
-- **传统 XA 事务方案**：基于 XA 协议的分布式事务系统可以实现一致性，但多分支环境下资源锁定范围大，并发度低
-- **基于普通消息方案**：普通消息和订单事务无法保证一致，容易出现消息发送成功但订单没有执行成功、订单执行成功但消息没有发送成功等情况
+- **Traditional XA transactions:** XA-based distributed transaction systems can provide consistency, but locking across multiple branches reduces concurrency.
+- **Regular messages:** A regular message cannot be made atomic with the order transaction. The message may be sent while the order fails, or the order may succeed while sending the message fails.
 
-**RocketMQ 事务消息方案**
+**RocketMQ transactional messages**
 
-RocketMQ 事务消息的方案，具备高性能、可扩展、业务开发简单的优势，支持二阶段的提交能力，将二阶段提交和本地事务绑定，实现 **本地事务和消息发送** 的最终一致性。
+RocketMQ transactional messages provide a high-performance, scalable approach that is straightforward to implement. They use a two-phase commit process tied to the local transaction to achieve eventual consistency between **the local transaction and message publication**.
 
-**事务消息处理流程**
+**Transactional message flow**
 
 ```mermaid
 flowchart TB
-    subgraph Phase1["阶段一: 发送半事务消息"]
+    subgraph Phase1["Phase 1: Send a half message"]
         direction TB
         style Phase1 fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-        M1["生产者构建消息"] --> M2["发送至服务端"]
-        M2 --> M3["服务端持久化消息"]
-        M3 --> M4["返回 Ack 确认"]
-        M4 --> M5["消息标记为<br/>'暂不能投递'<br/>(半事务消息)"]
+        M1["Producer builds message"] --> M2["Send to server"]
+        M2 --> M3["Server persists message"]
+        M3 --> M4["Return Ack"]
+        M4 --> M5["Mark message as<br/>'not deliverable yet'<br/>(half message)"]
     end
 
-    subgraph Phase2["阶段二: 执行本地事务"]
+    subgraph Phase2["Phase 2: Execute local transaction"]
         direction TB
         style Phase2 fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-        L1["生产者开始执行<br/>本地事务逻辑"] --> L2{"本地事务<br/>执行结果"}
-        L2 -->|Commit| L3["提交二次确认 Commit"]
-        L2 -->|Rollback| L4["提交二次确认 Rollback"]
-        L2 -->|Unknown| L5["等待事务回查"]
+        L1["Producer starts<br/>local transaction"] --> L2{"Local transaction<br/>result"}
+        L2 -->|Commit| L3["Send second-phase confirmation: Commit"]
+        L2 -->|Rollback| L4["Send second-phase confirmation: Rollback"]
+        L2 -->|Unknown| L5["Wait for transaction check"]
     end
 
-    subgraph Phase3["阶段三: 事务回查机制"]
+    subgraph Phase3["Phase 3: Transaction check"]
         direction TB
         style Phase3 fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-        C1["服务端未收到确认<br/>或收到 Unknown"] --> C2["固定时间后<br/>发起消息回查"]
-        C2 --> C3["生产者检查本地事务<br/>最终状态"]
-        C3 --> C4["再次提交二次确认"]
+        C1["Server received no confirmation<br/>or received Unknown"] --> C2["Check the message<br/>after a fixed interval"]
+        C2 --> C3["Producer checks the final<br/>local transaction state"]
+        C3 --> C4["Send second-phase confirmation"]
     end
 
-    subgraph Result["最终处理"]
+    subgraph Result["Final handling"]
         style Result fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
         direction TB
-        R1["Commit: 消息投递给消费者"]
-        R2["Rollback: 回滚事务<br/>不投递消息"]
+        R1["Commit: Deliver message to consumers"]
+        R2["Rollback: Roll back transaction<br/>Do not deliver message"]
     end
 
     Phase1 --> Phase2
@@ -914,50 +914,50 @@ flowchart TB
     linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-1. 生产者将消息发送至 RocketMQ 服务端
-2. 服务端将消息持久化成功之后，向生产者返回 Ack 确认消息已经发送成功，此时消息被标记为“暂不能投递”，这种状态下的消息即为**半事务消息**
-3. 生产者开始执行本地事务逻辑
-4. 生产者根据本地事务执行结果向服务端提交二次确认结果（Commit 或 Rollback）
-5. 如果服务端未收到二次确认结果，或收到的结果为 Unknown，经过固定时间后，服务端将对消息生产者发起**消息回查**
-6. 生产者收到消息回查后，需要检查对应消息的本地事务执行的最终结果
-7. 生产者根据检查到的本地事务的最终状态再次提交二次确认
+1. The producer sends a message to the RocketMQ server.
+2. After persisting the message, the server returns an acknowledgment (Ack). The message is marked “not deliverable yet” and is called a **half message**.
+3. The producer executes the local transaction.
+4. Based on the transaction result, the producer sends a second-phase confirmation (`Commit` or `Rollback`) to the server.
+5. If the server receives no confirmation or receives `Unknown`, it **checks the message's transaction status** with the producer after a fixed interval.
+6. After receiving the check request, the producer determines the final result of the corresponding local transaction.
+7. The producer sends a second-phase confirmation based on that final result.
 
-**事务消息生命周期**
+**Transactional message lifecycle**
 
-- **初始化**：半事务消息被生产者构建并完成初始化，待发送到服务端的状态
-- **事务待提交**：半事务消息被发送到服务端后会被持久化到事务相关的存储中，但不会直接进入普通可消费状态；它需要等待第二阶段本地事务返回 Commit 或 Rollback 后再决定是否投递。此时消息对下游消费者不可见
-- **消息回滚**：第二阶段如果事务执行结果明确为回滚，服务端会将半事务消息回滚，该事务消息流程终止
-- **提交待消费**：第二阶段如果事务执行结果明确为提交，服务端会将半事务消息重新存储到普通存储系统中，此时消息对下游消费者可见
-- **消费中**：消息被消费者获取，并按照消费者本地的业务逻辑进行处理的过程
-- **消费提交**：消费者完成消费处理，并向服务端提交消费结果；如果消费失败或超时，仍会进入重试、死信或补偿流程
-- **消息删除**：RocketMQ 按照消息保存机制滚动清理最早的消息数据
+- **Initialized:** The producer creates and initializes a half message before sending it to the server.
+- **Transaction pending:** The server persists the half message in transaction-related storage, but does not make it available to consumers. It waits for the local transaction to return `Commit` or `Rollback` in the second phase.
+- **Message rolled back:** If the second phase returns `Rollback`, the server rolls back the half message and ends the transaction flow.
+- **Committed and ready for consumption:** If the second phase returns `Commit`, the server stores the half message in regular storage and makes it visible to downstream consumers.
+- **Being consumed:** A consumer receives and processes the message according to its local business logic.
+- **Consumption committed:** The consumer finishes processing and submits the result. On failure or timeout, retries, a dead-letter queue, or compensation may follow.
+- **Message deleted:** RocketMQ removes the oldest message data according to its retention policy.
 
-**使用限制**
+**Restrictions**
 
-1. **消息类型一致性**：事务消息仅支持在 MessageType 为 Transaction 的主题内使用
-2. **消费事务性**：RocketMQ 事务消息保证本地主分支事务和下游消息发送事务的一致性，但不保证消息消费结果和上游事务的一致性
-3. **中间状态可见性**：事务消息为最终一致性，即消息提交到下游消费端处理完成之前，下游分支和上游事务之间的状态会不一致
-4. **事务超时机制**：事务消息的生命周期存在超时机制，半事务消息被生产者发送服务端后，如果在指定时间内服务端无法确认提交或者回滚状态，则消息默认会被回滚
-5. **事务回查机制**：服务端默认 **每隔 60 秒** 对未确认的半事务消息发起回查；半事务消息默认最大超时时间为 **4 小时**，超时后会被强制回滚。老版本或部分云厂商实现可能还会暴露最大回查次数参数，面试和生产配置时要按实际版本确认。
+1. **Message type:** Transactional messages are supported only on topics whose `MessageType` is `Transaction`.
+2. **Consumer transactions:** RocketMQ transactional messages coordinate the local main transaction with downstream message publication, but do not guarantee that downstream message processing succeeds together with the upstream transaction.
+3. **Intermediate state:** Transactional messages provide eventual consistency. Before downstream consumers finish processing a committed message, the upstream and downstream states may differ.
+4. **Transaction timeout:** If the server cannot confirm whether to commit or roll back a half message within the specified time, it rolls the message back by default.
+5. **Transaction checks:** By default, the server checks unconfirmed half messages **every 60 seconds**. A half message has a default maximum timeout of **4 hours**, after which it is forcibly rolled back. Older versions or some cloud-provider implementations may expose a maximum check count; confirm the behavior for the version in use.
 
-**使用建议**
+**Recommendations**
 
-1. **避免大量未决事务导致超时**：生产者应该尽量避免本地事务返回未知结果，大量的事务检查会导致系统性能受损
-2. **正确处理“进行中”的事务**：消息回查时，对于正在进行中的事务不要返回 Rollback 或 Commit 结果，应继续保持 Unknown 的状态
-3. **本地事务状态要可查询**：事务回查依赖生产者查询本地事务最终状态，建议落库或写可靠存储，不要只放进进程内存。
-4. **下游消费仍需幂等**：事务消息解决的是“本地事务和消息发送”的一致性，不保证消费者业务一定成功，消费端仍然要有重试、幂等和补偿。
+1. **Avoid too many unresolved transactions:** Minimize cases where the producer returns an unknown local transaction result; excessive transaction checks can hurt performance.
+2. **Handle in-progress transactions correctly:** When a transaction is still running, return `Unknown` during a message check rather than `Rollback` or `Commit`.
+3. **Make transaction state queryable:** Transaction checks rely on the producer retrieving the final local transaction state. Persist it in a database or reliable storage instead of keeping it only in process memory.
+4. **Keep downstream processing idempotent:** Transactional messages coordinate the local transaction and message publication, but do not guarantee successful consumer processing. Consumers still need retries, idempotency, and compensation.
 
-### 关于发送消息
+### Sending Messages
 
-#### 不建议单一进程创建大量生产者
+#### Avoid Creating Too Many Producers in One Process
 
-Apache RocketMQ 的生产者和主题是多对多的关系，支持同一个生产者向多个主题发送消息。对于生产者的创建和初始化，建议遵循够用即可、最大化复用原则，如果有需要发送消息到多个主题的场景，无需为每个主题都创建一个生产者。
+Apache RocketMQ supports a many-to-many relationship between producers and topics: one producer can send messages to multiple topics. Create only as many producers as needed and reuse them. If messages need to go to multiple topics, you do not need to create one producer per topic.
 
-#### 不建议频繁创建和销毁生产者
+#### Avoid Frequently Creating and Destroying Producers
 
-Apache RocketMQ 的生产者是可以重复利用的底层资源，类似数据库的连接池。因此不需要在每次发送消息时动态创建生产者，且在发送结束后销毁生产者。这样频繁的创建销毁会在服务端产生大量短连接请求，严重影响系统性能。
+Apache RocketMQ producers are reusable resources, much like database connections in a connection pool. Do not create a producer for every message and destroy it after sending. Frequent creation and destruction generate many short-lived connections and can seriously affect performance.
 
-正确示例：
+Example:
 
 ```java
 Producer p = ProducerBuilder.build();
@@ -968,41 +968,41 @@ for (int i =0;i<n;i++){
 p.shutdown();
 ```
 
-## 消费者分类
+## Consumer Types
 
-### PushConsumer（推模式消费者）
+### PushConsumer
 
-**核心特点：**
+**Key characteristics:**
 
-高度封装的消费者类型，消费消息仅仅通过消费监听器监听并返回结果。消息的获取、消费状态提交以及消费重试都通过 RocketMQ 的客户端 SDK 完成。
+A high-level consumer type that processes messages through a listener and returns a result. The RocketMQ client SDK handles message retrieval, consumption status, and retries.
 
-**适用场景：**
+**Use it when:**
 
-- 消息处理时间可预估
-- 无异步化、高级定制需求
-- 希望快速开发的场景
+- Message processing time is predictable.
+- You do not need asynchronous processing or advanced customization.
+- You want to get started quickly.
 
-**使用示例：**
+**Example:**
 
 ```java
 public static void main(String[] args) throws InterruptedException, MQClientException {
-    // 创建 Push 模式消费者
+    // Create a PushConsumer.
     DefaultMQPushConsumer consumer = new DefaultMQPushConsumer("CID_JODIE_1");
 
-    // 订阅主题
+    // Subscribe to a topic.
     consumer.subscribe("TopicTest", "*");
 
-    // 设置从哪里开始消费
+    // Set where consumption starts.
     consumer.setConsumeFromWhere(ConsumeFromWhere.CONSUME_FROM_FIRST_OFFSET);
 
-    // 注册消息监听器
+    // Register a message listener.
     consumer.registerMessageListener(new MessageListenerConcurrently() {
         @Override
         public ConsumeConcurrentlyStatus consumeMessage(
                 List<MessageExt> msgs,
                 ConsumeConcurrentlyContext context) {
             System.out.printf("Receive New Messages: %s %n", msgs);
-            // 业务处理逻辑
+            // Business processing.
             return ConsumeConcurrentlyStatus.CONSUME_SUCCESS;
         }
     });
@@ -1011,59 +1011,59 @@ public static void main(String[] args) throws InterruptedException, MQClientExce
 }
 ```
 
-**消费监听器执行结果：**
+**Listener results:**
 
-- **返回消费成功**：表示该消息处理成功，服务端按照消费结果更新消费进度
-- **返回消费失败**：表示该消息处理失败，需要根据消费重试逻辑判断是否进行重试消费
-- **抛出异常**：按消费失败处理，需要根据消费重试逻辑判断是否进行重试消费
+- **Return success:** The message was processed successfully, and the server updates consumption progress accordingly.
+- **Return failure:** The message was not processed successfully; the retry policy determines whether it is retried.
+- **Throw an exception:** Treated as a processing failure and handled according to the retry policy.
 
-**使用注意事项：**
+**Important:**
 
-PushConsumer 消费时，不允许使用以下方式处理消息：
+Do not handle PushConsumer messages in the following ways:
 
-1. **错误方式一**：消息还未处理完成，就提前返回消费成功结果。此时如果消息消费失败，RocketMQ 服务端是无法感知的，因此不会进行消费重试。
+1. **Returning success before processing finishes:** If processing later fails, the RocketMQ server cannot detect the failure and will not retry the message.
 
-2. **错误方式二**：在消费监听器内将消息再次分发到自定义的其他线程，消费监听器提前返回消费结果。此时如果消息消费失败，RocketMQ 服务端同样无法感知，因此也不会进行消费重试。
+2. **Dispatching to another thread from the listener:** If the listener returns before the work in that thread finishes, the server cannot detect a later failure and will not retry the message.
 
-**传统 Remoting SDK 的 Push 模式工作原理（对应上面的 DefaultMQPushConsumer 示例）：**
+**How Push mode works in the traditional Remoting SDK** (as in the `DefaultMQPushConsumer` example above):
 
-1. **负载均衡**：RebalanceService 线程根据队列数量和消费者个数做负载均衡，将分配到的队列发布 pullRequest 到 pullRequestQueue
-2. **消息拉取**：PullMessageService 线程不断从 pullRequestQueue 获取 pullRequest，从 Broker 拉取消息并缓存到 ProcessQueue
-3. **消息消费**：ConsumeMessageService 线程从 ProcessQueue 获取消息，调用监听器处理业务逻辑
-4. **位点提交**：消费完成后自动提交消费位点
-5. **流控保护**：拉取前检查缓存阈值（1000 消息或 100M），超过则延迟拉取
+1. **Load balancing:** The `RebalanceService` thread assigns queues based on the number of queues and consumers, then publishes pull requests to `pullRequestQueue`.
+2. **Message retrieval:** `PullMessageService` reads pull requests from `pullRequestQueue`, pulls messages from the Broker, and caches them in `ProcessQueue`.
+3. **Message processing:** `ConsumeMessageService` retrieves messages from `ProcessQueue` and invokes the listener to process them.
+4. **Offset commit:** The consumer offset is committed automatically after processing.
+5. **Flow control:** Before pulling messages, the client checks cache thresholds (1,000 messages or 100 MB) and delays pulling if a threshold is exceeded.
 
 ### SimpleConsumer
 
-SimpleConsumer 是一种接口原子型的消费者类型，消息的获取、消费状态提交以及消费重试都是通过消费者业务逻辑主动发起调用完成。
+SimpleConsumer provides an explicit API for each operation. The application logic calls the API to retrieve messages, submit consumption results, and retry failed messages.
 
-**消息不可见时间（Invisible Time）：**
+**Message invisibility time (`Invisible Time`):**
 
-SimpleConsumer 的核心机制是 **消息不可见时间**。当消费者获取消息后，该消息在指定的不可见时间内对其他消费者不可见。如果在不可见时间内完成消费并提交 ACK，消息被标记为已消费；如果超时未提交 ACK，消息会重新变为可见状态，可被其他消费者获取。这与 PushConsumer 的定时重试队列机制不同，SimpleConsumer 通过动态修改不可见时间来实现更灵活的重试控制。
+SimpleConsumer relies on **message invisibility time**. After a consumer receives a message, it is hidden from other consumers for a specified period. If the consumer finishes processing and submits an ACK within that period, the message is marked as consumed. If it does not submit an ACK before the timeout, the message becomes visible again and another consumer can receive it. Unlike PushConsumer's scheduled retry queue, SimpleConsumer provides more flexible retry control by dynamically changing the invisibility period.
 
-一个来自官网的例子：
+Example from the official documentation:
 
 ```java
-// 消费示例：使用 SimpleConsumer 消费普通消息，主动获取消息处理并提交。
+// Consume regular messages with SimpleConsumer: receive, process, and acknowledge them.
 ClientServiceProvider provider = ClientServiceProvider.loadService();
 String topic = "YourTopic";
 FilterExpression filterExpression = new FilterExpression("YourFilterTag", FilterExpressionType.TAG);
 SimpleConsumer simpleConsumer = provider.newSimpleConsumerBuilder()
-        // 设置消费者分组。
+        // Set the consumer group.
         .setConsumerGroup("YourConsumerGroup")
-        // 设置接入点。
+        // Set the endpoint.
         .setClientConfiguration(ClientConfiguration.newBuilder().setEndpoints("YourEndpoint").build())
-        // 设置预绑定的订阅关系。
+        // Set the subscription.
         .setSubscriptionExpressions(Collections.singletonMap(topic, filterExpression))
-        // 设置从服务端接受消息的最大等待时间
+        // Set the maximum wait time for receiving messages from the server.
         .setAwaitDuration(Duration.ofSeconds(1))
         .build();
 try {
-    // SimpleConsumer 需要主动获取消息，并处理。
+    // SimpleConsumer explicitly receives and processes messages.
     List<MessageView> messageViewList = simpleConsumer.receive(10, Duration.ofSeconds(30));
     messageViewList.forEach(messageView -> {
         System.out.println(messageView);
-        // 消费处理完成后，需要主动调用 ACK 提交消费结果。
+        // Acknowledge the message after processing is complete.
         try {
             simpleConsumer.ack(messageView);
         } catch (ClientException e) {
@@ -1071,40 +1071,40 @@ try {
         }
     });
 } catch (ClientException e) {
-    // 如果遇到系统流控等原因造成拉取失败，需要重新发起获取消息请求。
+    // Retry receiving if the request fails because of system flow control or another cause.
     logger.error("Failed to receive message", e);
 }
 ```
 
-SimpleConsumer 适用于以下场景：
+SimpleConsumer is suitable for these use cases:
 
-- 消息处理时长不可控：如果消息处理时长无法预估，经常有长时间耗时的消息处理情况。建议使用 SimpleConsumer 消费类型，可以在消费时自定义消息的预估处理时长，若实际业务中预估的消息处理时长不符合预期，也可以通过接口提前修改。
-- 需要异步化、批量消费等高级定制场景：SimpleConsumer 在 SDK 内部没有复杂的线程封装，完全由业务逻辑自由定制，可以实现异步分发、批量消费等高级定制场景。
-- 需要自定义消费速率：SimpleConsumer 是由业务逻辑主动调用接口获取消息，因此可以自由调整获取消息的频率，自定义控制消费速率。
+- **Unpredictable processing time:** If processing duration varies or is often long, SimpleConsumer lets you set an estimated processing time and adjust it through the API when needed.
+- **Advanced customization, such as asynchronous or batch processing:** SimpleConsumer has fewer thread abstractions in the SDK, so application logic can customize dispatch and batch processing.
+- **Custom consumption rate:** Because application logic explicitly calls the receive API, it can adjust how frequently messages are retrieved.
 
-**SimpleConsumer 工作原理：**
+**How SimpleConsumer works:**
 
-1. **主动获取消息**：业务方调用 receive() 接口主动获取消息
-2. **业务处理**：获取到的消息由业务方自行处理
-3. **主动提交 ACK**：消费处理完成后，业务方主动调用 ack() 接口提交消费结果
-4. **高可控性**：业务方可完全控制消息处理时机和消费速率
+1. **Receive messages:** The application calls `receive()` to retrieve messages.
+2. **Process messages:** The application handles the messages.
+3. **Acknowledge explicitly:** After processing, the application calls `ack()` to submit the result.
+4. **Fine-grained control:** The application controls when and how quickly messages are processed.
 
-### PullConsumer（拉模式消费者）
+### PullConsumer
 
-**核心特点：**
+**Key characteristic:**
 
-Pull 模式下，**应用程序对消息的拉取过程参与度高，可控性强**，可以自主决定何时进行消息拉取，从什么位置 offset 拉取消息。
+With Pull mode, **the application has direct control over message retrieval** and decides when to pull messages and from which offset.
 
-**与 Push 模式的对比：**
+**Compared with Push mode:**
 
-| 特性           | Push 模式            | Pull 模式        |
-| -------------- | -------------------- | ---------------- |
-| **控制权**     | 客户端 SDK 自动拉取  | 应用程序主动拉取 |
-| **可控性**     | 可控性不足           | 可控性高         |
-| **开发复杂度** | 简单，只需实现监听器 | 需要管理拉取过程 |
-| **适用场景**   | 消息处理可预估       | 需要精细控制拉取 |
+| Feature            | Push mode                      | Pull mode                        |
+| ------------------ | ------------------------------ | -------------------------------- |
+| **Control**        | Client SDK pulls automatically | Application pulls explicitly     |
+| **Control level**  | Lower                          | Higher                           |
+| **Implementation** | Simple; implement a listener   | Manage the pull process          |
+| **Use case**       | Predictable processing time    | Fine-grained control is required |
 
-**使用示例（DefaultMQPullConsumer）：**
+**Example (`DefaultMQPullConsumer`):**
 
 ```java
 @Test
@@ -1114,51 +1114,51 @@ public void testPullConsumer() throws Exception {
     String topic = "topic1";
     consumer.start();
 
-    // 获取 Topic 对应的消息队列
+    // Get the message queues for the topic.
     Set<MessageQueue> messageQueues = consumer.fetchSubscribeMessageQueues(topic);
-    int maxNums = 10; // 每次拉取消息的最大数量
+    int maxNums = 10; // Maximum number of messages per pull.
 
     while (true) {
         boolean found = false;
         for (MessageQueue messageQueue : messageQueues) {
-            // 获取消费位置
+            // Get the consumption offset.
             long offset = consumer.fetchConsumeOffset(messageQueue, false);
-            // 拉取消息
+            // Pull messages.
             PullResult pullResult = consumer.pull(messageQueue, "tag8", offset, maxNums);
 
             switch (pullResult.getPullStatus()) {
                 case FOUND:
                     found = true;
                     List<MessageExt> msgs = pullResult.getMsgFoundList();
-                    System.out.println("收到消息，数量----" + msgs.size());
-                    // 处理消息
+                    System.out.println("Received messages, count: " + msgs.size());
+                    // Process messages.
                     for (MessageExt msg : msgs) {
-                        System.out.println("处理消息——" + msg.getMsgId());
+                        System.out.println("Processing message: " + msg.getMsgId());
                     }
-                    // 更新消费位置
+                    // Update the consumption offset.
                     long nextOffset = pullResult.getNextBeginOffset();
                     consumer.updateConsumeOffset(messageQueue, nextOffset);
                     break;
                 case NO_NEW_MSG:
-                    System.out.println("没有新消息");
+                    System.out.println("No new messages");
                     break;
                 case NO_MATCHED_MSG:
-                    System.out.println("没有匹配的消息");
+                    System.out.println("No matching messages");
                     break;
                 case OFFSET_ILLEGAL:
-                    System.err.println("offset 错误");
+                    System.err.println("Invalid offset");
                     break;
             }
         }
         if (!found) {
-            // 没有队列中有新消息，则暂停一会
+            // Wait briefly if no queue has new messages.
             TimeUnit.MILLISECONDS.sleep(5000);
         }
     }
 }
 ```
 
-**使用示例（DefaultLitePullConsumer - 推荐）：**
+**Example (`DefaultLitePullConsumer`, recommended):**
 
 ```java
 DefaultLitePullConsumer litePullConsumer =
@@ -1169,7 +1169,7 @@ litePullConsumer.start();
 
 try {
     while (running) {
-        // 应用程序主动调用 poll 方法拉取消息
+        // The application calls poll() to pull messages.
         List<MessageExt> messageExts = litePullConsumer.poll();
         System.out.printf("%s%n", messageExts);
     }
@@ -1178,74 +1178,74 @@ try {
 }
 ```
 
-**适用场景：**
+**Use cases:**
 
-- **需要精细控制拉取时机**：可以根据业务需求自主决定何时拉取消息
-- **需要控制消费速率**：可以灵活调整拉取频率
-- **批量消费场景**：可以一次性拉取大量消息进行批量处理
-- **特殊消费需求**：如需要从特定 offset 开始消费、需要暂停消费等
+- **Fine-grained control over retrieval:** Pull messages when the application needs them.
+- **Control over consumption rate:** Adjust the polling frequency.
+- **Batch consumption:** Pull many messages at once for batch processing.
+- **Special requirements:** For example, start at a specific offset or pause consumption.
 
-**Pull 模式工作原理：**
+**How Pull mode works:**
 
-1. **负载均衡**：RebalanceService 线程发现消费快照发生变化时，启动消息拉取线程
-2. **消息拉取**：PullTaskImpl 拉取到消息后，把消息放到 consumeRequestCache
-3. **消息消费**：应用程序调用 poll 方法，不停地从 consumeRequestCache 拉取消息进行业务处理
+1. **Load balancing:** When the `RebalanceService` thread detects a change in the consumption snapshot, it starts message-pulling tasks.
+2. **Message retrieval:** `PullTaskImpl` puts retrieved messages into `consumeRequestCache`.
+3. **Message processing:** The application calls `poll()` to retrieve messages from `consumeRequestCache` and process them.
 
-### 三种消费者类型对比
+### Comparing the Three Consumer Types
 
-| 对比项         | PushConsumer                                                             | SimpleConsumer                                       | PullConsumer                                       |
-| -------------- | ------------------------------------------------------------------------ | ---------------------------------------------------- | -------------------------------------------------- |
-| 接口方式       | 使用监听器回调接口返回消费结果，消费者仅允许在监听器范围内处理消费逻辑。 | 业务方自行实现消息处理，并主动调用接口返回消费结果。 | 业务方自行按队列拉取消息，并可选择性地提交消费结果 |
-| 消费并发度管理 | 由 SDK 管理消费并发度。                                                  | 由业务方消费逻辑自行管理消费线程。                   | 由业务方消费逻辑自行管理消费线程。                 |
-| 负载均衡粒度   | 5.x SDK 默认是消息粒度，早期版本是队列粒度                               | 5.x SDK 默认是消息粒度                               | 队列粒度，吞吐攒批性能更好，但容易不均衡           |
-| 接口灵活度     | 高度封装，不够灵活。                                                     | 原子接口，可灵活自定义。                             | 原子接口，可灵活自定义。                           |
-| 适用场景       | 适用于无自定义流程的业务消息开发场景。                                   | 适用于需要高度自定义业务流程的业务开发场景。         | 仅推荐在流处理框架场景下集成使用                   |
+| Comparison                     | PushConsumer                                                         | SimpleConsumer                                                     | PullConsumer                                                              |
+| ------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| **API**                        | Listener returns the result; processing logic stays in the listener  | Application processes messages and submits results through the API | Application pulls messages by queue and can choose when to submit results |
+| **Concurrency management**     | Managed by the SDK                                                   | Managed by application logic                                       | Managed by application logic                                              |
+| **Load-balancing granularity** | Message-level by default in 5.x SDK; queue-level in earlier versions | Message-level by default in 5.x SDK                                | Queue-level; efficient for batching but may be uneven                     |
+| **Flexibility**                | Highly abstracted, less flexible                                     | Atomic APIs that can be customized                                 | Atomic APIs that can be customized                                        |
+| **Use case**                   | Business messaging without a custom processing flow                  | Business flows requiring extensive customization                   | Primarily integration with stream-processing frameworks                   |
 
-**选择建议：**
+**Recommendations:**
 
-- **普通场景**：优先使用 **PushConsumer**，开发简单，SDK 自动管理拉取和提交
-- **消息处理时长不可控**：使用 **SimpleConsumer**，可以自定义处理时长
-- **需要精细控制**：使用 **PullConsumer**，完全自主控制拉取过程
+- **Typical use:** Prefer **PushConsumer** for simple development and SDK-managed retrieval and acknowledgment.
+- **Unpredictable processing time:** Use **SimpleConsumer** to configure the processing time.
+- **Fine-grained control:** Use **PullConsumer** to manage retrieval yourself.
 
-**注意**：生产环境中相同的 ConsumerGroup 下严禁混用 PullConsumer 和其他两种消费者，否则会导致消息消费异常。
+**Note:** Do not mix PullConsumer with the other consumer types under the same `ConsumerGroup` in production. This can cause consumption errors.
 
-## 消费者分组和生产者分组
+## Consumer and Producer Groups
 
-### 生产者分组
+### Producer Groups
 
-RocketMQ 5.x 新版领域模型里，**生产者是轻量、匿名的运行实体**，一般不再需要像早期版本那样重点管理生产者分组（ProducerGroup）。不过在 3.x/4.x 客户端、Spring 生态或兼容模式里，仍可能看到 ProducerGroup 配置，迁移时不要简单删除，要按实际客户端版本确认。
+In the newer RocketMQ 5.x domain model, **producers are lightweight, anonymous runtime entities**, so ProducerGroups are generally less important than in earlier versions. However, `ProducerGroup` configuration may still appear in 3.x/4.x clients, the Spring ecosystem, or compatibility mode. Do not remove it blindly during migration; check the client version in use.
 
-### 消费者分组
+### Consumer Groups
 
-消费者分组是多个消费行为一致的消费者的负载均衡分组。消费者分组不是具体实体而是一个逻辑资源。通过消费者分组实现消费性能的水平扩展以及高可用容灾。
+A consumer group is a logical load-balancing group of consumers with consistent consumption behavior. It is not a concrete entity. Consumer groups enable horizontal scaling of consumption and high availability.
 
-**消费者组的核心作用：**
+**Core roles of consumer groups:**
 
 ```mermaid
 flowchart TB
-    subgraph ConsumerGroup["消费者组概念"]
+    subgraph ConsumerGroup["Consumer Group"]
         direction TB
         style ConsumerGroup fill:#F0F2F5,stroke:#E0E6ED,stroke-width:1.5px
 
-        subgraph Cluster["集群消费模式（以队列粒度为例）"]
+        subgraph Cluster["Clustering mode (queue-level example)"]
             direction TB
             style Cluster fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-            CG["消费者组"] --> C1["消费者1<br/>消费队列1"]
-            CG --> C2["消费者2<br/>消费队列2"]
-            CG --> C3["消费者3<br/>空闲"]
-            Note1["任意一条消息<br/>只需被消费组内<br/>任意一个消费者处理"]
+            CG["Consumer group"] --> C1["Consumer 1<br/>Consumes queue 1"]
+            CG --> C2["Consumer 2<br/>Consumes queue 2"]
+            CG --> C3["Consumer 3<br/>Idle"]
+            Note1["Each message is processed<br/>by one consumer<br/>in the group"]
         end
 
-        subgraph Broadcast["广播消费模式"]
+        subgraph Broadcast["Broadcast mode"]
             direction TB
             style Broadcast fill:#F5F7FA,stroke:#E0E6ED,stroke-width:1.5px
-            BG["消费者组"] --> B1["消费者1<br/>消费所有消息"]
-            BG --> B2["消费者2<br/>消费所有消息"]
-            BG --> B3["消费者3<br/>消费所有消息"]
-            Note2["每条消息<br/>推送给消费组<br/>所有消费者"]
+            BG["Consumer group"] --> B1["Consumer 1<br/>Consumes all messages"]
+            BG --> B2["Consumer 2<br/>Consumes all messages"]
+            BG --> B3["Consumer 3<br/>Consumes all messages"]
+            Note2["Every message is sent<br/>to every consumer<br/>in the group"]
         end
 
-        %% 优化：调整注释连线，避免跨子图渲染异常
+        %% Keep annotation links within each subgraph to avoid rendering issues.
         C1 -.-> Note1
         C2 -.-> Note1
         C3 -.-> Note1
@@ -1265,65 +1265,65 @@ flowchart TB
     linkStyle default stroke-width:1.5px,opacity:0.8
 ```
 
-消费者分组中的订阅关系、投递顺序性、消费重试策略是一致的。
+Consumers in a group share the same subscriptions, delivery-order settings, and retry policy.
 
-- 订阅关系：Apache RocketMQ 以消费者分组的粒度管理订阅关系，实现订阅关系的管理和追溯。
-- 投递顺序性：Apache RocketMQ 的服务端将消息投递给消费者消费时，支持顺序投递和并发投递，投递方式在消费者分组中统一配置。
-- 消费重试策略： 消费者消费消息失败时的重试策略，包括重试次数、死信队列设置等。
+- **Subscriptions:** Apache RocketMQ manages subscriptions by consumer group, which supports subscription management and auditing.
+- **Delivery order:** The server supports ordered and concurrent delivery. The delivery mode is configured for the consumer group.
+- **Retry policy:** Defines how failed message consumption is retried, including retry limits and dead-letter queue settings.
 
-RocketMQ 服务端 5.x 版本：上述消费者的消费行为从关联的消费者分组中统一获取，因此，同一分组内所有消费者的消费行为必然是一致的，客户端无需关注。
+**RocketMQ 5.x server:** Consumers obtain these settings from their associated consumer group, so all consumers in the group behave consistently without extra client-side configuration.
 
-RocketMQ 服务端 3.x/4.x 历史版本：上述消费逻辑由消费者客户端接口定义，因此，您需要自己在消费者客户端设置时保证同一分组下的消费者的消费行为一致。(来自官方网站)
+**Historical RocketMQ 3.x/4.x servers:** Consumption behavior was defined by the consumer client API, so you had to configure clients in the same group consistently. (From the official website.)
 
-**两种消费模式对比：**
+**Comparing the two consumption modes:**
 
-| 对比维度     | 集群消费模式                                   | 广播消费模式                         |
-| ------------ | ---------------------------------------------- | ------------------------------------ |
-| **消息消费** | 任意一条消息只需被消费组内的任意一个消费者处理 | 每条消息推送给消费组所有消费者       |
-| **扩缩容**   | 可通过扩缩消费者数量来提升或降低消费能力       | 扩缩消费者数量无法提升或降低消费能力 |
-| **适用场景** | 需要提升消费能力、避免重复消费                 | 需要所有消费者都收到消息             |
+| Comparison           | Clustering mode                                        | Broadcast mode                             |
+| -------------------- | ------------------------------------------------------ | ------------------------------------------ |
+| **Message delivery** | Each message is processed by one consumer in the group | Each message is sent to all consumers      |
+| **Scaling**          | Add or remove consumers to adjust processing capacity  | Scaling consumers does not change capacity |
+| **Use case**         | Increase processing capacity and avoid duplicate work  | Every consumer must receive every message  |
 
-## 如何解决顺序消费和重复消费？
+## Handling Ordered and Duplicate Consumption
 
-其实，这些东西都是我在介绍消息队列带来的一些副作用的时候提到的，也就是说，这些问题不仅仅挂钩于 RocketMQ ，而是应该每个消息中间件都需要去解决的。
+These issues came up when discussing the drawbacks of message queues. They are not specific to RocketMQ; every messaging system must address them.
 
-在上面我介绍 RocketMQ 的技术架构的时候我已经向你展示了 **它是如何保证高可用的** ，这里不涉及运维方面的搭建，如果你感兴趣可以自己去官网上照着例子搭建属于你自己的 RocketMQ 集群。
+The architecture section above explained **how RocketMQ provides high availability**. This article does not cover operational setup; if you are interested, follow the examples in the official documentation to build a RocketMQ cluster.
 
-> 其实 Kafka 的架构基本和 RocketMQ 类似，只是早期 Kafka 依赖 ZooKeeper 管理元数据，而它的 **分区** 就相当于 RocketMQ 中的 **队列**。还有一些小细节不同会在后面提到。
+> Kafka's architecture is broadly similar to RocketMQ's. Earlier Kafka versions used ZooKeeper for metadata, and Kafka **partitions** serve a role similar to RocketMQ **queues**. Other differences are noted below.
 >
-> 补充：早期 Kafka 依赖 ZooKeeper 管理元数据，新版本已经引入 KRaft 模式。这里对比的是“分区/队列用于提升并行度”的架构思路，不应再简单认为 Kafka 一定依赖 ZooKeeper。
+> Note: Earlier Kafka versions used ZooKeeper for metadata, while newer versions introduced KRaft mode. The comparison here is about using partitions or queues to increase parallelism; Kafka should not be described as always depending on ZooKeeper.
 
-### 顺序消费
+### Ordered Consumption
 
-在上面的技术架构介绍中，我们已经知道了 **RocketMQ 在主题上是无序的、它只有在队列层面才是保证有序** 的。
+As explained in the architecture section, **RocketMQ does not guarantee ordering across a topic; ordering is guaranteed only within a queue**.
 
-这又扯到两个概念——**普通顺序** 和 **严格顺序** 。
+This leads to two concepts: **normal ordering** and **strict ordering**.
 
-所谓普通顺序是指 消费者通过 **同一个消费队列收到的消息是有顺序的** ，不同消息队列收到的消息则可能是无顺序的。普通顺序消息在 Broker **重启情况下不会保证消息顺序性** (短暂时间) 。
+**Normal ordering** means that messages received from **the same queue are ordered**, while messages from different queues may not be. Normal ordering is not guaranteed for a short period if a Broker restarts.
 
-所谓严格顺序是指 消费者收到的 **所有消息** 均是有顺序的。严格顺序消息 **即使在异常情况下也会保证消息的顺序性** 。
+**Strict ordering** means that **all messages** received by a consumer are ordered. It **preserves order even during failures**.
 
-但是，严格顺序看起来虽好，实现它可会付出巨大的代价。如果你使用严格顺序模式，Broker 集群中只要有一台机器不可用，则整个集群都不可用。你还用啥？现在主要场景也就在 `binlog` 同步。
+Strict ordering comes at a high cost. In this mode, if one machine in the Broker cluster becomes unavailable, the entire cluster becomes unavailable. Its main use today is `binlog` synchronization.
 
-一般而言，我们的 `MQ` 都是能容忍短暂的乱序，所以推荐使用普通顺序模式。
+Most applications can tolerate brief reordering, so normal ordering is generally recommended.
 
-那么，我们现在使用了 **普通顺序模式** ，我们从上面学习知道了在 Producer 生产消息的时候会进行轮询(取决你的负载均衡策略)来向同一主题的不同消息队列发送消息。那么如果此时我有几个消息分别是同一个订单的创建、支付、发货，在轮询的策略下这 **三个消息会被发送到不同队列** ，因为在不同的队列此时就无法使用 RocketMQ 带来的队列有序特性来保证消息有序性了。
+With **normal ordering**, a Producer sends messages to different queues in the same topic according to its load-balancing strategy, such as round robin. If messages represent the creation, payment, and shipment of one order, **they may be sent to different queues**. RocketMQ's per-queue ordering cannot preserve their order across those queues.
 
 ![](../images/shared/16ef3874585e096e.jpg)
 
-那么，怎么解决呢？
+How can this be solved?
 
-其实很简单，我们需要处理的仅仅是将同一语义下的消息放入同一个队列(比如这里是同一个订单)，那我们就可以使用 **Hash 取模法** 来保证同一个订单在同一个队列中就行了。
+The solution is to put messages for the same business entity (such as one order) in the same queue. A **hash-modulo strategy** can map every message for an order to the same queue.
 
-**4.x 版本：使用 MessageQueueSelector**
+**Version 4.x: Use `MessageQueueSelector`**
 
-RocketMQ 4.x 版本通过继承 `MessageQueueSelector` 来实现自定义队列选择逻辑：
+In RocketMQ 4.x, extend `MessageQueueSelector` to define custom queue selection logic:
 
 ```java
 SendResult sendResult = producer.send(msg, new MessageQueueSelector() {
     @Override
     public MessageQueue select(List<MessageQueue> mqs, Message msg, Object arg) {
-        //根据订单ID等业务关键字计算队列索引
+        // Calculate the queue index from a business key such as the order ID.
         Long orderId = (Long) arg;
         int index = Math.floorMod(Long.hashCode(orderId), mqs.size());
         return mqs.get(index);
@@ -1331,105 +1331,105 @@ SendResult sendResult = producer.send(msg, new MessageQueueSelector() {
 }, orderId);
 ```
 
-**5.x 版本：使用消息组（MessageGroup）**
+**Version 5.x: Use a message group (`MessageGroup`)**
 
-RocketMQ 5.x 版本引入了**消息组**的概念，通过设置消息组来保证同一组内消息的顺序性：
+RocketMQ 5.x introduced **message groups**. Set a message group to preserve ordering within that group:
 
 ```java
 Message message = messageBuilder.setTopic("topic")
         .setTag("messageTag")
-        //设置顺序消息的排序分组
-        .setMessageGroup("fifoGroup001")  // 比如使用订单ID作为消息组
+        // Set the group used to order messages.
+        .setMessageGroup("fifoGroup001")  // For example, use the order ID as the message group.
         .setBody("messageBody".getBytes())
         .build();
 ```
 
-**队列选择算法**
+**Queue selection algorithms**
 
-RocketMQ 实现了两种队列选择算法：
+RocketMQ implements two queue selection algorithms:
 
-- **轮询算法**（默认）：向消息指定的 topic 所在队列中依次发送消息，保证消息均匀分布
-- **最小投递延迟算法**：每次消息投递的时候统计消息投递的延迟，选择队列时优先选择消息延时小的队列
+- **Round robin (default):** Sends messages to the topic's queues in turn to distribute them evenly.
+- **Minimal delivery latency:** Tracks delivery latency and prefers queues with lower latency.
 
 ```java
-// 启用最小投递延迟算法
+// Enable the minimal delivery latency algorithm.
 producer.setSendLatencyFaultEnable(true);
 ```
 
-### 特殊情况处理
+### Handling Special Cases
 
-#### 发送异常
+#### Send Failures
 
-选择队列后会与 Broker 建立连接，通过网络请求将消息发送到 Broker 上，如果 Broker 挂了或者网络波动发送消息超时此时 RocketMQ 会进行重试。
+After selecting a queue, the producer connects to the Broker and sends the message over the network. If the Broker fails or a network issue causes a timeout, RocketMQ retries the send.
 
-重新选择其他 Broker 中的消息队列进行发送，默认重试两次，可以手动设置。
+It selects a queue on another Broker for the retry. The default is two retries, which can be changed:
 
 ```java
 producer.setRetryTimesWhenSendFailed(5);
 ```
 
-#### 消息过大
+#### Oversized Messages
 
-这里要区分两个限制：客户端可以配置消息体超过某个阈值后压缩（例如 Java 4.x 客户端常见默认值是 4KB），而 RocketMQ 5.x 官方参数里默认最大消息体是 4MB，且这个大小不包含压缩后的额外效果。大文件不建议直接塞进消息体，通常把文件放到对象存储或文件系统里，MQ 里只传业务 ID 和文件地址。
+Distinguish two limits: a client can compress message bodies above a configured threshold (4 KB is a common default in the Java 4.x client), while RocketMQ 5.x sets a 4 MB default maximum message body size. Compression does not expand this limit. Avoid placing large files directly in messages; store them in object storage or a file system and send only a business ID and file address through the queue.
 
-### 重复消费
+### Duplicate Consumption
 
-RocketMQ 和大多数消息队列一样，工程上通常按 **至少一次投递** 来设计：只要出现消费失败、超时、客户端重启、网络抖动等情况，同一条业务消息就可能再次投递。因此，解决重复消费的核心思路就是两个字—— **幂等** 。在编程中，一个*幂等*操作的特点是其任意多次执行所产生的影响均与一次执行的影响相同。比如说，这个时候我们有一个订单的处理积分的系统，每当来一个消息的时候它就负责为创建这个订单的用户的积分加上相应的数值。可是有一次，消息队列发送给订单系统 FrancisQ 的订单信息，其要求是给 FrancisQ 的积分加上 500。但是积分系统在收到 FrancisQ 的订单信息处理完成之后返回给消息队列处理成功的信息的时候出现了网络波动(当然还有很多种情况，比如 Broker 意外重启等等)，这条回应没有发送成功。
+Like most messaging systems, RocketMQ is generally designed for **at-least-once delivery**. If processing fails, times out, a client restarts, or the network becomes unstable, the same business message may be delivered again. The core solution is **idempotency**: an operation is idempotent if repeating it any number of times has the same effect as performing it once. For example, a points service adds points to a user's account when it receives an order message. Suppose the queue sends an order for FrancisQ that should add 500 points. The points service processes it and sends a success response, but a network failure prevents the response from reaching the queue. (A Broker restart or other failure could have the same effect.)
 
-那么，消息队列没收到积分系统的回应会不会尝试重发这个消息？问题就来了，我再发这个消息，万一它又给 FrancisQ 的账户加上 500 积分怎么办呢？
+The queue did not receive the response, so it may resend the message. What if the points service adds another 500 points to FrancisQ's account?
 
-所以我们需要给我们的消费者实现 **幂等** ，也就是对同一个消息的处理结果，执行多少次都不变。
+Consumers must therefore be **idempotent**, so processing the same message repeatedly does not change the result.
 
-那么如何给业务实现幂等呢？这个还是需要结合具体的业务的。Redis 的 `SETNX` 可以做短期去重或弱幂等控制，但不要把它当成所有场景的唯一依据；订单、支付、库存这类强一致场景，更推荐使用 **数据库唯一键、幂等表或业务状态机** 来兜底，保证重复消息不会造成重复写入或重复扣减。
+How to implement idempotency depends on the business. Redis `SETNX` can help with short-term deduplication or weaker idempotency requirements, but should not be the only safeguard in every case. For orders, payments, and inventory, use **database unique keys, an idempotency table, or a business state machine** to prevent duplicate writes or deductions.
 
-不过最主要的还是需要 **根据特定场景使用特定的解决方案** ，你要知道你的消息消费是否是完全不可重复消费还是可以忍受重复消费的，然后再选择强校验和弱校验的方式。毕竟在 CS 领域还是很少有技术银弹的说法。
+The main principle is to **choose a solution for the specific use case**. Determine whether duplicate processing is unacceptable or tolerable, then choose stronger or weaker validation accordingly. There are few silver bullets in computer science.
 
-RocketMQ 消费端幂等可以优先按业务唯一键设计，而不是只依赖消息 ID。比如订单支付消息用支付单号或订单号做唯一键，库存扣减消息用业务流水号做唯一键。这样即使消息重试、补偿或重新投递，只要业务唯一键不变，就能避免重复写入。
+For RocketMQ consumer idempotency, prefer a business key over relying only on the message ID. For example, use the payment or order number as the key for payment messages, and a transaction number for inventory deductions. Retries, compensation, or redelivery then cannot cause duplicate writes as long as the business key remains the same.
 
-而在整个互联网领域，幂等不仅仅适用于消息队列的重复消费问题，这些实现幂等的方法，也同样适用于，**在其他场景中来解决重复请求或者重复调用的问题** 。比如将 HTTP 服务设计成幂等的，**解决前端或者 APP 重复提交表单数据的问题** ，也可以将一个微服务设计成幂等的，解决 RPC 框架自动重试导致的 **重复调用问题** 。
+Idempotency is useful beyond duplicate message consumption. The same techniques can **prevent duplicate requests or calls in other scenarios**. For example, idempotent HTTP services can **handle duplicate form submissions from a frontend or app**, and idempotent microservices can handle **duplicate calls caused by automatic RPC retries**.
 
-## RocketMQ 如何实现分布式事务？
+## How Does RocketMQ Handle Distributed Transactions?
 
-如何解释分布式事务呢？事务大家都知道吧？**要么都执行要么都不执行** 。在同一个系统中我们可以轻松地实现事务，但是在分布式架构中，我们有很多服务是部署在不同系统之间的，而不同服务之间又需要进行调用。比如此时我下订单然后增加积分，如果保证不了分布式事务的话，就会出现 A 系统下了订单，但是 B 系统增加积分失败或者 A 系统没有下订单，B 系统却增加了积分。前者对用户不友好，后者对运营商不利，这是我们都不愿意见到的。
+What is a distributed transaction? A transaction should **either complete entirely or not at all**. This is straightforward within one system, but distributed architectures involve services deployed separately and calling one another. For example, placing an order and awarding points must be coordinated. Without a distributed transaction, System A might place the order while System B fails to award points, or System A might fail to place the order while System B still awards points. Neither outcome is acceptable.
 
-那么，如何去解决这个问题呢？
+How can this problem be addressed?
 
-如今比较常见的分布式事务实现有 2PC、TCC 和事务消息(half 半消息机制)。每一种实现都有其特定的使用场景，但是也有各自的问题，**都不是完美的解决方案**。
+Common distributed transaction approaches include 2PC, TCC, and transactional messages (the half-message mechanism). Each suits certain use cases and has limitations; **none is a perfect solution**.
 
-在 RocketMQ 中使用的是 **事务消息加上事务反查机制** 来解决分布式事务问题的。我画了张图，大家可以对照着图进行理解。
+RocketMQ addresses distributed transactions with **transactional messages and transaction checks**. The diagram below illustrates the flow.
 
 ![](../images/shared/16ef38798d7a987f.jpg)
 
-**事务消息处理流程详解**
+**Transactional message flow in detail**
 
-1. **发送半事务消息**：生产者将消息发送至 RocketMQ 服务端
-2. **服务端确认**：服务端将消息持久化成功之后，向生产者返回 Ack 确认消息已经发送成功，此时消息被标记为“暂不能投递”，这种状态下的消息即为**半事务消息**
-3. **执行本地事务**：生产者开始执行本地事务逻辑
-4. **提交二次确认**：生产者根据本地事务执行结果向服务端提交二次确认结果（Commit 或 Rollback）
-5. **事务回查**：如果服务端未收到二次确认结果，或收到的结果为 Unknown，经过固定时间后，服务端将对消息生产者发起**消息回查**
-6. **检查本地事务**：生产者收到消息回查后，需要检查对应消息的本地事务执行的最终结果
-7. **再次提交确认**：生产者根据检查到的本地事务的最终状态再次提交二次确认
+1. **Send a half message:** The producer sends the message to the RocketMQ server.
+2. **Server acknowledgment:** After persisting the message, the server returns an Ack. The message is marked “not deliverable yet” and is called a **half message**.
+3. **Execute the local transaction:** The producer runs the local transaction logic.
+4. **Send the second-phase result:** The producer sends `Commit` or `Rollback` to the server based on the local transaction result.
+5. **Check the transaction:** If the server receives no second-phase result, or receives `Unknown`, it **checks the message status** with the producer after a fixed interval.
+6. **Check the local transaction:** The producer determines the final result of the corresponding local transaction.
+7. **Send confirmation again:** The producer sends a second-phase result based on the final transaction state.
 
-在第一步发送的 half 消息 ，它的意思是 **在事务提交之前，对于消费者来说，这个消息是不可见的** 。
+The half message sent in step 1 is **invisible to consumers until the transaction commits**.
 
-> 那么，如何做到写入消息但是对用户不可见呢？RocketMQ 事务消息的做法是：如果消息是 half 消息，将备份原消息的主题与消息消费队列，然后 **改变主题** 为 RMQ_SYS_TRANS_HALF_TOPIC。由于消费组未订阅该主题，故消费端无法消费 half 类型的消息，**然后 RocketMQ 会开启一个定时任务，从 Topic 为 RMQ_SYS_TRANS_HALF_TOPIC 中拉取消息进行消费**，根据生产者组获取一个服务提供者发送回查事务状态请求，根据事务状态来决定是提交或回滚消息。
+> How can a message be written without being visible to consumers? For a half message, RocketMQ saves the original topic and queue, then **changes the topic** to `RMQ_SYS_TRANS_HALF_TOPIC`. Since consumer groups do not subscribe to this topic, they cannot consume the half message. **RocketMQ then starts a scheduled task to pull messages from `RMQ_SYS_TRANS_HALF_TOPIC`** and check their transaction status with a producer in the producer group. The result determines whether to commit or roll back the message.
 
-你可以试想一下，如果没有从第 5 步开始的 **事务回查机制** ，如果出现网路波动第 4 步没有发送成功，这样就会产生 MQ 不知道是不是需要给消费者消费的问题。在 RocketMQ 中就是使用的上述的事务回查来解决的，而在 Kafka 中通常是直接抛出一个异常让用户来自行解决。
+Without the **transaction check** in step 5, a network failure could prevent step 4 from succeeding, leaving the message queue unable to determine whether the message should be delivered. RocketMQ uses the transaction check described above; Kafka typically throws an exception and leaves handling to the application.
 
-你还需要注意的是，在 `MQ Server` 指向系统 B 的操作已经和系统 A 不相关了，也就是说在消息队列中的分布式事务是——**本地事务和存储消息到消息队列才是同一个事务**。这样也就产生了事务的**最终一致性**，因为整个过程是异步的，**每个系统只要保证它自己那一部分的事务就行了**。
+Note that after the `MQ Server` sends a message to System B, that operation is separate from System A. In a message-queue-based distributed transaction, **the local transaction and storing the message in the queue are the atomic unit**. This provides **eventual consistency**: the process is asynchronous, and **each system only needs to guarantee its own transaction**.
 
-实践中会遇到的问题：事务消息需要一个事务监听器来监听本地事务是否成功，并且事务监听器接口只允许被实现一次。那就意味着需要把各种事务消息的本地事务都写在一个接口方法里面，必将会产生大量的耦合和类型判断。采用函数 Function 接口来包装整个业务过程，作为一个参数传递到监听器的接口方法中。再调用 Function 的 apply() 方法来执行业务，事务也会在 apply() 方法中执行。让监听器与业务之间实现解耦，使之具备了真实生产环境中的可行性。
+One practical issue is that transactional messages use a listener to check whether the local transaction succeeded, and the listener interface can only be implemented once. Putting every local transaction in one listener method creates tight coupling and many type checks. One approach is to wrap each business operation in a `Function`, pass it to the listener method, and invoke its `apply()` method to run the operation. This decouples the listener from business logic.
 
-另外，事务回查时不要只查 Redis。事务最终状态应该以和本地事务同库提交的事务表、业务表状态为准，Redis 最多作为缓存或加速查询的副本。下面示例保留 Redis 写法是为了演示思路，生产环境要把本地事务状态落到可靠存储，并用业务唯一键或数据库约束保证消费端幂等。
+Do not rely only on Redis when checking a transaction. The final state should come from the transaction or business table committed in the same database as the local transaction. Redis may be used as a cache or read replica. The Redis code below is for illustration; in production, persist transaction state reliably and make consumers idempotent with a business key or database constraint.
 
-1.模拟一个添加用户浏览记录的需求
+1. Simulate adding a user browsing-history record.
 
 ```java
 @PostMapping("/add")
-@ApiOperation("添加用户浏览记录")
+@ApiOperation("Add a user browsing-history record")
 public Result<TransactionSendResult> add(Long userId, Long forecastLogId) {
 
-        // 函数式编程:浏览记录入库
+        // Use a function to save the browsing-history record.
         Function<String, Boolean> function = transactionId -> viewHistoryHandler.addViewHistory(transactionId, userId, forecastLogId);
 
         Map<String, Long> hashMap = new HashMap<>();
@@ -1437,17 +1437,17 @@ public Result<TransactionSendResult> add(Long userId, Long forecastLogId) {
         hashMap.put("forecastLogId", forecastLogId);
         String jsonString = JSON.toJSONString(hashMap);
 
-        // 发送事务消息;将本地的事务操作,用函数Function接口接收,作为一个参数传入到方法中
+        // Send a transactional message and pass the local transaction as a Function argument.
         TransactionSendResult transactionSendResult = mqProducerService.sendTransactionMessage(jsonString, MQDestination.TAG_ADD_VIEW_HISTORY, function);
         return Result.success(transactionSendResult);
 }
 ```
 
-2.发送事务消息的方法
+2. Method for sending a transactional message.
 
 ```java
 /**
- * 发送事务消息
+ * Send a transactional message.
  *
  * @param msgBody
  * @param tag
@@ -1455,10 +1455,10 @@ public Result<TransactionSendResult> add(Long userId, Long forecastLogId) {
  * @return
  */
 public TransactionSendResult sendTransactionMessage(String msgBody, String tag, Function<String, Boolean> function) {
-    // 构建消息体
+    // Build the message body.
     Message<String> message = buildMessage(msgBody);
 
-    // 构建消息投递信息
+    // Build the message destination.
     String destination = buildDestination(tag);
 
     TransactionSendResult result = rocketMQTemplate.sendMessageInTransaction(destination, message, function);
@@ -1466,7 +1466,7 @@ public TransactionSendResult sendTransactionMessage(String msgBody, String tag, 
 }
 ```
 
-3.生产者消息监听器,只允许一个类去实现该监听器
+3. Producer message listener. Only one class can implement this listener.
 
 ```java
 @Slf4j
@@ -1474,10 +1474,10 @@ public TransactionSendResult sendTransactionMessage(String msgBody, String tag, 
 public class TransactionMsgListener implements RocketMQLocalTransactionListener {
 
     @Autowired
-    private RedisService redisService; // 示例缓存，生产环境不要作为事务状态唯一来源
+    private RedisService redisService; // Example cache; do not use as the only source of transaction state in production.
 
     /**
-     * 执行本地事务（在发送消息成功时执行）
+     * Execute the local transaction after the message is sent successfully.
      *
      * @param message
      * @param o
@@ -1486,34 +1486,34 @@ public class TransactionMsgListener implements RocketMQLocalTransactionListener 
     @Override
     public RocketMQLocalTransactionState executeLocalTransaction(Message message, Object o) {
 
-        // 1、获取事务ID
+            // 1. Get the transaction ID.
         String transactionId = null;
         try {
             transactionId = message.getHeaders().get("rocketmq_TRANSACTION_ID").toString();
-            // 2、判断传入函数对象是否为空，如果为空代表没有要执行的业务直接抛弃消息
+            // 2. If no function was provided, there is no business operation to execute; discard the message.
             if (o == null) {
-                //返回ROLLBACK状态的消息会被丢弃
-                log.info("事务消息回滚，没有需要处理的业务 transactionId={}", transactionId);
+                // A message returned with ROLLBACK is discarded.
+                log.info("Rolling back transactional message; no business operation to process. transactionId={}", transactionId);
                 return RocketMQLocalTransactionState.ROLLBACK;
             }
-            // 将Object o转换成Function对象
+            // Cast o to a Function.
             Function<String, Boolean> function = (Function<String, Boolean>) o;
-            // 执行业务 事务也会在function.apply中执行
+            // Run the business operation; the transaction executes inside function.apply().
             Boolean apply = function.apply(transactionId);
             if (apply) {
-                log.info("事务提交，消息正常处理 transactionId={}", transactionId);
-                //返回COMMIT状态的消息会立即被消费者消费到
+                log.info("Transaction committed; message can be processed. transactionId={}", transactionId);
+                // A message returned with COMMIT is immediately available to consumers.
                 return RocketMQLocalTransactionState.COMMIT;
             }
         } catch (Exception e) {
-            log.info("出现异常 返回ROLLBACK transactionId={}", transactionId);
+            log.info("Exception occurred; returning ROLLBACK. transactionId={}", transactionId);
             return RocketMQLocalTransactionState.ROLLBACK;
         }
         return RocketMQLocalTransactionState.ROLLBACK;
     }
 
     /**
-     * 事务回查机制，检查本地事务的状态
+     * Check the local transaction status.
      *
      * @param message
      * @return
@@ -1523,7 +1523,7 @@ public class TransactionMsgListener implements RocketMQLocalTransactionListener 
 
         String transactionId = message.getHeaders().get("rocketmq_TRANSACTION_ID").toString();
 
-        // 示例里查 Redis；生产环境建议查询本地事务表或业务表最终状态
+        // The example checks Redis; in production, query the final state in a local transaction or business table.
         MqTransaction mqTransaction = redisService.getCacheObject("mqTransaction:" + transactionId);
         if (Objects.isNull(mqTransaction)) {
             return RocketMQLocalTransactionState.ROLLBACK;
@@ -1533,7 +1533,7 @@ public class TransactionMsgListener implements RocketMQLocalTransactionListener 
 }
 ```
 
-4.模拟的业务场景,这里的方法必须提取出来,放在别的类里面.如果调用方与被调用方在同一个类中,会发生事务失效的问题.
+4. Example business operation. Move this method to a separate class; if the caller and callee are in the same class, the transaction may not take effect.
 
 ```java
 @Component
@@ -1546,10 +1546,10 @@ public class ViewHistoryHandler {
     private IMqTransactionService mqTransactionService;
 
     @Autowired
-    private RedisService redisService; // 示例缓存，事务状态仍应以数据库为准
+    private RedisService redisService; // Example cache; the database remains the source of truth for transaction state.
 
     /**
-     * 浏览记录入库
+     * Save a browsing-history record.
      *
      * @param transactionId
      * @param userId
@@ -1558,26 +1558,26 @@ public class ViewHistoryHandler {
      */
     @Transactional
     public Boolean addViewHistory(String transactionId, Long userId, Long forecastLogId) {
-        // 构建浏览记录
+        // Build the browsing-history record.
         ViewHistory viewHistory = new ViewHistory();
         viewHistory.setUserId(userId);
         viewHistory.setForecastLogId(forecastLogId);
         viewHistory.setCreateTime(LocalDateTime.now());
         boolean save = viewHistoryService.save(viewHistory);
 
-        // 本地事务信息
+        // Local transaction information.
         MqTransaction mqTransaction = new MqTransaction();
         mqTransaction.setTransactionId(transactionId);
         mqTransaction.setCreateTime(new Date());
         mqTransaction.setStatus(MqTransaction.StatusEnum.VALID.getStatus());
 
-        // 事务状态应和本地业务数据在同一个事务中落库
+        // Persist the transaction state in the same transaction as the local business data.
         mqTransactionService.save(mqTransaction);
 
-        // Redis 只能作为缓存副本，不能作为事务状态的唯一来源
+        // Redis is only a cache; it must not be the only source of transaction state.
         redisService.setCacheObject("mqTransaction:" + transactionId, mqTransaction, 4L, TimeUnit.HOURS);
 
-        // 放开注释,模拟异常,事务回滚
+        // Uncomment to simulate an exception and roll back the transaction.
         // int i = 10 / 0;
 
         return save;
@@ -1585,27 +1585,27 @@ public class ViewHistoryHandler {
 }
 ```
 
-5.消费消息,以及幂等处理
+5. Consume the message and handle idempotency.
 
 ```java
 @Service
 @RocketMQMessageListener(topic = MQDestination.TOPIC, selectorExpression = MQDestination.TAG_ADD_VIEW_HISTORY, consumerGroup = MQDestination.TAG_ADD_VIEW_HISTORY)
 public class ConsumerAddViewHistory implements RocketMQListener<Message> {
-    // 监听到消息就会执行此方法
+    // Called when a message is received.
     @Override
     public void onMessage(Message message) {
-        // 幂等校验
+        // Check idempotency.
         String transactionId = message.getTransactionId();
 
-        // 示例里查 Redis；强一致场景建议用业务唯一键、幂等表或数据库约束兜底
+        // The example checks Redis; for strong consistency, use a business key, idempotency table, or database constraint.
         MqTransaction mqTransaction = redisService.getCacheObject("mqTransaction:" + transactionId);
 
-        // 不存在事务记录
+        // No transaction record exists.
         if (Objects.isNull(mqTransaction)) {
             return;
         }
 
-        // 已消费
+        // Already consumed.
         if (Objects.equals(mqTransaction.getStatus(), MqTransaction.StatusEnum.CONSUMED.getStatus())) {
             return;
         }
@@ -1616,84 +1616,84 @@ public class ConsumerAddViewHistory implements RocketMQListener<Message> {
         Long userId = map.get("userId");
         Long forecastLogId = map.get("forecastLogId");
 
-        // 下游的业务处理
-        // TODO 记录用户喜好,更新用户画像
+        // Downstream business processing.
+        // TODO: Record user preferences and update the user profile.
 
-        // TODO 更新'证券预测文章'的浏览量,重新计算文章的曝光排序
+        // TODO: Update views for the securities forecast article and recalculate its ranking.
 
-        // 更新状态为已消费
+        // Mark the message as consumed.
         mqTransaction.setUpdateTime(new Date());
         mqTransaction.setStatus(MqTransaction.StatusEnum.CONSUMED.getStatus());
         redisService.setCacheObject("mqTransaction:" + transactionId, mqTransaction, 4L, TimeUnit.HOURS);
-        log.info("监听到消息：msg={}", JSON.toJSONString(map));
+        log.info("Received message: msg={}", JSON.toJSONString(map));
     }
 }
 ```
 
-## 如何解决消息堆积问题？
+## How to Handle Message Backlogs
 
-在上面我们提到了消息队列一个很重要的功能——**削峰** 。那么如果这个峰值太大了导致消息堆积在队列中怎么办呢？
+Above, we discussed an important function of message queues: **smoothing traffic spikes**. What if a spike is so large that messages accumulate in the queue?
 
-其实这个问题可以将它广义化，因为产生消息堆积的根源其实就只有两个——生产者生产太快或者消费者消费太慢。
+There are two main causes of a backlog: producers publish too quickly or consumers process too slowly.
 
-我们可以从多个角度去思考解决这个问题，当流量到峰值的时候是因为生产者生产太快，我们可以使用一些 **限流降级** 的方法，当然你也可以增加多个消费者实例去水平扩展增加消费能力来匹配生产的激增。如果消费者消费过慢的话，我们可以先检查 **是否是消费者出现了大量的消费错误** ，或者打印一下日志查看是否是哪一个线程卡死，出现了锁资源不释放等等的问题。
+There are several ways to address this. If a traffic spike overwhelms consumers because producers are publishing too quickly, apply **rate limiting or graceful degradation**, or add consumer instances to scale out and match the load. If consumers are slow, check for **a high rate of processing errors** and inspect logs for blocked threads, unreleased locks, or other issues.
 
-> 增加消费者实例通常能缓解消费能力不足造成的堆积，但是否需要增加队列，要看负载均衡策略和现有队列数量。
+> Adding consumer instances can often reduce backlogs caused by insufficient processing capacity. Whether to add queues depends on the load-balancing strategy and current queue count.
 >
-> **注意**：传统 Remoting SDK 的队列粒度负载均衡下，**同组内一个队列只分配给一个消费者实例**。只有扩容后的消费者数超过可分配队列数时，才会出现部分消费者没有队列可消费的情况。
+> **Note:** With queue-level load balancing in the traditional Remoting SDK, **each queue is assigned to only one consumer instance in a group**. Some consumers receive no queue only when the group has more consumers than assignable queues.
 >
-> RocketMQ 5.x 的 PushConsumer 和 SimpleConsumer 默认使用**消息粒度负载均衡策略**，同一消费者分组内的多个消费者可以按照消息粒度共同消费同一个队列中的消息，因此即使消费者数量多于队列数量，仍能提升消费并行度。PullConsumer 仍是队列粒度，扩容时还是要关注队列数。
+> PushConsumer and SimpleConsumer in RocketMQ 5.x use **message-level load balancing** by default. Multiple consumers in the same group can share messages from one queue, so adding consumers can still increase parallelism even when there are more consumers than queues. PullConsumer remains queue-level, so consider the queue count when scaling it out.
 
 ![](../images/shared/16ef387d939ab66d.jpg)
 
-生产排查消息堆积时，可以按这个顺序来：
+When investigating a production backlog, follow these steps:
 
-1. **先确认堆积范围**：是单个 Topic、单个队列，还是整个 Broker 都堆积。
-2. **看生产速度和消费速度**：生产突增要限流或削峰，消费下降要查消费者。
-3. **查消费者耗时**：重点看慢 SQL、外部接口、锁竞争、线程池和批量大小。
-4. **看队列和消费者匹配关系**：4.x 和 PullConsumer 需要关注队列数是否限制了并发，5.x PushConsumer/SimpleConsumer 还要关注消息粒度负载均衡策略。
-5. **做临时扩容和补偿**：必要时临时扩容消费者、增加队列、拆分 Topic，历史积压用批处理任务慢慢追。
+1. **Determine the scope:** Check whether the backlog affects one topic, one queue, or the entire Broker.
+2. **Compare production and consumption rates:** Rate-limit or smooth a producer spike; investigate consumers if the consumption rate drops.
+3. **Measure consumer processing time:** Look for slow SQL queries, external calls, lock contention, thread pools, and batch sizes.
+4. **Check queue-to-consumer assignment:** For 4.x and PullConsumer, check whether the queue count limits concurrency. For 5.x PushConsumer and SimpleConsumer, also inspect message-level load balancing.
+5. **Scale temporarily and recover:** If needed, add consumers or queues, split the topic, and use batch jobs to gradually catch up on old messages.
 
-不要只盯着“加消费者”。如果单队列顺序消费卡住，或者业务处理本身很慢，加消费者也不会明显改善。
+Do not focus only on “adding consumers.” If ordered consumption is blocked on one queue or business processing itself is slow, adding consumers may not help.
 
-## 什么是回溯消费？
+## What Is Replay Consumption?
 
-回溯消费是指 Consumer 已经消费成功的消息，由于业务上需求需要重新消费，在 RocketMQ 中， Broker 在向 Consumer 投递成功消息后，**消息仍然需要保留** 。并且重新消费一般是按照时间维度，例如由于 Consumer 系统故障，恢复后需要重新消费 1 小时前的数据，那么 Broker 要提供一种机制，可以按照时间维度来回退消费进度。RocketMQ 支持按照时间回溯消费，时间维度精确到毫秒。
+Replay consumption means consuming messages that were already processed successfully because the business now needs to process them again. In RocketMQ, **messages remain stored** after they have been delivered to consumers. Replay is usually requested by time: for example, after recovering from a consumer failure, the application may need to reprocess messages from one hour earlier. The Broker provides a way to rewind consumption progress by time. RocketMQ supports time-based replay with millisecond precision.
 
-## RocketMQ 如何保证高性能读写
+## How RocketMQ Achieves High-Performance Reads and Writes
 
-### 传统 IO 方式
+### Traditional I/O
 
 ![](../images/shared/31699457085_.pic.png)
 
-传统的 IO 读写其实就是 read + write 的操作，整个过程会分为如下几步
+Traditional I/O consists of `read` and `write` operations. The process has these steps:
 
-- 用户调用 read()方法，开始读取数据，此时发生一次上下文从用户态到内核态的切换，也就是图示的切换 1
-- 将磁盘数据通过 DMA 拷贝到内核缓存区
-- 将内核缓存区的数据拷贝到用户缓冲区，这样用户，也就是我们写的代码就能拿到文件的数据
-- read()方法返回，此时就会从内核态切换到用户态，也就是图示的切换 2
-- 当我们拿到数据之后，就可以调用 write()方法，此时上下文会从用户态切换到内核态，即图示切换 3
-- CPU 将用户缓冲区的数据拷贝到 Socket 缓冲区
-- 将 Socket 缓冲区数据拷贝至网卡
-- write()方法返回，上下文重新从内核态切换到用户态，即图示切换 4
+- The user calls `read()` to start reading data, causing a context switch from user mode to kernel mode (switch 1 in the diagram).
+- DMA copies data from disk to the kernel buffer.
+- The data is copied from the kernel buffer to the user buffer, where the application can access it.
+- `read()` returns, switching from kernel mode back to user mode (switch 2).
+- The application calls `write()`, switching from user mode to kernel mode (switch 3).
+- The CPU copies data from the user buffer to the socket buffer.
+- Data is copied from the socket buffer to the network interface card.
+- `write()` returns, switching from kernel mode back to user mode (switch 4).
 
-整个过程发生了 4 次上下文切换和 4 次数据的拷贝，这在高并发场景下肯定会严重影响读写性能故引入了零拷贝技术
+This process involves four context switches and four data copies, which can severely affect performance under high concurrency. Zero-copy techniques help reduce this overhead.
 
-### 零拷贝技术
+### Zero-Copy
 
 #### mmap
 
-mmap（memory map）是一种内存映射文件的方法，即将一个文件或者其它对象映射到进程的地址空间，实现文件磁盘地址和进程虚拟地址空间中一段虚拟地址的一一对映关系。
+`mmap` (memory mapping) maps a file or other object into a process's address space, creating a mapping between the file's disk locations and a range of virtual addresses in the process.
 
-简单地说就是内核缓冲区和应用缓冲区共享，从而减少了从读缓冲区到用户缓冲区的一次 CPU 拷贝。基于此上述架构图可变为：
+In simple terms, the kernel and application share a buffer, avoiding one CPU copy from the read buffer to the user buffer. The architecture diagram therefore changes as follows:
 
 ![](../images/shared/41699457086_.pic.png)
 
-基于 mmap IO 读写其实就变成 mmap + write 的操作，也就是用 mmap 替代传统 IO 中的 read 操作。
+With `mmap`, I/O becomes an `mmap` plus `write` operation: `mmap` replaces the traditional `read` call.
 
-当用户发起 mmap 调用时，内核主要是建立文件和进程虚拟地址空间的映射关系，并不会在这一步就把全部文件内容拷贝进内存。真正访问映射区域时，如果对应页还不在 Page Cache 中，才会触发缺页中断并把磁盘数据加载到内存；随后用户调用 write，仍需要把数据从内核缓冲区写到 Socket 缓冲区。
+When a process calls `mmap`, the kernel primarily creates a mapping between the file and the process's virtual address space; it does not copy the entire file into memory at that point. When the mapped region is accessed, a page fault loads the data from disk if the page is not already in the page cache. The subsequent `write` still copies data from the kernel buffer to the socket buffer.
 
-发生 4 次上下文切换和 3 次 IO 拷贝操作，在 Java 中的实现：
+This involves four context switches and three I/O copies. In Java:
 
 ```java
 FileChannel fileChannel = new RandomAccessFile("test.txt", "rw").getChannel();
@@ -1702,151 +1702,151 @@ MappedByteBuffer mappedByteBuffer = fileChannel.map(FileChannel.MapMode.READ_WRI
 
 #### sendfile
 
-sendfile()跟 mmap()一样，也会减少一次 CPU 拷贝，但是它同时也会减少两次上下文切换。
+Like `mmap()`, `sendfile()` reduces one CPU copy, and it also reduces two context switches.
 
 ![](../images/shared/51699457087_.pic.png)
 
-如图，用户在发起 sendfile()调用时会发生切换 1，之后数据通过 DMA 拷贝到内核缓冲区，再由内核把数据发送到 Socket 相关缓冲区，最后写入网卡，sendfile()返回，发生切换 2。不同操作系统和网卡能力下具体拷贝次数会有差异，但核心收益是减少用户态和内核态之间的数据拷贝与上下文切换。Java 也提供了相应 api：
+As shown, calling `sendfile()` causes switch 1. DMA then copies data to a kernel buffer, and the kernel sends it to the socket buffer and eventually the network interface. When `sendfile()` returns, switch 2 occurs. The exact number of copies varies by operating system and network hardware, but the main benefit is fewer copies and context switches between user and kernel mode. Java provides a corresponding API:
 
 ```java
 FileChannel channel = FileChannel.open(Paths.get("./test.txt"), StandardOpenOption.WRITE, StandardOpenOption.CREATE);
-//调用transferTo方法向目标数据传输
+// Transfer data to the target with transferTo().
 channel.transferTo(position, len, target);
 ```
 
-在如上代码中，并没有文件的读写操作，而是直接将文件的数据传输到 target 目标缓冲区，也就是说，sendfile 是无法知道文件的具体的数据的；但是 mmap 不一样，他是可以修改内核缓冲区的数据的。假设如果需要对文件的内容进行修改之后再传输，只有 mmap 可以满足。
+The code above does not explicitly read or write the file; it transfers file data directly to the target. This means `sendfile` cannot inspect or modify the file contents, while `mmap` can modify the mapped data. If the file must be changed before transfer, `mmap` is the suitable option.
 
-通过上面的一些介绍，结论是基于零拷贝技术，可以减少 CPU 拷贝和上下文切换，从而提升文件读写和网络传输效率。
+In summary, zero-copy techniques reduce CPU copies and context switches, improving file I/O and network transfer efficiency.
 
-RocketMQ 快不只是因为 mmap。更关键的是 CommitLog 顺序追加写、Page Cache、ConsumeQueue 定长索引，以及刷盘和复制策略之间的取舍。mmap 主要降低文件读写路径上的额外拷贝和系统调用成本，是其中一个重要环节。
+RocketMQ's performance is not due to `mmap` alone. Sequential appends to CommitLog, the page cache, fixed-length ConsumeQueue indexes, and trade-offs in disk flushing and replication all matter. `mmap` is one part of the design that reduces extra copies and system calls in file I/O.
 
-## RocketMQ 的刷盘机制
+## RocketMQ Disk Flushing
 
-了解了 RocketMQ 的架构和设计原理后，接下来探讨几个核心问题：
+Now that we have covered RocketMQ's architecture and design, let's consider a few key questions:
 
-- 在 Topic 中的 **队列是以什么样的形式存在的？**
-- **队列中的消息又是如何进行存储持久化的呢？**
-- **同步刷盘** 和 **异步刷盘** 是什么？它们会给持久化带来什么样的影响？
+- **How are queues represented within a topic?**
+- **How are messages in a queue persisted?**
+- What are **synchronous** and **asynchronous disk flushing**, and how do they affect durability?
 
-### 同步刷盘和异步刷盘
+### Synchronous and Asynchronous Disk Flushing
 
 ![](../images/shared/16ef387fba311cda-20230814005009889.jpg)
 
-如上图所示，在同步刷盘中需要等待一个刷盘成功的 ACK ，同步刷盘对 `MQ` 消息可靠性来说是一种不错的保障，但是 **性能上会有较大影响** ，一般地适用于金融等特定业务场景。
+As shown above, synchronous flushing waits for an acknowledgment that the data has been flushed to disk. This can improve `MQ` message reliability, but **has a significant performance cost**. It is generally used in specific cases, such as financial systems.
 
-而异步刷盘往往是开启一个线程去异步地执行刷盘操作。消息刷盘采用后台异步线程提交的方式进行， **降低了读写延迟** ，提高了 `MQ` 的性能和吞吐量，一般适用于如发验证码等对于消息保证要求不太高的业务场景。
+Asynchronous flushing uses a background thread to flush messages to disk. This **reduces read and write latency** and improves `MQ` performance and throughput. It is typically used in scenarios with less stringent durability requirements, such as sending verification codes.
 
-一般地，**异步刷盘只有在 Broker 意外宕机的时候会丢失部分数据**，你可以设置 Broker 的参数 `FlushDiskType` 来调整你的刷盘策略(ASYNC_FLUSH 或者 SYNC_FLUSH)。
+In general, **asynchronous flushing may lose some data if the Broker crashes unexpectedly**. Configure the Broker's `FlushDiskType` parameter to choose a flushing strategy (`ASYNC_FLUSH` or `SYNC_FLUSH`).
 
-### 同步复制和异步复制
+### Synchronous and Asynchronous Replication
 
-上面的同步刷盘和异步刷盘是在单个节点层面的，而同步复制和异步复制主要是指 `Broker` 主从模式下，主节点返回消息给客户端的时候是否需要同步从节点。
+Synchronous and asynchronous flushing apply to a single node. Synchronous and asynchronous replication determine whether the `Broker` primary must synchronize with its replicas before returning a response to the client.
 
-- 同步复制：也叫 “同步双写”，也就是说，**只有消息同步双写到主从节点上时才返回写入成功** 。
-- 异步复制：**消息写入主节点之后就直接返回写入成功** 。
+- **Synchronous replication**, also called synchronous dual writing: **Return success only after the message has been written to both the primary and replica.**
+- **Asynchronous replication:** **Return success as soon as the message is written to the primary.**
 
-然而，很多事情是没有完美的方案的，就比如我们进行消息写入的节点越多就更能保证消息的可靠性，但是随之的性能也会下降，所以需要程序员根据特定业务场景去选择适应的主从复制方案。
+There is no perfect approach. Writing a message to more nodes can improve reliability, but reduces performance. Choose a replication strategy that fits the business requirements.
 
-那么，**异步复制会不会也像异步刷盘那样影响消息的可靠性呢？**
+**Does asynchronous replication affect message reliability, as asynchronous flushing does?**
 
-答案是会影响。刷盘策略决定消息是否落到本机磁盘，复制策略决定消息是否已经同步到副本。异步复制下，主节点返回成功时消息可能还没有复制到从节点；如果主节点此时宕机且数据无法恢复，从节点就可能缺少这部分消息。因此，要求更高可靠性时，通常会选择同步刷盘 + 同步复制，或者使用 DLedger 这类多数派复制方案。
+Yes. Flushing determines whether a message reaches the local disk; replication determines whether it has reached a replica. With asynchronous replication, a message may not yet be copied when the primary returns success. If the primary then fails and its data cannot be recovered, the replica may be missing that message. For higher reliability, use synchronous flushing with synchronous replication, or a quorum-based replication approach such as DLedger.
 
-比如采用异步复制时，主节点已经向生产者返回成功，但这部分消息还没来得及同步到从节点。如果主节点只是短暂不可用，恢复后仍可能继续补齐复制；如果主节点数据丢失或发生不可逆故障，从节点就可能永远少这部分消息。这里影响的不只是可用性，也包括可靠性。
+With asynchronous replication, for example, the primary may return success before the message is copied to a replica. If the primary is only temporarily unavailable, replication may catch up after recovery. If its data is lost or it suffers an irreversible failure, the replica may permanently lack those messages. This affects reliability as well as availability.
 
-在单主从架构中，如果一个主节点挂掉了，那么整个系统就不能再生产消息了。那么这个可用性的问题能否解决呢？**可以通过多主从架构来解决**，在最初的架构图中，每个 Topic 是分布在不同 Broker 中的。
+In a single-primary, replica setup, the system cannot produce messages if the primary fails. **A multi-primary architecture can address this availability issue**; as shown in the earlier diagram, topics are distributed across different Brokers.
 
 ![](../images/shared/16ef38687488a5asadasfg4.jpg)
 
-但是这种复制方式同样也会带来一个问题，那就是无法保证 **严格顺序** 。在上文中我们提到了如何保证的消息顺序性是通过将一个语义的消息发送在同一个队列中，使用 Topic 下的队列来保证顺序性的。如果此时我们主节点 A 负责的是订单 A 的一系列语义消息，然后它挂了，这样其他节点是无法代替主节点 A 的，如果我们任意节点都可以存入任何消息，那就没有顺序性可言了。
+However, this replication approach cannot guarantee **strict ordering**. As discussed above, ordering is preserved by sending messages for one business entity to the same queue. If primary A handles a sequence of messages for order A and then fails, another node cannot simply take over that queue. If any node could write any message, ordering would be lost.
 
-而在 RocketMQ 中采用了 DLedger 解决这个问题。DLedger 要求在写入消息的时候，**至少消息复制到半数以上的节点之后**，才给客户端返回写入成功，并且支持通过选举来动态切换主节点。
+RocketMQ uses DLedger to address this. DLedger returns success only **after the message has been replicated to a majority of nodes** and supports dynamically electing a new primary.
 
-> DLedger 也不是完美的方案：在选举过程中是无法提供服务的；必须使用三个节点或以上；如果多数节点同时挂掉也无法保证可用性；要求消息复制到半数以上节点的效率和直接异步复制还是有一定差距的。
+> DLedger is not perfect either: it cannot serve requests during an election, requires at least three nodes, and cannot guarantee availability if a majority of nodes fail. Replicating messages to a majority is also slower than asynchronous replication.
 
-### 存储机制
+### Storage Mechanism
 
-至此，刷盘和复制的问题已经解决了。
+At this point, we have covered disk flushing and replication.
 
-接下来讨论 **队列是以什么样的形式存在的？队列中的消息又是如何进行存储持久化的？** 这涉及到 RocketMQ 的存储结构设计。首先介绍 RocketMQ 消息存储架构中的三大角色——CommitLog、ConsumeQueue 和 IndexFile。
+Next, **how are queues represented, and how are their messages stored persistently?** These questions involve RocketMQ's storage design. First, let's look at its three main storage components: CommitLog, ConsumeQueue, and IndexFile.
 
-**存储架构三大组件：**
+**Three storage components:**
 
-- **CommitLog**：**消息主体以及元数据的存储主体**，存储 Producer 端写入的消息主体内容，消息内容不是定长的。单个文件大小默认 **1G**，文件名长度为 20 位，左边补零，剩余为起始偏移量，比如 00000000000000000000 代表第一个文件，起始偏移量为 0；当第一个文件写满后，第二个文件为 00000000001073741824，起始偏移量为 1073741824，以此类推。消息主要是 **顺序写入日志文件**，当文件满了，写入下一个文件。
-- **ConsumeQueue**：指定 Topic 下某个 MessageQueue 的物理索引文件，**引入的目的主要是提高消息消费的性能**。由于 RocketMQ 是基于 Topic 的订阅模式，如果要遍历 CommitLog 文件根据 Topic 和队列检索消息是非常低效的。ConsumeQueue 保存了消息在 CommitLog 中的 **起始物理偏移量 offset**、消息大小 size 和消息 Tag 的 HashCode 值。ConsumeQueue 文件夹的组织方式为：topic/queue/file 三层组织结构，具体存储路径为：`$HOME/store/consumequeue/{topic}/{queueId}/{fileName}`。ConsumeQueue 文件采取定长设计，每一个条目共 **20 个字节**（8 字节 commitlog 物理偏移量 + 4 字节消息长度 + 8 字节 tag hashcode），单个文件由 **30 万个条目** 组成，每个 ConsumeQueue 文件大小约 **5.72M**。
-- **IndexFile**：索引文件，提供了一种可以通过 key 或时间区间来查询消息的方法。
+- **CommitLog:** The primary store for **message bodies and metadata** written by Producers. Message bodies are variable-length. A file is **1 GB** by default, and its 20-digit filename is zero-padded and represents the starting offset. For example, `00000000000000000000` is the first file, with offset 0. When it fills, the next file is `00000000001073741824`, with offset 1,073,741,824. Messages are **written sequentially**; when a file is full, writing continues in the next one.
+- **ConsumeQueue:** A physical index file for a MessageQueue under a topic, introduced mainly to **improve message-consumption performance**. Searching the CommitLog by topic and queue would be inefficient. ConsumeQueue stores each message's **physical starting offset** in the CommitLog, its size, and the hash of its tag. Its directory structure has three levels (topic/queue/file), with the path `$HOME/store/consumequeue/{topic}/{queueId}/{fileName}`. Entries have a fixed length of **20 bytes** (8-byte CommitLog offset + 4-byte message size + 8-byte tag hash). Each file contains **300,000 entries** and is about **5.72 MB**.
+- **IndexFile:** An index that supports looking up messages by key or time range.
 
-总结来说，整个消息存储的结构，最主要的就是 `CommitLog` 和 ConsumeQueue。MessageQueue 是 Topic 下的逻辑队列，ConsumeQueue 是这个逻辑队列对应的物理索引文件，不要把两者完全等同。
+In summary, `CommitLog` and `ConsumeQueue` are the main parts of message storage. A MessageQueue is a logical queue under a topic; its ConsumeQueue is the corresponding physical index file. They are related, but not interchangeable.
 
 ![](../images/shared/16ef3884c02acc72.jpg)
 
-RocketMQ 采用的是 **混合型的存储结构** ，即 Broker 单个实例下所有的队列共用一个日志数据文件（CommitLog）来存储消息。而 Kafka 会为每个分区（Partition）分配一个独立的存储文件。
+RocketMQ uses a **hybrid storage structure**: all queues in one Broker instance share a log data file (CommitLog) for message storage. Kafka assigns a separate storage file to each partition.
 
-RocketMQ 这么做的原因是 **提高数据的写入效率** ，不分 Topic 意味着有更大的几率获取 **成批** 的消息进行顺序写入，但也带来一个问题：读取消息时如果遍历整个 CommitLog 文件，效率很低。
+RocketMQ does this to **improve write efficiency**. Storing messages without separating them by topic increases the chance of writing **batches** sequentially. However, searching the entire CommitLog to read messages would be inefficient.
 
-所以，RocketMQ 使用 ConsumeQueue 作为每个队列的索引文件来 **提升读取消息的效率**。可以直接根据队列的消息序号，计算出索引的全局位置（索引序号 × 索引固定长度 20），然后直接读取这条索引，再根据索引中记录的消息的全局位置找到消息。
+RocketMQ therefore uses ConsumeQueue as an index for each queue to **speed up message reads**. Given a message's sequence number, it can calculate the index's global position (index number × fixed index length of 20 bytes), read that entry, and locate the message using its global position in the CommitLog.
 
-下面结合架构图来理解存储结构：
+The diagram below illustrates the storage structure:
 
 ![](../images/shared/16ef388763c25c62.png)
 
-> 如果上面没看懂的读者一定要认真看下面的流程分析！
+> If the diagram above is unclear, read the following explanation carefully.
 
-首先，在图的最上面可以把 `ConsumeQueue` 理解为某个 MessageQueue 的索引文件，而不是消息主体本身。
+At the top of the diagram, `ConsumeQueue` represents the index file for a MessageQueue, not the message body itself.
 
-在图中最左边说明了红色方块代表被写入的消息，虚线方块代表等待被写入的消息。左边的生产者发送消息会指定 Topic、`QueueId` 和具体消息内容，而在 Broker 中不区分消息类型，直接 **全部顺序存储到 CommitLog**。根据生产者指定的 Topic 和 `QueueId`，将这条消息在 CommitLog 中的偏移量（offset）、消息大小和 tag 的 hash 值存入对应的 ConsumeQueue 索引文件中。
+On the left, red boxes represent messages already written and dashed boxes represent messages waiting to be written. Producers specify the topic, `QueueId`, and message content. The Broker does not separate messages by type; it **stores all messages sequentially in the CommitLog**. It then uses the topic and `QueueId` to write the message's CommitLog offset, size, and tag hash to the corresponding ConsumeQueue index file.
 
-在每个队列中都保存了 `ConsumeOffset` 即每个消费者组的消费位置，消费者拉取消息进行消费时只需要根据 `ConsumeOffset` 获取下一个未被消费的消息即可。
+Each queue tracks a `ConsumeOffset`, the consumption position for each consumer group. When a consumer pulls messages, it uses this offset to find the next message that has not been consumed.
 
-以上就是 RocketMQ 存储架构的核心原理。
+That is the core of RocketMQ's storage architecture.
 
-最后留一个思考题：**为什么 CommitLog 文件要设计成固定大小的长度呢？** 提示：与 **内存映射机制（mmap）** 有关。
+One final question: **Why are CommitLog files designed with a fixed size?** Hint: It is related to **memory mapping (`mmap`)**.
 
-## 总结
+## Summary
 
-本文系统地介绍了 RocketMQ 的核心知识点，以下是关键内容回顾：
+This article covered RocketMQ's core concepts. Here is a summary:
 
-**消息队列核心价值**
+**Key benefits of message queues**
 
-- **异步**：提升系统响应速度，非核心流程异步化处理
-- **解耦**：降低系统间耦合度，通过发布订阅模式实现松耦合
-- **削峰**：缓解瞬时流量压力，保护下游系统不被冲垮
+- **Asynchronous processing:** Improve response times by handling non-core work asynchronously.
+- **Decoupling:** Reduce coupling between systems through publish-subscribe.
+- **Traffic smoothing:** Relieve sudden load spikes and protect downstream systems.
 
-**RocketMQ 架构要点**
+**RocketMQ architecture**
 
-| 组件           | 核心职责                                     |
-| -------------- | -------------------------------------------- |
-| **NameServer** | 无状态注册中心，各节点互不通信，追求简单高效 |
-| **Broker**     | 消息存储与投递，支持主从架构和 DLedger 模式  |
-| **Proxy**      | 5.0 新增，计算与存储分离，支持 gRPC 协议     |
-| **Producer**   | 消息生产者，支持同步、异步、单向发送         |
-| **Consumer**   | 消息消费者，支持 Push、Pull、Simple 三种模式 |
+| Component      | Responsibility                                                           |
+| -------------- | ------------------------------------------------------------------------ |
+| **NameServer** | Stateless registry; nodes do not communicate, favoring simplicity        |
+| **Broker**     | Stores and delivers messages; supports primary-replica and DLedger modes |
+| **Proxy**      | Added in 5.0; separates compute from storage and supports gRPC           |
+| **Producer**   | Publishes messages synchronously, asynchronously, or one-way             |
+| **Consumer**   | Consumes messages in Push, Pull, or Simple mode                          |
 
-**消息类型对比**
+**Message types**
 
-| 消息类型     | 适用场景             | 关键特性                 |
-| ------------ | -------------------- | ------------------------ |
-| **普通消息** | 微服务解耦、事件驱动 | 无顺序要求，消息相互独立 |
-| **顺序消息** | 订单处理、数据同步   | 同一消息组内严格有序     |
-| **定时消息** | 延迟任务、超时处理   | 5.x 支持按时间戳设置投递 |
-| **事务消息** | 分布式事务           | 半消息机制 + 事务回查    |
+| Message type      | Use case                        | Key characteristic                         |
+| ----------------- | ------------------------------- | ------------------------------------------ |
+| **Regular**       | Microservice decoupling, events | Independent messages; no ordering required |
+| **Ordered**       | Order processing, data sync     | Strict ordering within a message group     |
+| **Scheduled**     | Delayed tasks, timeout handling | Version 5.x supports delivery timestamps   |
+| **Transactional** | Distributed transactions        | Half-message flow and transaction checks   |
 
-**5.x 版本核心升级**
+**Key improvements in version 5.x**
 
-- **消息粒度负载均衡**：5.x PushConsumer/SimpleConsumer 默认使用，缓解队列粒度负载不均
-- **计算与存储分离**：Proxy 组件承担协议适配和计算逻辑，Broker 专注存储
-- **定时消息增强**：不再只受限于固定延迟等级，可按毫秒级时间戳设置投递时间，默认粒度为秒级
-- **gRPC 多语言 SDK**：降低多语言客户端接入成本，更适合云原生和多协议场景
+- **Message-level load balancing:** Used by PushConsumer and SimpleConsumer in 5.x to reduce uneven queue-level load.
+- **Compute-storage separation:** The Proxy handles protocol adaptation and compute logic while the Broker focuses on storage.
+- **Improved scheduled messages:** Delivery times are no longer limited to fixed delay levels; timestamps can be specified in milliseconds, though default precision is one second.
+- **Multilingual gRPC SDKs:** Reduce integration effort for clients in different languages and suit cloud-native, multi-protocol deployments.
 
-**高性能设计**
+**Performance design**
 
-- **顺序写**：CommitLog 采用顺序写入，充分利用磁盘顺序 IO 的高性能
-- **零拷贝**：结合 mmap、Page Cache 等机制，减少数据拷贝和系统调用成本
-- **索引设计**：ConsumeQueue 作为消息索引，避免遍历 CommitLog
+- **Sequential writes:** CommitLog uses sequential disk I/O for high write performance.
+- **Zero-copy:** Mechanisms such as `mmap` and the page cache reduce data copies and system-call overhead.
+- **Indexing:** ConsumeQueue indexes messages and avoids scanning the CommitLog.
 
-**可靠性保障**
+**Reliability**
 
-- **刷盘策略**：同步刷盘提升本机持久化可靠性，异步刷盘提升性能
-- **主从复制**：同步复制提升副本可靠性，异步复制提升吞吐但可能丢失未复制消息
-- **DLedger**：基于 Raft 协议实现自动主从切换，提升高可用能力
+- **Disk flushing:** Synchronous flushing improves local durability; asynchronous flushing improves performance.
+- **Primary-replica replication:** Synchronous replication improves replica reliability; asynchronous replication improves throughput but may lose messages not yet replicated.
+- **DLedger:** Uses the Raft protocol for automatic primary-replica failover and improved availability.
 
 <!-- @include: @article-footer.snippet.md -->

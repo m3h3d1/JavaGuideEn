@@ -523,12 +523,12 @@ public class HashMapDemo {
     public static void main(String[] args) {
         HashMap<String, String> map = new HashMap<String, String>();
         // Keys must be unique; values may be repeated.
-        map.put("san", "张三");
-        map.put("si", "李四");
-        map.put("wu", "王五");
-        map.put("wang", "老王");
-        map.put("wang", "老王2");// Overwrites the previous value for Wang.
-        map.put("lao", "老王");
+        map.put("san", "Sam");
+        map.put("si", "Sally");
+        map.put("wu", "William");
+        map.put("wang", "Wang");
+        map.put("wang", "Wang 2");// Overwrites the previous value for Wang.
+        map.put("lao", "Wang");
         System.out.println("------- Print the HashMap -------");
         System.out.println(map);
         /**
@@ -577,8 +577,8 @@ public class HashMapDemo {
         System.out.println("after map.remove()："+map);
         System.out.println("after map.get(si)："+map.get("si"));
         System.out.println("after map.containsKey(si)："+map.containsKey("si"));
-        System.out.println("After containsValue: "+map.containsValue("李四"));
-        System.out.println(map.replace("si", "李四2"));
+        System.out.println("After containsValue: "+map.containsValue("Sally"));
+        System.out.println(map.replace("si", "Sally 2"));
         System.out.println("After map.replace: "+map);
     }
 

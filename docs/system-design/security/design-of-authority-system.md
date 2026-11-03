@@ -1,214 +1,213 @@
 ---
-title: 权限系统设计详解
-description: 基于角色的访问控制（Role-Based Access Control，简称 RBAC）指的是通过用户的角色（Role）授权其相关权限，实现了灵活的访问控制，相比直接授予用户权限，要更加简单、高效、可扩展。
-category: 系统设计
+title: Access Control System Design
+description: An overview of access control system design, including RBAC and ABAC models, permission types, roles, authorization workflows, and audit logs.
+category: System Design
 tag:
-  - 安全
+  - Security
 head:
   - - meta
     - name: keywords
-      content: 权限系统设计,RBAC,ABAC,用户角色权限,资源权限,权限模型,权限校验,授权系统
+      content: Access Control System Design,RBAC,ABAC,User Roles and Permissions,Resource Permissions,Authorization Model,Authorization Checks
 ---
 
 <!-- @include: @article-header.snippet.md -->
 
-> 作者：转转技术团队
+> Author: Zhuanzhuan Technology Team
 >
-> 原文：<https://mp.weixin.qq.com/s/ONMuELjdHYa0yQceTj01Iw>
+> Original article: <https://mp.weixin.qq.com/s/ONMuELjdHYa0yQceTj01Iw>
 
-## 老权限系统的问题与现状
+## Problems with the Previous Access Control System
 
-转转公司在过去并没有一个统一的权限管理系统，权限管理由各业务自行研发或是使用其他业务的权限系统，权限管理的不统一带来了不少问题：
+Zhuanzhuan did not have a unified access control system. Each business team built its own or reused another team's system. This lack of consistency caused several problems:
 
-1. 各业务重复造轮子，维护成本高
-2. 各系统只解决部分场景问题，方案不够通用，新项目选型时没有可靠的权限管理方案
-3. 缺乏统一的日志管理与审批流程，在授权信息追溯上十分困难
+1. Teams repeatedly built similar solutions, increasing maintenance costs.
+2. Each system handled only some use cases. The solutions were not general enough, leaving new projects without a reliable option.
+3. There was no unified audit logging or approval process, making it difficult to trace authorization changes.
 
-基于上述问题，去年底公司启动建设转转统一权限系统，目标是开发一套灵活、易用、安全的权限管理系统，供各业务使用。
+To address these problems, the company began building a unified access control system late last year. The goal was to provide all business teams with a flexible, easy-to-use, and secure system.
 
-## 业界权限系统的设计方式
+## Access Control Models in Common Use
 
-目前业界主流的权限模型有两种，下面分别介绍下：
+Two access control models are widely used:
 
-- **基于角色的访问控制（RBAC）**
-- **基于属性的访问控制（ABAC）**
+- **Role-Based Access Control (RBAC)**
+- **Attribute-Based Access Control (ABAC)**
 
-### RBAC 模型
+### RBAC
 
-**基于角色的访问控制（Role-Based Access Control，简称 RBAC）** 指的是通过用户的角色（Role）授权其相关权限，实现了灵活的访问控制，相比直接授予用户权限，要更加简单、高效、可扩展。
+**Role-Based Access Control (RBAC)** grants permissions to users through their roles. Compared with assigning permissions directly to each user, this provides a more flexible, efficient, and scalable way to manage access.
 
-一个用户可以拥有若干角色，每一个角色又可以被分配若干权限这样，就构造成“用户-角色-权限” 的授权模型。在这种模型中，用户与角色、角色与权限之间构成了多对多的关系。
+A user can have multiple roles, and each role can have multiple permissions. This forms a **user–role–permission** model in which users and roles, and roles and permissions, have many-to-many relationships.
 
-用一个图来描述如下：
+The diagram below illustrates the model:
 
-![RBAC 权限模型示意图](../images/shared/rbac.png)
+![RBAC permission model](../images/shared/rbac.png)
 
-当使用 `RBAC模型` 时，通过分析用户的实际情况，基于共同的职责和需求，授予他们不同角色。这种 `用户 -> 角色 -> 权限` 间的关系，让我们可以不用再单独管理单个用户权限，用户从授予的角色里面获取所需的权限。
+With RBAC, users receive roles based on their responsibilities and needs. The `user -> role -> permission` relationship avoids managing every user's permissions individually. Users get the permissions associated with their assigned roles.
 
-以一个简单的场景（Gitlab 的权限系统）为例，用户系统中有 `Admin`、`Maintainer`、`Operator` 三种角色，这三种角色分别具备不同的权限，比如只有 `Admin` 具备创建代码仓库、删除代码仓库的权限，其他的角色都不具备。我们授予某个用户 `Admin` 这个角色，他就具备了 **创建代码仓库** 和 **删除代码仓库** 这两个权限。
+For example, a GitLab-style system might have `Admin`, `Maintainer`, and `Operator` roles, each with different permissions. Only `Admin` may be allowed to create and delete repositories. Assigning a user the `Admin` role gives them both permissions.
 
-通过 `RBAC模型` ，当存在多个用户拥有相同权限时，我们只需要创建好拥有该权限的角色，然后给不同的用户分配不同的角色，后续只需要修改角色的权限，就能自动修改角色内所有用户的权限。
+When multiple users need the same permissions, create a role with those permissions and assign it to each user. Later changes to the role's permissions then apply to all users assigned to that role.
 
-### ABAC 模型
+### ABAC
 
-**基于属性的访问控制（Attribute-Based Access Control，简称 ABAC）** 是一种比 `RBAC模型` 更加灵活的授权模型，它的原理是通过各种属性来动态判断一个操作是否可以被允许。这个模型在云系统中使用的比较多，比如 AWS，阿里云等。
+**Attribute-Based Access Control (ABAC)** is more flexible than RBAC. It evaluates attributes to decide dynamically whether an action is allowed. ABAC is common in cloud systems such as AWS and Alibaba Cloud.
 
-考虑下面这些场景的权限控制：
+Consider these access control scenarios:
 
-1. 授权某个人具体某本书的编辑权限
-2. 当一个文档的所属部门跟用户的部门相同时，用户可以访问这个文档
-3. 当用户是一个文档的拥有者并且文档的状态是草稿，用户可以编辑这个文档
-4. 早上九点前禁止 A 部门的人访问 B 系统
-5. 在除了上海以外的地方禁止以管理员身份访问 A 系统
-6. 用户对 2022-06-07 之前创建的订单有操作权限
+1. Grant a specific person permission to edit a particular book.
+2. Allow a user to access a document when the user's department matches the document's department.
+3. Allow a user to edit a document when they own it and its status is Draft.
+4. Prevent members of Department A from accessing System B before 9 a.m.
+5. Prevent users from accessing System A as administrators from locations outside Shanghai.
+6. Allow a user to operate on orders created before June 7, 2022.
 
-可以发现上述的场景通过 `RBAC模型` 很难去实现，因为 `RBAC模型` 仅仅描述了用户可以做什么操作，但是操作的条件，以及操作的数据，`RBAC模型` 本身是没有这些限制的。但这恰恰是 `ABAC模型` 的长处，`ABAC模型` 的思想是基于用户、访问的数据的属性、以及各种环境因素去动态计算用户是否有权限进行操作。
+These scenarios are difficult to express with RBAC alone. RBAC describes what actions a user can perform, but does not by itself express the conditions under which an action is allowed or which data it applies to. ABAC evaluates attributes of the user, the requested data, and the environment to make that decision.
 
-#### ABAC 模型的原理
+#### How ABAC Works
 
-在 `ABAC模型` 中，一个操作是否被允许是基于对象、资源、操作和环境信息共同动态计算决定的。
+In ABAC, a policy decision is calculated dynamically from the subject, resource, action, and environment:
 
-- **对象**：对象是当前请求访问资源的用户。用户的属性包括 ID，个人资源，角色，部门和组织成员身份等
-- **资源**：资源是当前用户要访问的资产或对象，例如文件，数据，服务器，甚至 API
-- **操作**：操作是用户试图对资源进行的操作。常见的操作包括“读取”，“写入”，“编辑”，“复制”和“删除”
-- **环境**：环境是每个访问请求的上下文。环境属性包含访问的时间和位置，对象的设备，通信协议和加密强度等
+- **Subject**: The user making the request. Attributes can include user ID, personal resources, roles, department, and organizational membership.
+- **Resource**: The asset the user wants to access, such as a file, record, server, or API.
+- **Action**: What the user is trying to do with the resource, such as read, write, edit, copy, or delete.
+- **Environment**: The context of the request, including time, location, device, communication protocol, and encryption strength.
 
-在 `ABAC模型` 的决策语句的执行过程中，决策引擎会根据定义好的决策语句，结合对象、资源、操作、环境等因素动态计算出决策结果。每当发生访问请求时，`ABAC模型` 决策系统都会分析属性值是否与已建立的策略匹配。如果有匹配的策略，访问请求就会被通过。
+The policy engine evaluates the defined rules against these attributes whenever an access request is made. If the request matches an allowing policy, it is permitted.
 
-## 新权限系统的设计思想
+## Design of the New Access Control System
 
-结合转转的业务现状，`RBAC模型` 满足了转转绝大部分业务场景，并且开发成本远低于 `ABAC模型` 的权限系统，所以新权限系统选择了基于 `RBAC模型` 来实现。对于实在无法满足的业务系统，我们选择了暂时性不支持，这样可以保障新权限系统的快速落地，更快的让业务使用起来。
+RBAC covers most of Zhuanzhuan's business needs, and is less expensive to build than an ABAC-based system. The new system therefore uses RBAC. Use cases it could not support were deferred so the system could be delivered quickly and adopted by business teams sooner.
 
-标准的 `RBAC模型` 是完全遵守 `用户 -> 角色 -> 权限` 这个链路的，也就是用户的权限完全由他所拥有的角色来控制，但是这样会有一个缺点，就是给用户加权限必须新增一个角色，导致实际操作起来效率比较低。所以我们在 `RBAC模型` 的基础上，新增了给用户直接增加权限的能力，也就是说既可以给用户添加角色，也可以给用户直接添加权限。最终用户的权限是由拥有的角色和权限点组合而成。
+A standard RBAC model requires every permission to flow through `user -> role -> permission`: a user's permissions come entirely from their roles. This can be inefficient because granting an individual permission requires creating a new role. The new system extends RBAC to allow permissions to be assigned either through roles or directly to users. A user's effective permissions are the union of permissions from their roles and their individually assigned permissions.
 
-**新权限系统的权限模型**：用户最终权限 = 用户拥有的角色带来的权限 + 用户独立配置的权限，两者取并集。
+**Effective permissions = permissions granted by the user's roles + permissions assigned directly to the user.**
 
-新权限系统方案如下图：
+The new system is designed as follows:
 
-![新权限系统方案](../images/shared/new-authority-system-design.png)
+![Design of the new access control system](../images/shared/new-authority-system-design.png)
 
-- 首先，将集团所有的用户（包括外部用户），通过 **统一登录与注册** 功能实现了统一管理，同时与公司的组织架构信息模块打通，实现了同一个人员在所有系统中信息的一致，这也为后续基于组织架构进行权限管理提供了可行性。
-- 其次，因为新权限系统需要服务集团所有业务，所以需要支持多系统权限管理。用户进行权限管理前，需要先选择相应的系统，然后配置该系统的 **菜单权限** 和 **数据权限** 信息，建立好系统的各个权限点。_PS：菜单权限和数据权限的具体说明，下文会详细介绍。_
-- 最后，创建该系统下的不同角色，给不同角色配置好权限点。比如店长角色，拥有店员操作权限、本店数据查看权限等，配置好这个角色后，后续只需要给店长增加这个角色，就可以让他拥有对应的权限。
+- First, a unified sign-in and registration flow manages all company users, including external users. It is integrated with the company's organizational directory so each person has consistent information across systems. This also enables access management based on organizational structure.
+- Second, the system supports access control for multiple business applications. Before managing permissions, an operator selects an application and configures its **menu permissions** and **data permissions**, creating the application's permission points. Menu and data permissions are explained below.
+- Finally, the operator creates roles for the application and assigns permissions to them. For example, a store manager role might allow staff operations and access to the store's data. Once configured, assigning this role to a store manager grants those permissions.
 
-完成上述配置后，就可以进行用户的权限管理了。有两种方式可以给用户加权限：
+After setup, user permissions can be managed in either of two ways:
 
-1. 先选用户，然后添加权限。该方式可以给用户添加任意角色或是菜单/数据权限点。
-2. 先选择角色，然后关联用户。该方式只可给用户添加角色，不能单独添加菜单/数据权限点。
+1. Select a user, then assign any role or menu/data permission point.
+2. Select a role, then associate users with it. This method assigns roles only; it cannot assign menu or data permissions directly.
 
-这两种方式的具体设计方案，后文会详细说明。
+The detailed designs for these workflows are described below.
 
-### 权限系统自身的权限管理
+### Access Control for the Access Control System
 
-对于权限系统来说，首先需要设计好系统自身的权限管理，也就是需要管理好 ”谁可以进入权限系统，谁可以管理其他系统的权限“，对于权限系统自身的用户，会分为三类：
+The access control system must also control access to itself: who can use it, and who can manage permissions for other applications? It defines three types of users:
 
-1. **超级管理员**：拥有权限系统的全部操作权限，可以进行系统自身的任何操作，也可以管理接入权限的应用系统的管理操作。
-2. **权限操作用户**：拥有至少一个已接入的应用系统的超级管理员角色的用户。该用户能进行的操作限定在所拥有的应用系统权限范围内。权限操作用户是一种身份，无需分配，而是根据规则自动获得的。
-3. **普通用户**：普通用户也可以认为是一种身份，除去上述 2 类人，其余的都为普通用户。他们只能申请接入系统以及访问权限申请页面。
+1. **Super administrator**: Has all permissions in the access control system, including permission to manage connected applications.
+2. **Application permission operator**: Has the super administrator role in at least one connected application. This user can act only within the applications they administer. This identity is granted automatically based on the user's roles; it is not assigned separately.
+3. **Regular user**: Anyone who is not in the first two groups. Regular users can request that an application be connected and access the permission request page.
 
-### 权限类型的定义
+### Permission Types
 
-新权限系统中，我们把权限分为两大类，分别是：
+The new system defines two broad permission types:
 
-- **菜单功能权限**：包括系统的目录导航、菜单的访问权限，以及按钮和 API 操作的权限
-- **数据权限**：包括定义数据的查询范围权限，在不同系统中，通常叫做 “组织”、”站点“等，在新权限系统中，统一称作 ”组织“ 来管理数据权限
+- **Menu and feature permissions**: Access to application navigation and menus, as well as permissions to use buttons and APIs.
+- **Data permissions**: The scope of data a user may query. Applications may call this scope an organization or site; the new system manages it consistently as an organization.
 
-### 默认角色的分类
+### Default Roles
 
-每个系统中设计了三个默认角色，用来满足基本的权限管理需求，分别如下：
+Each application has three default roles to cover basic access management needs:
 
-- **超级管理员**：该角色拥有该系统的全部权限，可以修改系统的角色权限等配置，可以给其他用户授权。
-- **系统管理员**：该角色拥有给其他用户授权以及修改系统的角色权限等配置能力，但角色本身不具有任何权限。
-- **授权管理员**：该角色拥有给其他用户授权的能力。但是授权的范围不超出自己所拥有的权限。
+- **Super administrator**: Has all permissions in the application, can change role and permission settings, and can grant access to other users.
+- **System administrator**: Can grant access and change role and permission settings, but does not automatically receive application permissions.
+- **Authorization administrator**: Can grant other users permissions, but cannot grant permissions beyond their own.
 
-> 举个栗子：授权管理员 A 可以给 B 用户添加权限，但添加的范围 小于等于 A 用户已拥有的权限。
+For example, authorization administrator A can grant permissions to user B, but only within the permissions A already has.
 
-经过这么区分，把 **拥有权限** 和 **拥有授权能力** ，这两部分给分隔开来，可以满足所有的权限控制的场景。
+Separating **having a permission** from **being allowed to grant a permission** supports a wider range of access control scenarios.
 
-## 新权限系统的核心模块设计
+## Core Modules of the New Access Control System
 
-上面介绍了新权限系统的整体设计思想，接下来分别介绍下核心模块的设计
+The following sections describe the system's core modules.
 
-### 系统/菜单/数据权限管理
+### Application, Menu, and Data Permission Management
 
-把一个新系统接入权限系统有下列步骤：
+Connecting a new application to the access control system involves these steps:
 
-1. 创建系统
-2. 配置菜单功能权限
-3. 配置数据权限（可选）
-4. 创建系统的角色
+1. Create the application.
+2. Configure menu and feature permissions.
+3. Configure data permissions (optional).
+4. Create roles for the application.
 
-其中，1、2、3 的步骤，都是在系统管理模块完成，具体流程如下图:
+The first three steps are handled in the application management module:
 
-![系统接入流程图](../images/shared/new-authority-system-design-access-flow-chart.png)
+![Application onboarding workflow](../images/shared/new-authority-system-design-access-flow-chart.png)
 
-用户可以对系统的基本信息进行增删改查的操作，不同系统之间通过 `系统编码` 作为唯一区分。同时 `系统编码` 也会用作于菜单和数据权限编码的前缀，通过这样的设计保证权限编码全局唯一性。
+Operators can create, read, update, and delete an application's basic information. A unique **application code** distinguishes applications and prefixes their menu and data permission codes, keeping those codes globally unique.
 
-例如系统的编码为 `test_online`，那么该系统的菜单编码格式便为 `test_online:m_xxx`。
+For example, if an application's code is `test_online`, its menu permission codes follow the format `test_online:m_xxx`.
 
-系统管理界面设计如下：
+The application management interface is shown below:
 
-![系统管理界面设计](../images/shared/new-authority-system-management-interface.png)
+![Application management interface](../images/shared/new-authority-system-management-interface.png)
 
-#### 菜单管理
+#### Menu Management
 
-新权限系统首先对菜单进行了分类，分别是 `目录`、`菜单` 和 `操作`，示意如下图
+The new system divides menu items into three types: `directory`, `menu`, and `operation`.
 
-![菜单管理界面](../images/shared/new-authority-system-menu.png)
+![Menu management interface](../images/shared/new-authority-system-menu.png)
 
-它们分别代表的含义是：
+- **Directory**: A top-level application directory, usually shown to the right of the application logo.
+- **Menu**: The nested navigation menu, usually shown below the application logo on the left. This is the most common menu structure.
+- **Operation**: A button, API, or other page element that represents an action.
 
-- **目录**：指的是应用系统中最顶部的一级目录，通常在系统 Logo 的右边
-- **菜单**：指的是应用系统左侧的多层级菜单，通常在系统 Logo 的下面，也是最常用的菜单结构
-- **操作**：指页面中的按钮、接口等一系列可以定义为操作或页面元素的部分。
+The menu management interface is shown below:
 
-菜单管理界面设计如下：
+![Menu management interface design](../images/shared/new-authority-system-menu-management-interface.png)
 
-![菜单管理界面设计](../images/shared/new-authority-system-menu-management-interface.png)
+Menu permissions can be used in either of two modes:
 
-菜单权限数据的使用，也提供两种方式：
+- **Dynamic menus**: The access control system manages menu creation and deletion. Adding a menu there also adds it to the application, so menu changes do not require an application release.
+- **Static menus**: The application frontend manages menus, while the access control system controls access. It indicates whether the user has permission; the frontend decides whether to display each menu based on that permission data.
 
-- **动态菜单模式**：这种模式下，菜单的增删完全由权限系统接管。也就是说在权限系统增加菜单，应用系统会同步增加。这种模式好处是修改菜单无需项目上线。
-- **静态菜单模式**：菜单的增删由应用系统的前端控制，权限系统只控制访问权限。这种模式下，权限系统只能标识出用户是否拥有当前菜单的权限，而具体的显示控制是由前端根据权限数据来决定。
+Hiding a directory, menu, or button in the frontend improves the user experience, but is not a security boundary. In either mode, the backend must deny access by default and check on every request that the current user is authorized to perform the requested action. For data access, it must also validate resource ownership, tenant, organization, and data scope. Do not rely only on menu permissions or trust user, organization, or resource IDs supplied by the client.
 
-需要特别注意：前端隐藏目录、菜单或按钮只是在改善用户体验，不能作为真正的安全边界。无论采用动态还是静态菜单模式，后端都必须默认拒绝未明确授权的访问，并在每次请求中校验当前用户是否有权执行对应操作。涉及具体数据时，还要继续校验资源归属、租户、组织和数据范围，不能只判断用户是否拥有某个菜单，也不能信任客户端传入的用户 ID、组织 ID 或资源 ID。
+### Role and User Management
 
-### 角色与用户管理
+Role and user management can directly change user permissions. The overall design is shown below:
 
-角色与用户管理都是可以直接改变用户权限的核心模块，整个设计思路如下图：
+![Role and user management module design](../images/shared/role-and-user-management.png)
 
-![角色与用户管理模块设计](../images/shared/role-and-user-management.png)
+The design must account for bulk operations, whether associating users with roles or adding, removing, or resetting permissions for multiple users.
 
-这个模块设计重点是需要考虑到批量操作。无论是通过角色关联用户，还是给用户批量增加/删除/重置权限，批量操作的场景都是系统需要设计好的。
+### Permission Requests
 
-### 权限申请
+In addition to administrators granting access to other users, the system lets users request permissions for themselves. Alongside the usual request, review, and status workflows, the system helps users select the right permissions. Users can select a role directly or select menu/data permission points and find roles that grant them:
 
-除了给其他用户添加权限外，新权限系统同时支持了用户自主申请权限。这个模块除了常规的审批流（申请、审批、查看）等，有一个比较特别的功能，就是如何让用户能选对自己要的权限。所以在该模块的设计上，除了直接选择角色外，还支持通过菜单/数据权限点，反向选择角色，如下图：
+![Permission request interface](../images/shared/permission-application.png)
 
-![权限申请界面](../images/shared/permission-application.png)
+### Audit Logs
 
-### 操作日志
+The system has two kinds of logs:
 
-系统操作日志会分为两大类：
+1. **Audit logs**: Key actions that users can search and review.
+2. **Service logs**: Logs produced while the system runs. These contain more data than audit logs, but are harder to search and review. The access control system therefore needs a dedicated audit log feature.
 
-1. **操作流水日志**：用户可看、可查的关键操作日志
-2. **服务 Log 日志**：系统服务运行过程中产生的 Log 日志,其中，服务 Log 日志信息量大于操作流水日志，但是不方便搜索查看。所以权限系统需要提供操作流水日志功能。
+User actions fall into three types: create, update, and delete. Modules such as user management, role management, and menu management can also be enumerated. An audit record can then be modeled as: who performed which action, on which target and module, and when.
 
-在新权限系统中，用户所有的操作可以分为三类，分别为新增、更新、删除。所有的模块也可枚举，例如用户管理、角色管理、菜单管理等。明确这些信息后，那么一条日志就可以抽象为：什么人(Who)在什么时间(When)对哪些人(Target)的哪些模块做了哪些操作。
-这样把所有的记录都入库，就可以方便的进行日志的查看和筛选了。
+Storing these records in a database makes them easier to review and filter.
 
-## 总结与展望
+## Summary and Further Reading
 
-至此，新权限系统的核心设计思路与模块都已介绍完成，新系统在转转内部有大量的业务接入使用，权限管理相比以前方便了许多。权限系统作为每家公司的一个基础系统，灵活且完备的设计可以助力日后业务的发展更加高效。
+This article has covered the core design and modules of the new access control system. Many Zhuanzhuan business teams have since adopted it, making permission management easier than before. A flexible and complete access control system can help a company's business grow more efficiently.
 
-后续两篇：
+Two follow-up articles cover the backend and frontend implementations:
 
-- [转转统一权限系统的设计与实现（后端实现篇）](https://mp.weixin.qq.com/s/hFTDckfxhSnoM_McP18Vkg)
-- [转转统一权限系统的设计与实现（前端实现篇）](https://mp.weixin.qq.com/s/a_P4JAwxgunhfmJvpBnWYA)
+- [Design and Implementation of Zhuanzhuan's Unified Access Control System: Backend](https://mp.weixin.qq.com/s/hFTDckfxhSnoM_McP18Vkg)
+- [Design and Implementation of Zhuanzhuan's Unified Access Control System: Frontend](https://mp.weixin.qq.com/s/a_P4JAwxgunhfmJvpBnWYA)
 
-## 参考
+## References
 
-- OWASP Authorization Cheat Sheet：<https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html>
-- 选择合适的权限模型：<https://docs.authing.cn/v2/guides/access-control/choose-the-right-access-control-model.html>
+- OWASP Authorization Cheat Sheet: <https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html>
+- [Choosing an access control model](https://docs.authing.cn/v2/guides/access-control/choose-the-right-access-control-model.html)
 
 <!-- @include: @article-footer.snippet.md -->

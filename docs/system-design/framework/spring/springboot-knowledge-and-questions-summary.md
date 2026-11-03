@@ -1,20 +1,20 @@
 ---
-title: SpringBoot常见面试题总结(付费)
-description: SpringBoot核心面试题详解，涵盖自动配置原理、Starter机制、配置文件加载及Actuator监控等核心知识。
-category: 框架
+title: Spring Boot Interview Questions (Paid)
+description: An overview of key Spring Boot interview topics, including auto-configuration, the Starter mechanism, configuration file loading, and Actuator monitoring.
+category: Frameworks
 tag:
   - Spring
 head:
   - - meta
     - name: keywords
-      content: Spring Boot面试题,SpringBoot原理,自动配置,Starter,配置文件,Actuator,SpringBoot常见问题
+      content: Spring Boot interview questions,Spring Boot internals,auto-configuration,Starter,configuration files,Actuator,common Spring Boot questions
 ---
 
-**Spring Boot** 相关的面试题为我的[知识星球](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html)（点击链接即可查看详细介绍以及加入方法）专属内容，已经整理到了[《Java 面试指北》](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html)中。
+**Spring Boot** interview questions are exclusive to my [Knowledge Planet](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html) community (follow the link for details and instructions on joining) and are included in [_Java Interview Handbook_](https://javaguide.cn/zhuanlan/java-mian-shi-zhi-bei.html).
 
-很多 Spring Boot 重要的新特性都已经同步到了这篇文章中，质量很高，保证内容与时俱进！
+Many important new Spring Boot features have been added to this guide to keep its high-quality content up to date.
 
-![SpringBoot 面试题](../../images/shared/springboot-questions.png)
+![Spring Boot interview questions](../../images/shared/springboot-questions.png)
 
 <!-- @include: @planet.snippet.md -->
 

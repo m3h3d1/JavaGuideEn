@@ -1,143 +1,143 @@
 ---
-title: 单元测试到底是什么？应该怎么做？
-description: 单元测试入门指南，涵盖单元测试概念、Mock与Stub技术、测试金字塔及JUnit测试框架使用方法。
-category: 代码质量
+title: What Is Unit Testing, and How Should You Do It?
+description: An introduction to unit testing, including test doubles (mocks, stubs, and fakes), the test pyramid, and JUnit.
+category: Code Quality
 head:
   - - meta
     - name: keywords
-      content: 单元测试,Unit Testing,Mock,Stub,Fake,测试金字塔,可测试性,TDD,JUnit
+      content: Unit Testing,Mock,Stub,Fake,Test Pyramid,Testability,TDD,JUnit
 ---
 
-> 本文重构完善自[谈谈为什么写单元测试 - 键盘男 - 2016](https://www.jianshu.com/p/fa41fb80d2b8)这篇文章。
+> This article is a revised and expanded version of [Why Write Unit Tests? - Keyboard Man - 2016](https://www.jianshu.com/p/fa41fb80d2b8).
 
-## 何谓单元测试？
+## What Is Unit Testing?
 
-维基百科是这样介绍单元测试的：
+Wikipedia defines unit testing as:
 
-> 在计算机编程中，单元测试（Unit Testing）是针对程序模块（软件设计的最小单位）进行的正确性检验测试工作。
+> In computer programming, unit testing is a method of software testing by which individual units of source code are tested to determine whether they are fit for use.
 >
-> 程序单元是应用的 **最小可测试部件** 。在过程化编程中，一个单元就是单个程序、函数、过程等；对于面向对象编程，最小单元就是方法，包括基类（超类）、抽象类、或者派生类（子类）中的方法。
+> A unit is the smallest testable part of an application. In procedural programming, it may be a program, function, or procedure. In object-oriented programming, it is usually a method, including a method in a base, abstract, or derived class.
 
-由于每个单元有独立的逻辑，在做单元测试时，为了隔离外部依赖，确保这些依赖不影响验证逻辑，我们经常会用到 Fake、Stub 与 Mock 。
+Each unit has its own logic. To isolate that logic from external dependencies, unit tests often use fakes, stubs, and mocks.
 
-关于 Fake、Mock 与 Stub 这几个概念的解读，可以看看这篇文章：[测试中 Fakes、Mocks 以及 Stubs 概念明晰 - 王下邀月熊 - 2018](https://zhuanlan.zhihu.com/p/26942686) 。
+For an explanation of these terms, see [Fakes, Mocks, and Stubs in Testing - Wang Xia Yueyue Xiong - 2018](https://zhuanlan.zhihu.com/p/26942686).
 
-## 为什么需要单元测试？
+## Why Write Unit Tests?
 
-### 为重构保驾护航
+### Make Refactoring Safer
 
-我在[重构](./refactoring.md)这篇文章中这样写到：
+In my article on [refactoring](./refactoring.md), I wrote:
 
-> 单元测试可以为重构提供信心，降低重构的成本。我们要像重视生产代码那样，重视单元测试。
+> Unit tests give you confidence when refactoring and reduce its cost. Treat tests with the same care as production code.
 
-每个开发者都会经历重构，重构后把代码改坏了的情况并不少见，很可能你只是修改了一个很简单的方法就导致系统出现了一个比较严重的错误。
+Every developer refactors code, and refactoring can introduce bugs. A seemingly small change to a method can cause a serious problem elsewhere in the system.
 
-单元测试可以及时发现一部分逻辑错误，降低重构引入回归问题的风险。写完一个类，为它补充单元测试；写第二个类，继续补充单元测试……不过，每个类单独通过测试，并不代表它们组合起来一定没有问题，接口契约、配置、数据库、网络和事务等问题还需要通过集成测试、端到端测试等方式发现。
+Unit tests can catch some logic errors early and reduce the risk of regressions. Add tests as you write each class. However, passing tests for individual classes does not guarantee that they work correctly together. Integration and end-to-end tests are still needed to catch problems with API contracts, configuration, databases, networks, and transactions.
 
-### 提高代码质量
+### Improve Code Quality
 
-由于每个单元有独立的逻辑，做单元测试时需要隔离外部依赖，确保这些依赖不影响验证逻辑。因为要把各种依赖分离，单元测试会促进工程进行组件拆分，整理工程依赖关系，更大程度减少代码耦合。这样写出来的代码，更好维护，更好扩展，从而提高代码质量。
+Because unit tests isolate a unit's logic from external dependencies, they encourage developers to split systems into components and clarify dependency relationships. This can reduce coupling and make code easier to maintain and extend.
 
-### 减少 bug
+### Reduce Bugs
 
-一个机器，由各种细小的零件组成，如果其中某件零件坏了，机器运行故障。必须保证每个零件都按设计图要求的规格，机器才能正常运行。
+A machine works only when each of its parts meets its design requirements.
 
-一个可单元测试的工程，会把业务、功能分割成规模更小、有独立的逻辑部件，称为单元。单元测试的目标，就是验证各个单元是否按预期工作，从而降低局部逻辑错误和回归问题出现的概率。整个项目能否正确运行，还需要其他层次的测试共同验证。
+A testable system divides business logic and features into smaller units with independent logic. Unit tests check whether each unit behaves as expected, reducing the chance of local logic errors and regressions. Other levels of testing are still needed to verify that the whole application works correctly.
 
-### 快速定位 bug
+### Find Bugs Faster
 
-如果程序有 bug，我们运行一次全部单元测试，找到不通过的测试，可以很快地定位对应的执行代码。修复代码后，运行对应的单元测试；如还不通过，继续修改，运行测试……直到**测试通过**。
+When a bug appears, run the unit tests and inspect the failures to narrow down the code involved. After fixing the code, rerun the relevant tests. Repeat until they pass.
 
-### 持续集成依赖自动化测试
+### Support Continuous Integration
 
-持续集成需要依赖快速、可靠的自动化测试。当持续集成服务自动构建新代码之后，会自动运行单元测试、集成测试等来发现代码错误，单元测试通常是其中反馈最快的一层。
+Continuous integration depends on fast, reliable automated tests. After a CI service builds new code, it runs unit and integration tests to catch problems. Unit tests are usually among the fastest tests to provide feedback.
 
-## 谁逼你写单元测试？
+## Who Makes You Write Unit Tests?
 
-### 领导要求
+### Your Manager
 
-有些经验丰富的领导，或多或少都会要求团队写单元测试。对于有一定工作经验的队友，这要求挺合理；对于经验尚浅的、毕业生，恐怕要死要活了，连代码都写不好，还要写单元测试，are you kidding me？
+Some experienced managers require teams to write unit tests. That is a reasonable expectation for experienced developers. For new graduates who are still learning to write production code, it can feel overwhelming: they may wonder why they have to test code they are still struggling to write.
 
-培训新人单元测试用法，是一项艰巨的任务。新人代码风格未形成，也不知道单元测试多重要，强制单元测试会让他们感到困惑，没办法按自己思路写代码。
+Teaching new developers to write unit tests is challenging. They may not yet have an established coding style or understand the value of testing, so a strict requirement can leave them unsure how to approach the work.
 
-### 大牛都写单元测试
+### Respected Open-Source Projects Do It
 
-国外很多家喻户晓的开源项目，都有大量单元测试。例如，[retrofit](https://link.jianshu.com?t=https://github.com/square/retrofit/tree/master/retrofit/src/test/java/retrofit2)、[okhttp](https://link.jianshu.com?t=https://github.com/square/okhttp/tree/master/okhttp-tests/src/test/java/okhttp3)、[butterknife](https://link.jianshu.com?t=https://github.com/JakeWharton/butterknife/tree/master/butterknife-compiler/src/test/java/butterknife)…… 国外大牛都写单元测试，我们也写吧！
+Many well-known open-source projects have extensive unit tests, including [Retrofit](https://link.jianshu.com?t=https://github.com/square/retrofit/tree/master/retrofit/src/test/java/retrofit2), [OkHttp](https://link.jianshu.com?t=https://github.com/square/okhttp/tree/master/okhttp-tests/src/test/java/okhttp3), and [Butter Knife](https://link.jianshu.com?t=https://github.com/JakeWharton/butterknife/tree/master/butterknife-compiler/src/test/java/butterknife). If respected developers write unit tests, we should too—or so the reasoning goes.
 
-很多读者都有这种想法，一开始满腔热血。当真要对自己项目单元测试时，便困难重重，很大原因是项目对单元测试不友好。最后只能对一些不痛不痒的工具类做单元测试，久而久之，当初美好愿望也不了了之。
+Many readers start with that enthusiasm. But when they try to test their own projects, they run into difficulties, often because the projects are not designed to be testable. They end up testing only a few minor utility classes, and their initial enthusiasm fades.
 
-### 保住面子
+### To Save Face
 
-都是有些许年经验的老鸟，还天天被测试同学追 bug，好意思么？花多一点时间写单元测试，确保没低级 bug，还能彰显大牛风范，何乐而不为？
+If you have years of experience but still keep getting bug reports from the test team, that can be embarrassing. Spending more time on unit tests can help catch basic bugs and show that you take quality seriously.
 
-### 心虚
+### Because You Do Not Trust Your Code
 
-笔者也是个不太相信自己代码的人，总觉得哪里会突然冒出莫名其妙的 bug，也怕别人不小心改了自己的代码（被害妄想症），新版本上线提心吊胆……花点时间写单元测试，有事没事跑一下测试，确保原逻辑没问题，至少能睡安稳一点。
+I do not always trust my own code. I worry that an unexpected bug will appear or that someone will accidentally break existing behavior. Before a release, that can make it hard to relax. Writing tests and running them from time to time helps confirm that the existing logic still works—and can help you sleep better.
 
-## TDD 测试驱动开发
+## Test-Driven Development (TDD)
 
-### 何谓 TDD？
+### What Is TDD?
 
-TDD 即 Test-Driven Development（ 测试驱动开发），这是敏捷开发的一项核心实践和技术，也是一种设计方法论。
+TDD, or Test-Driven Development, is a core Agile practice and a design method.
 
-TDD 原理是开发功能代码之前，先编写测试用例代码，然后针对测试用例编写功能代码，使其能够通过。
+The idea is to write test cases before implementing a feature, then write the production code needed to make them pass.
 
-TDD 的节奏：“红 - 绿 - 重构”。
+The TDD cycle is **Red – Green – Refactor**.
 
 ![](https://static001.geekbang.org/resource/image/09/7f/090e1fc6aff08b4aa66376f776c2337f.png)
 
-由于 TDD 对开发人员要求非常高，跟传统开发思维不一样，因此实施起来相当困难。
+TDD can be difficult to adopt because it requires a different way of thinking from traditional development and calls for strong development skills.
 
-TDD 在很多人眼中是不实用的，一来他们并不理解测试“驱动”开发的含义，但更重要的是，他们很少会做任务分解。而任务分解是做好 TDD 的关键点。只有把任务分解到可以测试的地步，才能够有针对性地写测试。
+Some developers consider TDD impractical. They may not understand what it means for tests to “drive” development, but more often they have trouble breaking work into small tasks. Decomposing work is essential to TDD: each task must be small enough to test on its own.
 
-### TDD 优缺点分析
+### Pros and Cons of TDD
 
-测试驱动开发有好处也有坏处。因为每个测试用例都是根据需求来的，或者说把一个大需求分解成若干小需求编写测试用例，所以测试用例写出来后，开发者写的执行代码，必须满足测试用例。如果测试不通过，则修改执行代码，直到测试用例通过。
+TDD has both benefits and drawbacks. Tests are derived from requirements, or from smaller requirements created by breaking down a larger one. The implementation must satisfy those tests. If a test fails, change the implementation until it passes.
 
-**优点**：
+**Benefits:**
 
-1. 帮你整理需求，梳理思路；
-2. 帮你设计出更合理的接口（空想的话很容易设计出屎）；
-3. 减小代码出现 bug 的概率；
-4. 提高开发效率（前提是正确且熟练使用 TDD）。
+1. Helps clarify requirements and organize your thinking.
+2. Encourages better API design. Designing everything in your head can lead to poor interfaces.
+3. Reduces the likelihood of bugs.
+4. Can improve development efficiency when used correctly and skillfully.
 
-**缺点**：
+**Drawbacks:**
 
-1. 能用好 TDD 的人非常少，看似简单，实则门槛很高；
-2. 投入开发资源（时间和精力）通常会更多；
-3. 由于测试用例在未进行代码设计前写；很有可能限制开发者对代码整体设计；
-4. 可能引起开发人员不满情绪，我觉得这点很严重，毕竟不是人人都喜欢单元测试，尽管单元测试会带给我们相当多的好处。
+1. Few developers use TDD well. It looks simple, but has a steep learning curve.
+2. It often requires more development time and effort.
+3. Writing tests before designing the code can constrain the overall design.
+4. It can frustrate developers who do not want to write unit tests, even though testing has many benefits.
 
-相关阅读：[如何用正确的姿势打开 TDD？ - 陈天 - 2017](https://zhuanlan.zhihu.com/p/24997923) 。
+Further reading: [How to Practice TDD Effectively? - Chen Tian - 2017](https://zhuanlan.zhihu.com/p/24997923).
 
-## 单测框架和 Mock 工具如何选择？
+## Choosing a Test Framework and Mocking Tool
 
-对于单测来说，JUnit、Spock 属于测试框架，Mockito、PowerMock、JMockit、TestableMock 等则主要用于创建 Mock 等测试替身。
+JUnit and Spock are test frameworks. Mockito, PowerMock, JMockit, and TestableMock are mainly used to create mocks and other test doubles.
 
-JUnit 几乎是默认选择，但是其不提供 Mock 能力，因此通常还需要搭配 Mockito 等 Mock 工具。Spock 则同时提供测试规范和 Mock 能力。
+JUnit is a common default, but it does not provide mocking. It is usually paired with a tool such as Mockito. Spock provides both a testing framework and mocking capabilities.
 
-究竟是选择 JUnit 搭配 Mockito，还是选择 Spock 呢？我这里做了一些简单的对比分析：
+Which should you choose: JUnit with Mockito, or Spock? Here is a brief comparison:
 
-- Spock 2.4 可以通过 `SpyStatic()` 配合支持静态方法的 Mock Maker 模拟 Java 和 Groovy 的静态方法；Mockito 3.4.0 以后也支持静态方法的 Mock。具体可以看 [Spock 2.4 发布说明](https://spockframework.org/spock/docs/2.4/release_notes.html)和 [Mockito 官方文档](https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html)。
-- Spock 基于 Groovy，写出来的测试代码更清晰易读，比较规范(自带 given-when-then 的常用测试结构规范)。Mockito 没有具体的结构规范，需要项目组自己约定一个或者遵守比较好的测试代码实践。通常来说，同样的测试用例，Spock 的代码要更简洁。
-- Mockito 使用的人群更广泛，稳定可靠。并且，Mockito 是 SpringBoot Test 默认集成的 Mock 工具。
+- Spock 2.4 can mock static Java and Groovy methods with `SpyStatic()` and a compatible MockMaker. Mockito has supported static mocking since version 3.4.0. See the [Spock 2.4 release notes](https://spockframework.org/spock/docs/2.4/release_notes.html) and the [Mockito documentation](https://javadoc.io/doc/org.mockito/mockito-core/latest/org.mockito/org/mockito/Mockito.html).
+- Spock is based on Groovy. Its tests are often concise and easy to read, and it uses the familiar given-when-then structure. Mockito does not prescribe a test structure, so teams need to agree on conventions or follow established testing practices. For the same test case, Spock code is often shorter.
+- Mockito has a larger user base and is stable and reliable. It is also the mocking tool integrated by default in Spring Boot Test.
 
-JUnit 搭配 Mockito 和 Spock 都是非常不错的选择，相对来说，JUnit 搭配 Mockito 的适用性更强一些。
+Both JUnit with Mockito and Spock are good choices. JUnit with Mockito is generally more widely applicable.
 
-## 总结
+## Summary
 
-单元测试确实会带给你相当多的好处，但不是立刻体验出来。正如买重疾保险，交了很多保费，没病没痛，十几年甚至几十年都用不上，最好就是一辈子用不上理赔，身体健康最重要。单元测试也一样，写了可以买个放心，对代码的一种保障，有 bug 尽快测出来，没 bug 就最好，总不能说“写那么多单元测试，结果测不出 bug，浪费时间”吧？
+Unit tests have many benefits, but you may not see them immediately. They are like critical illness insurance: you keep paying for it and may go years without needing it. Ideally, you never need to make a claim. Unit tests offer similar peace of mind by helping catch bugs early. It would be misleading to say that tests are a waste of time just because they do not find a bug every time.
 
-以下是个人对单元测试一些建议：
+Here are a few suggestions:
 
-> - 越重要的代码，越要写单元测试；
-> - 代码做不到单元测试，多思考如何改进，而不是放弃；
-> - 边写业务代码，边写单元测试，而不是完成整个新功能后再写；
-> - 多思考如何改进、简化测试代码。
-> - 测试代码需要随着生产代码的演进而重构或者修改，如果测试不能保持整洁，只会越来越难修改。
+> - Write unit tests for important code.
+> - If code is hard to test, think about how to improve it instead of giving up on testing.
+> - Write tests alongside business code, rather than waiting until an entire feature is complete.
+> - Look for ways to improve and simplify test code.
+> - Refactor or update tests as production code evolves. Untidy tests become increasingly difficult to change.
 
-作为一名经验丰富的程序员，写单元测试更多的是**对自己的代码负责**。有测试用例的代码，别人更容易看懂，以后别人接手你的代码时，也可能放心做改动。
+For experienced developers, writing unit tests is ultimately about **taking responsibility for your code**. Tests also help others understand it and make changes with confidence.
 
-**多敲代码实践，多跟有单元测试经验的工程师交流**，你会发现写单元测试获得的收益会更多。
+**Practice by writing code and talk with engineers who have experience with unit testing.** You will see more of its benefits over time.
 
 <!-- @include: @article-footer.snippet.md -->

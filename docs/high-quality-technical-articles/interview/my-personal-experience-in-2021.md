@@ -1,206 +1,198 @@
 ---
-title: 校招进入飞书的个人经验
-description: "校招进入飞书的个人经验：围绕技术知识与面试总结梳理关键概念、常见问题与实践要点，帮助你高效学习与备战面试。"
-category: 技术文章精选集
-author: 月色真美
+title: My Experience Joining Feishu Through Campus Recruiting
+description: A personal account of campus recruiting for Feishu, covering interview experiences, internship recruiting, preparation, and practical job-search advice.
+category: Selected Technical Articles
+author: The Moonlight Is Beautiful
 tag:
-  - 面试
+  - Interviews
 head:
   - - meta
     - name: keywords
-      content: 字节跳动面试,飞书校招,C++面试,春招实习,日常实习,暑期实习,面试技巧,算法刷题
+      content: ByteDance Interviews,Feishu Campus Recruiting,C++ Interviews,Spring Internships,Internships,Interview Tips,Algorithm Practice
 ---
 
-> **推荐语**：这篇文章的作者校招最终去了飞书做开发。在这篇文章中，他分享了自己的校招经历以及个人经验。
+> **Editor's note**: The author joined Feishu as a developer through campus recruiting. This article shares that experience and lessons learned.
 >
-> **原文地址**：<https://www.ihewro.com/archives/1217/>
+> **Original article**: <https://www.ihewro.com/archives/1217/>
 
-## 基本情况
+## Background
 
-我是 C++主要是后台开发的方向。
+My focus was primarily on C++ backend development.
 
-2021 春招入职字节飞书客户端，入职字节之前拿到了百度 offer（音视频直播部分） 以及腾讯 PCG （微视、后台开发）的 HR 面试通过（还没有收到录用意向书）。
+I joined the Feishu client team at ByteDance through the 2021 spring recruiting season. Before joining ByteDance, I had received an offer from Baidu for its live audio/video team. I had also passed the HR interview for Tencent PCG (Weishi and backend development), but had not yet received a formal offer.
 
-## 不顺利的春招过程
+## A Difficult Spring Recruiting Season
 
-### 春招实习对我来说不太顺利
+### Finding a Spring Internship Was Not Easy
 
-实验室在 1 月份元旦的那天正式可以放假回家，但回家仍然继续“远程工作”，工作并没有减少，每天日复一日的测试，调试我们开发的“流媒体会议系统”。
+My lab officially closed for the New Year holiday on January 1, but I continued working remotely. The workload did not decrease: day after day, I tested and debugged the streaming conference system we were developing.
 
-在 1 月的倒数第三天，我们开了“年终总结”线上会议。至此，作为研二基本上与实验室的工作开始告别。也正式开始了春招复习的阶段。
+On the third-to-last day of January, we held an online year-end review. As a second-year master's student, I was beginning to wrap up my lab work and started preparing for spring recruiting.
 
-2 月前已经间歇性的开始准备，无非就是在 LeetCode 上面刷刷题目，一天刷不了几道，后面甚至象征性的刷一下每日一题。对我的算法刷题帮助很少。
+I had started preparing sporadically before February, mostly by solving problems on LeetCode. I could only do a few a day, and eventually just kept up the appearance of practice by completing the daily problem. This did little to improve my algorithm skills.
 
-2 月份开始，2 月初的时候，LeetCode 才刷了大概 40 多道题目，挤出了几周时间更新了 handsome 主题的 8.x 版本，这又是一个繁忙的几周。直到春节的当天正式发布，春节过后又开始陆陆续续用一些时间修复 bug，发布修复版本。2 月份这样悄悄溜走。
+In early February, I had solved only about 40 LeetCode problems. I then spent several weeks updating version 8.x of the Handsome theme, which kept me busy until its release on Lunar New Year's Day. After the holiday, I continued fixing bugs and releasing patches. February slipped by.
 
-### 找实习的过程
+### Applying for Internships
 
-**2021-3 月初**
+**Early March 2021**
 
-3 月 初的时候，投了阿里提前批，没想到阿里 3 月 4 号提前批就结束了，那一天约的一面的电话面也被取消了。紧接了开学实验室开会同步进度的时候，发现大家都一面/二面/三面的进度，而我还没有投递的进度。
+I applied to Alibaba's early recruiting round. I did not realize it would end on March 4, and the phone screen scheduled for that day was canceled. Soon after, during a lab meeting to share progress, I realized that everyone else had already reached the first, second, or third interview round, while I had not even started applying.
 
-**2021-3-8**
+**March 8, 2021**
 
-投递了字节飞书
+I applied to ByteDance's Feishu team.
 
-**2021-4 月初**
+**Early April 2021**
 
-字节第一次一面，腾讯第一次一面
+I had my first interviews with ByteDance and Tencent.
 
-**2021-4 中旬**
+**Mid-April 2021**
 
-美团一、二面，腾讯第二次一面和二面，百度三轮面试，通过了。
+I had the first and second rounds with Meituan, the second first-round and second-round interviews with Tencent, and three rounds with Baidu, which I passed.
 
-**2021-4 底**
+**Late April 2021**
 
-腾讯第三次一面和字节第二次一面
+I had the third first-round interview with Tencent and the second first-round interview with ByteDance.
 
-**2021-5 月初**
+**Early May 2021**
 
-腾讯第三次二面和字节第二次二面，后面这两个都通过了
+I had the third second-round interview with Tencent and the second second-round interview with ByteDance. I passed both.
 
-#### 阿里
+#### Alibaba
 
-第一次投了钉钉，没想到因为行测做的不好，在简历筛选给拒绝了。
+I first applied to DingTalk but was rejected during resume screening because I did poorly on the aptitude test.
 
-第二次阿里妈妈的后端面试，一面电话面试，我感觉面的还可以，最后题目也做出来了。最后反问阶段问对我的面试有什么建议，面试官说投阿里最好还是 Java 的…… 然后电话结束后就给我拒了……
+The second time, I applied to Alibaba Mama for a backend role. I thought the first phone interview went well and solved the coding problem. At the end, I asked the interviewer for feedback. They said I would be better off applying for Java roles at Alibaba. After the call, I was rejected.
 
-当时真的心态有点崩，问了这个晚上 7 点半的面试，一直看书晚上都没吃……
+That really discouraged me. The interview had been at 7:30 p.m., and I had spent the evening studying without even eating.
 
-所以春招和阿里就无缘了。
+That was the end of my spring recruiting attempt with Alibaba.
 
-#### 美团
+#### Meituan
 
-美团一面的面试官真的人很好。也很轻松，因为他们是 Java 岗位，也没问 c++知识，聊了一些基础知识，后面半个小时就是聊非技术问题，比如最喜欢网络上的某位程序员是谁，如何写出优雅的代码，推荐的技术类的书籍之类的。当时回答王垠是比较喜欢的程序员，面试官笑了说他也很喜欢。面试的氛围感觉很好。
+The interviewer in my first Meituan round was very kind, and the conversation was relaxed. The role was in Java, so they did not ask C++ questions. We discussed fundamentals for a while, then spent half an hour on non-technical questions: which programmers online I liked, how to write clean code, and which technical books I recommended. I mentioned Wang Yin as a programmer I admired. The interviewer smiled and said they liked him, too. It was a comfortable interview.
 
-二面的时候全程就问简历上的一个项目，问了大概 90 分钟，感觉他从一开始就有点不太想要我的感觉，很大原因我觉的是我是 c++，转 Java 可能成本还是有一些的。最后问 HR 说结果待定，几天后通知被拒了。
+The second round focused almost entirely on one project from my resume and lasted about 90 minutes. I felt from the start that the interviewer was not very interested in hiring me. I suspect my C++ background and the cost of switching to Java were factors. HR later told me the result was pending; a few days later I was rejected.
 
-#### 百度
+#### Baidu
 
-百度一共三轮面试，在一个下午一起进行，真的很刺激。一面就是很基础的一些 c++问题，写了一个题目说一下思路没让运行（真的要运行还不一定能运行起来:)）
+Baidu held all three interview rounds in one afternoon. It was intense. The first round covered basic C++ questions and a coding problem. I explained my approach but was not asked to run the code (and it might not have run correctly anyway :)).
 
-二面也是基础，第一个题目合并两个有序数组，第二个题目写归并排序，写的结果不对，又给我换了一个题目，树的 BFS。二面面试官最后问我对今天面试觉得怎么样，我说虽然中间有一个道题目结果不对，但是思路是对的，可能某个小地方写的有问题，但总体的应该还是可以的。二面就给我通过了。
+The second round also covered fundamentals. I was asked to merge two sorted arrays and then implement merge sort. My merge sort was incorrect, so the interviewer gave me another problem: breadth-first search on a tree. At the end, the interviewer asked how I thought the interview went. I said that although one solution was wrong, my approach was correct and I might have made a small implementation mistake; overall, I thought it had gone reasonably well. I passed the second round.
 
-三面问的技术问题比较少，30 多分钟，也没写题目，问了一些基本情况和基础知识。最后问部门做的什么内容。面试官说后面 hr 会联系我告诉我内容。
+The third round had fewer technical questions and lasted about 30 minutes. I was asked about my background and some fundamentals, and then asked what the team worked on. The interviewer said HR would contact me with more information.
 
-#### 字节飞书
+#### ByteDance Feishu
 
-第一次一面就凉了，原因应该是笔试题目结果不对……
+I failed the first-round interview, probably because my coding test answers were wrong.
 
-第二次一面在 4 月底了，很顺利。二面在五一劳动节后，面试官还让学姐告诉我让我多看看智能指针，面试的时候让我手写 shared_ptr，我之前看了一些实现，但是没有自己写过，导致代码考虑的不够完善，leader 就一直提醒我要怎么改怎么改。
+The second first-round interview, in late April, went smoothly. After the second round, which was after Labor Day, the interviewer asked a senior student in my lab to tell me to review smart pointers. In the interview, I was asked to implement `shared_ptr` by hand. I had read about its implementation but had never written one myself, so my code missed some important cases. The team lead repeatedly pointed out how I could improve it.
 
-本来我以为凉了，在 5 月中旬的时候都准备去百度入职了，给我通知说过了，就这样决定去了字节。
+I thought I had failed. By mid-May, I was preparing to join Baidu, when ByteDance told me that I had passed. I decided to join Feishu.
 
-#### 感悟
+#### Lessons Learned
 
-这么多次面试中，让我感悟最深的是面试中的考察题目真的很重要，因为我在基础知识上面也不突出，再加上如果算法题（一般 1 道或者 2 道）如果没做出来，基本就凉了。而面试之前的笔试考试反而没那么重要，也没那么难。基本 4 题写出来 1~2 道题目就有发起面试的机会了。难度也基本就是 LeetCode top 100 上面的那些算法。
+What stood out to me was how much the coding questions mattered. I was not particularly strong in fundamentals, and if I also failed to solve the one or two algorithm problems, the interview was usually over. The written test before the interviews seemed less important and was not as difficult. Solving one or two of four problems was generally enough to get an interview. The problems were mostly comparable to those in LeetCode Top 100.
 
-面试中做题，我很容易紧张，头脑就容易一片空白，稍不注意，写错个符号，或者链表赋值错了，很难看出来问题，导出最终结果不对。
+I get nervous when solving problems in interviews, and my mind can go blank. A small mistake, such as a wrong symbol or an incorrect linked-list assignment, can be hard to find and can make the final answer wrong.
 
-## 入职字节实习
+## Starting an Internship at ByteDance
 
-入职字节之前我本来觉得这个岗位可能是我面试的最适合我的了，因为我主 c++，而且飞书用 c++应该挺深的。来之后就觉得我可能不太喜欢做客户端相关，感觉好复杂……也许服务端好一些，现在我仍然不能确定。
+Before joining ByteDance, I thought Feishu would be the best fit because I worked mostly in C++ and assumed Feishu used C++ extensively. After joining, I realized I might not enjoy client-side development; it seemed complicated. Maybe server-side work would suit me better, but I still was not sure.
 
-字节的实习福利在这些公司中应该算是比较好的，小问题是工位比较窄，还是工作强度比其他的互联网公司大一些。字节食堂免费而且挺不错的。字节办公大厦很多，我所在的办公地点比较小。
+ByteDance's internship benefits seemed among the best of these companies. The desk was a little narrow, and the work intensity seemed higher than at other internet companies. The cafeteria food was free and quite good. ByteDance has many office buildings, and mine was relatively small.
 
-目前，需要放轻松，仓库代码慢慢看呗，mentor 也让我不急，准备有问题就多问问，不能憋着，浪费时间。拿到转正 offer 后，秋招还是想多试试外企或者国企。强度太大的工作目前很难适应。
+For now, I needed to relax and gradually read the codebase. My mentor told me not to rush, and to ask questions instead of getting stuck and wasting time. After receiving a return offer, I still wanted to try applying to foreign or state-owned companies during fall recruiting. I was finding it difficult to adapt to such a demanding job.
 
-希望过段时间可以分享一下我的感受，以及能够更加适应目前的工作内容。
+I hoped to share more about the experience later, once I had adjusted to the work.
 
-## 求职经验分享
+## Job Search Advice
 
-### 一些概念
+### A Few Terms
 
-#### 日常实习与正式（暑期）实习有什么区别
+#### How Do Regular Internships Differ from Formal Summer Internships?
 
-- **日常实习如果一个组比较缺人，就很可能一年四季都招实习生，就会有日常实习的机会**，只要是在校学生都可以去面试。而正式实习开始时间有一个范围比较固定，比如每年的 3-6 月，也就是暑期实习。
-- 日常实习相对要好进一些，但是有的日常实习没有转正名额，这个要先确认一下。
-- **字节的日常实习和正式实习在转正没什么区别，都是一起申请转正的。**
+- **A regular internship may be available year-round when a team has an ongoing need for interns.** Any current student can apply. Formal summer internships have a more fixed start period, usually from March to June.
+- Regular internships may be easier to get, but some do not offer a path to full-time conversion. Check this in advance.
+- **At ByteDance, regular and formal interns follow the same process for full-time conversion.**
 
-#### 正式实习拿到 offer 之后什么时候可以去实习
+#### When Can You Start After Receiving a Summer Internship Offer?
 
-暑期实习拿到 offer 后就**可以立即实习**（一般需要走个流程 1 周左右的样子），**也可以选择晚一点去实习**，时间可以自己去把握，有的公司可以在系统上选择去实习的时间，有的是直接和 hr 沟通一下就可以。
+After receiving a summer internship offer, you can **start right away** (the process usually takes about a week) or **start later**. You can often choose a start date in the company's system or discuss it with HR.
 
-#### 提前批和正式批的区别
+#### How Do Early and Regular Recruiting Rounds Differ?
 
-以找实习为例：
+For internships:
 
-- 先提前批，再正式批，提前批一般是小组直接招人**不进系统**，**没有笔试**，**流程相对走的快**，一般一面过了，很快就是二面。
-- 正式批面试都会有面评，如果上一次失败的面试评价会影响下一次面试，所以还是谨慎一点好
+- Early recruiting comes before the regular round. It often hires directly through the team, **outside the main recruiting system**, with **no written test** and a **faster process**. Passing the first round may lead to a second round soon after.
+- Regular-round interviews receive written evaluations. A failed interview can affect how a later application is evaluated, so apply thoughtfully.
 
-#### 实习 offer 和正式 offer 区别
+#### How Does an Internship Offer Differ from a Full-Time Offer?
 
-简单来说，实习 offer 只是给你一个实习的机会，如果在实习期间干的不错就可以转正，获得正式 offer。
+An internship offer gives you the opportunity to intern. If you perform well, you may be converted to a full-time employee and receive a full-time offer.
 
-签署正式 offer 之后并不是意味着马上去上班，因为我们是校招生，拿到正式 offer 之后，可以继续实习（工资会是正式工资的百分比），也可以请假一段时间等真正毕业的时候再去正式工作。
+Signing a full-time offer does not mean you have to start work immediately. As a campus hire, you can continue interning at a percentage of the full-time salary, or take time off and begin full-time after graduation.
 
-### 时间节点
+### Recruiting Timeline
 
-> 尽早把简历弄出来，最好就是最近一段时间，因为大家对实验室项目现在还很熟悉，现在写起来不是很难，再过几个月写简历就比较痛苦了。
+> Prepare your resume early, ideally now. You still remember your lab projects well, so writing about them is easier. It can become much harder a few months later.
 
-以去年为例：
+The previous year's timeline was roughly:
 
-- 2 月份中旬的时候阿里提前批开始（基本上只有阿里这个时候开了提前批），3 月 8 号阿里提前批结束。腾讯提前批是 3 月多开始的，4 月 15 号结束
-- 3-5 月拿到实习 offer，最好在 4 月份可以拿到比较想去的实习 offer。
-- 4-8 月份实习，7 月初秋招提前批，7 月底或者 8 月初就是秋招正式批，9 月底秋招就少了挺多，但是只是相对来说，还是有机会，
-- 10 月底秋招基本结束，后面还会有秋招补录
+- Alibaba's early recruiting opened in mid-February; it was one of the few companies to open that early. Its early round ended on March 8. Tencent's early round began in March and ended on April 15.
+- Internship offers arrived from March to May. Ideally, secure your preferred offer by April.
+- Internships ran from April to August. Fall recruiting's early round began in early July, followed by the regular round in late July or early August. Recruiting slowed down by late September, but opportunities remained.
+- Fall recruiting mostly ended by late October, followed by additional hiring to fill remaining positions.
 
 ---
 
-- **怎么找实习机会**，个人觉得可以找认识的人内推比较好，内推好处除了可以帮看进度，一般可以直推到组，这样可以排除一些坑的组。提前知道这个组干嘛的。
-- **实习挺重要，最好是实习的时候就找到一个想去的公司，秋招会轻松很多**，因为实习转正基本没什么问题，其次实习转正的 offer 一般要比秋招的好（当然如果秋招表现好也是可以拿到很好的 offer）身边不少人正式 offer 都是实习转正的。
-- **控制好实习的时间**，因为边实习边准备秋招挺累的，一般实习的时候工作压力也挺大，没什么时间刷题。
+- **Finding an internship**: I recommend asking people you know for referrals. A referral can help you check application progress and may connect you directly with a team, helping you avoid teams that are a poor fit. You can also learn what the team does in advance.
+- **Internships matter**: It is easier to prepare for fall recruiting if you have already found a company you want to join. Converting an internship to a full-time role is often straightforward, and converted offers may be better than those from regular fall recruiting (though strong fall interviews can also lead to good offers). Many people around me received their full-time offers through internship conversion.
+- **Manage your internship schedule**: Preparing for fall recruiting while interning is tiring. The workload can be heavy, leaving little time to practice problems.
 
-### 面试准备
+### Interview Preparation
 
-#### 项目经历
+#### Project Experience
 
-我觉得我们实验室项目是没问题的，重要是要讲好。
+I think lab projects are perfectly valid interview material; what matters is explaining them well.
 
-- **项目介绍**
+- **Project introduction**: You may be asked what the project does and, especially, **why you built it**.
+- **Project results**: Be ready to discuss measurable outcomes, such as how many people could use the conference system at once, the user experience, or other benefits.
+- **Project challenges**: Interviewers will ask what problems or challenges you encountered and how you resolved them. This is where they assess the technical aspects of the project.
 
-首先可能让你介绍一下这个项目是什么东西，以及**为什么要去做这个项目**。
+In my view, a challenge is a problem that took several days to resolve.
 
-- **项目的结果**
+Here are two examples:
 
-然后可能会问这个项目的一些数据上最终结果，比如会议系统能够同时多少人使用，或者量化的体验，比如流畅度，或者是一些其他的一些优势。
+**Debugging a problem**: Suppose a memory leak takes a week to find. Explain how you investigated it. You might start by searching for the error, then identify keywords in the material you find, such as relevant tools. Learning to use those tools is part of the troubleshooting process.
 
-- **项目中的困难**
+**Designing a solution to a requirement**: A requirement may have several possible implementations. Explain why you chose the final approach and compare its advantages and disadvantages with the alternatives.
 
-最后都会问过程中有没有遇到什么困难、挑战的，以及怎么解决的。这个过程中主要考察这个项目的技术点是什么。
+For more on this topic, see [“What Was the Most Difficult Problem You Solved at Work?”](https://blog.csdn.net/u012423865/article/details/79452713).
 
-> 困难是指什么，个人觉得主要是花了好几天才解决的问题就是困难。
+Some people say they solve problems by searching online. In practice, you may start by searching for an error or issue, but the answer is rarely immediate. You find a useful keyword in one result and keep investigating from there.
 
-举两个例子：
+#### Written Tests
 
-**第一个例子是排查 bug 方面**，比如有一个内存泄露的问题花了一周才排查出来，那就算一个困难，那么解决这个困难的过程就是**如何去定位这个问题过程**，比如我们先根据错误搜索相关资料，肯定没那么容易就直接找到原因，而是我们会在这些资料中找到一些**关键词**，比如一些工具，那么我们对这个工具的使用就是解决问题的一个过程。
+Internship coding tests are usually manageable. If there are four problems, solving one or two may be enough to get an interview.
 
-**第二个例子是需求方案的设计**，比如某个需求完成，我们实现这个需求可能有多个可行的设计方案。解决这个困难的过程就是**我们对最终选择这个方法的原因，以及其他的设计方案的优缺点的思考**。
+LeetCode Top 100 is a familiar starting point. Practice can feel difficult at first, but after about 40 problems, you may start recognizing patterns. I recommend starting with linked lists and binary trees; array problems often have less reusable techniques.
 
-[面试中被问到：你在工作中碰到的最困难的问题是什么？*发现问题，解决问题.-CSDN 博客*面试中问到工作中遇到困难是怎么解决的](https://blog.csdn.net/u012423865/article/details/79452713)
+- **Practice on a whiteboard**. This is not only about remembering APIs for an interview. Repeated whiteboard practice helps you code more fluently and reason independently.
+- Algorithms matter, but the goal is not difficult problems. Become fluent in common, frequent problems at easy and medium difficulty.
+- If you encounter a problem during a coding test, **ask to use a local IDE for debugging as soon as possible**. Otherwise, you may spend too long looking for the issue and lose your chance.
 
-有人说我解决方法就是通过百度搜索，但实际上细节也是先搜索某个错误或者问题，但是肯定不可能一下子就搜到了代码答案，而是找到一个答案中有某个关键词，接着我们继续找关键词获取其他的信息。
+#### Interviews
 
-#### 笔试
+A typical one-hour interview has two parts: fundamentals or project experience in the first half, then coding.
 
-找实习的笔试我觉得不会太难，一般如果是 4 道题目，做出来 1-2 道题目差不多就有面试的机会了。
+**You do not need to review every fundamental topic systematically at the beginning. Start by making sure you know the frequently asked questions**, such as common computer network and operating system topics. Interview write-ups can help you identify them. Missing an obscure question is usually not decisive.
 
-刷题老生常谈的问题，LeetCode Top100。一开始刷题很痛苦，等刷了 40 道题目的时候就有点感觉的，建议从链表、二叉树开始刷，数组类型题目有很多不能通用的技巧。
-
-- ::一定要用白版进行训练::，一定要用白板，不仅仅是为了面试记住 API，更重要的是用白板熟练后，写代码会更熟练而且思路更独立和没有依赖。
-- 算法题重中之重，终点不是困难题目，而是简单，中等，常见，高频的题目要熟能生巧，滚瓜烂熟。
-- 面试的笔试过程中，如果出现了问题，**一定要第一时间申请使用本地 IDE 进行调试**，否则可能很长时间找不到问题，浪费了机会。
-
-#### 面试
-
-面试一般 1 场 1 个小时候分为两个部分，前半部分会问一些基础知识或者项目经历，后半部分做题。
-
-**基础知识复习一开始没必要系统的去复习，首先是确保高频问题必会**，比如计算机网络、操作系统那几个必问的问题，可以多看看面经就能找到常问题的问题，对于比较偏问题就算没答上来也不是决定性的影响。
-
-- **多看面经!!!!!!** 不要一直埋头自己学，要看别人问过了哪些常问的问题。
-- 对于实习工作，**看的知识点常见的问题一定要全!!!!!**，不是那么精问题不大，一定要全，一定要全！！！！
-- **对于自己不会的，尽量多的说！！！！** 实在不行，就往别的地方说！！！总之是引导面试官往自己会的地方上说。
-- 面试中的笔试和前面的笔试风格不同，面试笔试题目不太难，但是考察是冷静思考，代码优雅，没有 bug，先思考清楚！！！在写！！！
-- 在描述项目的难点的时候，不要去聊文档调研是难点，回答这部分问题更应该是技术上的难点，最后通过了什么技术解决了这个问题，这部分技术可以让面试官来更多提问以便知道自己的技术能力。
+- **Read interview write-ups!** Do not study in isolation; learn which questions are commonly asked.
+- For an internship, **cover all common topics**. Missing an obscure detail is less important than gaps in the basics.
+- **Explain as much as you can about what you do know.** If necessary, connect the question to a related area you understand and guide the discussion there.
+- The coding questions in a live interview differ from written tests. They may not be as difficult, but they test calm reasoning and clean, correct code. Think it through before you start writing.
+- When discussing a difficult project problem, do not say that researching documentation was the challenge. Focus on the technical difficulty and how you solved it. This gives the interviewer a chance to explore your technical ability.
 
 <!-- @include: @article-footer.snippet.md -->

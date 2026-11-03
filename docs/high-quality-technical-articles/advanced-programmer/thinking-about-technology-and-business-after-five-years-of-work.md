@@ -1,114 +1,114 @@
 ---
-title: 工作五年之后，对技术和业务的思考
-description: "工作五年之后，对技术和业务的思考：围绕技术知识与面试总结梳理关键概念、常见问题与实践要点，帮助你高效学习与备战面试。"
-category: 技术文章精选集
-author: 知了一笑
+title: Reflections on Technology and Business After Five Years at Work
+description: Reflections after five years as a programmer on adapting to change, building technical and business skills, balancing priorities, and making career choices.
+category: Curated Technical Articles
+author: Zhile Yixiao
 tag:
-  - 练级攻略
+  - Growth and Learning
 head:
   - - meta
     - name: keywords
-      content: 程序员五年,技术与业务,职业发展,能力积累,业务思维,技术深度,职场选择,二八原则
+      content: five years as a programmer,technology and business,career development,skill building,business thinking,technical depth,career choices,80/20 rule
 ---
 
-> **推荐语**：这是我在两年前看到的一篇对我触动比较深的文章。确实要学会适应变化，并积累能力。积累解决问题的能力，优化思考方式，拓宽自己的认知。
+> **Editor's note:** I read this article two years ago, and it made a strong impression on me. We need to adapt to change, build our skills, learn how to solve problems, improve how we think, and broaden our perspective.
 >
-> **原文地址：** <https://mp.weixin.qq.com/s/CTbEdi0F4-qFoJT05kNlXA>
+> **Original article:** <https://mp.weixin.qq.com/s/CTbEdi0F4-qFoJT05kNlXA>
 
-苦海无边，回头无岸。
+There is no end to hardship; once you turn back, there is no shore.
 
-## 01 前言
+## 1. Introduction
 
-晃晃悠悠的，在互联网行业工作了五年，默然回首，你看哪里像灯火阑珊处？
+Five years in the tech industry have passed in a blur. Looking back, where is the bright place you hoped to find?
 
-初入职场，大部分程序员会觉得苦学技术，以后会顺风顺水升职加薪，这样的想法没有错，但是不算全面，五年后你会不会继续做技术写代码这是核心问题。
+When they first start working, many programmers believe that studying technology hard will lead to smooth promotions and salary increases. That isn't wrong, but it's incomplete. The key question is whether you'll still be writing code five years later.
 
-初入职场，会觉得努力加班可以不断提升能力，可以学到技术的公司就算薪水低点也可以接受，但是五年之后会认为加班都是在不断挤压自己的上升空间，薪水低是人生的天花板。
+At the beginning of your career, you may accept overtime and a lower salary if the company offers a chance to learn. Five years later, you may feel that overtime is eating into your chances to grow and that your salary has become a ceiling.
 
-这里想说的关键问题就是：初入职场的认知和想法大部分不会再适用于五年后的认知。
+The key point is this: the assumptions you have at the start of your career may no longer fit how you see things five years later.
 
-工作五年之后面临的最大压力就是选择：职场天花板，技术能力天花板，薪水天花板，三十岁天花板。
+The biggest pressures after five years at work are career, technical, and salary ceilings—and the pressure of turning 30.
 
-如何面对这些问题，是大部分程序员都在思考和纠结的。做选择的唯一参考点就是：利益最大化，这里可以理解为职场更好的升职加薪，顺风顺水。
+Most programmers think about and struggle with these issues. A useful reference point for making choices is maximizing your interests, which might mean a better role and salary or a more sustainable career.
 
-五年，变化最大不是工作经验，能力积累，而是心态，清楚的知道现实和理想之间是存在巨大的差距。
+The biggest change over five years isn't work experience or skills; it's your mindset. You become more aware of the gap between reality and your ideals.
 
-## 02 学会适应变化，并积累能力
+## 2. Adapt to Change and Build Skills
 
-回首自己的职场五年，最认可的一句话就是：学会适应变化，并积累能力。
+Looking back at my first five years, the advice I believe in most is: **adapt to change and keep building your skills**.
 
-变化的就是，五年的时间技术框架更新迭代，开发工具的变迁，公司环境队友的更换，甚至是不同城市的流浪，想着能把肉体和灵魂安放在一处，有句很经典的话就是：唯一不变的就是变化本身。
+Technology stacks and development tools change. Companies, teams, and colleagues change too; sometimes you even move between cities. You may hope to settle down physically and mentally, but, as the saying goes, the only constant is change.
 
-要积累的是：解决问题的能力，思考方式，拓宽认知。
+Build your problem-solving ability, improve how you think, and broaden your understanding.
 
-这种很难直白的描述，属于个人认知的范畴，不同的人有不一样的看法，所以只能站在大众化的角度去思考。
+These ideas are hard to define in a single sentence and depend on each person's perspective, so I'll discuss them from a general point of view.
 
-首先聊聊技术，大部分小白级别的，都希望自己的技术能力不断提高，争取做到架构师级别，但是站在当前的互联网环境中，这种想法实现难度还是偏高，这里既不是打击也不是为了抬杠。
+First, technology. Many beginners want to keep improving until they become architects. Given the current state of the tech industry, that can be difficult—not that I'm trying to discourage anyone or argue for the sake of it.
 
-可以观察一下现状，技术团队大的 20-30 人，小的 10-15 人，能有一个架构师去专门管理底层框架都是少有现象。
+Consider the typical team: large ones may have 20 to 30 people; small ones, 10 to 15. It is already uncommon to have a dedicated architect managing the underlying framework.
 
-这个问题的原因很多，首先架构师的成本过高，环境架构也不是需要经常升级，说的难听点可能框架比项目生命周期更高。
+There are many reasons. Architects are expensive, and system architecture doesn't need frequent upgrades. To put it bluntly, a framework can outlive the project that uses it.
 
-所以大部分公司的大部分业务，基于现有大部分成熟的开源框架都可以解决，这也就导致架构师这个角色通常由项目主管代替或者级别较高的开发直接负责，这就是现实情况。
+Most companies can handle most business needs with mature open-source frameworks. As a result, project leads or senior developers often take on the architect's responsibilities. That's the reality.
 
-这就导致技术框架的选择思路就是：只选对的。即这方面的人才多，开源解决方案多，以此降低技术方面对公司业务发展的影响。
+This leads to a practical approach to choosing a technology stack: **choose what fits**. Prefer technologies with a strong talent pool and mature open-source solutions to reduce the impact of technical issues on the business.
 
-那为什么还要不断学习和积累技术能力？如果没有这个能力，程序员岗位可能根本走不了五年之久，需要用技术深度积累不断解决工作中的各种问题，用技术的广度提升自己实现业务需求的认知边界，这是安放肉体的根本保障。
+Why keep building technical skills, then? Without them, you may not stay in a programming role for five years. Technical depth helps you solve day-to-day problems; technical breadth expands the range of business requirements you can handle. These skills provide a foundation for your career.
 
-这就是导致很多五年以后的程序员压力陡然升高的原因，走向管理岗的另一个壁垒就是业务思维和认知。
+This is one reason many programmers feel much more pressure after five years: moving into management also requires business thinking and a broader perspective.
 
-## 03 提高业务能力的积累
+## 3. Build Your Business Skills
 
-程序员该不该用心研究业务，这个问题真的没有纠结的必要，只要不是纯技术型的公司，都需要面对业务。
+Should programmers study the business? There's no need to agonize over it. Unless a company is purely technology-focused, everyone has to deal with the business.
 
-不管技术、运营、产品、管理层，都是在面向业务工作。
+Technology, operations, product, and management all work in service of the business.
 
-从自己职场轨迹来看，五年变化最大就是解决业务问题的能力，职场之初面对很多业务场景都不知道如何下手，到几年之后设计业务的解决方案。
+Looking back at my own career, the biggest change over five years was my ability to solve business problems. At first, I didn't know where to start with many scenarios. A few years later, I could design solutions for them.
 
-这是大部分程序员在职场前五年跳槽就能涨薪的根本原因，面对业务场景，基于积累的经验和现有的开源工具，能快速给出合理的解决思路和实现过程。
+This is a major reason many programmers can increase their salary by changing jobs during their first five years. With accumulated experience and existing open-source tools, they can quickly propose a reasonable solution and implementation for a business problem.
 
-工作五年可能对技术底层的清晰程度都没有初入职场的小白清楚，但是写的程序却可以避开很多坑坑洼洼，对于业务的审视也是很细节全面。
+After five years, your understanding of low-level technology may not be as clear as it was when you were a beginner. Yet you can write code that avoids many pitfalls and examine business requirements in more detail.
 
-解决业务能力的积累，对于技术视野的宽度需求更甚，比如职场初期对于海量数据的处理束手无策，但是在工作几年之后见识数据行业的技术栈，真的就是技术选型的视野问题。
+Solving business problems often requires a broader technical perspective. Early in your career, you may not know how to handle large volumes of data. After a few years, you may have seen the relevant technology stacks in practice. The challenge may have been choosing the right technology, not learning another tool.
 
-什么是衡量技术能力的标准？站在一个共识的角度上看：系统的架构与代码设计能适应业务的不断变化和各种需求。
+What is a good measure of technical ability? A shared view is that a system's architecture and code design should adapt to changing business needs.
 
-相对比与技术，业务的变化更加快速频繁，高级工程师或者架构师之所以薪资高，这些角色一方面能适应业务的迭代，并且在工作中具有一定前瞻性，会考虑业务变化的情况下代码复用逻辑，这样的能力是需要一定的技术视野和业务思维的沉淀。
+Business changes faster and more often than technology. Senior engineers and architects earn more partly because they adapt to business changes and anticipate future needs. They design reusable code that can handle those changes. This takes both a broad technical perspective and a deep understanding of the business.
 
-所以职场中：业务能说的井井有条，代码能写的明明白白，得到机会的可能性更大。
+At work, being able to explain the business clearly and write clear code gives you a better chance of getting opportunities.
 
-## 04 不同的阶段技术和业务的平衡和选择
+## 4. Balance Technology and Business at Different Stages
 
-从理性的角度看技术和业务两个方面，能让大部分人职场走的平稳顺利，但是不同的阶段对两者的平衡和选择是不一样的。
+A balanced focus on technology and business can help most people build a steady career. But the right balance changes at different stages.
 
-在思考如何选择的时候，可以参考二八原则的逻辑，即在任何一组东西中，最重要的只占其中一小部分，约 20%，其余 80%尽管是多数，却是次要的，因此又称二八定律。
+When deciding how to prioritize, consider the 80/20 rule: in any group, a small portion—around 20 percent—may be the most important, while the remaining 80 percent is less important. This is also called the Pareto principle.
 
-个人真的非常喜欢这个原则，大部分人都不是天才，所以很难三心二意同时做好几件事情，在同一时间段内应该集中精力做好一件事件。
+I really like this principle. Most people aren't geniuses, so it's difficult to excel at several things at once. Focus on doing one thing well at a time.
 
-但是单纯的二八原则模式可能不适应大部分职场初期的人，因为初期要学习很多内容，如何在职场生存：专业能力，职场关系，为人处世，产品设计等等。
+However, a strict 80/20 approach may not suit most people at the start of their careers, when they need to learn a lot just to get established: professional skills, workplace relationships, communication, product design, and more.
 
-当然这些东西不是都要用心刻意学习，但是合理安排二二六原则或其他组合是更明智的，首先是专业能力要重点练习，其次可以根据自己的兴趣合理选择一到两个方面去慢慢了解，例如产品，运营，运维，数据等，毕竟三五年以后会不会继续写代码很难说，多给自己留个机会总是有备无患。
+You don't need to study everything equally. A more flexible split, such as 20/20/60, may be wiser: focus first on professional skills, then explore one or two areas that interest you, such as product, operations, infrastructure, or data. You may not be writing code in three to five years, so it's useful to keep your options open.
 
-在职场初期，基本都是从技术角度去思考问题，如何快速提升自己的编码能力，在公司能稳定是首要目标，因此大部分时间都是在做基础编码和学习规范，这时可能 90%的心思都是放在基础编码上，另外 10%会学习环境架构。
+Early in your career, you usually think about problems from a technical perspective and focus on improving your coding skills and establishing yourself at the company. Most of your time may go toward basic coding and learning the team's conventions, with a small amount spent understanding the system architecture.
 
-最多一到两年，就会开始独立负责模块需求开发，需要自己设计整个代码思路，这里业务就会进入视野，要懂得业务上下游关联关系，学会思考如何设计代码结构，才能在需求变动的情况下代码改动较少，这个时候可能就会放 20%的心思在业务方面，30%学习架构方式。
+After one or two years, you may begin owning requirements for a module and designing the implementation yourself. The business then comes into focus: understand dependencies between upstream and downstream processes, and design code that needs fewer changes when requirements shift. At this point, you might spend 20 percent of your effort on the business and 30 percent learning architecture.
 
-三到五年这个时间段，是解决问题能力提升最快的时候，因为这个阶段的程序员基本都是在开发核心业务链路，例如交易、支付、结算、智能商业等模块，需要对业务整体有较清晰的把握能力，不然就是给自己挖坑，这个阶段要对业务流付出大量心血思考。
+From years three to five, your problem-solving ability can grow quickly. Programmers at this stage often develop core business flows, such as transactions, payments, settlement, or intelligent commerce. You need to understand the business end to end; otherwise, you can create problems for yourself. Spend serious time thinking through the business flow.
 
-越是核心的业务线，越是容易爆发各种问题，如果在日常工作中不花心思处理各种细节问题，半夜异常自动的消息和邮件总是容易让人憔悴。
+The more central the business flow, the more likely it is to produce problems. If you don't pay attention to the details during your day-to-day work, unexpected alerts and emails in the middle of the night can wear you down.
 
-所以努力学习技术是提升自己，培养自己的业务认知也同样重要，个人认为这二者的分量平分秋色，只是需要在合适的阶段做出合理的权重划分。
+Learning technology helps you improve, and building your business understanding matters just as much. In my view, neither outweighs the other; the key is to adjust their relative importance at the right stage.
 
-## 05 学会在职场做选择和生存
+## 5. Make Career Choices and Build a Sustainable Career
 
-基于技术能力和业务思维，学会在职场做选择和生存，这些是职场前五年一路走来的最大体会。
+My biggest lesson from the first five years is to make deliberate career choices and learn how to build a sustainable career using both technical skills and business thinking.
 
-不管是技术还是业务，这两个概念依旧是个很大的命题，不容易把握，所以学会理清这两个方面能力中的公共模块是关键。
+Technology and business are both broad subjects and can be difficult to master. The key is to identify the underlying skills they have in common.
 
-不管技术还是业务，都不可能从一家公司完全复制到另一家公司，但是可以把一家公司的技术框架，业务解决方案学会，并且带到另一家公司，例如技术领域内的架构、设计、流程、数据管理，业务领域内的思考方式、产品逻辑、分析等，这些是核心能力并且是大部分公司人才招聘的要求，所以这些才是工作中需要重点积累的。
+You can't copy a company's technology or business solution wholesale into another company. But you can take what you learned: architecture, design, processes, and data management on the technical side; ways of thinking, product logic, and analysis on the business side. These are core skills that many employers look for, so focus on building them at work.
 
-人的精力是有限的，而且面对三十这个天花板，各种事件也会接连而至，在职场中学会合理安排时间并不断提升核心能力，这样才能保证自己的竞争力。
+We have limited energy, and the pressure of turning 30 comes with other responsibilities. Manage your time and keep building core skills to stay competitive.
 
-职场就像苦海无边，回首望去可能也没有岸边停泊，但是要具有换船的能力或者有个小木筏也就大差不差了。
+Careers can feel like an endless sea of hardship, with no shore in sight when you look back. But if you can change course—or at least build a small raft—you'll be in a better position.
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,227 +1,225 @@
 ---
-title: IoC & AOP详解（快速搞懂）
-description: Spring IoC与AOP核心原理详解，深入讲解控制反转、依赖注入、切面编程及动态代理的实现机制。
-category: 框架
+title: IoC and AOP Explained
+description: An explanation of Spring IoC and AOP, covering inversion of control, dependency injection, aspect-oriented programming, and dynamic proxies.
+category: Frameworks
 tag:
   - Spring
 head:
   - - meta
     - name: keywords
-      content: IoC,DI,AOP,Spring IoC容器,依赖注入,切面编程,动态代理,Spring原理
+      content: IoC,DI,AOP,Spring IoC Container,Dependency Injection,Aspect-Oriented Programming,Dynamic Proxy,Spring Fundamentals
 ---
 
-这篇文章会从下面从以下几个问题展开对 IoC & AOP 的解释
+This article explains IoC and AOP through the following questions:
 
-- 什么是 IoC？
-- IoC 解决了什么问题？
-- IoC 和 DI 的区别？
-- 什么是 AOP？
-- AOP 解决了什么问题？
-- AOP 的应用场景有哪些？
-- AOP 为什么叫做切面编程？
-- AOP 实现方式有哪些？
+- What is IoC?
+- What problem does IoC solve?
+- What is the difference between IoC and DI?
+- What is AOP?
+- What problem does AOP solve?
+- What are common uses of AOP?
+- Why is it called aspect-oriented programming?
+- How can AOP be implemented?
 
-首先声明：IoC & AOP 不是 Spring 提出来的，它们在 Spring 之前其实已经存在了，只不过当时更加偏向于理论。Spring 在技术层次将这两个思想进行了很好的实现。
+First, IoC and AOP were not introduced by Spring. Both ideas existed before Spring, though they were more theoretical. Spring provides practical implementations of them.
 
-## IoC （Inversion of control ）
+## IoC (Inversion of Control)
 
-### 什么是 IoC?
+### What Is IoC?
 
-IoC （Inversion of Control ）即控制反转/反转控制。它是一种思想不是一个技术实现。描述的是：Java 开发领域对象的创建以及管理的问题。
+IoC (Inversion of Control) is a design principle, not a specific implementation technology. In Java development, it describes how objects are created and managed.
 
-例如：现有类 A 依赖于类 B
+For example, suppose class A depends on class B:
 
-- **传统的开发方式** ：往往是在类 A 中手动通过 new 关键字来 new 一个 B 的对象出来
-- **使用 IoC 思想的开发方式** ：不通过 new 关键字来创建对象，而是通过 IoC 容器(Spring 框架) 来帮助我们实例化对象。我们需要哪个对象，直接从 IoC 容器里面去取即可。
+- **Traditional development:** Class A creates an instance of B itself using the `new` keyword.
+- **Using IoC:** Objects are not created with `new` by the dependent class. An IoC container, such as the Spring container, creates and manages them. When we need an object, we retrieve it from the container.
 
-从以上两种开发方式的对比来看：我们 “丧失了一个权力” (创建、管理对象的权力)，从而也得到了一个好处（不用再考虑对象的创建、管理等一系列的事情）
+Comparing the two approaches, we give up the ability to create and manage objects ourselves. In return, we no longer need to handle object creation and management directly.
 
-**为什么叫控制反转?**
+**Why is it called inversion of control?**
 
-- **控制** ：指的是对象创建（实例化、管理）的权力
-- **反转** ：控制权交给外部环境（IoC 容器）
+- **Control** means the responsibility for creating and managing objects.
+- **Inversion** means handing that responsibility to an external environment, such as an IoC container.
 
-![IoC 图解](../../images/shared/ioc-aop-ioc-illustration.png)
+![IoC diagram](../../images/shared/ioc-aop-ioc-illustration.png)
 
-### IoC 解决了什么问题?
+### What Problems Does IoC Solve?
 
-IoC 的思想就是两方之间不互相依赖，由第三方容器来管理相关资源。这样有什么好处呢？
+The idea behind IoC is that two components do not depend on each other's concrete implementation. A third-party container manages their resources. This has several benefits:
 
-1. 对象之间的耦合度或者说依赖程度降低；
-2. 资源变的容易管理；比如你用 Spring 容器提供的话很容易就可以实现一个单例。
+1. It reduces coupling between objects and their dependencies.
+2. It makes resource management easier. For example, the Spring container makes it straightforward to use a singleton.
 
-例如：现有一个针对 User 的操作，利用 Service 和 Dao 两层结构进行开发
+For example, suppose a user-related operation uses a `Service` and `DAO` layer.
 
-在没有使用 IoC 思想的情况下，Service 层想要使用 Dao 层的具体实现的话，需要通过 new 关键字在`UserServiceImpl` 中手动 new 出 `IUserDao` 的具体实现类 `UserDaoImpl`（不能直接 new 接口类）。
+Without IoC, the service layer creates the concrete DAO implementation, `UserDaoImpl`, with `new` inside `UserServiceImpl`. It cannot instantiate the `IUserDao` interface directly.
 
-很完美，这种方式也是可以实现的，但是我们想象一下如下场景：
+This works, but imagine receiving a new requirement to create another implementation of `IUserDao`. Since the service layer depends on a specific implementation, we would need to change the object created with `new` in `UserServiceImpl`. That may be manageable if only one class uses it, but becomes difficult if many classes depend on that implementation.
 
-开发过程中突然接到一个新的需求，针对`IUserDao` 接口开发出另一个具体实现类。因为 Server 层依赖了`IUserDao`的具体实现，所以我们需要修改`UserServiceImpl`中 new 的对象。如果只有一个类引用了`IUserDao`的具体实现，可能觉得还好，修改起来也不是很费力气，但是如果有许许多多的地方都引用了`IUserDao`的具体实现的话，一旦需要更换`IUserDao` 的实现方式，那修改起来将会非常的头疼。
+![IoC: DAO and service layers](../../images/shared/ioc-aop-ioc-illustration-dao-service.png)
 
-![IoC&Aop-ioc-illustration-dao-service](../../images/shared/ioc-aop-ioc-illustration-dao-service.png)
-
-使用 IoC 的思想，我们将对象的控制权（创建、管理）交由 IoC 容器去管理，我们在使用的时候直接向 IoC 容器 “要” 就可以了
+With IoC, the container controls object creation and management. When we need an object, we ask the container for it.
 
 ![](../../images/shared/ioc-aop-ioc-illustration-dao.png)
 
-### IoC 和 DI 有区别吗？
+### Are IoC and DI Different?
 
-IoC（Inverse of Control:控制反转）是一种设计思想或者说是某种模式。这个设计思想就是 **将原本在程序中手动创建对象的控制权交给第三方比如 IoC 容器。** 对于我们常用的 Spring 框架来说， IoC 容器实际上就是个 Map（key，value）,Map 中存放的是各种对象。不过，IoC 在其他语言中也有应用，并非 Spring 特有。
+IoC (Inversion of Control) is a design principle or pattern. It means **handing control of object creation from the program to a third party, such as an IoC container.** In the Spring framework, the IoC container is essentially a map of key–value pairs that stores objects. IoC is also used in other languages and is not specific to Spring.
 
-IoC 最常见以及最合理的实现方式叫做依赖注入（Dependency Injection，简称 DI）。
+The most common and generally accepted way to implement IoC is **Dependency Injection (DI)**.
 
-老马（Martin Fowler）在一篇文章中提到将 IoC 改名为 DI，原文如下，原文地址：<https://martinfowler.com/articles/injection.html> 。
+Martin Fowler suggested renaming IoC to DI in an article. Here is an excerpt; see the [original article](https://martinfowler.com/articles/injection.html):
 
 ![](../../images/shared/martin-fowler-injection.png)
 
-老马的大概意思是 IoC 太普遍并且不表意，很多人会因此而迷惑，所以，使用 DI 来精确指名这个模式比较好。
+Fowler's point was that IoC is too broad and does not describe the pattern clearly, which can confuse people. DI is a more precise name for this pattern.
 
-## AOP（Aspect oriented programming）
+## AOP (Aspect-Oriented Programming)
 
-这里不会涉及太多专业的术语，核心目的是将 AOP 的思想说清楚。
+This section focuses on explaining the idea behind AOP without too much specialized terminology.
 
-### 什么是 AOP？
+### What Is AOP?
 
-AOP（Aspect Oriented Programming）即面向切面编程，AOP 是 OOP（面向对象编程）的一种延续，二者互补，并不对立。
+AOP (Aspect-Oriented Programming) is a continuation of OOP (Object-Oriented Programming). The two approaches complement each other rather than conflict.
 
-AOP 的目的是将横切关注点（如日志记录、事务管理、权限控制、接口限流、接口幂等等）从核心业务逻辑中分离出来，通过动态代理、字节码操作等技术，实现代码的复用和解耦，提高代码的可维护性和可扩展性。OOP 的目的是将业务逻辑按照对象的属性和行为进行封装，通过类、对象、继承、多态等概念，实现代码的模块化和层次化（也能实现代码的复用），提高代码的可读性和可维护性。
+AOP separates cross-cutting concerns—such as logging, transaction management, access control, rate limiting, and API idempotency—from core business logic. It uses techniques such as dynamic proxies and bytecode manipulation to promote reuse and reduce coupling, improving maintainability and extensibility. OOP encapsulates business logic in objects using properties and behaviors. Classes, objects, inheritance, and polymorphism support modular and hierarchical code, reuse, readability, and maintainability.
 
-### AOP 为什么叫面向切面编程？
+### Why Is AOP Called Aspect-Oriented Programming?
 
-AOP 之所以叫面向切面编程，是因为它的核心思想就是将横切关注点从核心业务逻辑中分离出来，形成一个个的**切面（Aspect）**。
+AOP is named for its central idea: separating cross-cutting concerns from core business logic and encapsulating them as **aspects**.
 
-![面向切面编程图解](../../images/shared/aop-program-execution.jpg)
+![Aspect-oriented programming diagram](../../images/shared/aop-program-execution.jpg)
 
-这里顺带总结一下 AOP 关键术语（不理解也没关系，可以继续往下看）：
+Here are some key AOP terms. Do not worry if they are unclear; you can continue reading.
 
-- **横切关注点（cross-cutting concerns）** ：多个类或对象中的公共行为（如日志记录、事务管理、权限控制、接口限流、接口幂等等）。
-- **切面（Aspect）**：对横切关注点进行封装的类，一个切面是一个类。切面可以定义多个通知，用来实现具体的功能。
-- **连接点（JoinPoint）**：连接点是方法调用或者方法执行时的某个特定时刻（如方法调用、异常抛出等）。
-- **通知（Advice）**：通知就是切面在某个连接点要执行的操作。通知有五种类型，分别是前置通知（Before）、后置通知（After）、返回通知（AfterReturning）、异常通知（AfterThrowing）和环绕通知（Around）。前四种通知都是在目标方法的前后执行，而环绕通知可以控制目标方法的执行过程。
-- **切点（Pointcut）**：一个切点是一个表达式，它用来匹配哪些连接点需要被切面所增强。切点可以通过注解、正则表达式、逻辑运算等方式来定义。比如 `execution(* com.xyz.service..*(..))`匹配 `com.xyz.service` 包及其子包下的类或接口。
-- **织入（Weaving）**：织入是将切面和目标对象连接起来的过程，也就是将通知应用到切点匹配的连接点上。常见的织入时机有两种，分别是编译期织入（Compile-Time Weaving 如：AspectJ）和运行期织入（Runtime Weaving 如：AspectJ、Spring AOP）。
+- **Cross-cutting concerns:** Behavior shared across multiple classes or objects, such as logging, transaction management, access control, rate limiting, and API idempotency.
+- **Aspect:** A class that encapsulates a cross-cutting concern. An aspect can define multiple pieces of advice that implement specific behavior.
+- **Join point:** A specific point during a method call or execution, such as a method invocation or an exception being thrown.
+- **Advice:** An operation performed by an aspect at a join point. The five types are Before, After, AfterReturning, AfterThrowing, and Around. The first four run before or after the target method; Around advice can control the target method's execution.
+- **Pointcut:** An expression that matches the join points to which an aspect should apply. It can be defined using annotations, regular expressions, or logical operators. For example, `execution(* com.xyz.service..*(..))` matches classes or interfaces in `com.xyz.service` and its subpackages.
+- **Weaving:** The process of connecting an aspect to a target object by applying advice to matching join points. Weaving may happen at compile time (for example, with AspectJ) or at runtime (for example, with AspectJ or Spring AOP).
 
-### AOP 常见的通知类型有哪些？
+### What Are the Common Types of AOP Advice?
 
 ![](../../images/shared/aspectj-advice-types.jpg)
 
-- **Before**（前置通知）：目标对象的方法调用之前触发
-- **After** （后置通知）：目标对象的方法调用之后触发
-- **AfterReturning**（返回通知）：目标对象的方法调用完成，在返回结果值之后触发
-- **AfterThrowing**（异常通知）：目标对象的方法运行中抛出 / 触发异常后触发。AfterReturning 和 AfterThrowing 两者互斥。如果方法调用成功无异常，则会有返回值；如果方法抛出了异常，则不会有返回值。
-- **Around** （环绕通知）：编程式控制目标对象的方法调用。环绕通知是所有通知类型中可操作范围最大的一种，因为它可以直接拿到目标对象，以及要执行的方法，所以环绕通知可以任意的在目标对象的方法调用前后搞事，甚至不调用目标对象的方法
+- **Before:** Runs before the target method is called.
+- **After:** Runs after the target method is called.
+- **AfterReturning:** Runs after the target method completes and returns a value.
+- **AfterThrowing:** Runs if the target method throws an exception. AfterReturning and AfterThrowing are mutually exclusive. A successful call returns a value; a call that throws an exception does not.
+- **Around:** Programmatically controls the target method call. It offers the most control because it can access the target object and the method to be executed. Around advice can perform operations before or after the call, or even choose not to invoke the target method.
 
-### AOP 解决了什么问题？
+### What Problems Does AOP Solve?
 
-OOP 不能很好地处理一些分散在多个类或对象中的公共行为（如日志记录、事务管理、权限控制、接口限流、接口幂等等），这些行为通常被称为 **横切关注点（cross-cutting concerns）** 。如果我们在每个类或对象中都重复实现这些行为，那么会导致代码的冗余、复杂和难以维护。
+OOP does not handle shared behavior across multiple classes or objects particularly well. Examples include logging, transaction management, access control, rate limiting, and API idempotency. These are **cross-cutting concerns**. Reimplementing them in every class leads to duplication, complexity, and maintenance problems.
 
-AOP 可以将横切关注点（如日志记录、事务管理、权限控制、接口限流、接口幂等等）从 **核心业务逻辑（core concerns，核心关注点）** 中分离出来，实现关注点的分离。
+AOP separates cross-cutting concerns such as logging, transaction management, access control, rate limiting, and API idempotency from **core business logic (core concerns)**. This separates the concerns in the codebase.
 
 ![](../../images/shared/crosscut-logic-and-businesslogic-separation-.png)
 
-以日志记录为例进行介绍，假如我们需要对某些方法进行统一格式的日志记录，没有使用 AOP 技术之前，我们需要挨个写日志记录的逻辑代码，全是重复的逻辑。
+Consider logging. If we need consistent logging for several methods, without AOP we would have to write the same logging logic in each method:
 
 ```java
 public CommonResponse<Object> method1() {
-      // 业务逻辑
+      // Business logic
       xxService.method1();
-      // 省略具体的业务处理逻辑
-      // 日志记录
+      // Omit the specific business logic
+      // Logging
       ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
       HttpServletRequest request = attributes.getRequest();
-      // 省略记录日志的具体逻辑 如：获取各种信息，写入数据库等操作...
+      // Omit the logging details, such as retrieving information and writing it to a database
       return CommonResponse.success();
 }
 
 public CommonResponse<Object> method2() {
-      // 业务逻辑
+      // Business logic
       xxService.method2();
-      // 省略具体的业务处理逻辑
-      // 日志记录
+      // Omit the specific business logic
+      // Logging
       ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
       HttpServletRequest request = attributes.getRequest();
-      // 省略记录日志的具体逻辑 如：获取各种信息，写入数据库等操作...
+      // Omit the logging details, such as retrieving information and writing it to a database
       return CommonResponse.success();
 }
 
 // ...
 ```
 
-使用 AOP 技术之后，我们可以将日志记录的逻辑封装成一个切面，然后通过切入点和通知来指定在哪些方法需要执行日志记录的操作。
+With AOP, we can encapsulate logging in an aspect, then use a pointcut and advice to specify which methods should be logged.
 
 ```java
 
-// 日志注解
+// Logging annotation
 @Target({ElementType.PARAMETER,ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface Log {
 
     /**
-     * 描述
+     * Description
      */
     String description() default "";
 
     /**
-     * 方法类型 INSERT DELETE UPDATE OTHER
+     * Method type: INSERT, DELETE, UPDATE, OTHER
      */
     MethodType methodType() default MethodType.OTHER;
 }
 
-// 日志切面
+// Logging aspect
 @Component
 @Aspect
 public class LogAspect {
-  // 切入点，所有被 Log 注解标注的方法
+  // Pointcut: all methods annotated with Log
   @Pointcut("@annotation(cn.javaguide.annotation.Log)")
   public void webLog() {
   }
 
    /**
-   * 环绕通知
+   * Around advice
    */
   @Around("webLog()")
   public Object doAround(ProceedingJoinPoint joinPoint) throws Throwable {
-    // 省略具体的处理逻辑
+    // Omit the specific processing logic
   }
 
-  // 省略其他代码
+  // Omit the remaining code
 }
 ```
 
-这样的话，我们一行注解即可实现日志记录：
+Now a single annotation is enough to enable logging:
 
 ```java
 @Log(description = "method1",methodType = MethodType.INSERT)
 public CommonResponse<Object> method1() {
-      // 业务逻辑
+      // Business logic
       xxService.method1();
-      // 省略具体的业务处理逻辑
+      // Omit the specific business logic
       return CommonResponse.success();
 }
 ```
 
-### AOP 的应用场景有哪些？
+### What Are Common Uses of AOP?
 
-- 日志记录：自定义日志记录注解，利用 AOP，一行代码即可实现日志记录。
-- 性能统计：利用 AOP 在目标方法的执行前后统计方法的执行时间，方便优化和分析。
-- 事务管理：`@Transactional` 注解可以让 Spring 为我们进行事务管理比如回滚异常操作，免去了重复的事务管理逻辑。`@Transactional`注解就是基于 AOP 实现的。
-- 权限控制：利用 AOP 在目标方法执行前判断用户是否具备所需要的权限，如果具备，就执行目标方法，否则就不执行。例如，SpringSecurity 利用`@PreAuthorize` 注解一行代码即可自定义权限校验。
-- 接口限流：利用 AOP 在目标方法执行前通过具体的限流算法和实现对请求进行限流处理。
-- 缓存管理：利用 AOP 在目标方法执行前后进行缓存的读取和更新。
-- ……
+- **Logging:** Define a custom logging annotation and use AOP to add logging with one line of code.
+- **Performance measurement:** Use AOP before and after a target method to measure its execution time for analysis and optimization.
+- **Transaction management:** The `@Transactional` annotation lets Spring manage transactions, such as rolling back failed operations, without repeating transaction logic. `@Transactional` is implemented using AOP.
+- **Access control:** Use AOP before a method call to check whether the user has the required permission. If so, run the method; otherwise, reject the call. For example, Spring Security's `@PreAuthorize` annotation supports custom permission checks in one line.
+- **Rate limiting:** Use a rate-limiting algorithm before invoking the target method to control request volume.
+- **Caching:** Read and update a cache before or after invoking the target method.
+- …
 
-### AOP 实现方式有哪些？
+### How Can AOP Be Implemented?
 
-AOP 的常见实现方式有动态代理、字节码操作等方式。
+Common AOP implementation techniques include dynamic proxies and bytecode manipulation.
 
-Spring AOP 就是基于动态代理的，如果要代理的对象，实现了某个接口，那么 Spring AOP 会使用 **JDK Proxy**，去创建代理对象，而对于没有实现接口的对象，就无法使用 JDK Proxy 去进行代理了，这时候 Spring AOP 会使用 CGLIB 生成一个被代理对象的子类来作为代理，如下图所示：
+Spring AOP uses dynamic proxies. If the target object implements an interface, Spring AOP uses **JDK Proxy** to create the proxy. If the target class does not implement an interface, JDK Proxy cannot proxy it, so Spring AOP uses CGLIB to create a subclass of the target class, as shown below:
 
-![SpringAOPProcess](../../images/shared/230ae587a322d6e4d09510161987d346.jpg)
+![Spring AOP proxy process](../../images/shared/230ae587a322d6e4d09510161987d346.jpg)
 
-**Spring Boot 和 Spring 的动态代理的策略是不是也是一样的呢？**其实不一样，很多人都理解错了。
+**Do Spring Boot and Spring use the same dynamic proxy strategy?** Not exactly. This is often misunderstood.
 
-Spring Boot 2.0 之前，`spring.aop.proxy-target-class` 默认值为 `false`，有用户接口时通常使用 **JDK 动态代理**；如果目标类没有可用接口，Spring AOP 仍会回退到 **CGLIB 动态代理**，并不会仅仅因为目标类没有实现接口就抛出异常。Spring Boot 1.5.x 自动配置 AOP 代码如下：
+Before Spring Boot 2.0, `spring.aop.proxy-target-class` defaulted to `false`. Spring generally used **JDK dynamic proxies** when the target had an interface. If no usable interface was available, Spring AOP still fell back to **CGLIB dynamic proxies**; it did not throw an exception simply because the target class lacked an interface. The following is the Spring Boot 1.5.x AOP auto-configuration:
 
 ```java
 @Configuration
@@ -231,8 +229,8 @@ public class AopAutoConfiguration {
 
 	@Configuration
 	@EnableAspectJAutoProxy(proxyTargetClass = false)
- // 该配置类只有在 spring.aop.proxy-target-class=false 或未显式配置时才会生效。
- // 也就是说，如果开发者未明确选择代理方式，Spring 会默认加载 JDK 动态代理。
+ // This configuration is active when spring.aop.proxy-target-class=false or is not set.
+ // In other words, Spring uses JDK dynamic proxies unless the developer selects a strategy explicitly.
 	@ConditionalOnProperty(prefix = "spring.aop", name = "proxy-target-class", havingValue = "false", matchIfMissing = true)
 	public static class JdkDynamicAutoProxyConfiguration {
 
@@ -240,8 +238,8 @@ public class AopAutoConfiguration {
 
 	@Configuration
 	@EnableAspectJAutoProxy(proxyTargetClass = true)
- // 该配置类只有在 spring.aop.proxy-target-class=true 时才会生效。
- // 即开发者通过属性配置明确指定使用 CGLIB 动态代理时，Spring 会加载这个配置类。
+ // This configuration is active when spring.aop.proxy-target-class=true.
+ // The developer has explicitly selected CGLIB dynamic proxies in the configuration.
 	@ConditionalOnProperty(prefix = "spring.aop", name = "proxy-target-class", havingValue = "true", matchIfMissing = false)
 	public static class CglibAutoProxyConfiguration {
 
@@ -250,7 +248,7 @@ public class AopAutoConfiguration {
 }
 ```
 
-Spring Boot 2.0 开始，如果用户什么都不配置的话，默认使用 **CGLIB 动态代理**。如果需要强制使用 JDK 动态代理，可以在配置文件中添加：`spring.aop.proxy-target-class=false`。Spring Boot 2.0 自动配置 AOP 代码如下：
+Starting with Spring Boot 2.0, **CGLIB dynamic proxies** are used by default if no setting is provided. To force JDK dynamic proxies, add `spring.aop.proxy-target-class=false` to the configuration. Here is the Spring Boot 2.0 AOP auto-configuration:
 
 ```java
 @Configuration
@@ -261,8 +259,8 @@ public class AopAutoConfiguration {
 
 	@Configuration
 	@EnableAspectJAutoProxy(proxyTargetClass = false)
- // 该配置类只有在 spring.aop.proxy-target-class=false 时才会生效。
- // 即开发者通过属性配置明确指定使用 JDK 动态代理时，Spring 会加载这个配置类。
+ // This configuration is active only when spring.aop.proxy-target-class=false.
+ // The developer has explicitly selected JDK dynamic proxies in the configuration.
 	@ConditionalOnProperty(prefix = "spring.aop", name = "proxy-target-class", havingValue = "false", matchIfMissing = false)
 	public static class JdkDynamicAutoProxyConfiguration {
 
@@ -270,8 +268,8 @@ public class AopAutoConfiguration {
 
 	@Configuration
 	@EnableAspectJAutoProxy(proxyTargetClass = true)
- // 该配置类只有在 spring.aop.proxy-target-class=true 或未显式配置时才会生效。
- // 也就是说，如果开发者未明确选择代理方式，Spring 会默认加载 CGLIB 代理。
+ // This configuration is active when spring.aop.proxy-target-class=true or is not set.
+ // In other words, Spring uses CGLIB proxies unless the developer selects a strategy explicitly.
 	@ConditionalOnProperty(prefix = "spring.aop", name = "proxy-target-class", havingValue = "true", matchIfMissing = true)
 	public static class CglibAutoProxyConfiguration {
 
@@ -280,15 +278,15 @@ public class AopAutoConfiguration {
 }
 ```
 
-当然你也可以使用 **AspectJ** ！Spring AOP 已经集成了 AspectJ ，AspectJ 应该算的上是 Java 生态系统中最完整的 AOP 框架了。
+You can also use **AspectJ**. Spring AOP integrates with AspectJ, one of the most complete AOP frameworks in the Java ecosystem.
 
-**Spring AOP 属于运行时增强，AspectJ 支持编译时、后编译以及类加载时织入。** Spring AOP 基于代理(Proxying)，而 AspectJ 基于字节码操作(Bytecode Manipulation)。
+**Spring AOP applies advice at runtime, while AspectJ supports compile-time, post-compile, and load-time weaving.** Spring AOP is based on proxying; AspectJ is based on bytecode manipulation.
 
-Spring AOP 已经集成了 AspectJ ，AspectJ 应该算的上是 Java 生态系统中最完整的 AOP 框架了。AspectJ 相比于 Spring AOP 功能更加强大，但是 Spring AOP 相对来说更简单。
+Spring AOP integrates with AspectJ, one of the most complete AOP frameworks in the Java ecosystem. AspectJ is more powerful, while Spring AOP is simpler.
 
-如果我们的切面比较少，那么两者性能差异不大。但是，当切面太多的话，最好选择 AspectJ ，它比 Spring AOP 快很多。
+When there are only a few aspects, the performance difference between them is small. If there are many aspects, AspectJ may be a better choice because it can be much faster than Spring AOP.
 
-## 参考
+## References
 
-- AOP in Spring Boot, is it a JDK dynamic proxy or a Cglib dynamic proxy?：<https://www.springcloud.io/post/2022-01/springboot-aop/>
-- Spring Proxying Mechanisms：<https://docs.spring.io/spring-framework/reference/core/aop/proxying.html>
+- [AOP in Spring Boot: JDK Dynamic Proxy or CGLIB Dynamic Proxy?](https://www.springcloud.io/post/2022-01/springboot-aop/)
+- [Spring Proxying Mechanisms](https://docs.spring.io/spring-framework/reference/core/aop/proxying.html)

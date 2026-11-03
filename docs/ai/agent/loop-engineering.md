@@ -1,300 +1,300 @@
 ---
-title: Loop Engineering 是什么？为什么说它是新瓶装旧酒？
-description: 从 Agent Loop、Context Engineering、Harness、Skills、MCP、Sub-agent 和 Claude Code /loop、/goal 出发，说明 Loop Engineering 到底解决什么问题，以及什么时候值得用。
-category: AI 应用开发
+title: What Is Loop Engineering? Is It Just an Old Idea in New Packaging?
+description: Explains what Loop Engineering solves and when it is useful, covering Agent Loops, Context Engineering, Harnesses, Skills, MCP, Sub-agents, and Claude Code's /loop and /goal commands.
+category: AI Application Development
 head:
   - - meta
     - name: keywords
-      content: Loop Engineering,Agent Loop,AI Agent,Claude Code,/loop,/goal,Context Engineering,Harness Engineering,Agent Skills,MCP,AI 编程
+      content: Loop Engineering,Agent Loop,AI Agent,Claude Code,/loop,/goal,Context Engineering,Harness Engineering,Agent Skills,MCP,AI coding
 ---
 
-CI 失败后，Agent 可以读失败日志、定位相关文件、运行最小测试集，再把排查结果写回 Issue。第一次排查没有收敛时，任务还会遇到一个更实际的问题：下一轮由谁启动，继续读哪些材料，什么时候该停下来交给人处理？
+After a CI failure, an Agent can read the failure logs, locate the relevant files, run a minimal test suite, and write its findings back to an Issue. If the first investigation does not resolve the problem, more practical questions arise: who starts the next iteration, what context should it read, and when should it stop and hand the task to a person?
 
-Loop Engineering 讨论的就是这段外层流程。它负责把 Agent 的一次次执行接起来：CI、PR 或定时任务触发下一轮，项目规则和相关证据进入上下文，测试与审查决定结果是否可信，状态记录让后续任务可以从上次停下的地方继续。
+Loop Engineering deals with this outer workflow. It connects repeated Agent runs: CI, a PR, or a scheduled task triggers the next iteration; project rules and relevant evidence enter the context; tests and reviews determine whether the result is trustworthy; and saved state lets later runs resume where the last one stopped.
 
-从公开讨论看，这个名称在 **2026 年 6 月上旬** 开始热起来，Addy Osmani 于 6 月 7 日发表了相关文章。Claude Code 与 Codex 中的 `/loop`、`/goal`、Automations 等能力，配合 Skills、Sub-agent、工作区隔离和 MCP/Connector，已经能组成类似流程。
+Public discussion of the term picked up in **early June 2026**, when Addy Osmani published a related article on June 7. Features such as `/loop`, `/goal`, and Automations in Claude Code and Codex can be combined with Skills, Sub-agents, workspace isolation, and MCP/Connectors to build similar workflows.
 
-## Loop Engineering 到底是什么？
+## What Is Loop Engineering?
 
-Loop Engineering 用来安排 Agent 的多轮任务。它把任务的触发方式、每轮可读取的材料和可执行的动作、验收信号、状态保存位置，以及停止或人工接管的条件放进同一条流程。
+Loop Engineering coordinates tasks that take multiple Agent runs. One workflow defines how the task is triggered, what each run can read and do, how results are checked, where state is saved, and when to stop or hand control to a person.
 
-拿 `auth` 模块为例，`goal` 可以写成“测试全部通过，最多尝试 5 轮”。同一份任务配置还会记录触发来源、可访问的文件和规则、允许的修改范围，以及结果写入的位置。
+For example, a goal for the `auth` module could be "pass all tests, with at most 5 attempts." The same task configuration can record the trigger, accessible files and rules, permitted changes, and where results should be written.
 
-假设 CI 触发了这项任务：Agent 先读取项目规则和失败日志，定位到相关文件后运行目标测试。测试输出、lint、类型检查、截图或审查评论会回到下一轮，帮助判断是否继续。已经试过的方案、失败原因和下一步则写入外部文件、Issue、Linear 卡片或数据库；达到轮次或预算上限，权限不足，或需要业务判断时，流程停止并交给人处理。
+Suppose CI triggers this task. The Agent first reads the project rules and failure logs, locates the relevant files, and runs the target tests. Test output, lint results, type checks, screenshots, or review comments feed into the next run to help decide whether to continue. Tried approaches, failure causes, and next steps are saved to an external file, Issue, Linear ticket, or database. The workflow stops and hands control to a person when it reaches the attempt or budget limit, lacks permission, or needs a business decision.
 
-![Loop Engineering 外层循环](../images/shared/loop-engineering-outer-loop.webp)
+![The outer Loop Engineering cycle](../images/shared/loop-engineering-outer-loop.webp)
 
-Prompt、上下文和工具描述仍然决定一次模型调用如何执行。Loop 在调用前后补上任务调度、材料准备、结果验证和状态恢复，让下一轮可以接着上一轮继续处理。
+The Prompt, context, and tool descriptions still determine how an individual model call runs. The Loop adds task scheduling, context preparation, result validation, and state recovery around each call so the next run can continue from the previous one.
 
-## 它其实借了哪些老概念？
+## Which Existing Ideas Does It Build On?
 
-### Agent Loop / ReAct：内层循环早就存在
+### Agent Loop and ReAct: The Inner Loop Is Not New
 
-![Agent Loop 工作流程](../images/shared/agent-loop-flow.png)
+![Agent Loop workflow](../images/shared/agent-loop-flow.png)
 
-Agent Loop 的基本顺序没有变化：读取当前上下文，交给 LLM 决定下一步，调用工具或生成结果，再把工具输出写回上下文；达到停止条件后结束。
+The basic Agent Loop remains the same: read the current context, let the LLM decide what to do, call a tool or generate a result, then write tool output back into the context. Stop when a termination condition is met.
 
-ReAct 也是这个思路：Reasoning 和 Acting 交替进行，模型走一步看一步，拿到外部反馈后再决定下一步。
+ReAct follows the same idea: Reasoning and Acting alternate. The model takes a step, observes the external feedback, and uses it to decide what to do next.
 
-[AI Agent 基础概念](https://javaguide.cn/ai/agent/agent-basis.html) 中介绍过这条循环。线上故障排查、代码库阅读和测试失败定位都没有预先确定的完整路径，模型需要根据每次拿到的证据调整下一步。
+[AI Agent fundamentals](https://javaguide.cn/ai/agent/agent-basis.html) introduces this loop. Production incident investigation, codebase exploration, and test-failure diagnosis do not have a fully known path in advance, so the model must adjust its next step based on the evidence it receives.
 
-这里要区分两层循环。Agent Loop 发生在一次任务执行中：模型推理、调用工具、读取结果，再决定下一步。外层 Loop 则在这次任务结束后工作，例如等待下一次 CI 事件、检查测试结果、保存排查记录，再决定是否重新启动 Agent。
+Distinguish between two levels of loops. The Agent Loop runs within one task: the model reasons, calls tools, reads results, and decides what to do next. The outer Loop runs after that task, for example by waiting for another CI event, checking test results, saving investigation notes, and deciding whether to start the Agent again.
 
-| 层级                  | 谁在循环             | 每轮做什么                               | 典型停止条件                 |
-| --------------------- | -------------------- | ---------------------------------------- | ---------------------------- |
-| 内层 Agent Loop       | Agent 自己           | 思考、调用工具、观察结果、继续下一步     | 不再需要工具，返回最终结果   |
-| 外层 Engineering Loop | 调度系统或人写的流程 | 唤醒 Agent、分配任务、验证结果、记录状态 | 达成目标、超预算、失败转人工 |
+| Level                  | What runs the loop                      | What happens in each iteration                                        | Typical stop condition                                       |
+| ---------------------- | --------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Inner Agent Loop       | The Agent                               | Reasons, calls tools, observes results, and decides the next step     | No more tools are needed; return the final result            |
+| Outer Engineering Loop | A scheduler or a human-written workflow | Starts the Agent, assigns tasks, validates results, and records state | Goal reached, budget exceeded, or failure handed to a person |
 
-### Workflow / Graph / Loop：可控回边早就有
+### Workflows, Graphs, and Loops: Controlled Back Edges Already Exist
 
-在工作流图里，Loop 通常由回边表示。
+In a workflow graph, a Loop is usually represented by a back edge.
 
-回边是一条从后续节点指向前面节点的有向边：流程已经走到“审核”节点，却因为某个条件不满足，沿着这条边回到“修改”节点，再执行一次后续步骤。
+A back edge is a directed edge from a later node to an earlier one. For example, a workflow reaches the "Review" node, but a condition is not met, so it follows the edge back to "Revise" and runs the subsequent steps again.
 
-![Workflow、Graph、Loop 三者关系概览](../images/shared/workflow-graph-loop-relation.svg)
+![Relationship between workflows, graphs, and loops](../images/shared/workflow-graph-loop-relation.svg)
 
-“生成初稿 → 审核 → 不通过就修改 → 再审核”中，审核不通过的条件边就是从“审核”回到“修改”的回边；审核通过则离开循环。 [AI 工作流中的 Workflow、Graph 与 Loop](https://javaguide.cn/ai/agent/workflow-graph-loop.html) 对这套结构有更完整的说明。运行配置还要写明最大轮次、超时、Token 预算和失败后的降级方式，防止回边没有出口。
+In "Draft → Review → Revise if rejected → Review again," the condition for a failed review creates a back edge from "Review" to "Revise." A successful review exits the loop. [Workflows, Graphs, and Loops in AI Workflows](https://javaguide.cn/ai/agent/workflow-graph-loop.html) explains this structure in more detail. Runtime configuration should also define the maximum iterations, timeout, Token budget, and fallback behavior so the back edge always has an exit.
 
-代码 Agent 把同一条回边延伸到 Claude Code、Codex、CI、GitHub、Issue 系统和本地仓库：测试失败后读取错误、修改文件、重跑命令，再由外部信号决定是否继续。
+Code Agents extend the same back edge across Claude Code, Codex, CI, GitHub, Issue trackers, and local repositories: after a test fails, they read the error, modify files, rerun commands, and use external signals to decide whether to continue.
 
-### Context Engineering：每一轮该给 Agent 看什么
+### Context Engineering: What the Agent Should See in Each Iteration
 
-一个 CI 故障查到第三轮还没有收敛时，原始日志、测试输出、改动记录和相互矛盾的判断很容易堆在一起。它们全塞进上下文，项目规则反而容易被淹没，已经排除过的方案也可能再跑一遍。
+By the third iteration of an unresolved CI investigation, raw logs, test output, change records, and conflicting conclusions can pile up. Putting all of them into the context can bury project rules and cause the Agent to repeat approaches that have already been ruled out.
 
-![Context Engineering 和 Prompt Engineering 差别](../images/shared/context-engineering-vs-context-engineering-dimension-comparison.png)
+![Difference between Context Engineering and Prompt Engineering](../images/shared/context-engineering-vs-context-engineering-dimension-comparison.png)
 
-每轮调用前应先放入 `AGENTS.md`、`CLAUDE.md` 和编码规范等常驻规则，再按当前失败加载相关文件、测试输出、Issue 描述或设计文档。traceId、错误码、日志路径这类排障入口保留原值；已验证的过程压成结论并写入外部状态。
+Before each run, load persistent rules such as `AGENTS.md`, `CLAUDE.md`, and coding standards. Then load files, test output, Issue descriptions, or design documents relevant to the current failure. Keep investigation keys such as trace IDs, error codes, and log paths unchanged; condense verified steps into conclusions and save them in external state.
 
-窗口接近上限时，需要在压缩历史、清理旧工具结果和落盘进度之间取舍。这样下一轮可以直接接上证据，避免重新读项目、猜规则或重复解释同一个错误。
+When the context window approaches its limit, choose whether to summarize history, remove old tool results, or save progress externally. This lets the next iteration continue from the evidence instead of rereading the project, guessing its rules, or revisiting the same error.
 
-### Harness Engineering：模型外面的执行环境
+### Harness Engineering: The Environment Around the Model
 
-在 [Harness Engineering](https://javaguide.cn/ai/agent/harness-engineering.html) 中，Agent 可以拆成 Model + Harness。模型负责推理和生成，Harness 提供环境、工具、反馈、沙箱、权限、观测和恢复。
+As described in [Harness Engineering](https://javaguide.cn/ai/agent/harness-engineering.html), an Agent can be viewed as Model + Harness. The model handles reasoning and generation; the Harness provides the environment, tools, feedback, sandbox, permissions, observability, and recovery.
 
-![Harness 和 Prompt/Context Engineering 的关系](../images/shared/harness-engineering-layers-arch.png)
+![Relationship between Harness, Prompt Engineering, and Context Engineering](../images/shared/harness-engineering-layers-arch.png)
 
-可以把 Harness 看成单轮任务的运行环境。CI triage 能读哪些日志、能否修改文件、能运行哪些测试命令，都由 Harness 决定；Loop 再决定什么时候把这套环境启动一次、结果保存在哪里、需不需要交给另一个 Agent 检查。只有目标而没有文件权限、验证命令和失败处理，任务仍然无法无人值守地执行。
+Think of the Harness as the runtime environment for one task iteration. It determines which logs CI triage can read, whether it can modify files, and which test commands it can run. The Loop then decides when to start this environment, where to save results, and whether another Agent should review them. A goal without file permissions, validation commands, and failure handling cannot run unattended.
 
-### Skills：把每轮都要重复解释的经验写下来
+### Skills: Record Instructions That Would Otherwise Be Repeated
 
-![Agent 执行链路](../images/shared/skills-agent-execution-link.png)
+![Agent execution flow](../images/shared/skills-agent-execution-link.png)
 
-CI 排查重复发生时，仓库的测试命令、禁止修改的目录、格式化要求、PR 模板和数据库迁移确认规则不应每轮重新解释。
+When CI investigations recur, there is no need to explain the repository's test commands, directories that must not be changed, formatting requirements, PR template, and database migration approval rules every time.
 
-这些内容可写进 Skill：`description` 匹配 CI 排查任务，`SKILL.md` 保存允许读取的目录、测试命令、PR 模板和迁移确认规则。任务命中后加载正文，下一次失败仍沿用同一套限制。
+Put these instructions in a Skill: use its `description` to match CI investigation tasks, and its `SKILL.md` to record readable directories, test commands, the PR template, and migration approval rules. Load the instructions when a task matches so later failures follow the same constraints.
 
-![Skill 渐进式披露](../images/shared/agent-skills-progressive-disclosure.webp)
+![Progressive disclosure for Skills](../images/shared/agent-skills-progressive-disclosure.webp)
 
-Skill 记录的是项目里反复要用的操作说明，而非为当前对话临时拼出来的一段 Prompt。
+A Skill records instructions that are repeatedly useful in a project instead of assembling a temporary Prompt for each conversation.
 
-### MCP：让 Loop 能接触真实工具
+### MCP: Connect the Loop to Real Tools
 
-GitHub Actions、日志平台、Linear 和 Slack 各有自己的 API。CI 排查、PR babysit 和任务分拣在这些系统之间来回切换；全部单独适配时，Agent 面前会出现多套工具描述和调用方式。
+GitHub Actions, logging platforms, Linear, and Slack each have their own APIs. CI investigation, PR monitoring, and task triage move between these systems. Integrating every one separately would give the Agent multiple tool descriptions and calling conventions.
 
-![MCP 图解](../images/shared/mcp-simple-diagram.png)
+![MCP diagram](../images/shared/mcp-simple-diagram.png)
 
-MCP Server 将 GitHub、Issue 系统、日志平台、内部文档和数据库提供为可发现工具；Agent Runtime 负责选择，业务系统仍执行权限和数据校验。
+MCP Servers expose GitHub, Issue trackers, logging platforms, internal documentation, and databases as discoverable tools. The Agent Runtime selects tools, while the business systems remain responsible for permission and data validation.
 
-工具权限需要按副作用配置。无人值守 Loop 的写权限过大时，可能改错数据、发错消息、重复调用昂贵接口，或被提示词注入诱导读取无关文件；权限、审计、限流、脱敏和人工确认应随 MCP 工具一起部署。
+Configure tool permissions according to their side effects. Excessive write access in an unattended Loop can lead to incorrect data changes, misdirected messages, repeated calls to expensive APIs, or prompt injection that induces the Agent to read unrelated files. Deploy permissions, auditing, rate limits, redaction, and human approval together with MCP tools.
 
-## 那它到底新在哪？
+## What Is Actually New About It?
 
-TDD、CI、ReAct 和工作流图早就有循环。代码 Agent 把原来由人手完成的外层动作接了进来：读错误、定位文件、重跑命令、更新待办，并把结果交回下一轮。
+TDD, CI, ReAct, and workflow graphs already use loops. Code Agents bring in outer steps that people used to perform manually: reading errors, locating files, rerunning commands, updating tasks, and passing results to the next iteration.
 
-以测试失败为例，定时任务或 CI 事件可以创建独立 worktree，加载项目 Skill，让实现 Agent 修改、验证 Agent 检查，再把结果写入外部状态。测试仍然失败时，下一轮依据日志和测试结果继续；权限不足、没有进展或遇到高风险操作时，流程交给人。
+For example, a scheduled task or CI event can create an isolated worktree, load a project Skill, let an implementation Agent make changes, and have a validation Agent check them before writing results to external state. If tests still fail, the next iteration continues based on the logs and test results. The workflow hands off to a person if it lacks permissions, makes no progress, or encounters a high-risk action.
 
-因此，Loop Engineering 关注的重点其实就三点：**下一轮继续需要什么证据，哪些动作必须暂停，以及前一轮的状态保存在哪里。**
+Loop Engineering therefore focuses on three questions: **what evidence the next iteration needs, which actions must pause, and where the previous iteration's state is saved.**
 
-![Loop Engineering 外层循环](../images/shared/loop-engineering-outer-loop.webp)
+![The outer Loop Engineering cycle](../images/shared/loop-engineering-outer-loop.webp)
 
-## Claude Code 的 /loop、/goal 可以怎么理解？
+## How to Think About /loop and /goal in Claude Code
 
-`/loop` 按时间再次运行 Prompt，`/goal` 按完成条件决定是否继续。更多说明可以参考 [Claude Code 命令详解](https://javaguide.cn/ai-coding/practices/claudecode-commands.html)。
+`/loop` runs a Prompt again on a schedule, while `/goal` uses completion criteria to decide whether to continue. See [Claude Code Commands Explained](https://javaguide.cn/ai-coding/practices/claudecode-commands.html) for more details.
 
-![Claude Code 推荐使用 loop 命令](../images/shared/claudecode-father-loop.png)
+![Claude Code recommends using the loop command](../images/shared/claudecode-father-loop.png)
 
-`/loop` 主要解决“过一会儿再看一次”的问题。它会在当前 session 里重复运行一个 prompt。你可以给固定间隔，比如每 5 分钟检查一次部署；也可以不给间隔，让 Claude 根据观察结果自己选择下一次等待多久。
+`/loop` is for checking again later. It repeatedly runs a prompt in the current session. You can specify a fixed interval, such as checking a deployment every 5 minutes, or leave it unspecified so Claude can choose how long to wait before checking again.
 
-裸 `/loop` 会运行内置 maintenance prompt，或者读取 `.claude/loop.md`、`~/.claude/loop.md` 作为默认 prompt。
+Running `/loop` without arguments uses the built-in maintenance prompt or reads `.claude/loop.md` or `~/.claude/loop.md` as the default prompt.
 
 ```bash
-/loop 5m "检查部署是否完成，并汇报当前状态"
+/loop 5m "Check whether the deployment has finished and report its current status."
 /loop 30m /code-review
-/loop "检查 PR 的 CI 和 review comments，有变化就处理，没有变化就延后"
+/loop "Check the PR's CI and review comments. Handle any changes; otherwise, check again later."
 ```
 
-`/goal` 主要解决“这个目标有没有完成”的问题。你给它一个可验证完成条件，Claude 会一轮一轮推进；每轮结束后，由一个独立的小模型基于对话里已经出现的证据判断条件是否满足。不满足就继续，满足就停止。
+`/goal` is for determining whether an objective has been completed. Give it a verifiable completion condition, and Claude will work through successive iterations. At the end of each one, an independent small model uses evidence already present in the conversation to check whether the condition is met. It continues if not and stops when it is.
 
 ```bash
-/goal auth 模块所有单元测试通过，并且 npm test -- tests/auth 退出码为 0；最多 5 轮，连续 2 次失败原因相同就停止并汇报
-/goal src/legacy 下组件迁移完成，npm run build 通过，且 git diff 只包含 src/legacy 和对应测试文件
+/goal All unit tests in the auth module pass and npm test -- tests/auth exits with code 0; try at most 5 times, and stop and report if the same failure occurs twice in a row.
+/goal Finish migrating the components under src/legacy, pass npm run build, and ensure git diff contains only src/legacy and its corresponding test files.
 ```
 
-可以把两者记成一句话：`/loop` 决定下一次什么时候醒，`/goal` 判断什么时候算做完。
+In short: `/loop` decides when to wake up again; `/goal` decides when the task is done.
 
-Stop hook 或 Agent SDK 可以把继续条件交给脚本、Prompt 或外部 evaluator，并在每轮结束后执行确定性检查、权限拦截和状态落盘。
+A Stop hook or Agent SDK can delegate continuation criteria to a script, Prompt, or external evaluator, then run deterministic checks, enforce permission gates, and save state at the end of each iteration.
 
-“测试通过前持续修改，最多尝试 5 次”由 `/goal` 检查完成条件。部署轮询、PR babysit、长时间 build 检查和定时 code review 则由 `/loop` 定时重新观察。
+Use `/goal` to check a condition such as "keep making changes until the tests pass, for at most 5 attempts." Use `/loop` to periodically recheck deployments, monitor PRs, check long-running builds, or review code on a schedule.
 
-`/loop` 属于 session-scoped 的临时调度：任务只在 Claude Code 运行且空闲时触发；关闭终端、会话退出、新开会话都会影响它；`--resume` 或 `--continue` 只能恢复未过期的任务；循环任务最多 7 天自动过期。
+`/loop` is temporary, session-scoped scheduling. Tasks trigger only while Claude Code is running and idle. Closing the terminal, ending the session, or starting a new session affects them. `--resume` or `--continue` can restore only tasks that have not expired, and loop tasks expire after 7 days at most.
 
-任务必须跨机器、跨重启、长期稳定运行时，还是应该考虑 Routines、Desktop scheduled tasks、GitHub Actions、CI/CD 或自己的任务调度系统。
+For tasks that must run reliably across machines and restarts over a long period, consider Routines, Desktop scheduled tasks, GitHub Actions, CI/CD, or a dedicated scheduling system.
 
-运行 `/loop` 前要收紧权限，写清轮询目标和停止条件；运行 `/goal` 前则把完成条件写成可验证结果，并要求 Claude 展示测试、build 或 diff 检查结果。关键路径先 commit，再让 Agent 修改，出错时可以回到明确的提交点。
+Before running `/loop`, restrict permissions and specify what to check and when to stop. Before running `/goal`, define verifiable completion criteria and ask Claude to show test, build, or diff-check results. Commit critical work first so you can return to a known commit if something goes wrong.
 
-## Loop 可以分成几类？
+## What Types of Loops Are There?
 
-Loop 的差别主要在于“谁触发下一轮”。`/loop` 和 `/goal` 分别代表按时间唤醒、按完成条件继续；CI 事件和人工审批也可以成为触发点。下表按这个维度归类。
+Loops mainly differ in what triggers the next iteration. `/loop` represents a time-based trigger; `/goal` continues based on completion criteria. CI events and human approvals can also trigger a run. The table groups loops by trigger:
 
-| 类型          | 触发方式                     | 适合任务                      | 代表工具                                      |
-| ------------- | ---------------------------- | ----------------------------- | --------------------------------------------- |
-| 时间驱动 Loop | 每 N 分钟、每天、每周        | PR babysit、CI 检查、日志巡检 | `/loop`、Codex Automations、cron              |
-| 事件驱动 Loop | CI 失败、Issue 创建、PR 更新 | 故障分拣、评论处理、告警摘要  | GitHub Actions、Webhook、Claude Code Channels |
-| 目标驱动 Loop | 上一轮结束后检查目标是否满足 | 修测试、迁移 API、补覆盖率    | `/goal`、Stop hook、Agent SDK                 |
-| 人工审批 Loop | 关键动作前停下来确认         | 高风险改动、发布、权限变更    | approval gate、draft PR、review queue         |
+| Type                | Trigger                                              | Suitable tasks                                     | Examples                                      |
+| ------------------- | ---------------------------------------------------- | -------------------------------------------------- | --------------------------------------------- |
+| Time-driven Loop    | Every N minutes, daily, or weekly                    | PR monitoring, CI checks, log inspection           | `/loop`, Codex Automations, cron              |
+| Event-driven Loop   | CI failure, Issue creation, or PR update             | Incident triage, comment handling, alert summaries | GitHub Actions, Webhook, Claude Code Channels |
+| Goal-driven Loop    | Check whether the goal is met after the previous run | Fix tests, migrate APIs, increase coverage         | `/goal`, Stop hook, Agent SDK                 |
+| Human-approval Loop | Pause for confirmation before a critical action      | High-risk changes, releases, permission changes    | Approval gate, draft PR, review queue         |
 
-这张表也能解释我前面那句“新瓶装旧酒”。触发、调度、验证、审批这些工程动作都不新，只是现在被重新摆到了代码 Agent 周围。
+This table also explains the "old idea in new packaging" phrase: triggering, scheduling, validation, and approval are not new engineering practices; they are now arranged around code Agents.
 
-## 一个可落地的 Loop 长什么样？
+## What Does a Practical Loop Look Like?
 
-以“每天自动处理 CI 失败”为例。这里按常见排查流程整理，不对应某家公司公开出来的完整实战案例。第一版只做 triage，不自动修改代码，也不自动合并。
+Consider a workflow that automatically handles CI failures each day. This example follows a common investigation process; it is not a complete case study published by a specific company. The first version performs triage only: it neither changes code nor merges automatically.
 
-第一版只验证三件事：Agent 能否找到正确证据，能否区分事实和猜测，能否按统一格式记录状态。三项稳定后，才考虑开放低风险修复权限。
+The first version checks only three things: whether the Agent can find the right evidence, distinguish facts from guesses, and record state in a consistent format. Consider granting permission for low-risk fixes only after all three are reliable.
 
-CI triage 可由每天上午 9 点或 CI 失败触发，读取最近一次失败、相关 PR、最近提交和失败测试日志。它加载项目 `AGENTS.md` 与 `ci-triage` Skill，只读取相关模块文件，并区分环境抖动、测试不稳定、代码回归和依赖问题。
+CI triage can run at 9 a.m. each day or when CI fails. It reads the latest failure, related PR, recent commits, and failed test logs. It loads the project's `AGENTS.md` and `ci-triage` Skill, reads only relevant module files, and classifies the failure as an environment issue, flaky test, code regression, or dependency problem.
 
-能在本地复现时运行最小测试集；不能复现则保留证据。结论写入 `TODO.md`、GitHub Issue 或 Linear 卡片，并标记“可自动修复”“需要负责人确认”或“疑似偶发”。流程不直接推送代码、不改生产配置，连续重试不超过 3 次。
+If the failure can be reproduced locally, run the smallest relevant test suite; otherwise, preserve the evidence. Write the findings to `TODO.md`, a GitHub Issue, or a Linear ticket, and label them "safe to fix automatically," "owner confirmation required," or "possibly intermittent." The workflow does not push code or change production configuration, and retries no more than 3 times in a row.
 
-![CI 排查 Loop 示例](../images/shared/loop-engineering-ci-triage-loop.webp)
+![Example CI investigation Loop](../images/shared/loop-engineering-ci-triage-loop.webp)
 
-等这个版本稳定之后，再逐步加自动修复：
+After this version is stable, add automatic fixes gradually:
 
-- 对“依赖版本冲突”“格式化失败”“明显的测试快照更新”这类低风险问题，可以开独立 worktree 让 Agent 尝试修。
-- 修完后必须跑目标测试。
-- 通过后只创建 PR，不自动合并。
-- 另一个审查 Agent 根据项目 Skill 和 diff 做二次检查。
-- 失败或不确定时回到人工队列。
+- For low-risk issues such as dependency version conflicts, formatting failures, or obvious test snapshot updates, create an isolated worktree for the Agent to try a fix.
+- Run the target tests after making changes.
+- If they pass, create a PR but do not merge it automatically.
+- Have another review Agent check the diff against the project Skill.
+- Return failures or uncertain cases to a human queue.
 
-这个 Loop 里能看到前面提到的几个部件：
+This Loop uses several of the components described above:
 
-| 部件                | 在这个例子里做什么                     |
-| ------------------- | -------------------------------------- |
-| Automation          | 每天或 CI 失败时启动                   |
-| Skill               | 固化 CI 排查流程、测试命令、仓库规则   |
-| MCP / Connector     | 读取 GitHub、CI、Issue、日志平台       |
-| Context Engineering | 只加载失败相关日志、文件和规则         |
-| Worktree            | 隔离自动修复分支，避免污染主工作区     |
-| Sub-agent           | 一个负责实现，一个负责验证             |
-| Memory / State      | 记录已尝试方案、失败原因和下一步       |
-| Stop Condition      | 测试通过、达到重试上限、遇到高风险操作 |
+| Component           | Role in this example                                                         |
+| ------------------- | ---------------------------------------------------------------------------- |
+| Automation          | Starts the task daily or after a CI failure                                  |
+| Skill               | Stores the CI investigation steps, test commands, and repository rules       |
+| MCP / Connector     | Reads GitHub, CI, Issues, and the logging platform                           |
+| Context Engineering | Loads only the relevant failure logs, files, and rules                       |
+| Worktree            | Isolates the automatic fix branch from the main workspace                    |
+| Sub-agent           | One implements; another validates                                            |
+| Memory / State      | Records tried approaches, failure causes, and next steps                     |
+| Stop Condition      | Tests pass, the retry limit is reached, or a high-risk action is encountered |
 
-“每天 9 点运行”只提供了启动时间。CI 链接与失败日志确定排查入口，最小复现命令和测试结果决定是否继续，PR diff 与人工确认状态决定改动能否进入下一步。没有这些外部证据，定时任务只能重复发送同一个 Prompt。
+"Run at 9 a.m. every day" only defines when to start. The CI link and failure logs provide the investigation entry point; the minimal reproduction command and test results determine whether to continue; the PR diff and human approval determine whether changes can proceed. Without this external evidence, a scheduled task can only repeat the same Prompt.
 
-## 什么场景值得做 Loop？
+## When Is a Loop Useful?
 
-循环执行需要重复出现的任务和可检查的验收信号。日志、退出码、覆盖率和 diff 都能作为继续或停止的依据。以下任务通常能写出这类条件：
+Loops work best for recurring tasks with verifiable acceptance signals. Logs, exit codes, coverage, and diffs can determine whether to continue or stop. These tasks often have such conditions:
 
-- CI 失败初步排查：有日志、有测试结果、有明确失败信号。
-- 依赖版本变更：在独立分支中修改，以测试退出码和 build 结果验收。
-- 测试覆盖率补齐：目标可以量化，比如某模块覆盖率从 62% 提到 75%。
-- 文档同步：根据最近 diff 更新用户文档或 API 文档，最后走人工 review。
-- 大规模机械迁移：例如 CommonJS 到 ESM、旧组件 API 替换、格式化修复。
-- PR / Issue 分拣：读信息、归类、补充摘要、标记优先级。
+- Initial CI failure investigation: logs, test results, and clear failure signals are available.
+- Dependency upgrades: make changes on an isolated branch and validate with test exit codes and build results.
+- Increasing test coverage: define a measurable target, such as raising a module's coverage from 62% to 75%.
+- Documentation updates: update user or API docs based on the latest diff, then request human review.
+- Large mechanical migrations: for example, CommonJS to ESM, replacing an old component API, or fixing formatting.
+- PR / Issue triage: read, categorize, summarize, and assign priorities.
 
-以下任务则很难只靠外部信号验收：
+These tasks are harder to verify using external signals alone:
 
-- 目标很虚，比如“让产品体验更好”“想一个增长策略”。
-- 验证信号很弱，只能靠 Agent 自己说“我觉得可以了”。
-- 一旦做错影响很大，比如生产数据库写操作、权限系统变更、支付链路改造。
-- 强依赖人的审美和业务判断，比如品牌文案定调、复杂产品取舍。
-- 没有测试、没有日志、没有回滚方式的老项目大改。
+- Vague goals such as "improve the product experience" or "come up with a growth strategy."
+- Weak verification signals where the Agent can only say, "I think this is done."
+- High-impact operations such as writing to production databases, changing permission systems, or modifying payment flows.
+- Work that depends heavily on human taste or business judgment, such as setting a brand voice or making complex product tradeoffs.
+- Major changes to legacy projects without tests, logs, or a rollback plan.
 
-“体验更好”或“继续优化”无法触发可靠的停止判断。循环前先把目标拆成可检查的子任务，并写出判定标准。
+"Improve the experience" or "keep optimizing" cannot support reliable stop decisions. Before starting a loop, break the goal into checkable tasks and define acceptance criteria.
 
-## 最容易踩的坑
+## Common Pitfalls
 
-### 目标写得太虚
+### Vague Goals
 
-“继续优化一下”缺少修改范围、验证命令和停止条件，Agent 无法据此结束任务。
+"Keep optimizing" gives the Agent no scope, validation command, or stop condition, so it cannot determine when the task is complete.
 
-只有目标的写法：
+An example with only a goal:
 
 ```text
-/goal "优化这个项目，让代码质量更好"
+/goal "Optimize this project and improve code quality."
 ```
 
-带执行范围和退出条件的写法：
+An example with a scope and exit conditions:
 
 ```text
-/goal "auth 模块失败的单元测试全部通过，只允许修改 src/auth 和 tests/auth；每轮修改后运行 npm test -- tests/auth 并展示退出码；最多 5 轮；如果连续 2 次失败原因相同，停止并汇报"
+/goal "Make all failing unit tests in the auth module pass. Only modify src/auth and tests/auth. After each change, run npm test -- tests/auth and show the exit code. Try at most 5 times; if the same failure occurs twice in a row, stop and report."
 ```
 
-`src/auth`、`tests/auth`、测试退出码、5 轮上限和连续失败条件都能由程序检查，第二条命令没有把验收标准留给 Agent 猜测。
+The paths `src/auth` and `tests/auth`, test exit code, 5-attempt limit, and repeated-failure condition can all be checked. The second command does not leave the acceptance criteria for the Agent to guess.
 
-### 把 Agent 自评当验收
+### Treating the Agent's Self-Assessment as Acceptance
 
-测试退出码、CI 状态、lint、类型检查或截图对比才是完成证据，Agent 的说明只能作为补充。需要语义审查时，可由一个 Agent 实现、另一个 Agent 在独立上下文中检查；接近生产的步骤再增加人工审批。
+Test exit codes, CI status, lint, type checks, and screenshot comparisons provide evidence of completion; the Agent's explanation is only supplementary. For semantic review, one Agent can implement while another checks in a separate context. Add human approval for steps close to production.
 
-### 忘了成本上限
+### Forgetting Cost Limits
 
-每轮都可能重新读文件、调用工具、解释报错，并压缩上下文或启动审查 Agent。任务配置应同时限制预算和停止条件：
+Each iteration may reread files, call tools, interpret errors, summarize context, or start a review Agent. Task configuration should define both budgets and stop conditions:
 
-- 最大迭代次数。
-- 最大工具调用次数。
-- 单日或单任务 Token / 金额预算。
-- 无进展检测，比如两轮失败原因相同就停。
-- 低价值任务只做摘要，不自动修复。
+- Maximum number of iterations.
+- Maximum number of tool calls.
+- Daily or per-task Token or monetary budget.
+- A no-progress check, such as stopping when the same failure occurs twice.
+- For low-value tasks, generate a summary without applying automatic fixes.
 
-无进展检测用于阻止失败原因不变时继续消耗 Token。
+No-progress checks prevent the system from continuing to consume Tokens when the failure has not changed.
 
-### 权限给得太大
+### Granting Excessive Permissions
 
-读日志、开 PR、自动合并 PR，风险根本不是一个等级，不能拿同一套权限放行。删文件、改生产配置、发外部消息、写数据库这类操作，默认都要等人确认。
+Reading logs, opening a PR, and automatically merging a PR have different levels of risk and should not use the same permissions. Actions such as deleting files, changing production configuration, sending external messages, and writing to a database should require human approval by default.
 
-MCP Server 的来源、工具 description、返回内容和 Prompt 模板也要进入审核范围，因为这些内容都可能携带提示词注入。权限可以按执行阶段逐级开放：
+Review MCP Server sources, tool descriptions, returned content, and Prompt templates because any of them can carry prompt injection. Permissions can be granted gradually by execution stage:
 
-| 阶段        | Agent 能做什么               | 人负责什么   |
-| ----------- | ---------------------------- | ------------ |
-| L0 只读摘要 | 读日志、读 Issue、生成报告   | 判断是否采纳 |
-| L1 本地复现 | 运行指定测试、定位失败       | 决定是否修复 |
-| L2 草稿修复 | 在 worktree 里改代码、跑测试 | Review diff  |
-| L3 创建 PR  | 提交分支、写 PR 描述         | 审查、合并   |
-| L4 自动合并 | 通过策略后自动合并           | 只处理异常   |
+| Stage                 | Agent permissions                       | Human responsibility  |
+| --------------------- | --------------------------------------- | --------------------- |
+| L0 Read-only summary  | Read logs and Issues; generate reports  | Decide whether to act |
+| L1 Local reproduction | Run specified tests; locate failures    | Decide whether to fix |
+| L2 Draft fix          | Change code in a worktree; run tests    | Review the diff       |
+| L3 Create PR          | Push a branch; write the PR description | Review and merge      |
+| L4 Automatic merge    | Merge after policy checks pass          | Handle exceptions     |
 
-L1/L2 覆盖日志读取、问题复现和草稿修改。L4 需要同时满足问题类型固定、测试覆盖主要风险、回滚路径经过验证；涉及业务判断、权限或数据写入的任务继续保留人工审批。
+L1 and L2 cover reading logs, reproducing issues, and making draft changes. L4 requires a fixed issue type, tests that cover the main risks, and a verified rollback path. Keep human approval for tasks involving business judgment, permissions, or data writes.
 
-![Loop 的安全边界](../images/shared/loop-engineering-safety-boundary.webp)
+![Loop security boundaries](../images/shared/loop-engineering-safety-boundary.webp)
 
-## 第一版先别急着自动修
+## Do Not Rush to Automate Fixes in the First Version
 
-第一次做 Loop，不建议直接上无人值守自动修复。可以先从只读 triage 开始，任务描述宁可写得细一些：
+For your first Loop, do not start with unattended automatic fixes. Begin with read-only triage, and make the task description explicit:
 
 ```text
-任务：每天看最近 24 小时的 CI 失败，产出排查摘要，供人处理。
+Task: Review CI failures from the past 24 hours each day and prepare an investigation summary for a person to handle.
 
-允许做：
-- 读 GitHub Actions、最近提交、失败测试日志，以及和报错直接相关的文件。
-- 定位到具体测试时，可以跑对应测试确认是否复现。
-- 把结论写进 TODO.md，带上 CI 链接、关键错误和建议负责人。
+Allowed:
+- Read GitHub Actions, recent commits, failed test logs, and files directly related to the error.
+- Run the relevant test to confirm reproduction once the failure is traced to a specific test.
+- Write findings to TODO.md with the CI link, key error, and suggested owner.
 
-开始前：
-- 先读取 AGENTS.md。
-- 命中 CI 排查任务时加载 ci-triage Skill。
+Before starting:
+- Read AGENTS.md.
+- Load the ci-triage Skill for CI investigation tasks.
 
-不允许做：
-- 不改代码，不创建 PR，不发 Slack/邮件。
-- 不读取整仓无关文件，不粘贴完整日志。
-- 超过 10 个失败项就停；单个失败最多复现 2 次。
-- 权限不足、日志缺失、需要业务判断时，直接标记人工处理。
+Not allowed:
+- Do not change code, create PRs, or send Slack messages or email.
+- Do not read unrelated files across the repository or paste full logs.
+- Stop if there are more than 10 failures; reproduce each failure no more than twice.
+- Mark the task for human handling if permissions are insufficient, logs are missing, or business judgment is needed.
 ```
 
-这一版把手脚收得很紧：只看 CI 证据和相关文件，不改代码，也不对外发消息；失败项和复现次数同样封顶。排查摘要里先盯三类问题：无关文件、重复工具调用和越权动作。它们还没处理干净之前，不该开放修复权限。
+This version is tightly scoped: it reads CI evidence and relevant files, does not change code or send external messages, and limits the number of failures and reproductions. Check the investigation summaries for three issues: unrelated files, repeated tool calls, and unauthorized actions. Do not grant fix permissions until these issues have been addressed.
 
-任务跨天后，新开的会话不会自然知道昨天试过什么。需要恢复的内容直接写到外部状态里：目标、范围、证据、已执行动作、结果、下一步和停止条件都要能被下一轮读到。
+When a task spans multiple days, a new session will not automatically know what was tried the day before. Save the information needed to resume in external state: the goal, scope, evidence, actions taken, results, next steps, and stop conditions must all be available to the next iteration.
 
 ```yaml
 loop_id: ci-triage-2026-06-17
-goal: "排查最近 24 小时 CI 失败"
+goal: "Investigate CI failures from the past 24 hours"
 status: running
 scope:
   repos: ["backend-service"]
@@ -311,25 +311,25 @@ stop_condition:
     ["permission_missing", "production_change", "uncertain_root_cause"]
 ```
 
-等这套 triage 跑稳，再给自动修复加上四条硬限制：
+After this triage workflow is stable, add four strict limits before enabling automatic fixes:
 
-- 修改前创建独立 worktree 或分支。
-- 修改范围白名单。
-- 只允许跑指定测试和格式化命令。
-- 通过后只开草稿 PR，不自动合并。
+- Create an isolated worktree or branch before making changes.
+- Allow changes only in a specified path list.
+- Permit only specified tests and formatting commands.
+- Open a draft PR after checks pass; do not merge it automatically.
 
-## 把 Loop 接入生产流程前
+## Before Integrating a Loop into Production
 
-### 什么会触发下一轮？
+### What Triggers the Next Iteration?
 
-每天的定时任务会先找出最近一段时间的失败；CI 失败事件则可以把失败的 job、相关 PR 和最近提交直接交给 triage。任务范围、可读文件和可用命令应随这次任务一起传入，新会话据此准备上下文。
+A daily scheduled task can find failures from a recent time window. A CI failure event can pass the failed job, related PR, and recent commits directly to triage. Pass the task scope, readable files, and available commands with the task so a new session can prepare the context.
 
-### 什么时候继续，什么时候停？
+### When Should It Continue or Stop?
 
-CI 链接、失败日志、最小复现命令和测试退出码能够说明排查是否有新进展；`attempts` 和 `stop_condition` 则把已经试过的动作与停止原因留在外部状态中。权限不足、无法复现、需要业务判断，或者连续失败达到上限时，任务应转回人工队列。创建 PR、修改生产配置和自动合并不应成为同一条 Loop 的默认后续动作。
+The CI link, failure logs, minimal reproduction command, and test exit code show whether the investigation has made progress. The `attempts` and `stop_condition` fields save actions already tried and reasons for stopping in external state. Return the task to a human queue if permissions are insufficient, the failure cannot be reproduced, business judgment is needed, or the consecutive-failure limit is reached. Creating a PR, changing production configuration, and automatic merging should not be the default next steps in the same Loop.
 
-## 总结
+## Summary
 
-Loop Engineering 把每次调用与前一轮留下的证据、状态和限制接在一起。
+Loop Engineering connects each call to the evidence, state, and constraints left by the previous iteration.
 
-文中的 CI triage 从读取日志、定位失败和记录结论开始，YAML 状态保存 `evidence`、`action`、`result` 和 `next_step`。这些字段能让下一轮直接接着处理，也能让人工在接管时看到已做过什么。等只读排查稳定后，再逐步开放修改代码、创建 PR 和自动合并等权限。
+The CI triage example starts by reading logs, locating failures, and recording findings. Its YAML state stores `evidence`, `action`, `result`, and `next_step`, allowing the next iteration to continue directly and giving a human visibility into what has already been done. Once read-only investigation is reliable, gradually grant permission to change code, create PRs, and merge automatically.

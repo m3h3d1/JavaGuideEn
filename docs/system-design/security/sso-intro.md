@@ -1,134 +1,134 @@
 ---
-title: SSO 单点登录详解
-description: SSO单点登录原理详解，涵盖统一认证中心设计、CAS协议、跨域登录实现及登录态同步机制。
-category: 系统设计
+title: "Single Sign-On (SSO): Design and Implementation"
+description: An introduction to single sign-on, covering a centralized identity provider, the CAS protocol, cross-domain authentication, and session synchronization.
+category: System Design
 tag:
-  - 安全
+  - Security
 head:
   - - meta
     - name: keywords
-      content: SSO,单点登录,统一认证,登录态,票据,TGT,ST,CAS协议,跨域登录
+      content: SSO,single sign-on,centralized authentication,session,ticket,TGT,ST,CAS protocol,cross-domain login
 ---
 
-> 本文授权转载自：<https://ken.io/note/sso-design-implement> 作者：ken.io
+> Reproduced with permission from <https://ken.io/note/sso-design-implement>. Author: ken.io.
 
-## SSO 介绍
+## Introduction to SSO
 
-### 什么是 SSO？
+### What Is SSO?
 
-SSO 英文全称 Single Sign On，单点登录。SSO 是在多个应用系统中，用户只需要登录一次就可以访问所有相互信任的应用系统。
+SSO stands for Single Sign-On. It lets users sign in once and access multiple mutually trusted applications.
 
-例如你登录网易账号中心（<https://reg.163.com/> ）之后访问以下站点都是登录状态。
+For example, after signing in to the [NetEase Account Center](https://reg.163.com/), you are also signed in to these sites:
 
-- 网易直播 [https://v.163.com](https://v.163.com/)
-- 网易博客 [https://blog.163.com](https://blog.163.com/)
-- 网易花田 [https://love.163.com](https://love.163.com/)
-- 网易考拉 [https://www.kaola.com](https://www.kaola.com/)
-- 网易 Lofter [http://www.lofter.com](http://www.lofter.com/)
+- NetEase Live: [https://v.163.com](https://v.163.com/)
+- NetEase Blog: [https://blog.163.com](https://blog.163.com/)
+- NetEase Huahai: [https://love.163.com](https://love.163.com/)
+- NetEase Kaola: [https://www.kaola.com](https://www.kaola.com/)
+- NetEase Lofter: [http://www.lofter.com](http://www.lofter.com/)
 
-### SSO 有什么好处？
+### What Are the Benefits of SSO?
 
-1. **用户角度** :用户能够做到一次登录多次使用，无需记录多套用户名和密码，省心。
-2. **系统管理员角度** : 管理员只需维护好一个统一的账号中心就可以了，方便。
-3. **新系统开发角度:** 新系统开发时只需直接对接统一的账号中心即可，简化开发流程，省时。
+1. **For users:** Sign in once and use multiple applications without keeping track of separate usernames and passwords.
+2. **For administrators:** Maintain a single centralized account system.
+3. **For new application development:** Integrate with the central account system instead of building authentication from scratch.
 
-## SSO 设计与实现
+## SSO Design and Implementation
 
-本篇文章也主要是为了探讨如何设计&实现一个 SSO 系统
+This article discusses how to design and implement an SSO system.
 
-以下为需要实现的核心功能：
+The core features are:
 
-- 单点登录
-- 单点登出
-- 支持跨域单点登录
-- 支持跨域单点登出
+- Single sign-on
+- Single sign-out
+- Cross-domain single sign-on
+- Cross-domain single sign-out
 
-### 核心应用与依赖
+### Core Applications and Dependencies
 
-![单点登录（SSO）设计](../images/shared/sso-system.png-kblb.png)
+![Single sign-on (SSO) design](../images/shared/sso-system.png-kblb.png)
 
-| 应用/模块/对象    | 说明                                |
-| ----------------- | ----------------------------------- |
-| 前台站点          | 需要登录的站点                      |
-| SSO 站点-登录     | 提供登录的页面                      |
-| SSO 站点-登出     | 提供注销登录的入口                  |
-| SSO 服务-登录     | 提供登录服务                        |
-| SSO 服务-登录状态 | 提供登录状态校验/登录信息查询的服务 |
-| SSO 服务-登出     | 提供用户注销登录的服务              |
-| 数据库            | 存储用户账户信息                    |
-| 缓存              | 存储用户的登录信息，通常使用 Redis  |
+| Application, module, or object | Description                                         |
+| ------------------------------ | --------------------------------------------------- |
+| Client application             | Application that requires authentication            |
+| SSO login site                 | Provides the login page                             |
+| SSO logout site                | Provides the logout entry point                     |
+| SSO login service              | Provides the login service                          |
+| SSO session service            | Validates sessions and retrieves user information   |
+| SSO logout service             | Logs users out                                      |
+| Database                       | Stores user account information                     |
+| Cache                          | Stores user session information, typically in Redis |
 
-### 用户登录状态的存储与校验
+### Store and Validate User Sessions
 
-常见的 Web 框架对于 Session 的实现都是生成一个 SessionId 存储在浏览器 Cookie 中。然后将 Session 内容存储在服务器端内存中，这个 [ken.io](https://ken.io/) 在之前[Session 工作原理](https://ken.io/note/session-principle-skill)中也提到过。整体也是借鉴这个思路。
+Common web frameworks implement sessions by generating a session ID stored in a browser cookie, with session data stored in server memory. This approach is also described in [ken.io's explanation of how sessions work](https://ken.io/note/session-principle-skill).
 
-用户登录成功后，SSO 站点建立自己的登录会话。浏览器中的会话标识应保存在设置了 `Secure`、`HttpOnly` 和合适 `SameSite` 属性的 Cookie 中；Cookie 尽量只作用于当前主机，不要为了共享登录态而直接扩大到整个父域。手机 App 则应使用系统浏览器完成标准授权流程，并把必要凭据保存在 Keychain、Keystore 等安全存储中。本篇主要探讨基于 Web 站点的 SSO。
+After a successful login, the SSO site creates its own session. Store the browser's session identifier in a cookie with `Secure`, `HttpOnly`, and an appropriate `SameSite` attribute. Keep the cookie scoped to the current host; don't broaden it to the parent domain just to share a session. A mobile app should use the system browser for a standard authorization flow and store necessary credentials in secure storage such as Keychain or Keystore. This article focuses on web-based SSO.
 
-用户在浏览需要登录的页面时，客户端将 AuthToken 提交给 SSO 服务校验登录状态/获取用户登录信息
+When a user visits a page that requires authentication, the client submits the `AuthToken` to the SSO service to validate the session or retrieve user information.
 
-对于登录信息的存储，建议采用 Redis，使用 Redis 集群来存储登录信息，既可以保证高可用，又可以线性扩充。同时也可以让 SSO 服务满足负载均衡/可伸缩的需求。
+Redis is a suitable store for session information. A Redis cluster can provide high availability and horizontal scaling, and can support load balancing and scaling for the SSO service.
 
-| 对象      | 说明                                                                                                                                                 |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| AuthToken | 使用密码学安全随机数生成的高熵、不可预测标识，并设置过期、轮换和撤销机制。不要使用可预测的 UUID 版本，也不要自行把 UserName+时间戳加密后当作会话令牌 |
-| 登录信息  | 通常是将 UserId，UserName 缓存起来                                                                                                                   |
+| Object       | Description                                                                                                                                                                                                                                                           |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AuthToken`  | A high-entropy, unpredictable identifier generated with a cryptographically secure random number generator. Set expiration, rotation, and revocation mechanisms. Do not use a predictable UUID version or encrypt a username and timestamp to create a session token. |
+| Session data | Usually includes a cached user ID and username.                                                                                                                                                                                                                       |
 
-### 用户登录/登录校验
+### User Login and Session Validation
 
-**登录时序图**
+**Login sequence diagram**
 
-![SSO系统设计-登录时序图](../images/shared/sso-login-sequence.png-kbrb.png)
+![SSO design: login sequence diagram](../images/shared/sso-login-sequence.png-kbrb.png)
 
-上图展示的是通过父域 Cookie 在多个子域间共享 AuthToken 的做法。新系统不建议把认证 Cookie 的 `Domain` 设置为 `.test.com`：这样会把同一凭据发送给所有匹配的子域，任一薄弱、废弃或被接管的子域都可能扩大攻击面。
+The diagram above shows sharing an `AuthToken` across subdomains with a parent-domain cookie. For a new system, don't set the authentication cookie's `Domain` to `.test.com`: this sends the same credential to every matching subdomain, and a vulnerable, abandoned, or compromised subdomain can expand the attack surface.
 
-更稳妥的做法是让 SSO 站点和各业务站点分别维护 host-only 会话。业务站点需要登录时跳转到 SSO 站点，SSO 站点利用自己的 Cookie 判断用户是否已登录，再通过一次性、短时有效的授权码把认证结果返回业务站点，由业务站点后端换取用户信息并建立本地会话。
+A safer approach is for the SSO site and each business site to maintain separate host-only sessions. When a business site needs authentication, redirect to the SSO site. It checks its own cookie, then returns the result using a short-lived, one-time authorization code. The business site's backend exchanges the code for user information and creates a local session.
 
-**登录信息获取/登录状态校验**
+**Retrieve user information and validate the session**
 
-![SSO系统设计-登录信息获取/登录状态校验](../images/shared/sso-logincheck-sequence.png-kbrb.png)
+![SSO design: retrieve user information and validate the session](../images/shared/sso-logincheck-sequence.png-kbrb.png)
 
-### 用户登出
+### User Sign-Out
 
-SSO 登出不只是删除一个 Cookie：
+SSO sign-out involves more than deleting a cookie:
 
-1. SSO 服务端撤销中央登录会话和相关刷新授权。
-2. SSO 站点清除自己的会话 Cookie。
-3. 根据协议和业务风险，通过前通道或后通道通知各业务站点清理本地会话，并处理通知失败、站点离线等情况。
+1. The SSO server revokes the central session and associated refresh grants.
+2. The SSO site clears its session cookie.
+3. Depending on the protocol and business risk, notify business sites through front-channel or back-channel logout to clear local sessions. Account for notification failures and offline sites.
 
-**登出时序图**
+**Sign-out sequence diagram**
 
-![SSO系统设计-用户登出](../images/shared/sso-logout-sequence.png-kbrb.png)
+![SSO design: user sign-out](../images/shared/sso-logout-sequence.png-kbrb.png)
 
-### 跨域登录、登出
+### Cross-Domain Sign-In and Sign-Out
 
-跨域 SSO 不应尝试解决 Cookie 的跨域读写问题，而应通过标准的浏览器重定向和后端令牌交换建立各站点自己的会话。常见选择是 OpenID Connect Authorization Code Flow。
+Cross-domain SSO should not try to work around cross-domain cookie restrictions. Use standard browser redirects and backend token exchange so each site can establish its own session. A common choice is the OpenID Connect Authorization Code Flow.
 
-解决跨域的核心思路就是：
+The main ideas are:
 
-- 登录完成后，SSO 服务只向预先登记并严格匹配的回调地址返回一次性、短时有效的授权码。业务站点后端使用该授权码换取认证结果，并建立自己的会话，不在多个域之间复制同一个长期 Bearer Token。
-- 授权请求需要校验 `state`；使用 OpenID Connect 时还要校验 Issuer、Audience 和签名，并在使用 `nonce` 时核对其值。公共客户端使用 Authorization Code Flow 时还应使用 PKCE。
-- 跨站登出使用协议定义的前通道或后通道通知，并允许业务站点在通知失败时通过会话过期、令牌撤销和重新校验收敛状态。
+- After login, the SSO service returns a short-lived, one-time authorization code only to a registered, exactly matched redirect URI. The business site's backend exchanges the code for the authentication result and creates its own session. Don't copy the same long-lived bearer token across multiple domains.
+- Validate `state` in authorization requests. With OpenID Connect, also validate the issuer, audience, and signature, and check the `nonce` when used. Public clients using the Authorization Code Flow should also use PKCE.
+- Use protocol-defined front-channel or back-channel notifications for cross-site sign-out. If a notification fails, let business sites converge through session expiration, token revocation, and revalidation.
 
-**跨域登录（主域名已登录）**
+**Cross-domain sign-in (already signed in to the primary domain)**
 
-![SSO系统设计-跨域登录（主域名已登录）](../images/shared/sso-crossdomain-login-loggedin-sequence.png-kbrb.png)
+![SSO design: cross-domain sign-in when already signed in to the primary domain](../images/shared/sso-crossdomain-login-loggedin-sequence.png-kbrb.png)
 
-**跨域登录（主域名未登录）**
+**Cross-domain sign-in (not signed in to the primary domain)**
 
-![SSO系统设计-跨域登录（主域名未登录）](../images/shared/sso-crossdomain-login-unlogin-sequence.png-kbrb.png)
+![SSO design: cross-domain sign-in when not signed in to the primary domain](../images/shared/sso-crossdomain-login-unlogin-sequence.png-kbrb.png)
 
-**跨域登出**
+**Cross-domain sign-out**
 
-![SSO系统设计-跨域登出](../images/shared/sso-crossdomain-logout-sequence.png-kbrb.png)
+![SSO design: cross-domain sign-out](../images/shared/sso-crossdomain-logout-sequence.png-kbrb.png)
 
-上面的时序图来自原转载方案，主要用于帮助理解登录跳转和通知关系，其中直接传递 AuthToken、共享父域 Cookie 等细节不应作为新系统的实现依据。新系统应以所选 OpenID Connect/OAuth 协议的当前安全规范为准。
+The sequence diagrams above come from the original article and illustrate login redirects and notifications. Details such as passing `AuthToken` directly or sharing a parent-domain cookie should not be treated as implementation guidance for a new system. Follow the current security specifications for the OpenID Connect/OAuth protocol you choose.
 
-## 说明
+## Notes
 
-- 关于方案：这次设计方案更多是提供实现思路。APP 用户登录不应只增加一个自定义“APP 签名”就作为安全方案，推荐使用系统浏览器完成 OpenID Connect/OAuth Authorization Code Flow，并使用 PKCE；APP 不能被当作能够永久保守客户端密钥的可信环境。
-- 关于时序图：时序图中并没有包含所有场景，只列举了核心/主要场景，另外对于一些不影响理解思路的消息能省就省了。
+- **About the design:** This design illustrates an implementation approach. For app sign-in, adding a custom “app signature” is not a sufficient security measure. Use the system browser for the OpenID Connect/OAuth Authorization Code Flow with PKCE. Do not treat an app as a trusted environment capable of keeping a client secret permanently confidential.
+- **About the sequence diagrams:** They show the main scenarios, not every possible case. Messages that do not affect the overall flow have been omitted for clarity.
 
-## 参考
+## References
 
 - [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0-18.html)
 - [RFC 9700：Best Current Practice for OAuth 2.0 Security](https://www.rfc-editor.org/rfc/rfc9700.html)

@@ -1,108 +1,108 @@
 ---
-title: 状态机与流程编排：选型、并行任务与可靠执行
-description: 区分状态机与流程编排的职责，理解条件转移、并行汇聚、流程版本、任务幂等、重试补偿与自研引擎的成本。
-category: 系统设计
+title: "State Machines and Workflow Orchestration: Design Choices, Parallel Tasks, and Reliable Execution"
+description: How state machines and workflow orchestration differ, with conditional transitions, parallel joins, workflow versions, idempotent tasks, retries, compensation, and the cost of building an engine.
+category: System Design
 tag:
-  - 系统设计
-  - 状态机
-  - 工作流
+  - System Design
+  - State Machines
+  - Workflows
 head:
   - - meta
     - name: keywords
-      content: 状态机,FSM,流程编排,工作流,并行网关,任务幂等,流程版本,失败补偿
+      content: state machines,FSM,workflow orchestration,workflow engine,parallel gateways,idempotent tasks,workflow versions,failure compensation
 ---
 
-订单支付、售后审核、商品检测这类业务，都需要回答两个问题：当前处于什么状态，接下来允许做什么？当一个业务又包含多个任务、条件分支和异步等待时，还需要知道哪些任务已经完成，哪些任务可以继续执行。
+Business processes such as order payments, after-sales reviews, and product inspections need to answer two questions: What state is the process in, and what can happen next? When a process also includes multiple tasks, conditional branches, and asynchronous waits, we need to know which tasks have completed and which can run next.
 
-**状态机适合表达状态变化的规则，流程编排侧重组织任务及其依赖。** 两者可以一起使用：流程引擎调度任务，任务内部用状态机约束“待执行、执行中、成功、失败”等状态的变化。
+**A state machine describes rules for changing states; workflow orchestration organizes tasks and their dependencies.** They can work together: a workflow engine schedules tasks, and a state machine within each task constrains transitions such as pending, running, succeeded, and failed.
 
-## 状态机解决什么问题？
+## What Problems Do State Machines Solve?
 
-一个常见的业务状态机包含以下元素：
+A typical business state machine has these elements:
 
-| 元素               | 作用                   | 售后申请示例                       |
-| ------------------ | ---------------------- | ---------------------------------- |
-| 状态（State）      | 描述当前业务阶段       | 待审核、待退款、已退款、已驳回     |
-| 事件（Event）      | 触发一次状态变化       | 审核通过、审核拒绝、退款成功       |
-| 转移（Transition） | 定义状态之间允许的路径 | 待审核收到审核通过事件后进入待退款 |
-| 守卫条件（Guard）  | 判断当前是否允许转移   | 审核记录完整且退款金额合法         |
-| 动作（Action）     | 转移过程中执行的操作   | 保存审核结果、创建退款任务         |
+| Element    | Purpose                                          | After-sales request example                                        |
+| ---------- | ------------------------------------------------ | ------------------------------------------------------------------ |
+| State      | Describes the current business stage             | Pending review, pending refund, refunded, rejected                 |
+| Event      | Triggers a state change                          | Review approved, review rejected, refund succeeded                 |
+| Transition | Defines an allowed path between states           | On approval, a request moves from pending review to pending refund |
+| Guard      | Checks whether a transition is currently allowed | The review record is complete and the refund amount is valid       |
+| Action     | Operation performed during a transition          | Save the review result and create a refund task                    |
 
-这能把散落在多个接口中的状态判断收拢到统一规则里。例如，已经退款的申请再次收到“审核通过”，不能重新创建一笔退款。
+This brings state checks scattered across multiple APIs into a single set of rules. For example, if an already-refunded request receives another “review approved” event, it must not create another refund.
 
-不过，**有状态图不等于有并发控制**。两个请求可能同时读到“待审核”，然后分别尝试通过和拒绝。持久化时仍要通过条件更新、版本号或事务锁等机制竞争同一次转移，并检查更新结果。事件去重记录也要与业务状态变化可靠衔接。
+However, **a state diagram does not provide concurrency control**. Two requests may read “pending review” at the same time, then one tries to approve while the other tries to reject. Use conditional updates, version numbers, or transactional locks to ensure they compete for the same transition, and check the update result. Idempotency records for events must also be reliably coordinated with the business state change.
 
-状态机也不是只能线性执行。条件转移能够表达分支；层次化状态机可以表达嵌套状态，一些框架还提供多个并行区域、分叉和汇聚。比如 [Spring Statemachine](https://docs.spring.io/spring-statemachine/docs/current/reference/) 就提供 Guard、Regions、Fork、Join 等能力。真正需要评估的是所用实现的表达能力和维护成本，而不是把某个简单实现的限制当作状态机的共同限制。
+State machines are not limited to linear execution. Conditional transitions represent branches; hierarchical state machines represent nested states; some frameworks also support parallel regions, forks, and joins. For example, [Spring Statemachine](https://docs.spring.io/spring-statemachine/docs/current/reference/) provides guards, regions, forks, and joins. Evaluate the capabilities and maintenance costs of the implementation you use; don't treat a limitation of one simple implementation as a limitation of all state machines.
 
-## 什么时候需要流程编排？
+## When Do You Need Workflow Orchestration?
 
-假设一件商品入库前必须完成“功能检测”和“外观拍照”，检测不通过还要进入返工。若把所有组合都塞进一个状态字段，就会出现“检测完成但未拍照”“拍照完成但未检测”等组合状态。业务继续增加任务时，这种表达会越来越难维护。
+Suppose a product must pass both a “functional inspection” and a “photo capture” before it can be put into inventory. If you represent every combination in a single status field, you get states such as “inspection complete but photos missing” and “photos complete but inspection missing.” As more tasks are added, this becomes increasingly difficult to maintain.
 
-可以把商品的总体状态与任务执行进度分开，分别记录检测、拍照、返工任务，由编排器决定后续任务何时就绪。
+Instead, track the product's overall status separately from the progress of its inspection, photo, and rework tasks. Let an orchestrator decide when each task is ready to run.
 
-| 业务特征                       | 可以优先考虑的方式       | 需要额外确认的能力                 |
-| ------------------------------ | ------------------------ | ---------------------------------- |
-| 少量状态，变化规则稳定         | 状态机或集中维护的转移表 | 并发更新、事件去重、状态持久化     |
-| 一次请求中的固定处理步骤       | 普通代码、责任链或流水线 | 异常传播、超时、步骤依赖           |
-| 跨请求、跨服务、持续较久的任务 | 支持持久化的流程编排     | 恢复执行、异步等待、重试和补偿     |
-| 人工审核、超时升级、可视化配置 | 具备相应能力的工作流引擎 | 任务分派、权限、历史记录、版本迁移 |
+| Business characteristics                                | Possible approach                                      | Capabilities to verify                                        |
+| ------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------- |
+| Few states and stable transition rules                  | State machine or centrally maintained transition table | Concurrent updates, event deduplication, state persistence    |
+| Fixed steps within a single request                     | Regular code, a chain of responsibility, or a pipeline | Error propagation, timeouts, step dependencies                |
+| Long-running tasks across requests or services          | Persistent workflow orchestration                      | Resuming execution, asynchronous waits, retries, compensation |
+| Human reviews, timeout escalation, visual configuration | Workflow engine with the required capabilities         | Task assignment, permissions, history, version migration      |
 
-“流程编排”这个名称本身并不保证可靠执行。有些组件只负责进程内调用顺序，并不持久化进度。选型时要用实际流程验证重启恢复、并行分支、失败重试和人工介入，而不是只比较支持多少种节点。
+Calling something “workflow orchestration” does not guarantee reliable execution. Some components only control in-process call order and don't persist progress. Validate recovery after restart, parallel branches, retry behavior, and human intervention with a real workflow instead of comparing only the number of supported node types.
 
-## 流程定义与执行实例要分开
+## Separate Workflow Definitions from Execution Instances
 
-可配置流程至少要区分下面几类信息，它们不一定一一对应数据库表：
+A configurable workflow should distinguish at least the following information; each item does not necessarily need its own database table:
 
-- **节点模板**：描述某类任务的执行能力和输入输出，例如图片校验。
-- **流程定义**：描述节点、依赖关系、分支规则、超时和重试策略，并具有明确版本。
-- **流程实例**：表示某个业务单据的一次流程执行，绑定启动时选定的定义版本。
-- **节点实例或任务实例**：记录本次执行中的具体任务、输入、输出、状态和尝试次数。同一节点循环执行时，要能区分不同轮次。
-- **事件与执行记录**：记录触发来源、处理结果及异常，支持去重、恢复和排查。
+- **Node template:** Describes the input, output, and execution capabilities of a type of task, such as image validation.
+- **Workflow definition:** Describes nodes, dependencies, branch rules, timeouts, and retry policies, with an explicit version.
+- **Workflow instance:** Represents one execution for a business record and is bound to the definition version chosen when it started.
+- **Node or task instance:** Records the specific task, inputs, outputs, status, and attempt count for this execution. If a node can run in a loop, distinguish its iterations.
+- **Events and execution records:** Record the trigger source, outcome, and errors to support deduplication, recovery, and troubleshooting.
 
-已经发布的流程定义应保持不可变，修改后发布新版本。旧实例可以继续按旧版本运行；若要迁移，必须明确当前节点映射、变量转换和已经产生的业务副作用。仅把实例上的版本号改掉，可能让执行到一半的任务进入不存在或不兼容的节点。
+Published workflow definitions should be immutable; changes should be published as a new version. Existing instances can continue with their old version. If you migrate them, explicitly define the current-node mapping, variable conversion, and any business side effects that have already occurred. Merely changing an instance's version number may leave an in-progress task pointing to a node that is missing or incompatible.
 
-## 并行分支如何正确汇聚？
+## How Should Parallel Branches Join?
 
-以检测、拍照都完成后才能入库为例，编排器不能简单地“收到两条完成消息就继续”，因为两条消息可能是同一任务的重复通知。
+Suppose both an inspection and photo capture must finish before a product is placed into inventory. The orchestrator cannot simply continue “after receiving two completion messages,” because both messages might be duplicate notifications for the same task.
 
-可以按以下步骤设计：
+Design the join as follows:
 
-1. 创建本轮分支时，记录需要等待的检测任务 ID 和拍照任务 ID。
-2. 收到完成事件后，幂等更新对应任务，重复事件不增加完成数量。
-3. 串行化本轮汇聚条件的检查与推进，例如在事务中锁定同一条汇聚记录后再读取完成情况；全部必需任务成功后，以唯一约束保证只生成一次入库任务。使用乐观锁时，竞争失败的一方需要重试检查，不能直接丢弃事件。
-4. 对失败、取消、超时和返工明确处理规则，避免无限等待，也避免把上一轮检测结果算进本轮。
+1. When creating the branches for this iteration, record the inspection task ID and photo task ID that must complete.
+2. When a completion event arrives, update its task idempotently. Duplicate events must not increase the completion count.
+3. Serialize the join-condition check and workflow advance. For example, lock the join record in a transaction and then check completion. Once every required task succeeds, use a unique constraint to ensure that the inventory task is created only once. With optimistic locking, the losing request must retry the check; it must not simply drop the event.
+4. Define what happens on failure, cancellation, timeout, and rework. Don't wait forever or count an inspection result from a previous iteration toward the current one.
 
-只用唯一约束可以防止重复创建后续任务，却不能保证流程一定被推进：两个并发事务如果各自看不到对方刚完成的任务，都可能判断“条件未满足”。因此，还需要统一的汇聚并发控制，并能在进程中断后通过事件重投或恢复扫描重新检查。
+A unique constraint can prevent duplicate follow-up tasks, but it can't guarantee that the workflow advances. Two concurrent transactions may each fail to see the other's just-completed task and conclude that the condition is not yet met. You also need consistent concurrency control for the join and a way to recheck it after interruption, such as redelivering events or scanning for work to resume.
 
-条件分支与并行分支还要区分。排他分支只走选中的一条路径，不能在末尾等待未选择的分支；并行分支则需要等待规定的各路完成。具体网关语义应以引擎实现为准，可以参考 [Camunda 的流程模式说明](https://docs.camunda.io/docs/components/concepts/workflow-patterns/)。
+Distinguish conditional branches from parallel branches. An exclusive branch follows only the selected path and must not wait for unselected branches. A parallel branch waits for all required paths. Check the engine's semantics for gateways; see [Camunda's workflow patterns](https://docs.camunda.io/docs/components/concepts/workflow-patterns/).
 
-## 任务重试为什么还需要幂等？
+## Why Do Retries Still Require Idempotency?
 
-一次远程调用超时，有两种可能：对方没有处理，也可能已经处理成功，只是响应没有送达。因此，编排器重新投递任务时，执行器仍需保证重复调用不会重复扣款、发货或生成业务记录。
+When a remote call times out, the other service may not have processed it—or it may have succeeded and only the response was lost. Therefore, when the orchestrator retries a task, the executor must prevent duplicate charges, shipments, or business records.
 
-例如 [Camunda 的 Job Worker 文档](https://docs.camunda.io/docs/components/concepts/job-workers/) 明确说明，任务超时可能导致多个 Worker 处理同一任务，任务代码需要支持幂等。
+For example, [Camunda's Job Worker documentation](https://docs.camunda.io/docs/components/concepts/job-workers/) explains that timeouts may cause multiple workers to handle the same job. Job code must support idempotency.
 
-设计可靠执行时，应把这些情况考虑进去：
+Account for these cases when designing reliable execution:
 
-- **同一次业务操作使用稳定的幂等键**：重试应复用业务操作 ID；下一轮合法操作则分配新的 ID，不能简单按节点名称去重。
-- **完成状态与后续调度可靠衔接**：如果先保存“完成”再发 MQ，进程可能在发消息前退出。可以将任务状态和待发送事件放在同一个本地事务中，再异步投递；消费者按事件 ID 去重。
-- **区分业务拒绝与暂时故障**：参数不合法、审核未通过等结果通常应该走业务分支；网络故障可以有限重试并退避，超过阈值后进入可查询、可处理的异常状态。
-- **补偿按业务设计**：已经完成的外部操作不一定能靠数据库回滚撤销。退款、释放预占、取消预约等补偿动作同样可能失败，需要幂等、重试和人工处理入口。
+- **Use a stable idempotency key for each business operation.** Retries should reuse the operation ID. A valid operation in the next iteration should get a new ID; don't deduplicate by node name alone.
+- **Reliably coordinate completion with follow-up scheduling.** If you save “complete” and then publish to a message queue, the process may stop before sending the message. Save the task status and an event to publish in the same local transaction, then publish asynchronously; consumers should deduplicate by event ID.
+- **Distinguish business rejection from transient failure.** Invalid parameters or a rejected review should usually follow a business branch. Network failures can be retried a limited number of times with backoff; after that, record an exception that can be inspected and handled.
+- **Design compensation around the business.** A completed external action cannot necessarily be undone by rolling back a database transaction. Compensation actions—such as issuing a refund, releasing a reservation, or canceling an appointment—can also fail and need idempotency, retries, and a manual handling path.
 
-流程引擎管理执行进度，并不能自动把多个业务系统合成一个原子事务。跨服务一致性可继续阅读 [分布式事务](../distributed-system/distributed-transaction.md)。
+A workflow engine manages execution progress, but does not automatically turn multiple business systems into one atomic transaction. For cross-service consistency, see [Distributed Transactions](../distributed-system/distributed-transaction.md).
 
-## 自研引擎之前要评估哪些成本？
+## What Should You Evaluate Before Building an Engine?
 
-将流程配置、调度与节点执行分开，有助于独立调整业务规则和任务实现。但一个可用的流程引擎还需要处理执行进度、故障恢复和版本兼容，这些能力往往比节点间的调用关系更难维护。
+Separating workflow configuration, scheduling, and node execution makes it easier to change business rules and task implementations independently. But a usable workflow engine also has to manage progress, recover from failures, and maintain version compatibility. These capabilities are often harder to maintain than the calls between nodes.
 
-自研前，除了节点调度，还应评估以下工作是否有人持续维护：
+Before building one, make sure someone can maintain the following—not just node scheduling:
 
-- 配置发布前检查不可达节点、缺失出口、分支冲突、无法结束的循环和不合法的输入输出。
-- 持久化进度、恢复中断任务，限制并发数并处理积压。
-- 管理流程版本、执行器版本和在途实例的兼容关系。
-- 限制配置表达式的能力与执行资源，并保留发布、回滚和操作记录。
-- 展示实例卡在哪一步、为什么失败、能否重试以及谁进行了人工处理。
+- Validate workflows before publishing: detect unreachable nodes, missing exits, conflicting branches, endless loops, and invalid inputs or outputs.
+- Persist progress, resume interrupted tasks, limit concurrency, and handle backlogs.
+- Manage compatibility among workflow versions, executor versions, and in-flight instances.
+- Limit the power and resource usage of configuration expressions, and retain publication, rollback, and operation records.
+- Show where an instance is stuck, why it failed, whether it can be retried, and who handled it manually.
 
-如果复杂度主要来自少量业务差异，可以先抽离规则和任务接口，再逐步增加编排能力。是否引入成熟引擎或自研，应由流程需求、迁移成本、故障恢复能力和同等条件下的压测结果共同决定。
+If most of the complexity comes from a few business-specific differences, first extract the rules and task interfaces, then add orchestration capabilities gradually. Decide whether to adopt an existing engine or build your own based on workflow requirements, migration costs, failure-recovery capabilities, and benchmark results under comparable conditions.
 
 <!-- @include: @article-footer.snippet.md -->

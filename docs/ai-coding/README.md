@@ -1,131 +1,131 @@
 ---
-title: AI 编程实战指南：Claude Code、Cursor、Codex、Trae 使用技巧与面试题
-description: AI 编程实战指南，系统整理 Claude Code、Cursor、OpenAI Codex、Trae、oh-my-pi 等工具的选型思路、上下文管理、Claude Code 原理、CLAUDE.md 最佳实践、Spec Coding、Skills、代码审查和真实项目案例，帮你把 AI 编程工具用稳、用到真实项目里。
-category: AI 编程
+title: Practical AI Coding Guide: Claude Code, Cursor, Codex, Trae, and Interview Questions
+description: A practical guide to Claude Code, Cursor, OpenAI Codex, Trae, and oh-my-pi. Covers tool selection, context management, Claude Code internals, CLAUDE.md, Spec Coding, Skills, code review, and real project examples.
+category: AI Coding
 tag:
-  - AI 编程
-  - AI 辅助开发
-  - 开发效率
-  - 后端面试
+  - AI Coding
+  - AI-Assisted Development
+  - Developer Productivity
+  - Backend Interviews
 icon: mdi:code-tags
 head:
   - - meta
     - name: keywords
-      content: AI编程,AI辅助编程,AI编程实战,AI编程技巧,AI编程面试题,AI编程工具,Claude Code,Claude Code教程,Claude Code使用技巧,Claude Code原理,Claude Code上下文管理,AutoCompact,CLAUDE.md,Claude Code Hooks,Auto Memory,Multi-Agent,Cursor,OpenAI Codex,Codex最佳实践,oh-my-pi,Trae,CLI vs IDE,Spec Coding,AI Skills,AI代码审查,drawio-chart,draw.io技术图
+      content: AI Coding,AI-Assisted Programming,AI Coding in Practice,AI Coding Tips,AI Coding Interview Questions,AI Coding Tools,Claude Code,Claude Code Guide,Claude Code Tips,Claude Code Internals,Claude Code Context Management,AutoCompact,CLAUDE.md,Claude Code Hooks,Auto Memory,Multi-Agent,Cursor,OpenAI Codex,Codex Best Practices,oh-my-pi,Trae,CLI vs IDE,Spec Coding,AI Skills,AI Code Review,drawio-chart,draw.io Technical Diagrams
   - - meta
     - property: og:title
-      content: AI 编程实战指南：Claude Code、Cursor、Codex、Trae 使用技巧与面试题
+      content: Practical AI Coding Guide: Claude Code, Cursor, Codex, Trae, and Interview Questions
   - - meta
     - property: og:description
-      content: 梳理 Claude Code、Cursor、OpenAI Codex、Trae、oh-my-pi 等 AI 编程工具的使用边界、上下文管理、原理机制、规则文件、代码审查和真实项目落地经验。
+      content: Practical experience with Claude Code, Cursor, OpenAI Codex, Trae, and oh-my-pi, including tool boundaries, context management, internal mechanisms, rule files, code review, and real project workflows.
 ---
 
 <!-- @include: @small-advertisement.snippet.md -->
 
-AI 编程工具好不好用，真不全看模型。很多时候，差别反而出在你怎么给上下文、怎么拆任务、怎么看 diff。
+An AI coding tool's usefulness does not depend only on the model. Often, the bigger differences come from how you provide context, break down tasks, and review diffs.
 
-当然，这不是说模型不重要。模型质量是底座，但同一个模型放在不同的人手里，最后出来的效果可能差很多。
+That does not mean the model is unimportant. Model quality is the foundation, but the same model can produce very different results in different hands.
 
-别把 AI 编程想成“我把需求丢进去，代码自己就写好了”。真实项目里没这么轻松。更常见的是：AI 写到一半方向歪了，你得接回来；一次改太多文件，你得拆小；测试没过，你还得顺着错误往回追；它一本正经瞎编的时候，你得能看出来。
+Do not expect to drop in a requirement and have AI write the finished code for you. Real projects are not that simple. More often, the AI starts going in the wrong direction and you have to steer it back; it changes too many files and you have to split the work into smaller tasks; tests fail and you have to trace the errors; or it confidently makes things up and you have to catch them.
 
-所以这个专题不会只聊“哪个工具最强”。Claude Code、Cursor、OpenAI Codex、Trae 都有能帮上忙的地方，关键是你得知道：什么时候让 AI 写代码，什么时候让它查资料、读代码，什么时候该自己上手。还有更重要的一点：出问题以后怎么回滚，怎么把影响控制住。
+This collection is not just about which tool is “the strongest.” Claude Code, Cursor, OpenAI Codex, and Trae can all be useful. The key is knowing when to ask AI to write code, when to ask it to research or read code, and when to do the work yourself. Just as important: know how to roll back a change and limit its impact when something goes wrong.
 
-本专栏属于 AIGuide 项目，对标 JavaGuide 质量，免费开源，欢迎 Star 支持：
+This collection is part of the AIGuide project. It is free and open source, with a quality bar comparable to JavaGuide. Stars are welcome:
 
-- **项目地址**：[https://github.com/Snailclimb/AIGuide](https://github.com/Snailclimb/AIGuide)
-- **在线阅读**：[https://javaguide.cn/ai-coding/](https://javaguide.cn/ai-coding/)
+- **Project:** [https://github.com/Snailclimb/AIGuide](https://github.com/Snailclimb/AIGuide)
+- **Read online:** [https://javaguide.cn/ai-coding/](https://javaguide.cn/ai-coding/)
 
-## 适合谁看
+## Who Should Read This?
 
-- 已经在用 Claude Code、Cursor、Codex、Trae，但总觉得“能用，就是不太稳”。
-- 想把 AI 编程工具用到真实项目里，而不是只拿来写几个 Demo。
-- 正在纠结 CLI 和 IDE 怎么选，不知道什么时候该开多 Agent 并行。
-- 想把 `CLAUDE.md`、Skills、Spec、上下文压缩这些机制真正用起来。
-- 想理解 Claude Code Memory、Skills、Hooks 和 Multi-Agent 这些机制背后的分工。
-- 准备 AI 编程、AI IDE、AI 辅助开发相关面试，想把工具经验讲得更像真实项目经历。
-- 带团队，想知道 AI 生成的代码怎么审、怎么测、怎么控制提交粒度。
+- You already use Claude Code, Cursor, Codex, or Trae, but it works inconsistently.
+- You want to use AI coding tools on real projects, not just to create small demos.
+- You are choosing between a CLI and an IDE, or deciding when to run multiple agents in parallel.
+- You want to make practical use of `CLAUDE.md`, Skills, Spec, and context compaction.
+- You want to understand how Claude Code Memory, Skills, Hooks, and Multi-Agent features fit together.
+- You are preparing for interviews about AI coding, AI IDEs, or AI-assisted development and want to describe real project experience.
+- You lead a team and want to know how to review and test AI-generated code and control change size.
 
-## 几个容易想错的地方
+## Common Misconceptions
 
-CLI 和 IDE 没有谁一定比谁强，主要看当前任务是什么。跨文件重构、批量修改、长任务自动化，用 CLI 会更顺手；局部补全、边看边改、随时调整，IDE 体验通常更好。把这条线分清楚，选工具就没那么纠结。
+Neither the CLI nor the IDE is always better. The right choice depends on the task. A CLI is often more convenient for cross-file refactoring, batch edits, and long-running automation. An IDE is usually better for local completions, editing while reviewing code, and making frequent adjustments. Once you understand the difference, choosing a tool is easier.
 
-上下文不是越多越好。项目规则、相关文件、报错日志、验收标准都很重要，但一股脑塞给 AI，只会让关键约束被稀释。该写进 `CLAUDE.md` 的写进去，该放文档链接的放链接，该临时提供的就别变成永久规则。
+More context is not always better. Project rules, relevant files, error logs, and acceptance criteria all matter, but sending everything to the AI can dilute the important constraints. Put durable project guidance in `CLAUDE.md`, link to documentation where appropriate, and keep temporary instructions temporary.
 
-多模型协同也不是把所有任务都丢给最贵的模型。写代码、看架构、审 diff、排查问题，需要的能力不一样。分工清楚，多模型能放大效率；分工不清楚，它也会把错误一起放大。
+Using multiple models does not mean sending every task to the most expensive one. Coding, architecture review, diff review, and debugging require different strengths. Clear responsibilities let multiple models improve efficiency; unclear responsibilities can amplify mistakes.
 
-AI 生成的代码，一定要过测试、审查和可回滚的提交管理。“看起来能跑”只是第一步。真正麻烦的不是它某一行写错了，而是一次改了几百行，最后出问题时你根本不知道从哪儿查。
+AI-generated code must be tested and reviewed, and managed through commits that can be rolled back. “It seems to run” is only the first step. The hard part is not one incorrect line; it is changing hundreds of lines at once and then not knowing where to start when something breaks.
 
-面试里如果被问到“AI 对开发效率的影响”，也别只说“提升了多少多少”。更好的回答是讲清楚：它在哪些环节确实省时间，哪些环节反而增加了审查成本，以及你是怎么兜住风险的。
+If an interviewer asks how AI affects development productivity, do not just say it “improved productivity by X percent.” Explain which steps it actually sped up, which steps increased review costs, and how you controlled the risks.
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [AI 编程开放性面试题](./practices/ai-ide.md)：先看面试会怎么问，也顺便校准自己到底会不会用。
-2. [AI 编程选 CLI 还是 IDE？](./practices/cli-vs-ide.md)：把工具路线分清楚，别一上来就陷入工具名之争。
-3. [Ghostty 安装、配置和常见技巧](./practices/ghostty.md)、[Claude Code 使用指南](./practices/claudecode-tips.md)、[Claude Code 核心命令详解](./practices/claudecode-commands.md)、[高颜值 Claude Code 替代 OMP](./practices/oh-my-pi.md)：如果你主用 CLI Agent，先把终端工作台调顺，再看 Claude Code 和 oh-my-pi 这类终端代理的操作思路。
-4. [CLAUDE.md 最佳实践](./practices/claude-md-best-practices.md)、[Claude Code 上下文管理](./principles/claude-code-context-management.md)、[Claude Code 记忆系统](./principles/claude-code-memory.md)、[Claude Code Skills 原理](./principles/claude-code-skills.md)、[Claude Code Hooks 原理](./principles/claude-code-hooks.md)、[Claude Code 多 Agent 机制](./principles/claude-code-multi-agent.md)：把规则、上下文治理、记忆、按需加载、生命周期钩子和任务拆分串起来。
-5. [AI 编程必备 Skills 推荐](./practices/programmer-essential-skills.md)、[强模型时代，AI 编程 Skills 还有必要装吗？](./practices/skill-selection-and-pruning.md)、[mattpocock/skills 深度使用指南](./practices/mattpocock-skills.md)、[draw.io 绘图 Skill](./practices/drawio-chart-skill.md)、[OpenAI Codex 最佳实践指南](./practices/codex-best-practices.md)、[Spec Coding 规范驱动编程](./practices/spec-coding.md)、[Vibe Coding 实用技巧总结](./practices/the-cool-tricks-for-vibe-coding.md)：把提示词、权限、Spec、Git、多 Agent、Skill 选型和技术配图工作流串起来。
-6. 工具栈确定后，再按需看 Qoder、Trae、DeepSeek V4 + Claude Code、MiniMax M3 + Claude Code、Kimi K3、Claude Code 接入第三方模型等实战案例。
+1. [Open-Ended AI Coding Interview Questions](./practices/ai-ide.md): Start with common interview questions and use them to check how well you can actually use these tools.
+2. [Should You Choose a CLI or IDE for AI Coding?](./practices/cli-vs-ide.md): Understand the different workflows before getting caught up in tool names.
+3. [Ghostty Setup, Configuration, and Tips](./practices/ghostty.md), [Claude Code Guide](./practices/claudecode-tips.md), [Claude Code Commands](./practices/claudecode-commands.md), and [A Polished Claude Code Alternative: OMP](./practices/oh-my-pi.md): If you mainly use CLI agents, first set up a comfortable terminal, then learn how tools such as Claude Code and oh-my-pi work.
+4. [CLAUDE.md Best Practices](./practices/claude-md-best-practices.md), [Claude Code Context Management](./principles/claude-code-context-management.md), [Claude Code Memory](./principles/claude-code-memory.md), [How Claude Code Skills Work](./principles/claude-code-skills.md), [Claude Code Hooks](./principles/claude-code-hooks.md), and [Claude Code Multi-Agent Mechanisms](./principles/claude-code-multi-agent.md): Connect project rules, context management, memory, on-demand loading, lifecycle hooks, and task decomposition.
+5. [Recommended Skills for AI Coding](./practices/programmer-essential-skills.md), [Do Strong Models Still Need AI Coding Skills?](./practices/skill-selection-and-pruning.md), [A Deep Dive into mattpocock/skills](./practices/mattpocock-skills.md), [The draw.io Diagram Skill](./practices/drawio-chart-skill.md), [OpenAI Codex Best Practices](./practices/codex-best-practices.md), [Spec Coding](./practices/spec-coding.md), and [Practical Vibe Coding Tips](./practices/the-cool-tricks-for-vibe-coding.md): Learn about prompts, permissions, specs, Git, multi-agent work, skill selection, and technical diagram workflows.
+6. Once you have chosen your tools, explore the practical examples for Qoder, Trae, DeepSeek V4 + Claude Code, MiniMax M3 + Claude Code, Kimi K3, and connecting Claude Code to third-party models.
 
-## 核心文章
+## Core Articles
 
-### 工具选型与方法论
+### Tool Selection and Methods
 
-- [AI 编程开放性面试题](./practices/ai-ide.md)：把 Cursor、Claude Code 等工具怎么用、AI 对后端开发有什么影响这些问题放在一起讲。
-- [AI 编程选 CLI 还是 IDE？](./practices/cli-vs-ide.md)：对比 Claude Code、Cursor、Kiro、Trae 等工具，重点看 CLI 和 IDE 到底适合什么活。
-- [Ghostty 安装、配置和常见技巧](./practices/ghostty.md)：从安装、字体主题、分屏快捷键到 Shell Integration，搭好 Claude Code 和 Codex CLI 的终端工作台。
-- [Spec Coding 规范驱动编程](./practices/spec-coding.md)：系统梳理 Vibe Coding 和 Spec Coding 的区别，从四步落地到多代理协作的完整实战指南。
-- [Vibe Coding 实用技巧总结](./practices/the-cool-tricks-for-vibe-coding.md)：涵盖 Git 版本控制、Spec 范围管理、Skill 沉淀、多模型分工、上下文管理、多 Agent 协作和权限控制等实战经验。
+- [Open-Ended AI Coding Interview Questions](./practices/ai-ide.md): Covers how to use Cursor and Claude Code and how AI affects backend development.
+- [Should You Choose a CLI or IDE for AI Coding?](./practices/cli-vs-ide.md): Compares Claude Code, Cursor, Kiro, Trae, and the tasks suited to CLI and IDE workflows.
+- [Ghostty Setup, Configuration, and Tips](./practices/ghostty.md): Set up a terminal for Claude Code and Codex CLI, from installation and fonts to split-pane shortcuts and Shell Integration.
+- [Spec Coding](./practices/spec-coding.md): Explains the difference between Vibe Coding and Spec Coding and walks through a complete workflow, from four implementation steps to multi-agent collaboration.
+- [Practical Vibe Coding Tips](./practices/the-cool-tricks-for-vibe-coding.md): Covers Git, spec scope, reusable Skills, model roles, context management, multi-agent collaboration, and permissions.
 
-### Claude Code 与 Codex 实战
+### Claude Code and Codex in Practice
 
-- [Claude Code 使用指南](./practices/claudecode-tips.md)：从配置、能力扩展到常用工作流，适合刚开始认真用 Claude Code 的读者。
-- [CLAUDE.md 最佳实践](./practices/claude-md-best-practices.md)：讲清 `CLAUDE.md` 该写什么、不该写什么，项目变大后怎么和 `.claude/rules/`、Auto Memory 配合。
-- [Claude Code 核心命令详解](./practices/claudecode-commands.md)：专门讲 `/simplify`、`/review`、`/loop`、`/batch` 这些命令怎么用。
-- [AI 编程必备 Skills 推荐](./practices/programmer-essential-skills.md)：按任务场景整理 TDD、代码审查、UI 设计、网页自动化和 Skill 开发工作流，并说明哪些情况不值得安装。
-- [强模型时代，AI 编程 Skills 还有必要装吗？](./practices/skill-selection-and-pruning.md)：从 Superpowers 和 `grilling` 的实际使用出发，讨论哪些 Skill 值得保留，以及怎么给 Skill 列表做减法。
-- [mattpocock/skills 深度使用指南](./practices/mattpocock-skills.md)：结合真实案例拆解 `grilling`、`research`、`diagnosing-bugs` 和 `code-review` 的适用场景。
-- [drawio-chart Skill 开源](./practices/drawio-chart-skill.md)：分享如何用 Agent 自动生成可编辑的 draw.io 技术图，适合流程图、架构图和模块关系图。
-- [OpenAI Codex 最佳实践指南](./practices/codex-best-practices.md)：讲 Codex 云端智能体和 CLI 怎么配提示词、工具权限和安全策略。
-- [高颜值 Claude Code 替代 OMP](./practices/oh-my-pi.md)：介绍这个高颜值 Claude Code 替代工具的 Hashline、LSP/DAP、内置工具、多模型路由和上手配置。
-- [Claude Code Agent View 多会话管理](./practices/claudecode-agentview.md)：多 Agent 并行时，最怕状态乱、权限确认乱，这篇主要解决这个问题。
+- [Claude Code Guide](./practices/claudecode-tips.md): A guide to configuration, extensions, and common workflows.
+- [CLAUDE.md Best Practices](./practices/claude-md-best-practices.md): What to put in `CLAUDE.md`, what to leave out, and how to use it with `.claude/rules/` and Auto Memory as a project grows.
+- [Claude Code Commands](./practices/claudecode-commands.md): How to use `/simplify`, `/review`, `/loop`, and `/batch`.
+- [Recommended Skills for AI Coding](./practices/programmer-essential-skills.md): Task-based workflows for TDD, code review, UI design, web automation, and Skill development, including when not to install a Skill.
+- [Do Strong Models Still Need AI Coding Skills?](./practices/skill-selection-and-pruning.md): Based on experience with Superpowers and `grilling`, discusses which Skills to keep and how to trim the list.
+- [A Deep Dive into mattpocock/skills](./practices/mattpocock-skills.md): Real examples of when to use `grilling`, `research`, `diagnosing-bugs`, and `code-review`.
+- [The drawio-chart Skill](./practices/drawio-chart-skill.md): How an agent can create editable draw.io diagrams for workflows, architectures, and module relationships.
+- [OpenAI Codex Best Practices](./practices/codex-best-practices.md): Prompts, tool permissions, and security policies for Codex cloud agents and CLI.
+- [A Polished Claude Code Alternative: OMP](./practices/oh-my-pi.md): Hashline, LSP/DAP, built-in tools, model routing, and setup for this Claude Code alternative.
+- [Claude Code Agent View for Managing Multiple Sessions](./practices/claudecode-agentview.md): Helps keep agent status and permission requests organized when running multiple agents in parallel.
 
-### Claude Code 原理进阶
+### Claude Code Internals
 
-- [Claude Code 上下文管理](./principles/claude-code-context-management.md)：从窗口预算、Context Rot 和渐进式压缩讲到 Sub-agent、handoff 与长任务状态外化。
-- [Claude Code 记忆系统](./principles/claude-code-memory.md)：拆解 `CLAUDE.md`、`.claude/rules/`、Auto Memory、Subagent Memory 和第三方记忆插件的分工。
-- [Claude Code Skills 原理](./principles/claude-code-skills.md)：讲清 Skills 的文件结构、发现加载、动态上下文、安全限制，以及和 Subagent 的配合方式。
-- [Claude Code Hooks 原理](./principles/claude-code-hooks.md)：围绕生命周期节点讲 Hooks 的触发时机、输入输出、风险拦截和自动化工作流。
-- [Claude Code 多 Agent 机制](./principles/claude-code-multi-agent.md)：对比 Subagent、Fork Subagent 和 Agent Teams，理解任务拆分、上下文隔离和协作边界。
+- [Claude Code Context Management](./principles/claude-code-context-management.md): Context window budgets, context rot, progressive compaction, subagents, handoffs, and externalizing long-running task state.
+- [Claude Code Memory](./principles/claude-code-memory.md): The roles of `CLAUDE.md`, `.claude/rules/`, Auto Memory, Subagent Memory, and third-party memory plugins.
+- [How Claude Code Skills Work](./principles/claude-code-skills.md): Skill files, discovery and loading, dynamic context, security limits, and coordination with subagents.
+- [Claude Code Hooks](./principles/claude-code-hooks.md): Hook lifecycle, inputs and outputs, risk checks, and automated workflows.
+- [Claude Code Multi-Agent Mechanisms](./principles/claude-code-multi-agent.md): Subagents, forked subagents, and Agent Teams, including task decomposition, context isolation, and collaboration boundaries.
 
-### 真实项目案例
+### Real Project Examples
 
-- [IDEA 搭配 Qoder 插件实战](./cases/idea-qoder-plugin.md)：看 AI 怎么在 JetBrains IDE 里做接口优化和代码重构。
-- [Trae + MiniMax 多场景实战](./cases/trae-m2.7.md)：用 Redis 故障排查、跨语言重构这些场景，看 AI 辅助编程能做到哪一步。
-- [Claude Code 接入第三方模型实战](./cases/cc-glm5.1.md)：通过 GLM-5.1 做 JVM 智能诊断助手和慢查询治理。
-- [DeepSeek V4 + Claude Code 实战](./cases/deepseek-v4-claude-code.md)：实测代码审计、Flyway 集成、多模型协同这些更贴近项目的任务。
-- [MiniMax M3 + Claude Code 实战](./cases/cc-m3.md)：用线上 Redis SCAN 故障排查、SCAN 游标算法跨语言复刻、监控面板搭建三个案例实测 M3。
-- [Kimi K3 多场景实战](./cases/kimi-k3.md)：通过热点追踪系统、Java 项目改造和 3A 游戏 Demo，实测 K3 处理长程任务、多模态和复杂工程交付的表现。
-- [IDEA + CC GUI 插件实战](./project/cc-guide.md)：想在 IDEA 里用 GUI 管 Claude Code 和 Codex，可以看这个开源插件案例。
+- [Using the Qoder Plugin in IntelliJ IDEA](./cases/idea-qoder-plugin.md): AI-assisted API optimization and refactoring in a JetBrains IDE.
+- [Trae + MiniMax: Practical Examples](./cases/trae-m2.7.md): Redis troubleshooting and cross-language refactoring with AI assistance.
+- [Connecting Claude Code to Third-Party Models](./cases/cc-glm5.1.md): Build a JVM diagnostics assistant and address slow queries with GLM-5.1.
+- [DeepSeek V4 + Claude Code in Practice](./cases/deepseek-v4-claude-code.md): Code audits, Flyway integration, and multi-model collaboration.
+- [MiniMax M3 + Claude Code in Practice](./cases/cc-m3.md): Troubleshoot Redis SCAN in production, port the SCAN cursor algorithm across languages, and build a monitoring dashboard.
+- [Kimi K3: Practical Examples](./cases/kimi-k3.md): Test K3 on a trending-topic tracker, Java project updates, and a 3A game demo, covering long-running tasks, multimodal input, and complex delivery.
+- [The CC GUI Plugin for IDEA](./project/cc-guide.md): An open-source plugin for managing Claude Code and Codex through a GUI in IDEA.
 
-## 高频问题
+## Frequently Asked Questions
 
-- AI 编程工具到底适合做代码生成、代码审查、重构、排错还是文档整理？
-- Claude Code、Cursor、Codex、Trae、Qoder 分别适合什么场景？
-- CLI 和 IDE 的核心差异是什么？为什么长任务更依赖上下文管理？
-- `CLAUDE.md`、`.claude/rules/`、Skills 和 Auto Memory 应该怎么分工？
-- Claude Code Hooks、Skills、Subagent 和 Agent Teams 分别解决什么问题？
-- 如何给 AI 提供足够但不过量的上下文？
-- AI 修改大仓库时，如何控制变更范围，避免越改越乱？
-- 多模型协同什么时候有价值？如何避免模型之间互相放大错误？
-- AI 生成代码应该如何验收？测试、Diff、代码审查和提交粒度怎么配合？
-- AI 编程会削弱程序员能力吗？后端开发者应该保留哪些判断力和工程基本功？
+- Which tasks are AI coding tools suited for: code generation, review, refactoring, debugging, or documentation?
+- Which scenarios suit Claude Code, Cursor, Codex, Trae, and Qoder?
+- What is the difference between CLI and IDE workflows, and why do long-running tasks need context management?
+- How should `CLAUDE.md`, `.claude/rules/`, Skills, and Auto Memory work together?
+- What problems do Claude Code Hooks, Skills, subagents, and Agent Teams solve?
+- How can you provide enough context without overwhelming the model?
+- How can you limit changes in a large repository and prevent edits from getting out of control?
+- When is multi-model collaboration useful, and how can you prevent models from amplifying one another's mistakes?
+- How should AI-generated code be evaluated? How do tests, diffs, code review, and commit size fit together?
+- Does AI coding weaken programmers' skills? Which engineering judgment and fundamentals should backend developers retain?
 
-## 相关专题
+## Related Topics
 
-- [AI 应用开发知识体系](../ai/)
-- [系统设计](../system-design/)
-- [系统设计基础](../system-design/basis/)
-- [Java 基础常见面试题](../java/basis/java-basic-questions-01.md)
-- [常用开发工具](../tools/)
+- [AI Application Development](../ai/)
+- [System Design](../system-design/)
+- [System Design Fundamentals](../system-design/basis/)
+- [Common Java Interview Questions](../java/basis/java-basic-questions-01.md)
+- [Developer Tools](../tools/)
 
 <!-- @include: @article-footer.snippet.md -->

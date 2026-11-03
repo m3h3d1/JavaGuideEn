@@ -1,89 +1,89 @@
 ---
-title: AI Agent 专题：Agent Loop、Memory、Prompt、Context、MCP 与 Skills
-description: AI Agent 面试与学习路线，涵盖 Agent Loop、Memory、Prompt Engineering、Context Engineering、MCP、Agent Skills、Harness Engineering 和 AI 工作流。
+title: "AI Agents: Agent Loops, Memory, Prompts, Context, MCP, and Skills"
+description: A learning path for AI agents, covering Agent Loops, memory, prompt engineering, context engineering, MCP, agent skills, harness engineering, and AI workflows.
 category: AI
 tag:
   - AI Agent
-  - 大模型
-  - AI 应用开发
+  - Large Language Models
+  - AI Application Development
 sidebar: false
 ---
 
 <!-- @include: @small-advertisement.snippet.md -->
 
-Agent 不是“会调用工具的聊天机器人”。一旦任务变长，它就要处理状态、记忆、权限、失败重试、上下文裁剪和执行边界。
+An agent is more than a chatbot that can call tools. As tasks grow longer, it must handle state, memory, permissions, retries, context trimming, and execution boundaries.
 
-这份 **AI Agent 专题** 面向想理解和落地 Agent 应用的开发者，把 Agent Loop、Memory、Prompt、Context、Tools、MCP、Skills、Harness Engineering 和 Workflow 放到同一条工程主线里看。
+This **AI agent section** is for developers who want to understand and build agent applications. It presents Agent Loops, memory, prompts, context, tools, MCP, skills, harness engineering, and workflows as parts of one engineering process.
 
-## 适合谁看
+## Who Should Read This?
 
-- 想理解 AI Agent 原理和工程落地方式的开发者。
-- 正在做工具调用、自动化任务、多轮推理、长任务执行相关 AI 应用的工程师。
-- 准备 Agent、MCP、Prompt、Context、Skills、工作流相关面试题的同学。
+- Developers who want to understand agent principles and implementation.
+- Engineers building AI applications with tool calls, automation, multi-turn reasoning, or long-running tasks.
+- Candidates preparing for interviews about agents, MCP, prompts, context, skills, and workflows.
 
-## 学习重点
+## Key Concepts
 
-- Agent 和 Workflow 的区别不在于有没有调用大模型，而在于是否具备观察、规划、行动和反馈闭环。
-- Memory 解决跨轮、跨任务的信息保留问题，但必须设计生命周期、存储边界和隐私治理。
-- Prompt Engineering 更关注指令表达，Context Engineering 更关注把正确的信息在正确时机放进上下文。
-- MCP、Skills、Harness Engineering 决定 Agent 能不能稳定、安全、可扩展地接入真实工具和环境。
+- Agents differ from workflows not by whether they call an LLM, but by whether they have an observe-plan-act-feedback loop.
+- Memory retains information across turns and tasks, but its lifecycle, storage boundaries, and privacy controls must be designed.
+- Prompt engineering focuses on expressing instructions; context engineering focuses on providing the right information at the right time.
+- MCP, skills, and harness engineering help agents connect to real tools and environments reliably, safely, and at scale.
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [AI Agent 核心概念](./agent-basis.md)：先建立 Agent 的整体认知。
-2. [大模型提示词工程](./prompt-engineering.md)、[上下文工程](./context-engineering.md)：理解指令和上下文如何共同影响输出。
-3. [AI Agent 记忆系统](./agent-memory.md)：补齐短期记忆、长期记忆和记忆生命周期。
-4. [万字拆解 MCP 协议](./mcp.md)、[万字详解 Agent Skills](./skills.md)：理解工具接入和能力扩展。
-5. [多 Agent 协作系统设计](./multi-agent.md)：理解任务拆分、状态共享、并发冲突和失败恢复。
-6. [Harness Engineering：六层检查框架、上下文管理与工程实践](./harness-engineering.md)、[AI 工作流中的 Workflow、Graph 与 Loop](./workflow-graph-loop.md)、[Loop Engineering 是什么](./loop-engineering.md)：进入生产级 Agent 工程化。
+1. [AI Agent Fundamentals](./agent-basis.md): Build an overall understanding of agents.
+2. [Prompt Engineering](./prompt-engineering.md) and [Context Engineering](./context-engineering.md): Learn how instructions and context work together to shape output.
+3. [AI Agent Memory](./agent-memory.md): Study short-term and long-term memory and their lifecycles.
+4. [A Detailed Look at MCP](./mcp.md) and [A Detailed Guide to Agent Skills](./skills.md): Understand tool integration and capability extensions.
+5. [Multi-Agent System Design](./multi-agent.md): Learn about task decomposition, shared state, concurrency conflicts, and failure recovery.
+6. Continue with [Harness Engineering](./harness-engineering.md), [Workflow, Graph, and Loop in AI Workflows](./workflow-graph-loop.md), and [Loop Engineering](./loop-engineering.md) to study production agent engineering.
 
-阅读时注意区分三种循环：
+As you read, distinguish among three kinds of loops:
 
-| 层次                  | 负责什么                                                          | 对应文章                                                                |
-| --------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| 内层 Agent Loop       | 一次任务中反复推理、调用工具、读取结果，直到完成或触发停止条件。  | [Agent 核心概念](./agent-basis.md#什么是-agent-loop)                    |
-| 工作流图上的回边      | 按状态和条件返回先前节点，让局部流程继续迭代。                    | [Workflow、Graph 与 Loop](./workflow-graph-loop.md#loop-graph-上的回溯) |
-| 外层 Loop Engineering | 把已有循环接到 CI、定时任务和停止条件上，决定何时启动下一轮任务。 | [Loop Engineering](./loop-engineering.md)                               |
+| Layer                         | Responsibility                                                                                                    | Related guide                                                             |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Inner Agent Loop              | Repeatedly reason, call tools, and read results during one task until it completes or reaches a stop condition.   | [Agent fundamentals](./agent-basis.md#what-is-an-agent-loop)              |
+| Back edge in a workflow graph | Returns to an earlier node based on state and conditions so that part of the workflow can iterate.                | [Workflow, Graph, and Loop](./workflow-graph-loop.md#loop-graph-上的回溯) |
+| Outer Loop Engineering        | Connects an existing loop to CI, scheduled jobs, and stop conditions to decide when to start the next task cycle. | [Loop Engineering](./loop-engineering.md)                                 |
 
-## 核心文章
+## Core Guides
 
-- [AI Agent 核心概念](./agent-basis.md)：梳理 AI Agent 的演进脉络，讲清 Agent Loop、Context Engineering、Tools 注册等基础概念。
-- [AI Agent 记忆系统](./agent-memory.md)：深入理解短期记忆与长期记忆设计，掌握记忆存储形式、生命周期操作与生产级工程优化策略。
-- [多 Agent 协作系统设计](./multi-agent.md)：从任务契约、共享状态和冲突处理讲到检查点、接管、补偿与人工介入。
-- [大模型提示词工程](./prompt-engineering.md)：从 Prompt 四要素、常见技巧讲到企业级安全实践。
-- [上下文工程](./context-engineering.md)：掌握静态规则编排、动态信息挂载、Token 预算降级等关键技术。
-- [万字详解 Agent Skills](./skills.md)：理解 Skills 的设计理念，以及 Skills 与 Prompt、MCP、Function Calling 的本质区别。
-- [万字拆解 MCP 协议](./mcp.md)：理解 MCP 协议的核心概念、架构设计和生产级最佳实践。
-- [Harness Engineering：六层检查框架、上下文管理与工程实践](./harness-engineering.md)：拆解 OpenAI、Anthropic、Stripe 等团队在 Agent 工程化上的实践思路。
-- [AI 工作流中的 Workflow、Graph 与 Loop](./workflow-graph-loop.md)：对比传统工作流与 AI 工作流的差异，覆盖 Spring AI Alibaba 和 LangGraph 实现。
-- [Loop Engineering 是什么？为什么说它是新瓶装旧酒？](./loop-engineering.md)：把 Loop Engineering 放回 Agent Loop、Context、Harness、Skills、MCP 和验证闭环里，理解它到底新在哪里。
+- [AI Agent Fundamentals](./agent-basis.md): Traces the evolution of AI agents and explains Agent Loops, context engineering, tool registration, and other fundamentals.
+- [AI Agent Memory](./agent-memory.md): Covers short-term and long-term memory, storage, lifecycle operations, and production engineering.
+- [Multi-Agent System Design](./multi-agent.md): Covers task contracts, shared state, conflict handling, checkpoints, handoffs, compensation, and human intervention.
+- [Prompt Engineering](./prompt-engineering.md): Covers the four elements of a prompt, common techniques, and enterprise security practices.
+- [Context Engineering](./context-engineering.md): Covers static rules, dynamic context, and Token-budget fallbacks.
+- [Agent Skills: A Detailed Guide](./skills.md): Explains the design of skills and how they differ from prompts, MCP, and Function Calling.
+- [A Detailed Look at MCP](./mcp.md): Explains MCP fundamentals, architecture, and production practices.
+- [Harness Engineering](./harness-engineering.md): Reviews agent-engineering practices from teams such as OpenAI, Anthropic, and Stripe.
+- [Workflow, Graph, and Loop in AI Workflows](./workflow-graph-loop.md): Compares traditional and AI workflows, including implementations with Spring AI Alibaba and LangGraph.
+- [What Is Loop Engineering? Is It Just Old Wine in a New Bottle?](./loop-engineering.md): Places Loop Engineering in the context of Agent Loops, context, harnesses, skills, MCP, and verification cycles.
 
-工具调用和评测的完整内容在已有文章中：
+For complete guides to tool calling and evaluation, see:
 
-- [结构化输出与 Function Calling](../llm-basis/structured-output-function-calling.md)：覆盖工具调用完整链路、权限、二次确认、幂等、审计、超时和 Java 示例。
-- [Agent 应用怎么评测](../llm-basis/llm-evaluation.md#agent-应用怎么评测)：覆盖任务完成率、工具调用、执行轨迹、错误恢复和多次运行一致性等指标。
+- [Structured Output and Function Calling](../llm-basis/structured-output-function-calling.md): Covers the full tool-calling lifecycle, permissions, confirmation, idempotency, auditing, timeouts, and Java examples.
+- [How to Evaluate Agent Applications](../llm-basis/llm-evaluation.md#agent-应用怎么评测): Covers task completion, tool calls, execution traces, error recovery, and consistency across repeated runs.
 
-## 高频问题
+## Common Questions
 
-- Agent 和 Workflow、Chatbot、普通工具调用有什么区别？
-- Agent Loop 中观察、规划、行动、反思分别负责什么？
-- Memory 应该存什么、不存什么？如何避免污染和隐私风险？
-- Prompt Engineering 和 Context Engineering 为什么不能混为一谈？
-- MCP、Skills、Function Calling 的边界分别在哪里？
-- 长任务 Agent 如何控制上下文、权限、失败重试和可观测性？
+- How do agents differ from workflows, chatbots, and ordinary tool calls?
+- What roles do observation, planning, action, and reflection play in an Agent Loop?
+- What should memory store or exclude, and how can contamination and privacy risks be reduced?
+- Why should prompt engineering and context engineering be treated separately?
+- Where are the boundaries between MCP, skills, and Function Calling?
+- How can a long-running agent manage context, permissions, retries, and observability?
 
-## 相关专题
+## Related Topics
 
-- [AI 应用开发知识体系](../)
-- [大模型基础专题](../llm-basis/)
-- [RAG 专题](../rag/)
-- [AI 应用开发面试题专题](../interview-questions/)
-- [Agent 项目面试怎么讲？](../interview-questions/agent-project-interview-guide.md)
+- [AI Application Development](../)
+- [LLM Fundamentals](../llm-basis/)
+- [RAG](../rag/)
+- [AI Application Development Interview Questions](../interview-questions/)
+- [How to Present an Agent Project in an Interview](../interview-questions/agent-project-interview-guide.md)
 
-## 总结
+## Summary
 
-Agent 的工程问题会随着任务变长逐步显现：模型要在循环中根据状态做决策，历史信息需要存储和检索，外部工具需要明确的接入、权限与审计规则，失败还要能够回放和处理。
+As agent tasks grow longer, engineering challenges become more visible: the model must make decisions based on state, historical information must be stored and retrieved, external tools need clear integration, permission, and audit rules, and failures must be replayable and recoverable.
 
-阅读时可以先分清 Agent、Workflow 与普通工具调用的职责，再沿着 Prompt、Context、Memory、MCP、Skills 和 Harness 这条链路补齐实现细节。做具体项目时，从可验证的最小闭环开始，根据实际出现的上下文、成本、权限或稳定性问题增加机制即可。
+Start by distinguishing the roles of agents, workflows, and ordinary tool calls. Then follow the chain of prompts, context, memory, MCP, skills, and harnesses to learn the implementation details. For a project, begin with the smallest verifiable loop and add mechanisms as real issues arise with context, cost, permissions, or reliability.
 
 <!-- @include: @article-footer.snippet.md -->

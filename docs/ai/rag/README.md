@@ -1,64 +1,64 @@
 ---
-title: RAG 专题：文档处理、向量数据库、GraphRAG、检索优化与知识库更新
-description: RAG 面试与检索增强生成学习路线，涵盖文档处理、向量数据库、GraphRAG、检索优化、知识库更新和 RAG 评测。
+title: "RAG: Document Processing, Vector Databases, GraphRAG, Retrieval Optimization, and Knowledge-Base Updates"
+description: A learning path for retrieval-augmented generation (RAG), covering document processing, vector databases, GraphRAG, retrieval optimization, knowledge-base updates, and RAG evaluation.
 category: AI
 tag:
   - RAG
-  - 向量数据库
-  - AI 应用开发
+  - Vector Databases
+  - AI Application Development
 sidebar: false
 ---
 
 <!-- @include: @small-advertisement.snippet.md -->
 
-RAG 不只是把文档切块后做向量检索。这份 **RAG 专题** 面向企业知识库问答、智能客服、文档助手和内部搜索等场景，按文档进入系统后的完整链路展开，覆盖解析、清洗、切分、向量化、索引、召回、重排、生成、更新和评测。
+RAG is more than chunking documents and searching their vector embeddings. This **RAG section** covers enterprise knowledge-base Q&A, customer service, document assistants, and internal search. It follows the full document pipeline: parsing, cleaning, chunking, embedding, indexing, retrieval, reranking, generation, updates, and evaluation.
 
-## 适合谁看
+## Who Should Read This?
 
-- 正在学习或落地 RAG 知识库问答的开发者。
-- 做过“文档切块 + 向量检索”Demo，但对召回质量、文档更新、一致性和评测不熟的工程师。
-- 准备 RAG、向量数据库、GraphRAG、企业知识库相关面试题的同学。
+- Developers learning RAG or building knowledge-base Q&A systems.
+- Engineers who have built document-chunking and vector-search demos but want to improve retrieval quality, document updates, consistency, and evaluation.
+- Candidates preparing for interviews about RAG, vector databases, GraphRAG, and enterprise knowledge bases.
 
-## 学习重点
+## Key Concepts
 
-- RAG 的效果问题要分段排查，依次检查文档处理、Chunk、Embedding、召回、Rerank、上下文压缩和生成。
-- 向量数据库选型要结合数据规模、过滤条件、更新频率、延迟要求和运维成本。
-- GraphRAG 更适合实体关系强、全局问题多、需要跨文档推理的场景。
-- 知识库更新除了覆盖新文件，还要处理版本控制、内容去重、增量索引、回滚和灰度。
-- RAG 评测要同时看检索指标和生成指标，不能只凭最终回答是否通顺来判断。
+- Diagnose RAG quality stage by stage: document processing, chunking, embeddings, retrieval, reranking, context compression, and generation.
+- Choose a vector database based on data volume, filtering requirements, update frequency, latency, and operational cost.
+- GraphRAG is better suited to domains with strong entity relationships, global questions, and cross-document reasoning.
+- Knowledge-base updates require more than replacing files; consider versioning, deduplication, incremental indexing, rollback, and canary releases.
+- RAG evaluation must include both retrieval and generation metrics; a fluent final answer alone is not sufficient.
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [RAG 基础概念：检索、生成与工程取舍](./rag-basis.md)，先理解 RAG 的核心流程、优势和局限。
-2. [RAG 文档处理与切分策略](./rag-document-processing.md)，理解文档进入索引前的处理链路。
-3. [RAG 向量索引算法和向量数据库](./rag-vector-store.md)，补齐向量索引和数据库选型基础。
-4. [RAG 优化：从召回、重排到上下文工程](./rag-optimization.md)，掌握召回、重排、改写和上下文压缩。
-5. [GraphRAG：用图结构补充向量检索](./graphrag.md)、[RAG 知识库文档更新策略](./rag-knowledge-update.md)，进一步理解复杂知识组织和持续更新。
+1. [RAG Fundamentals: Retrieval, Generation, and Engineering Trade-offs](./rag-basis.md): Understand the core workflow, benefits, and limitations.
+2. [RAG Document Processing and Chunking Strategies](./rag-document-processing.md): Learn how documents are processed before indexing.
+3. [RAG Vector Indexes and Vector Databases](./rag-vector-store.md): Review vector indexes and database selection.
+4. [RAG Optimization: Retrieval, Reranking, and Context Engineering](./rag-optimization.md): Learn retrieval, reranking, query rewriting, and context compression.
+5. Continue with [GraphRAG: Adding Graph Structure to Vector Search](./graphrag.md) and [RAG Knowledge-Base Update Strategies](./rag-knowledge-update.md) to study complex knowledge organization and continuous updates.
 
-## 核心文章
+## Core Guides
 
-- [RAG 基础概念：检索、生成与工程取舍](./rag-basis.md)（工作流程、Embedding、相似度度量，以及与传统搜索、微调、长上下文的边界）
-- [RAG 文档处理与切分策略](./rag-document-processing.md)（文件解析、结构还原、Chunking 策略、分层校验与多模态内容处理）
-- [RAG 向量索引算法和向量数据库](./rag-vector-store.md)（HNSW、IVFFLAT 等 ANN 索引原理与 pgvector 实践）
-- [RAG 优化：从召回、重排到上下文工程](./rag-optimization.md)（Hybrid Search、Query Rewrite、Rerank、上下文压缩与坏例排查）
-- [GraphRAG：用图结构补充向量检索](./graphrag.md)（实体关系抽取、社区发现、Local/Global Search 与 Neo4j 方案）
-- [RAG 知识库文档更新策略](./rag-knowledge-update.md)（增量同步、版本切换、幂等去重、全量重建与灰度回滚）
+- [RAG Fundamentals: Retrieval, Generation, and Engineering Trade-offs](./rag-basis.md) (workflow, embeddings, similarity measures, and boundaries with traditional search, fine-tuning, and long contexts)
+- [RAG Document Processing and Chunking Strategies](./rag-document-processing.md) (file parsing, structure recovery, chunking, layered validation, and multimodal content)
+- [RAG Vector Indexes and Vector Databases](./rag-vector-store.md) (ANN indexes such as HNSW and IVFFlat, and pgvector in practice)
+- [RAG Optimization: Retrieval, Reranking, and Context Engineering](./rag-optimization.md) (hybrid search, query rewriting, reranking, context compression, and bad-case analysis)
+- [GraphRAG: Adding Graph Structure to Vector Search](./graphrag.md) (entity and relationship extraction, community detection, local and global search, and Neo4j)
+- [RAG Knowledge-Base Update Strategies](./rag-knowledge-update.md) (incremental synchronization, version switching, idempotent deduplication, full rebuilds, and canary rollback)
 
-## 高频问题
+## Common Questions
 
-- RAG 为什么还会幻觉？应该从哪些环节排查？
-- Chunk 切大还是切小？如何处理标题、表格、代码块和多模态内容？
-- 向量检索、关键词检索、混合检索分别适合什么场景？
-- Rerank 的作用是什么？什么时候值得引入？
-- GraphRAG 和普通 RAG 有什么区别？
-- 知识库更新如何保证一致性、可回滚和不停机？
-- RAG 应用如何评测召回质量和最终回答质量？
+- Why can RAG still hallucinate, and which stages should be investigated?
+- Should chunks be large or small? How should headings, tables, code blocks, and multimodal content be handled?
+- Which use cases suit vector search, keyword search, and hybrid search?
+- What does reranking do, and when is it worth adding?
+- How does GraphRAG differ from standard RAG?
+- How can knowledge-base updates preserve consistency, support rollback, and avoid downtime?
+- How should retrieval quality and final-answer quality be evaluated in a RAG application?
 
-## 相关专题
+## Related Topics
 
-- [AI 应用开发知识体系](../)
-- [大模型基础专题](../llm-basis/)
-- [AI Agent 专题](../agent/)
-- [AI 应用开发面试题专题](../interview-questions/)
+- [AI Application Development](../)
+- [LLM Fundamentals](../llm-basis/)
+- [AI Agent Guides](../agent/)
+- [AI Application Development Interview Questions](../interview-questions/)
 
 <!-- @include: @article-footer.snippet.md -->

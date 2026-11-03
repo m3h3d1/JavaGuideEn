@@ -1,83 +1,83 @@
 ---
-title: ZooKeeper 实战教程：Docker 部署、zkCli 命令、四字命令与 Curator 客户端
-category: 分布式
-description: ZooKeeper 实战教程，涵盖 Docker 安装部署、zkCli 常用命令、四字命令、Curator Java 客户端 CRUD 操作，以及基于 ZooKeeper 的分布式锁示例。
+title: "ZooKeeper in Practice: Docker, zkCli, Four-Letter Commands, and Curator"
+category: Distributed Systems
+description: A practical ZooKeeper guide covering Docker deployment, zkCli, four-letter commands, Curator CRUD operations, and distributed locks.
 tag:
   - ZooKeeper
 head:
   - - meta
     - name: keywords
-      content: ZooKeeper,ZooKeeper 实战,ZooKeeper 安装,zkCli,Curator,四字命令,Docker 部署,分布式锁,ZooKeeper 教程
+      content: ZooKeeper,ZooKeeper tutorial,installation,zkCli,Curator,four-letter commands,Docker,distributed locks
 ---
 
-这篇文章简单给演示一下 ZooKeeper 常见命令的使用以及 ZooKeeper Java 客户端 Curator 的基本使用。介绍到的内容都是最基本的操作，能满足日常工作的基本需要。
+This guide demonstrates common ZooKeeper commands and basic use of the Curator Java client. These operations cover everyday needs.
 
-这篇偏实践，不负责解释 ZooKeeper 为什么能做协调。建议先看 [ZooKeeper 入门指南](./zookeeper-intro.md) 了解 ZNode、Watcher、Session，再看 [ZooKeeper 进阶详解](./zookeeper-plus.md) 或 [ZAB 协议详解](../../protocol/zab.md) 补协议和集群机制。
+This is a practical guide. For ZNodes, Watchers, and sessions, start with [ZooKeeper Fundamentals](./zookeeper-intro.md); then read [Advanced ZooKeeper](./zookeeper-plus.md) or [ZAB Explained](../../protocol/zab.md) for protocol and cluster details.
 
-如果文章有任何需要改善和完善的地方，欢迎在评论区指出，共同进步！
+Suggestions for improvements are welcome in the comments.
 
-## ZooKeeper 安装
+## Installing ZooKeeper
 
-### 使用 Docker 安装 zookeeper
+### Install ZooKeeper with Docker
 
-**a.使用 Docker 下载 ZooKeeper**
+**a. Download ZooKeeper with Docker**
 
 ```shell
 docker pull zookeeper:3.5.8
 ```
 
-**b.运行 ZooKeeper**
+**b. Run ZooKeeper**
 
 ```shell
 docker run -d --name zookeeper -p 2181:2181 zookeeper:3.5.8
 ```
 
-### 连接 ZooKeeper 服务
+### Connect to ZooKeeper
 
-**a.进入 ZooKeeper 容器中**
+**a. Enter the ZooKeeper container**
 
-先使用 `docker ps` 查看 ZooKeeper 的 ContainerID，然后使用 `docker exec -it ContainerID /bin/bash` 命令进入容器中。
+Use `docker ps` to find the ZooKeeper container ID, then enter it with `docker exec -it ContainerID /bin/bash`.
 
-**b.先进入 bin 目录,然后通过 `./zkCli.sh -server 127.0.0.1:2181`命令连接 ZooKeeper 服务**
+**b. Enter the bin directory, then connect with `./zkCli.sh -server 127.0.0.1:2181`**
 
 ```bash
 root@eaf70fc620cb:/apache-zookeeper-3.5.8-bin# cd bin
 ```
 
-如果你看到控制台成功打印出如下信息的话，说明你已经成功连接 ZooKeeper 服务。
+The following console output indicates a successful connection.
 
-![连接 ZooKeeper 服务](../../images/shared/connect-zookeeper-service.png)
+![Connecting to ZooKeeper](../../images/shared/connect-zookeeper-service.png)
 
-## ZooKeeper 常用命令演示
+## Common ZooKeeper commands
 
-### 查看常用命令(help 命令)
+### Show commands with `help`
 
-通过 `help` 命令查看 ZooKeeper 常用命令
+Use `help` to list common ZooKeeper commands.
 
-### 创建节点(create 命令)
+### Create a node with `create`
 
-通过 `create` 命令在根目录创建了 node1 节点，与它关联的字符串是"node1"
+Create `/node1` with the associated string `node1`:
 
 ```shell
 [zk: 127.0.0.1:2181(CONNECTED) 34] create /node1 “node1”
 ```
 
-通过 `create` 命令在根目录创建了 node1 节点，与它关联的内容是数字 123
+Create the child node `/node1/node1.1` with the value `123`:
 
 ```shell
 [zk: 127.0.0.1:2181(CONNECTED) 1] create /node1/node1.1 123
 Created /node1/node1.1
 ```
 
-### 更新节点数据内容(set 命令)
+### Update node data with `set`
 
 ```shell
 [zk: 127.0.0.1:2181(CONNECTED) 11] set /node1 "set node1"
 ```
 
-### 获取节点的数据(get 命令)
+### Read node data with `get`
 
-`get` 命令可以获取指定节点的数据内容和节点的状态,可以看出我们通过 `set` 命令已经将节点数据内容改为 "set node1"。
+`get` returns a node’s data and status. The earlier `set` command changed the data to `set node1`.
 
 ```shell
 [zk: zookeeper(CONNECTED) 12] get -s /node1
@@ -96,27 +96,27 @@ numChildren = 1
 
 ```
 
-### 查看某个目录下的子节点(ls 命令)
+### List child nodes with `ls`
 
-通过 `ls` 命令查看根目录下的节点
+List nodes under the root:
 
 ```shell
 [zk: 127.0.0.1:2181(CONNECTED) 37] ls /
 [dubbo, ZooKeeper, node1]
 ```
 
-通过 `ls` 命令查看 node1 目录下的节点
+List nodes under `/node1`:
 
 ```shell
 [zk: 127.0.0.1:2181(CONNECTED) 5] ls /node1
 [node1.1]
 ```
 
-ZooKeeper 中的 ls 命令和 linux 命令中的 ls 类似， 这个命令将列出绝对路径 path 下的所有子节点信息（列出 1 级，并不递归）
+Like Linux `ls`, ZooKeeper `ls` lists the immediate children of an absolute path; it does not recurse.
 
-### 查看节点状态(stat 命令)
+### View node status with `stat`
 
-通过 `stat` 命令查看节点状态
+Use `stat` to inspect a node:
 
 ```shell
 [zk: 127.0.0.1:2181(CONNECTED) 10] stat /node1
@@ -133,14 +133,14 @@ dataLength = 11
 numChildren = 1
 ```
 
-上面显示的一些信息比如 cversion、aclVersion、numChildren 等等，我在上面 “[ZooKeeper 相关概念总结(入门)](https://javaguide.cn/distributed-system/distributed-process-coordination/zookeeper/zookeeper-intro.html)” 这篇文章中已经介绍到。
+Fields such as `cversion`, `aclVersion`, and `numChildren` are explained in [ZooKeeper Fundamentals](https://javaguide.cn/distributed-system/distributed-process-coordination/zookeeper/zookeeper-intro.html).
 
-### 查看节点信息和状态(ls2 命令)
+### List children and status with `ls2`
 
-`ls2` 命令更像是 `ls` 命令和 `stat` 命令的结合。 `ls2` 命令返回的信息包括 2 部分：
+`ls2` combines `ls` and `stat`, returning:
 
-1. 子节点列表
-2. 当前节点的 stat 信息。
+1. The child node list.
+2. The current node’s status.
 
 ```shell
 [zk: 127.0.0.1:2181(CONNECTED) 7] ls2 /node1
@@ -159,25 +159,25 @@ numChildren = 1
 
 ```
 
-### 删除节点(delete 命令)
+### Delete a node with `delete`
 
-这个命令很简单，但是需要注意的一点是如果你要删除某一个节点，那么这个节点必须无子节点才行。
+The node must have no children before it can be deleted.
 
 ```shell
 [zk: 127.0.0.1:2181(CONNECTED) 3] delete /node1/node1.1
 ```
 
-在后面我会介绍到 Java 客户端 API 的使用以及开源 ZooKeeper 客户端 ZkClient 和 Curator 的使用。
+The following section introduces the Java client API and the open-source Curator client; ZkClient is another available client.
 
-## ZooKeeper Java 客户端 Curator 简单使用
+## Using the Curator Java client
 
-Curator 是 Netflix 公司开源的一套 ZooKeeper Java 客户端框架，相比于 Zookeeper 自带的客户端 zookeeper 来说，Curator 的封装更加完善，各种 API 都可以比较方便地使用。
+Curator is a ZooKeeper Java client framework open-sourced by Netflix. It provides higher-level wrappers and convenient APIs compared with the native client.
 
 ![](../../images/shared/curator.png)
 
-下面我们就来简单地演示一下 Curator 的使用吧！
+The following examples demonstrate basic Curator operations.
 
-Curator4.0+版本对 ZooKeeper 3.5.x 支持比较好。开始之前，请先将下面的依赖添加进你的项目。
+Curator 4.0+ supports ZooKeeper 3.5.x. Add these dependencies before starting:
 
 ```xml
 <dependency>
@@ -192,9 +192,9 @@ Curator4.0+版本对 ZooKeeper 3.5.x 支持比较好。开始之前，请先将�
 </dependency>
 ```
 
-### 连接 ZooKeeper 客户端
+### Connect the client
 
-通过 `CuratorFrameworkFactory` 创建 `CuratorFramework` 对象，然后再调用 `CuratorFramework` 对象的 `start()` 方法即可！
+Create a `CuratorFramework` with `CuratorFrameworkFactory`, then call `start()`:
 
 ```java
 private static final int BASE_SLEEP_TIME = 1000;
@@ -210,92 +210,92 @@ CuratorFramework zkClient = CuratorFrameworkFactory.builder()
 zkClient.start();
 ```
 
-对于一些基本参数的说明：
+Key parameters:
 
-- `baseSleepTimeMs`：重试之间等待的初始时间
-- `maxRetries`：最大重试次数
-- `connectString`：要连接的服务器列表
-- `retryPolicy`：重试策略
+- `baseSleepTimeMs`：Initial delay between retries
+- `maxRetries`：Maximum retry count
+- `connectString`：Server list
+- `retryPolicy`：Retry policy
 
-### 数据节点的增删改查
+### Create, read, update, and delete nodes
 
-#### 创建节点
+#### Create nodes
 
-我们在 [ZooKeeper 常见概念解读](./zookeeper-intro.md) 中介绍到，我们通常是将 znode 分为 4 大类：
+[ZooKeeper Fundamentals](./zookeeper-intro.md) describes four common znode types:
 
-- **持久（PERSISTENT）节点**：一旦创建就一直存在即使 ZooKeeper 集群宕机，直到将其删除。
-- **临时（EPHEMERAL）节点**：临时节点的生命周期是与 **客户端会话（session）** 绑定的，**会话消失则节点消失** 。并且，临时节点 **只能做叶子节点** ，不能创建子节点。
-- **持久顺序（PERSISTENT_SEQUENTIAL）节点**：除了具有持久（PERSISTENT）节点的特性之外， 子节点的名称还具有顺序性。比如 `/node1/app0000000001`、`/node1/app0000000002` 。
-- **临时顺序（EPHEMERAL_SEQUENTIAL）节点**：除了具备临时（EPHEMERAL）节点的特性之外，子节点的名称还具有顺序性。
+- **Persistent (`PERSISTENT`):** Remains until deleted, even if the cluster stops.
+- **Ephemeral (`EPHEMERAL`):** Bound to the client session and removed when that session ends. Ephemeral nodes must be leaves and cannot have children.
+- **Persistent sequential (`PERSISTENT_SEQUENTIAL`):** Persistent, with sequential child names such as `/node1/app0000000001` and `/node1/app0000000002`.
+- **Ephemeral sequential (`EPHEMERAL_SEQUENTIAL`):** Ephemeral, with sequential child names.
 
-你在使用的 ZooKeeper 的时候，会发现 `CreateMode` 类中实际有 7 种 znode 类型 ，但是用的最多的还是上面介绍的 4 种。
+`CreateMode` contains seven znode types; these four are the most common.
 
-**a.创建持久化节点**
+**a. Create persistent nodes**
 
-你可以通过下面两种方式创建持久化的节点。
+Either of these calls creates a persistent node:
 
 ```java
-//注意:下面的代码会报错，下文说了具体原因
+//Note: these calls fail for the reason explained below.
 zkClient.create().forPath("/node1/00001");
 zkClient.create().withMode(CreateMode.PERSISTENT).forPath("/node1/00002");
 ```
 
-但是，你运行上面的代码会报错，这是因为的父节点`node1`还未创建。
+These calls fail if the parent `/node1` has not been created.
 
-你可以先创建父节点 `node1` ，然后再执行上面的代码就不会报错了。
+Create the parent first:
 
 ```java
 zkClient.create().forPath("/node1");
 ```
 
-更推荐的方式是通过下面这行代码， **`creatingParentsIfNeeded()` 可以保证父节点不存在的时候自动创建父节点，这是非常有用的。**
+Alternatively, **`creatingParentsIfNeeded()` creates missing parent nodes automatically**:
 
 ```java
 zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath("/node1/00001");
 ```
 
-**b.创建临时节点**
+**b. Create an ephemeral node**
 
 ```java
 zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL).forPath("/node1/00001");
 ```
 
-**c.创建节点并指定数据内容**
+**c. Create a node with data**
 
 ```java
 zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL).forPath("/node1/00001","java".getBytes());
-zkClient.getData().forPath("/node1/00001");//获取节点的数据内容，获取到的是 byte数组
+zkClient.getData().forPath("/node1/00001");//Read the node data as a byte array.
 ```
 
-**d.检测节点是否创建成功**
+**d. Check whether creation succeeded**
 
 ```java
-zkClient.checkExists().forPath("/node1/00001");//不为null的话，说明节点创建成功
+zkClient.checkExists().forPath("/node1/00001");//A non-null result indicates that the node exists.
 ```
 
-#### 删除节点
+#### Delete nodes
 
-**a.删除一个子节点**
+**a. Delete a child node**
 
 ```java
 zkClient.delete().forPath("/node1/00001");
 ```
 
-**b.删除一个节点以及其下的所有子节点**
+**b. Delete a node and its children**
 
 ```java
 zkClient.delete().deletingChildrenIfNeeded().forPath("/node1");
 ```
 
-#### 获取/更新节点数据内容
+#### Read and update node data
 
 ```java
 zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.EPHEMERAL).forPath("/node1/00001","java".getBytes());
-zkClient.getData().forPath("/node1/00001");//获取节点的数据内容
-zkClient.setData().forPath("/node1/00001","c++".getBytes());//更新节点数据内容
+zkClient.getData().forPath("/node1/00001");//Read node data.
+zkClient.setData().forPath("/node1/00001","c++".getBytes());//Update node data.
 ```
 
-#### 获取某个节点的所有子节点路径
+#### Get child paths
 
 ```java
 List<String> childrenPaths = zkClient.getChildren().forPath("/node1");

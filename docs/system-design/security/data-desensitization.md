@@ -1,96 +1,96 @@
 ---
-title: 数据脱敏方案总结
-description: 数据脱敏方案详解，涵盖手机号、身份证、银行卡等敏感数据的脱敏规则及Hutool工具实现方法。
-category: 系统设计
+title: A Guide to Data Masking
+description: An overview of data masking rules for sensitive information such as phone numbers, national ID numbers, and bank cards, with implementation examples using Hutool.
+category: System Design
 tag:
-  - 安全
+  - Security
 head:
   - - meta
     - name: keywords
-      content: 数据脱敏,隐私保护,手机号脱敏,身份证脱敏,掩码规则,敏感数据,测试数据,合规
+      content: data masking,privacy protection,phone number masking,identity number masking,masking rules,sensitive data,test data,compliance
 ---
 
 <!-- @include: @article-header.snippet.md -->
 
-> 本文转载完善自[Hutool：一行代码搞定数据脱敏 - 京东云开发者](https://mp.weixin.qq.com/s/1qFWczesU50ndPPLtABHFg)。
+> Adapted from [Hutool: Mask Data in One Line - JD Cloud Developer](https://mp.weixin.qq.com/s/1qFWczesU50ndPPLtABHFg).
 
-## 什么是数据脱敏
+## What Is Data Masking?
 
-### 数据脱敏的定义
+### Definition
 
-数据脱敏百度百科中是这样定义的：
+The Baidu Encyclopedia defines data masking as follows:
 
-> 数据脱敏，指对某些敏感信息通过脱敏规则进行数据的变形，实现敏感隐私数据的可靠保护。这样就可以在开发、测试和其它非生产环境以及外包环境中安全地使用脱敏后的真实数据集。在涉及客户安全数据或者一些商业性敏感数据的情况下，在不违反系统规则条件下，对真实数据进行改造并提供测试使用，如身份证号、手机号、卡号、客户号等个人信息都需要进行数据脱敏。是数据库安全技术之一。
+> Data masking transforms sensitive information according to masking rules to protect private data. This allows masked production datasets to be used safely in development, testing, other non-production environments, and outsourced environments. When customer or commercial data is involved, real data such as identity numbers, phone numbers, card numbers, and customer IDs must be transformed for testing without violating system rules. Data masking is a database security technique.
 
-总的来说，数据脱敏是指对某些敏感信息通过脱敏规则进行数据的变形，实现敏感隐私数据的可靠保护。
+In short, data masking transforms sensitive information according to defined rules to protect private data.
 
-在数据脱敏过程中，通常会采用不同的算法和技术，以根据不同的需求和场景对数据进行处理。例如，对于身份证号码，可以使用掩码算法（masking）将前几位数字保留，其他位用 “X” 或 "\*" 代替；对于姓名，可以使用伪造（pseudonymization）算法，将真实姓名替换成随机生成的假名。
+Data masking uses different algorithms and techniques for different needs. For example, a masking algorithm can preserve the first few digits of an identity number and replace the rest with “X” or “\*”. Pseudonymization can replace a real name with a randomly generated alias.
 
-### 常用脱敏规则
+### Common Masking Rules
 
-常用脱敏规则是为了保护敏感数据的安全性，在处理和存储敏感数据时对其进行变换或修改。
+Masking rules transform or modify sensitive data during processing or storage to protect it.
 
-下面是几种常见的脱敏规则：
+Common rules include:
 
-- 替换(常用)：将敏感数据中的特定字符或字符序列替换为其他字符。例如，将信用卡号中的中间几位数字替换为星号（\*）或其他字符。
-- 删除：将敏感数据中的部分内容随机删除。比如，将电话号码的随机 3 位数字进行删除。
-- 重排：将原始数据中的某些字符或字段的顺序打乱。例如，将身份证号码的随机位交错互换。
-- 加噪：在数据中注入一些误差或者噪音，达到对数据脱敏的效果。例如，在敏感数据中添加一些随机生成的字符。
-- 加密或令牌化（常用）：需要恢复原文时，可以使用带完整性保护的加密算法；不需要恢复原文时，可以根据用途选择截断、令牌化或带独立密钥的 HMAC。MD5、SHA-256 等哈希函数不是加密算法，直接对银行卡号这类结构化数据做无密钥哈希还可能被枚举。常见加密算法总结可以参考这篇文章：<https://javaguide.cn/system-design/security/encryption-algorithms.html> 。
+- **Replacement (common):** Replace specific characters or sequences in sensitive data. For example, replace the middle digits of a credit card number with asterisks (\*) or another character.
+- **Deletion:** Remove part of the sensitive data, such as three randomly selected digits from a phone number.
+- **Shuffling:** Change the order of selected characters or fields, such as swapping randomly selected digits in an identity number.
+- **Noise injection:** Add errors or noise to data, for example by inserting randomly generated characters.
+- **Encryption or tokenization (common):** If the original value must be recoverable, use encryption with integrity protection. If not, choose truncation, tokenization, or HMAC with a separate key, depending on the use case. MD5 and SHA-256 are hash functions, not encryption algorithms. Unkeyed hashes of structured data such as bank card numbers can also be enumerated. See [Common Cryptographic Algorithms](https://javaguide.cn/system-design/security/encryption-algorithms.html).
 - ……
 
-## 常用脱敏工具
+## Common Data Masking Tools
 
 ### Hutool
 
-Hutool 一个 Java 基础工具类，对文件、流、加密解密、转码、正则、线程、XML 等 JDK 方法进行封装，组成各种 Util 工具类，同时提供以下组件：
+Hutool is a Java utility library that wraps JDK functionality for files, streams, encryption and decryption, encoding, regular expressions, threads, and XML. It also provides these modules:
 
-|        模块        |                                     介绍                                      |
-| :----------------: | :---------------------------------------------------------------------------: |
-|     hutool-aop     |                   JDK 动态代理封装，提供非 IOC 下的切面支持                   |
-| hutool-bloomFilter |                    布隆过滤，提供一些 Hash 算法的布隆过滤                     |
-|    hutool-cache    |                                 简单缓存实现                                  |
-|    hutool-core     |                   核心，包括 Bean 操作、日期、各种 Util 等                    |
-|    hutool-cron     |                 定时任务模块，提供类 Crontab 表达式的定时任务                 |
-|   hutool-crypto    |                 加密解密模块，提供对称、非对称和摘要算法封装                  |
-|     hutool-db      |                 JDBC 封装后的数据操作，基于 ActiveRecord 思想                 |
-|     hutool-dfa     |                          基于 DFA 模型的多关键字查找                          |
-|    hutool-extra    | 扩展模块，对第三方封装（模板引擎、邮件、Servlet、二维码、Emoji、FTP、分词等） |
-|    hutool-http     |                   基于 HttpUrlConnection 的 Http 客户端封装                   |
-|     hutool-log     |                          自动识别日志实现的日志门面                           |
-|   hutool-script    |                         脚本执行封装，例如 Javascript                         |
-|   hutool-setting   |                功能更强大的 Setting 配置文件和 Properties 封装                |
-|   hutool-system    |                        系统参数调用封装（JVM 信息等）                         |
-|    hutool-json     |                                   JSON 实现                                   |
-|   hutool-captcha   |                                图片验证码实现                                 |
-|     hutool-poi     |                       针对 POI 中 Excel 和 Word 的封装                        |
-|   hutool-socket    |                    基于 Java 的 NIO 和 AIO 的 Socket 封装                     |
-|     hutool-jwt     |                         JSON Web Token (JWT) 封装实现                         |
+|        Module        | Description                                                                                                     |
+| :------------------: | :-------------------------------------------------------------------------------------------------------------- |
+|     `hutool-aop`     | Wraps JDK dynamic proxies and provides AOP support without an IoC container                                     |
+| `hutool-bloomFilter` | Bloom filters using several hash algorithms                                                                     |
+|    `hutool-cache`    | Simple cache implementations                                                                                    |
+|    `hutool-core`     | Core utilities, including bean handling and date utilities                                                      |
+|    `hutool-cron`     | Scheduled tasks with Crontab-like expressions                                                                   |
+|   `hutool-crypto`    | Wrappers for symmetric, asymmetric, and digest algorithms                                                       |
+|     `hutool-db`      | JDBC data access based on the ActiveRecord pattern                                                              |
+|     `hutool-dfa`     | Multi-keyword search based on a DFA model                                                                       |
+|    `hutool-extra`    | Wrappers for third-party tools such as template engines, email, Servlet, QR codes, emoji, FTP, and tokenization |
+|    `hutool-http`     | HTTP client built on `HttpURLConnection`                                                                        |
+|     `hutool-log`     | Logging facade that detects the available logging implementation                                                |
+|   `hutool-script`    | Script execution, such as JavaScript                                                                            |
+|   `hutool-setting`   | Enhanced support for Setting and Properties configuration files                                                 |
+|   `hutool-system`    | Access to system properties such as JVM information                                                             |
+|    `hutool-json`     | JSON support                                                                                                    |
+|   `hutool-captcha`   | Image CAPTCHA generation                                                                                        |
+|     `hutool-poi`     | Wrappers for Excel and Word support in POI                                                                      |
+|   `hutool-socket`    | Java NIO and AIO socket wrappers                                                                                |
+|     `hutool-jwt`     | JSON Web Token (JWT) implementation wrappers                                                                    |
 
-可以根据需求对每个模块单独引入，也可以通过引入`hutool-all`方式引入所有模块，本文所使用的数据脱敏工具就是在 `hutool.core` 模块。
+Add individual modules as needed, or include them all with `hutool-all`. The data-masking utility used in this article is in the `hutool-core` module.
 
-现阶段最新版本的 Hutool 支持的脱敏数据类型如下，基本覆盖了常见的敏感信息。
+The current Hutool version supports masking these types of data, covering most common sensitive information:
 
-1. 用户 id
-2. 中文姓名
-3. 身份证号
-4. 座机号
-5. 手机号
-6. 地址
-7. 电子邮件
-8. 密码
-9. 中国大陆车牌，包含普通车辆、新能源车辆
-10. 银行卡
+1. User IDs.
+2. Chinese names.
+3. Identity numbers.
+4. Landline numbers.
+5. Mobile phone numbers.
+6. Addresses.
+7. Email addresses.
+8. Passwords.
+9. Mainland China license plates, including standard and new-energy vehicles.
+10. Bank card numbers.
 
-#### 一行代码实现脱敏
+#### Mask Data in One Line
 
-Hutool 提供的脱敏方法如下图所示：
+Hutool provides the masking methods shown below:
 
 ![](../images/shared/2023-08-01-10-2119fnvcidozqhgrgx.png)
 
-注意：Hutool 脱敏是通过 \* 来代替敏感信息的，具体实现是在 StrUtil.hide 方法中，如果我们想要自定义隐藏符号，则可以把 Hutool 的源码拷出来，重新实现即可。
+Hutool replaces sensitive characters with `*`. This is implemented by `StrUtil.hide`. To use a different masking character, copy and adapt the relevant Hutool source code.
 
-这里以手机号、银行卡号、身份证号、密码信息的脱敏为例，下面是对应的测试代码。
+The following test code demonstrates masking phone numbers, bank card numbers, identity numbers, and passwords.
 
 ```java
 import cn.hutool.core.util.DesensitizedUtil;
@@ -99,7 +99,7 @@ import org.springframework.boot.test.context.Spring BootTest;
 
 /**
  *
- * @description: Hutool实现数据脱敏
+ * @description: Data masking with Hutool
  */
 @Spring BootTest
 public class HuToolDesensitizationTest {
@@ -107,79 +107,79 @@ public class HuToolDesensitizationTest {
     @Test
     public void testPhoneDesensitization(){
         String phone="13723231234";
-        System.out.println(DesensitizedUtil.mobilePhone(phone)); //输出：137****1234
+        System.out.println(DesensitizedUtil.mobilePhone(phone)); // Output: 137****1234
     }
     @Test
     public void testBankCardDesensitization(){
         String bankCard="6217000130008255666";
-        System.out.println(DesensitizedUtil.bankCard(bankCard)); //输出：6217 **** **** *** 5666
+        System.out.println(DesensitizedUtil.bankCard(bankCard)); // Output: 6217 **** **** *** 5666
     }
 
     @Test
     public void testIdCardNumDesensitization(){
         String idCardNum="411021199901102321";
-        //只显示前4位和后2位
-        System.out.println(DesensitizedUtil.idCardNum(idCardNum,4,2)); //输出：4110************21
+        // Show only the first four and last two digits
+        System.out.println(DesensitizedUtil.idCardNum(idCardNum,4,2)); // Output: 4110************21
     }
     @Test
     public void testPasswordDesensitization(){
         String password="www.jd.com_35711";
-        System.out.println(DesensitizedUtil.password(password)); //输出：****************
+        System.out.println(DesensitizedUtil.password(password)); // Output: ****************
     }
 }
 ```
 
-以上就是使用 Hutool 封装好的工具类实现数据脱敏。
+This demonstrates data masking with Hutool's utility classes.
 
-需要特别注意：密码不属于“脱敏后还可以继续展示或存储”的普通字段。密码应在服务端入口尽快使用专门的密码哈希算法处理，不能明文存储、返回或记录到日志中。这里的 `password()` 只表示把字符串全部替换为 `*`，不能替代密码哈希。
+Note that a password is not an ordinary field that can be displayed or stored after masking. Hash passwords with a dedicated password-hashing algorithm as early as possible on the server; never store, return, or log them in plaintext. The `password()` method shown here only replaces every character with `*` and is not a substitute for password hashing.
 
-#### 配合 JackSon 通过注解方式实现脱敏
+#### Mask Data with Jackson Annotations
 
-现在有了数据脱敏工具类，如果前端需要显示数据数据的地方比较多，我们不可能在每个地方都调用一个工具类，这样就显得代码太冗余了，那我们如何通过注解的方式优雅的完成数据脱敏呢？
+If many parts of the frontend need to display masked data, calling a utility method at each site creates duplication. An annotation can provide a cleaner approach.
 
-如果项目是基于 Spring Boot 的 web 项目，则可以利用 Spring Boot 自带的 jackson 自定义序列化实现。它的实现原理其实就是在 json 进行序列化渲染给前端时，进行脱敏。
+In a Spring Boot web application, use Jackson's custom serialization support. The serializer masks values while converting them to JSON for the frontend.
 
-**第一步：脱敏策略的枚举。**
+**Step 1: Define an enum for masking strategies.**
 
 ```java
 /**
  * @author
- * @description:脱敏策略枚举
+ * @description: Masking strategy enum
  */
 public enum DesensitizationTypeEnum {
-    //自定义
+    // Custom rule
     MY_RULE,
-    //用户id
+    // User ID
     USER_ID,
-    //中文名
+    // Chinese name
     CHINESE_NAME,
-    //身份证号
+    // Identity number
     ID_CARD,
-    //座机号
+    // Landline number
     FIXED_PHONE,
-    //手机号
+    // Mobile phone number
     MOBILE_PHONE,
-    //地址
+    // Address
     ADDRESS,
-    //电子邮件
+    // Email address
     EMAIL,
-    //密码
+    // Password
     PASSWORD,
-    //中国大陆车牌，包含普通车辆、新能源车辆
+    // Mainland China license plate, including standard and new-energy vehicles
     CAR_LICENSE,
-    //银行卡
+    // Bank card number
     BANK_CARD
 }
 ```
 
-上面表示支持的脱敏类型。
+These are the supported masking types.
 
-**第二步：定义一个用于脱敏的 Desensitization 注解。**
+**Step 2: Define a `Desensitization` annotation.**
 
-- `@Retention (RetentionPolicy.RUNTIME)`：运行时生效。
-- `@Target (ElementType.FIELD)`：可用在字段上。
-- `@JacksonAnnotationsInside`：此注解可以点进去看一下是一个元注解，主要是用户打包其他注解一起使用。
-- `@JsonSerialize`：上面说到过，该注解的作用就是可自定义序列化，可以用在注解上，方法上，字段上，类上，运行时生效等等，根据提供的序列化类里面的重写方法实现自定义序列化。
+- `@Retention(RetentionPolicy.RUNTIME)`: Makes the annotation available at runtime.
+- `@Target(ElementType.FIELD)`: Allows the annotation on fields.
+- `@JacksonAnnotationsInside`: A meta-annotation that lets you combine other annotations.
+- `@JsonSerialize`: Enables custom serialization. It can be applied to annotations, methods, fields, or classes; the serializer's overridden methods define the behavior.
 
 ```java
 /**
@@ -191,32 +191,32 @@ public enum DesensitizationTypeEnum {
 @JsonSerialize(using = DesensitizationSerialize.class)
 public @interface Desensitization {
     /**
-     * 脱敏数据类型，在MY_RULE的时候，startInclude和endExclude生效
+     * Data masking type. startInclude and endExclude apply to MY_RULE.
      */
     DesensitizationTypeEnum type() default DesensitizationTypeEnum.MY_RULE;
 
     /**
-     * 脱敏开始位置（包含）
+     * Inclusive start position for masking
      */
     int startInclude() default 0;
 
     /**
-     * 脱敏结束位置（不包含）
+     * Exclusive end position for masking
      */
     int endExclude() default 0;
 }
 ```
 
-注：只有使用了自定义的脱敏枚举 `MY_RULE` 的时候，开始位置和结束位置才生效。
+Note: The start and end positions apply only when the custom `MY_RULE` strategy is used.
 
-**第三步：创建自定的序列化类**
+**Step 3: Create a custom serializer.**
 
-这一步是我们实现数据脱敏的关键。自定义序列化类继承 `JsonSerializer`，实现 `ContextualSerializer` 接口，并重写两个方法。
+This is the key step. The custom serializer extends `JsonSerializer`, implements `ContextualSerializer`, and overrides two methods.
 
 ```java
 /**
  * @author
- * @description: 自定义序列化类
+ * @description: Custom serializer
  */
 @AllArgsConstructor
 @NoArgsConstructor
@@ -230,47 +230,47 @@ public class DesensitizationSerialize extends JsonSerializer<String> implements 
     @Override
     public void serialize(String str, JsonGenerator jsonGenerator, SerializerProvider serializerProvider) throws IOException {
         switch (type) {
-            // 自定义类型脱敏
+            // Mask according to a custom rule
             case MY_RULE:
                 jsonGenerator.writeString(CharSequenceUtil.hide(str, startInclude, endExclude));
                 break;
-            // userId脱敏
+            // Mask the user ID
             case USER_ID:
                 jsonGenerator.writeString(String.valueOf(DesensitizedUtil.userId()));
                 break;
-            // 中文姓名脱敏
+            // Mask a Chinese name
             case CHINESE_NAME:
                 jsonGenerator.writeString(DesensitizedUtil.chineseName(String.valueOf(str)));
                 break;
-            // 身份证脱敏
+            // Mask an identity number
             case ID_CARD:
                 jsonGenerator.writeString(DesensitizedUtil.idCardNum(String.valueOf(str), 1, 2));
                 break;
-            // 固定电话脱敏
+            // Mask a landline number
             case FIXED_PHONE:
                 jsonGenerator.writeString(DesensitizedUtil.fixedPhone(String.valueOf(str)));
                 break;
-            // 手机号脱敏
+            // Mask a mobile phone number
             case MOBILE_PHONE:
                 jsonGenerator.writeString(DesensitizedUtil.mobilePhone(String.valueOf(str)));
                 break;
-            // 地址脱敏
+            // Mask an address
             case ADDRESS:
                 jsonGenerator.writeString(DesensitizedUtil.address(String.valueOf(str), 8));
                 break;
-            // 邮箱脱敏
+            // Mask an email address
             case EMAIL:
                 jsonGenerator.writeString(DesensitizedUtil.email(String.valueOf(str)));
                 break;
-            // 密码脱敏
+            // Mask a password
             case PASSWORD:
                 jsonGenerator.writeString(DesensitizedUtil.password(String.valueOf(str)));
                 break;
-            // 中国车牌脱敏
+            // Mask a mainland China license plate
             case CAR_LICENSE:
                 jsonGenerator.writeString(DesensitizedUtil.carLicense(String.valueOf(str)));
                 break;
-            // 银行卡脱敏
+            // Mask a bank card number
             case BANK_CARD:
                 jsonGenerator.writeString(DesensitizedUtil.bankCard(String.valueOf(str)));
                 break;
@@ -282,17 +282,17 @@ public class DesensitizationSerialize extends JsonSerializer<String> implements 
     @Override
     public JsonSerializer<?> createContextual(SerializerProvider serializerProvider, BeanProperty beanProperty) throws JsonMappingException {
         if (beanProperty != null) {
-            // 判断数据类型是否为String类型
+                // Check whether the field is a String
             if (Objects.equals(beanProperty.getType().getRawClass(), String.class)) {
-                // 获取定义的注解
+                // Get the annotation
                 Desensitization desensitization = beanProperty.getAnnotation(Desensitization.class);
-                // 为null
+                // Fall back to the context annotation if needed
                 if (desensitization == null) {
                     desensitization = beanProperty.getContextAnnotation(Desensitization.class);
                 }
-                // 不为null
+                // Create the serializer if the annotation is present
                 if (desensitization != null) {
-                    // 创建定义的序列化类的实例并且返回，入参为注解定义的type,开始位置，结束位置。
+                    // Pass the annotation's type, start position, and end position to the serializer.
                     return new DesensitizationSerialize(desensitization.type(), desensitization.startInclude(),
                             desensitization.endExclude());
                 }
@@ -305,14 +305,14 @@ public class DesensitizationSerialize extends JsonSerializer<String> implements 
 }
 ```
 
-经过上述三步，已经完成了通过注解实现数据脱敏了，下面我们来测试一下。
+These three steps implement annotation-based data masking. Now test it.
 
-首先定义一个要测试的 pojo，对应的字段加入要脱敏的策略。
+First, define a POJO and specify masking strategies for the relevant fields.
 
 ```java
 /**
  *
- * @description:
+ * @description: Test POJO
  */
 @Getter
 @Setter
@@ -330,7 +330,7 @@ public class TestPojo {
 }
 ```
 
-接下来写一个测试的 controller
+Next, add a test controller:
 
 ```java
 @RestController
@@ -339,8 +339,8 @@ public class TestController {
     @RequestMapping("/test")
     public TestPojo testDesensitization(){
         TestPojo testPojo = new TestPojo();
-        testPojo.setUserName("我是用户名");
-        testPojo.setAddress("地球中国-北京市通州区京东总部2号楼");
+        testPojo.setUserName("Example User");
+        testPojo.setAddress("Building 2, JD Headquarters, Tongzhou, Beijing");
         testPojo.setPhone("13782946666");
         return testPojo;
     }
@@ -350,36 +350,36 @@ public class TestController {
 
 ![](../images/shared/2023-08-02-16-497ddcby8vbf2d69g.png)
 
-可以看到我们成功实现了数据脱敏。
+The output shows that data masking is working.
 
 ### Apache ShardingSphere
 
-ShardingSphere 是一套开源的分布式数据库中间件解决方案组成的生态圈，它由 Sharding-JDBC、Sharding-Proxy 和 Sharding-Sidecar（计划中）这 3 款相互独立的产品组成。 他们均提供标准化的数据分片、分布式事务和数据库治理功能 。
+ShardingSphere is an open-source ecosystem of distributed database middleware solutions. It consists of three independent products: Sharding-JDBC, Sharding-Proxy, and Sharding-Sidecar (planned at the time of writing). They provide standardized data sharding, distributed transactions, and database governance.
 
-Apache ShardingSphere 下面存在一个数据脱敏模块，此模块集成的常用的数据脱敏的功能。其基本原理是对用户输入的 SQL 进行解析拦截，并依靠用户的脱敏配置进行 SQL 的改写，从而实现对原文字段的加密及加密字段的解密。最终实现对用户无感的加解密存储、查询。
+Apache ShardingSphere includes a data-masking module with common masking features. It parses and intercepts user SQL, then rewrites it according to the configured rules to encrypt plaintext fields and decrypt encrypted fields. This makes encryption, decryption, storage, and queries transparent to the user.
 
-通过 Apache ShardingSphere 可以自动化&透明化数据脱敏过程，用户无需关注脱敏中间实现细节。并且，提供了多种内置、第三方(AKS)的脱敏策略，用户仅需简单配置即可使用。
+Apache ShardingSphere automates and makes data masking transparent, so users do not need to handle its implementation details. It provides built-in and third-party masking strategies that can be enabled with configuration.
 
-官方文档地址：<https://shardingsphere.apache.org/document/4.1.1/cn/features/orchestration/encrypt/> 。
+Documentation: <https://shardingsphere.apache.org/document/4.1.1/cn/features/orchestration/encrypt/>.
 
 ### FastJSON
 
-平时开发 Web 项目的时候，除了默认的 Spring 自带的序列化工具，FastJson 也是一个很常用的 Spring Web Restful 接口序列化的工具。
+In web development, FastJSON is a common alternative to Spring's default serialization tools for Spring REST APIs.
 
-FastJSON 实现数据脱敏的方式主要有两种：
+FastJSON supports data masking in two main ways:
 
-- 基于注解 `@JSONField` 实现：需要自定义一个用于脱敏的序列化的类，然后在需要脱敏的字段上通过 `@JSONField` 中的 `serializeUsing` 指定为我们自定义的序列化类型即可。
-- 基于序列化过滤器：需要实现 `ValueFilter` 接口，重写 `process` 方法完成自定义脱敏，然后在 JSON 转换时使用自定义的转换策略。具体实现可参考这篇文章： <https://juejin.cn/post/7067916686141161479>。
+- **Using `@JSONField`:** Create a custom serializer, then set the `serializeUsing` property on each field that needs masking.
+- **Using a serialization filter:** Implement `ValueFilter`, override `process` to apply the masking, and use the filter when converting to JSON. See this [implementation example](https://juejin.cn/post/7067916686141161479).
 
 ### Mybatis-Mate
 
-先介绍一下 MyBatis、MyBatis-Plus 和 Mybatis-Mate 这三者的关系：
+First, here is how MyBatis, MyBatis-Plus, and Mybatis-Mate relate to each other:
 
-- MyBatis 是一款优秀的持久层框架，它支持定制化 SQL、存储过程以及高级映射。
-- MyBatis-Plus 是一个 MyBatis 的增强工具，能够极大地简化持久层的开发工作。
-- Mybatis-Mate 是为 MyBatis-Plus 提供的企业级模块，旨在更敏捷优雅处理数据。不过，使用之前需要配置授权码（付费）。
+- MyBatis is a persistence framework that supports custom SQL, stored procedures, and advanced mappings.
+- MyBatis-Plus extends MyBatis and can simplify persistence-layer development.
+- Mybatis-Mate is an enterprise module for MyBatis-Plus that aims to make data handling more efficient. It requires a paid license.
 
-Mybatis-Mate 支持敏感词脱敏，内置手机号、邮箱、银行卡号等 9 种常用脱敏规则。
+Mybatis-Mate supports data masking and includes nine common rules for values such as phone numbers, email addresses, and bank card numbers.
 
 ```java
 @FieldSensitive("testStrategy")
@@ -389,71 +389,71 @@ private String username;
 public class SensitiveStrategyConfig {
 
     /**
-     * 注入脱敏策略
+     * Register the masking strategy
      */
     @Bean
     public ISensitiveStrategy sensitiveStrategy() {
-        // 自定义 testStrategy 类型脱敏处理
+        // Define a custom masking rule named testStrategy
         return new SensitiveStrategy().addStrategy("testStrategy", t -> t + "***test***");
     }
 }
 
-// 跳过脱密处理，用于编辑场景
+// Skip masking, for example, when editing a record
 RequestDataTransfer.skipSensitive();
 ```
 
 ### MyBatis-Flex
 
-类似于 MybatisPlus，MyBatis-Flex 也是一个 MyBatis 增强框架。MyBatis-Flex 同样提供了数据脱敏功能，并且是可以免费使用的。
+Like MyBatis-Plus, MyBatis-Flex extends MyBatis. It also provides data masking and is free to use.
 
-MyBatis-Flex 提供了 `@ColumnMask()` 注解，以及内置的 9 种脱敏规则，开箱即用：
+MyBatis-Flex provides a `@ColumnMask()` annotation and nine built-in masking rules:
 
 ```java
 /**
- * 内置的数据脱敏方式
+ * Built-in data masking rules
  */
 public class Masks {
     /**
-     * 手机号脱敏
+     * Mask a mobile phone number
      */
     public static final String MOBILE = "mobile";
     /**
-     * 固定电话脱敏
+     * Mask a landline number
      */
     public static final String FIXED_PHONE = "fixed_phone";
     /**
-     * 身份证号脱敏
+     * Mask an identity number
      */
     public static final String ID_CARD_NUMBER = "id_card_number";
     /**
-     * 中文名脱敏
+     * Mask a Chinese name
      */
     public static final String CHINESE_NAME = "chinese_name";
     /**
-     * 地址脱敏
+     * Mask an address
      */
     public static final String ADDRESS = "address";
     /**
-     * 邮件脱敏
+     * Mask an email address
      */
     public static final String EMAIL = "email";
     /**
-     * 密码脱敏
+     * Mask a password
      */
     public static final String PASSWORD = "password";
     /**
-     * 车牌号脱敏
+     * Mask a license plate
      */
     public static final String CAR_LICENSE = "car_license";
     /**
-     * 银行卡号脱敏
+     * Mask a bank card number
      */
     public static final String BANK_CARD_NUMBER = "bank_card_number";
     //...
 }
 ```
 
-使用示例：
+Example:
 
 ```java
 @Table("tb_account")
@@ -471,18 +471,18 @@ public class Account {
 }
 ```
 
-如果这些内置的脱敏规则不满足你的要求的话，你还可以自定义脱敏规则。
+If the built-in masking rules do not meet your needs, you can define custom rules.
 
-1、通过 `MaskManager` 注册新的脱敏规则：
+1. Register a new masking rule with `MaskManager`:
 
 ```java
-MaskManager.registerMaskProcessor("自定义规则名称"
+MaskManager.registerMaskProcessor("custom-rule"
         , data -> {
             return data;
         })
 ```
 
-2、使用自定义的脱敏规则
+2. Apply the custom rule:
 
 ```java
 @Table("tb_account")
@@ -491,18 +491,18 @@ public class Account {
     @Id(keyType = KeyType.Auto)
     private Long id;
 
-    @ColumnMask("自定义规则名称")
+    @ColumnMask("custom-rule")
     private String userName;
 }
 ```
 
-并且，对于需要跳过脱密处理的场景，例如进入编辑页面编辑用户数据，MyBatis-Flex 也提供了对应的支持：
+MyBatis-Flex also supports skipping masking, for example, when editing a user's data:
 
-1. **`MaskManager#execWithoutMask`**（推荐）：该方法使用了模版方法设计模式，保障跳过脱敏处理并执行相关逻辑后自动恢复脱敏处理。
-2. **`MaskManager#skipMask`**：跳过脱敏处理。
-3. **`MaskManager#restoreMask`**：恢复脱敏处理，确保后续的操作继续使用脱敏逻辑。
+1. **`MaskManager#execWithoutMask` (recommended):** Uses the template method pattern to skip masking while the supplied logic runs, then automatically restores it.
+2. **`MaskManager#skipMask`:** Skip masking.
+3. **`MaskManager#restoreMask`:** Restore masking so later operations continue to use it.
 
-`MaskManager#execWithoutMask`方法实现如下：
+`MaskManager#execWithoutMask` is implemented as follows:
 
 ```java
 public static <T> T execWithoutMask(Supplier<T> supplier) {
@@ -515,22 +515,22 @@ public static <T> T execWithoutMask(Supplier<T> supplier) {
 }
 ```
 
-`MaskManager` 的`skipMask`和`restoreMask`方法一般配套使用，推荐`try{...}finally{...}`模式。
+Use `MaskManager.skipMask()` and `restoreMask()` together. A `try { ... } finally { ... }` block is recommended.
 
-## 总结
+## Summary
 
-这篇文章主要介绍了：
+This article covered:
 
-- 数据脱敏的定义：数据脱敏是指对某些敏感信息通过脱敏规则进行数据的变形，实现敏感隐私数据的可靠保护。
-- 常用的脱敏规则：替换、删除、重排、加噪和加密。
-- 常用的脱敏工具：Hutool、Apache ShardingSphere、FastJSON、Mybatis-Mate 和 MyBatis-Flex。
+- **Data masking:** Transform sensitive information according to masking rules to protect private data.
+- **Common rules:** Replacement, deletion, shuffling, noise injection, and encryption.
+- **Common tools:** Hutool, Apache ShardingSphere, FastJSON, Mybatis-Mate, and MyBatis-Flex.
 
-## 参考
+## References
 
 - OWASP Cryptographic Storage Cheat Sheet：<https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html>
 - PCI SSC FAQ 1492 - PAN masking：<https://www.pcisecuritystandards.org/faqs/1492/>
-- Hutool 工具官网： <https://hutool.cn/docs/#/>
-- 聊聊如何自定义数据脱敏：<https://juejin.cn/post/7046567603971719204>
-- FastJSON 实现数据脱敏：<https://juejin.cn/post/7067916686141161479>
+- Hutool documentation: <https://hutool.cn/docs/#/>
+- Custom data masking: <https://juejin.cn/post/7046567603971719204>
+- Data masking with FastJSON: <https://juejin.cn/post/7067916686141161479>
 
 <!-- @include: @article-footer.snippet.md -->

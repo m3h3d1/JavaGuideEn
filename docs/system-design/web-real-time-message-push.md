@@ -1,61 +1,61 @@
 ---
-title: Web 实时消息推送详解
-description: 消息推送通常是指网站的运营工作等人员，通过某种工具对用户当前网页或移动设备 APP 进行的主动消息推送。
-category: 系统设计
+title: Web Real-Time Message Push
+description: Message push is the proactive delivery of messages to a user's current web page or mobile app.
+category: System Design
 icon: "mdi:message-text-outline"
 head:
   - - meta
     - name: keywords
-      content: Web消息推送,实时消息,WebSocket,SSE,长轮询,短轮询,MQTT,实时通信方案
+      content: Web message push, real-time messaging, WebSocket, SSE, long polling, short polling, MQTT, real-time communication
 ---
 
-> 原文地址：<https://juejin.cn/post/7122014462181113887，JavaGuide> 对本文进行了完善总结。
+> Original article: <https://juejin.cn/post/7122014462181113887>. JavaGuide has revised and expanded it.
 
-我有一个朋友做了一个小破站，现在要实现一个站内信 Web 消息推送的功能，对，就是下图这个小红点，一个很常用的功能。
+I have a friend who runs a small website and wants to add Web push notifications for inbox messages. The feature is the familiar red notification badge shown below.
 
-![站内信 Web 消息推送](./images/shared/1460000042192380.png)
+![Web inbox notification](./images/shared/1460000042192380.png)
 
-不过他还没想好用什么方式做，这里我帮他整理了一下几种方案，并简单做了实现。
+He hasn't decided how to implement it, so I have outlined a few options and provided simple examples.
 
-## 什么是消息推送？
+## What Is Message Push?
 
-推送的场景比较多，比如有人关注我的公众号，这时我就会收到一条推送消息，以此来吸引我点击打开应用。
+Push notifications have many use cases. For example, when someone follows my public account, I receive a notification that encourages me to open the app.
 
-消息推送通常是指网站的运营工作等人员，通过某种工具对用户当前网页或移动设备 APP 进行的主动消息推送。
+Message push is the proactive delivery of messages to a user's current web page or mobile app, often initiated by website operators through a messaging tool.
 
-消息推送一般又分为 Web 端消息推送和移动端消息推送。
+Message push is generally divided into Web push and mobile push.
 
-移动端消息推送示例：
+Example of a mobile push notification:
 
-![移动端消息推送示例](./images/shared/iklej9aur1ojdicyr0bh.png)
+![Example of a mobile push notification](./images/shared/iklej9aur1ojdicyr0bh.png)
 
-Web 端消息推送示例：
+Example of a Web push notification:
 
-![Web 端消息推送示例](./images/shared/image-20220819100512941.png)
+![Example of a Web push notification](./images/shared/image-20220819100512941.png)
 
-在具体实现之前，咱们再来分析一下前边的需求，其实功能很简单，只要触发某个事件（主动分享了资源或者后台主动推送消息），Web 页面的通知小红点就会实时的 `+1` 就可以了。
+Before looking at implementations, let's clarify the requirement. When an event occurs, such as a user sharing a resource or the server sending a notification, the red badge on the web page should increment immediately.
 
-通常在服务端会有若干张消息推送表，用来记录用户触发不同事件所推送不同类型的消息，前端主动查询（拉）或者被动接收（推）用户所有未读的消息数。
+The server usually stores notifications in one or more tables, recording messages associated with different user events. The client can either query (pull) the user's unread-message count or receive it from the server (push).
 
-![消息推送表](./images/shared/1460000042192384.png)
+![Message notification tables](./images/shared/1460000042192384.png)
 
-消息推送无非是推（push）和拉（pull）两种形式，下边我们逐个了解下。
+Message delivery uses either push or pull. Let's look at the common approaches.
 
-## 消息推送常见方案
+## Common Message Push Approaches
 
-![Web 实时消息推送方案总览](./images/shared/web-real-time-message-push-overview.webp)
+![Overview of Web real-time message push approaches](./images/shared/web-real-time-message-push-overview.webp)
 
-### 短轮询
+### Short Polling
 
-**轮询(polling)** 应该是实现消息推送方案中最简单的一种，这里我们暂且将轮询分为短轮询和长轮询。
+**Polling** is one of the simplest ways to implement message delivery. Here, we divide it into short polling and long polling.
 
-短轮询很好理解，指定的时间间隔，由浏览器向服务器发出 HTTP 请求，服务器实时返回未读消息数据给客户端，浏览器再做渲染显示。
+With short polling, the browser sends an HTTP request to the server at a fixed interval. The server returns the current unread-message data, and the browser renders it.
 
-一个简单的 JS 定时器就可以搞定，每秒钟请求一次未读消息数接口，返回的数据展示即可。
+A simple JavaScript timer can request the unread-message count once per second and display the response.
 
 ```typescript
 setInterval(() => {
-  // 方法请求
+  // Call the API
   messageCount().then((res) => {
     if (res.code === 200) {
       this.messageCount = res.data;
@@ -64,52 +64,52 @@ setInterval(() => {
 }, 1000);
 ```
 
-效果还是可以的，短轮询实现固然简单，缺点也是显而易见，由于推送数据并不会频繁变更，无论后端此时是否有新的消息产生，客户端都会进行请求，势必会对服务端造成很大压力，浪费带宽和服务器资源。
+Short polling is easy to implement, but its drawback is clear: because notifications do not change frequently, the client keeps making requests even when there are no new messages. This can put significant load on the server and waste bandwidth and server resources.
 
-### 长轮询
+### Long Polling
 
-长轮询是对上边短轮询的一种改进版本，在尽可能减少对服务器资源浪费的同时，保证消息的相对实时性。长轮询在中间件中应用的很广泛，比如 Nacos 和 Apollo 配置中心，消息队列 Kafka、RocketMQ 中都有用到长轮询。
+Long polling improves on short polling. It reduces wasted server resources while keeping notifications reasonably fresh. It is widely used in middleware, including the Nacos and Apollo configuration centers and the Kafka and RocketMQ message brokers.
 
-[Nacos 配置中心交互模型是 push 还是 pull？](https://mp.weixin.qq.com/s/94ftESkDoZI9gAGflLiGwg)一文中我详细介绍过 Nacos 长轮询的实现原理，感兴趣的小伙伴可以瞅瞅。
+I explained how Nacos long polling works in [Is the Nacos configuration center's interaction model push or pull?](https://mp.weixin.qq.com/s/94ftESkDoZI9gAGflLiGwg).
 
-长轮询其实原理跟轮询差不多，都是采用轮询的方式。不过，如果服务端的数据没有发生变更，会 一直 hold 住请求，直到服务端的数据发生变化，或者等待一定时间超时才会返回。返回后，客户端又会立即再次发起下一次长轮询。
+Long polling is still a form of polling. If the server has no new data, it holds the request until the data changes or a timeout occurs. After the response, the client immediately starts another long poll.
 
-这次我使用 Apollo 配置中心实现长轮询的方式，应用了一个类`DeferredResult`，它是在 Servlet3.0 后经过 Spring 封装提供的一种异步请求机制，直意就是延迟结果。
+This example uses `DeferredResult`, Spring's wrapper around the asynchronous request mechanism introduced in Servlet 3.0. It lets the application return a result later.
 
-![长轮询示意图](./images/shared/1460000042192386.png)
+![Long polling diagram](./images/shared/1460000042192386.png)
 
-`DeferredResult` 可以让容器先释放处理当前请求的 Servlet 线程，稍后再由应用选择的任意线程、消息回调或其他事件源调用 `setResult()` 恢复响应处理。`DeferredResult` 本身不会自动启动一个工作线程，实际业务在哪个线程上执行由应用决定。
+`DeferredResult` lets the container release the Servlet thread handling the request. Later, an application thread, message callback, or other event source can call `setResult()` to resume response processing. `DeferredResult` does not start a worker thread; the application determines which thread runs the business logic.
 
-下边我们用长轮询来实现消息推送。
+The following example uses long polling to push messages.
 
-因为一个 ID 可能会被多个长轮询请求监听，所以我采用了 Guava 包提供的 `Multimap` 结构存放长轮询，一个 key 可以对应多个 value。一旦监听到 key 发生变化，对应的所有长轮询都会响应。前端收到新的版本号后，主动查询未读消息数接口并更新页面数据。
+Multiple long-poll requests may watch the same ID, so this example uses Guava's `Multimap`, which allows one key to map to multiple values. When a key changes, all corresponding long-poll requests receive a response. After receiving the new version, the frontend queries the unread-message count and updates the page.
 
 ```java
 @Controller
 @RequestMapping("/polling")
 public class PollingController {
 
-    // 存放监听某个Id的长轮询集合
-    // 线程同步结构
+    // Long-polling requests watching each ID
+    // Thread-safe collection
     private static final Multimap<String, DeferredResult<String>> watchRequests =
             Multimaps.synchronizedMultimap(HashMultimap.create());
-    // 演示用的内存版本号；生产环境通常应使用业务数据自身的持久化版本
+    // In-memory version for the example; production systems should use a durable business-data version
     private static final Map<String, Long> versions = new HashMap<>();
 
     /**
-     * 设置监听
+     * Register a watch
      */
     @GetMapping(path = "watch/{id}")
     @ResponseBody
     public DeferredResult<String> watch(@PathVariable String id,
                                         @RequestParam(defaultValue = "0") long version) {
-        // 延迟对象设置超时时间
+        // Set the timeout
         DeferredResult<String> deferredResult = new DeferredResult<>(TIME_OUT, "timeout");
-        // 异步请求完成时移除 key，防止内存溢出
+        // Remove the key when the async request completes to prevent a memory leak
         deferredResult.onCompletion(() -> {
             watchRequests.remove(id, deferredResult);
         });
-        // 版本比较和监听注册必须处于同一临界区，避免发布发生在二者之间而丢通知
+        // Compare the version and register the watch atomically so a publish cannot be missed
         synchronized (watchRequests) {
             long currentVersion = versions.getOrDefault(id, 0L);
             if (currentVersion != version) {
@@ -122,12 +122,12 @@ public class PollingController {
     }
 
     /**
-     * 变更数据
+     * Update the data
      */
     @PostMapping(path = "publish/{id}")
     @ResponseBody
     public String publish(@PathVariable String id) {
-        // 在同一同步块内先更新版本，再移除并复制监听快照
+        // Update the version, then remove and copy the watcher snapshot in the same synchronized block
         Collection<DeferredResult<String>> deferredResults;
         long currentVersion;
         synchronized (watchRequests) {
@@ -142,115 +142,115 @@ public class PollingController {
 }
 ```
 
-这里通过 `DeferredResult` 的超时结果返回约定好的 `"timeout"`，前端收到后携带原版本号立即发起下一次长轮询。收到新版本号时，前端先查询最新业务数据，再把该版本号用于下一次监听。版本比较、监听注册和发布递增版本都在同一个临界区内完成，因此即使更新恰好发生在两次请求交接期间，下一次监听也会立即发现版本变化。示例中的内存版本会随进程重启丢失，生产环境应优先使用数据库版本、消息位点等持久化标识，并设计清理策略。
+Here, `DeferredResult` returns the agreed timeout value, `"timeout"`. The client then immediately starts another long poll with the same version. When it receives a new version, it fetches the latest business data and uses that version in its next watch request. Version comparison, watch registration, and version increments during publishing happen in the same critical section. Even if an update occurs while requests are being handed off, the next watch detects the change. The example's in-memory versions are lost when the process restarts. Production systems should use a durable identifier, such as a database version or message offset, and define a cleanup policy.
 
-不要把 HTTP 304 用作普通的“请求超时”状态：304 专用于条件请求中表示已缓存的表现仍未修改，且不能包含响应内容。生产项目也可以约定 204 等无内容响应，关键是让服务端和客户端对超时语义保持一致。
+Do not use HTTP 304 as a generic request-timeout status. It is reserved for conditional requests to indicate that the cached representation is unchanged, and its response must not contain a body. A production system could instead agree on a bodyless response such as 204; the key is to use consistent timeout semantics on the client and server.
 
-我们来测试一下，首先页面携带已知版本发起长轮询请求 `/polling/watch/10086?version=0` 监听消息变更，请求被挂起；紧接着手动变更数据 `/polling/publish/10086`，长轮询返回新版本。前端查询最新数据后，再携带新版本发起下一次请求，如此循环往复。
+To test this, the page starts a long-poll request with a known version, `/polling/watch/10086?version=0`, and waits for a change. Then update the data with `/polling/publish/10086`; the long poll returns the new version. The client fetches the latest data and starts the next request with that version. This cycle repeats.
 
-长轮询相比于短轮询在性能上提升了很多，但依然会产生较多的请求，这是它的一点不完美的地方。
+Long polling performs much better than short polling, but it still generates many requests. That is one of its limitations.
 
-### iframe 流
+### iframe Streaming
 
-iframe 流就是在页面中插入一个隐藏的`<iframe>`标签，通过在`src`中请求消息数量 API 接口，由此在服务端和客户端之间创建一条长连接，服务端持续向`iframe`传输数据。
+iframe streaming inserts a hidden `<iframe>` into the page. Its `src` requests the message-count API, creating a long-lived connection over which the server continuously sends data to the iframe.
 
-传输的数据通常是 HTML、或是内嵌的 JavaScript 脚本，来达到实时更新页面的效果。
+The server usually sends HTML or embedded JavaScript to update the page in real time.
 
-![iframe 流示意图](./images/shared/1460000042192388.png)
+![iframe streaming diagram](./images/shared/1460000042192388.png)
 
-这种方式实现简单，前端只要一个`<iframe>`标签搞定了
+This approach is simple to implement; the frontend only needs an `<iframe>` element.
 
 ```html
 <iframe src="/iframe/message" style="display:none"></iframe>
 ```
 
-服务端需要保持响应并在有新数据时写入、及时刷新缓冲区。不能在 Servlet 请求线程中使用不带等待、中断和异常处理的 `while (true)` 循环持续写响应：这会空转消耗 CPU、长时间占用容器线程，还无法在客户端断开时正常收敛。如果必须维护旧式 iframe 流，应使用容器异步 I/O 和事件驱动的写入模型；新系统通常直接选择 SSE 或 WebSocket。
+The server must keep the response open, write new data when available, and flush the buffer promptly. Do not use an unbounded `while (true)` loop without waiting, interruption handling, or error handling in a Servlet request thread. It can waste CPU, occupy a container thread indefinitely, and fail to stop cleanly when the client disconnects. If you must maintain a legacy iframe stream, use the container's asynchronous I/O and an event-driven write model. New systems usually use SSE or WebSocket instead.
 
-iframe 流的服务器开销很大，而且 IE、Chrome 等浏览器一直会处于 loading 状态，图标会不停旋转，简直是强迫症杀手。
+iframe streaming has high server overhead. Browsers such as IE and Chrome also remain in the loading state, with the icon spinning continuously.
 
-![iframe 流效果](./images/shared/1460000042192389.gif)
+![iframe streaming in action](./images/shared/1460000042192389.gif)
 
-iframe 流非常不友好，强烈不推荐。
+iframe streaming is inconvenient and strongly discouraged.
 
-### SSE (推荐)
+### SSE (Recommended)
 
-很多人可能不知道，服务端向客户端推送消息，其实除了可以用`WebSocket`这种耳熟能详的机制外，还有一种服务器发送事件(Server-Sent Events)，简称 SSE。这是一种服务器端到客户端(浏览器)的单向消息推送。
+In addition to the familiar `WebSocket`, servers can push messages to clients using Server-Sent Events (SSE). SSE provides one-way message delivery from a server to a client (the browser).
 
-流式对话是 SSE 的一个典型应用场景。服务端可以把已经生成的部分内容持续写入事件流，用户无需等到全部计算完成才看到结果。
+Streaming chat is a typical use case for SSE. The server can continuously write generated content to the event stream, so users can see results before the full response is ready.
 
-![ChatGPT 使用 SSE 实现对话](./images/shared/chatgpt-sse.png)
+![ChatGPT uses SSE for streaming responses](./images/shared/chatgpt-sse.png)
 
-SSE 基于 HTTP，它不是让服务端在没有请求的情况下凭空建立连接，而是让客户端先发起请求，服务端保持该 HTTP 响应并持续写入事件。
+SSE is based on HTTP. The server does not open a connection without a request; the client initiates the request, and the server keeps the HTTP response open while continuously writing events.
 
-![SSE 图解](./images/shared/1460000042192390.png)
+![SSE diagram](./images/shared/1460000042192390.png)
 
-SSE 在服务器和客户端之间打开一个单向通道，服务端响应的不再是一次性的数据包而是`text/event-stream`类型的数据流信息，在有数据变更时从服务器流式传输到客户端。
+SSE opens a one-way channel between the server and client. Instead of a single response payload, the server returns a `text/event-stream` stream and sends updates to the client as they become available.
 
-整体的实现思路有点类似于在线视频播放，视频流会连续不断的推送到浏览器，你也可以理解成，客户端在完成一次用时很长（网络不畅）的下载。
+The idea is similar to online video playback, where a stream is continuously sent to the browser. You can also think of it as a long-running download.
 
-![SSE 示意图](./images/shared/1460000042192391.png)
+![SSE illustration](./images/shared/1460000042192391.png)
 
-SSE 与 WebSocket 作用相似，都可以建立服务端与浏览器之间的通信，实现服务端向客户端推送消息，但还是有些许不同：
+SSE and WebSocket both enable communication between a server and browser and allow the server to push messages to the client, but they differ in several ways:
 
-- SSE 使用 HTTP 和 `text/event-stream`，通常更容易接入现有 Web 服务；WebSocket 需要服务器或容器支持协议升级和 WebSocket 帧。它不要求必须单独部署一台服务器。
-- SSE 单向通信，只能由服务端向客户端单向通信；WebSocket 全双工通信，即通信的双方可以同时发送和接受信息。
-- SSE 实现简单开发成本低，无需引入其他组件；WebSocket 传输数据需做二次解析，开发门槛高一些。
-- SSE 默认支持断线重连；WebSocket 则需要自己实现。
-- SSE 只能传送文本消息，二进制数据需要经过编码后传送；WebSocket 默认支持传送二进制数据。
+- SSE uses HTTP and `text/event-stream`, so it is usually easy to integrate with existing Web services. WebSocket requires server or container support for protocol upgrades and frames; it does not require a separate server.
+- SSE is one-way: the server sends data to the client. WebSocket is full-duplex, so both sides can send data at the same time.
+- SSE is simple to implement and has low development overhead. WebSocket typically has a higher implementation cost.
+- SSE supports automatic reconnection by default; with WebSocket, you implement reconnection yourself.
+- SSE sends text only; binary data must be encoded. WebSocket supports binary data natively.
 
-![SSE 和 WebSocket 对比](./images/shared/sse-vs-websocket-comparison.webp)
+![SSE and WebSocket comparison](./images/shared/sse-vs-websocket-comparison.webp)
 
-**SSE 与 WebSocket 该如何选择？**
+**How should you choose between SSE and WebSocket?**
 
-> 技术并没有好坏之分，只有哪个更合适。
+> No technology is inherently better; choose the one that fits the use case.
 
-SSE 好像一直不被大家所熟知，一部分原因是出现了 WebSocket，这个提供了更丰富的协议来执行双向、全双工通信。对于游戏、即时通信以及需要双向近乎实时更新的场景，拥有双向通道更具吸引力。
+SSE is less widely known, partly because WebSocket offers a richer protocol for bidirectional, full-duplex communication. A two-way channel is useful for games, instant messaging, and other use cases that need near-real-time updates in both directions.
 
-但是，在某些情况下，不需要从客户端发送数据。而你只需要一些服务器操作的更新。比如：站内信、未读消息数、状态更新、股票行情、监控数量等场景，SSE 不管是从实现的难易和成本上都更加有优势。此外，SSE 具有 WebSocket 在设计上缺乏的多种功能，例如：自动重新连接、事件 ID 和发送任意事件的能力。
+In other cases, the client does not need to send data and only needs updates from the server. For inbox notifications, unread-message counts, status changes, stock prices, and monitoring metrics, SSE is often simpler and less costly to implement. SSE also provides features such as automatic reconnection, event IDs, and named events.
 
-前端只需进行一次 HTTP 请求，带上唯一 ID，打开事件流，监听服务端推送的事件就可以了
+The frontend makes one HTTP request with a unique ID, opens the event stream, and listens for server-sent events.
 
 ```javascript
 <script>
     let source = null;
     let userId = 7777
     if (window.EventSource) {
-        // 建立连接
+        // Open the connection
         source = new EventSource('http://localhost:7777/sse/sub/'+userId);
-        setMessageInnerHTML("连接用户=" + userId);
+        setMessageInnerHTML("Connected user: " + userId);
         /**
-         * 连接一旦建立，就会触发open事件
-         * 另一种写法：source.onopen = function (event) {}
+         * The open event fires once the connection is established.
+         * Alternatively: source.onopen = function (event) {}
          */
         source.addEventListener('open', function (e) {
-            setMessageInnerHTML("建立连接。。。");
+            setMessageInnerHTML("Connected...");
         }, false);
         /**
-         * 客户端收到服务器发来的数据
-         * 另一种写法：source.onmessage = function (event) {}
+         * Handle data received from the server.
+         * Alternatively: source.onmessage = function (event) {}
          */
         source.addEventListener('message', function (e) {
             setMessageInnerHTML(e.data);
         });
     } else {
-        setMessageInnerHTML("你的浏览器不支持SSE");
+        setMessageInnerHTML("Your browser does not support SSE");
     }
 </script>
 ```
 
-服务端的实现更简单，创建一个`SseEmitter`对象放入`sseEmitterMap`进行管理
+The server implementation is simpler: create an `SseEmitter` and store it in `sseEmitterMap` for management.
 
 ```java
 private static Map<String, SseEmitter> sseEmitterMap = new ConcurrentHashMap<>();
 
 /**
- * 创建连接
+ * Create a connection
  */
 public static SseEmitter connect(String userId) {
     try {
-        // 0 表示不设置应用层超时，并非“默认 30 秒”
+        // 0 means no application-level timeout; it does not mean "30 seconds by default"
         SseEmitter sseEmitter = new SseEmitter(0L);
-        // 注册回调
+        // Register callbacks
         sseEmitter.onCompletion(completionCallBack(userId));
         sseEmitter.onError(errorCallBack(userId));
         sseEmitter.onTimeout(timeoutCallBack(userId));
@@ -258,13 +258,13 @@ public static SseEmitter connect(String userId) {
         count.getAndIncrement();
         return sseEmitter;
     } catch (Exception e) {
-        log.info("创建新的sse连接异常，当前用户：{}", userId);
+        log.info("Failed to create an SSE connection for user: {}", userId);
     }
     return null;
 }
 
 /**
- * 给指定用户发送消息
+ * Send a message to a specific user
  */
 public static void sendMessage(String userId, String message) {
 
@@ -272,61 +272,61 @@ public static void sendMessage(String userId, String message) {
         try {
             sseEmitterMap.get(userId).send(message);
         } catch (IOException e) {
-            log.error("用户[{}]推送异常:{}", userId, e.getMessage());
+            log.error("Failed to send a push message to user [{}]: {}", userId, e.getMessage());
             removeUser(userId);
         }
     }
 }
 ```
 
-上面的 `Map<String, SseEmitter>` 示例每个用户只保留一个连接，新连接会覆盖旧连接。如果要支持多标签页或多设备，应为每个用户维护一组 `SseEmitter`，并在完成、超时和错误回调中移除对应连接。`0L` 也不代表代理、网关和容器永不会断开连接，生产环境需要配置心跳、超时和客户端重连策略。
+The `Map<String, SseEmitter>` example above keeps only one connection per user; a new connection replaces the old one. To support multiple tabs or devices, store a set of `SseEmitter` instances per user and remove each connection in its completion, timeout, and error callbacks. A `0L` timeout does not prevent proxies, gateways, or containers from closing the connection. Production systems need heartbeat, timeout, and client reconnection policies.
 
-**注意：** SSE 不支持 IE 浏览器，对其他主流浏览器兼容性做的还不错。
+**Note:** SSE is not supported by Internet Explorer, but is supported by other major browsers.
 
-![SSE 兼容性](./images/shared/1460000042192393.png)
+![SSE browser compatibility](./images/shared/1460000042192393.png)
 
-### Websocket
+### WebSocket
 
-Websocket 应该是大家都比较熟悉的一种实现消息推送的方式，上边我们在讲 SSE 的时候也和 Websocket 进行过比较。
+WebSocket is a familiar way to implement message push, and we have already compared it with SSE above.
 
-这是一种在 TCP 连接上进行全双工通信的协议，建立客户端和服务器之间的通信渠道。浏览器和服务器仅需一次握手，两者之间就直接可以创建持久性的连接，并进行双向数据传输。
+WebSocket is a protocol for full-duplex communication over a TCP connection. After a handshake, the browser and server establish a persistent connection and can send data in both directions.
 
-![Websocket 示意图](../cs-basics/images/shared/1460000042192394.png)
+![WebSocket diagram](../cs-basics/images/shared/1460000042192394.png)
 
-WebSocket 的工作过程可以分为以下几个步骤：
+The WebSocket handshake and communication work as follows:
 
-1. 客户端向服务器发送一个 HTTP 请求，请求头中包含 `Upgrade: websocket` 和 `Sec-WebSocket-Key` 等字段，表示要求升级协议为 WebSocket；
-2. 服务器收到这个请求后，会进行升级协议的操作，如果支持 WebSocket，它将回复一个 HTTP 101 状态码，响应头中包含 ，`Connection: Upgrade`和 `Sec-WebSocket-Accept: xxx` 等字段、表示成功升级到 WebSocket 协议。
-3. 客户端和服务器之间建立了一个 WebSocket 连接，可以进行双向的数据传输。数据以帧（frames）的形式进行传送，而不是传统的 HTTP 请求和响应。WebSocket 的每条消息可能会被切分成多个数据帧（最小单位）。发送端会将消息切割成多个帧发送给接收端，接收端接收消息帧，并将关联的帧重新组装成完整的消息。
-4. 客户端或服务器可以主动发送一个关闭帧，表示要断开连接。另一方收到后，也会回复一个关闭帧，然后双方关闭 TCP 连接。
+1. The client sends an HTTP request with headers such as `Upgrade: websocket` and `Sec-WebSocket-Key` to request a protocol upgrade.
+2. If the server supports WebSocket, it responds with HTTP status 101 and headers such as `Connection: Upgrade` and `Sec-WebSocket-Accept: xxx` to confirm the upgrade.
+3. The client and server can then exchange data over the WebSocket connection. Data is sent in frames rather than HTTP request-response messages. A message may be split into multiple frames, which the receiver reassembles.
+4. Either side can send a close frame to end the connection. The other side replies with a close frame, and both sides close the TCP connection.
 
-另外，建立 WebSocket 连接之后，通过心跳机制来保持 WebSocket 连接的稳定性和活跃性。
+After establishing a WebSocket connection, a heartbeat mechanism can help keep it active and detect failures.
 
-SpringBoot 整合 WebSocket，先引入 WebSocket 相关的工具包，和 SSE 相比有额外的开发成本。
+To use WebSocket with Spring Boot, first add the WebSocket dependency. This has more setup overhead than SSE.
 
 ```xml
-<!-- 引入websocket -->
+<!-- Add the WebSocket dependency -->
 <dependency>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-websocket</artifactId>
 </dependency>
 ```
 
-服务端使用 `@ServerEndpoint` 注解标注当前类为一个 WebSocket 端点，客户端可以通过 `ws://localhost:7777/websocket/10086` 连接到服务端。路径中的 `userId` 只适合用于演示路由；生产环境必须在握手时验证用户身份，并把连接绑定到已认证的主体，不能相信客户端自行填写的 `userId`。
+The server uses `@ServerEndpoint` to declare a WebSocket endpoint. A client can connect to `ws://localhost:7777/websocket/10086`. The `userId` in the path is only for demonstrating routing. In production, authenticate the user during the handshake and bind the connection to the authenticated principal; do not trust a `userId` supplied by the client.
 
 ```java
 @Component
 @Slf4j
 @ServerEndpoint("/websocket/{userId}")
 public class WebSocketServer {
-    //与某个客户端的连接会话，需要通过它来给客户端发送数据
+    // Session used to send data to this client
     private Session session;
     private String userId;
     private static final CopyOnWriteArraySet<WebSocketServer> webSockets = new CopyOnWriteArraySet<>();
-    // 用来存在线连接数
+    // Active sessions
     private static final Map<String, Session> sessionPool = new ConcurrentHashMap<>();
     /**
-     * 链接成功调用的方法
+     * Called when a connection is established
      */
     @OnOpen
     public void onOpen(Session session, @PathParam(value = "userId") String userId) {
@@ -335,13 +335,13 @@ public class WebSocketServer {
             this.userId = userId;
             webSockets.add(this);
             sessionPool.put(userId, session);
-            log.info("websocket消息: 有新的连接，总数为:" + webSockets.size());
+            log.info("WebSocket connected; total connections: " + webSockets.size());
         } catch (Exception e) {
-            log.error("WebSocket 连接初始化失败，userId={}", userId, e);
+            log.error("WebSocket connection initialization failed, userId={}", userId, e);
         }
     }
     /**
-     * 连接关闭时清理当前会话
+     * Clean up the session when the connection closes
      */
     @OnClose
     public void onClose() {
@@ -352,27 +352,27 @@ public class WebSocketServer {
     }
     @OnError
     public void onError(Throwable error) {
-        log.error("WebSocket 连接异常，userId={}", userId, error);
+        log.error("WebSocket connection error, userId={}", userId, error);
     }
     /**
-     * 收到客户端消息后调用的方法
+     * Called when a message arrives from the client
      */
     @OnMessage
     public void onMessage(String message) {
-        log.info("websocket消息: 收到客户端消息:" + message);
+        log.info("WebSocket message received: " + message);
     }
     /**
-     * 此为单点消息
+     * Send a message to one user
      */
     public static boolean sendOneMessage(String userId, String message) {
         Session session = sessionPool.get(userId);
         if (session != null && session.isOpen()) {
             try {
-                log.info("websocket消: 单点消息:" + message);
+                log.info("Sending a direct WebSocket message: " + message);
                 session.getAsyncRemote().sendText(message);
                 return true;
             } catch (Exception e) {
-                log.error("WebSocket 消息发送失败，userId={}", userId, e);
+                log.error("Failed to send WebSocket message, userId={}", userId, e);
             }
         }
         return false;
@@ -380,9 +380,9 @@ public class WebSocketServer {
 }
 ```
 
-该示例的 `sessionPool` 同样只保留每个 `userId` 的一个连接。支持多标签页或多设备时，应将值改为会话集合，并为每个连接独立执行发送、心跳、背压和清理逻辑。
+The example's `sessionPool` also keeps only one connection per `userId`. To support multiple tabs or devices, store a set of sessions per user and handle sending, heartbeats, backpressure, and cleanup for each connection.
 
-如果希望通过 HTTP 接口触发一次服务端推送，可以增加一个与前端参数保持一致的控制器：
+To trigger a server push through an HTTP endpoint, add a controller whose parameters match the frontend request:
 
 ```java
 @RestController
@@ -399,16 +399,16 @@ public class SocketController {
 }
 ```
 
-这个控制器只用于演示请求契约。生产环境还必须对发布接口进行身份认证和授权，不能允许调用方通过任意 `userId` 向其他用户推送消息；同时应限制消息大小和请求频率。
+This controller only demonstrates the request contract. In production, authenticate and authorize requests to the publishing endpoint. Do not let callers send messages to other users by supplying an arbitrary `userId`; also limit message size and request rate.
 
-在使用内嵌 Servlet 容器的 Spring Boot 应用中，通常还需要注入 `ServerEndpointExporter`，由它注册使用了 `@ServerEndpoint` 注解的 WebSocket 端点。
+In a Spring Boot application with an embedded Servlet container, you usually also need to register `ServerEndpointExporter` to discover endpoints annotated with `@ServerEndpoint`.
 
 ```java
 @Configuration
 public class WebSocketConfiguration {
 
     /**
-     * 用于注册使用了 @ServerEndpoint 注解的 WebSocket 服务器
+     * Register WebSocket endpoints annotated with @ServerEndpoint
      */
     @Bean
     public ServerEndpointExporter serverEndpointExporter() {
@@ -417,32 +417,32 @@ public class WebSocketConfiguration {
 }
 ```
 
-前端初始化打开 WebSocket 连接，并监听连接状态，接收服务端数据或向服务端发送数据。
+The frontend opens a WebSocket connection, monitors its state, and receives data from or sends data to the server.
 
 ```javascript
 <script>
     var ws = new WebSocket('ws://localhost:7777/websocket/10086');
-    // 获取连接状态
-    console.log('ws连接状态：' + ws.readyState);
-    //监听是否连接成功
+    // Check the connection state
+    console.log('WebSocket state: ' + ws.readyState);
+    // Listen for a successful connection
     ws.onopen = function () {
-        console.log('ws连接状态：' + ws.readyState);
-        //连接成功则发送一个数据
+        console.log('WebSocket state: ' + ws.readyState);
+        // Send data once connected
         ws.send('test1');
     }
-    // 接听服务器发回的信息并处理展示
+    // Handle and display messages from the server
     ws.onmessage = function (data) {
-        console.log('接收到来自服务器的消息：');
+        console.log('Message received from server:');
         console.log(data);
-        //完成通信后关闭WebSocket连接
+        // Close the WebSocket connection when communication is complete
         ws.close();
     }
-    // 监听连接关闭事件
+    // Listen for the connection closing
     ws.onclose = function () {
-        // 监听整个过程中websocket的状态
-        console.log('ws连接状态：' + ws.readyState);
+        // Check the WebSocket state
+        console.log('WebSocket state: ' + ws.readyState);
     }
-    // 监听并处理error事件
+    // Handle errors
     ws.onerror = function (error) {
         console.log(error);
     }
@@ -460,46 +460,46 @@ public class WebSocketConfiguration {
 </script>
 ```
 
-页面初始化建立 WebSocket 连接，之后就可以进行双向通信了，效果还不错。
+The page establishes a WebSocket connection on initialization and can then communicate in both directions.
 
 ![](./images/shared/1460000042192395.png)
 
 ### MQTT
 
-**什么是 MQTT 协议？**
+**What Is MQTT?**
 
-MQTT 是一种基于发布/订阅（publish/subscribe）模式的轻量级消息协议，通过订阅主题来获取消息，广泛应用于物联网场景。当前 OASIS 规范直接使用“MQTT”这一名称，不再将其展开为“Message Queue Telemetry Transport”。
+MQTT is a lightweight messaging protocol based on the publish/subscribe model. Clients receive messages by subscribing to topics, and the protocol is widely used in IoT systems. The current OASIS specification uses the name “MQTT” without expanding it to “Message Queue Telemetry Transport.”
 
-该协议将消息的发布者（publisher）与订阅者（subscriber）进行分离，因此可以在不可靠的网络环境中，为远程连接的设备提供可靠的消息服务，使用方式与传统的 MQ 有点类似。
+The protocol decouples publishers from subscribers, providing messaging for remotely connected devices over unreliable networks. Its use is similar to that of a traditional message queue.
 
-![MQTT 协议示例](./images/shared/mqtt-protocol-example.png)
+![MQTT protocol example](./images/shared/mqtt-protocol-example.png)
 
-MQTT 位于应用层，需要运行在有序、无损、双向的字节流传输上。最常见的承载方式是 TCP（生产环境通常配合 TLS），也可以通过 WebSocket 等能提供这种字节流语义的传输承载，因此不应简化为“只要有 TCP/IP 就一定能直接使用”。
+MQTT is an application-layer protocol that requires an ordered, lossless, bidirectional byte stream. TCP is the most common transport, usually with TLS in production. It can also run over transports such as WebSocket that provide these byte-stream semantics. It is therefore inaccurate to say that MQTT works directly over any TCP/IP network without a suitable transport.
 
-**为什么要用 MQTT 协议？**
+**Why Use MQTT?**
 
-MQTT 协议为什么在物联网（IOT）中如此受偏爱？而不是其它协议，比如我们更为熟悉的 HTTP 协议呢？
+Why is MQTT so popular in the Internet of Things (IoT), compared with other protocols such as HTTP?
 
-- 经典的短连接 HTTP 请求-响应模式需要设备定期请求或保持长连接才能获取服务端更新；MQTT 则直接提供长连接上的异步发布/订阅模型。HTTP 本身不能笼统定义为“同步协议”，HTTP/2、HTTP/3、SSE 和 WebSocket 升级等机制的行为并不等同于经典的短轮询。
-- HTTP 请求由客户端发起，但不意味着服务端永远无法流式返回数据，也不意味着设备不能接收命令。MQTT 的优势是把长连接、主题路由、订阅、QoS 和会话状态等能力标准化了。
-- 需要向多个设备发送命令时，MQTT broker 可以按主题将消息分发给所有订阅者；HTTP 也能实现类似功能，但往往需要应用自行管理连接、设备组和重试语义。
+- The classic short-lived HTTP request-response pattern requires devices to poll periodically or maintain a long-lived connection to receive server updates. MQTT provides an asynchronous publish/subscribe model over persistent connections. HTTP should not be broadly described as a “synchronous protocol”: HTTP/2, HTTP/3, SSE, and WebSocket upgrades do not behave like classic short polling.
+- HTTP requests are initiated by the client, but that does not mean a server can never stream a response or that a device cannot receive commands. MQTT standardizes persistent connections, topic routing, subscriptions, QoS, and session state.
+- To send commands to multiple devices, an MQTT broker can distribute messages by topic to all subscribers. HTTP can support similar use cases, but the application often needs to manage connections, device groups, and retry semantics itself.
 
-具体的 MQTT 协议介绍和实践，这里我就不再赘述了，大家可以参考我之前的两篇文章，里边写的也都很详细了。
+For a detailed introduction and practical examples, see these two articles:
 
-- MQTT 协议的介绍：[我也没想到 SpringBoot + RabbitMQ 做智能家居，会这么简单](https://mp.weixin.qq.com/s/udFE6k9pPetIWsa6KeErrA)
-- MQTT 实现消息推送：[未读消息（小红点），前端 与 RabbitMQ 实时消息推送实践，贼简单~](https://mp.weixin.qq.com/s/U-fUGr9i1MVa4PoVyiDFCg)
+- MQTT introduction: [I didn't expect building a smart home with Spring Boot and RabbitMQ to be this easy](https://mp.weixin.qq.com/s/udFE6k9pPetIWsa6KeErrA)
+- Implementing message push with MQTT: [Real-time unread-message push with the frontend and RabbitMQ](https://mp.weixin.qq.com/s/U-fUGr9i1MVa4PoVyiDFCg)
 
-## 总结
+## Summary
 
-> 以下内容为 JavaGuide 补充
+> The following section was added by JavaGuide.
 
-|           | 介绍                                                                                                          | 优点                   | 缺点                                                 |
-| --------- | ------------------------------------------------------------------------------------------------------------- | ---------------------- | ---------------------------------------------------- |
-| 短轮询    | 客户端定时向服务端发送请求，服务端直接返回响应数据（即使没有数据更新）                                        | 简单、易理解、易实现   | 实时性太差，无效请求太多，频繁建立连接太耗费资源     |
-| 长轮询    | 与短轮询不同是，长轮询接收到客户端请求之后等到有数据更新才返回请求                                            | 减少了无效请求         | 挂起请求会导致资源浪费                               |
-| iframe 流 | 服务端和客户端之间创建一条长连接，服务端持续向`iframe`传输数据。                                              | 简单、易理解、易实现   | 维护一个长连接会增加开销，效果太差（图标会不停旋转） |
-| SSE       | 一种服务器端到客户端(浏览器)的单向消息推送。                                                                  | 简单、易实现，功能丰富 | 不支持双向通信                                       |
-| WebSocket | 除了最初建立连接时用 HTTP 协议，其他时候都是直接基于 TCP 协议进行通信的，可以实现客户端和服务端的全双工通信。 | 性能高、开销小         | 对开发人员要求更高，实现相对复杂一些                 |
-| MQTT      | 基于发布/订阅（publish/subscribe）模式的轻量级通讯协议，通过订阅相应的主题来获取消息。                        | 成熟稳定，轻量级       | 对开发人员要求更高，实现相对复杂一些                 |
+| Approach         | Description                                                                                     | Advantages                                        | Disadvantages                                                                                 |
+| ---------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Short polling    | The client periodically requests data, and the server responds even when nothing has changed.   | Simple to understand and implement                | Poor freshness; many unnecessary requests and frequent connections waste resources            |
+| Long polling     | The server holds each client request until data changes or the request times out.               | Fewer unnecessary requests                        | Suspended requests consume resources                                                          |
+| iframe streaming | A long-lived connection lets the server continuously send data to an iframe.                    | Simple to understand and implement                | Long-lived connections add overhead; the browser may display a loading indicator continuously |
+| SSE              | One-way message delivery from the server to the client (browser).                               | Simple to implement with useful built-in features | No bidirectional communication                                                                |
+| WebSocket        | After an HTTP handshake, client and server communicate over a full-duplex WebSocket connection. | High performance with low overhead                | More complex to implement                                                                     |
+| MQTT             | A lightweight publish/subscribe protocol that delivers messages through topic subscriptions.    | Mature and lightweight                            | More complex to implement                                                                     |
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,151 +1,151 @@
 ---
-title: 糟糕程序员的 20 个坏习惯
-description: "糟糕程序员的 20 个坏习惯：围绕技术知识与面试总结梳理关键概念、常见问题与实践要点，帮助你高效学习与备战面试。"
-category: 技术文章精选集
+title: 20 Bad Habits of Poor Programmers
+description: Twenty habits that undermine programming quality, including inconsistent terminology, poor communication, weak documentation, and risky code changes.
+category: Curated Technical Articles
 author: Kaito
 tag:
-  - 练级攻略
+  - Career Growth
 head:
   - - meta
     - name: keywords
-      content: 程序员坏习惯,编程规范,代码注释,技术文档,团队协作,代码提交,职业素养,编程修养
+      content: Bad Programming Habits,Coding Standards,Code Comments,Technical Documentation,Teamwork,Code Commits,Professionalism,Engineering Craft
 ---
 
-> **推荐语**：Kaito 大佬的一篇文章，很实用的建议！
+> **Editor's note:** A practical article from Kaito with useful advice.
 >
-> **原文地址：** <https://mp.weixin.qq.com/s/6hUU6SZsxGPWAIIByq93Rw>
+> **Original article:** <https://mp.weixin.qq.com/s/6hUU6SZsxGPWAIIByq93Rw>
 
-我想你肯定遇到过这样一类程序员：**他们无论是写代码，还是写文档，又或是和别人沟通，都显得特别专业**。每次遇到这类人，我都在想，他们到底是怎么做到的？
+You have probably met programmers who seem highly professional whether they are writing code, documenting it, or communicating with others. Whenever I meet someone like this, I wonder how they do it.
 
-随着工作时间的增长，渐渐地我也总结出一些经验，他们身上都保持着一些看似很微小的优秀习惯，但正是因为这些习惯，体现出了一个优秀程序员的基本素养。
+Over time, I have noticed that they share small but valuable habits. These habits reflect the basic professionalism of a good programmer.
 
-但今天我们来换个角度，来看看一个糟糕程序员有哪些坏习惯？只要我们都能避开这些问题，就可以逐渐向一个优秀程序员靠近。
+Today, let's look at the other side: what bad habits should programmers avoid? By avoiding them, we can move closer to becoming better engineers.
 
-## 1、技术名词拼写不规范
+## 1. Inconsistent Spelling of Technical Terms
 
-无论是个人简历，还是技术文档，我经常看到拼写不规范的技术名词，例如 JAVA、javascript、python、MySql、Hbase、restful。
+I often see technical terms spelled incorrectly in resumes and technical documents, such as JAVA, javascript, python, MySql, Hbase, and restful.
 
-正确的拼写应该是 Java、JavaScript、Python、MySQL、HBase、RESTful，不要小看这个问题，很多面试官很有可能因为这一点刷掉你的简历。
+The correct forms are Java, JavaScript, Python, MySQL, HBase, and RESTful. Do not dismiss this as a minor detail; an interviewer may reject a resume because of it.
 
-## 2、写文档，中英文混排不规范
+## 2. Poor Typography in Mixed Chinese and English Text
 
-中文描述使用英文标点符号，英文和数字使用了全角字符，中文与英文、数字之间没有空格等等。
+Common problems include using English punctuation in Chinese text, using full-width characters for English and numbers, and omitting spaces between Chinese and English text or numbers.
 
-其中很多人会忽视中文和英文、数字之间加一个「空格」，这样排版阅读起来会更舒服。之前我的文章排版，都是遵循了这些细节。
+Many people overlook the spaces between Chinese and English text or numbers. Adding them makes the text easier to read. I have tried to follow these details in my own articles.
 
-## 3、重要逻辑不写注释，或写得很拖沓
+## 3. Omitting Comments for Important Logic—or Writing Long-Winded Ones
 
-复杂且重要的逻辑代码，很多程序员不写注释，除了自己能看懂代码逻辑，其他人根本看不懂。或者是注释虽然写了，但写得很拖沓，没有逻辑可言。
+Many programmers leave complex, important logic unexplained. They may understand it themselves, but other people cannot. Others add comments that are long and disorganized.
 
-重要的逻辑不止要写注释，还要写得简洁、清晰。如果是一眼就能读懂的简单代码，可以不加注释。
+Important logic should have comments that are concise and clear. Simple code that is immediately understandable may not need comments.
 
-## 4、写复杂冗长的函数
+## 4. Writing Long, Complicated Functions
 
-一个函数几百行，一个文件上千行代码，复杂函数不做拆分，导致代码变得越来越难维护，最后谁也不敢动。
+A function may run for hundreds of lines, or a file may contain thousands. When complex functions are not broken down, the code becomes harder to maintain until no one dares to change it.
 
-基本的设计模式还是要遵守的，例如单一职责，一个函数只做一件事，开闭原则，对扩展开放，对修改关闭。
+Follow basic design principles, such as the Single Responsibility Principle: a function should do one thing. Follow the Open/Closed Principle as well: code should be open for extension but closed for modification.
 
-如果函数逻辑确实复杂，也至少要保证主干逻辑足够清晰。
+If the logic is genuinely complex, at least make the main flow easy to follow.
 
-## 5、不看官方文档，只看垃圾博客
+## 5. Ignoring Official Documentation and Relying on Low-Quality Blogs
 
-很多人遇到问题不先去看官方文档，而是热衷于去看垃圾博客，这些博客的内容都是互相抄袭，错误百出。
+When they encounter a problem, many people do not consult the official documentation first. Instead, they turn to low-quality blogs whose content is copied from one another and riddled with errors.
 
-其实很多软件官方文档写得已经非常好了，常见问题都能找到答案，认真读一读官方文档，比看垃圾博客强一百倍，要养成看官方文档的好习惯。
+Many software projects already have excellent documentation that answers common questions. Read it carefully; it is far more useful than low-quality blog posts. Make reading official documentation a habit.
 
-## 6、宣扬内功无用论
+## 6. Claiming Fundamentals Do Not Matter
 
-有些人天天追求日新月异的开源项目和框架，却不肯花时间去啃一啃底层原理，常见问题虽然可以解决，但遇到稍微深一点的问题就束手无策。
+Some people chase new open-source projects and frameworks but will not spend time learning how things work underneath. They can solve familiar problems, but are helpless when they encounter a deeper one.
 
-很多高大上的架构设计，思路其实都源于底层。想一想，像计算机体系结构、操作系统、网络协议这些东西，经过多少年演进才变为现在的样子，演进过程中遇到的复杂问题比比皆是，理解了解决这些问题的思路，再看上层技术会变得很简单。
+Many sophisticated architectural ideas come from fundamentals. Consider how computer architecture, operating systems, and network protocols evolved over many years to address complex problems. Understand the reasoning behind those solutions, and higher-level technologies become easier to grasp.
 
-## 7、乐于炫技
+## 7. Showing Off Technical Jargon
 
-有些人天天把「高大上」的技术名词挂在嘴边，生怕别人不知道自己学了什么高深技术，嘴上乐于炫技，但别人一问他细节就会哑口无言。
+Some people constantly use impressive-sounding technical terms so everyone knows what they have studied. But when asked for details, they cannot explain them.
 
-## 8、不接受质疑
+## 8. Rejecting Questions and Feedback
 
-自己设计的方案，别人提出疑问时只会回怼，而不是理性分析利弊，抱着学习的心态交流。
+When someone questions their design, they snap back instead of calmly discussing its trade-offs and treating the conversation as a chance to learn.
 
-这些人学了点东西就觉得自己很有本事，殊不知只是自己见识太少。
+They learn a little and think they know a lot, without realizing how little they have seen.
 
-## 9、接口协议不规范
+## 9. Leaving API Contracts Unclear
 
-和别人定 API 协议全靠口头沟通，不给规范的文档说明，甚至到了测试联调时会发现，竟然和协商的还不一样，或者改协议了却不通知对接方，合作体验极差。
+They agree on API details verbally without writing proper documentation. During integration testing, they discover that the implementation does not match what was agreed on—or someone changes the contract without notifying the other team. This makes collaboration frustrating.
 
-## 10、遇到问题自己死磕
+## 10. Struggling with a Problem Alone for Too Long
 
-很初级程序员容易犯的问题，遇到问题只会自己死磕，拖到 deadline 也没有产出，领导来问才知道有问题解决不了。
+This is common among junior programmers. They keep struggling alone, miss a deadline without producing anything, and only tell their manager they are stuck when asked for an update.
 
-有问题及时反馈才是对自己负责，对团队负责。
+Reporting a problem promptly is part of taking responsibility for yourself and your team.
 
-## 11、一说就会，一写就废
+## 11. Talking Well but Failing to Implement
 
-平时技术方案吹得天花乱坠，一让他写代码就废，典型的眼高手低选手。
+They describe impressive technical plans, but cannot turn them into working code. They have ideas beyond their practical abilities.
 
-## 12、表达没有逻辑，不站在对方角度看问题
+## 12. Communicating Without Structure or Considering the Audience
 
-讨论问题不交代背景，上来就说自己的方案，别人听得云里雾里，让你从头描述你又讲不明白。
+They discuss a problem without explaining the background and jump straight to their proposed solution, leaving others confused. When asked to start from the beginning, they still cannot explain it clearly.
 
-学会沟通和表达，是合作的基础。
+Good communication is the foundation of collaboration.
 
-## 13、不主动思考，伸手党
+## 13. Failing to Think Before Asking for Help
 
-遇到问题不去 google，不做思考就向别人提问，喜欢做伸手党。
+They do not search online or think through a problem before asking someone else. Instead, they expect others to do the work for them.
 
-每个人的时间都很宝贵，大家都更喜欢你带着自己的思考来提问，一来可以规避很多低级问题，二来可以提高交流质量。
+Everyone's time is valuable. People prefer questions that show some prior thought. This avoids basic questions and makes the discussion more productive.
 
-## 14、经常犯重复的错误
+## 14. Repeating the Same Mistakes
 
-出问题后说下次会注意，但下次问题依旧，对自己不负责任，说到底是态度问题。
+They say they will be more careful next time, but keep making the same mistakes. This shows a lack of responsibility.
 
-## 15、加功能不考虑扩展性
+## 15. Adding Features Without Considering Extensibility
 
-加新功能只关注某一小块业务，不考虑系统整体的扩展性，堆代码行为严重。
+They focus only on the immediate feature and ignore how it fits into the larger system, piling up code as a result.
 
-要学会分析需求和未来可能发生的变化，设计更通用的解决方案，降低后期开发成本。
+Analyze the requirements and possible future changes. Design a more general solution when appropriate to reduce the cost of later development.
 
-## 16、接口不自测，出问题不打日志
+## 16. Skipping API Self-Testing and Failing to Add Logs
 
-自己开发的接口不自测就和别人联调，出了问题又说没打日志，协作效率极低。
+They hand an API over for integration without testing it themselves. When a problem appears, they say there are no logs to investigate. This makes collaboration inefficient.
 
-## 17、提交代码不规范
+## 17. Writing Uninformative Commit Messages
 
-很多人提交代码不写描述，或者写的是无意义的描述，尤其是修改很少代码时，这种情况会导致回溯问题成本变高。
+Many people commit code with no description or a meaningless one. This is especially costly when only a small amount of code changes, because it makes the change harder to trace later.
 
-制定代码提交规范，能让你在每一次提交代码时，不会做太随意的代码修改。
+Adopt commit-message conventions so that each commit clearly explains what changed instead of documenting careless edits.
 
-## 18、手动修改生产环境数据库
+## 18. Editing the Production Database by Hand
 
-直连生产环境数据库修改数据，更有 UPDATE / DELETE SQL 忘写 WHERE 条件的情况，产生数据事故。
+They connect directly to the production database to change data. Sometimes they even run an `UPDATE` or `DELETE` statement without a `WHERE` clause, causing a data incident.
 
-修改生产环境数据库一定要谨慎再谨慎，建议操作前先找同事 review 代码再操作。
+Be extremely cautious when changing production data. Have a colleague review the command before running it.
 
-## 19、没理清需求就直接写代码
+## 19. Coding Before Clarifying the Requirements
 
-很多程序员接到需求后，不怎么思考就开始写代码，需求和自己理解的有偏差，造成无意义返工。
+They start coding as soon as a request arrives, without thinking it through. Their understanding differs from the actual requirements, leading to wasted rework.
 
-多花些时间梳理需求，能规避很多不合理的问题。
+Spend more time clarifying requirements to avoid unnecessary problems.
 
-## 20、重要设计不写文档
+## 20. Not Documenting Important Designs
 
-重要的设计没有文档输出，和别人交接系统时只做口头描述，丢失关键信息。
+They leave important designs undocumented and explain a system verbally during handoffs, losing key information.
 
-有时候理解一个设计方案，一个好的文档要比看几百行代码更高效。
+For understanding a design, a good document can sometimes be more effective than reading hundreds of lines of code.
 
-## 总结
+## Summary
 
-以上这些不良习惯，你命中几个呢？或者你身边有没有碰到这样的人？
+How many of these habits have you seen in yourself or people around you?
 
-我认为提早规避这些问题，是成为一个优秀程序员必须要做的。这些习惯总结起来大致分为这 4 个方面：
+Avoiding them early is part of becoming a good programmer. They fall into four broad areas:
 
-- 良好的编程修养
-- 谦虚的学习心态
-- 良好的沟通和表达
-- 注重团队协作
+- Strong engineering practices
+- A humble attitude toward learning
+- Clear communication
+- Effective teamwork
 
-优秀程序员的专业技能，我们可能很难在短时间内学会，但这些基本的职业素养，是可以在短期内做到的。
+It may take a long time to develop strong technical skills, but these basic professional habits can be built much sooner.
 
-希望你我可以有则改之，无则加勉。
+Let's correct the habits we recognize and keep improving where we can.
 
 <!-- @include: @article-footer.snippet.md -->

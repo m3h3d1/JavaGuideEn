@@ -1,159 +1,159 @@
 ---
-title: 强模型时代，AI 编程 Skills 还有必要装吗？
-description: 从 Codex、Superpowers 和 grilling 的实际使用出发，讨论强模型时代哪些 Skill 可以删除，哪些工作流仍然值得长期保留。
-category: AI 编程实战
+title: Do AI Coding Skills Still Matter with Strong Models?
+description: Based on practical use of Codex, Superpowers, and grilling, this article considers which Skills can be removed and which workflows remain worth keeping as models improve.
+category: AI Coding in Practice
 tag:
-  - AI 编程
+  - AI Coding
   - Codex
   - Skills
   - Superpowers
 head:
   - - meta
     - name: keywords
-      content: AI编程,Codex,Skills,Superpowers,grilling,AGENTS.md,Subagent,Plugin
+      content: AI Coding,Codex,Skills,Superpowers,grilling,AGENTS.md,Subagent,Plugin
 ---
 
-前几天在知乎看到一个问题：**Codex 用上 GPT-5.6 后，Skills 还有多少必要？**
+A few days ago, I saw a question on Zhihu: **Now that Codex uses GPT-5.6, how necessary are Skills?**
 
-![关于 Codex 使用 GPT-5.6 后是否仍需要 Skills 的提问](../images/shared/zhihu-codex-gpt56-skills-question.png)
+![Question about whether Skills are still needed with GPT-5.6 in Codex](../images/shared/zhihu-codex-gpt56-skills-question.png)
 
-一条提问和我自己的使用变化不能代表行业趋势。更准确地说，我发现手里一部分开发类 Skill 的收益正在下降，所以想重新检查哪些该留、哪些该删。
+One question and changes in my own workflow do not represent an industry-wide trend. More precisely, I have noticed that some of my development Skills are becoming less useful, so I wanted to reconsider which ones to keep and which to remove.
 
-我现在看到一个 Skill，会先看它到底能提供什么能力。如果没有确切作用的话，肯定是不会装的。
+When I encounter a Skill now, I first ask what capability it actually provides. If it has no clear purpose, I do not install it.
 
-前两年，模型干活经常漏步骤，Skill 写得越细越让人安心。现在 GPT-5.6、Kimi K3、Claude Fable 5 等模型已经能完成不少基础动作，我也开始重新检查手里的 Skill。
+Two years ago, models often skipped steps, so a detailed Skill was reassuring. Models such as GPT-5.6, Kimi K3, and Claude Fable 5 can now handle many basic actions, so I have started reviewing the Skills I use.
 
-> 下面我会以 Codex 作为 Coding Agent 为例来谈，其他都是类似的。
+> The examples below use Codex as the coding agent, but the ideas also apply to other agents.
 
-## 很多基础步骤已经不用单独教了
+## Many Basic Steps No Longer Need to Be Taught Separately
 
-以前的开发类 Skill 经常写成一张操作清单：怎么读项目，怎么找调用链，改完代码跑哪些测试，提交 PR 前再检查什么。模型能力还不够稳定时，这些提醒确实有用。
+Development Skills used to be written like checklists: how to read a project, trace a call path, choose tests after changing code, and review everything before opening a PR. When models were less reliable, these reminders were useful.
 
-现在让 Codex 修一处 Bug，只要现象、预期和验收标准比较清楚，它通常能自行阅读相关代码、沿着调用链定位问题，再完成实现和基础验证。项目结构复杂、测试入口特殊或者改动风险较高时，仍然要明确告诉它跑哪些检查，不能把验证完全交给模型猜。
+Now, if I ask Codex to fix a bug and clearly describe the symptoms, expected behavior, and acceptance criteria, it can usually read the relevant code, trace the call path, implement a fix, and perform basic verification on its own. For a complex project structure, an unusual test setup, or a high-risk change, I still need to specify which checks to run. I should not let the model guess the entire verification plan.
 
-长任务、审批和多 Agent 协作，Codex 本身也提供了对应能力。需要扩展任务流程或外部能力时，还可以使用 Skills、Plugins、MCP 和 Hooks。过去那种“不把每一步写满就容易跑偏”的情况少了很多。
+Codex also has built-in support for long-running tasks, approvals, and multi-agent collaboration. Skills, Plugins, MCP, and Hooks can extend its workflow or external capabilities. The old problem—“if every step is not spelled out, the model will go off track”—has become much less common.
 
 ![Claude Code PreToolUse Hook](../images/shared/claude-code-runs-rm-rf-tmp-build-what-happens.svg)
 
-一份 `SKILL.md` 如果没有项目特有的约束，也没有脚本、模板和检查项，只是在重复常规开发步骤，我通常不会留。它没有给模型增加多少新信息，却可能让一个小任务多走几道流程。
+If a `SKILL.md` contains no project-specific constraints, scripts, templates, or checks, and merely repeats routine development steps, I usually remove it. It adds little new information for the model and may add unnecessary steps to a small task.
 
-## Skill 装多了也有成本
+## Too Many Skills Have a Cost
 
-Codex 不会在会话开始时读取所有 `SKILL.md` 的全文。它先拿到每个 Skill 的名称、描述和路径，任务匹配后才加载正文，这套机制叫渐进式披露。
+Codex does not read the full text of every `SKILL.md` at the start of a session. It first receives each Skill's name, description, and path, then loads the body only when a task matches. This is called progressive disclosure.
 
-按照 [Codex 的 Skills 文档](https://learn.chatgpt.com/docs/build-skills)，初始 Skill 列表最多使用模型上下文窗口的 2%；无法确定窗口大小时，上限是 8,000 个字符。超出预算后，Codex 会先缩短描述。数量继续增加，部分 Skill 可能被移出初始列表。
+According to the [Codex Skills documentation](https://learn.chatgpt.com/docs/build-skills), the initial Skill list can use at most 2% of the model's context window; if the window size is unknown, the limit is 8,000 characters. If the list exceeds the budget, Codex shortens descriptions first. As the number of Skills grows, some may be removed from the initial list.
 
-装到 100 个时，Agent 开工前看到的可能已经不是 100 份完整描述。
+With 100 Skills installed, the agent may not even see 100 complete descriptions before it starts working.
 
-描述写得太宽，一个普通改动就可能命中好几份 Skill。规则发生冲突时，Codex 还要判断当前该执行哪套流程。再混进几份长期没有维护的说明，任务跑偏后很难马上找到原因。
+Descriptions that are too broad may cause several Skills to match an ordinary change. If their rules conflict, Codex has to decide which workflow to follow. Add a few outdated instructions and it may be difficult to tell why a task went off track.
 
-上下文窗口变大也没有消除这个问题。旧对话、工具说明和 Skill 描述都能放进去，但项目真正重要的约束往往只有几句。内容越杂，关键要求越容易被淹没。
+A larger context window does not eliminate this problem. Old conversations, tool instructions, and Skill descriptions can all fit, but the project's most important constraints may only be a few sentences. The more clutter there is, the easier it is for key requirements to get buried.
 
-![上下文为什么会失效](../../ai/images/shared/why-does-the-following-content-fail.png)
+![Why context can fail](../../ai/images/shared/why-does-the-following-content-fail.png)
 
-Skill 和浏览器书签挺像。刚开始看到什么都想存，总觉得以后用得上。半年后回头一看，常用的还是那几个。
+Skills are a bit like browser bookmarks. At first, you want to save everything because it might be useful later. Six months afterward, you find that you still use only a few of them.
 
-从 Skill 出来到现在，我经常使用、愿意长期维护的不到 20 个。比如写作时常用的 [draw.io 绘图 Skill](https://mp.weixin.qq.com/s/rAKCSFHB407v6fe35ix0rg)，它能固定图表样式，也能避开我反复遇到的排版问题。这类 Skill 沉淀的是个人偏好和具体经验，模型临场发挥很难一直保持同样的结果。
+Since Skills became available, I have used and maintained fewer than 20 regularly. One example is the [draw.io diagram Skill](https://mp.weixin.qq.com/s/rAKCSFHB407v6fe35ix0rg) I use when writing. It keeps diagrams consistent and avoids layout problems I have encountered repeatedly. Skills like this capture personal preferences and practical experience—things a model may not reproduce consistently on the fly.
 
-## 规则应该放在哪
+## Where Should Rules Live?
 
-很多 Skill 越写越大，是因为大家把所有规则都往里面塞。我现在会按规则的作用范围来分：
+Many Skills grow too large because people put every rule into them. I now organize rules by scope:
 
-- 每轮任务都要遵守的项目约定，放进 `AGENTS.md` 或项目规则文件。
-- 只在特定任务中使用的流程，写成 Skill。
-- 耗时较长、会制造大量中间信息的支线调查，交给 Subagent。
-- 需要把 Skills、Hooks、MCP 和连接器统一分发给团队，再打包成 Plugin。
-- 漏一次就可能出问题的机械约束，交给 Hook、CI、linter 或测试。
+- Put project conventions that apply to every task in `AGENTS.md` or another project rules file.
+- Write workflows used only for specific tasks as Skills.
+- Delegate lengthy investigations that produce lots of intermediate information to a Subagent.
+- Package Skills, Hooks, MCP, and connectors as a Plugin when the team needs a unified way to distribute them.
+- Enforce mechanical constraints where omissions are costly through a Hook, CI, linter, or test.
 
-规则文件管这个项目一直怎么做，Skill 管遇到某类任务时怎么做。两者混在一起，最后往往会得到一个很长、什么都想管、又很难维护的 `SKILL.md`。
+Rules files govern how work is done across a project; Skills govern how to handle a particular kind of task. Mix them together and you may end up with a long, hard-to-maintain `SKILL.md` that tries to control everything.
 
-Skill 可以携带脚本、参考资料和模板，在命中任务后按需加载。团队需要统一安装和分发时，再用 Plugin 把这些能力打包起来。
+A Skill can include scripts, reference material, and templates, which are loaded as needed when a task matches. Use a Plugin to package those capabilities when the team needs a consistent way to install and distribute them.
 
-![渐进式披露（三层模型）](../../ai/images/shared/skills-progressive-disclosure-three-layer-model.png)
+![Progressive disclosure: the three-layer model](../../ai/images/shared/skills-progressive-disclosure-three-layer-model.png)
 
-如果想系统了解 Skill 和 Prompt、MCP、Function Calling 的分工，可以看 [Agent Skills 是什么？和 Prompt、MCP 到底差在哪？](https://javaguide.cn/ai/agent/skills.html)。这篇文章只讨论怎么选和怎么删，不重复展开技术实现。
+For a broader explanation of how Skills relate to prompts, MCP, and function calling, see [What Are Agent Skills? How Do They Differ from Prompts and MCP?](https://javaguide.cn/ai/agent/skills.html). This article focuses on choosing and pruning Skills rather than explaining their implementation.
 
-## 为什么我很少再用 Superpowers
+## Why I Use Superpowers Less Often
 
-像 [Superpowers](https://github.com/obra/superpowers) 这类覆盖完整开发流程的 Skills 套件，我现在用得少了。
+I now use comprehensive development Skill suites such as [Superpowers](https://github.com/obra/superpowers) less often.
 
-我把这个问题丢到群里聊，大家的反馈也很接近：**Superpowers 容易让小任务背上过重的流程；`grilling` 虽然会连续追问，但需求确实能收得更清楚。**
+I asked a group about it and heard similar feedback: **Superpowers can impose too much process on small tasks. `grilling` asks a series of questions, but it can make requirements much clearer.**
 
-![群友讨论 Superpowers 流程过重以及 Grilling 减少返工](../images/shared/group-chat-superpowers-grilling-feedback.png)
+![Discussion about Superpowers' heavy workflow and how Grilling can reduce rework](../images/shared/group-chat-superpowers-grilling-feedback.png)
 
-Superpowers 提供的是一套完整的软件开发方法：先通过 brainstorming 澄清需求，再用 writing-plans 拆任务，按 test-driven-development 写测试和实现，通过 Git worktree 隔离开发，交给 Subagent 分段执行，最后做代码审查和完成前验证。
+Superpowers provides a complete software development methodology: clarify requirements through brainstorming, break the work down with writing-plans, use test-driven-development to write tests and implementation, isolate work in a Git worktree, delegate steps to Subagents, then review the code and verify completion.
 
-复杂项目、陌生代码库和高风险改动仍然适合这套流程。
+This workflow still suits complex projects, unfamiliar codebases, and high-risk changes.
 
-如果只是改一处校验逻辑或者补一个很小的测试，上来就走完“需求澄清 → 设计 → 计划 → 执行 → 审查 → 验证”，时间很容易被流程本身吃掉。流程越完整，越考验启用时机；任务不够复杂时，它会从保护变成负担。
+But if you only need to change one validation rule or add a small test, following “clarify requirements → design → plan → implement → review → verify” from the start can make the process itself consume too much time. The more complete a workflow is, the more important it is to choose the right time to use it. For a simple task, it can become a burden instead of a safeguard.
 
-现在的 Codex 能在执行过程中调整步骤，也会在缺少关键信息时请求确认。很多小任务只需要补几条项目约束，没有必要每次都套上一整本操作手册。
+Codex can now adjust its steps while working and ask for clarification when important information is missing. Many small tasks only need a few project-specific constraints; there is no reason to apply an entire operations manual every time.
 
-第三方 Skill 还有安全风险。`SKILL.md` 本身就是给 Agent 的指令，里面如果藏了危险命令、异常脚本或过宽的权限要求，Agent 可能真的会照着做。安装前至少看一遍 `SKILL.md`、`scripts/` 和 `references/`；套件越大，越要先弄清楚它会让 Agent 做什么。
+Third-party Skills also carry security risks. A `SKILL.md` contains instructions for an agent. If it hides a dangerous command, an unexpected script, or an overly broad permission request, the agent may follow it. Before installing one, at least inspect `SKILL.md`, `scripts/`, and `references/`. The larger the suite, the more important it is to understand what it will ask the agent to do.
 
-## 我更喜欢 mattpocock/skills 这种轻量组合
+## Why I Prefer a Lightweight Set Like mattpocock/skills
 
-Superpowers 用一套完整方法覆盖开发过程，[mattpocock/skills](https://github.com/mattpocock/skills) 更像一个可以拆开使用的工具箱。
+Superpowers uses one complete methodology for the development process. [mattpocock/skills](https://github.com/mattpocock/skills) is more like a toolbox you can use one piece at a time.
 
-这个仓库里的 Skill 被设计成较小、容易修改、可以组合的模块。需求还没想清楚，可以用 `grilling` 追问；Bug 很难定位，再启用 `diagnosing-bugs`；需要严格走红绿重构时，单独使用 `tdd`；准备合并代码，再让 `code-review` 检查。它们不会默认要求每个任务都走完同一条流程。
+The Skills in this repository are designed as small, easy-to-edit, composable modules. If requirements are unclear, use `grilling` to ask questions. If a bug is difficult to locate, enable `diagnosing-bugs`. If you need to follow red-green-refactor strictly, use `tdd` on its own. Before merging, ask `code-review` to review the change. The tools do not require every task to follow the same workflow.
 
-这套拆法很适合现在的强模型。Codex 已经能完成的步骤，不需要再教一遍；哪个环节反复出错，就只补哪一块。任务变复杂时，再把几个 Skill 组合起来。
+This modular approach works well with strong models. Codex already knows how to perform many steps, so there is no need to teach them again. Add guidance only for the steps that repeatedly go wrong. When a task becomes more complex, combine several Skills.
 
-![群友讨论轻量 Skills 与 Superpowers 的使用体验](../images/shared/group-chat-lightweight-skills-feedback.png)
+![Discussion about lightweight Skills and Superpowers](../images/shared/group-chat-lightweight-skills-feedback.png)
 
-这里面我尤其喜欢 [`grilling`](https://github.com/mattpocock/skills/blob/main/skills/productivity/grilling/SKILL.md)。
+I particularly like [`grilling`](https://github.com/mattpocock/skills/blob/main/skills/productivity/grilling/SKILL.md).
 
-它的规则很短：动手前持续追问，把计划、决策和依赖关系问清楚；一次只问一个问题，等用户回答后再继续；能从环境中查到的事实自己查，需要取舍的决定再交给用户。
+Its rules are short: keep asking questions before starting until the plan, decisions, and dependencies are clear; ask one question at a time and wait for the answer before continuing; look up facts available in the environment yourself, and ask the user only about decisions that require a choice.
 
-## 哪些 Skill 还值得留
+## Which Skills Are Still Worth Keeping?
 
-我现在会优先保留三类 Skill。
+I prioritize three kinds of Skills.
 
-第一类是模型很难凭空猜到的个人偏好和固定产物，例如文章风格、图表规范、公司内部模板和特定代码库的发布流程。有了这些约束，每次交付才能尽量保持同一套标准。
+The first captures personal preferences and specific outputs that a model cannot infer, such as article style, diagram conventions, internal company templates, or a particular codebase's release process. These constraints help keep each result consistent.
 
-第二类是带有专业判断、脚本或参考资料的任务。安全审查、复杂文档处理、特定框架迁移和生产检查，只靠一句 Prompt 很难覆盖所有细节。Skill 可以把检查项、工具脚本和证据来源放在一起，用到时再加载。
+The second supports tasks that require specialized judgment, scripts, or reference material. Security reviews, complex document processing, framework migrations, and production checks involve details that a single prompt may not cover. A Skill can bring the checklist, scripts, and sources together and load them when needed.
 
-第三类是能减少方向错误的流程。`grilling` 就属于这一类：它没有替 Codex 写代码，只是把开工前的需求确认固定下来。模型执行得越快，这类“先确认方向”的流程越值得保留。
+The third provides a workflow that prevents mistakes. `grilling` is an example: it does not write code for Codex; it makes requirements clarification before implementation a repeatable step. The faster a model executes, the more useful it can be to confirm the direction first.
 
-## 我用 grilling 澄清了一次真实需求
+## How I Used Grilling to Clarify a Real Requirement
 
-这个案例来自我的开源项目 [《SpringAI 智能面试平台》（2.0 版本已开源）](https://javaguide.cn/zhuanlan/interview-guide.html)。当时我准备把模拟面试和知识库打通，给 `grilling` 的任务也很直接：帮我把这件事想清楚。
+This example comes from my open-source project [SpringAI Interview Platform (version 2.0 is open source)](https://javaguide.cn/zhuanlan/interview-guide.html). I wanted to connect mock interviews with the knowledge base. The task I gave `grilling` was simple: help me think through the change.
 
-现有实现比我预想的更接近“打通”：知识库面试和普通模拟面试都在使用 `InterviewSession`，作答、评估和部分前端页面也已经复用。这次没有必要先改底层，得先确定首期产品范围。
+The current implementation was already closer to being integrated than I expected: both knowledge-base interviews and ordinary mock interviews used `InterviewSession`, and answering, evaluation, and some frontend pages were already shared. There was no need to change the underlying implementation first. I needed to define the initial product scope.
 
-![使用 Grilling 确认模拟面试与知识库的打通方案](../images/shared/grilling-springai-interview-platform-case.png)
+![Using Grilling to confirm how mock interviews should connect to the knowledge base](../images/shared/grilling-springai-interview-platform-case.png)
 
-它问的第一个问题，是首期做“完全基于用户资料的定向面试”，还是让用户照常选择 Java、系统设计等 Skill，知识库只负责补充上下文。
+Its first question was whether the initial release should provide interviews based entirely on user-provided materials, or let users continue to choose a Skill such as Java or system design while the knowledge base only adds context.
 
-它建议先做前者。现有的题库生成、分类、难度、固定追问和评分规则都更贴近这条链路，只要统一入口和历史记录就能跑通。后一种方案还会引出 Skill 题目与知识库题目的混合比例、实时 RAG、来源冲突、评估依据和题目去重，改造范围会大很多。
+It recommended starting with the first option. Existing question generation, categorization, difficulty levels, fixed follow-up questions, and scoring rules already fit that workflow. We only needed to unify the entry point and history. The second option would also raise questions about the mix of Skill and knowledge-base questions, live RAG, conflicting sources, evaluation criteria, and duplicate questions, expanding the scope considerably.
 
-我确认首期目标后，它才继续问：一场面试只选一个知识库，还是允许组合多个知识库？当前请求、会话字段和题库筛选都只有一个 `knowledgeBaseId`，所以它建议首期先限制单库，等流程稳定后再考虑多库关联。
+After I confirmed the initial goal, it asked whether an interview should use a single knowledge base or combine several. The current request, session field, and question filtering all use a single `knowledgeBaseId`, so it recommended limiting the first release to one knowledge base and considering multiple bases after the workflow is stable.
 
-接着是入口。知识库面试已经有独立页面，普通模拟面试从“模拟面试中心”进入。最后确定双入口共存，但共用同一套配置组件和创建接口，避免维护两套交互逻辑。
+Next, we discussed entry points. Knowledge-base interviews already had a dedicated page, while ordinary mock interviews started from the “Mock Interview Center.” The final decision was to keep both entry points but share the configuration component and creation API, avoiding two separate interaction flows.
 
-代码还没开始改，产品范围、数据模型和入口复用方式已经定下来了。
+Before changing any code, we had settled the product scope, data model, and approach to reusing the entry points.
 
-我愿意保留 `grilling`，是因为模型写代码已经够快了，返工多半发生在开工太早的时候：需求范围没定，异常处理没聊，用户场景和技术取舍还很含糊。Agent 按自己的理解一口气做完，最后可能还得推倒重来。
+I want to keep `grilling` because the model already writes code quickly. Rework usually happens because implementation starts too soon: the scope is unclear, exceptions have not been discussed, or user scenarios and technical trade-offs remain vague. The agent can complete a change based on its own assumptions, only for us to throw it away and start again.
 
-**模型越强，执行越快，走错方向的代价也会跟着变大。**
+**The stronger and faster the model, the more costly a wrong direction can be.**
 
-`grilling` 没有教模型怎么写代码，它只是把“动手前先问清楚”固定成一套可重复执行的流程。强模型不会自动消除这种流程的价值。
+`grilling` does not teach the model how to code. It makes “clarify the task before starting” a repeatable workflow. Strong models do not automatically make that step unnecessary.
 
-## 我的 Skill 删减标准
+## My Criteria for Removing Skills
 
-现在每装一个 Skill，我都会多问几句：
+When I install a Skill, I ask:
 
-- 这件事模型原本就会做吗？
-- 没有它时，我是否反复在同一个地方翻车？
-- 它有没有沉淀脚本、模板、专业资料或个人偏好？
-- 规则过期之后，我能否及时发现并删掉？
+- Can the model already do this without the Skill?
+- Without it, do I keep running into the same problem?
+- Does it capture scripts, templates, specialized references, or personal preferences?
+- If its rules become outdated, will I notice and remove them?
 
-只会提醒“先读项目、再写代码、最后跑测试”的 Skill，我现在基本直接删。项目里真有特殊要求，写进 `AGENTS.md` 会更合适；测试、格式化和安全限制能够机械执行的部分，则交给 CI、Hook 或 linter。
+I now remove Skills that only remind the model to “read the project, write code, and run tests.” Project-specific requirements belong in `AGENTS.md`; checks that can be enforced mechanically, such as tests, formatting, and security rules, belong in CI, Hooks, or a linter.
 
-同一个地方连续翻车，才值得单独写一个 Skill，尤其是出错代价不低的任务。里面只留关键判断和验证动作，够解决问题就停，不顺手扩成一套大而全的工作流。
+Create a separate Skill only when the same problem keeps recurring, especially when mistakes are costly. Keep only the key decisions and verification steps. Stop once it solves the problem instead of expanding it into an all-purpose workflow.
 
-想了解目前有哪些现成 Skill，以及它们分别适合什么任务，可以继续看 [AI 编程 Skills 选型清单](https://javaguide.cn/ai-coding/practices/programmer-essential-skills.html)。关于 Codex 里的 `AGENTS.md`、权限、MCP、Skills 和 Scheduled Tasks 分工，则可以参考 [OpenAI Codex 最佳实践指南](https://javaguide.cn/ai-coding/practices/codex-best-practices.html)。
+To explore available Skills and what tasks they suit, see [AI Coding Skills: A Selection Guide](https://javaguide.cn/ai-coding/practices/programmer-essential-skills.html). For how `AGENTS.md`, permissions, MCP, Skills, and Scheduled Tasks fit together in Codex, see [OpenAI Codex Best Practices](https://javaguide.cn/ai-coding/practices/codex-best-practices.html).
 
-这篇文章题目里虽然写了“还有必要吗”，但我没准备把 Skill 全删掉。我只是不会再看到一个就装一个。
+Although the title asks whether Skills are still necessary, I do not plan to delete all of mine. I simply will not install every new one I see.
 
-现在遇到新 Skill，我会先不用它跑一次。能跑好，就不装；如果同一个问题反复出现，再把那一小段流程留下来。这样清理完，列表可能短了不少，但每个 Skill 为什么还在，我心里有数。
+When I find a new Skill, I first try the task without it. If the model handles the task well, I do not install it. If the same issue keeps coming back, I keep only that small part of the workflow. The list is shorter afterward, and I know why each remaining Skill is there.

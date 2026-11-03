@@ -1,137 +1,136 @@
 ---
-title: 聊聊大厂的绩效考核
-description: "聊聊大厂的绩效考核：围绕技术知识与面试总结梳理关键概念、常见问题与实践要点，帮助你高效学习与备战面试。"
-category: 技术文章精选集
+title: How Performance Reviews Work at Large Tech Companies
+description: A look at performance reviews in large tech companies, including their effect on bonuses, promotions, compensation, and career growth.
+category: Curated Technical Articles
 tag:
-  - 工作
+  - Work
 head:
   - - meta
     - name: keywords
-      content: 大厂绩效,绩效考核,KPI,OKR,271制度,年终奖,职级晋升,向上管理
+      content: Performance Reviews at Large Tech Companies,Performance Evaluation,KPI,OKR,271 Rating System,Annual Bonus,Promotion,Managing Up
 ---
 
-> **内容概览**：
+> **Overview:**
 >
-> - 在大部分公司，绩效跟你的年终奖、职级晋升、薪水涨幅等等福利是直接相关的。
-> - 你的上级、上上级对你的绩效拥有绝对的话语权，这是潜规则，放到任何公司都是。成年人的世界，没有绝对的公平，绩效考核尤为明显。
-> - 提升绩效的打法：
->   - 短期打法：找出 1-2 件事，体现出你的独特价值（抓关键事件）。
->   - 长期打法：通过一步步信任的建立，成为团队的核心人员或者是老板的心腹，具备不可替代性。
+> - At most companies, performance reviews directly affect your annual bonus, promotion, salary increases, and other benefits.
+> - Your manager and skip-level manager have significant influence over your performance rating. This unwritten rule applies across companies. The adult world is never perfectly fair, and performance reviews make that especially clear.
+> - Strategies for improving your rating:
+>   - **Short term:** Find one or two opportunities to demonstrate your distinctive value by delivering on critical work.
+>   - **Long term:** Build trust over time and become a core team member or a trusted partner to your manager—someone the team cannot easily replace.
 >
-> **原文地址**：<https://mp.weixin.qq.com/s/D1s8p7z8Sp60c-ndGyh2yQ>
+> **Original article:** <https://mp.weixin.qq.com/s/D1s8p7z8Sp60c-ndGyh2yQ>
 
-在新公司度过了一个完整的 Q3 季度，被打了绩效，也给下属打了绩效，感慨颇深。
+I recently completed a full Q3 at a new company. I received a performance review and also reviewed my direct reports. It gave me a lot to think about.
 
-今天就好好聊聊**大厂打工人最最关心的「绩效考核」**，谈谈它背后的逻辑以及潜规则，摸清楚了它，你在大厂这片丛林里才能更好的生存下去。
+Today, I want to discuss the topic that employees at large tech companies care about most: **performance reviews**. Understanding how they work, including the unwritten rules, can help you navigate these workplaces.
 
-## 大厂的绩效到底有多重要？
+## How Important Are Performance Reviews at Large Tech Companies?
 
-先从公司角度，谈谈为什么需要绩效考核？
+First, why do companies conduct performance reviews?
 
-有一个著名的管理者言论，即：企业战略的上三路和下三路。
+A well-known management idea divides company strategy into “three things above” and “three things below.”
 
-> 上三路是使命、愿景、价值观，下三路是组织、人才、KPI。下三路需要确保上三路能执行下去，否则便是空谈。那怎么才能达成呢？
+> The three things above are mission, vision, and values. The three things below are organization, talent, and KPIs. The organization and talent systems must make the mission, vision, and values actionable; otherwise, they are just words. How can companies make that happen?
 
-马老板在湖畔大学的课堂上，对底下众多 CEO 学员说，“只能靠 KPI。没有 KPI，一切都是空话，组织和公司是不会进步的”。
+At a class for CEOs at Hupan University, Jack Ma said, “You can only do it through KPIs. Without KPIs, everything is just talk. Organizations and companies will not make progress.”
 
-所以，KPI 一般是用来承接企业战略的。身处大厂的打工者们，也能深深感受到：每个季度的 KPI 是如何从大 Boss、到 Boss、再到基层，一层层拆解下来的，最终让所有人朝着一个方向行动，这便是 KPI 对于公司的意义。
+KPIs are generally used to put company strategy into practice. Employees at large companies can see how quarterly KPIs are broken down from senior executives to managers and then to frontline teams, aligning everyone's work toward the same goals. That is the purpose of KPIs for a company.
 
-然鹅，并非每个员工都会站在 CEO 的高度去理解 KPI 的价值，大家更关注的是 KPI 对于我个人来说到底有什么意义？
+But not every employee thinks about KPIs from a CEO's perspective. Most people want to know what KPIs mean for them personally.
 
-在互联网大厂，每家公司都会设定一套绩效考核体系，字节用的是 OKR，阿里用的是 KPI，通常都是「271」 制度，即：
+In China's large internet companies, each company has its own performance review system. ByteDance uses OKRs, while Alibaba uses KPIs. A common approach is the “271” distribution:
 
-> 20% 的比例是 A+ 和 A，对应明星员工。
+> 20% receive A+ or A ratings and are considered star performers.
 >
-> 70% 的比例是 B，对应普通员工。
+> 70% receive a B rating and are considered average performers.
 >
-> 10% 的比例是 C 和 C-，对应需要绩效改进或者淘汰的员工。
+> 10% receive C or C- ratings and may be put on a performance improvement plan or let go.
 
-有了三六九等，然后才有了利益分配。
+Once employees are ranked, companies can distribute rewards accordingly.
 
-**在大厂，绩效结果跟奖金、晋升、薪水涨幅、股票授予是直接相关的。在内卷的今天，甚至可以直接划上等号。**
+**At large companies, performance ratings directly affect bonuses, promotions, salary increases, and stock grants. In today's highly competitive environment, they can determine all of these.**
 
-绩效好的员工，奖金必然多，一年可能调薪两次，晋升答辩时能 PK 掉绩效一般的人，职级低的人甚至可以晋升免试。
+High performers receive larger bonuses, may get two salary increases in a year, can outperform average performers in promotion reviews, and may even be promoted without an interview if they are at a lower level.
 
-而绩效差的人，有可能一年白干，甚至走人（大厂的末尾淘汰是不成文的规定）。
+Poor performers may effectively work for a year without a reward and could even be let go. Although companies rarely state it openly, large companies often force out employees at the bottom of the rankings.
 
-总之，你能想到的直接利益都和「绩效」息息相关。所以，在大厂这片高手众多的丛林里，多琢磨下绩效背后的逻辑，既是生存之道，更是一技之长。
+In short, performance affects every direct benefit you can think of. In a competitive workplace full of talented people, understanding how reviews work is both a survival skill and a valuable professional skill.
 
-## 你是怎么看待绩效的？
+## How Do You View Performance Reviews?
 
-凡是用来考核人的规则，大部分人在潜意识里都想去突破它，而不是被束缚。
+When people are evaluated by a set of rules, many instinctively want to find a way around them rather than be constrained by them.
 
-至少在我刚工作的前几年，看着身边有些同事因为背个 C 黯然离开的时候，觉得绩效考核就是一个冷血的管理工具。
+During my first few years at work, I saw colleagues leave in disappointment after receiving a C rating. I thought performance reviews were a cold management tool.
 
-尤其遇到自己看不上的领导时，对于他给我打的绩效，其实也是很不屑的。
+When I had a manager I did not respect, I also dismissed the rating they gave me.
 
-到今天，实在见过太多的反面案例了，自己也踩过一些坑，逐渐认识到：当初的想法除了让自己心里爽一点，好像起不到任何作用，甚至会让我的工作方式变形。
+Now I have seen too many bad examples and made some mistakes myself. I have come to realize that this attitude did little beyond making me feel better, and sometimes even distorted how I worked.
 
-当思维方式变了，也就改变了我对绩效的态度，至少有两点我认为是打工人需要看清的。
+Changing how I thought about performance reviews changed my attitude toward them. There are at least two things employees need to understand.
 
-**第一，你的上级、上上级对你的绩效拥有绝对的话语权，这是潜规则，放到任何公司都是。**
+**First, your manager and skip-level manager have significant influence over your performance rating. This is an unwritten rule that applies at every company.**
 
-大家可以去看看身边发展特别好的人，除了有很强的个人能力以外，几乎都是善于利用规则，而不是去挑战规则的人。
+Look at people around you who are doing particularly well. In addition to strong individual ability, they are almost always good at working within the rules rather than challenging them.
 
-当然，我并不是说你要一味地去跪舔你的领导，而是表达：工作中不要站在领导的对立面去做对抗，如果领导做法很过分，要么直接沟通去影响他，要么选择离开。
+I am not saying you should flatter your manager. The point is that you should not work against them. If their behavior is unreasonable, either talk to them directly and try to influence them, or leave.
 
-**第二，成年人的世界，没有绝对的公平，绩效考核尤为明显。**
+**Second, the adult world is never perfectly fair, and performance reviews make that especially clear.**
 
-我所待过的团队，绩效考核还是相对公平的，虽然也存在受照顾的情况，但都是个例。
+The teams I have worked on were relatively fair, though there were occasional exceptions where someone received special treatment.
 
-另外就是，技术岗的绩效考核不同于销售或者运营岗，很容易指标化。
+Performance reviews for technical roles differ from those for sales or operations, where results are easier to quantify.
 
-需求吞吐量、BUG 数、线上事故... 的确有一大堆研发效能指标，但这些指标在绩效考核时是否会被参考？具体又该如何分配比重？本身就是一个扯不清楚的难题。
+Engineering has plenty of productivity metrics, such as feature throughput, bug counts, and production incidents. But should these metrics affect performance reviews, and how much weight should each receive? There is no easy answer.
 
-最终决定你绩效结果的还是你领导的主观判断。你所见到的 360 环评，以及弄一些指标排序，这些都只是将绩效结果合理化的一种方式，并非关键所在。
+Ultimately, your manager's judgment has the greatest influence on your rating. 360-degree reviews and metric-based rankings may help make the result appear more objective, but they are not the deciding factors.
 
-因此，多琢磨如何去影响你的领导？站在他的视角去审视他在绩效考核时到底关注哪些核心点？这才是至关重要的。
+It is crucial to think about how to influence your manager. Try to see the review from their perspective and understand what they care about most.
 
-上面讲了一堆潜规则，是不是意味着绩效考核是可以投机取巧，完全不看工作业绩呢，当然不是。
+Does this mean performance reviews are just about playing politics, regardless of the work itself? Of course not.
 
-“你的努力不一定会被看见”、“你的努力应该有的放矢”，大家先记住这两条。
+Remember these two things: **Your hard work may go unnoticed, and you should focus your effort where it matters.**
 
-下面我再展开聊聊，大家最最关心的 A 和 C，它们背后的逻辑。
+Now let us look at the ratings everyone cares about most: A and C, and the reasoning behind them.
 
-## 绩效被打 A 和 C 的逻辑是什么？
+## Why Do People Receive A and C Ratings?
 
-“铆足了劲拿不到 A，一不留神居然拿了个 C”，这是绝大多数打工人最真实的职场现状。
+“I worked as hard as I could but did not get an A; I let my guard down and got a C.” This is a common experience for employees.
 
-A 和 C 属于绩效的两个极端，背后的逻辑类似，反着理解即可，下面我详细分析下 C。
+A and C are opposite ends of the performance scale, but the reasoning behind them is similar. You can understand one by looking at the other. I will focus on C ratings.
 
-先从我身边人的情况说起，我所看到的案例绝大多数都属于：绩效被打了 C，完全没有任何预感，主管跟他沟通结果时，还是一脸懵逼，“为什么会给我打 C？一定是黑我呀！”。
+Most of the cases I have seen involved people who received a C without expecting it. When their manager told them, they were bewildered: “Why did I get a C? They must be targeting me!”
 
-前阵子听公司一位大佬分享，用他的话说，这种人就是没有「角色认知」，他不知道他所处的角色和职级该做好哪些事？做成什么样才算「做好了」？被打 C 后自然觉得是在背锅。
+Recently, a senior colleague at my company explained that these people lacked “role awareness.” They did not know what was expected at their level or what good performance looked like. After receiving a C, they naturally felt they had been treated unfairly.
 
-所以，务必确保你对于当前角色是认知到位的，这样才称得上进入了「工作状态」，否则你的一次松懈，一段不太好的表现，很可能导致 C 落在你的头上，岗位越高，摔得越重。
+Make sure you understand what your role requires. That is what it means to be fully engaged in your work. A moment of carelessness or a stretch of poor performance may earn you a C. The higher your position, the harder you may fall.
 
-有了角色认知，再说下对绩效的认知。
+Once you understand your role, you also need to understand how performance works.
 
-第一，团队很优秀，是不是不用背 C？不是！大厂的 C 都是强制分配的，再优秀的团队也会有 C。所以团队越厉害，竞争越惨烈。
+First, if your team is excellent, does that mean you cannot receive a C? No. Large companies often enforce a distribution, so even excellent teams have C ratings. The stronger the team, the fiercer the competition.
 
-第二，完成了 KPI，没有工作失误，是不是就万事大吉，不用背 C？不是，绩效是相对的，你必须清楚你在团队所处的位置，你在老板眼中的排序，慢慢练出这种嗅觉。
+Second, if you meet your KPIs and make no mistakes, are you safe from a C? No. Ratings are relative. You need to understand where you stand on your team and how your manager ranks your work. Learn to develop an instinct for this.
 
-懂了上面这些道理，很自然就能知道打 C 的逻辑，C 会集中在两类人上：
+With that in mind, C ratings tend to go to two kinds of people:
 
-> 1、工作表现称不上角色要求的人。
->
-> 2、在老板眼里排序靠后，就算离开，对团队影响也很小的人。
+> 1. People whose performance does not meet the expectations of their role.
+> 2. People who rank low in their manager's view and whose departure would have little effect on the team.
 
-要规避 C，有两种打法。
+There are two ways to reduce the risk of getting a C.
 
-第 1 种是短期打法：抓关键事件，能不能找出 1-2 件事，体现出你的独特价值（比如本身影响力很大的项目，或者是领导最重视的事），相当于让你的排序有了最基本的保障。
+The first is a short-term strategy: focus on critical work. Can you find one or two opportunities to demonstrate your distinctive value, such as a high-impact project or work your manager cares about most? This can give you a baseline position in the ranking.
 
-这种打法，你不能等到评价时再去改变，一定是在前期就抓住机会，承担起最有挑战的任务，然后全力以赴，做好了拿 A，不弄砸也不至于背 C，就怕静水潜流，躺平了去工作。
+Do not wait until review time to change your performance. Look for opportunities early, take on challenging work, and give it your best. If you do it well, you may earn an A; if you avoid major mistakes, you may at least avoid a C. The risk is quietly coasting through your work.
 
-第 2 种是长期打法：通过一步步信任的建立，成为团队的核心人员或者是老板的心腹，具备不可替代性。
+The second is a long-term strategy: build trust over time, become a core team member or a trusted partner to your manager, and develop expertise that is difficult to replace.
 
-上面两种打法都是大的思路，还有很多锦上添花的技巧，比如：加强主动汇报（抹平领导的信息差）、让关键干系人给你点赞（能影响到你领导做出绩效决策的人）。
+These are broad strategies. Other helpful practices include proactively sharing updates to reduce information gaps and earning support from key stakeholders who can influence your manager's review decisions.
 
-## 写在最后
+## Closing Thoughts
 
-有人的地方就有江湖，有江湖就一定有规则，大厂平面看似平静，其实在绩效考核、晋升等利益点面前，都是一场厮杀。
+Where there are people, there are social dynamics; where there are social dynamics, there are rules. The surface of a large company may look calm, but performance reviews and promotions can become fierce competitions over limited rewards.
 
-当大家攻山头的能力都很强时，**到底做成什么样才算做好了？**当你弄清楚了这个玄机，职场也就看透了。
+When everyone is good at taking on challenges, **what does it mean to do a good job?** Once you understand that, you will have a clearer view of how the workplace works.
 
-如果这篇文章让你有一点启发，来个点赞和在看呀！我是武哥，我们下期见！
+If this article gave you something to think about, please like it and save it for later. I'm Wu Ge. See you next time!
 
 <!-- @include: @article-footer.snippet.md -->

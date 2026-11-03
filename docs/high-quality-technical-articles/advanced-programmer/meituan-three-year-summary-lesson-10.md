@@ -1,177 +1,175 @@
 ---
-title: 美团三年，总结的10条血泪教训
-description: "美团三年，总结的10条血泪教训：围绕技术知识与面试总结梳理关键概念、常见问题与实践要点，帮助你高效学习与备战面试。"
-category: 技术文章精选集
-author: CityDreamer部落
+title: Ten Lessons from Three Years at Meituan
+description: Ten lessons from three years at Meituan on structured thinking, workplace communication, career growth, business awareness, data, health, and personal development.
+category: Curated Technical Articles
+author: CityDreamer Tribe
 tag:
-  - 练级攻略
+  - Career Growth
 head:
   - - meta
     - name: keywords
-      content: 美团工作经验,职场成长,结构化思考,数据思维,职场沟通,金字塔原理,工作效率,职业发展
+      content: Meituan Work Experience,Career Growth,Structured Thinking,Data Literacy,Workplace Communication,Pyramid Principle,Productivity,Career Development
 ---
 
-> **推荐语**：作者用了很多生动的例子和故事展示了自己在美团的成长和感悟，看了之后受益颇多！
+> **Editor's note:** The author uses vivid examples and stories to share lessons learned and personal growth at Meituan. The article offers a lot to reflect on.
 >
-> **内容概览**：
+> **Key takeaways:**
 >
-> 本文的作者提出了以下十条建议，希望能对其他职场人有所启发和帮助：
+> 1. Use structured thinking and communication to build influence.
+> 2. Do not be intimidated by job titles. Challenge people when needed to move work forward.
+> 3. Make use of company resources, meet talented people, and take general-interest courses.
+> 4. Opportunities have to be earned. Do not wait for them; seek them out.
+> 5. Pay attention to the business, think like an owner, recognize trends, and cut losses in time.
+> 6. Develop data literacy to understand the world and guide decisions.
+> 7. Learn to “sell” both yourself and your product by presenting and persuading.
+> 8. Work fewer overtime hours, exercise more, stay healthy, and improve productivity.
+> 9. Be ready to leave. Do not let work trap you; use it as a way to develop yourself.
+> 10. It is only a job. Do not overthink it; trust yourself and look beyond it.
 >
-> 1. 结构化思考与表达，提高个人影响力
-> 2. 忘掉职级，该怼就怼，推动事情往前走
-> 3. 用好平台资源，结识优秀的人，学习通识课
-> 4. 一切都是争取来的，不要等待机会，要主动寻求
-> 5. 关注商业，升维到老板思维，看清趋势，及时止损
-> 6. 培养数据思维，利用数据了解世界，指导决策
-> 7. 做一个好"销售"，无论是自己还是产品，都要学会展示和说服
-> 8. 少加班多运动，保持身心健康，提高工作效率
-> 9. 有随时可以离开的底气，不要被职场所困，借假修真，提升自己
-> 10. 只是一份工作，不要过分纠结，相信自己，走出去看看
->
-> **原文地址**：<https://mp.weixin.qq.com/s/XidSVIwd4oKkDKEICaY1mQ>
+> **Original article:** <https://mp.weixin.qq.com/s/XidSVIwd4oKkDKEICaY1mQ>
 
-在美团的三年多时光，如同一部悠长的交响曲，高高低低，而今离开已有一段时间。闲暇之余，梳理了三年多的收获与感慨，总结成 10 条，既是对过去一段时光的一个深情回眸，也是对未来之路的一份期许。
+My three years at Meituan felt like a long symphony, with its ups and downs. I left some time ago. In my spare time, I organized what I learned and experienced into these ten lessons. This is both a look back at that period and a set of hopes for what lies ahead.
 
-倘若一些感悟能为刚步入职场的年轻人，或是刚在职业生涯中崭露头角的后起之秀，带来一点点启示与帮助，也是莫大的荣幸。
+If any of these reflections can help people just starting their careers or those beginning to make their mark, I will be glad.
 
-## 01 结构化思考与表达
+## 01. Think and Communicate Structurally
 
-美团是一家特别讲究方法论的公司，人人都要熟读四大名著《高效能人士的七个习惯》、《金字塔原理》、《用图表说话》和《学会提问》。
+Meituan puts a strong emphasis on methods. Everyone is expected to read four well-known books: _The 7 Habits of Highly Effective People_, _The Pyramid Principle_, _Say It with Charts_, and _Asking the Right Questions_.
 
-与结构化思考和表达相关的，是《金字塔原理》，作者是麦肯锡公司第一位女性咨询顾问。这本书告诉我们，思考和表达的过程，就像构建金字塔（或者构建一棵树），先有整体结论，再寻找证据，证据之间要讲究相互独立、而且能穷尽（MECE 原则），论证的过程也要按特定的顺序进行，比如时间顺序、空间顺序、重要性顺序……
+For structured thinking and communication, _The Pyramid Principle_ is especially relevant. Its author was McKinsey's first female consultant. The book explains that thinking and communication are like building a pyramid—or a tree. Start with the overall conclusion, then find supporting evidence. The evidence should be mutually exclusive and collectively exhaustive (the MECE principle), and the argument should follow a clear order, such as chronological, spatial, or order of importance.
 
-作为大厂社畜，日常很大一部分工作就是写文档、看别人文档。大家做的事，但最后呈现的结果却有很大差异。一篇逻辑清晰、详略得当的文档，给人一种如沐春风的感受，能提炼出重要信息，是好的参考指南。
+As a corporate employee at a large tech company, I spend a lot of time writing documents and reading other people's documents. We may work on similar things, but the results we present can differ greatly. A clear, well-organized document with the right level of detail feels easy to follow and serves as a useful reference. It also makes important information stand out.
 
-结构化思考与表达算是职场最通用的能力，也是打造个人影响力最重要的途径之一。
+Structured thinking and communication are among the most transferable workplace skills and one of the most important ways to build personal influence.
 
-## 02 忘掉职级，该怼就怼
+## 02. Forget Job Levels; Speak Up When Needed
 
-在阿里工作时，能看到每个人的 Title，看到江湖地位高（职级高+入职时间早）的同学，即便跟自己没有汇报关系，不自然的会多一层敬畏。推进工作时，会多一层压力，对方未读或已读未回时，不知如何应对。
+At Alibaba, everyone's title was visible. I would naturally feel more in awe of people with seniority—those with higher levels and longer tenure—even if they were not in my reporting line. It added pressure when I needed to move work forward, and I did not know what to do if someone left my message unread or read it without replying.
 
-美团只能看到每个人的坑位信息，还有 Ta 的上级。工作相关的问题，可以向任何人提问，如果协同方没有及时响应，隔段时间@一次，甚至"怼一怼"，都没啥问题，事情一直往前推进才最重要。除了大象消息直接提问外，还有个大杀器--TT（公司级问题流转系统），在上面提问时，加上对方主管，如果对方未及时回应，问题会自动升级，每天定时 Push，直到解决为止。
+At Meituan, people could see only each person's position and manager. You could ask anyone a work-related question. If a partner did not respond promptly, it was fine to mention them again later or even push them a little. The priority was keeping the work moving. In addition to asking directly in the “Elephant” messaging app, there was a powerful tool called TT, a company-wide issue-routing system. When raising an issue, you could include the other person's manager. If they did not respond in time, the issue was automatically escalated and sent reminders until it was resolved.
 
-我见到一些很年轻的同事，他们在推动 OKR、要资源的事上，很有一套，只要能达到自己的目标，不会考虑别人的感受，最终，他们还真能把事办成。
+I have seen very young colleagues handle OKRs and resource requests skillfully. They focused on reaching their goals without worrying too much about how others felt—and they really did get things done.
 
-当然了，段位越高的人，越能用自己的人格魅力、影响力、资源等，去影响和推动事情的进程，而不是靠对他人的 Push。只是在拿结果的事上，不要把自己太当回事，把别人太当回事，大家在一起，也只是为了完成各自的任务，忘掉职级，该怼时还得怼。
+Of course, the more senior someone is, the more they can use their personal character, influence, and resources to move work forward instead of pressuring others. But when results matter, do not make yourself or others seem more important than you are. We are all working together to complete our respective tasks. Forget job levels; speak up when you need to.
 
-## 03 用好平台资源
+## 03. Make Good Use of Company Resources
 
-没有人能在一家公司待一辈子，公司再牛，跟自己关系不大，重要的是，在有限的时间内，最大化用好平台资源。
+No one stays at one company forever. A company's success does not automatically benefit you. What matters is making the most of its resources while you are there.
 
-在美团除了认识自己节点的同事外，有幸认识一群特别棒的协作方，还有其他 BU 的同学。
+At Meituan, I was fortunate to meet many excellent colleagues—not only on my immediate team but also among our partners and people in other business units.
 
-这些优秀的人身上，有很多共同的特质：谦虚、利他、乐于分享、双赢思维。
+These people shared many qualities: humility, generosity, a willingness to share, and a win-win mindset.
 
-有两位做运营的同学。
+I met two colleagues who worked in operations.
 
-一位是无意中关注他公众号结识上的。他公众号记录了很多职场成长、家庭建造上的思考和收获，还有定期个人复盘。他和太太都是大厂中层管理者，从文章中看到的不是他多厉害，而是非常接地气的故事。我们约饭了两次，有很多共同话题，现在还时不时有一些互动。
+I met one after coming across their public account. It recorded reflections and lessons on career growth and building a family, along with regular personal retrospectives. They and their spouse were both middle managers at major tech companies. Their writing did not show off how capable they were; it shared down-to-earth stories. We had dinner twice and found a lot to talk about. We still keep in touch from time to time.
 
-一位职级更高的同学，他在内网发起了一个"请我喝一杯咖啡，和我一起聊聊个人困惑"的活动，我报名参与了一期。和他聊天的过程，特别像是一场教练对话（最近学习教练课程时才感受到的），帮我排除干扰、聚焦目标的同时，也从他分享个人成长蜕变的过程，收获很多动力。（刚好自己最近也学习了教练技术，后面也准备采用类似的方式，去帮助曾经像我一样迷茫的人）
+Another colleague was at a more senior level. They posted an internal invitation: “Buy me a coffee and talk with me about what's on your mind.” I signed up for one session. The conversation felt like a coaching session—I only recognized that after recently taking a coaching course. It helped me clear away distractions and focus on my goals. Hearing about their personal growth also gave me a lot of motivation. I have recently studied coaching too and plan to use a similar approach to help people who feel lost, as I once did.
 
-还有一些协作方同学。他们工作做得超级到位，能感受到，他们在乎他人时间；稍微有点出彩的事儿，不忘记拉上更多人。利他和双赢思维，在他们身上是最好的阐释。
+Some of our partner colleagues did their work exceptionally well. You could tell they respected other people's time. Whenever something went particularly well, they remembered to bring in more people. They embodied generosity and a win-win mindset.
 
-除了结识优秀的人，向他们学习外，还可以关注各个通道/工种的课程资源。
+Besides meeting talented people and learning from them, you can also explore training courses for different teams and job functions.
 
-在大厂，多数人的角色都是螺丝钉，但千万不要局限于做一颗螺丝钉。多去学习一些通识课，了解商业交付的各个环节，看清商业世界，明白自己的定位，超越自己的定位。
+At a large company, most people play a small, specialized role. Do not let that limit you. Take general-interest courses, learn about the different stages of delivering a business, understand how the commercial world works, and see your role in a broader context.
 
-## 04 一切都是争取来的
+## 04. You Have to Ask for What You Want
 
-工作很多年了，很晚才明白这个道理。
+It took me many years to understand this.
 
-之前一直认为，只要做好自己该做的，一定会被看见，被赏识，也会得到更多机会。但很多时候，这只是个人的一厢情愿。除了自己，不会有人关心你的权益。
+I used to think that if I did my job well, people would notice, appreciate my work, and give me more opportunities. Often, that is just wishful thinking. Apart from you, no one is responsible for looking after your interests.
 
-社会主义初级阶段，我国国内的主要矛盾是人民日益增长的物质文化需要同落后的社会生产之间的矛盾。无论在哪里，资源都是稀缺的，自己在乎的，就得去争取。
+In the primary stage of socialism, China's principal contradiction is described as the gap between people's growing material and cultural needs and underdeveloped social production. Wherever you are, resources are limited. If something matters to you, you need to pursue it.
 
-想成长某个技能、想参与哪个模块、想做哪个项目，升职加薪……自己不提，不去争取，不会有人主动给你。
+Want to develop a skill, join a particular area, work on a project, or get a promotion or raise? If you do not ask or make an effort, no one will offer it automatically.
 
-争不争取是一回事，能不能得到是一回事，只有争取，才有可能得到。争取了，即便没有得到，最终也没失去什么。
+Asking is one thing; getting what you want is another. But you can only get it if you ask. Even if you do not get it, you have not lost anything by trying.
 
-## 05 关注商业
+## 05. Pay Attention to the Business
 
-大公司，极度关注效率，大部分岗位，拆解的粒度越细，效率会越高，这些对组织是有利的。但对个人来说，则很容易螺丝钉化。
+Large companies care deeply about efficiency. For most roles, dividing the work into smaller pieces can make the organization more efficient. But it can also turn individuals into cogs.
 
-做技术的同学，更是这样。
+This is especially true for people in technical roles.
 
-做前端的同学，不会关注数据是如何落库的；做后端的同学，不会思考页面是否存在兼容性问题；做业务开发的，不用考虑微服务诸多中间件是如何搭建起来的……
+Frontend developers may not care how data is stored. Backend developers may not consider browser compatibility. Business developers may not think about how the many components of a microservice architecture are set up.
 
-大部分人都想着怎么把自己这摊子事搞好，不会去思考上下游同学在做些什么，更少有人真正关注商业，关心公司的盈利模式，关心每一次产品迭代到底带来哪些业务价值。
+Most people focus on doing their own part well. They may not think about what upstream and downstream colleagues are doing, and even fewer pay close attention to the business: how the company makes money and what business value each product iteration creates.
 
-把手头的事做好是应该的，但绝不能停留在此。所有的产品，只有在商业社会产生交付，让客户真正获益，才是有价值的。
+Doing your own work well is expected, but you should not stop there. A product creates value only when it is delivered in the market and genuinely benefits customers.
 
-关注商业，能帮我们升维到老板思维，明白投入产出比，抓大放小；也帮助我们，在碰到不好的业务时，及时止损；更重要的是，它帮助我们真正看清趋势，提前做好准备。
+Understanding the business helps you think at a higher level, like an owner. It helps you weigh investment against returns and focus on what matters. It also helps you cut losses when a business is not working and, more importantly, recognize trends and prepare early.
 
-《五分钟商学院》系列，是很好的商业入门级书籍。尽管作者刘润最近存在争议，但不可否认，他比我们大多数人段位还是高很多，他的书值得一读。
+The _Five-Minute Business School_ series is a good introduction to business. The author, Liu Run, has faced some recent controversy, but he is more experienced than most of us, and his books are still worth reading.
 
-## 06 培养数据思维
+## 06. Develop Data Literacy
 
-当今数字化时代，数据思维显得尤为重要。数据不仅可以帮助我们更好地了解世界，还可以指导我们的决策和行动。
+In today's digital age, data literacy is especially important. Data can help us understand the world and guide our decisions and actions.
 
-非常幸运的是，在阿里和美团的两份经历，都是做商业化广告业务，在离钱💰最近的地方，也培养了数据的敏感性。见过商业数据指标的定义、加工、生产和应用全流程，也在不断熏陶下，能看懂大部分指标背后的价值。
+I was fortunate that both of my jobs, at Alibaba and Meituan, involved commercial advertising—the business area closest to revenue. The work made me more sensitive to data. I saw the full lifecycle of business metrics: how they are defined, processed, produced, and used. Over time, I learned to understand the value behind most metrics.
 
-除了直接面向业务的数据，还有研发协作全流程产生的数据。数据被记录和汇总统计后，能直观地看到每个环节的效率和质量。螺丝钉们的工作，也彻彻底底被数字量化，除了积极面对虚拟化、线上化、数字化外，我们别无他法。
+Data is also generated throughout the engineering collaboration process. Once it is recorded and aggregated, it can reveal the efficiency and quality of each stage. The work of individual contributors becomes completely quantified. We have little choice but to adapt to the shift toward virtualization, online workflows, and digitization.
 
-受工作数据化的影响，生活中，我也渐渐变成了一个数据记录狂，日常运动（骑行、跑步、健走等）必须通过智能手表记录下来，没带 Apple Watch，感觉这次白运动了。每天也在很努力地完成三个圆环。
+As my work became more data-driven, I also turned into a data-tracking enthusiast in my personal life. I record everyday exercise—cycling, running, and walking—with a smartwatch. If I forget my Apple Watch, I feel as if the exercise did not count. I also try hard to close all three rings every day.
 
-数据时代，我们沦为了透明人。也得益于数据被记录和分析，我们做任何事，都能快速得到反馈，这也是自我提升的一个重要环节。
+In the data age, we have become transparent. But because our actions are recorded and analyzed, we also get fast feedback on what we do. That feedback is an important part of self-improvement.
 
-## 07 做一个好"销售"
+## 07. Learn to “Sell”
 
-就某种程度来说，所有的工作，本质都是销售。
+In a sense, every job is fundamentally about selling.
 
-这是很多大咖的观点，我也是很晚才明白这个道理。
+Many influential people have said this. It took me a long time to understand it too.
 
-我们去一家公司应聘，本质上是在讲一个「我很牛」的故事，销售的是自己；日常工作汇报、季度/年度述职、晋升答辩，是在销售自己；在任何一个场合曝光，也是在销售自己。
+When we apply for a job, we are telling a story about why we are good candidates—we are selling ourselves. Weekly reports, quarterly and annual reviews, and promotion defenses also involve selling ourselves. Any time we present our work, we are selling ourselves.
 
-如果我们所服务的组织，对外提供的是一件产品或一项服务，所有上下游协作的同学，唯一在做的事就是，齐心协力把产品/服务卖出去， 我们本质做的还是销售。
+If our organization offers a product or service to customers, everyone across the upstream and downstream teams is working together to sell it. In essence, we are still doing sales.
 
-所以， 千万不要看不起任何销售，也不要认为认为销售是一件很丢面子的事。
+So do not look down on salespeople or think sales is embarrassing.
 
-真正的大佬，随时随地都在销售。
+The truly successful people are selling all the time.
 
-## 08 少加班多运动
+## 08. Work Less Overtime and Exercise More
 
-在职场，大家都认同一个观点，工作是做不完的。
+People in the workplace generally agree on one thing: there is always more work to do.
 
-我们要做的是，用好时间管理四象限法，识别重要程度和优先级，有限时间，聚焦在固定几件事上。
+Use the time-management matrix to identify importance and priority, then focus your limited time on a fixed number of tasks.
 
-这要求我们不断提高自己的问题识别能力、拆解能力，还有专注力。
+This requires improving how well you identify and break down problems, as well as your ability to focus.
 
-我们会因为部分项目的需要而加班，但不会长期加班。
+We may work overtime when a project requires it, but we should not do so constantly.
 
-加班时间短一点，就能腾出更多时间运动。
+Working fewer extra hours gives you more time to exercise.
 
-最近一次线下培训课，认识一位老师 Hubert，Hubert 是一位超级有魅力的中年大叔（可以通过「有意思教练」的课程链接到他），从外企高管的位置离开后，和太太一起创办了一家培训机构。作为公司高层，日常工作非常忙，头发也有些花白了，但一身腱子肉胜过很多健身教练，给人的状态也是很年轻。聊天得知，Hubert 经常 5 点多起来泡健身房~
+At a recent in-person training course, I met a teacher named Hubert, a charismatic middle-aged man. He left an executive role at a foreign-owned company and started a training business with his wife. He was very busy as a senior leader, and his hair had started to turn gray, but he was more muscular than many personal trainers and seemed much younger. I learned that Hubert often gets up after 5 a.m. to go to the gym. (You can find his courses through “Interesting Coach.”)
 
-我身边还有一些同事，跟我年龄差不多，因为长期加班，发福严重，比实际年龄看起来苍老 10+岁；
+I also have colleagues around my age who gained a lot of weight after working overtime for a long time and look more than ten years older than they are.
 
-还有同事曾经加班进 ICU，幸好后面身体慢慢恢复过来。
+Another colleague once worked so much overtime that they ended up in the ICU. Fortunately, they gradually recovered.
 
-某某厂员工长期加班猝死的例子，更是屡见不鲜。
+There are also far too many stories of employees at major tech companies dying suddenly after prolonged overtime.
 
-减少加班，增加运动，绝对是一件性价比极高的事。
+Reducing overtime and exercising more is absolutely worth the effort.
 
-## 09 有随时可以离开的底气
+## 09. Be Ready to Leave
 
-当今职场，跟父辈时候完全不一样，职业的多样性和变化性越来越快，很少有人能够在同一份工作或同一个公司待一辈子。除了某些特定的岗位，如公务员、事业单位等，大多数人都会在职业生涯中经历多次的职业变化和调整。
+Today's workplace is very different from our parents' generation. Careers change more quickly and take more forms. Few people can stay in the same job or company for life. Apart from certain roles, such as civil service and public institutions, most people will make multiple career changes and adjustments.
 
-在商业组织里，个体是弱势群体，但不要做弱者。每一段职场，每一项工作，都是上天给我们的修炼。
+In a business organization, individuals are in a weaker position, but do not make yourself helpless. Every job and every workplace is an opportunity to learn and grow.
 
-我很喜欢"借假修真"这个词。我们参与的大大小小的项目， 重要吗？对公司来说可能重要，对个人来说，则未必。我们去做，一方面是迫于生计；
+I like the phrase “use the temporary to cultivate what is lasting.” Are the projects we take part in important? They may matter to the company but not necessarily to us personally. We may do them because we need to make a living.
 
-另外一方面，参与每个项目的感悟、心得、体会，是真实存在的，很多的能力，都是在这个过程得到提升。
+But our reflections and lessons from each project are real. Many skills improve through that experience.
 
-明白这一点，就不会被职场所困，会刻意在各样事上提升自己，积累的越多，对事务的本质理解的越深、越广，也越发相信很多底层知识是通用的，内心越平静，也会建立起随时都可以离开的底气。
+Once you understand this, work is less likely to trap you. You can deliberately improve yourself through different tasks. The more you accumulate, the more deeply and broadly you understand the nature of things. You begin to see how widely fundamentals apply, feel calmer, and gain the confidence to leave whenever you need to.
 
-## 10 只是一份工作
+## 10. It Is Only a Job
 
-工作中，我们时常会遇到各种挑战和困难，如发展瓶颈、难以处理的人和事，甚至职场 PUA 等。这些经历可能会让我们感到疲惫、沮丧，甚至怀疑自己的能力和价值。然而，重要的是要明白，困难只是成长道路上的暂时阻碍，而不是我们的定义。
+At work, we often face challenges and difficulties: career plateaus, difficult people and situations, or even workplace bullying and manipulation. These experiences can make us tired and discouraged, and cause us to doubt our abilities and worth. It is important to remember that difficulties are temporary obstacles along the way, not a definition of who we are.
 
-写总结和复盘是很好的方式，可以帮我们理清思路，找到问题的根源，并学习如何应对类似的情况。但也要注意不要陷入自我怀疑和内耗的陷阱。遇到困难时，应该学会相信自己，积极寻找解决问题的方法，而不是过分纠结于自己的不足和错误。
+Writing retrospectives is a good way to organize your thoughts, find the source of a problem, and learn how to handle similar situations. But be careful not to fall into self-doubt and rumination. When you encounter difficulties, trust yourself and look for solutions instead of focusing excessively on your shortcomings and mistakes.
 
-内网常有同学匿名分享工作压力过大，常常失眠甚至中度抑郁，每次看到这些话题，非常难过。大环境不好，是不争的事实，但并不代表个体就没有出路。
+People sometimes post anonymously on the company intranet about intense work pressure, persistent insomnia, or moderate depression. It is painful to read. The difficult economic climate is real, but that does not mean individuals have no way forward.
 
-我们容易预设困难，容易加很多"可是"，当窗户布满灰尘时，不要试图努力把窗户擦干净，走出去吧，你将看到一片蔚蓝的天空。
+We tend to anticipate difficulties and add too many “buts.” When the window is covered in dust, do not focus all your effort on cleaning the window. Step outside, and you will see a blue sky.
 
-## 最后
+## Closing Thoughts
 
-写到最后，特别感恩美团三年多的经历。感谢我的 Leader 们，感谢曾经并肩作战过的小伙伴，感谢遇到的每一位和我一样在平凡的岗位，努力想带给身边一片微光的同学。所有的相遇，都是缘分。
+As I finish writing, I feel especially grateful for my three-plus years at Meituan. I am grateful to my leaders, to the colleagues who stood beside me, and to everyone I met who, like me, worked an ordinary job and tried to bring a little light to the people around them. Every encounter is a matter of fate.

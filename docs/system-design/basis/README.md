@@ -1,10 +1,10 @@
 ---
-title: 系统设计基础专题：RESTful API、软件工程、代码命名、重构与单元测试
-description: 系统设计基础面试与后端工程学习路线，涵盖 RESTful API、软件工程、代码命名、代码重构、单元测试等基础知识。
-category: 系统设计
+title: "System Design Fundamentals: RESTful APIs, Software Engineering, Naming, Refactoring, and Unit Testing"
+description: A learning path for system-design fundamentals and backend engineering, covering RESTful APIs, software engineering, code naming, refactoring, and unit testing.
+category: System Design
 tag:
-  - 系统设计
-  - 工程基础
+  - System Design
+  - Engineering Fundamentals
   - RESTful API
 sitemap:
   changefreq: weekly
@@ -12,62 +12,62 @@ sitemap:
 head:
   - - meta
     - name: keywords
-      content: 系统设计基础,RESTful API,软件工程,代码命名,代码重构,单元测试,JUnit,后端工程基础,后端面试
+      content: system design fundamentals,RESTful API,software engineering,code naming,code refactoring,unit testing,JUnit,backend engineering fundamentals,backend interviews
 ---
 
-系统设计基础专题关注后端开发里最容易被忽略、但长期影响最大的工程能力：接口怎么设计、代码怎么命名、坏味道怎么识别、测试怎么写、需求到交付的过程如何组织。
+This section covers engineering skills that are often overlooked in backend development but have a lasting impact: API design, code naming, identifying code smells, writing tests, and organizing work from requirements through delivery.
 
-这些内容看起来不像缓存、消息队列、分库分表那样“硬核”，但它们决定了系统能不能被团队长期维护。
+These topics may seem less technical than caching, message queues, or database sharding, but they affect whether a team can maintain a system over time.
 
-## 适合谁看
+## Who Should Read This?
 
-- 想系统补齐后端工程基础的开发者。
-- 准备 RESTful API、代码质量、单元测试相关面试题的同学。
-- 已经能完成业务开发，但想提升接口设计和代码可维护性的读者。
-- 需要给团队制定接口规范、命名规范或测试规范的工程师。
+- Backend developers who want to strengthen their engineering fundamentals.
+- Candidates preparing for interviews about RESTful APIs, code quality, or unit testing.
+- Developers who can deliver features and want to improve API design and maintainability.
+- Engineers who need to define API, naming, or testing conventions for a team.
 
-## 学习重点
+## Key Concepts
 
-- RESTful API 的核心不是固定 URL 模板，而是围绕资源设计清晰、一致、可演进的接口。
-- 软件工程关注的是需求、设计、开发、测试、交付和维护的全过程。
-- 好命名能降低沟通成本，坏命名会让系统越来越难改。
-- 重构不是“重写”，而是在保持外部行为不变的前提下改善内部结构。
-- 单元测试要服务于代码质量和变更信心，不能只追求覆盖率数字。
+- RESTful API design is not about following a fixed URL template; it is about creating clear, consistent, and evolvable interfaces around resources.
+- Software engineering covers the full process of requirements, design, development, testing, delivery, and maintenance.
+- Good names reduce communication costs; poor names make a system harder to change.
+- Refactoring improves internal structure while preserving external behavior. It is not a rewrite.
+- Unit tests should support code quality and confidence in changes, not just maximize coverage numbers.
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [软件工程简明教程](./software-engineering.md)：先理解软件开发过程、开发模型和工程化基本概念。
-2. [RestFul API 简明教程](./RESTfulAPI.md)：学习资源路径、HTTP 方法、状态码和接口设计规范。
-3. [代码命名指南](./naming.md)：建立清晰、一致、可读的命名习惯。
-4. [代码重构指南](./refactoring.md)：识别代码坏味道，理解常见重构原则和手法。
-5. [单元测试到底是什么？应该怎么做？](./unit-test.md)：最后用测试提高代码变更的安全感。
+1. [Software Engineering: A Concise Guide](./software-engineering.md): Learn about software-development processes, development models, and basic engineering concepts.
+2. [RESTful API: A Concise Guide](./RESTfulAPI.md): Study resource paths, HTTP methods, status codes, and API-design conventions.
+3. [Code-Naming Guide](./naming.md): Develop clear, consistent, readable naming habits.
+4. [Code-Refactoring Guide](./refactoring.md): Identify code smells and learn common refactoring principles and techniques.
+5. [What Is Unit Testing, and How Should You Do It?](./unit-test.md): Learn how tests can make code changes safer.
 
-## 核心文章
+## Core Guides
 
-- [软件工程简明教程](./software-engineering.md)：梳理软件危机、软件开发过程模型、瀑布模型、敏捷开发等基础概念。
-- [RestFul API 简明教程](./RESTfulAPI.md)：讲解 REST 架构原则、资源路径设计、HTTP 方法使用和状态码规范。
-- [代码命名指南](./naming.md)：总结变量、方法、类的命名原则与技巧，提升代码可读性和可维护性。
-- [代码重构指南](./refactoring.md)：讲解重构定义、重构原则、代码坏味道识别及常用重构技巧。
-- [单元测试到底是什么？应该怎么做？](./unit-test.md)：覆盖单元测试概念、Mock 与 Stub、测试金字塔及 JUnit 基础。
+- [Software Engineering: A Concise Guide](./software-engineering.md): Covers the software crisis, software-development lifecycle models, waterfall, and agile development.
+- [RESTful API: A Concise Guide](./RESTfulAPI.md): Explains REST principles, resource-path design, HTTP methods, and status-code conventions.
+- [Code-Naming Guide](./naming.md): Summarizes naming principles and techniques for variables, methods, and classes to improve readability and maintainability.
+- [Code-Refactoring Guide](./refactoring.md): Explains refactoring, its principles, code smells, and common techniques.
+- [What Is Unit Testing, and How Should You Do It?](./unit-test.md): Covers unit testing, mocks and stubs, the testing pyramid, and JUnit fundamentals.
 
-## 高频问题
+## Common Questions
 
-- REST 和 RESTful API 有什么区别？
-- RESTful API 中资源路径应该如何命名？
-- GET、POST、PUT、PATCH、DELETE 分别适合什么场景？
-- 软件工程为什么不只是写代码？
-- 好的代码命名应该遵循哪些原则？
-- 什么是代码坏味道？什么时候应该重构？
-- 重构和重写有什么区别？
-- 单元测试、集成测试、端到端测试有什么区别？
-- Mock 和 Stub 分别解决什么问题？
-- 单元测试覆盖率越高越好吗？
+- How do REST and RESTful APIs differ?
+- How should resource paths be named in a RESTful API?
+- When should GET, POST, PUT, PATCH, and DELETE be used?
+- Why does software engineering involve more than writing code?
+- What principles make code names effective?
+- What is a code smell, and when should code be refactored?
+- How does refactoring differ from rewriting?
+- How do unit, integration, and end-to-end tests differ?
+- What problems do mocks and stubs solve?
+- Is higher unit-test coverage always better?
 
-## 相关专题
+## Related Topics
 
-- [系统设计知识体系](../)
-- [设计模式常见面试题总结](../design-pattern.md)
-- [Spring & Spring Boot 专题](../framework/spring/)
-- [高质量技术文章](../../high-quality-technical-articles/)
+- [System Design](../)
+- [Design Pattern Interview Questions](../design-pattern.md)
+- [Spring and Spring Boot](../framework/spring/)
+- [Selected Technical Articles](../../high-quality-technical-articles/)
 
 <!-- @include: @article-footer.snippet.md -->

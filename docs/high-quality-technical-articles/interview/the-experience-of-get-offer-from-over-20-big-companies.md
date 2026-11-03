@@ -1,202 +1,194 @@
 ---
-title: 斩获 20+ 大厂 offer 的面试经验分享
-description: "斩获 20+ 大厂 offer 的面试经验分享：围绕技术知识与面试总结梳理关键概念、常见问题与实践要点，帮助你高效学习与备战面试。"
-category: 技术文章精选集
-author: 业余码农
+title: "How I Received Offers from 20+ Top Tech Companies: Interview Advice"
+description: Practical advice for preparing for technical interviews, covering introductions, project experience, technical knowledge, coding, and choosing an offer.
+category: Selected Technical Articles
+author: Amateur Programmer
 tag:
-  - 面试
+  - Interviews
 head:
   - - meta
     - name: keywords
-      content: 大厂面试,面试技巧,自我介绍,项目经历,技术面试,编码能力,HR面试,offer选择
+      content: Big Tech Interviews,Interview Tips,Self-Introduction,Project Experience,Technical Interviews,Coding Skills,HR Interviews,Choosing a Job Offer
 ---
 
-> **推荐语**：很实用的面试经验分享！
+> **Editor's note**: Practical advice on technical interviews.
 >
-> **原文地址**：<https://mp.weixin.qq.com/s/HXKg6-H0kGUU2OA1DS43Bw>
+> **Original article**: <https://mp.weixin.qq.com/s/HXKg6-H0kGUU2OA1DS43Bw>
 
-突然回想起当年，我也在秋招时也斩获了 20+的互联网各大厂 offer。现在想起来也是有点唏嘘，毕竟拿得再多也只能选择一家。不过许多朋友想让我分享下互联网面试方法，今天就来给大家仔细讲讲打法！
+Looking back, I received more than 20 offers from major internet companies during campus recruiting. It feels a little surreal now, since I could only accept one. Many people have asked me how to prepare for interviews, so here is a detailed account of what worked for me.
 
-如今金九银十已经过去，满是硝烟的求职战场上也只留下一处处炮灰。在现在这段日子，又是重新锻炼，时刻准备着明年金三银四的时候。
+The fall recruiting season has passed, leaving the job market battle behind us. This is a good time to build your skills and prepare for the next spring recruiting season.
 
-对于还没毕业的学生来说，明年三四月是春招补招或者实习招聘的机会；对于职场老油条来说，明年三四月也是拿完年终奖准备提桶跑路的时候。
+For students who have not graduated, March and April bring spring recruiting, additional hiring, and internship opportunities. For experienced workers, they can be a time to collect an annual bonus and consider moving on.
 
-所以这段日子，就需要好好准备积累面试方法以及面试经验，明年的冲锋陷阵打下基础。这篇文章将为大家讲讲，程序员应该如何准备好技术面试。
+Use this time to develop an interview strategy and learn from past interviews. This article discusses how programmers can prepare for technical interviews.
 
-一般而言，互联网公司技术岗的招聘都会根据需要设置为 3 ～ 4 轮面试，一些 HC 较少的岗位可能还会经历 5 ～ 8 轮面试不等。除此之外，视公司情况，面试之前还可能也会设定相应的笔试环节。
+Technical roles at internet companies typically have three or four interview rounds. Roles with fewer openings may require five to eight rounds. Some companies also have a written test before the interviews.
 
-多轮的面试中包括技术面和 HR 面。相对来说，在整体的招聘流程中，技术面的决定性比较重要，HR 面更多的是确认候选人的基本情况和职业素养。
+The process includes technical interviews and an HR interview. Technical interviews usually carry more weight in the hiring decision, while HR interviews tend to confirm a candidate's background and professionalism.
 
-不过在某些大厂，HR 也具有一票否决权，所以每一轮面试都该好好准备和应对。技术面试一般可分为五个部分：
+At some large companies, however, HR can veto a hire. Prepare for every round. A technical interview usually has five parts:
 
-1. 双方自我介绍
-2. 项目经历
-3. 专业知识考查
-4. 编码能力考察
-5. 候选人 Q&A
+1. Introductions
+2. Project experience
+3. Technical knowledge
+4. Coding skills
+5. Candidate questions
 
-## 双方自我介绍
+## Introductions
 
-面试往往是以自我介绍作为开场，很多时候一段条理清晰逻辑明确的开场会决定整场面试的氛围和节奏。
+Interviews often begin with introductions. A clear, well-structured opening can set the tone and pace for the rest of the conversation.
 
-**作为候选人，我们可以在自我介绍中适当的为本次面试提供指向性的信息，以辅助面试官去发掘自己身上的亮点和长处**。
+**As a candidate, you can use your introduction to guide the interview toward the strengths you want to highlight.**
 
-其实自我介绍并不是简单的个人基本情况的条条过目，而是对自己简历的有效性概括。
+An introduction is not simply a list of personal details. It should be a concise summary of your resume.
 
-什么是有效性概括呢，就是意味着需要对简历中的信息进行核心关键词的提取整合。一段话下来，就能够让面试官对你整体的情况有了了解，从而能够引导面试官的联系提问。
+To make that summary useful, identify and combine the key points from your resume. A short introduction should help the interviewer understand your background and prompt relevant follow-up questions.
 
-## 项目经历
+## Project Experience
 
-项目经历是面试过程中非常重要的一环，特别是在社招的面试中。一般社招的职级越高，往往越看重项目经历。
+Project experience is an important part of an interview, especially for experienced candidates. The more senior the role, the more interviewers tend to focus on project work.
 
-而对于一般的校招生而言，几份岗位度匹配度以及项目完整性高的项目经历可以成为面试的亮点，也是决定于拿`SP` or `SSP`的关键。
+For campus hires, projects that match the role and show a complete implementation can be a strong point. They may also help distinguish candidates considered for an SP or SSP offer.
 
-但是准备好项目经历，并不是一件容易的事情。很多人并不清楚应该怎样去描述自己的项目，更不知道应该在经历中如何去体现自己的优势和亮点。
+However, presenting project experience well is not easy. Many people are unsure how to describe their projects or demonstrate their strengths. Here are some suggestions.
 
-这里针对项目经历给大家提几点建议：
+**1. Explain the project clearly and efficiently**
 
-**1、高效有条理的描述**
+Project experience often takes up the most space on a resume, and it matters just as much in the interview. Explain the project in a logical order so the interviewer can quickly understand its overall direction.
 
-项目经历的一般是简历里篇幅最大的部分，所以在面试时这部分同样重要。在表述时，语言的逻辑和条理一定要清晰，以保证面试官能够在最快的时间抓到你的项目的整体思路。
+You may have heard of frameworks such as `STAR` and `SMART` for writing resumes. They can also help organize an interview answer.
 
-相信很多人都听说过写简历的各种原则，比如`STAR`、`SMART`等。但实际上这些原则都可以用来规范自己的表达逻辑。
+`STAR` is a simple and useful way to structure your explanation: `Situation`, `Target`, `Action`, and `Result`. It follows a logic similar to that of a paper or technical document.
 
-`STAR`原则相对简单，用来在面试过程中规范自己的条理非常有效。所谓`STAR`，即`Situation`、`Target`、`Action`、`Result`。这跟写论文写文档的逻辑划分大体一致。
+- `Situation`: Explain the project's background, why it was proposed, its current state, and its starting point. For example, describe why a platform was built and which user pain point it addressed.
+- `Target`: Explain what the project aimed to achieve. **Use measurable goals and expected results where possible**, such as performance targets or business benefits from an architectural change.
+- `Action`: Explain what you did to complete the project. This is the most important part of a technical interview and shows your capabilities. Describe the technologies you chose, what you built or optimized with them, and which problems you solved.
+- `Result`: Explain what the project achieved and what you learned from it. Reflecting on the experience can show how you have grown, in addition to describing the outcome.
 
-- `Situation`: 即项目背景，需要将项目提出的原因、现状以及出发点表述清楚。简单来说，就是要将项目提出的来龙去脉描述清晰。比如某某平台建设的原因，是切入用户怎样的痛点之类的。
-- `Target`: 即项目目标，这点描述的是项目预期达到或完成的程度。**最好是有可量化的指标和预期结果。**比如性能优化的指标、架构优化所带来的业务收益等等。
-- `Action`: 即方法方案，意味着完成项目具体实施的行为。这点在技术面试中最为重要，也是表现候选人能力的基础。**项目的方法或方案可以从技术栈出发，根据采用的不同技术点来具体写明解决了哪些问题。**比如用了什么框架/技术实现了什么架构/优化/设计，解决了项目中什么样的问题。
-- `Result`: 即项目获得结果，这点可以在面试中讲讲自己经历过项目后的思考和反思。这样会让面试官感受到你的成长和沉淀，会比直接的结果并动人。
+**2. Prepare the project's key points**
 
-**2、充分准备项目亮点**
+Most people do not have a particularly impressive project, but that does not mean their experience has no strong points to discuss.
 
-说实话，大部分人其实都没有十分亮眼的项目，但是并不意味着没有项目经历的亮点。特别是在面试中。
+Preparation and careful analysis can help you explain what is valuable about a project. For example:
 
-在面试中，你可以通过充分的准备以及深入的思考来突出你的项目亮点。比如可以从以下几个方向入手：
+- Understand the business logic and technical architecture.
+- Know the overall architecture and key design choices.
+- Be clear about the business or technical trade-offs behind the choices.
+- Understand the components and frameworks used in the project.
+- Be ready to explain how you resolved difficult issues or long-standing bugs.
+- …
 
-- 充分了解项目的业务逻辑和技术架构
-- 熟悉项目的整体架构和关键设计
-- 明确的知道业务架构或技术方案选型以及决策逻辑
-- 深入掌握项目中涉及的组件以及框架
-- 熟悉项目中的疑难杂症或长期遗留 bug 的解决方案
-- ……
+## Technical Knowledge
 
-## 专业知识考查
+Experienced interviewers often probe a project in detail while also assessing your technical knowledge.
 
-有经验的面试官往往会在对项目经历刨根问底的同时，从中考察你的专业知识。
+For a programmer, technical knowledge means the computer science and engineering skills relevant to the target role. For campus hires, this often means computer science fundamentals. For experienced hires, it often means the skills required by the specific role.
 
-所谓专业知识，对于程序员而言就是意向岗位的计算机知识图谱。对于校招生来说，大部分都是计算机基础；而对于社招而言，很大部分可能是对应岗位的技能树。
+Computer science fundamentals include computer networks, operating systems, and programming languages—the topics often called “textbook knowledge” in interview preparation. They may not come up often in day-to-day work, but interviewers use them to assess a candidate's potential.
 
-计算机基础主要就是计算机网络、操作系统、编程语言之类的，也就是所谓的八股文。虽然这些东西在实际的工作中可能用处并不多，但是却是面试官评估候选人潜力的标准。
+Role-specific skills vary. A client-side role might cover mobile operating systems, client performance, client architecture, and cross-platform frameworks. Roles involving livestreaming or video might cover audio/video processing and communications.
 
-而对应岗位的技能树就需要根据具体的岗位来划分，**比如说客户端岗位可能会问移动操作系统理解、端性能优化、客户端架构以及跨端框架之类的。跟直播视频相关的岗位，还会问音视频处理、通信等相关的知识。**
+Backend roles tend to focus on **high-availability architecture, transaction theory, distributed middleware, service-oriented design, asynchronous processing, and scalable system design**.
 
-而后端岗位可能就更偏向于**高可用架构、事务理论、分布式中间件以及一些服务化、异步、高可用可扩展的架构设计思想**。
+In general, the more experience a role requires, the deeper its technical questions are likely to be.
 
-总而言之，工作经验越丰富，岗位技术能的问题也就越深入。
+There is plenty of advice on how to study these topics, so I will focus on how to explain them effectively in an interview.
 
-怎么在面试前去准备这些技术点，在这里我就不过多说了， 因为很多学习路线以及说的很清楚了。
+**1. Build a map of your technical knowledge**
 
-这里我就讲讲在应对面试的时候，该怎样去更好的表达描述清楚。
+Before an interview, summarize the topics you know well and sketch how they relate across different areas. This can help you expand your answers in a useful direction.
 
-这里针对专业知识考察给大家提几点建议：
+Interviews that consist only of short questions and answers can be a poor experience. When answering technical questions, use your knowledge map to show both breadth and depth. This can guide the interviewer toward areas you know well and help you present your strengths.
 
-**1、提前建立一份技术知识图谱**
+**2. Connect concepts to real examples**
 
-在面试之前，可以先将自己比较熟悉的知识点做一个简单的归纳总结，根据不同方向和领域画个简单的草图。这是为了辅助自己在面试时能够进行合理的扩展和延伸。
+Technical concepts can sound abstract. Explaining them through a concrete example makes your understanding clearer and more memorable.
 
-面试官一问一答形式的面试总是会给人不太好的面试体验，所以在回答技术要点的过程中，要善于利用自己已有的知识图谱来进行技术广度的扩展和技术深度的钻研。这样一来能够引导面试官往你擅长的方向去提问，二来能够尽可能多的展现自己的亮点。
+There is plenty of interview material online, and memorized answers may get you through some questions. Interviewers know that, though, and can often tell when a candidate is reciting an answer.
 
-**2、结合具体经验来总结理解**
+Using concrete experience can help you avoid that impression. Where can you find examples? Build them over time by reading technical articles from established companies and reflecting on what you encounter.
 
-技术点本身都是非常死板和冰冷的，但是如果能够将生硬的技术点与具体的案例结合起来描述，会让人眼前一亮。同时也能够表明自己是的的确确理解了该知识点。
+The experience does not have to come from your own work. It can also come from examples you have learned about elsewhere.
 
-现在网上各种面试素材应有尽有，可能你背背题就能够应付面试官的提问。但是面试官也同样知道这点，所以他能够很清楚的判别出你是否在背题。
+You can also connect concepts to technology choices in your projects and explain how a technical solution changed over time.
 
-因此，结合具体的经验来解释表达问题是能够防止被误认为背题的有效方法。可能有人会问了，那具体的经验哪里去找呢。
+## Coding Skills
 
-这就得靠平时的积累了，平时需要多积累沉淀，多看大厂的各类技术输出。经验不一定是自己的，也可以是从别的地方总结而来的。
+Coding interviews—the familiar exercise of writing code on the spot—are the round many candidates fear most. People often assume the outcome depends on their performance in algorithm questions, but that is not always true.
 
-此外，也可以结合自己在做项目的过程中的一些技术选型经验以及技术方案更新迭代的过程进行融会贯通，相互结合的来进行表述。
+**Coding ability is not the same as algorithm ability.** Some candidates solve the algorithm problem but still receive a middling assessment of their coding skills. Others fail to solve it but are judged to have good coding skills.
 
-## 编码能力考察
+Keep that distinction in mind. Asking difficult algorithm questions is not useful as an end in itself. Many developers may go years at a company without implementing a complex algorithm.
 
-编码能力考察就是咱们俗称的手撕代码，也是许多同学最害怕的一关。很多人会觉得面试结果就是看手撕代码的表现，但其实并不一定。
+Algorithm questions are a way to assess coding and logical reasoning, not the goal of the interview.
 
-**首先得明确的一点是，编码能力不完全等于算法能力。**很多同学面试时候算法题明明写出来了，但是最终的面试评价却是编码能力一般。还有很多同学面试时算法题死活没通过，但是面试官却觉得他的编码能力还可以。
+You should still practice algorithm problems, but do not chase difficulty for its own sake or memorize solutions blindly. Keep these suggestions in mind:
 
-所以一定要注意区分这点，编码能力不完全等于算法能力。从公司出发，如果纯粹为了出难度高的算法题来筛选候选人，是没有意义的。因为大家都知道，进了公司可能工作几年都写不了几个算法。
+**1. Data structures and algorithmic thinking are foundational**
 
-要记住，做算法题只是一个用来验证编码能力和逻辑思维的手段和方式。
+Algorithms are the product of logical reasoning. Understanding the underlying ideas is more valuable than memorizing how to solve one problem. Data structures are tools for implementing algorithms, and familiarity with both is fundamental to writing code in an interview.
 
-当然说到底，在准备这一块的面试时，算法题肯定得刷，但是不该盲目追求难度，甚至是死记硬背。
+**2. Do not neglect coding conventions**
 
-几点面试时的建议：
+Even a simple algorithm problem can reveal your coding habits. Basic practices matter. If you claim to have three years of programming experience but cannot write a basic function or protect against invalid types, the interviewer may question that experience.
 
-**1、数据结构和算法思想是基础**
+**3. Communication matters**
 
-算法本身实际上是逻辑思考的产物，所以掌握算法思想比会做某一道题要更有意义。数据结构是帮助实现算法的工具，这也很编程的基本能力。所以这二者的熟悉程度是手撕代码的基础。
+Writing code in an interview is not a closed-book exam; it is a conversation. Since the interviewer is also assessing your reasoning, explaining how you approach the problem matters more than immediately writing an answer.
 
-**2、不要忽视编码规范**
+Talk through your approach in advance and ask questions when the problem is unclear. This saves time and can leave a good impression.
 
-这点就是提醒大家要记住，就算是一段很简单的算法题也能够从中看出你的编码能力。这往往就体现在一些基本的编码规范上。你说你编程经验有 3 年，但是发现连基本的函数封装类型保护都不会，让人怎么相信呢。
+Your code should also stand up to questions. Be prepared to explain your choices. That helps distinguish memorized solutions from genuine understanding.
 
-**3、沟通很重要**
+If you cannot finish the code, explain your approach and discuss it with the interviewer. An interview can also be a learning experience.
 
-手撕代码绝对不是一个闭卷考试的过程，而是一个相互沟通的过程。上面也说过，考察算法也是为了考察逻辑思维能力。所以让面试官知道你思考问题的思路以及逻辑比你直接写出答案更重要。
+## Candidate Questions
 
-不仅如此，提前沟通清楚思路，遇到题意不明确的地方及时询问，也是节省大家时间，给面试官留下好印象的机会。
+Candidates are usually given time to ask questions. If not, the interviewer may want you to wait for an update at home.
 
-此外，自己写的代码一定要经得住推敲和质疑，自己能够讲的明白。这也是能够区分「背题」和「真正会做」的地方。
+This can be an important part of the interview: the interviewer may be able to give you more specific and candid information about the company and role.
 
-最后，如果代码实在写不出来，但是也可以适当的表达自己的思路并与面试官交流探讨。毕竟面试也是一个学习的过程。
+That information helps you make a more informed decision. After all, choosing a job is a two-way process.
 
-## 候选人 Q&A
+## Ways to Stand Out
 
-一般正常的话，都会有候选人反问环节。倘若没有，可能是想让你回家等消息。
+Here is a bonus for those who read to the end: what can make you stand out in an interview?
 
-反问环节其实也可以是面试中重要的环节，因为这个时候你能够从面试官口中获得关于公司关于岗位更具体真实的信息。
+Some candidates answer every question but still do not pass, or receive a mediocre evaluation. They may have failed to show what makes them memorable. They might be capable, but the interviewer did not see a clear strength.
 
-这些信息可以帮助我们做出更全面更理性的决策，毕竟求职也是一个双向选择的过程。
+Interviewers commonly look for the following qualities:
 
-## 加分项
+**1. Communication**
 
-最后，给能够坚持看到最后的同学一个福利。我们来谈谈面试中的加分项。
+Interviews are a conversation. Fluent communication and clear, organized thinking can improve the interviewer's impression. The ability to apply an idea to a new case can also demonstrate potential.
 
-很多同学会觉得明明面试时候的问题都答上来了，但是最终却没有通过面试，或者面试评价并不高。这很有可能就是面试过程中缺少了亮点，可能你并不差，但是没有打动面试官的地方。
+**2. Role fit**
 
-一般面试官会从下面几个方面去考察候选人的亮点：
+Role fit is essential, but easy to overlook. Candidates may assume that anyone who is not a fit would already have been rejected during resume screening. Interviewers assess role fit during the interview, too.
 
-**1、沟通**
+Fit is closely related to your work history, previous business domains, and technical experience. This matters especially in specialized areas such as finance, payments, audio, and video.
 
-面试毕竟是问答与表达的艺术，所以你流利的表达，清晰有条理的思路自然能够增加面试官对你的高感度。同时如果还具有举一反三的思维，那也能够从侧面证明你的潜力。
+If you have experience or projects that closely match the role, explain them in detail.
 
-**2、匹配度**
+**3. Strong performance and broader perspective**
 
-这一点毋庸置疑，但是却很容易被忽视。因为往往大家都会认为，匹配度不高的都在简历筛选阶段被刷掉了。但其实在面试过程中，面试官同样也会评估面试人与岗位的匹配度。
+Not everyone can point to strong results in their previous job or a key role in an important project. When you can, these achievements strengthen your experience.
 
-这个匹配度与工作经历强相关，与之前做过的业务和技术联系很大。特别是某些垂直领域的技术岗位，比如财经、资金、音视频等。
+It also helps to show capabilities beyond the basic requirements of the role, such as technical vision, planning, or a deeper understanding of the business.
 
-所以在面试中，如若有跟目标岗位匹配度很高的经历和项目，可以着重详细介绍。
+**4. Technical depth and breadth**
 
-**3、高业绩，有超出岗位的思考**
+Many people have heard of the T-shaped professional: someone with broad technical knowledge and deep expertise in one area. Such people are valuable because they can do their current job well while learning and sharing knowledge across boundaries.
 
-这点就是可遇不可及，毕竟不是所有人都能够拿着好业绩然后跳槽。但是上一份工作所带来的好业绩，以及在重要项目中的骨干身份会为自己的经历加分。
+Even rarer is the π-shaped professional, who has deep expertise in more than one area. Companies value this combination.
 
-同时，如果能在面试中表现出超出岗位本身的能力，更能引起面试官注意。比如具备一定的技术视野，具备良好的规划能力，或者对业务方向有比较深入的见解。这些都能够成为亮点。
+## Summary
 
-**4、技术深度或广度**
+Interviews assess and select candidates, but they are also a chance for people to communicate and present themselves. Effective interview skills can help you make the most of that opportunity.
 
-相信很多人都听过，职场中最受欢迎的是`T`型人才。也就是在拥有一定技术广度的基础上，在自己擅长的领域十分拔尖。这样的人才的确很难得，既要求能够胜任自己的在职工作，又能够不设边界的学习和输出其它领域的知识。
+This article is about general methods. Advice that seems obvious can be difficult to apply in practice. You may encounter an unconventional interviewer, someone difficult to communicate with, or a role that is not a good fit.
 
-除此之外，**比 T 型人才更为难得是所谓 π 型人才，相比于 T 型人才，有了不止一项拔尖的领域。这类人才更是公司会抢占的资源。**
-
-## 总结
-
-面试虽说是考察和筛选优秀人才的过程，但说到底还是人与人沟通并展现自我的方式。所以掌握有效面试的技巧也是帮助自己收获更多的工具。
-
-这篇文章其实算讲的是方法论，很多我们一看就明白的「道理」实施起来可能会很难。可能会遇到一个不按常理出牌的面试官，也可能也会遇到一个沟通困难的面试官，当然也可能会撞上一个不怎么匹配的岗位。
-
-总而言之，为了自己想要争取的东西，做好足够的准备总是没有坏处的。祝愿大家能成为`π`型人才，获得想要的`offer`！
+Still, thorough preparation is worthwhile when you are pursuing a role you want. I hope you become a π-shaped professional and receive the offers you are looking for.
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,46 +1,41 @@
 ---
-title: J2EE 基础知识
-description: J2EE基础知识详解，涵盖Servlet生命周期、请求转发与重定向、Session与Cookie机制等Java Web核心概念。
-category: 系统设计
+title: J2EE Fundamentals
+description: An introduction to Java Web fundamentals, including the Servlet lifecycle, request forwarding and redirects, sessions, and cookies.
+category: System Design
 head:
   - - meta
     - name: keywords
-      content: J2EE,Java Web,Servlet,JSP,HTTP请求响应,Servlet生命周期,Session,Cookie
+      content: J2EE,Java Web,Servlet,JSP,HTTP Request and Response,Servlet Lifecycle,Session,Cookie
 ---
 
-## Servlet 总结
+## Servlet Overview
 
-> 说明：J2EE 是历史名称，后续更名为 Java EE，当前规范名称为 Jakarta EE。本文主要介绍传统 Servlet/JSP 编程模型。
+> Note: J2EE is a historical name. It was later renamed Java EE, and the current specification is Jakarta EE. This article focuses on the traditional Servlet/JSP programming model.
 
-在 Java Web 程序中，**Servlet** 主要负责接收用户请求 `HttpServletRequest`，在 `doGet()`、`doPost()` 等方法中进行处理，并通过 `HttpServletResponse` 返回响应。Servlet 可以设置初始化参数，供 Servlet 内部使用。在非分布式环境中，Servlet 容器通常为**每个 Servlet 声明**使用一个实例；同一个 Servlet 类如果有多个声明，仍可能有多个实例。容器在初始化时调用 `init()`，在实例退出服务时调用 `destroy()`。Servlet 可以通过 `@WebServlet`、`web.xml` 或程序化 API 声明，一个 Servlet 声明也可映射多个 URL。容器可能让多个线程并发执行同一实例的 `service()` 方法，因此不要在实例字段中保存每次请求的可变状态。
+In Java Web applications, a **Servlet** receives user requests through `HttpServletRequest`, handles them in methods such as `doGet()` and `doPost()`, and returns responses through `HttpServletResponse`. A Servlet can also define initialization parameters for its own use. In a non-distributed environment, a Servlet container usually uses one instance for **each Servlet declaration**; multiple declarations of the same Servlet class may still result in multiple instances. The container calls `init()` during initialization and `destroy()` when the instance is taken out of service. A Servlet can be declared with `@WebServlet`, in `web.xml`, or through a programmatic API. One Servlet declaration can also map to multiple URLs. The container may execute `service()` concurrently on multiple threads for the same instance, so do not store mutable per-request state in instance fields.
 
-## 阐述 Servlet 和 CGI 的区别?
+## How Do Servlets Differ from CGI?
 
-### CGI 的不足之处
+### Limitations of CGI
 
-1，需要为每个请求启动一个操作 CGI 程序的系统进程。如果请求频繁，这将会带来很大的开销。
+1. The server must start a system process to run a CGI program for each request. Frequent requests create significant overhead.
+2. A CGI program must be loaded and run for each request, which also creates significant overhead.
+3. Network protocol handling and encoding code must be written repeatedly, which takes time.
 
-2，需要为每个请求加载和运行一个 CGI 程序，这将带来很大的开销
+### Advantages of Servlets
 
-3，需要重复编写处理网络协议的代码以及编码，这些工作都是非常耗时的。
+1. The server starts only one operating-system process and loads one JVM, greatly reducing overhead.
+2. When multiple requests need the same processing, the class only needs to be loaded once, which also reduces overhead.
+3. Dynamically loaded classes can share network protocol handling and request decoding, reducing duplicated work.
+4. A Servlet can interact directly with a Web server, unlike a regular CGI program. Servlets can also share data across programs, making features such as database connection pools easier to implement.
 
-### Servlet 的优点
+Sun Microsystems released Servlet technology in 1996 to compete with CGI. A Servlet is a special Java program, and a Java-based Web application usually contains one or more Servlet classes. A Servlet cannot create and run itself; it runs in a Servlet container. The container passes user requests to the Servlet and returns its response to the user. A Servlet is often associated with one or more JSP pages. CGI was often criticized for performance overhead, but FastCGI addressed many of those efficiency concerns long ago. In an interview, avoid dismissing CGI without qualification; many familiar websites use CGI technology.
 
-1，只需要启动一个操作系统进程以及加载一个 JVM，大大降低了系统的开销
+Reference: _Java Web Integration Development: The Return of the King_, p. 7.
 
-2，如果多个请求需要做同样处理的时候，这时候只需要加载一个类，这也大大降低了开销
+## What Methods Does the Servlet Interface Define? What Is the Servlet Lifecycle?
 
-3，所有动态加载的类可以实现对网络协议以及请求解码的共享，大大降低了工作量。
-
-4，Servlet 能直接和 Web 服务器交互，而普通的 CGI 程序不能。Servlet 还能在各个程序之间共享数据，使数据库连接池之类的功能很容易实现。
-
-补充：Sun Microsystems 公司在 1996 年发布 Servlet 技术就是为了和 CGI 进行竞争，Servlet 是一个特殊的 Java 程序，一个基于 Java 的 Web 应用通常包含一个或多个 Servlet 类。Servlet 不能够自行创建并执行，它是在 Servlet 容器中运行的，容器将用户的请求传递给 Servlet 程序，并将 Servlet 的响应回传给用户。通常一个 Servlet 会关联一个或多个 JSP 页面。以前 CGI 经常因为性能开销上的问题被诟病，然而 Fast CGI 早就已经解决了 CGI 效率上的问题，所以面试的时候大可不必信口开河的诟病 CGI，事实上有很多你熟悉的网站都使用了 CGI 技术。
-
-参考：《javaweb 整合开发王者归来》P7
-
-## Servlet 接口中有哪些方法及 Servlet 生命周期探秘
-
-Servlet 接口定义了 5 个方法，其中**前三个方法与 Servlet 生命周期相关**：
+The Servlet interface defines five methods. **The first three are related to the Servlet lifecycle:**
 
 - `void init(ServletConfig config) throws ServletException`
 - `void service(ServletRequest req, ServletResponse resp) throws ServletException, java.io.IOException`
@@ -48,239 +43,251 @@ Servlet 接口定义了 5 个方法，其中**前三个方法与 Servlet 生命�
 - `java.lang.String getServletInfo()`
 - `ServletConfig getServletConfig()`
 
-**生命周期：** **Web 容器加载 Servlet 并将其实例化后，Servlet 生命周期开始**，容器运行其**init()方法**进行 Servlet 的初始化；请求到达时调用 Servlet 的**service()方法**，service()方法会根据需要调用与请求对应的**doGet 或 doPost**等方法；当服务器关闭或项目被卸载时服务器会将 Servlet 实例销毁，此时会调用 Servlet 的**destroy()方法**。**init 方法和 destroy 方法只会执行一次，service 方法客户端每次请求 Servlet 都会执行**。Servlet 中有时会用到一些需要初始化与销毁的资源，因此可以把初始化资源的代码放入 init 方法中，销毁资源的代码放入 destroy 方法中，这样就不需要每次处理客户端的请求都要初始化与销毁资源。
+**Lifecycle:** The Servlet lifecycle begins when the Web container loads and instantiates the Servlet. The container initializes it by calling **`init()`**. When a request arrives, the container calls **`service()`**, which dispatches to a method such as **`doGet()` or `doPost()`** as appropriate. When the server shuts down or the application is unloaded, the container destroys the Servlet instance by calling **`destroy()`**. The `init()` and `destroy()` methods are called once per instance, while `service()` is called for each request to the Servlet. If the Servlet uses resources that must be initialized or released, put the initialization code in `init()` and the cleanup code in `destroy()` instead of repeating it for each request.
 
-参考：《javaweb 整合开发王者归来》P81
+Reference: _Java Web Integration Development: The Return of the King_, p. 81.
 
-## GET 和 POST 的区别
+## What Is the Difference Between GET and POST?
 
-这个问题在知乎上被讨论的挺火热的，地址：<https://www.zhihu.com/question/28586791> 。
+This topic has been widely discussed on Zhihu: <https://www.zhihu.com/question/28586791>.
 
 ![](https://static001.geekbang.org/infoq/04/0454a5fff1437c32754f1dfcc3881148.png)
 
-GET 和 POST 是 HTTP 协议中两种常用的请求方法，它们在不同的场景和目的下有不同的特点和用法。一般来说，可以从以下几个方面来区分它们：
+GET and POST are two commonly used HTTP request methods. They have different semantics and are suited to different purposes. The main differences are:
 
-- 语义上的区别：GET 用于获取目标资源的表现，是安全且幂等的方法。POST 用于请求目标资源按其自身语义处理请求内容，常用于创建资源、提交数据或触发操作，默认不具有幂等语义。
-- 格式上的区别：GET 请求的查询条件通常放在 URL 的查询字符串（query string）中，POST 则通常通过请求内容传递数据，可以使用 `application/x-www-form-urlencoded`、`multipart/form-data`、`application/json` 等媒体类型。HTTP 规范没有为 URL 或 POST 请求内容规定一个通用的固定上限，实际限制由浏览器、服务器、网关等组件决定。
-- 缓存上的区别：GET 响应默认可缓存，但仍会受 `Cache-Control` 等响应头约束。POST 响应也不是绝对不能缓存，只是需要服务端显式给出可缓存信息，实践中较少这样使用。
-- 安全性上的区别：GET 请求和 POST 请求都不是绝对安全的，因为 HTTP 协议本身是明文传输的，无论是 URL、header 还是 body 都可能被窃取或篡改。为了保证安全性，必须使用 HTTPS 协议来加密传输数据。不过，在一些场景下，GET 请求相比 POST 请求更容易泄露敏感数据，因为 GET 请求的参数会出现在 URL 中，而 URL 可能会被记录在浏览器历史、服务器日志、代理日志等地方。因此，一般情况下，私密数据传输应该使用 POST + body。
+- **Semantics:** GET retrieves a representation of a target resource and is a safe, idempotent method. POST asks the target resource to process the request content according to its own semantics. It is often used to create resources, submit data, or trigger operations, and is not inherently idempotent.
+- **Format:** GET query parameters are usually placed in the URL query string. POST data is usually sent in the request body and may use media types such as `application/x-www-form-urlencoded`, `multipart/form-data`, or `application/json`. The HTTP specification does not set a universal fixed size limit for URLs or POST bodies; practical limits are set by browsers, servers, gateways, and other components.
+- **Caching:** GET responses are cacheable by default, subject to response headers such as `Cache-Control`. POST responses are not categorically uncacheable, but the server must explicitly provide caching information, and this is uncommon in practice.
+- **Security:** Neither GET nor POST is inherently secure. HTTP is plaintext, so the URL, headers, and body can all be intercepted or modified. Use HTTPS to encrypt data in transit. In some situations, GET parameters are more likely to expose sensitive data because URLs may be recorded in browser history, server logs, and proxy logs. For private data, POST with a request body is generally preferred.
 
-重点是根据 HTTP 方法的标准语义选择 GET 或 POST。将所有请求都设计为 POST 虽然在技术上可行，但会失去 GET 在缓存、安全重试和中间组件语义上的优势，不应只以“团队达成共识”作为设计依据。
+Choose GET or POST based on the standard semantics of the HTTP method. Designing every request as POST is technically possible, but gives up advantages of GET in caching, safe retries, and intermediary behavior. “The team agreed on it” is not sufficient justification by itself.
 
-## 什么情况下调用 doGet()和 doPost()
+## When Are `doGet()` and `doPost()` Called?
 
-Form 标签里的 method 的属性为 get 时调用 doGet()，为 post 时调用 doPost()。
+When a form's `method` attribute is `get`, the Servlet calls `doGet()`. When it is `post`, the Servlet calls `doPost()`.
 
-## 转发(Forward)和重定向(Redirect)的区别
+## What Is the Difference Between Forwarding and Redirecting?
 
-**转发是服务器行为，重定向是客户端行为。**
+**Forwarding is a server-side operation; redirecting is a client-side operation.**
 
-**转发（Forward）**
-通过 RequestDispatcher 对象的 forward（HttpServletRequest request,HttpServletResponse response）方法实现的。RequestDispatcher 可以通过 HttpServletRequest 的 getRequestDispatcher()方法获得。例如下面的代码就是跳转到 login_success.jsp 页面。
+**Forwarding**
+
+Forwarding is performed using the `forward(HttpServletRequest request, HttpServletResponse response)` method of a `RequestDispatcher`. Obtain a `RequestDispatcher` with `HttpServletRequest#getRequestDispatcher()`. For example, the following code forwards the request to `login_success.jsp`:
 
 ```java
-     request.getRequestDispatcher("login_success.jsp").forward(request, response);
+request.getRequestDispatcher("login_success.jsp").forward(request, response);
 ```
 
-**重定向（Redirect）** 由服务端返回 3xx 状态码和 `Location` 响应头，客户端再向新地址发起请求。Servlet 中通常使用 `HttpServletResponse#sendRedirect()`，也可以手动设置状态码和 `Location`。301、302、303在历史实现中可能将 POST 后续请求改为 GET；需要明确保留原请求方法时，应根据场景使用 307 或 308。
+**Redirecting**
 
-1. **从地址栏显示来说**
+The server redirects by returning a 3xx status code and a `Location` response header. The client then makes a request to the new URL. In a Servlet, use `HttpServletResponse#sendRedirect()`, or set the status and `Location` header manually. Historically, 301, 302, and 303 may change a follow-up POST request to GET. When the request method must be preserved, use 307 or 308 as appropriate.
 
-   forward 是服务器请求资源,服务器直接访问目标地址的 URL,把那个 URL 的响应内容读取过来,然后把这些内容再发给浏览器.浏览器根本不知道服务器发送的内容从哪里来的,所以它的地址栏还是原来的地址.
-   redirect 是服务端根据逻辑,发送一个状态码,告诉浏览器重新去请求那个地址.所以地址栏显示的是新的 URL.
+1. **URL shown in the address bar**
 
-2. **从数据共享来说**
+   With forwarding, the server directly accesses the target resource, reads its response, and sends it to the browser. The browser does not know where the content came from, so its address bar still shows the original URL.
 
-   forward:转发页面和转发到的页面可以共享 request 里面的数据.
-   redirect:不能共享数据.
+   With redirection, the server returns a status code telling the browser to make a new request. The address bar shows the new URL.
 
-3. **从运用地方来说**
+2. **Sharing data**
 
-   forward:一般用于用户登陆的时候,根据角色转发到相应的模块.
-   redirect:一般用于用户注销登陆时返回主页面和跳转到其它的网站等
+   With forwarding, the source and target pages can share data stored in the request.
 
-4. 从效率来说
+   With redirection, they cannot share the original request data.
 
-   forward:高.
-   redirect:低.
+3. **Typical use cases**
 
-## 自动刷新(Refresh)
+   Forwarding is commonly used to route a user to a role-specific module after login.
 
-部分浏览器支持非标准的 `Refresh` 响应头，可以实现延时刷新或跳转。Servlet 中可以通过 `HttpServletResponse` 设置：
+   Redirection is commonly used to return to the home page after logout or to navigate to another website.
+
+4. **Efficiency**
+
+   Forwarding is generally more efficient because it does not require a second client request.
+
+   Redirection is generally less efficient because the client makes another request.
+
+## Automatic Refresh (Refresh)
+
+Some browsers support the non-standard `Refresh` response header for delayed refreshes or redirects. A Servlet can set it through `HttpServletResponse`:
 
 ```java
 response.setHeader("Refresh", "5; url=http://localhost:8080/servlet/example.htm");
 ```
 
-其中 5 的单位为秒。由于 `Refresh` 不是标准 HTTP 响应头，不应用它替代标准 3xx 重定向；页面刷新也可以根据需求在前端实现。
+The delay is in seconds. Because `Refresh` is not a standard HTTP response header, do not use it instead of a standard 3xx redirect. Page refreshes can also be implemented on the frontend, depending on the requirements.
 
-## Servlet 与线程安全
+## Servlet Thread Safety
 
-**Servlet 不是线程安全的，多线程并发的读写会导致数据不同步的问题。** 解决的办法是尽量不要定义 name 属性，而是要把 name 变量分别定义在 doGet()和 doPost()方法内。虽然使用 synchronized(name){}语句块可以解决问题，但是会造成线程的等待，不是很科学的办法。
-注意：多线程的并发的读写 Servlet 类属性会导致数据不同步。但是如果只是并发地读取属性而不写入，则不存在数据不同步的问题。因此 Servlet 里的只读属性最好定义为 final 类型的。
+**Servlets are not inherently thread-safe. Concurrent reads and writes can cause race conditions.** Avoid defining mutable fields such as `name`; keep per-request variables inside `doGet()` or `doPost()`. A `synchronized(name) {}` block can address some concurrency issues, but it can make requests wait and is generally not a good solution.
 
-参考：《javaweb 整合开发王者归来》P92
+Concurrent reads and writes of Servlet instance fields can cause race conditions. Concurrent reads alone do not cause this problem. Read-only fields in a Servlet should preferably be declared `final`.
 
-## JSP 和 Servlet 是什么关系
+Reference: _Java Web Integration Development: The Return of the King_, p. 92.
 
-其实这个问题在上面已经阐述过了，Servlet 是一个特殊的 Java 程序，它运行于服务器的 JVM 中，能够依靠服务器的支持向浏览器提供显示内容。JSP 本质上是 Servlet 的一种简易形式，JSP 会被服务器处理成一个类似于 Servlet 的 Java 程序，可以简化页面内容的生成。Servlet 和 JSP 最主要的不同点在于，Servlet 的应用逻辑是在 Java 文件中，并且完全从表示层中的 HTML 分离开来。而 JSP 的情况是 Java 和 HTML 可以组合成一个扩展名为.jsp 的文件。有人说，Servlet 就是在 Java 中写 HTML，而 JSP 就是在 HTML 中写 Java 代码，当然这个说法是很片面且不够准确的。JSP 侧重于视图，Servlet 更侧重于控制逻辑，在 MVC 架构模式中，JSP 适合充当视图（view）而 Servlet 适合充当控制器（controller）。
+## What Is the Relationship Between JSP and Servlets?
 
-## JSP 工作原理
+A Servlet is a special Java program that runs in the server's JVM and uses server capabilities to return content to a browser. JSP is essentially a simpler way to write a Servlet. The server translates a JSP into a Java program similar to a Servlet, which can simplify page generation.
 
-JSP 页面会由 JSP 容器转换为 Servlet 实现类并编译。对于 HTTP，生成的实现类需要实现 `HttpJspPage` 接口，而 `HttpJspPage` 继承自 `JspPage`。在常见的按需编译配置中，转换和编译发生在第一次请求时；容器也可以预编译 JSP，因此这不是固定发生在首次请求的步骤。生成的 Java 源码和 class 文件通常保存在容器的工作目录中。下面通过实例介绍按需编译的情况。
-工程 JspLoginDemo 下有一个名为 login.jsp 的 Jsp 文件，把工程第一次部署到服务器上后访问这个 Jsp 文件，我们发现这个目录下多了下图这两个东东。
-.class 文件便是 JSP 对应的 Servlet。编译完毕后再运行 class 文件来响应客户端请求。以后客户端访问 login.jsp 的时候，Tomcat 将不再重新编译 JSP 文件，而是直接调用 class 文件来响应客户端请求。
+The main difference is that a Servlet's application logic is written in a Java file and kept separate from presentation-layer HTML. A JSP file, by contrast, can combine Java and HTML in a `.jsp` file. It is sometimes said that “a Servlet writes HTML in Java, while a JSP writes Java in HTML,” but this is an oversimplification. JSP is more suited to the view, while Servlets are more suited to control logic. In the MVC pattern, JSP can act as the view and a Servlet as the controller.
 
-![JSP工作原理](./images/shared/1.jpg)
+## How Does JSP Work?
 
-在按需编译模式下，首次请求需要完成转换和编译，通常会比后续请求慢。如果删除容器生成的 class 文件，容器在需要该页面时会重新编译 JSP。
+A JSP container translates a JSP page into a Servlet implementation class and compiles it. For HTTP, the generated class implements `HttpJspPage`, which extends `JspPage`. With on-demand compilation, translation and compilation occur on the first request; a container may also precompile JSPs, so this does not always happen on the first request. Generated Java source and class files are usually stored in the container's work directory. The example below describes on-demand compilation.
 
-开发 Web 程序时经常需要修改 JSP。Tomcat 能够自动检测到 JSP 程序的改动。如果检测到 JSP 源代码发生了改动。Tomcat 会在下次客户端请求 JSP 时重新编译 JSP，而不需要重启 Tomcat。这种自动检测功能是默认开启的，检测改动会消耗少量的时间，在部署 Web 应用的时候可以在 web.xml 中将它关掉。
+Suppose the `JspLoginDemo` project contains a JSP file named `login.jsp`. After deploying the project to the server and requesting the page for the first time, the following two files appear in the directory:
 
-参考：《javaweb 整合开发王者归来》P97
+The `.class` file is the Servlet corresponding to the JSP. The container runs this compiled class to respond to the client. On later requests to `login.jsp`, Tomcat calls the class file instead of recompiling the JSP.
 
-## JSP 有哪些内置对象、作用分别是什么
+![How JSP works](./images/shared/1.jpg)
 
-[JSP 内置对象 - CSDN 博客](http://blog.csdn.net/qq_34337272/article/details/64310849)
+With on-demand compilation, the first request must perform translation and compilation, so it is usually slower than later requests. If the generated class file is deleted, the container recompiles the JSP when needed.
 
-JSP 有 9 个内置对象：
+During Web development, JSP files are often changed. Tomcat can detect changes to a JSP and recompile it on the next request without restarting Tomcat. This automatic change detection is enabled by default and adds a small amount of overhead. It can be disabled in `web.xml` when deploying the Web application.
 
-- request：封装客户端的请求，其中包含来自 GET 或 POST 请求的参数；
-- response：封装服务器对客户端的响应；
-- pageContext：通过该对象可以获取其他对象；
-- session：封装用户会话的对象；
-- application：封装服务器运行环境的对象；
-- out：输出服务器响应的输出流对象；
-- config：Web 应用的配置对象；
-- page：JSP 页面本身（相当于 Java 程序中的 this）；
-- exception：封装页面抛出异常的对象。
+Reference: _Java Web Integration Development: The Return of the King_, p. 97.
 
-## Request 对象的主要方法有哪些
+## What Are the Nine JSP Implicit Objects and What Do They Do?
 
-- `setAttribute(String name,Object)`：设置名字为 name 的 request 的参数值
-- `getAttribute(String name)`：返回由 name 指定的属性值
-- `getAttributeNames()`：返回 request 对象所有属性的名字集合，结果是一个枚举的实例
-- `getCookies()`：返回客户端的所有 Cookie 对象，结果是一个 Cookie 数组
-- `getCharacterEncoding()`：返回请求使用的字符编码
-- `getContentLength()`：返回请求体的字节数，长度未知或超过 `int` 范围时返回 -1；大请求可使用 `getContentLengthLong()`
-- `getHeader(String name)`：获得 HTTP 协议定义的文件头信息
-- `getHeaders(String name)`：返回指定名字的 request Header 的所有值，结果是一个枚举的实例
-- `getHeaderNames()`：返回所以 request Header 的名字，结果是一个枚举的实例
-- `getInputStream()`：返回请求的输入流，用于获得请求中的数据
-- `getMethod()`：获得客户端向服务器端传送数据的方法
-- `getParameter(String name)`：获得客户端传送给服务器端的有 name 指定的参数值
-- `getParameterNames()`：获得客户端传送给服务器端的所有参数的名字，结果是一个枚举的实例
-- `getParameterValues(String name)`：获得有 name 指定的参数的所有值
-- `getProtocol()`：获取客户端向服务器端传送数据所依据的协议名称
-- `getQueryString()`：获得查询字符串
-- `getRequestURI()`：获取请求行中从协议名到查询字符串之间的 URI 路径部分
-- `getRemoteAddr()`：获取客户端的 IP 地址
-- `getRemoteHost()`：获取客户端的名字
-- `getSession()`：返回与请求关联的 Session，不存在时创建
-- `getSession(boolean create)`：返回与请求关联的 Session；当 `create` 为 `false` 且 Session 不存在时返回 `null`
-- `getServerName()`：获取服务器的名字
-- `getServletPath()`：获取客户端所请求的脚本文件的路径
-- `getServerPort()`：获取服务器的端口号
-- `removeAttribute(String name)`：删除请求中的一个属性
+[JSP Implicit Objects — CSDN Blog](http://blog.csdn.net/qq_34337272/article/details/64310849)
 
-## request.getAttribute()和 request.getParameter()有何区别
+JSP provides nine implicit objects:
 
-`getParameter()` 读取客户端随请求提交的参数，例如 URL 查询字符串或已解析的表单字段。它返回 `String`，同名参数有多个值时可使用 `getParameterValues()`。
+- `request`: Encapsulates the client request, including parameters from GET or POST requests.
+- `response`: Encapsulates the server's response to the client.
+- `pageContext`: Provides access to other objects.
+- `session`: Encapsulates the user's session.
+- `application`: Encapsulates the server's application environment.
+- `out`: The output stream used to write the server response.
+- `config`: The Web application's configuration object.
+- `page`: The JSP page itself (equivalent to `this` in a Java program).
+- `exception`: Encapsulates an exception thrown by the page.
 
-`getAttribute()` 读取服务端代码通过 `setAttribute()` 绑定到当前请求的对象，返回类型为 `Object`。在 `forward` 等服务端请求转发过程中，各组件处理的仍是同一个请求对象，因此可以共享 request attribute；客户端重定向会创建新请求，不会保留原请求的 attribute。这个过程不是容器在页面之间拷贝一块内存。
+## What Are the Main Methods of the Request Object?
 
-## include 指令 include 的行为的区别
+- `setAttribute(String name, Object value)`: Set a request attribute named `name`.
+- `getAttribute(String name)`: Return the attribute specified by `name`.
+- `getAttributeNames()`: Return an enumeration of all request attribute names.
+- `getCookies()`: Return the client's cookies as an array of `Cookie` objects.
+- `getCharacterEncoding()`: Return the character encoding used by the request.
+- `getContentLength()`: Return the request body size in bytes, or -1 if the length is unknown or exceeds the `int` range. Use `getContentLengthLong()` for large requests.
+- `getHeader(String name)`: Return the value of the specified HTTP header.
+- `getHeaders(String name)`: Return an enumeration of all request header values with the specified name.
+- `getHeaderNames()`: Return the names of all request headers.
+- `getInputStream()`: Return the input stream used to read request data.
+- `getMethod()`: Return the HTTP method used by the client.
+- `getParameter(String name)`: Return the value of the request parameter specified by `name`.
+- `getParameterNames()`: Return an enumeration of all request parameter names.
+- `getParameterValues(String name)`: Return all values for the request parameter specified by `name`.
+- `getProtocol()`: Return the protocol used by the client to send the request.
+- `getQueryString()`: Return the query string.
+- `getRequestURI()`: Return the URI path from the protocol name up to, but not including, the query string.
+- `getRemoteAddr()`: Return the client's IP address.
+- `getRemoteHost()`: Return the client's hostname.
+- `getSession()`: Return the session associated with the request, creating one if necessary.
+- `getSession(boolean create)`: Return the session associated with the request; if `create` is `false` and no session exists, return `null`.
+- `getServerName()`: Return the server's name.
+- `getServletPath()`: Return the path to the requested Servlet.
+- `getServerPort()`: Return the server's port number.
+- `removeAttribute(String name)`: Remove the named request attribute.
 
-**include 指令：** JSP 可以通过 include 指令来包含其他文件。被包含的文件可以是 JSP 文件、HTML 文件或文本文件。包含的文件就好像是该 JSP 文件的一部分，会被同时编译执行。 语法格式如下：
-<%@ include file="文件相对 url 地址" %>
+## What Is the Difference Between `request.getAttribute()` and `request.getParameter()`?
 
-i**nclude 动作：** `<jsp:include>`动作元素用来包含静态和动态的文件。该动作把指定文件插入正在生成的页面。语法格式如下：
-<jsp:include page="相对 URL 地址" flush="true" />
+`getParameter()` reads parameters submitted by the client, such as URL query parameters or parsed form fields. It returns a `String`. Use `getParameterValues()` when a parameter can have multiple values.
 
-## JSP 九大内置对象，七大动作，三大指令
+`getAttribute()` reads an object that server-side code placed on the request with `setAttribute()`. It returns an `Object`. During a server-side forward, the components handle the same request object and can share request attributes. A client redirect creates a new request and does not preserve the original request's attributes. The container is not copying a block of memory between pages.
 
-[JSP 九大内置对象，七大动作，三大指令总结](http://blog.csdn.net/qq_34337272/article/details/64310849)
+## What Is the Difference Between the JSP `include` Directive and Action?
 
-## 讲解 JSP 中的四种作用域
+**The `include` directive:** JSP can include another file using the `include` directive. The included file can be a JSP, HTML, or text file. It is treated as part of the current JSP and compiled with it. Syntax:
 
-JSP 中的四种作用域包括 page、request、session 和 application，具体来说：
+```jsp
+<%@ include file="relative-url" %>
+```
 
-- **page**代表与一个页面相关的对象和属性。
-- **request**代表与 Web 客户机发出的一个请求相关的对象和属性。一个请求可能跨越多个页面，涉及多个 Web 组件；需要在页面显示的临时数据可以置于此作用域。
-- **session**代表与某个用户与服务器建立的一次会话相关的对象和属性。跟某个用户相关的数据应该放在用户自己的 session 中。
-- **application**代表与整个 Web 应用程序相关的对象和属性，它实质上是跨越整个 Web 应用程序，包括多个页面、请求和会话的一个全局作用域。
+**The `include` action:** The `<jsp:include>` action element includes a static or dynamic resource in the page being generated. Syntax:
 
-## Servlet 并发请求应该如何处理
+```jsp
+<jsp:include page="relative-URL" flush="true" />
+```
 
-历史上，JSP 提供过 `<%@ page isThreadSafe="false" %>`，Servlet 也提供过 `SingleThreadModel` 标记接口。`SingleThreadModel` 从 Servlet 2.4 起已废弃，并在 Jakarta Servlet 6.0 中删除；它也不能保证 Session 和静态状态的线程安全，不应作为当前解决方案。
+## The Nine JSP Implicit Objects, Seven Actions, and Three Directives
 
-正确做法是尽量让 Servlet 保持无状态，把每次请求的可变数据放在方法局部变量中，不在 Servlet 实例字段中保存。必须共享状态时，应使用适当的并发控制或线程安全数据结构，并尽量缩小临界区。
+[Summary of the Nine JSP Implicit Objects, Seven Actions, and Three Directives](http://blog.csdn.net/qq_34337272/article/details/64310849)
 
-## 实现会话跟踪的技术有哪些
+## What Are the Four JSP Scopes?
 
-1. **使用 Cookie**
+The four JSP scopes are `page`, `request`, `session`, and `application`:
 
-   向客户端发送 Cookie
+- **`page`**: Objects and attributes associated with one page.
+- **`request`**: Objects and attributes associated with a Web client request. A request may span multiple pages and involve multiple Web components. Use this scope for temporary data needed while rendering a page.
+- **`session`**: Objects and attributes associated with a user's session with the server. Put user-specific data in that user's session.
+- **`application`**: Objects and attributes associated with the entire Web application. It is a global scope shared across pages, requests, and sessions.
+
+## How Should a Servlet Handle Concurrent Requests?
+
+Historically, JSP offered `<%@ page isThreadSafe="false" %>`, and Servlets offered the `SingleThreadModel` marker interface. `SingleThreadModel` has been deprecated since Servlet 2.4 and was removed in Jakarta Servlet 6.0. It also does not guarantee thread safety for sessions or static state, so it should not be used as a modern solution.
+
+The right approach is to keep Servlets stateless where possible and store mutable per-request data in local variables, not Servlet instance fields. If state must be shared, use suitable concurrency controls or thread-safe data structures, and keep critical sections small.
+
+## What Techniques Can Be Used for Session Tracking?
+
+1. **Cookies**
+
+   Send a cookie to the client:
 
    ```java
-   Cookie c =new Cookie("name","value"); //创建Cookie
-   c.setMaxAge(60*60*24); //设置最大时效，此处设置的最大时效为一天
-   response.addCookie(c); //把Cookie放入到HTTP响应中
+   Cookie cookie = new Cookie("name", "value"); // Create a cookie
+   cookie.setMaxAge(60 * 60 * 24); // Set the maximum age to one day
+   response.addCookie(cookie); // Add the cookie to the HTTP response
    ```
 
-   从客户端读取 Cookie
+   Read a cookie from the client:
 
    ```java
-   String name ="name";
-   Cookie[]cookies =request.getCookies();
-   if(cookies !=null){
-      for(int i= 0;i<cookies.length;i++){
-       Cookie cookie =cookies[i];
-       if(name.equals(cookie.getName())) {
-         // something is here.
-         // you can get the value
-         cookie.getValue();
+   String name = "name";
+   Cookie[] cookies = request.getCookies();
+   if (cookies != null) {
+       for (Cookie cookie : cookies) {
+           if (name.equals(cookie.getName())) {
+               // Get the cookie value
+               cookie.getValue();
+           }
        }
-
-      }
-    }
-
+   }
    ```
 
-   **优点:** 数据可以持久保存，不需要服务器资源，简单，基于文本的 Key-Value
+   **Advantages:** Data can persist without using server-side storage. Cookies use a simple text-based key–value format.
 
-   **缺点:** 大小受到限制，用户可以禁用 Cookie 功能，由于保存在本地，有一定的安全风险。
+   **Disadvantages:** Size is limited, users can disable cookies, and client-side storage has security risks.
 
-2. URL 重写
+2. **URL rewriting**
 
-   在 URL 中添加用户会话的信息作为请求的参数，或者将唯一的会话 ID 添加到 URL 结尾以标识一个会话。
+   Add session information as a request parameter or append a unique session ID to the URL.
 
-   **优点：** 在 Cookie 被禁用的时候依然可以使用
+   **Advantage:** It can work when cookies are disabled.
 
-   **缺点：** 必须对网站的 URL 进行编码，所有页面必须动态生成，不能用预先记录下来的 URL 进行访问。
+   **Disadvantages:** URLs must be encoded, all pages must be generated dynamically, and users cannot rely on previously recorded URLs.
 
-3. 隐藏的表单域
+3. **Hidden form fields**
 
    ```html
    <input type="hidden" name="session" value="..." />
    ```
 
-   **优点：** Cookie 被禁时可以使用
+   **Advantage:** They can be used when cookies are disabled.
 
-   **缺点：** 所有页面必须是表单提交之后的结果。
+   **Disadvantage:** Every page must be the result of a form submission.
 
-4. HttpSession
+4. **`HttpSession`**
 
-   HttpSession 不会仅因为用户第一次访问网站就必然自动创建。当代码调用 `HttpServletRequest#getSession()`，或某个框架/JSP 功能为当前请求要求 Session 时，容器才会在不存在时创建它。可以通过 `setAttribute()` 和 `getAttribute()` 保存、读取会话属性。HttpSession 数据由服务端管理，具体可保存在内存、分布式存储或持久化介质中，因此不要放入过大对象。在分布式部署或需要会话持久化时，属性通常还需要可序列化，具体要求由容器和会话存储方案决定。
+   `HttpSession` is not necessarily created just because a user visits a site for the first time. The container creates one when application code calls `HttpServletRequest#getSession()`, or when a framework or JSP feature requests a session for the current request. Use `setAttribute()` and `getAttribute()` to store and retrieve session attributes. Session data is managed by the server and may be stored in memory, a distributed store, or persistent storage. Avoid storing very large objects. For distributed deployments or session persistence, attributes may also need to be serializable, depending on the container and session storage solution.
 
-## Cookie 和 Session 的区别
+## What Is the Difference Between Cookies and Sessions?
 
-Cookie 和 Session 都是用来跟踪浏览器用户身份的会话方式，但是两者的应用场景不太一样。
+Cookies and sessions both help track a browser user's state, but they are used differently.
 
-**Cookie 一般用来保存用户信息** 比如 ① 我们在 Cookie 中保存已经登录过得用户信息，下次访问网站的时候页面可以自动帮你登录的一些基本信息给填了；② 一般的网站都会有保持登录也就是说下次你再访问网站的时候就不需要重新登录了，这是因为用户登录的时候我们可以存放了一个 Token 在 Cookie 中，下次登录的时候只需要根据 Token 值来查找用户即可(为了安全考虑，重新登录一般要将 Token 重写)；③ 登录一次网站后访问网站其他页面不需要重新登录。**Session 的主要作用就是通过服务端记录用户的状态。** 典型的场景是购物车，当你要添加商品到购物车的时候，系统不知道是哪个用户操作的，因为 HTTP 协议是无状态的。服务端给特定的用户创建特定的 Session 之后就可以标识这个用户并且跟踪这个用户了。
+**Cookies are commonly used to store user information.** For example: (1) A cookie can store information about a logged-in user, so a site can prefill basic details on the next visit. (2) A site may keep a user signed in by storing a token in a cookie and looking up the user from the token later; for security, a token is often rotated when the user signs in again. (3) After signing in once, a user may visit other pages without signing in again. **A session primarily lets the server keep track of a user's state.** A shopping cart is a typical example. Since HTTP is stateless, the server does not know which user is adding an item. After creating a `Session` for that user, it can identify and track them.
 
-Cookie 数据保存在客户端(浏览器端)，Session 数据保存在服务器端。
+Cookie data is stored on the client (usually the browser), while session state is generally managed by the server.
 
-Cookie 保存在客户端，Session 状态通常由服务端管理，但这不意味着只要使用 Session 就天然更安全。常见的 Session 仍依赖 Cookie 传递会话标识，该标识一旦被窃取就可能被重放。会话 Cookie 应使用高强度、无业务含义的随机标识，通过 HTTPS 传输，并根据场景设置 `Secure`、`HttpOnly`、`SameSite`、`Path` 和 `Domain` 等属性。不应把密码、银行卡号等敏感业务数据直接写入 Cookie；加密也不能替代完整性保护、过期、撤销和服务端授权校验。
-
-<!-- @include: @article-footer.snippet.md -->
+However, server-managed session state is not automatically more secure. A common session still relies on a cookie to carry a session identifier, which can be replayed if stolen. Session cookies should use high-entropy, opaque identifiers, be sent over HTTPS, and be configured with appropriate `Secure`, `HttpOnly`, `SameSite`, `Path`, and `Domain` attributes. Do not put passwords, card numbers, or other sensitive business data directly in a cookie. Encryption alone does not replace integrity protection, expiration, revocation, and server-side authorization checks.

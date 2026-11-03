@@ -1,338 +1,338 @@
 ---
-title: 数据冷热分离详解
-description: 本文详解数据冷热分离的核心原理与实践方案，涵盖冷热数据判定策略、多级分层设计、数据迁移一致性保障、冷数据查询优化、存储选型（HBase/TiDB/对象存储），以及订单/日志/内容系统的典型落地案例。
-category: 高性能
+title: "Hot/Cold Data Separation"
+description: A guide to hot/cold data separation, covering classification strategies, storage tiers, migration consistency, cold-data queries, storage choices such as HBase, TiDB, and object storage, and examples from order, log, and content systems.
+category: High Performance
 head:
   - - meta
     - name: keywords
-      content: 数据冷热分离,冷数据迁移,冷数据存储,分层存储,TiDB冷热分离,HBase,数据归档,存储成本优化,数据一致性
+      content: hot/cold data separation,cold-data migration,cold-data storage,tiered storage,TiDB hot/cold separation,HBase,data archiving,storage cost optimization,data consistency
 ---
 
-## 什么是数据冷热分离？
+## What Is Hot/Cold Data Separation?
 
-数据冷热分离是指根据数据的**访问频率**和**业务重要性**，将数据划分为冷数据和热数据，并分别存储在不同性能和成本的存储介质中的架构策略。
+Hot/cold data separation is an architectural strategy that classifies data by **access frequency** and **business importance**, then stores hot and cold data on media with different performance and cost characteristics.
 
-这种架构的核心目标有三个：
+It has three main goals:
 
-1. **提升查询性能**：热数据存储在高性能介质（如 SSD、内存）中，保障核心业务的响应速度。
-2. **降低存储成本**：冷数据迁移至低成本介质（如 HDD、对象存储），大幅削减存储开支。
-3. **满足合规要求**：部分行业（如金融、医疗）要求数据长期归档，冷热分离可兼顾合规与成本。
+1. **Improve query performance**: Store hot data on high-performance media such as SSDs and memory to keep core workflows responsive.
+2. **Reduce storage costs**: Move cold data to lower-cost media such as HDDs or object storage.
+3. **Meet compliance requirements**: Industries such as finance and healthcare may require long-term data retention. Hot/cold separation can balance compliance and cost.
 
-### 冷数据和热数据
+### Hot and Cold Data
 
-**热数据**是指被频繁访问和修改、且需要快速响应的数据；**冷数据**是指访问频率极低、对当前业务价值较小、但需要长期保留的数据。
+**Hot data** is accessed or updated frequently and needs fast responses. **Cold data** is rarely accessed, has less immediate business value, but must be retained long term.
 
-冷热数据的区分方法主要有两种：
+There are two main ways to classify data:
 
-1. **时间维度区分**：按照数据的创建时间、更新时间或过期时间划分。例如，订单系统将一段时间前（如 90 天或 1 年）的订单数据标记为冷数据。该方法适用于**数据访问频率与时间强相关**的场景，实现简单、成本低。
-2. **访问频率区分**：将高频访问的数据视为热数据，低频访问的数据视为冷数据。例如，内容系统将**浏览量低于阈值**的文章标记为冷数据。该方法需要额外记录访问频率，适用于**访问频率与数据本身特性强相关**的场景。
+1. **By time**: Classify data by creation, update, or expiration time. For example, an order system may mark orders older than 90 days or one year as cold. This is simple and inexpensive when **access frequency is strongly correlated with age**.
+2. **By access frequency**: Treat frequently accessed data as hot and rarely accessed data as cold. For example, a content system may mark articles with **views below a threshold** as cold. This requires tracking access frequency and suits cases where **access patterns depend more on the data itself than on its age**.
 
-**如何选择区分策略？**
+**How should you choose a classification strategy?**
 
-- 若业务数据天然具有时效性（如订单、日志、账单），优先选择**时间维度**，实现成本最低。
-- 若数据价值与时间无关（如文章、商品、用户画像），需结合**访问频率**进行判定。
-- 实际项目中，可将两者结合使用：以时间维度为主、访问频率为辅，覆盖更多业务场景。
+- If business data is inherently time-sensitive, such as orders, logs, or bills, prefer **time-based** classification for lower implementation cost.
+- If data value is not tied to age, such as articles, products, or user profiles, consider **access frequency**.
+- In practice, combine both: use age as the primary rule and access frequency as a secondary signal.
 
-冷热判定规则不要只由技术团队拍脑袋决定。订单、账单、审计、客服、运营查询都会影响“冷数据还能不能查、多久能查出来、是否必须查全量”。落地前最好把核心查询路径列出来，再决定冷数据迁移时间点。
+Do not let the technical team choose hot/cold rules by guesswork alone. Order, billing, audit, support, and operations queries determine whether cold data must remain searchable, how quickly it must be returned, and whether full results are required. List critical query paths before choosing when to migrate data.
 
-### 冷热分离的多级分层策略
+### Multi-Tier Hot/Cold Separation
 
-实际落地时，“冷”与“热”往往不是非此即彼的二分法，而是**渐进式多级分层**：
+In practice, "hot" and "cold" are not always a strict binary. Use **progressive tiers** instead:
 
-| 层级         | 数据特性             | 判定规则示例                | 存储策略               |
-| ------------ | -------------------- | --------------------------- | ---------------------- |
-| **热数据**   | 高频访问、实时响应   | 最近 30 天 + 所有未完成订单 | MySQL 热库（SSD）      |
-| **温数据**   | 中频访问、可能被查询 | 30~90 天前的订单            | MySQL 温库（HDD）      |
-| **冷数据**   | 低频访问、偶发查询   | 90 天~3 年的历史订单        | 独立冷库或对象存储     |
-| **归档数据** | 极少访问、仅合规留存 | 超过 3 年的订单             | 对象存储（仅保留汇总） |
+| Tier        | Data characteristics                           | Example rule                             | Storage strategy                         |
+| ----------- | ---------------------------------------------- | ---------------------------------------- | ---------------------------------------- |
+| **Hot**     | Frequent access; fast responses                | Last 30 days and all incomplete orders   | MySQL hot database (SSD)                 |
+| **Warm**    | Occasional access; may be queried              | Orders 30–90 days old                    | MySQL warm database (HDD)                |
+| **Cold**    | Rare access; occasional queries                | Historical orders 90 days to 3 years old | Separate cold database or object storage |
+| **Archive** | Almost never accessed; retained for compliance | Orders older than 3 years                | Object storage (summary only)            |
 
-**实践建议**：判定规则应通过**配置中心**动态管理，避免因业务变化导致频繁修改代码。
+**Practice**: Manage classification rules dynamically through a **configuration center** to avoid code changes whenever business requirements change.
 
-### 冷数据被访问后如何处理？
+### What Should Happen When Cold Data Is Accessed?
 
-如果冷数据突然被访问（如用户查询 3 年前的订单），是否需要“热升级”？
+If cold data is accessed unexpectedly, such as when a user requests an order from three years ago, should it be promoted to a hotter tier?
 
-| 策略         | 适用场景               | 优点                 | 缺点                         |
-| ------------ | ---------------------- | -------------------- | ---------------------------- |
-| **不回迁**   | 偶发查询、查询频率极低 | 实现简单             | 查询速度慢                   |
-| **缓存层**   | 中等频率查询           | 加速查询、不改变存储 | 需要额外缓存组件             |
-| **异步回迁** | 高频查询、需要持续访问 | 彻底解决性能问题     | 实现复杂、可能产生一致性问题 |
+| Strategy                        | Suitable for                              | Advantages                              | Disadvantages                                |
+| ------------------------------- | ----------------------------------------- | --------------------------------------- | -------------------------------------------- |
+| **Do not migrate back**         | Rare queries                              | Simple to implement                     | Slow queries                                 |
+| **Cache layer**                 | Moderate query frequency                  | Faster queries without changing storage | Requires a cache component                   |
+| **Asynchronous migration back** | Frequent queries requiring ongoing access | Addresses the performance issue         | Complex and may introduce consistency issues |
 
-**推荐做法**：绝大多数场景采用“**不回迁 + 缓存层**”的组合方案。冷数据查询时，先查缓存，命中则直接返回；未命中则查冷库并将结果写入缓存（针对偶发查询，设置 5~15 分钟的短暂 TTL 即可）。
+**Recommendation**: In most cases, combine **no migration back with a cache layer**. Check the cache first when querying cold data. On a miss, query the cold store and cache the result. For occasional queries, a short TTL of 5–15 minutes is often sufficient.
 
-**⚠️注意**：为防止恶意攻击者利用随机参数频繁查询不存在的数据导致冷库被击穿，可以在缓存层前置**布隆过滤器（Bloom Filter）**或在缓存中设置**空值占位符**，避免恶意请求穿透到冷库。详细介绍参考 [Redis 常见面试题总结(下)](https://javaguide.cn/database/redis/redis-questions-02.html)（Redis 事务、性能优化、生产问题、集群、使用规范等）。
+**⚠️ Note**: To prevent an attacker from repeatedly querying nonexistent data with random parameters and overwhelming the cold store, put a **Bloom filter** before the cache or cache **empty-value placeholders**. See [Common Redis Interview Questions, Part 2](https://javaguide.cn/database/redis/redis-questions-02.html) for Redis transactions, performance, production issues, clustering, and usage practices.
 
-### 冷热分离的思想
+### The Idea Behind Hot/Cold Separation
 
-冷热分离的核心思想是**分层存储（Tiered Storage）**，根据数据的访问特性将其分配到不同层级的存储介质中。在企业级存储架构中，通常划分为以下层级：
+The core idea is **tiered storage**: assign data to storage media based on its access pattern. Enterprise storage architectures commonly use these tiers:
 
-| 层级                  | 数据特性           | 典型存储介质         | 访问延迟    |
-| --------------------- | ------------------ | -------------------- | ----------- |
-| **Hot（热层）**       | 高频访问、实时响应 | NVMe SSD、内存       | 毫秒级      |
-| **Warm（温层）**      | 中频访问、近期数据 | SATA SSD、高速 HDD   | 百毫秒级    |
-| **Cold（冷层）**      | 低频访问、历史数据 | 大容量 HDD、对象存储 | 秒级        |
-| **Archive（归档层）** | 极少访问、合规留存 | 磁带库、冰川存储     | 分钟~小时级 |
+| Tier        | Data characteristics                        | Typical storage media             | Access latency           |
+| ----------- | ------------------------------------------- | --------------------------------- | ------------------------ |
+| **Hot**     | Frequent access, real-time responses        | NVMe SSD, memory                  | Milliseconds             |
+| **Warm**    | Moderate access, recent data                | SATA SSD, high-speed HDD          | Hundreds of milliseconds |
+| **Cold**    | Rare access, historical data                | High-capacity HDD, object storage | Seconds                  |
+| **Archive** | Almost never accessed, compliance retention | Tape library, archival storage    | Minutes to hours         |
 
-这种分层思想在 IT 基础设施中被广泛应用，不仅限于数据库，还包括文件系统、对象存储、CDN 缓存等场景。
+Tiering is widely used in IT infrastructure, including filesystems, object storage, and CDN caches—not just databases.
 
-### 数据冷热分离的优缺点
+### Advantages and Disadvantages
 
-**优点：**
+**Advantages:**
 
-- **热数据查询性能优化**：热数据集中在高性能存储上，表数据量大幅减少，索引效率显著提升，用户的绝大部分操作体验会更好。
-- **存储成本大幅降低**：冷数据可迁移至 HDD 或对象存储，**SSD 与 HDD 的单位成本差距可达 5~10 倍**，对于海量数据场景节省效果显著。
-- **系统可维护性增强**：热库数据量可控，备份恢复速度更快，DDL 操作（如加索引）耗时更短。
+- **Faster hot-data queries**: Concentrating hot data on high-performance storage reduces table size and improves index efficiency, benefiting most user operations.
+- **Lower storage costs**: Cold data can move to HDDs or object storage. **The per-unit cost difference between SSDs and HDDs can be 5–10 times**, which matters at large scale.
+- **Easier maintenance**: A smaller hot database can be backed up and restored faster, and DDL operations such as adding an index take less time.
 
-**缺点：**
+**Disadvantages:**
 
-- **系统复杂性增加**：需要额外的迁移组件、路由逻辑和监控体系，数据一致性风险增加。
-- **跨库查询效率低**：若业务需要同时查询冷热数据（如年度统计报表），需进行跨库关联或数据聚合，查询性能和开发成本均会上升。
-- **迁移策略维护成本**：冷热数据的判定规则需要持续调优，避免误判导致热数据被错误迁移。
+- **More system complexity**: Requires migration components, routing logic, and monitoring, increasing consistency risks.
+- **Slower cross-database queries**: Queries spanning hot and cold data, such as annual reports, require cross-database joins or aggregation, increasing latency and development cost.
+- **Ongoing migration-policy maintenance**: Classification rules need tuning to avoid moving hot data by mistake.
 
-## 冷数据迁移
+## Cold-Data Migration
 
-### 冷数据如何迁移？
+### How Is Cold Data Migrated?
 
-冷数据迁移是冷热分离的核心环节，主流方案有以下三种：
+Migration is a core part of hot/cold separation. Three common approaches are:
 
-| 方案                | 实现原理                                 | 优点                   | 缺点                                         | 适用场景                     |
-| ------------------- | ---------------------------------------- | ---------------------- | -------------------------------------------- | ---------------------------- |
-| **业务层代码实现**  | 写操作时判断冷热，直接路由到对应库       | 实时性高               | 侵入业务代码、判定逻辑复杂                   | 几乎不使用                   |
-| **任务调度迁移**    | 定时任务扫描热库，批量迁移符合条件的数据 | 实现简单               | 存在迁移延迟、扫表可能污染 Buffer Pool       | 时间维度区分场景             |
-| **Binlog 监听迁移** | 监听数据库变更日志，实时或准实时迁移     | 实时性好、对业务无侵入 | 需要额外组件（如 Canal）、不适合时间维度判定 | **访问频率区分场景（推荐）** |
+| Approach                    | How it works                                                             | Advantages                                    | Disadvantages                                                          | Suitable for                                      |
+| --------------------------- | ------------------------------------------------------------------------ | --------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------- |
+| **Application-level logic** | Check whether data is hot or cold during writes and route it accordingly | Real-time                                     | Intrusive business-code changes; complex rules                         | Rarely used                                       |
+| **Scheduled migration**     | Scan the hot database periodically and batch-migrate eligible data       | Simple                                        | Migration lag; scans may pollute the buffer pool                       | Time-based classification                         |
+| **Binlog-based migration**  | Watch database change logs and migrate in real or near-real time         | Responsive and non-intrusive to business code | Requires a component such as Canal; less suitable for time-based rules | **Access-frequency classification (recommended)** |
 
-**任务调度迁移**是最常用的方案，可借助 XXL-Job、Elastic-Job 等分布式任务调度平台实现。关于任务调度的方案，我也写过文章详细介绍，可以查看这篇文章：[Java 定时任务详解](https://javaguide.cn/system-design/schedule-task.html) 。
+**Scheduled migration** is the most common approach. Distributed schedulers such as XXL-Job and Elastic-Job can implement it. See [Java Scheduled Tasks](https://javaguide.cn/system-design/schedule-task.html) for more on job scheduling.
 
-> ⚠️ **风险提示**：任务调度迁移在大数据量下存在性能隐患。大范围的扫表操作（如 `SELECT * FROM orders WHERE create_time < 'xxx' LIMIT 10000`）会严重污染 InnoDB Buffer Pool，将真正的业务热数据挤出内存。**生产环境建议**：
+> ⚠️ **Risk**: Scheduled migration can hurt performance at large scale. Broad scans, such as `SELECT * FROM orders WHERE create_time < 'xxx' LIMIT 10000`, can pollute the InnoDB buffer pool and evict genuinely hot business data. **In production:**
 >
-> - 使用**基于主键的范围查询**，避免全表扫描；
-> - 控制**单次迁移批量大小**，分批执行；
-> - 在**业务低峰期**执行迁移任务；
-> - 对于海量数据，优先考虑 **Binlog 监听**方案，将对热库的冲击降到最低。
+> - Use **primary-key range queries** instead of full table scans.
+> - Limit the **batch size** and migrate in chunks.
+> - Run migration jobs during **off-peak hours**.
+> - For very large datasets, prefer **Binlog-based migration** to reduce pressure on the hot database.
 
-典型流程如下：
+Typical flow:
 
-![冷热分离 - 冷数据迁移](./images/shared/data-cold-hot-separation.png)
+![Hot/cold separation and cold-data migration](./images/shared/data-cold-hot-separation.png)
 
-**实践建议**：若公司有 DBA 支持，可先进行一次**存量冷数据的人工迁移**，将历史数据批量导入冷库；后续再通过任务调度实现**增量迁移**的自动化。
+**Practice**: If DBAs are available, first **manually migrate existing cold data** in bulk. Then automate **incremental migration** with a scheduler.
 
-### 迁移过程中如何保证数据一致性？
+### How Is Consistency Maintained During Migration?
 
-数据迁移过程中，最棘手的问题是：**如果数据在迁移过程中被更新，如何处理？**
+The hardest migration question is: **What happens if a record is updated while it is being moved?**
 
-#### 常见解决方案
+#### Common Approaches
 
-| 方案                | 实现方式                               | 优点             | 缺点                                 |
-| ------------------- | -------------------------------------- | ---------------- | ------------------------------------ |
-| **迁移前锁定**      | 迁移前对记录加写锁，迁移完成后释放     | 一致性强         | 影响业务写入、吞吐量下降             |
-| **版本号乐观锁**    | 迁移时记录版本，删除前校验版本是否变化 | 无锁、性能好     | 需要业务表增加版本字段、冲突时需重试 |
-| **状态标记 + 幂等** | 热库增加迁移状态字段，先标记再迁移     | 可追溯、支持回滚 | 需要改造业务表                       |
+| Approach                         | Implementation                                                                 | Advantages                   | Disadvantages                                     |
+| -------------------------------- | ------------------------------------------------------------------------------ | ---------------------------- | ------------------------------------------------- |
+| **Lock before migration**        | Take a write lock before migration and release it afterward                    | Strong consistency           | Blocks writes and reduces throughput              |
+| **Optimistic version check**     | Record the version during migration and check for changes before deleting      | No lock; good performance    | Requires a version column; conflicts need retries |
+| **State marker and idempotency** | Add a migration-state field to the hot database and mark rows before migration | Traceable; supports rollback | Requires changing the business table              |
 
-> **注意**：冷热库通常是**不同的数据库实例**，`INSERT`（冷库）和 `DELETE`（热库）无法放在同一个本地事务中，需要特殊处理跨库原子性问题。
+> **Note**: Hot and cold databases are usually **separate database instances**, so an `INSERT` into the cold database and a `DELETE` from the hot database cannot share one local transaction. Cross-database atomicity needs special handling.
 
-#### 推荐方案：状态标记 + 幂等迁移
+#### Recommended: State Markers and Idempotent Migration
 
-在热库表中增加 `migrate_status` 字段，通过状态机保证迁移的原子性和可追溯性：
+Add a `migrate_status` field to the hot table and use a state machine to make migration traceable and safe to retry:
 
 ```sql
--- 1. 热库表增加迁移状态字段
+-- 1. Add a migration-state field to the hot table
 ALTER TABLE orders ADD COLUMN migrate_status TINYINT DEFAULT 0
-    COMMENT '0-未迁移 1-迁移中 2-已迁移';
+    COMMENT '0-not migrated, 1-in progress, 2-migrated';
 ```
 
 ```java
-// 2. 迁移流程（伪代码，独立冷库场景需在应用层分步执行）
+// 2. Migration flow (pseudocode; with a separate cold database, execute each step in the application)
 
-// Step 1: 标记为迁移中（热库事务）
+// Step 1: Mark as migrating (hot-database transaction)
 hotDb.execute("UPDATE orders SET migrate_status = 1 WHERE id = ? AND migrate_status = 0", id);
 
-// Step 2: 读取热库数据并写入冷库（需切换数据库连接）
+// Step 2: Read from the hot database and write to the cold database (switch database connections)
 Order order = hotDb.query("SELECT * FROM orders WHERE id = ?", id);
 coldDb.execute("INSERT IGNORE INTO orders_cold VALUES (?, ?, ...)", order.id, order.data...);
 
-// Step 3: 标记为已迁移（热库事务）
+// Step 3: Mark as migrated (hot-database transaction)
 hotDb.execute("UPDATE orders SET migrate_status = 2 WHERE id = ? AND migrate_status = 1", id);
 
-// Step 4: 延迟删除热库数据（可选，确认冷库数据无误后执行）
+// Step 4: Delete from the hot database later (optional; verify the cold copy first)
 hotDb.execute("DELETE FROM orders WHERE id = ? AND migrate_status = 2", id);
 ```
 
-> **注意**：独立冷库场景下，标准 MySQL 无法直接执行跨库 `INSERT ... SELECT`，必须在应用层拆分为“读取热库 → 写入冷库”两步。
+> **Note**: With a separate cold database, standard MySQL cannot directly run a cross-instance `INSERT ... SELECT`. The application must split it into two steps: read from the hot database, then write to the cold database.
 
-**方案优势**：
+**Advantages:**
 
-- **幂等性**：`INSERT IGNORE` 保证冷库写入幂等，`migrate_status` 状态流转保证热库更新幂等。
-- **可追溯**：通过状态字段可以查询迁移进度，异常时可以人工介入。
-- **可回滚**：迁移失败时可以将状态重置为 0，重新迁移。
-- **渐进式删除**：不立即删除热库数据，确认冷库无误后再清理，降低风险。
+- **Idempotency**: `INSERT IGNORE` makes cold-store writes idempotent, while `migrate_status` makes hot-store updates idempotent.
+- **Traceability**: Check migration progress through the state field and intervene manually when needed.
+- **Rollback**: Reset the state to 0 and retry after a migration failure.
+- **Gradual deletion**: Keep data in the hot database until the cold copy is verified, then clean it up to reduce risk.
 
-> **空间回收**：InnoDB 执行 `DELETE` 后仅将数据页标记为删除，物理空间不会立即释放给操作系统。需在**业务低峰期**执行 `OPTIMIZE TABLE` 或 `ALTER TABLE ENGINE=InnoDB` 重建表，才能真正回收磁盘空间。
+> **Reclaiming disk space**: After `DELETE`, InnoDB marks pages as deleted but does not immediately return physical space to the operating system. To reclaim disk space, rebuild the table with `OPTIMIZE TABLE` or `ALTER TABLE ... ENGINE=InnoDB` during **off-peak hours**.
 
-**兜底机制**：
+**Safeguards:**
 
-- **定时对账**：定期扫描 `migrate_status = 1` 超过阈值的记录，自动重置或告警。**注意**：`migrate_status` 字段区分度极低，必须配合联合索引（如 `idx_create_time_migrate_status`）限定扫描区间，避免全表扫描。
-- **高频更新兜底**：对于因频繁更新导致多次跳过的记录，设置最大重试次数，超过后强制迁移或人工介入。
+- **Scheduled reconciliation**: Scan periodically for records stuck in `migrate_status = 1` beyond a threshold, then reset them or alert. **Note**: `migrate_status` has low cardinality, so pair it with a composite index such as `idx_create_time_migrate_status` to constrain the scan and avoid a full table scan.
+- **Frequently updated records**: Set a maximum retry count for records repeatedly skipped because of updates. After that, force migration or request manual intervention.
 
-## 冷数据如何存储？
+## How Should Cold Data Be Stored?
 
-冷数据存储方案的选型原则是：**容量大、成本低、可靠性高，访问速度可适当牺牲**。
+Choose cold storage for **high capacity, low cost, and high reliability**, accepting slower access when appropriate.
 
-### 中小厂方案
+### Small and Medium-Sized Systems
 
-直接使用 **MySQL/PostgreSQL** 即可，保持与热库相同的数据库类型，降低运维复杂度。具体实现方式：
+Use **MySQL or PostgreSQL**, the same database type as the hot store, to reduce operational complexity. Common setups include:
 
-- **同库分表**：在同一数据库中新增冷数据表（如 `order_history`），通过表名区分冷热数据。
-- **独立冷库**：部署单独的数据库实例作为冷库，热库与冷库通过应用层路由访问。
+- **Separate tables in the same database**: Add a cold-data table such as `order_history` and distinguish tiers by table name.
+- **Separate cold database**: Use a dedicated database instance and route queries to the hot or cold database in the application.
 
-**⚠️注意**：独立冷库方案涉及**跨库查询**，若业务存在冷热数据联合查询需求，需评估是否引入数据同步或聚合层。
+**⚠️ Note**: A separate cold database requires **cross-database queries**. If the business needs queries across hot and cold data, assess whether data synchronization or an aggregation layer is needed.
 
-### 大厂方案
+### Large-Scale Systems
 
-大厂通常采用专门针对海量数据优化的存储引擎：
+Large-scale systems often use storage engines designed for massive datasets:
 
-| 存储方案               | 特点                             | 适用场景                         |
-| ---------------------- | -------------------------------- | -------------------------------- |
-| **HBase**              | 列族存储、高吞吐、支持 PB 级数据 | 日志、用户行为、IoT 数据归档     |
-| **RocksDB**            | 高性能 KV 存储、LSM-Tree 结构    | 嵌入式场景、作为其他系统底层存储 |
-| **Doris/ClickHouse**   | OLAP 引擎、支持实时分析          | 冷数据需要进行聚合分析的场景     |
-| **Cassandra**          | 分布式、高可用、无单点故障       | 跨地域部署、高可用要求的归档场景 |
-| **对象存储（OSS/S3）** | 成本极低、无限扩展               | 超大规模冷数据、合规归档         |
+| Storage option              | Characteristics                                                      | Suitable for                                              |
+| --------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------- |
+| **HBase**                   | Column-family storage, high throughput, supports petabyte-scale data | Archiving logs, user behavior, and IoT data               |
+| **RocksDB**                 | High-performance key-value store using an LSM tree                   | Embedded use and storage engine for other systems         |
+| **Doris/ClickHouse**        | OLAP engines that support real-time analytics                        | Cold data that needs aggregation and analysis             |
+| **Cassandra**               | Distributed, highly available, no single point of failure            | Geo-deployed archives with high availability requirements |
+| **Object storage (OSS/S3)** | Very low cost and elastic capacity                                   | Very large cold datasets and compliance archives          |
 
-### TiDB 方案（推荐）
+### TiDB (Recommended)
 
-如果公司技术栈允许，可以直接使用 **TiDB** 这类分布式关系型数据库，原生支持冷热分离，一步到位。
+If the technology stack allows, consider a distributed relational database such as **TiDB**, which supports hot/cold separation natively.
 
-TiDB 6.0 引入了 **基于 SQL 接口的数据放置框架（Placement Rules in SQL）** 功能，用于通过 SQL 接口配置数据在 TiKV 集群中的放置位置。
+TiDB 6.0 introduced **Placement Rules in SQL**, which lets you configure where data is placed in a TiKV cluster through SQL.
 
-- **热数据**：通过 Placement Rules 指定存储在 **SSD 节点**上，保障查询性能。
-- **冷数据**：指定存储在 **HDD 节点**上，降低存储成本。
+- **Hot data**: Use placement rules to store it on **SSD nodes** for query performance.
+- **Cold data**: Place it on **HDD nodes** to reduce storage costs.
 
 ```sql
--- 创建放置策略：热数据存储在 SSD 节点
+-- Create a placement policy for hot data on SSD nodes
 CREATE PLACEMENT POLICY hot_data
   CONSTRAINTS="[+disk=ssd]";
 
--- 创建放置策略：冷数据存储在 HDD 节点
+-- Create a placement policy for cold data on HDD nodes
 CREATE PLACEMENT POLICY cold_data
   CONSTRAINTS="[+disk=hdd]";
 
--- 对表或分区应用放置策略
+-- Apply placement policies to a table or partition
 ALTER TABLE orders PLACEMENT POLICY = hot_data;
 ALTER TABLE orders PARTITION p2022 PLACEMENT POLICY = cold_data;
 ```
 
-这种方案的优势在于：**业务无需感知冷热分离逻辑**，数据路由由 TiDB 自动完成，大幅降低了应用层的复杂度。
+The advantage is that **the application does not need to handle hot/cold routing**. TiDB routes the data automatically, reducing application complexity.
 
-> **完整实践**：`Placement Rules` 指定了数据存放的介质类型，但数据如何从“热分区”流转到“冷分区”仍需结合**分区表（Range Partitioning）**。按时间跨度创建分区，为历史分区绑定 HDD 放置策略，为当前活跃分区绑定 SSD 放置策略。随着时间推移，只需维护分区的创建与销毁，底层数据即可在不同介质间自然流转。
+> **Complete approach**: `Placement Rules` specify the storage medium, but moving data from hot to cold partitions also requires **range partitioning**. Create partitions by time range, assign HDD policies to historical partitions and SSD policies to active partitions, then maintain partition creation and removal as time passes.
 
-## 冷数据如何查询？
+## How Should Cold Data Be Queried?
 
-冷数据虽然访问频率低，但一旦需要查询（如审计、对账、年度报表），如何保证查询效率？
+Cold data is rarely accessed, but queries may still be needed for audits, reconciliation, or annual reports. How can those queries stay efficient?
 
-### 冷数据查询需求分析
+### Analyze Query Requirements
 
-首先需要明确：**业务是否真的需要查询冷数据？**
+First ask: **Does the business really need to query cold data?**
 
-- **不需要**：可将冷数据完全移出业务库，仅保留归档（如对象存储），需要时人工提取。
-- **需要**：需设计合理的查询方案，平衡性能与成本。
+- **No**: Remove cold data from the business database and keep only an archive, such as object storage, for manual retrieval if needed.
+- **Yes**: Design a query strategy that balances performance and cost.
 
-### 冷数据查询优化方案
+### Cold-Data Query Optimizations
 
-| 优化手段             | 实现方式                                            | 适用场景       |
-| -------------------- | --------------------------------------------------- | -------------- |
-| **冷库独立只读实例** | 冷库部署只读副本，避免冷查询影响热库                | 高频冷查询场景 |
-| **查询路由**         | 应用层根据时间范围自动路由到热库或冷库              | 跨冷热查询场景 |
-| **预聚合**           | 定期对冷数据生成月度/季度报表，查询时直接查聚合结果 | 统计分析场景   |
-| **列式存储**         | 冷库采用 ClickHouse、Doris 等 OLAP 引擎             | 大规模分析查询 |
+| Optimization                         | Implementation                                                                | Suitable for                |
+| ------------------------------------ | ----------------------------------------------------------------------------- | --------------------------- |
+| **Dedicated read-only cold replica** | Isolate cold queries from the hot database                                    | Frequent cold-data queries  |
+| **Query routing**                    | Route to the hot or cold database based on the time range                     | Queries spanning both tiers |
+| **Pre-aggregation**                  | Generate monthly or quarterly reports from cold data and query the aggregates | Analytics                   |
+| **Columnar storage**                 | Use an OLAP engine such as ClickHouse or Doris                                | Large-scale analytics       |
 
-**跨冷热查询的处理**：
+**Queries across hot and cold data:**
 
-若查询范围同时涉及冷热数据（如“查询近 2 年的订单”），有两种处理方式：
+If a query spans both tiers, such as "orders from the last two years," there are two options:
 
-1. **拆分查询**：分别查询热库和冷库，应用层合并结果。
-2. **限制范围**：提示用户缩小查询范围，避免跨库查询。
+1. **Split the query**: Query the hot and cold databases separately and merge the results in the application.
+2. **Limit the range**: Ask the user to narrow the query to avoid a cross-database request.
 
-> **防雪崩预警**：若业务包含**全局分页排序**（如 `ORDER BY create_time LIMIT 10000, 20`），应用层必须从冷热库各拉取 `10000 + 20` 条记录进行内存归并，偏移量较大时极易引发 **OOM**。**强制要求**：
+> **Preventing overload**: For **globally sorted pagination**, such as `ORDER BY create_time LIMIT 10000, 20`, the application would need to fetch `10000 + 20` rows from each database and merge them in memory. A large offset can easily cause an **OOM**. **Requirements:**
 >
-> - 限制查询时间范围，避免大跨度跨库查询；
-> - 或引流至底层同步的宽表（如 ClickHouse）进行计算；
-> - 严禁在应用层执行大深度的归并分页。
+> - Limit the time range to avoid broad cross-database queries.
+> - Alternatively, route the query to a synchronized wide table in a system such as ClickHouse.
+> - Do not perform deep merged pagination in the application.
 
-### 应用层如何路由冷热数据？
+### How Should the Application Route Hot and Cold Data?
 
-| 方案         | 实现方式                                 | 优点               | 缺点                         |
-| ------------ | ---------------------------------------- | ------------------ | ---------------------------- |
-| **硬编码**   | 代码中直接判断路由                       | 实现简单           | 维护成本高、规则变更需改代码 |
-| **配置中心** | 路由规则存入配置中心（如 Nacos、Apollo） | 动态调整、无需重启 | 需要额外组件支持             |
-| **Proxy 层** | 引入 ShardingSphere、ProxySQL 等中间件   | 业务无感知         | 架构复杂度高                 |
+| Approach                 | Implementation                                             | Advantages                      | Disadvantages                                            |
+| ------------------------ | ---------------------------------------------------------- | ------------------------------- | -------------------------------------------------------- |
+| **Hard-coded**           | Implement routing rules in code                            | Simple                          | High maintenance cost; rule changes require code updates |
+| **Configuration center** | Store routing rules in Nacos, Apollo, or a similar service | Dynamic changes without restart | Requires an additional component                         |
+| **Proxy layer**          | Introduce middleware such as ShardingSphere or ProxySQL    | Transparent to business code    | More architectural complexity                            |
 
-**推荐做法**：中小规模采用**配置中心**方案，大规模采用**Proxy 层**方案。
+**Recommendation**: Use a **configuration center** for small and medium-sized systems, and a **proxy layer** at larger scale.
 
-> ⚠️ **风险提示**：引入 Proxy 层后，所有跨冷热库的聚合计算（如全局排序、`GROUP BY` 归并分页）都会压在 Proxy 节点的内存与 CPU 上。需严格限制此类操作的最大返回行数，否则极易导致 Proxy 节点 **OOM（内存溢出）**。
+> ⚠️ **Risk**: With a proxy layer, cross-tier aggregations such as global sorting and `GROUP BY` merged pagination load the proxy's CPU and memory. Strictly cap the number of returned rows to avoid an **OOM (out-of-memory error)** on the proxy.
 
-## 监控与回滚
+## Monitoring and Rollback
 
-冷热分离上线后，至少要关注这些指标：
+After deployment, monitor at least:
 
-- **迁移进度**：待迁移数量、迁移成功数、迁移失败数、重试次数。
-- **迁移延迟**：数据从热库满足冷却条件到真正迁移完成的时间。
-- **一致性校验**：冷热库记录数、关键字段摘要、金额类字段汇总。
-- **查询命中分布**：热库查询、冷库查询、跨冷热查询的比例。
-- **冷库压力**：冷库 QPS、RT、慢查询、连接数、存储增长速度。
-- **异常回流**：冷数据突然高频访问时，缓存命中率和冷库压力是否异常。
+- **Migration progress**: Rows waiting, successful and failed migrations, and retry count.
+- **Migration lag**: Time from when data becomes eligible for cooling to when migration completes.
+- **Consistency checks**: Row counts, key-field checksums, and totals for monetary fields across both databases.
+- **Query distribution**: Proportion of queries to the hot database, cold database, and both tiers.
+- **Cold-store load**: QPS, RT, slow queries, connections, and storage growth.
+- **Unexpected access**: Cache hit rate and cold-store load when cold data suddenly receives frequent queries.
 
-回滚策略也要提前设计。比较稳妥的做法是迁移初期只复制不删除，等查询路由和一致性校验稳定后，再延迟清理热库数据。这样即使冷库查询链路出问题，也可以临时切回热库。
+Design rollback in advance. A safer approach is to copy data without deleting it during the initial migration. After query routing and consistency checks are stable, clean up the hot database later. If cold-store queries fail, traffic can temporarily return to the hot database.
 
-## 冷热分离 vs 数据归档 vs 分区表
+## Hot/Cold Separation vs. Archiving vs. Partitioning
 
-这三个概念容易混淆，需要区分清楚：
+These concepts are easy to confuse:
 
-| 对比维度           | 冷热分离                   | 数据归档               | 分区表                     |
-| ------------------ | -------------------------- | ---------------------- | -------------------------- |
-| **数据是否可访问** | 冷数据仍在业务访问路径上   | 归档数据通常移出业务库 | 所有分区均可访问           |
-| **存储介质**       | 冷热数据可跨实例、跨存储   | 通常迁移到低成本存储   | 同一实例内                 |
-| **实现复杂度**     | 中等                       | 低                     | 低                         |
-| **典型场景**       | 订单、日志等有时效性的数据 | 合规留存、数据备份     | 单表数据量大但无需分离存储 |
+| Dimension                     | Hot/cold separation                                    | Data archiving                                              | Partitioned table                              |
+| ----------------------------- | ------------------------------------------------------ | ----------------------------------------------------------- | ---------------------------------------------- |
+| **Data accessibility**        | Cold data remains in the business query path           | Archived data is usually removed from the business database | All partitions remain accessible               |
+| **Storage media**             | Hot and cold data can use separate instances and media | Usually moved to lower-cost storage                         | Same instance                                  |
+| **Implementation complexity** | Medium                                                 | Low                                                         | Low                                            |
+| **Typical use case**          | Time-sensitive orders and logs                         | Compliance retention and backups                            | Large tables that do not need separate storage |
 
-**分区表的局限性**：MySQL 分区表可以按时间分区，但所有分区仍在同一个实例中，**无法实现存储介质的分离**。如果目标是降低存储成本，分区表无法替代冷热分离。
+**Partitioning limitation**: MySQL can partition a table by time, but all partitions remain in the same instance, so it **cannot separate storage media**. Partitioning does not replace hot/cold separation when the goal is lower storage cost.
 
-## 典型业务场景
+## Typical Use Cases
 
-> **说明**：以下存储策略仅供参考，实际选型需结合数据量、查询需求、团队技术栈和成本预算综合考虑。
+> **Note**: These storage strategies are examples. Choose based on data volume, query requirements, the team's technology stack, and budget.
 
-### 订单系统
+### Order System
 
-| 阶段     | 数据范围                | 存储策略                        | 说明                         |
-| -------- | ----------------------- | ------------------------------- | ---------------------------- |
-| 热数据   | 最近 90 天 + 未完成订单 | MySQL 热库（SSD）               | 高频访问，保障查询性能       |
-| 冷数据   | 90 天~3 年              | MySQL 冷库（HDD）或 TiDB        | 可能需要查询，保持关系型存储 |
-| 归档数据 | 超过 3 年               | 对象存储 / HBase / 仅保留汇总表 | 极少查询，优先考虑成本       |
+| Tier    | Data range                         | Storage strategy                             | Description                                     |
+| ------- | ---------------------------------- | -------------------------------------------- | ----------------------------------------------- |
+| Hot     | Last 90 days and incomplete orders | MySQL hot database (SSD)                     | Frequently accessed; preserve query performance |
+| Cold    | 90 days to 3 years                 | MySQL cold database (HDD) or TiDB            | May need queries; keep relational storage       |
+| Archive | Older than 3 years                 | Object storage, HBase, or summary table only | Rarely queried; prioritize cost                 |
 
-### 日志系统
+### Log System
 
-| 阶段   | 数据范围  | 存储策略                                               | 说明                                      |
-| ------ | --------- | ------------------------------------------------------ | ----------------------------------------- |
-| 热数据 | 近 7 天   | Elasticsearch 热节点                                   | 实时检索、高频查询                        |
-| 温数据 | 7~30 天   | Elasticsearch 温节点                                   | 偶发查询，降低存储成本                    |
-| 冷数据 | 30 天以上 | Elasticsearch 冷节点 / 压缩归档至对象存储 / ClickHouse | 根据查询需求选择，ClickHouse 适合分析场景 |
+| Tier | Data range         | Storage strategy                                                           | Description                                             |
+| ---- | ------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Hot  | Last 7 days        | Elasticsearch hot nodes                                                    | Real-time search and frequent queries                   |
+| Warm | 7–30 days          | Elasticsearch warm nodes                                                   | Occasional queries at lower storage cost                |
+| Cold | Older than 30 days | Elasticsearch cold nodes, compressed object-storage archive, or ClickHouse | Choose based on query needs; ClickHouse suits analytics |
 
-### 内容系统
+### Content System
 
-| 阶段   | 数据范围                   | 存储策略                      | 说明                           |
-| ------ | -------------------------- | ----------------------------- | ------------------------------ |
-| 热数据 | 发布后 3 个月内 + 高阅读量 | MySQL 热库                    | 频繁被访问                     |
-| 冷数据 | 3 个月后 + 低阅读量        | MySQL 冷库 / HBase / 对象存储 | 访问频率低，可迁移至低成本存储 |
+| Tier | Data range                               | Storage strategy                              | Description                                     |
+| ---- | ---------------------------------------- | --------------------------------------------- | ----------------------------------------------- |
+| Hot  | Published within 3 months or highly read | MySQL hot database                            | Frequently accessed                             |
+| Cold | Older than 3 months and rarely read      | MySQL cold database, HBase, or object storage | Rarely accessed; can move to lower-cost storage |
 
-**选型建议**：
+**Recommendations:**
 
-- **需要支持事务或复杂查询**：优先选择 MySQL 冷库或 TiDB
-- **需要大规模聚合分析**：优先选择 ClickHouse 或 Doris
-- **仅需偶尔查询明细**：可选择对象存储（如 OSS/S3），查询时临时加载
-- **数据量极大且访问极低**：HBase 或对象存储是性价比最高的选择
+- **Transactions or complex queries**: Prefer a MySQL cold database or TiDB.
+- **Large-scale aggregation and analytics**: Prefer ClickHouse or Doris.
+- **Occasional detail lookups only**: Use object storage such as OSS or S3 and load data on demand.
+- **Very large, rarely accessed datasets**: HBase or object storage may offer the best cost efficiency.
 
-## 案例分享
+## Case Studies
 
-- [如何快速优化几千万数据量的订单表 - 程序员济癫 - 2023](https://www.cnblogs.com/fulongyuanjushi/p/17910420.html)
-- [海量数据冷热分离方案与实践 - 字节跳动技术团队 - 2022](https://mp.weixin.qq.com/s/ZKRkZP6rLHuTE1wvnqmAPQ)
+- [How to Quickly Optimize an Order Table with Tens of Millions of Rows — Programmer Jidian, 2023](https://www.cnblogs.com/fulongyuanjushi/p/17910420.html)
+- [Hot/Cold Separation for Large Datasets: Design and Practice — ByteDance Tech Team, 2022](https://mp.weixin.qq.com/s/ZKRkZP6rLHuTE1wvnqmAPQ)
 
 <!-- @include: @article-footer.snippet.md -->

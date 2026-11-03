@@ -1,45 +1,45 @@
 ---
-title: DeepSeek V4 + Claude Code 实战：代码能力深度测评
-description: 深入体验 DeepSeek V4 与 Claude Code 的集成，实测代码审计、数据库迁移、模型升级等多个场景，评估 V4-Pro 和 V4-Flash 的真实代码能力。
-category: AI 编程实战
+title: "DeepSeek V4 + Claude Code in Practice: An In-Depth Coding Evaluation"
+description: A hands-on evaluation of DeepSeek V4 with Claude Code across code auditing, database migrations, model upgrades, and other development tasks.
+category: AI Coding in Practice
 head:
   - - meta
     - name: keywords
-      content: DeepSeek V4,Claude Code,AI编程,代码审计,Agent Coding,V4-Pro,V4-Flash
+      content: DeepSeek V4,Claude Code,AI Coding,Code Audit,Agent Coding,V4-Pro,V4-Flash
 ---
 
 <!-- @include: @article-header.snippet.md -->
 
-2026 年 4 月 24 日，DeepSeek 发布并开源了 V4 Preview。技术报告和社区测试很多，但我更关心它放进真实代码库后的表现。
+On April 24, 2026, DeepSeek released V4 Preview as open source. There are many technical reports and community tests, but I wanted to see how it performs in a real codebase.
 
-开源模型在对话和写作上已经做得相当成熟，各家你追我赶，迭代速度肉眼可见。但 Agent Coding 是另一回事。
+Open-source models have become quite capable at conversation and writing. Providers keep up with one another, and their iteration speed is easy to see. Agent coding is a different challenge.
 
-让模型自主分析项目结构、理解多文件依赖、给出能落地的工程方案，对代码能力和工具调用稳定性都有要求。
+An agent must analyze project structure, understand dependencies across files, and produce a practical engineering solution. This requires coding ability and reliable tool use.
 
-之前各家模型在这个方向上一直在进步，但实际用过就知道，离“放心交给它独立完成”始终还差那么一点。
+Models have continued to improve in this area, but in practice they still fall short of being something you can confidently leave to complete a task independently.
 
-所以这次 V4 发布，小 G 第一反应就是直接接入 Claude Code 上手干活。
+When V4 was released, my first thought was to connect it to Claude Code and put it to work.
 
-这篇文章记录四部分内容：
+This article covers four areas:
 
-1. **Claude Code 接入 DeepSeek V4 的两种方式**：配置文件法 + CC Switch 可视化切换
-2. **五个真实开发任务的实战记录**：V4-Pro 干起活来到底怎么样
-3. **DeepSeek V4-Pro 和 Flash 的核心参数与定价**：值不值得切
-4. **场景建议**：什么时候该用，什么时候先观望
+1. **Two ways to connect DeepSeek V4 to Claude Code:** configuration files and visual switching with CC Switch.
+2. **Five real development tasks:** how well does V4-Pro perform?
+3. **Core specifications and pricing for DeepSeek V4-Pro and V4-Flash:** is it worth switching?
+4. **Use cases:** when to use it and when to wait.
 
-## Claude Code 接入 DeepSeek V4
+## Connecting DeepSeek V4 to Claude Code
 
-Claude Code 的工具链比较成熟，但官方模型的 API 成本不低。DeepSeek V4 提供了 **Anthropic 兼容接口**，Claude Code 可以直接对接，不需要额外的协议转换服务。不过，兼容接口不等于完整复刻 Anthropic 模型能力，工具调用、上下文和新功能仍要按实际任务验证。
+Claude Code has a mature toolchain, but the official model API can be expensive. DeepSeek V4 provides an **Anthropic-compatible API**, which Claude Code can use directly without an extra protocol-conversion service. However, compatibility does not mean that it fully reproduces Anthropic model capabilities. Tool use, context, and new features still need to be tested on real tasks.
 
-### 方式一：配置文件法（推荐）
+### Method 1: Configuration File (Recommended)
 
-如果你本机没有安装 Claude Code 的话，先运行下面这行命令安装（Node.js 18+）：
+If Claude Code is not installed on your machine, install it first (Node.js 18+):
 
 ```bash
 npm install -g @anthropic-ai/claude-code
 ```
 
-编辑或新增 Claude Code 配置文件 `~/.claude/settings.json`，添加 `env` 字段，把后端地址、模型和 API Key 都写进去：
+Edit or create the Claude Code configuration file, `~/.claude/settings.json`. Add an `env` field with the backend URL, model, and API key:
 
 ```json
 {
@@ -58,248 +58,250 @@ npm install -g @anthropic-ai/claude-code
 }
 ```
 
-注意替换 `your_deepseek_api_key` 为你的 DeepSeek API Key。
+Replace `your_deepseek_api_key` with your DeepSeek API key.
 
-API Key 创建地址：<https://platform.deepseek.com/> 。
+Create an API key at <https://platform.deepseek.com/>.
 
-![DeepSeek 创建 API Key](../images/shared/deepseek-api-keys.png)
+![Create a DeepSeek API key](../images/shared/deepseek-api-keys.png)
 
-这里的 `[1m]` 用于请求 V4 Pro 的 1M 上下文版本。日常任务如果想优先使用 Flash，可以把 `ANTHROPIC_MODEL` 改为 `deepseek-v4-flash`；模型 ID 和映射方式以 [DeepSeek 官方接入文档](https://api-docs.deepseek.com/quick_start/agent_integrations/claude_code/)为准。
+The `[1m]` suffix requests the 1M-context version of V4 Pro. For everyday tasks, change `ANTHROPIC_MODEL` to `deepseek-v4-flash` to use Flash by default. Check the [official DeepSeek integration guide](https://api-docs.deepseek.com/quick_start/agent_integrations/claude_code/) for current model IDs and mappings.
 
-配置完成后启动 Claude Code：
+After configuration, start Claude Code:
 
 ```bash
 claude
 ```
 
-首次启动需要选择信任当前文件夹。
+The first time it starts, you will need to confirm that you trust the current directory.
 
-### 方式二：CC Switch（可视化切换）
+### Method 2: CC Switch (Visual Model Switching)
 
-如果你想在 DeepSeek、Claude、MiniMax 等多个 Provider 之间灵活切换，推荐安装 **CC Switch**。这是一个专门管理 Claude Code 模型切换的小工具，支持一键横跳，还支持管理 Skills、MCP 和提示词。
+If you want to switch between providers such as DeepSeek, Claude, and MiniMax, try **CC Switch**. It manages Claude Code model configuration, lets you switch providers with one click, and can also manage Skills, MCP servers, and prompts.
 
-![CC Switch 主界面](../images/shared/cc-switch-main-interface.png)
+![CC Switch main interface](../images/shared/cc-switch-main-interface.png)
 
-启动 CC Switch，点击右上角 **"+"** ，选择自定义供应商，Base URL 填写 `https://api.deepseek.com/anthropic`，API Key 填写你的 DeepSeek API Key。
+Open CC Switch, click **+** in the upper-right corner, and select a custom provider. Set the Base URL to `https://api.deepseek.com/anthropic` and enter your DeepSeek API key.
 
-![CC Switch 添加 DeepSeek Provider](../images/shared/cc-switch-add-deepseek-provider.png)
+![Add a DeepSeek provider in CC Switch](../images/shared/cc-switch-add-deepseek-provider.png)
 
-将模型名称改为 `deepseek-v4-pro[1m]`（或 `deepseek-v4-flash`），完成后点击右下角的“添加”。
+Set the model name to `deepseek-v4-pro[1m]` or `deepseek-v4-flash`, then click **Add** in the lower-right corner.
 
-### 验证是否生效
+### Verify the Configuration
 
-直接在命令行输入 `claude`，进入 Claude Code 后再输入 `/status` 确认。model 显示 `deepseek-v4-pro[1m]` 或 `deepseek-v4-flash`，说明路由已经生效。
+Run `claude` in the terminal, then enter `/status` in Claude Code. If the model is shown as `deepseek-v4-pro[1m]` or `deepseek-v4-flash`, the routing is active.
 
-![验证是否生效](../images/shared/verify-deepseek-v4-ready.png)
+![Verify that the DeepSeek connection is ready](../images/shared/verify-deepseek-v4-ready.png)
 
-之后就可以通过 Claude Code 调用 DeepSeek V4。第三方模型是否支持 Claude Code 的某项新能力，还要以兼容接口和实际测试结果为准。
+You can now call DeepSeek V4 through Claude Code. Whether a third-party model supports a particular Claude Code feature still depends on API compatibility and must be verified in practice.
 
-## 实战一：升级 LLM 多 Provider 预设模型列表
+## Task 1: Update the Preset Model List for Multiple LLM Providers
 
-我手头有一个多智能体股票分析项目，已经快一个月没启动了。这次重新启动，第一件事就是把过时的模型配置更新掉。
+I have a multi-agent stock analysis project that I had not started in nearly a month. When I restarted it, the first thing I wanted to do was update its outdated model configuration.
 
-项目 Settings 页面之前只有一个纯文本输入框让用户手动填写模型名，不够友好。
+The Settings page had only a plain text field for users to enter model names manually, which was not very user-friendly.
 
-我需要做两件事：**搜索各家 LLM 的最新模型版本**，然后**给前端加一个下拉选择**。
+I had two tasks: **look up the latest models from several LLM providers** and **add a dropdown selector to the frontend**.
 
-提示词很简单：
+The prompt was simple:
 
-> /tavily-search 搜索当前 deepseek、glm 和 openai 最新的模型，然后调整全局配置中默认模型推荐和示例。并且，当前这几个 LLM 图标太 AI 味了，帮我换一个上档次点。
+> Use `/tavily-search` to find the latest DeepSeek, GLM, and OpenAI models, then update the default model recommendations and examples in the global configuration. The current LLM icons look too generic; replace them with more polished ones.
 
-任务不大，但有个细节值得说——如果不配 `/tavily-search` Skill，单纯靠大模型的训练数据截止日期来猜最新版本，大概率会出错。我之前用其他模型没配 Tavily 的时候，反复提示了好几遍才把各家最新模型版本搞对。
+One detail is worth mentioning: without the `/tavily-search` Skill, a model guessing from its training data cutoff would likely get the latest versions wrong. When I tried other models without Tavily, I had to correct them several times before they identified the latest releases.
 
-关于 Tavily 的使用可以参考：[Claude Code 对接 AI Agent 搜索引擎 Tavily 实现高质量搜索](https://mp.weixin.qq.com/s/kAk7lLVgYzZrD9xJs3AUkQ)。
+For more on Tavily, see [Connect Claude Code to the Tavily AI Search Engine](https://mp.weixin.qq.com/s/kAk7lLVgYzZrD9xJs3AUkQ).
 
-这次 V4-Pro 一轮就完成了修改。
+V4-Pro completed the change in one pass.
 
-![搜索并更新最新 LLM 模型](../images/shared/search-and-update-latest-models.png)
+![Search for and update the latest LLM models](../images/shared/search-and-update-latest-models.png)
 
-模型配置全部更新成功，各家推荐的模型示例都切到了最新版本。改了三个文件：
+The model configuration was updated successfully, and the example recommendations switched to the latest versions. Three files changed:
 
-1. **`application.yml`**——新增 DeepSeek 预设 Provider，GLM 默认模型升级到 `glm-5`
-2. **`.env.example`**——补上 DeepSeek 环境变量，Kimi 默认改为 `kimi-k2.6`
-3. **`SettingsPage.tsx`**——加了 `PROVIDER_PRESETS` 常量，Model 和 Embedding Model 改成 combo box
+1. **`application.yml`**: Added a preset DeepSeek provider and updated GLM's default model to `glm-5`.
+2. **`.env.example`**: Added DeepSeek environment variables and changed Kimi's default to `kimi-k2.6`.
+3. **`SettingsPage.tsx`**: Added a `PROVIDER_PRESETS` constant and changed the Model and Embedding Model fields to combo boxes.
 
-最终四个 Provider 的推荐模型列表（截至 2026.04.25）：
+The four providers' recommended model lists as of April 25, 2026:
 
-| Provider  | 推荐模型                                                        |
-| --------- | --------------------------------------------------------------- |
-| DashScope | `qwen3.6-flash`、`qwen3.5-plus`、`qwen3-max`、`qwq-32b` 等 8 款 |
-| DeepSeek  | `deepseek-v4-flash`、`deepseek-v4-pro`                          |
-| GLM       | `glm-5.1`、`glm-5`、`glm-4.7-flash` 等 8 款                     |
-| Kimi      | `kimi-k2.6`、`kimi-k2.5`、`kimi-k2-thinking` 等 5 款            |
+| Provider  | Recommended models                                                                  |
+| --------- | ----------------------------------------------------------------------------------- |
+| DashScope | Eight models, including `qwen3.6-flash`, `qwen3.5-plus`, `qwen3-max`, and `qwq-32b` |
+| DeepSeek  | `deepseek-v4-flash`, `deepseek-v4-pro`                                              |
+| GLM       | Eight models, including `glm-5.1`, `glm-5`, and `glm-4.7-flash`                     |
+| Kimi      | Five models, including `kimi-k2.6`, `kimi-k2.5`, and `kimi-k2-thinking`             |
 
-![编辑 DeepSeek 模型配置](../images/shared/edit-deepseek-model-config.png)
+![Edit the DeepSeek model configuration](../images/shared/edit-deepseek-model-config.png)
 
-## 实战二：数据库迁移方案诊断与 Flyway 集成
+## Task 2: Diagnose a Database Migration and Integrate Flyway
 
-第二个任务更有挑战性。
+The second task was more challenging.
 
-因为换了新电脑，所有环境都是重新搭建的。项目有两个 SQL 文件，一个在项目启动时自动执行了，另一个没有。这块逻辑我也忘了，需要让模型帮我诊断。
+I had a new computer and had rebuilt the environment from scratch. The project had two SQL files: one ran automatically when the project started, while the other did not. I had forgotten how this worked, so I asked the model to diagnose it.
 
-![技能管理界面报错](../images/shared/skill-management-error.png)
+![An error in the skill management interface](../images/shared/skill-management-error.png)
 
-提示词：
+The prompt:
 
-> 当前项目有两个 SQL 文件，`sql/init.sql` 在项目启动自动执行了，`sql/V2__knowledge_skill.sql` 没有自动执行。请你帮我分析一下是什么原因，然后用合理的方式优化现存的问题。
+> The project has two SQL files. `sql/init.sql` runs automatically when the project starts, but `sql/V2__knowledge_skill.sql` does not. Analyze why, then suggest a suitable way to fix the issue.
 
-V4-Pro 找到的直接原因是：**`V2__knowledge_skill.sql` 没有被挂载到 Docker 容器中，项目也没有引入数据库迁移工具**，而 `init.sql` 的执行来自 Docker Compose 中的固定挂载。
+V4-Pro identified the direct cause: **`V2__knowledge_skill.sql` was not mounted into the Docker container, and the project did not include a database migration tool.** `init.sql` ran because Docker Compose explicitly mounted it.
 
-![数据库表未执行原因分析](../images/shared/database-table-analysis.png)
+![Analysis of why the database migration did not run](../images/shared/database-table-analysis.png)
 
-它给出的解决方案是**集成 Flyway 作为数据库迁移工具**。
+The suggested fix was to **integrate Flyway as the database migration tool**.
 
-Flyway 是 Java 生态中最成熟的数据库迁移方案之一，用文件命名约定（如 `V1__init.sql`、`V2__knowledge_skill.sql`）自动管理迁移顺序。
+Flyway is a mature database migration tool in the Java ecosystem. It uses filename conventions such as `V1__init.sql` and `V2__knowledge_skill.sql` to manage migration order automatically.
 
-整个过程 DeepSeek V4-Pro 完成了以下工作：
+DeepSeek V4-Pro did the following:
 
-1. 分析了 Docker Compose 配置中 `init.sql` 的挂载逻辑
-2. 发现 `V2__knowledge_skill.sql` 缺失的原因
-3. 引入 Flyway 依赖，编写迁移配置
-4. 重构 SQL 文件命名，确保迁移顺序正确
+1. Analyzed how `init.sql` was mounted in the Docker Compose configuration.
+2. Found why `V2__knowledge_skill.sql` was missing.
+3. Added the Flyway dependency and wrote its configuration.
+4. Renamed the SQL files to ensure the correct migration order.
 
-> 这里踩了个坑：我中途不小心调整了 iTerm2 的窗口大小，导致终端里的对话历史突然错乱了。
+> I hit a snag here: I accidentally changed the iTerm2 window size, and the conversation history in the terminal became garbled.
 
-第一次运行后，Flyway 没有成功执行。我把错误日志贴过去，经过两轮调教后修复成功。
+Flyway did not run on the first attempt. I shared the error logs with the model, and it fixed the problem after two rounds of debugging.
 
-![DeepSeek 完成 Flyway 集成后的总结](../images/shared/deepseek-flyway-integration-summary.png)
+![Summary after DeepSeek integrated Flyway](../images/shared/deepseek-flyway-integration-summary.png)
 
-这个问题值得单独拿出来讲——因为 DeepSeek V4-Pro 在第一次集成时也踩到了这个坑，经过两轮调试才找到根因。
+This problem deserves a closer look: DeepSeek V4-Pro also missed it during the initial integration and needed two rounds of debugging to find the root cause.
 
-**Spring Boot 4.x 对自动配置模块做了大规模拆分**，`FlywayAutoConfiguration` 已从 `spring-boot-autoconfigure` 中移除，迁移到了独立模块 `spring-boot-flyway`。
+**Spring Boot 4.x split up its auto-configuration modules.** `FlywayAutoConfiguration` was removed from `spring-boot-autoconfigure` and moved to the separate `spring-boot-flyway` module.
 
-如果你只引入了 `flyway-core` 这个第三方库，Spring Boot **不会自动触发任何迁移**。最坑的是，**启动日志里也不会有任何 Flyway 相关输出**——完全没有报错，只是静默地什么都不做。这个坑特别容易迷惑人，让你怀疑是配置写错了，然后在 `yml` 文件里反复折腾。
+If you include only the third-party `flyway-core` library, Spring Boot **will not automatically run migrations**. The most confusing part is that **the startup log will contain no Flyway output**. There is no error; nothing happens. This can be misleading and may make you suspect the configuration is wrong, so you keep changing the `yml` file.
 
-使用官方 Starter，它会将自动配置模块一并带入：
+Use the official starter so the auto-configuration module is included:
 
 ```xml
 <dependency>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-flyway</artifactId>
 </dependency>
-<!-- PostgreSQL 方言支持仍需单独引入 -->
+<!-- PostgreSQL dialect support still requires a separate dependency. -->
 <dependency>
     <groupId>org.flywaydb</groupId>
     <artifactId>flyway-database-postgresql</artifactId>
 </dependency>
 ```
 
-这个案例里的结论很具体：Spring Boot 4.x 集成 Flyway 时，应使用对应的官方 Starter，不能只引入 `flyway-core` 就假定迁移会自动执行。其他第三方库是否需要独立 Starter，要分别查对应版本的 Spring Boot 文档，不能由这个案例一概而论。
+The specific lesson from this case is that Spring Boot 4.x projects should use the corresponding official Flyway starter; do not assume migrations will run just because `flyway-core` is present. Check the Spring Boot documentation for each third-party library separately rather than generalizing this behavior.
 
-## 实战三：AI 面试平台对接 DeepSeek
+## Task 3: Connect an AI Interview Platform to DeepSeek
 
-我们的 AI 智能面试辅助平台目前已经新增了多模型切换和配置功能，DeepSeek 也已经支持了。
+Our AI interview assistant platform already supports switching and configuring multiple models, including DeepSeek.
 
-和实战一一样，对接最新模型整个过程是一遍过的，就不重复贴过程了。我们直接看效果。
+As in Task 1, connecting the latest model worked on the first attempt, so I will skip the process and show the result.
 
-通过配置界面，将默认模型切换到 DeepSeek，选择 **deepseek-v4-flash**。
+In the configuration UI, I switched the default model to DeepSeek and selected **deepseek-v4-flash**.
 
-![将面试平台的模型切换到 deepseek-v4-flash](../images/shared/interview-guide-model-deepseek-v4-flash.png)
+![Switch the interview platform to deepseek-v4-flash](../images/shared/interview-guide-model-deepseek-v4-flash.png)
 
-然后上传一份简历，基于这份简历生成一次模拟面试，来看看效果。
+Then I uploaded a resume and generated a mock interview based on it.
 
-面试题是通过 deepseek-v4-flash 生成的，答案也是让 DeepSeek 在快速非思考模式下给出的（有两个问题没有回答）。
+The questions were generated with deepseek-v4-flash, and DeepSeek produced the answers in fast, non-thinking mode. It left two questions unanswered.
 
-![模拟面试评估结果](../images/shared/interview-guide-model-deepseek-v4-flash-interview.png)
+![Mock interview evaluation results](../images/shared/interview-guide-model-deepseek-v4-flash-interview.png)
 
-在这次简历面试题生成任务中，Flash 的非思考模式可以完成主要问题，仍有两个问题没有回答。它适合对成本敏感、允许人工检查的批量生成任务。
+In this resume-based interview task, Flash's non-thinking mode handled the main questions but left two unanswered. It may suit batch generation when cost matters and a person can review the results.
 
-## 实战四：项目代码审计与多模型协同
+## Task 4: Audit Project Code and Coordinate Multiple Models
 
-我手头的多智能体股票分析项目，MVP 版本已经跑起来了，支持股票分析、多策略、告警、技能、多模型、通知等功能。但开发过程中赶进度，代码质量没顾上好好把关。
+The MVP of my multi-agent stock analysis project was running, with stock analysis, multiple strategies, alerts, Skills, multiple models, notifications, and other features. During development, I prioritized speed and did not review the code quality carefully.
 
-这次我试了一个思路：**用便宜的模型做审计，用贵的模型做决策和修复**。
+This time, I tried a division of work: **use a cheaper model for the audit and a more capable model to make decisions and fix the issues**.
 
-在 Claude Code 里直接让 DeepSeek V4-Pro 启动多个 Agent，从安全性、功能正确性、代码质量等不同维度扫描整个项目，把发现的问题汇总写入文档。
+In Claude Code, I asked DeepSeek V4-Pro to start several agents and scan the whole project for security, functional correctness, code quality, and other concerns. I asked it to summarize the findings in a document.
 
-![DeepSeek V4-Pro 扫描分析代码](../images/shared/deepseek-v4-pro-scan-analyze-code.png)
+![DeepSeek V4-Pro scans and analyzes the code](../images/shared/deepseek-v4-pro-scan-analyze-code.png)
 
-V4-Pro 确实找出来不少问题，最紧急的 TOP 5：
+V4-Pro found a number of issues. The five most urgent were:
 
-1. **API Key 明文存储** — 加密器已实现但未接入
-2. **系统管理接口无权限控制** — 普通用户可修改 LLM 配置
-3. **Redis 反序列化漏洞** — `activateDefaultTyping` 允许任意类实例化
-4. **硬编码第三方 API Key** — Bocha 真实密钥提交在代码中
-5. **功能 Bug** — History 页“重新分析”按钮因路由参数未读取而失效
+1. **API keys stored in plaintext:** An encryption utility existed but was not used.
+2. **No access control on system administration APIs:** Regular users could modify LLM configuration.
+3. **Redis deserialization vulnerability:** `activateDefaultTyping` allowed arbitrary class instantiation.
+4. **Hard-coded third-party API key:** A real Bocha key had been committed to the code.
+5. **Functional bug:** The History page's “Reanalyze” button failed because it did not read the route parameter.
 
-我大概过了一遍，基本都是合理的。安全类问题尤其值得重视，第 3 条 Redis 反序列化漏洞如果被利用，后果很严重。
+I reviewed the findings at a high level, and they seemed reasonable. The security issues deserve special attention. If the Redis deserialization vulnerability were exploited, the consequences could be severe.
 
-接下来我把 V4-Pro 找出来的问题直接丢给当时账户可用的 **GPT-5.5** 复核。
+Next, I asked **GPT-5.5**, the model available in my account at that time, to review the issues V4-Pro had found.
 
-![GPT5.5 对 DeepSeek V4-Pro 找出的问题进行修复](../images/shared/gpt5-5-fix-problems-found-by-deepseek-v4-pro.png)
+![GPT-5.5 fixes issues found by DeepSeek V4-Pro](../images/shared/gpt5-5-fix-problems-found-by-deepseek-v4-pro.png)
 
-**为什么不让 V4-Pro 自己修？** 因为代码审计和代码修复是两种能力，用不同模型交叉验证更靠谱——一个负责找问题，一个负责确认问题并执行修复。
+**Why not ask V4-Pro to fix its own findings?** Code auditing and code fixing are different capabilities. Cross-checking with another model seemed more reliable: one model finds problems, and another verifies and fixes them.
 
-GPT-5.5 复核后执行了修复。这里记录的是案例发生时的模型选择，不代表当前推荐；最终仍要以测试、代码审查和密钥轮换结果为准，不能把第二个模型的确认当成证据闭环。
+GPT-5.5 reviewed the findings and applied fixes. This records the model choices used in this case; it is not a current recommendation. Final verification still requires tests, code review, and key rotation. The second model's agreement alone does not close the verification loop.
 
-这个案例采用的是**低成本模型初筛、能力更强的模型复核、最后由测试和人工验收**的分工。具体能省多少取决于输入长度、缓存命中、输出量和当时的模型价格；没有完整调用记录时，不适合给出“至少两个数量级”的结论。
+This case used a division of labor: **a lower-cost model for initial screening, a more capable model for review, and tests and human review for final acceptance**. Actual savings depend on input length, cache hits, output volume, and the prices at the time. Without complete usage records, it would be misleading to claim savings of “at least two orders of magnitude.”
 
-## 实战五：全项目扫描分析
+## Task 5: Scan and Analyze the Entire Project
 
-这个就简单了，我主要是想验证一下 V4-Pro 的分析质量，顺便看看最后的 Token 消耗。
+This was a simple task. I mainly wanted to evaluate V4-Pro's analysis quality and see how many tokens it used.
 
-![让 V4-Pro 扫描分析 agent-invest](../images/shared/claudecode-deepseek-v4-pro-1m-.png)
+![Ask V4-Pro to scan and analyze agent-invest](../images/shared/claudecode-deepseek-v4-pro-1m-.png)
 
-![V4-Pro 扫描分析 agent-invest 的结果](../images/shared/v4-pro-scan-analyze-result-of-agent-invest.png)
+![V4-Pro's analysis of agent-invest](../images/shared/v4-pro-scan-analyze-result-of-agent-invest.png)
 
-这是 V4-Pro 最终输出的文档，覆盖了项目结构、主要模块和待处理问题：
+V4-Pro produced a document covering the project structure, major modules, and open issues:
 
-![V4-Pro 最终输出的 agent-invest 文档](../images/shared/v4-pro-final-output-agent-invest-document.png)
+![V4-Pro's final agent-invest analysis document](../images/shared/v4-pro-final-output-agent-invest-document.png)
 
-## DeepSeek V4 一览：看完实战再看数字
+## DeepSeek V4 at a Glance: The Numbers
 
-看完上面几个实战任务，再来补一下 DeepSeek V4 的硬参数，会更有体感。
+After the hands-on tasks, here are DeepSeek V4's specifications for additional context.
 
-V4 Preview 同时提供两款模型。下表参数和 Benchmark 来自 DeepSeek 官方报告，属于厂商公布结果，不等同于本文任务的独立评测：
+V4 Preview offers two models. The specifications and benchmarks below come from DeepSeek's official report. They are vendor-reported results, not independent evaluations from this article.
 
-| 规格              | `deepseek-v4-pro`               | `deepseek-v4-flash`             |
-| ----------------- | ------------------------------- | ------------------------------- |
-| 总参数            | **1.6T**                        | **284B**                        |
-| 每 token 激活参数 | 49B                             | 13B                             |
-| 上下文窗口        | **1M tokens**                   | **1M tokens**                   |
-| 推理模式          | 非思考 / Think High / Think Max | 非思考 / Think High / Think Max |
-| 开源协议          | MIT                             | MIT                             |
+| Specification               | `deepseek-v4-pro`                     | `deepseek-v4-flash`                   |
+| --------------------------- | ------------------------------------- | ------------------------------------- |
+| Total parameters            | **1.6T**                              | **284B**                              |
+| Active parameters per token | 49B                                   | 13B                                   |
+| Context window              | **1M tokens**                         | **1M tokens**                         |
+| Reasoning modes             | Non-thinking / Think High / Think Max | Non-thinking / Think High / Think Max |
+| License                     | MIT                                   | MIT                                   |
 
-官方报告列出的几个数据：
+The report lists these benchmark results:
 
-- **V4-Pro 的 Codeforces 评分 3206**，在报告选取的对照模型中排第一
-- **SWE-bench Verified 80.6%**，报告中的 Claude Opus 4.6 对照结果为 80.8%；这组分数不能直接推出两者在具体代码库中的能力或成本等价
-- **1M 上下文场景下**，V4-Pro 的单 token 推理 FLOPs 只有 V3.2 的 **27%**，KV 缓存用量只有 **10%**
+- **V4-Pro scores 3,206 on Codeforces**, ranking first among the comparison models selected in the report.
+- **80.6% on SWE-bench Verified**; the report's Claude Opus 4.6 comparison score is 80.8%. These scores do not establish equivalent performance or cost in a particular codebase.
+- **For a 1M-token context**, V4-Pro uses 27% of V3.2's inference FLOPs per token and 10% of its KV cache.
 
-这里的竞品名称和分数是 V4 Preview 发布报告的历史快照，不是截至本文核验日的模型排行榜。
+The competitor names and scores are a historical snapshot from the V4 Preview report, not a current model ranking.
 
-![V4 Benchmark 数据](../images/shared/v4-benchmark.png)
+![V4 benchmark results](../images/shared/v4-benchmark.png)
 
-再看定价：
+Now for the pricing:
 
-| API 定价（每百万 token，截至 2026-08-24） | `deepseek-v4-flash` | `deepseek-v4-pro` |
-| ----------------------------------------- | ------------------- | ----------------- |
-| 输入（缓存未命中）空闲 / 高峰             | $0.22 / $0.44       | $0.66 / $1.32     |
-| 输入（缓存命中）空闲 / 高峰               | $0.007 / $0.014     | $0.022 / $0.044   |
-| 输出 空闲 / 高峰                          | $0.66 / $1.32       | $1.98 / $3.96     |
+| API pricing per million tokens (as of 2026-08-24) | `deepseek-v4-flash` | `deepseek-v4-pro` |
+| ------------------------------------------------- | ------------------- | ----------------- |
+| Input, cache miss: off-peak / peak                | $0.22 / $0.44       | $0.66 / $1.32     |
+| Input, cache hit: off-peak / peak                 | $0.007 / $0.014     | $0.022 / $0.044   |
+| Output: off-peak / peak                           | $0.66 / $1.32       | $1.98 / $3.96     |
 
-> 高峰时段为北京时间周一至周五 9:00-12:00、14:00-18:00，其余时段（含周末）为空闲档，单价是高峰档的一半。
+> Peak hours are Monday through Friday, 9:00–12:00 and 14:00–18:00 Beijing time. All other times, including weekends, are off-peak; prices are half the peak rate.
 
-实际账单取决于缓存命中率、上下文长度和输出规模。跨厂商成本对比还要统一输入、输出、缓存和重试口径，本文没有完整调用记录，因此不再给出固定倍数。价格会变化，使用前应再查 [DeepSeek 官方定价页](https://api-docs.deepseek.com/quick_start/pricing/)。
+Actual billing depends on cache-hit rate, context length, and output size. Cross-provider cost comparisons also need consistent accounting for input, output, caching, and retries. Since this article does not include complete usage records, it does not claim a fixed cost ratio. Prices change, so check the [official DeepSeek pricing page](https://api-docs.deepseek.com/quick_start/pricing/) before use.
 
-按这张价格表看，Flash 更适合成本敏感、结果容易校验的任务；是否适合日常对话、内容生成或简单问答，还要结合质量和延迟实测。
+Based on this price table, Flash may suit tasks where cost matters and results are easy to verify. Its suitability for everyday conversation, content generation, or simple questions still depends on measured quality and latency.
 
-模型名迁移本身改动不大，但还要回归上下文长度、工具调用和错误处理，不能按“零成本”处理。官方给出的旧模型停用节点是 **2026-07-24 15:59 UTC（北京时间 23:59）**；阅读本文时如果已经过了这个时间，应先通过模型列表确认旧 ID 是否仍可用。
+Changing model IDs may require only a small code change, but you should still regression-test context length, tool calls, and error handling. Do not treat the change as “zero cost.” The official retirement time for the previous model ID was **2026-07-24 15:59 UTC (23:59 Beijing time)**. If that time has passed by the time you read this, check whether the old ID is still available in the model list.
 
-## 场景建议
+## Use-Case Recommendations
 
-| 场景                               | 建议                                    | 验证重点                                   |
-| ---------------------------------- | --------------------------------------- | ------------------------------------------ |
-| 日常对话、内容生成、简单问答       | 先试 `deepseek-v4-flash`                | 质量、延迟和缓存命中率                     |
-| Agent Coding、代码重构、全项目分析 | 先试 `deepseek-v4-pro`                  | 工具调用、跨文件修改、测试通过率和实际成本 |
-| 高风险复杂编码与独立复核           | 对比 Claude Fable 5、GPT-5.6 等当前家族 | 账户可用性、任务成功率、安全边界和总成本   |
+| Scenario                                            | Recommendation                                                    | What to verify                                                               |
+| --------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Everyday chat, content generation, simple questions | Try `deepseek-v4-flash` first                                     | Quality, latency, and cache-hit rate                                         |
+| Agent coding, refactoring, whole-project analysis   | Try `deepseek-v4-pro` first                                       | Tool calls, cross-file changes, test pass rate, and actual cost              |
+| High-risk coding and independent review             | Compare current model families such as Claude Fable 5 and GPT-5.6 | Account availability, task success rate, security boundaries, and total cost |
 
-最后一行是截至 2026-07-24 的模型家族快照，具体型号与可用性以账户和官方文档为准。
+The final row reflects the model families available as of July 24, 2026. Check your account and official documentation for current model IDs and availability.
 
-## 总结
+## Summary
 
-从本文几个任务看，V4-Pro 已能完成模型配置更新、迁移诊断和代码审计初筛。官方报告中的 SWE-bench Verified 80.6% 和 Codeforces 3206 可以作为参考，但不能替代团队自己的代码库评测。
+Across these tasks, V4-Pro handled model configuration updates, migration diagnosis, and an initial code audit. The official report's 80.6% SWE-bench Verified score and 3,206 Codeforces rating are useful context, but they do not replace evaluations on your team's codebase.
 
-V4-Pro 是否划算要看缓存命中率和任务长度。V4-Flash 更便宜，但在本文的面试任务中仍出现了漏答，不适合不经检查就作为开发主力。
+Whether V4-Pro is cost-effective depends on cache-hit rate and task length. V4-Flash is cheaper, but in the interview task it left some questions unanswered, so it should not be used as a development model without review.
 
-复杂编码、复杂问答和前沿科学推理仍要按任务对比不同模型。我的选择会是：低风险批量任务先试 Flash，跨文件改动和关键修复交给更强模型，并保留测试与人工验收。
+For complex coding, questions, and advanced scientific reasoning, compare models on the actual task. My approach would be to try Flash for low-risk batch work, use a stronger model for cross-file changes and critical fixes, and keep tests and human review in the loop.
+
+<!-- @include: @article-footer.snippet.md -->

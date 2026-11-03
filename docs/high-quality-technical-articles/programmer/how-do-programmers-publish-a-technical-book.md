@@ -1,98 +1,95 @@
 ---
-title: 程序员怎样出版一本技术书
-description: "程序员怎样出版一本技术书：围绕技术知识与面试总结梳理关键概念、常见问题与实践要点，帮助你高效学习与备战面试。"
-category: 技术文章精选集
+title: How Programmers Can Publish a Technical Book
+description: A practical guide to planning, writing, and publishing a technical book, including working with publishers, structuring chapters, reaching readers, and building a career.
+category: Curated Technical Articles
 author: hsm_computer
 tag:
-  - 程序员
+  - Programmers
 head:
   - - meta
     - name: keywords
-      content: 程序员出书,技术书籍出版,出版社合作,图书公司,写书技巧,稿酬收益,技术写作,畅销书
+      content: publishing a book,technical books,publishers,writing tips,royalties,technical writing,bestsellers
 ---
 
-> **推荐语**：详细介绍了程序员应该如何从头开始出一本自己的书籍。
+> **Editor's note:** A detailed introduction to how programmers can write and publish their first book.
 >
-> **原文地址**：<https://www.cnblogs.com/JavaArchitect/p/12195219.html>
+> **Original article:** <https://www.cnblogs.com/JavaArchitect/p/12195219.html>
 
-在面试或联系副业的时候，如果能令人信服地证明自己的实力，那么很有可能事半功倍。如何证明自己的实力？最有信服力的是大公司职位背景背书，没有之一，比如在 BAT 担任资深架构，那么其它话甚至都不用讲了。
+When interviewing or pursuing side projects, credible evidence of your skills can give you a big advantage. The strongest endorsement is experience at a major tech company—for example, working as a senior architect at BAT (Baidu, Alibaba, or Tencent). That can speak for itself.
 
-不过，不是每个人入职后马上就是大公司架构师，在上进的路上，还可以通过公众号，专栏博文，GitHub 代码量和出书出视频等方式来证明自己。和其它方式相比，属于自己的技术图书由于经过了国家级出版社的加持，相对更能让别人认可自己的实力，而对于一些小公司而言，一本属于自己的书甚至可以说是免面试的通行证。所以在本文里，就将和广大程序员朋友聊聊出版技术书的那些事。
+Not everyone becomes an architect at a major company right away. You can also demonstrate your ability through a public account, a technical column, GitHub contributions, books, or videos. A technical book published by a nationally recognized publisher may be more convincing than these other options. At some small companies, having your own book can even help you skip an interview. This article discusses publishing a technical book.
 
-## 1.不是有能力了再出书，而是在出书过程中升能力
+## 1. Don't Wait Until You're an Expert to Write a Book
 
-我知道的不少朋友，是在工作 3 年内出了第一本书，有些优秀的，甚至在校阶段就出书了。
+Many people I know published their first book within three years of starting work. Some talented people published one while still in school.
 
-与之相比还有另外一种态度，不少同学可能想，要等到技术积累到一定程度再写。其实这或许就不怎么积极了，边写书，边升技术，而且写出的书对人还有帮助，这绝对可以做到的。
+Others think they should wait until they've accumulated enough technical experience. But you can improve your skills while writing a book, and the book can help readers too.
 
-比如有同学向深入了解最近比较热门的 Python 数据分析和机器学习，那么就可以在系统性的学习之后，整理之前学习到的爬虫，数据分析和机器学习的案例，根据自己的理解，用适合于初学者的方式整理一下，然后就能出书了。这种书，对资深的人帮助未必大，但由于包含案例，对入门级的读者绝对有帮助，因为这属于现身说法。而且话说回来，如果没有出书这个动力，或者学习过程也就是浅尝辄止，或者未必能全身心地投入，有了出书这个目标，更能保证学习的效果。
+For example, if you want to learn Python data analysis and machine learning, first study the topics systematically. Then organize what you've learned about web scraping, data analysis, and machine-learning examples, and explain them in your own words for beginners. Experienced readers may not get as much from the book, but examples can be very helpful to beginners. Having the goal of writing a book can also help you study more deeply instead of stopping at a superficial understanding.
 
-## 2.适合初级开发，高级开发和架构师写的书
+## 2. Different Books Suit Different Experience Levels
 
-之前也提到了，初级开发适合写案例书，就拿 Python 爬虫数据分析机器学习题材为例，可以先找几本这方面现成的书，这些书里，或者章节内容不同，但一起集成看的话，应该可以包含这方面的内容。然后就参考别人书的思路，比如一章写爬虫，一章写 pandas，一章写 matplotlib 等等，整合起来，就可以用 若干个章节构成一本书了。总之，别人书里包含什么内容，你别照抄，但可以参考别人写哪些技术点。
+Beginner developers may want to write a book based on examples. For a book about Python web scraping, data analysis, and machine learning, look at existing books for inspiration. Their chapters may differ, but together they can show you which topics to cover: one chapter on web scraping, another on pandas, another on matplotlib, and so on. Do not copy their content, but you can use their topic selection as a reference.
 
-定好章节后，再定下每个章节的小节，比如第三章讲爬虫案例，那么可以定 3.1 讲爬虫概念，3.2 讲如何搭建 Scrapy 库，3.3 讲如何开发 Scrapy 爬虫案例，通过先章再节的次序，就可以定好一本书的框架。由于是案例书，所以是先给运行通的代码，再用这些代码案例教别人入门，所以案例未必很深，但需要让初学者看了就能懂，而且按照你给出的知识体系逐步学习之后，能理解这个主题的内容。并且，能在看完你这本书以后，能通过调通你给出的爬虫，机器学习等的案例，掌握这一领域的知识，并能从事这方面的基本开发。这个目标，对初级开发而言，稍微用点心，费点时间，应该不难达到。
+After choosing the chapters, outline the sections within each one. For example, a chapter on web-scraping projects could include an introduction to web scraping, setting up Scrapy, and building a Scrapy example. Organize the book from chapters to sections. Since it is an example-driven book, provide runnable code first and use it to teach the basics. The examples do not need to be advanced, but beginners should be able to understand them and follow your learning path. After finishing the book and running its examples, readers should understand the topic and be able to do basic work in the field. With some care and time, this is an achievable goal for a junior developer.
 
-而对于高级开发和架构师而言，除了写存粹案例书以外，还可以在书里给出你在大公司里总结出来的开发经验，也就是所谓踩过的坑，比如 Python 在用 matplotlib 会图例时，在设置坐标轴方面有哪些技巧，设置时会遇到哪些常见问题，如果在书里大量包含这种经验，你的书含金量更高。
+Senior developers and architects can write books that go beyond examples by sharing engineering lessons learned at major companies. For instance, a book about Python and matplotlib could explain techniques for configuring chart legends and axes, along with common problems. Including this practical experience increases the book's value.
 
-此外，高级开发和架构师还可以写一些技术含量更高的书，比如就讲高并发场景下的实践经验，或者 k8s+docker 应对高并发的经验，这种书里，可以给出代码，更可以给出实施方案和架构实施技巧，比如就讲高并发场景里，缓存该如何选型，如何避免击穿，雪崩等场景，如何排查线上 redis 问题，如何设计故障应对预案。除了这条路之外，还可以深入细节，比如通过讲 dubbo 底层代码，告诉大家如何高效配置 dubbo，出了问题该如何排查。如果架构师或高级开发有这类书作为背书，外带大厂工作经验，那么就更可以打出自己的知名度。
+Experienced developers and architects can also write more advanced books: high-concurrency engineering, using Kubernetes and Docker to handle high traffic, choosing caches, preventing cache penetration and avalanches, investigating Redis production issues, or designing incident-response plans. Another option is to explore implementation details, such as Dubbo internals, and explain effective configuration and troubleshooting. A book like this, combined with experience at a major tech company, can help build your professional reputation.
 
-## 3.可以直接找出版社，也可以找出版公司
+## 3. Work Directly with a Publisher or Use a Publishing Company
 
-在我的这篇博文里，[程序员副业那些事：聊聊出书和录视频](https://www.cnblogs.com/JavaArchitect/p/11616906.html)，给出了通过出版社出书和图书公司出书的差别，供大家参考，大家看了以后可以自行决定出书方式。
+In [Side Projects for Programmers: Books and Video Courses](https://www.cnblogs.com/JavaArchitect/p/11616906.html), I compared working directly with a publisher and working through a book-publishing company. Read it and decide which approach suits you.
 
-不过不管怎么选，在出书前你得搞明白一些事，或许个别图书出版公司的工作人员不会主动说，这需要你自己问清楚。
+Whichever route you choose, clarify the following before signing. Some publishing-company staff may not mention these details unless you ask:
 
-- 你的合作方是谁？图书出版公司还是出版社？
-- 你的书将在哪个出版社出版？国内比较有名的是清华，人邮，电子和机械，同时其它出版社不能说不好，但业内比较认这四个。
-- 和你沟通的人，是最终有决定权的图书编辑吗？还是图书公司里的工作人员？再啰嗦下，最后能决定书能否出版，以及确定修改意见的，是出版社的编辑。
+- Who is your partner: a book-publishing company or a publisher?
+- Which publisher will publish the book? In China, Tsinghua University Press, Posts and Telecommunications Press, Publishing House of Electronics Industry, and China Machine Press are well known. Other publishers may be good too, but these four are widely recognized in the industry.
+- Is the person you're speaking with the editor who makes the final decisions, or a publishing-company employee? The publisher's editor decides whether the book can be published and what revisions are required.
 
-通过对比出版社和图书出版公司，在搞清楚诸多细节后，大家可以自己斟酌考虑合作的方式。而且，出版社和图书公司的联系方式，在官网上都有，大家可以自行通过邮件等方式联系。
+Compare the options and clarify the details before deciding how to proceed. Publishers and publishing companies list their contact details on their websites, so you can also reach out by email.
 
-## 4.如果别人拿你做试错对象，或有不尊重，赶紧止损
+## 4. Walk Away If You're Being Used for Trial and Error or Treated Disrespectfully
 
-我之前看到有图书出版公司招募面向 Java 初学者图书的作者，并且也主动联系过相关人员，得到的反馈大多是：“要重写”。
+I once saw a publishing company recruiting authors for Java books aimed at beginners. I contacted them and mostly heard: “Rewrite it.”
 
-比如我列了大纲发过去，反馈是“要重写”，原因是对方没学过 Java，但作为零基础的人看了我的大纲，发现学不会。至于要重写成什么样子 ，对方也说不上来，总之让我再给个大纲，再给一版后，同样没过，这次好些，给了我几本其它类似书的大纲，让我自行看别人有什么好的点。总之不提（或者说提不出）具体的改进点，要我自行尝试各种改进点，试到对方感觉可以为止。
+For example, I sent an outline and was told to rewrite it because the reviewer had never studied Java and, as a complete beginner, couldn't learn from my outline. They couldn't explain what the new outline should look like either. I submitted another version, which was rejected again. This time they gave me outlines from a few similar books and asked me to look for useful ideas. They offered no specific feedback—perhaps they couldn't—and left me to keep trying changes until they were satisfied.
 
-相比我和几位出版社专业的编辑沟通时，哪怕大纲或稿件有问题，对方会指明到点，并给出具体的修改意见。我不知道图书出版公司里的组织结构，但出版社里，计算机图书有专门的部门，专门的编辑，对方提出的意见都是比较专业，且修改起来很有操作性。
+By contrast, when I spoke with professional editors at publishers, they pointed out specific issues and gave actionable feedback, even when they found problems in my outline or manuscript. I don't know how publishing companies are organized, but publishers have dedicated departments and editors for computing books. Their suggestions were professional and practical to apply.
 
-另外，我在各种渠道，时不时看到有图书出版公司的人员，晒出别人交付的稿件，在众目睽睽之下，说其中有什么问题，意思让大家引以为戒。姑且不论这样做的动机，并且这位工作人员也涂掉了能表面作者身份的信息。但作者出于信任把稿件交到你手上，在不征得作者同意就公开稿件，说“不把作者当回事”，这并不为过。不然，完全可以用私信的方式和作者交流，而不是把作者无心之过公示于众。
+I've also seen publishing-company employees publicly post manuscripts they received and point out their problems for others to learn from. Even if they hide the author's identity, publishing a manuscript without the author's permission is disrespectful to someone who trusted them. They could have contacted the author privately instead of exposing an honest mistake in public.
 
-我在和出版社合作时，这类事绝没发生过，而且我认识的出版社编辑，都对各位作者保持着足够的尊重。而且我和我的朋友和多位图书出版公司的朋友交流时，也能得到尊重和礼遇。所以，如果大家在写书时，尤其在写第一本书时，如果遇到被试错，或者从言辞等方面感觉对方不把你当会事，那么可以当即止损。其实也没有什么“损失”，你把当前的大纲和稿件再和出版社编辑交流时，或许你的收益还能提升。
+I never had this experience with publishers. The editors I know treat authors with respect. I've also heard positive accounts from friends who worked with book-publishing companies. Still, if you're writing your first book and someone treats you as a test case or speaks to you disrespectfully, walk away. You may not lose anything; taking your current outline or manuscript to a publisher's editor could even lead to a better deal.
 
-## 5.如何写好 30 页篇幅的章节？
+## 5. How to Write a 30-Page Chapter
 
-在和出版社定好写作合同后，就可以创作了。书是由章节构成，这里讲下如何构思并创作一个章节。
+Once you have a contract with a publisher, you can start writing. A book consists of chapters, so here is one way to plan and write a chapter.
 
-比如写爬虫章节，大概 30 页，先定节和目，比如 3.1 搭建爬虫环境是小节，3.1.1 下载 Python Scrapy 包，则是目。先定要写的内容，具体到爬虫小节，可以写 3.1 搭建环境，3.2 Scrapy 的重要模块，3.3 如何开发 Scrapy 爬虫，3.4 开发好以后如何运行，3.5 如何把爬到的信息放入数据库，这些都是小节。
+Suppose you are writing a chapter on web scraping, about 30 pages long. First outline the sections and subsections. For example, 3.1 could introduce the web-scraping environment, and 3.1.1 could explain how to install the Python Scrapy package. The chapter might cover setting up the environment, Scrapy's key components, developing a crawler, running it, and saving scraped data to a database.
 
-再具体到目，比如 3.5 里，3.5.1 里写如何搭建数据库环境 3.5.2 里写如何在 Scrapy 里连接数据库 3.5.3 里给出实际案例 3.5.4 里给出运行步骤和示例效果。
+Then break a section down further. Section 3.5 might cover setting up a database, connecting to it from Scrapy, a complete example, and the steps and expected output.
 
-这样可以搭建好一个章的框架，在每个小节里，先给出可以运行通的，而且能说明问题的代码，再给出对代码的说明，再写下代码如何配置，开发时该注意哪些问题，必要时用表格和图来说明，用这样的条理，最多 3 个星期可以完成一个章节，快的话一周半就一个章节。
+This gives you a chapter outline. In each section, start with runnable code that demonstrates the idea, then explain the code, its configuration, and issues to watch for. Use tables and diagrams where they help. With this structure, a chapter may take up to three weeks; a fast pace might take a week and a half.
 
-以此类推，一本书大概有 12 个章节，第一章可以讲如何安装环境，以及基础语法，后面就可以由浅入深，一个章节一个主题，比如讲 Python 爬虫，第二章可以是讲基础语法，第三章讲 http 协议以及爬虫知识点，以此深入，讲全爬虫，数据分析，数据展示和机器学习等技能。
+A book may have about 12 chapters. The first can cover setup and basic syntax; later chapters can progress from simple to advanced, with one topic per chapter. For a Python web-scraping book, for example, you could cover syntax, HTTP and scraping fundamentals, scraping, data analysis, visualization, and machine learning.
 
-按这样算，如果出第一本书，平均下来一个月 2 个章节，大概半年到八个月可以完成一本书，思路就是先搭建书的知识体系，写每个章节时再搭建某个知识点的框架，在小节和目里，用代码结合说明的方式，这样从简到难，大家就可以完成第一本属于自己的书了。
+At a pace of two chapters per month, your first book might take six to eight months. Start by outlining the book's learning path. Then outline each topic and use code with explanations to guide readers from basic to advanced material.
 
-## 6.如何写出一本销量过 5 千的书
+## 6. How to Write a Book That Sells 5,000 Copies
 
-目前纸质书一般一次印刷在 2500 册，大多数书一般就一次印刷，买完为止。如果能销调 5000 本，就属于受欢迎了，如果销量过万，就可以说是大神级书的。这里先不论大神级书，就说下如何写一本过 5000 的畅销书。
+A typical print run is around 2,500 copies, and many books are printed only once. Selling 5,000 copies means a book has done well; selling 10,000 is exceptional. Here are some suggestions for writing a book that sells more than 5,000 copies:
 
-1 最好贴近热点，比如当前热点是全栈开发和机器学习等，如何找热点，就到京东等处去看热销书的关键字。具体操作起来，多和出版社编辑沟通，或许作者更多是从技术角度分析，但出版社的编辑是从市场角度来考虑问题。
+1. **Choose a timely topic.** Full-stack development and machine learning are examples of popular topics. To find out what's popular, look at the keywords used by bestselling books on sites such as JD.com. Talk with your publisher's editors: authors may focus on the technology, while editors also consider the market.
+2. **Make it useful as a training textbook.** Training companies tend to choose books aimed at beginners, with complete code and comprehensive topic coverage. Talk with your publisher's editor about what this requires.
+3. **Write engagingly, but provide substance.** A bestseller needs practical content that solves beginners' problems. For a Python machine-learning book, for example, cover common algorithms through examples, with visualization, data analysis, and web scraping. Attractive visualizations can make the book more appealing too.
+4. **Don't treat the work casually.** Getting the code to run isn't enough; make it clear and concise. Write for readers and make sure they can follow along and learn something. This is hard to achieve, but after writing several books, I believe that at the very least, a book should not mislead its readers.
 
-2 如果你的书能被培训机构用作教材，那想不热都不行。培训机构一般用哪些教材呢？第一面向初学者，第二代码全面，第三在这个领域里涵盖知识点全。如果要达成这点，大家可以和出版社的编辑直接沟通，问下相关细节。
+## 7. A Book Is a Milestone, Not the End
 
-3 可以文字生动，但不能用过于花哨的文字来掩盖书的内涵不足，也就是说畅销书一定要有干货，能解决初学者实际问题，比如 Python 机器学习方向，就写一本用案例涵盖目前常用的机器学习算法，一个章节一种算法，并且案例中有可视化，数据分析，爬虫等要素，可视化的效果如果再吸引人，这本书畅销的可能性也很大。
+Publishing a book isn't easy. Not everyone is willing to spend every evening and weekend for six to eight months writing. But it isn't impossible either: it takes time to test code, write, and communicate with others.
 
-4 一定不能心存敷衍，代码调通不算，更力求简洁，说明文字多面向读者，内容上，确保读者一看就会，而且看了有收获，或许这点说起来很抽象，但我写了几本书以后切身体会，要做到这很难，同时做到了，书哪怕不畅想，但至少不误人子弟。
+Book royalties are not particularly high. The monthly income may average around 3,000 yuan, and could be lower when working with a publishing company. Still, a book can demonstrate your skills. Don't stop growing after you publish one; major tech companies are full of talented people, many of whom don't need a book to prove themselves.
 
-## 7.总结，出书仅是一个里程碑，程序员在上进路上应永不停息
-
-出书不简单，因为不是每个人都愿意在半年到八个月里，每个晚上每个周末都费时费力写书。但出书也不难，毕竟时间用上去了，出书也只是调试代码加写文字的活，最多再外加些和人沟通的成本。
-
-其实出书收益并不高，算下来月入大概能在 3k 左右，如果是和图书出版公司合作，估计更少，但这好歹能证明自己的实力。不过在出书后不能止步于此，因为在大厂里有太多的牛人，甚至不用靠出书来证明自己的实力。
-
-那么如何让出书带来的利益最大化呢？第一可以靠这进大厂，面试时有自己的书绝对是加分项。第二可以用这个去各大网站开专栏，录视频，或者开公众号，毕竟有出版社的背书，能更让别人信服你的能力。第三更得用写书时积累的学习方法和上进的态势继续专研更高深技术，技术有了，不仅能到大厂挣更多的钱，还能通过企业培训等方式更高效地挣钱。
+How can you get more value from publishing? First, use the book to strengthen your applications to major tech companies; having your own book can help in interviews. Second, use it to launch a column, make videos, or start a public account. A publisher's endorsement can help readers trust your expertise. Third, apply the learning habits and drive you developed while writing to keep exploring more advanced technologies. With strong technical skills, you can earn more at a major company and offer more effective corporate training.
 
 <!-- @include: @article-footer.snippet.md -->

@@ -1,99 +1,97 @@
 ---
-title: 新入职一家公司如何快速进入工作状态
-description: "新入职一家公司如何快速进入工作状态：围绕技术知识与面试总结梳理关键概念、常见问题与实践要点，帮助你高效学习与备战面试。"
-category: 技术文章精选集
+title: How to Get Up to Speed Quickly at a New Company
+description: Practical advice for new hires on learning the business, technology, project workflow, and team practices so they can contribute effectively.
+category: Curated Technical Articles
 tag:
-  - 工作
+  - Work
 head:
   - - meta
     - name: keywords
-      content: 新入职,快速融入,工作状态,业务了解,技术熟悉,团队协作,跳槽适应,程序员入职
+      content: starting a new job,onboarding,business knowledge,technical knowledge,teamwork,career transition,developer onboarding
 ---
 
-> **推荐语**：强烈建议每一位即将入职/在职的小伙伴看看这篇文章，看完之后可以帮助你少踩很多坑。整篇文章逻辑清晰，内容全面！
+> **Editor's note:** Anyone about to start or already working at a new company should read this. It is clear and comprehensive, and can help you avoid common mistakes.
 >
-> **原文地址**：<https://www.cnblogs.com/hunternet/p/14675348.html>
+> **Original article:** <https://www.cnblogs.com/hunternet/p/14675348.html>
 
-![新入职一家公司如何快速进入状态](../images/shared/.png.png)
+![How to get up to speed quickly at a new company](../images/shared/.png.png)
 
-一年一度的金三银四跳槽大戏即将落幕，相信很多跳槽的小伙伴们已经找到了心仪的工作，即将或已经有了新的开始。
+The annual spring hiring season is almost over. Many people changing jobs have found a role they like and are about to start—or have already started—somewhere new.
 
-相信有过跳槽经验的小伙伴们都知道，每到一个新的公司面临的可能都是新的业务、新的技术、新的团队……这些可能会打破你原来工作思维、编码习惯、合作方式……
+Anyone who has changed jobs knows that a new company may mean a new business domain, technology stack, and team. These can challenge your existing work habits, coding practices, and ways of collaborating.
 
-而于公司而言，又不能给你几个月的时间去慢慢的熟悉。这个时候，如何快速进入工作状态，尽快发挥自己的价值是非常重要的。
+At the same time, a company can't give you several months to settle in at your own pace. It is important to get up to speed and start contributing as soon as possible.
 
-有些人可能会很幸运，入职的公司会有完善的流程与机制，通过一带一、各种培训等方式可以在短时间内快速的让新人进入工作状态。有些人可能就没有那么幸运了，就比如我在几年前跳槽进入某厂的时候，当时还没有像我们现在这么完善的带新人融入的机制，又赶上团队最忙的一段时间，刚一入职的当天下午就让给了我几个线上问题去排查，也没有任何的文档和培训。遇到情况，很多人可能会因为难以快速适应，最终承受不起压力而萌生退意。
+Some people are lucky enough to join a company with well-established onboarding, mentoring, and training. Others are less fortunate. A few years ago, when I joined a large tech company, the onboarding process was not as mature as it is now. The team was extremely busy, and on my first afternoon I was asked to investigate several production issues, with no documentation or training. People who struggle to adapt under this pressure may eventually think about quitting.
 
-![bad175e3a380bea.](https://hunter-picgos.oss-cn-shanghai.aliyuncs.com/picgo/bad175e3a380bea..jpg)
+![A difficult onboarding experience](https://hunter-picgos.oss-cn-shanghai.aliyuncs.com/picgo/bad175e3a380bea..jpg)
 
-那么，**我们应该如何去快速的让自己进入工作状态，适应新的工作节奏呢？**
+**How can we get into the flow of work quickly and adapt to a new pace?**
 
-新的工作面对着一堆的代码仓库，很多人常常感觉无从下手。但回顾一下自己过往的工作与项目的经验，我们可以发现它们有着异曲同工之处。当开始一个新的项目，一般会经历几个步骤：需求->设计->开发->测试->发布，就这么循环往复，我们完成了一个又一个的项目。
+Faced with a new set of repositories, many people don't know where to begin. But we can draw on experience from previous jobs and projects. A new project usually follows a cycle: requirements, design, development, testing, and release.
 
-![项目流程](../images/shared/image-20220704191430466.png)
+![Project workflow](../images/shared/image-20220704191430466.png)
 
-而在这个过程中主要有四个方面的知识那就是业务、技术、项目与团队贯穿始终。新入职一家公司，我们第一阶段的目标就是要具备能够跟着团队做项目的能力，因此我们所应尽快掌握的知识点也要从这四个方面入手。
+Four areas run through this process: business, technology, projects, and the team. As a new hire, your first goal is to become capable of contributing to team projects. Start by learning these four areas.
 
-## 业务
+## Business
 
-很多人可能会认为作为一个技术人，最应该了解的不应该是技术吗？于是他们在进入一家公司后，就迫不及待的研究起来了一些技术文档，系统架构，甚至抱起来源代码就开始“啃”，如果你也是这么做的，那就大错特错了！在几乎所有的公司里，技术都是作为一个工具存在的，虽然它很重要，但是它也是为了承载业务所存在的，技术解决了如何做的问题，而业务却告诉我们，做什么，为什么做。一旦脱离了业务，那么技术的存在将毫无意义。
+Some people think technology should be the first priority for a technical employee. They join a company and immediately study technical documents and system architecture—or start reading the source code. That is a mistake. At almost every company, technology is a tool for supporting the business. Technology answers how to do something; the business explains what to do and why. Without a business purpose, the technology has little meaning.
 
-想要了解业务，有两个非常重要的方式
+There are two important ways to learn the business.
 
-**一是靠问**
+**First, ask questions.**
 
-如果你加入的团队，有着完善的业务培训机制，详尽的需求文档，也许你不需要过多的询问就可以了解业务，但这只是理想中的情况，大多数公司是没有这个条件的。因此我们只能靠问。
+If your team has a thorough business-training program and detailed requirements documents, you may not need to ask much. Most companies don't have that, so you will need to ask. As a new hire, be willing to speak up when you don't understand. I've seen many newcomers hesitate because they are shy or introverted. As a result, it takes them much longer to join the team and take on more responsibility. Don't be afraid of being criticized or challenged. Most developers are easy to talk to.
 
-这里不得不提的是，作为一个新人一定要有一定的脸皮厚度，不懂就要问。我见过很多新人会因为内向、腼腆，遇到疑问总是不好意思去问，这导致他们很长一段时间都难以融入团队、承担更重要的责任。不怕要怕挨训、怕被怼，而且我相信绝对多数的程序员还是很好沟通的！
+**Second, test the product.**
 
-**二是靠测试**
+Testing is one of the fastest ways to learn the business. Follow the end-to-end workflows of the projects your team owns. When you get stuck or something doesn't make sense, ask someone. This helps you understand the core business flows naturally.
 
-我认为测试绝对是一个人快速了解团队业务的方式。通过测试我们可以走一走自己团队所负责项目的整体流程，如果遇到自己走不下去或想不通的地方及时去问，在这个过程中我们自然而然的就可以快速的了解到核心的业务流程。
+While learning the business, don't get caught up in details. First, try to understand the overall flow: who the users are, and what services the system provides.
 
-在了解业务的过程中，我们应该注意的是不要让自己过多的去追求细节，我们的目的是先能够整体了解业务流程，我们面向哪些用户，提供了哪些服务……
+## Technology
 
-## 技术
+Once you have a basic understanding of the business, you can turn to the technology. You may be eager to open the source code, but don't rush.
 
-在我们初步了解完业务之后，就该到技术了，也许你已经按捺不住翻开源代码的准备了，但还是要先提醒你一句先不要着急。
+First, use what you've learned about the business and your previous experience to think about how you would build the system. This step is important: later, when you study the implementation, you can compare it with your own approach, ask why they differ, identify what works better, and learn from the good ideas. You can also suggest improvements where appropriate.
 
-这个时候我们应该先按照自己了解到的业务，结合自己过往的工作经验去思考一下如果是自己去实现这个系统，应该如何去做？这一步很重要，它可以在后面我们具体去了解系统的技术实现的时候去对比一下与自己的实现思路有哪些差异，为什么会有这些差异，哪些更好，哪些不好，对于不好我们可以提出自己的意见，对于更好的我们可以吸收学习为己用！
+Next, study the technology, but don't start by reading the source code. **Analyze the system from the outside in, moving from the big picture to the details.**
 
-接下来，我们就是要了解技术了，但也不是一上来就去翻源代码。 **应该按照从宏观到细节，由外而内逐步地对系统进行分析。**
+Start by learning your team's or project's **technology stack**: Java or .NET, or several languages? Is the project frontend-backend separated or full stack? Does it use MySQL or PostgreSQL? This gives you an idea of the tools and frameworks involved and what you may be responsible for. You may already have learned some of this during the interview.
 
-首先，我们应该简单的了解一下 **自己团队/项目的所用到的技术栈** ，Java 还是.NET、亦或是多种语言并存，项目是前后端分离还是服务端全包，使用的数据库是 MySQL 还是 PostgreSQL……，这样我们可能会对所用到的技术和框架，以及自己所负责的内容有一定的预期，这一点有的人可能在面试的时候就会简单了解过。
+Next, understand the **high-level business architecture**. Which systems does your team own? What modules does each system contain? Which external systems does it interact with? Use a flowchart or mind map to organize this information.
 
-下一步，我们应该了解的是 **系统的宏观业务架构** 。自己的团队主要负责哪些系统，每个系统又主要包含哪些模块，又与哪些外部系统进行交互……对于这些，最好可以通过流程图或者思维导图等方式整理出来。
+Then identify the **interfaces and services your team provides** and the functionality each one offers. Test the system and follow its main flows. Note which pages are involved, which backend APIs each page calls, and which repository contains each API. If your team only provides backend services, identify the services you offer, your upstream services, and the calls each upstream service makes to your team's services. Again, a diagram can help.
 
-然后，我们要做的是看一下 **自己的团队提供了哪些对外的接口或者服务** 。每个接口和服务所提供功能是什么。这一点我们可以继续去测试自己的系统，这个时候我们要看一看主要流程中主要包含了哪些页面，每个页面又调用了后端的哪些接口，每个后端接口又对应着哪个代码仓库。(如果是单纯做后端服务的，可以看一下我们提供了哪些服务，又有哪些上游服务，每个上游服务调用自己团队的哪些服务……)，同样我们应该用画图的形式整理出来。
+Then find out **which external services your system depends on**. These could come from another team, another part of your company, or a third party. Look at how your code integrates with them, including the communication framework (REST or RPC) and protocol.
 
-接着，我们要了解一下 **自己的系统或服务又依赖了哪些外部服务** ，也就是说需要哪些外部系统的支持，这些服务也许是团队之外、公司之外，也可能是其他公司提供的。这个时候我们可以简单的进入代码看一下与外部系统的交互是怎么做的，包括通讯框架(REST、RPC)、通讯协议……
+At the code level, first learn the layers in each module and what each layer is responsible for. This gives you a basic understanding of the system design. Then learn the directory layout and find the configuration files.
 
-到了代码层面，我们首先应该了解每个模块代码的层次结构，一个模块分了多少层，每个层次的职责是什么，了解了这个就对系统的整个设计有了初步的概念，紧接着就是代码的目录结构、配置文件的位置。
+Finally, pick an example, such as an API or a page, and follow the code from its inputs to its outputs. This helps validate your understanding of the system.
 
-最后，我们可以寻找一个示例，可以是一个接口，一个页面，让我们的思路跟随者代码的运行的路线，从入参到出参，完整的走一遍来验证一下我们之前的了解。
+At this point, you should have an initial understanding of the technology. You don't need to learn every detail yet; you'll have plenty of time for that later.
 
-到了这里我们对于技术层面的了解就可以先告一段落了，我们的目的知识对系统有一个初步的认知，更细节的东西，后面我们会有大把的时间去了解
+## Projects and the Team
 
-## 项目与团队
+As mentioned earlier, the first goal at a new company is to become capable of contributing to team projects. Next, learn how projects are run.
 
-上面我们提到，新入职一家公司，第一阶段的目标是有跟着团队做项目的能力，接下来我们要了解的就是项目是如何运作的。
+Understand the key steps from requirements and design through implementation, code review and check-in, and release. For example: Does the team use Agile or Waterfall? How long is an iteration? Where do requirements come from, and how are they documented? What coding conventions are used? How do you build and check in code? Are there commit conventions? How is work handed to QA? What needs to happen before a release, and how are releases performed?
 
-我们应该把握从需求设计到代码编写入库最终到发布上线的整个过程中的一些关键点。例如项目采用敏捷还是瀑布的模式，一个迭代周期是多长，需求的来源以及展现形式，有没有需求评审，代码的编写规范是什么，编写完成后如何构建，如何入库，有没有提交规范，如何交付测试，发布前的准备是什么，发布工具如何使用……
+You can usually understand how the project works by observing your colleagues or taking part in one full iteration yourself.
 
-关于项目我们只需要观察同事，或者自己亲身经历一个迭代的开发，就能够大概了解清楚。
+As you learn the project process, learn about the team too. Start with external relationships: Which teams do you work with? Where do requirements come from? Do you work with teams outside the company? Which upstream teams use your services, and which downstream teams do you depend on? How do teams communicate, and which channels do they use?
 
-在了解项目运作的同时，我们还应该去了解团队，同样我们应该先从外部开始，我们对接了哪些外部团队，比如需求从哪里来，是否对接公司外部的团队，提供服务的上游团队有哪些，依赖的下游团队有哪些，团队之间如何沟通，常用的沟通方式是什么……
+Then learn how the team works internally: Which roles are there, and what is each person's responsibility? Knowing this helps you find the right colleague when you need help. Are there regular events or meetings, such as daily stand-ups and weekly meetings? Are there unwritten conventions, internal reviews, or knowledge-sharing sessions?
 
-接下来则是团队内部，团队中有哪些角色，每个人的职责是什么，这样遇到问题我们也可以清楚的找到对应的同事寻求帮助。是否有一些定期的活动与会议，例如每日站会、周例会，是否有一些约定俗成的规矩，是否有一些内部评审，分享机制……
+## Summary
 
-## 总结
+Starting at a new company brings new challenges. Getting into the flow of work quickly and contributing effectively is a strong start.
 
-新入职一家公司，面临新的工作挑战，能够尽快进入工作状态，实现自己的价值，将会给你带来一个好的开始。
+For a programmer, that means becoming able to work on projects with the team. From the perspective of a backend developer, this article shares ways to learn the business, technology, project process, and team.
 
-作为一个程序员，能够尽快进入工作状态，意味着我们首先应该具备跟着团队做项目的能力，这里我站在了一个后端开发的角度上从业务、技术、项目与团队四个方面总结了一些方法和经验。
+If you have other advice for getting up to speed at a new company, share it in the comments.
 
-关于如何快速进入工作状态，如果你有好的方法与建议，欢迎在评论区留言。
-
-最后我们用一张思维导图来回顾一下这篇文章的内容。如果你觉得这篇文章对你有所帮助，可以关注文末公众号，我会经常分享一些自己成长过程中的经验与心得，与大家一起学习与进步。
+The mind map below summarizes the article. If you found it useful, follow the public account at the end of the original article. I often share lessons from my own growth so we can learn together.
 
 <!-- @include: @article-footer.snippet.md -->

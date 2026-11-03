@@ -1,182 +1,182 @@
 ---
-title: 为什么忘记密码时只能重置，不能告诉你原密码？
-description: 详细解答为什么忘记密码时网站只能让你重置密码，而不能告诉你原密码。核心原因是服务端使用哈希算法存储密码，哈希算法不可逆，无法从哈希值还原出原始密码。本文还介绍了密码存储安全、加盐机制、Bcrypt 加密、密码传输安全等知识。
+title: Why Can You Reset a Forgotten Password but Not Retrieve It?
+description: Learn why websites let you reset a forgotten password instead of revealing it. Servers store passwords as irreversible hashes. This guide also covers secure password storage, salting, bcrypt, and secure password transmission.
 category:
-  - 系统设计
+  - System Design
 tag:
-  - 数据安全
-  - 密码安全
-  - 哈希算法
-  - 面试题
+  - Data Security
+  - Password Security
+  - Hashing
+  - Interview Questions
 head:
   - - meta
     - name: keywords
-      content: 密码重置,密码找回,哈希算法,密码存储,Bcrypt,加盐,密码安全,面试题
+      content: Password Reset,Password Recovery,Hashing,Password Storage,Bcrypt,Salting,Password Security,Interview Questions
 ---
 
-这是一个挺有意思的问题，很多公司也在面试中问过。挺简单的，不知道大家平时在重置密码的时候有没有想过这个问题。
+This is an interesting question that many companies ask in interviews. The answer is simple, but have you ever wondered about it when resetting a password?
 
-![重置帐号密码](../images/shared/reset-password-page.png)
+![Reset account password](../images/shared/reset-password-page.png)
 
-回答这个问题其实就一句话：**因为服务端也不知道你的原密码是什么**。存原密码的程序员已经被开了 🤣。
+The answer is simple: **the server does not know your original password either**. The developer who stored it in plaintext has probably already been fired 🤣.
 
-如果服务端知道你的原密码，那就是严重的安全风险问题了。
+If the server knew your original password, that would be a serious security risk.
 
-我们这里来简单分析一下。
+Let's take a closer look.
 
-这篇文章不会谈论太多加密算法相关的内容，感兴趣的朋友可以看这篇文章：[常见加密算法总结](https://javaguide.cn/system-design/security/encryption-algorithms.html)。
+This article does not cover encryption algorithms in depth. For more, see [Common Encryption Algorithms](https://javaguide.cn/system-design/security/encryption-algorithms.html).
 
 ![](../images/shared/javaguide-security-encryption-algorithms.png)
 
-## 为什么服务端不知道你的原密码？
+## Why Doesn't the Server Know Your Password?
 
-做过开发的应该都知道，服务端在保存密码到数据库的时候，**绝对不能直接明文存储**。
+Anyone who has worked in software development should know that a server must **never store passwords in plaintext** in a database.
 
-如果明文存储的话，风险太大：
+Plaintext storage is too risky:
 
-1. 数据库数据有被盗的风险
-2. 有数据库权限的内部人员可能恶意利用
-3. 黑客入侵后可以直接获取所有用户密码
+1. Database data may be stolen.
+2. Insiders with database access could misuse it.
+3. An attacker who breaks in could immediately obtain every user's password.
 
-因此，密码必须经过处理后才能存储。这个处理方式就是使用**哈希算法**。
+Passwords must therefore be transformed before storage, using a **hashing algorithm**.
 
-## 哈希算法简介
+## What Is a Hashing Algorithm?
 
-哈希算法也叫散列函数或摘要算法，它的作用是对任意长度的数据生成一个固定长度的唯一标识，也叫哈希值、散列值或消息摘要（后文统称为哈希值）。
+Hashing algorithms, also called hash functions or digest algorithms, produce a fixed-length identifier from input data of any length. This output is called a hash, hash value, or message digest; this article uses “hash.”
 
-![哈希算法效果演示](../images/shared/hash-function-effect-demonstration.png)
+![How a hash function works](../images/shared/hash-function-effect-demonstration.png)
 
-哈希算法有两个关键特点：
+Hashing algorithms have two key properties:
 
-1. **不可逆性**：你无法通过哈希之后的值再得到原值。这是核心！
-2. **确定性**：相同的输入永远产生相同的输出。
+1. **One-way behavior:** You cannot recover the original input from its hash. This is the key property.
+2. **Determinism:** The same input always produces the same output.
 
-有个很形象的比喻：**你存的密码就像切过的土豆丝，不能被复原成土豆。但网站判断密码是否正确的方式，就是把你输入的新密码当成土豆再切一次，看看这两盘土豆丝是不是一样的。**
+Here is an analogy: **a stored password is like a potato cut into thin strips; you cannot turn the strips back into a whole potato. To check a password, the website cuts the password you enter into strips in the same way and compares the two piles.**
 
-这两个特点决定了哈希算法非常适合用于密码存储：服务端只存储密码的哈希值，验证时只需比较哈希值是否一致。
+These properties make hashing suitable for password storage: the server stores only the hash and checks a login attempt by verifying it against the stored hash.
 
-### 哈希算法的分类
+### Types of Hashing Algorithms
 
-哈希算法可以简单分为两类：
+Hashing algorithms can be divided into two broad categories:
 
-1. **加密哈希算法**：安全性较高的哈希算法，它可以提供一定的数据完整性保护和数据防篡改能力，能够抵御一定的攻击手段，安全性相对较高，但性能较差，适用于对安全性要求较高的场景。例如 SHA2、SHA3、SM3、RIPEMD-160、BLAKE2等等。
-2. **非加密哈希算法**：安全性相对较低的哈希算法，易受到暴力破解、冲突攻击等攻击手段的影响，但性能较高，适用于对安全性没有要求的业务场景。例如 CRC32、MurMurHash3等等。
+1. **Cryptographic hash functions:** These provide stronger integrity protection and tamper detection and can resist some attacks. They are generally slower and are used where security matters, such as SHA-2, SHA-3, SM3, RIPEMD-160, and BLAKE2.
+2. **Non-cryptographic hash functions:** These are faster but less secure and more vulnerable to attacks such as brute force and collision attacks. They suit applications without security requirements, such as CRC32 and MurmurHash3.
 
-除了这两种之外，还有一些特殊的哈希算法，例如安全性更高的**慢哈希算法**。
+There are also specialized hash functions, including **slow hashing algorithms** designed for stronger password security.
 
-### 为什么不推荐 MD5？
+### Why Is MD5 Not Recommended?
 
-早期常用 MD5 来加密密码，但现在已经**不被推荐**，原因如下：
+MD5 was once commonly used to hash passwords, but it is **no longer recommended**:
 
-1. **抗碰撞性差**：存在弱碰撞问题，即多个不同的输入可能产生相同的 MD5 值。
-2. **哈希值较短**：128 位的哈希值容易被彩虹表攻击。
-3. **计算速度太快**：反而容易被暴力破解。
+1. **Weak collision resistance:** Different inputs can produce the same MD5 hash.
+2. **Short hash:** Its 128-bit output is vulnerable to precomputed attacks such as rainbow tables.
+3. **Too fast:** This makes large-scale password guessing easier.
 
-详细介绍可以阅读这篇文章：[简历别再写 MD5 加密密码了！](https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247542780&idx=1&sn=fb2fe3fb53fe596cc5b22e30766e0098&scene=21#wechat_redirect)
+For details, see [Stop Claiming That You “Encrypt Passwords with MD5” on Your Resume](https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247542780&idx=1&sn=fb2fe3fb53fe596cc5b22e30766e0098&scene=21#wechat_redirect).
 
-### 为什么需要加盐？
+### Why Add a Salt?
 
-单纯使用哈希算法存储密码，仍然存在被**彩虹表攻击**的风险。彩虹表是一种预先计算好的哈希值对照表，攻击者可以通过查表的方式快速破解密码。
+Simply hashing passwords still leaves them vulnerable to **rainbow-table attacks**. A rainbow table is a precomputed lookup table of hashes that attackers can use to crack passwords quickly.
 
-盐（Salt）是为每个密码独立生成的随机值，密码哈希算法会把盐和密码一起参与计算。盐不需要保密，但必须随机且不能在所有用户之间复用。
+A salt is a random value generated separately for each password. The password-hashing algorithm uses both the salt and password to compute the hash. The salt does not need to be secret, but it must be random and unique per user.
 
-**加盐的作用**：
+**Salting helps by:**
 
-1. 增加密码的复杂度和唯一性。
-2. 使得彩虹表攻击失效（每个用户的盐都不同）。
-3. 即使两个用户使用相同密码，哈希值也不同。
+1. Increasing the complexity and uniqueness of each password hash.
+2. Defeating rainbow-table attacks because each user has a different salt.
+3. Producing different hashes even when two users choose the same password.
 
-## 密码存储方案推荐
+## Recommended Password Storage
 
-密码应使用专门为密码存储设计、可调节计算成本的算法，而不是直接使用 MD5、SHA-256、SHA-3 这类高速哈希算法。即使给高速哈希加盐，攻击者拿到数据库后仍然可以高速尝试大量候选密码。
+Use an algorithm designed for password storage with an adjustable computational cost. Do not use fast hashes such as MD5, SHA-256, or SHA-3 directly. Even when salted, fast hashes let an attacker who obtains the database try many candidate passwords quickly.
 
-新系统优先考虑 **Argon2id**。如果不可用，可以根据运行环境选择 scrypt；兼容遗留系统时可以使用合理配置的 Bcrypt；有 FIPS 合规要求时可以使用 PBKDF2。具体参数需要结合服务器性能定期评估和升级。
+For new systems, prefer **Argon2id**. If it is unavailable, consider scrypt for your environment. For legacy compatibility, use Bcrypt with appropriate settings. Where FIPS compliance is required, use PBKDF2. Periodically evaluate and update parameters based on server performance.
 
-### Bcrypt 示例
+### Bcrypt Example
 
-**Bcrypt** 是专门为密码存储设计的哈希算法，属于慢哈希算法。它内置了 salt 机制和 cost（成本）参数：
+**Bcrypt** is a slow hashing algorithm designed for password storage. It includes a salt mechanism and a `cost` parameter:
 
-- **salt**：随机生成的字符串，用于和密码混合，增加密码的唯一性
-- **cost**：控制迭代次数，增加计算时间和资源消耗
+- **Salt:** A randomly generated string combined with the password to make each hash unique.
+- **Cost:** Controls the number of iterations, increasing the time and resources required to calculate the hash.
 
-Bcrypt 的随机盐可以防止预计算和彩虹表攻击，cost 参数可以提高离线猜测成本，但无法让弱密码变得不可破解。还要注意，多数 Bcrypt 实现只处理密码的前 72 个字节，系统不能在没有提示的情况下静默截断密码。
+The random salt in Bcrypt prevents precomputed and rainbow-table attacks. The cost parameter makes offline guessing more expensive, but cannot make a weak password uncrackable. Also note that most Bcrypt implementations process only the first 72 bytes of a password. Do not silently truncate longer passwords without telling users.
 
-Spring Security 提供了 `BCryptPasswordEncoder`。下面以它演示如何显式设置 cost；新系统选型仍应优先评估 Argon2id：
+Spring Security provides `BCryptPasswordEncoder`. The example below shows how to set the cost explicitly; for new systems, still evaluate Argon2id first:
 
 ```java
 @Bean
 public PasswordEncoder passwordEncoder(){
-    // cost 应通过性能测试确定，并随着硬件能力提升定期调整。
+    // Determine the cost through performance testing and adjust it as hardware improves.
     return new BCryptPasswordEncoder(12);
 }
 ```
 
-## 登录验证流程
+## Login Verification Flow
 
-当你输入密码登录时，验证流程如下：
+When you enter a password to log in, verification works as follows:
 
-1. 服务端根据用户名从数据库取出该用户保存的密码哈希编码。这个编码通常已经包含算法标识、参数和随机盐。
-2. 服务端调用密码哈希库提供的验证方法，例如 Spring Security 的 `PasswordEncoder#matches`。不要自己拼接盐值，也不要直接比较字符串。
-3. 密码库读取编码中的盐值和参数，对用户输入进行同样的计算，并以安全方式比较结果。
-4. 如果验证通过，说明密码正确；否则密码错误。验证成功后还可以在参数过旧时重新计算并升级密码哈希。
+1. The server looks up the user's encoded password hash by username. The encoding usually includes the algorithm identifier, parameters, and random salt.
+2. The server calls the password-hashing library's verification method, such as Spring Security's `PasswordEncoder#matches`. Do not combine the salt yourself or compare strings directly.
+3. The library reads the salt and parameters from the encoded hash, processes the submitted password the same way, and compares the result securely.
+4. If verification succeeds, the password is correct; otherwise, it is incorrect. After a successful login, the server can also rehash the password with updated parameters if the stored parameters are outdated.
 
-## 重置密码时如何判断新密码与旧密码相同？
+## How Can a Site Tell Whether a New Password Matches the Old One?
 
-细心的同学可能发现，有些网站在重置密码时会提示"新密码不可与旧密码相同"。那网站是怎么知道新密码和旧密码相同的呢？
+You may have noticed that some websites warn you not to reuse your current password when resetting it. How can the site tell whether the new password matches the old one?
 
-其实原理和验证密码正确性一样：
+It uses the same process as password verification:
 
-1. 用户输入新密码。
-2. 服务端调用密码哈希库的验证方法，用新密码验证数据库中的旧密码哈希，例如 `passwordEncoder.matches(newPassword, oldPasswordHash)`。
-3. 如果验证通过，说明新密码和旧密码一样，拒绝修改。
-4. 如果不相同，则为新密码重新生成随机盐和密码哈希，不能复用旧哈希或自行固定盐值。
+1. The user enters a new password.
+2. The server calls the password-hashing library to verify it against the stored hash, for example, `passwordEncoder.matches(newPassword, oldPasswordHash)`.
+3. If verification succeeds, the new password matches the old one, so the change is rejected.
+4. Otherwise, the server generates a new random salt and hash for the new password. Do not reuse the old hash or use a fixed salt.
 
-所以网站并不知道你的旧密码是什么，只是比较了两盘"土豆丝"是否一样。
+The site still does not know your old password; it only checks whether the two piles of “potato strips” match.
 
-## 密码传输安全
+## Secure Password Transmission
 
-前面讲的都是密码在服务端的存储安全，那密码在传输过程中安全吗？
+So far, we have discussed how the server stores passwords. What about password security during transmission?
 
-有个常见的面试问题：**如果某个员工知道加密方式，那岂不是他可以在私下或者离职后拦截包然后模拟加密从而获取密码？**
+Here is a common interview question: **If an employee knows the encryption method, could they intercept network traffic privately or after leaving the company, reproduce the encryption, and obtain passwords?**
 
-答案是：**存储与传输本身就是分开处理的**。
+The answer is: **storage and transmission are handled separately**.
 
-完整的密码安全方案需要同时保障存储安全和传输安全。
+A complete password-security design must protect both stored passwords and passwords in transit.
 
-### 使用 HTTPS
+### Use HTTPS
 
-HTTPS 协议是保障传输安全的基础。HTTP 协议运行在 TCP 之上，所有传输的内容都是明文，客户端和服务器端都无法验证对方的身份。HTTPS 则是运行在 SSL/TLS 之上的 HTTP 协议，所有传输的内容都经过加密。
+HTTPS is the foundation of secure transmission. HTTP runs over TCP and sends data in plaintext; the client and server cannot verify each other's identity. HTTPS is HTTP over SSL/TLS, which encrypts data in transit.
 
-关于 HTTP 和 HTTPS 的详细对比可以看这篇文章：[HTTP vs HTTPS（应用层）](https://javaguide.cn/cs-basics/network/http-vs-https.html)。
+For a detailed comparison, see [HTTP vs. HTTPS (Application Layer)](https://javaguide.cn/cs-basics/network/http-vs-https.html).
 
-对于普通 Web 应用，正确配置的 HTTPS 是密码传输安全的基础方案。服务端应默认使用 TLS 1.3，并按兼容性需要支持 TLS 1.2；全站强制 HTTPS，启用 HSTS，正确校验证书并禁用过时协议和弱密码套件。
+For a typical web application, correctly configured HTTPS is the baseline for protecting passwords in transit. Servers should prefer TLS 1.3 and support TLS 1.2 when compatibility requires it. Enforce HTTPS across the site, enable HSTS, validate certificates correctly, and disable outdated protocols and weak cipher suites.
 
-浏览器再使用一层自定义 RSA 加密，通常不能解决恶意客户端、被攻陷的前端脚本或服务端解密点泄露密码的问题，反而会增加密钥分发、填充选择和密文重放等风险。因此，不要把“客户端 RSA + HTTPS”当作所有系统都必须采用的通用方案。
+Adding custom RSA encryption in the browser usually does not prevent password theft by a malicious client, compromised frontend script, or compromised server-side decryption point. It can instead add risks involving key distribution, padding choices, and ciphertext replay. Do not treat “client-side RSA + HTTPS” as a universal requirement for every system.
 
-某些具有明确合规要求或特殊威胁模型的系统可能会在 TLS 之上增加应用层保护，但应使用经过评审的成熟协议，并同时包含随机挑战、时效校验和防重放机制，不能只做一次简单的公钥加密。
+Systems with specific compliance requirements or threat models may add application-layer protection on top of TLS. Use a mature, reviewed protocol that includes a random challenge, freshness checks, and replay protection; a simple public-key encryption step is not enough.
 
-除了传输加密，还应限制登录尝试、避免记录密码、使用多因素认证，并防范凭据填充和撞库攻击。
+In addition to encrypting transmission, limit login attempts, never log passwords, use multi-factor authentication, and defend against credential stuffing.
 
-## 忘记密码流程还要注意什么？
+## What Else Should a Password Reset Flow Consider?
 
-本文重点解释为什么服务端不能找回原密码。实际实现忘记密码功能时，还需要注意下面这些安全要求：
+This article focuses on why the server cannot retrieve the original password. A practical password-reset flow should also meet these security requirements:
 
-- 无论账号是否存在，都返回一致的提示，并尽量保持接近的响应时间，避免用户枚举。
-- 重置令牌使用密码学安全随机数生成，具备足够熵，只能使用一次，并在较短时间后过期。
-- 对重置请求和令牌校验进行限流；重置链接只使用可信域名和 HTTPS，避免令牌通过 Referer 泄露。
-- 密码修改成功后发送安全通知，并根据风险使已有会话失效，或至少让用户能够一键注销其他会话。
+- Return the same message whether or not the account exists, and keep response times similar where possible to prevent account enumeration.
+- Generate reset tokens with a cryptographically secure random-number generator. They should have sufficient entropy, be single-use, and expire quickly.
+- Rate-limit reset requests and token verification. Use a trusted domain and HTTPS for reset links, and prevent tokens from leaking through the `Referer` header.
+- Notify users after a successful password change. Depending on the risk, invalidate existing sessions or at least let users sign out of their other sessions with one action.
 
-## 总结
+## Summary
 
-回到最初的问题：为什么忘记密码时只能重置，不能告诉你原密码？
+Returning to the original question: why can you reset a forgotten password but not retrieve it?
 
-因为服务端存储的是密码经过哈希算法处理后的值，**哈希算法是不可逆的**，无法从哈希值还原出原始密码。这是密码安全的基本原则。
+Because the server stores a hash of the password, and **hashing is one-way**: the original password cannot be recovered from the hash. This is a basic principle of password security.
 
-如果一个网站能够直接告诉你原密码，说明服务端以**明文或可逆形式**保存了可恢复的密码，而不是只保存专用密码哈希。这是严重的安全隐患，建议立即修改密码，并检查其他网站是否复用了同一密码。
+If a website can tell you your original password, it means the server stores it in **plaintext or a reversible form** instead of storing only a password hash. This is a serious security flaw. Change the password immediately and check whether you reused it elsewhere.
 
-**更重要的是**：如果你在所有网站都用了相同的密码，一个不靠谱的网站泄漏了你的密码，就相当于你所有的账户都面临风险。所以，**不要在所有网站使用相同密码**！
+**More importantly:** if you use the same password on every site, a leak from one poorly secured website can put all your accounts at risk. **Never reuse the same password across websites!**
 
-## 参考
+## References
 
 - OWASP Password Storage Cheat Sheet：<https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html>
 - OWASP Forgot Password Cheat Sheet：<https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html>

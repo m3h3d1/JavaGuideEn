@@ -1,292 +1,292 @@
 ---
-title: RAG 向量索引算法和向量数据库
-description: 介绍 RAG 场景下的向量数据库选型与使用，涵盖 HNSW、IVFFLAT、ANN 近似检索原理和 pgvector 实践。
-category: AI 应用开发
+title: Vector Index Algorithms and Vector Databases for RAG
+description: Covers vector database selection and use in RAG, including HNSW, IVFFLAT, ANN retrieval, and pgvector.
+category: AI Application Development
 head:
   - - meta
     - name: keywords
-      content: RAG,向量数据库,向量索引,HNSW,IVFFLAT,pgvector,ANN,Embedding,相似度搜索
+      content: RAG,vector database,vector index,HNSW,IVFFLAT,pgvector,ANN,Embedding,similarity search
 ---
 
-把 Embedding 存进普通字段并逐条计算距离，数据量小时可以作为精确检索基线。数据规模、并发或延迟要求上升后，全表扫描的计算开销会随向量数量线性增长，此时需要评估 ANN 索引或专门的向量检索系统。
+Storing Embeddings in ordinary fields and calculating distances row by row can serve as an exact-search baseline for small datasets. As data volume, concurrency, or latency requirements grow, the cost of a full table scan increases linearly with the number of vectors. At that point, consider an ANN index or a dedicated vector retrieval system.
 
-本文从距离度量和索引算法讲起，再结合 PostgreSQL + pgvector 说明 HNSW、IVFFLAT 的参数、过滤行为和选型方法。
+This guide starts with distance metrics and index algorithms, then uses PostgreSQL + pgvector to explain HNSW and IVFFLAT parameters, filtering behavior, and selection criteria.
 
-## Embedding 和向量检索是什么关系？
+## How Are Embeddings Related to Vector Retrieval?
 
-向量数据库并不是直接理解文本。它存储和检索的是 Embedding。
+Vector databases do not understand text directly. They store and retrieve Embeddings.
 
-Embedding 的过程是：把一段文本交给 Embedding 模型，模型输出一个固定维度的稠密向量。可以粗略理解成“文本语义坐标”。两段文本语义越接近，它们在向量空间里的距离通常也越近。
+An Embedding model converts a text passage into a dense vector with a fixed number of dimensions. You can think of it as a set of semantic coordinates for the text. Passages with similar meanings are usually closer together in vector space.
 
-![Embedding 和向量检索是什么关系？](../images/shared/rag-embedding-vector-retrieval.png)
+![How Embeddings relate to vector retrieval](../images/shared/rag-embedding-vector-retrieval.png)
 
-RAG 的向量检索链路可以简化成这样：
-
-```text
-文档 Chunk -> Embedding 模型 -> 文档向量 -> 写入向量数据库
-用户问题 -> Embedding 模型 -> 查询向量 -> 检索最相似的 Top-K 文档向量
-```
-
-基础概念可以看 [RAG 基础篇](./rag-basis.md)。本文重点放在后半段：这些向量怎么高效存储、索引和检索。
-
-## RAG 场景为什么需要向量数据库？
-
-向量语义检索是 RAG 常用的召回方式之一。系统把文档和用户问题都转成高维向量，再找出最相似的 Top-K 片段，作为 LLM 的上下文。RAG 也可以使用 BM25、SQL、图查询或外部 API 检索，具体方式取决于数据形态。
-
-所以 RAG 场景里真正要解决的，不只是“能不能存 Embedding”，而是能不能在大规模高维向量里，低延迟找出最相关的 Top-K。
-
-传统关系型数据库可以存向量，也可以通过函数或 SQL 表达式计算相似度。但如果没有专门的向量索引，通常只能全表扫描，很难支撑生产级低延迟检索。当 Chunk 数量达到几十万、百万甚至更高时，就需要引入向量数据库、向量搜索引擎，或者 PostgreSQL + pgvector 这类带向量索引能力的数据库扩展。
-
-![RAG 场景为什么需要向量数据库？](../images/shared/rag-why-need-vector-store.png)
-
-### 高维向量相似度搜索
-
-Embedding 通常是 768 到 3072 维的稠密向量。没有向量索引时，即使数据库能计算余弦相似度、内积或欧氏距离，也很难在大规模数据上快速完成 Top-K 检索。
-
-暴力搜索就是遍历全表计算距离，复杂度是 O(n)。以 100 万条 1024 维向量为例，单次查询大约要做：
+The RAG vector retrieval flow can be simplified as follows:
 
 ```text
-1,000,000 × 1,024 次乘法运算
+Document chunk -> Embedding model -> document vector -> store in vector database
+User query -> Embedding model -> query vector -> retrieve the most similar Top-K document vectors
 ```
 
-实际延迟很容易到秒级，具体取决于硬件和实现。对实时问答系统来说，秒级延迟基本不可接受。
+For the fundamentals, see [RAG Basics](./rag-basis.md). This guide focuses on the second half of the pipeline: how to store, index, and retrieve these vectors efficiently.
 
-ANN（Approximate Nearest Neighbor，近似最近邻）检索就是为了解这个问题。向量数据库通过图导航、空间划分、量化等方式减少距离计算次数，不再每次都把所有向量算一遍。
+## Why Does RAG Need a Vector Database?
 
-ANN 的价值不在于永远返回 100% 精确的最近邻，而是在召回率、延迟和资源消耗之间做工程取舍。在合适的索引参数和硬件条件下，ANN 通常能把百万级向量检索从秒级暴力扫描优化到几十毫秒甚至更低。不过具体效果必须拿业务数据、Top-K、过滤条件、并发和召回率目标来测，不能只看理论复杂度。
+Vector semantic search is one common retrieval method in RAG. The system converts documents and user queries into high-dimensional vectors, then finds the most similar Top-K passages for the LLM's context. RAG can also use BM25, SQL, graph queries, or external APIs, depending on the data.
 
-| 指标     | 暴力搜索       | ANN 索引检索                     |
-| -------- | -------------- | -------------------------------- |
-| 检索方式 | 全量计算距离   | 只搜索候选集                     |
-| 召回率   | 理论 100%      | 取决于索引类型和参数             |
-| 延迟     | 数据量越大越慢 | 通常低很多                       |
-| 代价     | 计算开销高     | 需要构建索引，占用额外内存或磁盘 |
+The real challenge in RAG is not simply whether Embeddings can be stored, but whether the most relevant Top-K results can be found at low latency in a large collection of high-dimensional vectors.
 
-上表只是数量级描述。实际性能和硬件规格、并发负载、数据分布、过滤条件、Top-K、索引参数（如 `ef_search`、`nprobe`）都有关系。选型和调参时，建议参考 [ann-benchmarks.com](https://ann-benchmarks.com)，更重要的是在自己的业务环境里验证。
+Traditional relational databases can store vectors and calculate similarity with functions or SQL expressions. Without a dedicated vector index, however, they usually have to scan the entire table, making production-grade low-latency retrieval difficult. When the number of chunks reaches hundreds of thousands or millions, consider a vector database, vector search engine, or database extension with vector-index support, such as PostgreSQL + pgvector.
 
-### 大规模数据承载能力
+![Why RAG needs a vector database](../images/shared/rag-why-need-vector-store.png)
 
-向量数据库通常会提供持久化、增量更新、分片和索引构建等能力。传统数据库也能把向量当字段存储；是否需要独立向量数据库，要结合现有技术栈、向量维度、过滤条件、QPS、延迟和召回目标测试。缺少向量索引时，数据量增长会直接增加精确扫描成本。
+### Similarity Search over High-Dimensional Vectors
 
-### 语义检索和关键词检索有什么不同？
+Embeddings are typically dense vectors with 768 to 3,072 dimensions. Without a vector index, a database may be able to calculate cosine similarity, inner product, or Euclidean distance, but still struggle to retrieve the Top-K results quickly from a large dataset.
 
-关键词检索和向量语义搜索解决的是两类问题。
+Brute-force search calculates distances across the entire table, with O(n) complexity. For one million 1,024-dimensional vectors, a single query requires roughly:
 
-| 检索方式     | 原理                     | 局限性                                                |
-| ------------ | ------------------------ | ----------------------------------------------------- |
-| BM25 关键词  | 字面匹配，基于词频统计   | 遇到同义词或改写容易失效，比如“退货”和“退款流程”      |
-| 向量语义搜索 | Embedding 捕获语义相似性 | 能处理同义词、上下文和隐含意图，但依赖 Embedding 质量 |
+```text
+1,000,000 × 1,024 multiplications
+```
 
-文档切分策略和 Embedding 模型共同决定语义召回的理论上限，向量数据库负责在可接受延迟内把这个上限兑现出来。
+Depending on the hardware and implementation, latency can easily reach seconds, which is generally unacceptable for a real-time question-answering system.
 
-生产级 RAG 通常还需要几类能力：
+Approximate Nearest Neighbor (ANN) retrieval addresses this problem. Vector databases reduce the number of distance calculations through graph navigation, space partitioning, quantization, and other techniques, instead of comparing every vector on every query.
 
-- 元数据过滤，比如 `WHERE category='Java' AND version>='v2'`，和向量相似度联合查询。
-- 混合检索（Hybrid Search），把向量、BM25 和 RRF 融合起来。
-- 动态更新，支持增量写入。但高频更新和删除会让向量索引出现膨胀、无效数据累积、召回或延迟波动，需要结合 `VACUUM`、`REINDEX`、执行计划和业务评测集持续观察。
-- 权限和多租户隔离，这是企业级 RAG 的基本要求。
+ANN does not always return the exact nearest neighbors. Its value is in balancing recall, latency, and resource use. With suitable index parameters and hardware, ANN can often reduce retrieval time for millions of vectors from seconds of brute-force scanning to tens of milliseconds or less. Measure performance with your own data, Top-K, filters, concurrency, and recall targets; theoretical complexity alone is not enough.
 
-## 向量相似度和距离度量怎么选？
+| Metric    | Brute-force search                  | ANN index search                                     |
+| --------- | ----------------------------------- | ---------------------------------------------------- |
+| Retrieval | Calculate distances for all vectors | Search only a candidate set                          |
+| Recall    | Theoretically 100%                  | Depends on index type and parameters                 |
+| Latency   | Increases with dataset size         | Usually much lower                                   |
+| Cost      | High compute cost                   | Index construction and additional memory or disk use |
 
-向量数据库做的不是关键词匹配，而是计算查询向量和文档向量之间的距离或相似度。RAG 场景常见的是余弦距离、内积和欧氏距离。
+The table gives only a rough comparison. Actual performance depends on hardware, concurrency, data distribution, filters, Top-K, and index parameters such as `ef_search` and `nprobe`. Refer to [ann-benchmarks.com](https://ann-benchmarks.com) when selecting and tuning an index, and validate it in your own environment.
 
-以 pgvector 为例，三种常用写法如下：
+### Support for Large Datasets
 
-| 度量方式                    | pgvector 运算符 | operator class      | 特点                                                               | 适合场景                   |
-| --------------------------- | --------------- | ------------------- | ------------------------------------------------------------------ | -------------------------- |
-| 欧氏距离（L2 Distance）     | `<->`           | `vector_l2_ops`     | 衡量向量空间中的绝对距离，值越小越相似                             | 模型或索引明确按 L2 优化   |
-| 内积（Inner Product）       | `<#>`           | `vector_ip_ops`     | pgvector 返回负内积，值越小越相似                                  | 向量已归一化、追求计算效率 |
-| 余弦距离（Cosine Distance） | `<=>`           | `vector_cosine_ops` | 对向量长度不敏感，值越小越相似；余弦相似度可用 `1 - distance` 计算 | 文本语义检索、RAG 最常用   |
+Vector databases typically support persistence, incremental updates, sharding, and index construction. Traditional databases can also store vectors in columns. Test whether you need a separate vector database against your existing stack, vector dimensions, filters, QPS, latency, and recall targets. Without a vector index, growth in data volume directly increases the cost of exact scans.
 
-面试里如果被问“为什么 RAG 常用余弦相似度”，可以这样答：文本语义检索更关心方向是否接近，而不是向量长度本身；余弦距离对长度不敏感，更适合判断语义相似。如果 Embedding 模型输出已经归一化，内积和余弦在排序上通常等价，内积计算会更直接。
+### How Does Semantic Search Differ from Keyword Search?
 
-具体用哪个，不要凭感觉选。要看 Embedding 模型是否归一化、官方推荐的 metric，以及向量库索引是否支持对应 operator class。
+Keyword search and vector semantic search solve different problems.
 
-实践里最容易踩的坑是：查询运算符必须和索引 operator class 一致。比如索引用的是 `vector_cosine_ops`，查询也要用 `<=>`，否则 PostgreSQL 可能无法使用这个向量索引。
+| Retrieval method       | Principle                                | Limitation                                                                      |
+| ---------------------- | ---------------------------------------- | ------------------------------------------------------------------------------- |
+| BM25 keyword search    | Literal matching based on term frequency | Can miss synonyms or paraphrases, such as "return" versus "refund process"      |
+| Vector semantic search | Embeddings capture semantic similarity   | Handles synonyms, context, and implied intent, but depends on Embedding quality |
 
-## 什么是向量索引算法？
+The chunking strategy and Embedding model determine the theoretical ceiling for semantic retrieval. The vector database aims to approach that ceiling within an acceptable latency.
 
-向量索引算法要解决的问题是：在大量高维向量中，怎么快速找到和查询向量最相似的几个。
+Production-grade RAG also needs capabilities such as:
 
-没有索引时，只能把数据库里的所有向量都比较一遍，这就是暴力搜索。百万、亿级数据下，这个延迟不可接受。
+- Metadata filtering combined with vector similarity, such as `WHERE category='Java' AND version>='v2'`.
+- Hybrid Search that combines vectors, BM25, and RRF.
+- Dynamic updates and incremental writes. Frequent updates and deletions can bloat the vector index, accumulate dead entries, and destabilize recall or latency. Monitor these effects with `VACUUM`, `REINDEX`, query plans, and business evaluation sets.
+- Access control and tenant isolation, both essential for enterprise RAG.
 
-向量索引的目标，是提前把数据组织好，让查询时可以跳过绝大部分不相关向量，只在一个小得多的候选集里做精确比较。
+## How Do You Choose a Vector Similarity or Distance Metric?
 
-用生活化一点的比喻：
+Vector databases do not match keywords; they calculate the distance or similarity between query and document vectors. Common metrics in RAG include cosine distance, inner product, and Euclidean distance.
 
-- 没有索引：在整个城市挨家挨户找一个人。
-- 有索引：先定位城区，再定位街道，再定位楼栋。
+Here are three common metrics in pgvector:
 
-实践里，向量索引算法大致可以分成两类。
+| Metric                  | pgvector operator | Operator class      | Characteristics                                                                                | Typical use                                   |
+| ----------------------- | ----------------- | ------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| Euclidean distance (L2) | `<->`             | `vector_l2_ops`     | Measures absolute distance in vector space; smaller is more similar                            | Models or indexes explicitly optimized for L2 |
+| Inner product           | `<#>`             | `vector_ip_ops`     | pgvector returns the negative inner product; smaller is more similar                           | Normalized vectors and efficient computation  |
+| Cosine distance         | `<=>`             | `vector_cosine_ops` | Independent of vector magnitude; smaller is more similar. Cosine similarity is `1 - distance`. | Common for text semantic search and RAG       |
 
-![向量索引算法分类](../images/shared/rag-vector-index-algorithms-bjze1jhj.png)
+If asked in an interview why RAG often uses cosine similarity, explain that text semantic search cares more about whether vector directions are close than about vector magnitudes. Cosine distance is independent of magnitude and is therefore useful for semantic similarity. If the Embedding model already normalizes its output, inner product and cosine usually produce the same ranking, and inner product is more direct to compute.
 
-多数时候我们谈向量索引，谈的是 ANN 算法。索引带来的收益与数据分布、硬件、Top-K、过滤条件和召回目标有关，不能用一个固定倍数概括。调参时应同时记录查询延迟、资源占用和召回率。
+Do not choose a metric by intuition alone. Check whether the Embedding model normalizes its output, which metric it recommends, and whether the vector index supports the corresponding operator class.
 
-### 精确最近邻（Exact Nearest Neighbor，ENN）
+One common pitfall is that the query operator must match the index's operator class. For example, if the index uses `vector_cosine_ops`, the query must use `<=>`; otherwise, PostgreSQL may not use the vector index.
 
-ENN 的目标是 100% 找到最相似的向量。KD-Tree、VP-Tree 这类传统空间树结构都属于这个方向。
+## What Is a Vector Index Algorithm?
 
-问题在于，KD-Tree、VP-Tree 等空间树在低维数据上更有优势；维度升高后，剪枝效果往往下降，查询可能接近暴力扫描。退化程度取决于数据分布和实现，不能用固定维度作为分界线。
+Vector index algorithms solve the problem of quickly finding the vectors most similar to a query in a large collection of high-dimensional vectors.
 
-### 近似最近邻（Approximate Nearest Neighbor，ANN）
+Without an index, the database must compare the query with every vector using brute-force search. At the million or hundred-million scale, the resulting latency is unacceptable.
 
-ANN 是现代向量检索的主流。它接受一个工程取舍：不保证 100% 找到绝对最近邻，而是以很高概率找到足够相似的结果，用一点召回损失换取几个数量级的速度提升。
+The index organizes data in advance so that a query can skip most irrelevant vectors and perform exact comparisons on a much smaller candidate set.
 
-常见 ANN 算法主要有三类：
+An everyday analogy:
 
-- 基于图的算法，比如 HNSW。它把向量组织成多层网络图，查询时像导航一样在图上走。HNSW 通常能在查询速度和召回率之间取得比较好的平衡，是目前综合表现很强的一类算法。
-- 基于量化的算法，比如 IVF-PQ。它通过聚类和压缩技术，把海量向量压缩成更小的数据，降低内存占用，更适合超大规模场景。
-- 基于哈希的算法，比如 LSH。它通过特殊哈希函数，让相似向量有较大概率落入同一个桶，从而缩小搜索范围。
+- Without an index: search for someone door to door across an entire city.
+- With an index: narrow the search to a district, then a street, then a building.
 
-## 有哪些向量索引算法？
+In practice, vector index algorithms fall into two broad categories.
 
-在 RAG 应用里，索引算法会直接影响召回率、响应延迟和资源消耗。
+![Categories of vector index algorithms](../images/shared/rag-vector-index-algorithms-bjze1jhj.png)
 
-这里先区分两个层级：
+Most discussions of vector indexing focus on ANN algorithms. Index benefits depend on data distribution, hardware, Top-K, filters, and recall targets, so they cannot be summarized with a fixed speedup. Record query latency, resource use, and recall when tuning.
 
-| 层级             | 示例                        | 说明                               |
-| ---------------- | --------------------------- | ---------------------------------- |
-| 向量数据库       | Milvus、Qdrant、pgvector    | 负责向量存储、检索和管理的完整系统 |
-| 其支持的索引算法 | HNSW、IVF-PQ、IVFFLAT、Flat | 决定检索性能与召回率的内部实现     |
+### Exact Nearest Neighbor (ENN)
 
-主流索引算法可以先看这张表：
+ENN aims to find the most similar vectors with 100% accuracy. Traditional spatial tree structures such as KD-Trees and VP-Trees belong to this category.
 
-| 算法名称            | 原理机制                | 核心优势                      | 主要劣势                   | 更稳的适用描述                                                 |
-| ------------------- | ----------------------- | ----------------------------- | -------------------------- | -------------------------------------------------------------- |
-| Flat（暴力搜索）    | 遍历所有向量计算距离    | 100% 准确无损                 | 数据量大时查询很慢         | 小规模、低 QPS、离线评测、召回基准                             |
-| HNSW（图索引）      | 分层导航的小世界图      | 查询快，召回率高              | 内存消耗大，构建耗时       | 中大规模、高召回、低延迟场景；百万级常见，千万级需重点评估内存 |
-| IVFFLAT（倒排聚类） | 聚类 + 倒排索引桶       | 内存效率较好，构建较快        | 需前置训练，召回率略低     | 更关注内存和构建速度，可接受一定召回损失                       |
-| IVF-PQ（乘积量化）  | 聚类 + 向量极致压缩     | 支持海量数据，开销低          | 精度损失较大               | 超大规模、内存敏感、可接受量化误差                             |
-| IVF_RABITQ          | 聚类 + 随机旋转比特量化 | 内存占用低，召回率优于传统 PQ | 较新算法，生态支持仍在演进 | 超大规模、内存敏感、可接受量化误差                             |
+KD-Trees and VP-Trees work better on low-dimensional data. As dimensionality increases, pruning often becomes less effective, and queries may approach brute-force scans. The extent of this degradation depends on the data and implementation; there is no universal dimensionality threshold.
 
-关于 IVF_RABITQ 简单补一句。它是 2024 年提出的新一代量化算法，核心思路是 Random Rotation（随机旋转）+ Bit Quantization（比特量化）。相比传统 PQ 把向量切成子向量再分别聚类，RABITQ 会先对向量做随机旋转，让各维度分布更均匀，再把每个维度量化为 1 bit，只保留符号位。这样可以在保持较高召回率的同时显著压缩内存，并且距离计算可以用位运算加速。Milvus 2.6.x 中已经提供 `IVF_RABITQ` 索引类型。
+### Approximate Nearest Neighbor (ANN)
 
-## 你的项目使用的什么向量索引算法？
+ANN is the mainstream approach to modern vector retrieval. It makes an engineering tradeoff: rather than guaranteeing the exact nearest neighbors, it finds sufficiently similar results with high probability, exchanging some recall for orders-of-magnitude faster search.
 
-这里以 [《SpringAI 智能面试平台+RAG 知识库》](https://javaguide.cn/zhuanlan/interview-guide.html)项目为例。
+Common ANN algorithms fall into three categories:
 
-项目里用的是 PostgreSQL 的 pgvector 扩展，并配置了 HNSW 索引。
+- **Graph-based**, such as HNSW: organizes vectors in a multi-layer graph and navigates the graph during retrieval. HNSW often balances query speed and recall well.
+- **Quantization-based**, such as IVF-PQ: uses clustering and compression to reduce the memory footprint of large vector collections, making it suitable for very large-scale use.
+- **Hash-based**, such as LSH: uses specialized hash functions so similar vectors are likely to fall into the same bucket, narrowing the search space.
 
-为什么选 HNSW？因为在当前业务规模下，它在检索速度、召回率和工程复杂度之间比较均衡。
+## What Vector Index Algorithms Are Available?
 
-可以把 HNSW 理解成一个多层高速公路网络。
+In RAG applications, the index algorithm directly affects recall, response latency, and resource consumption.
 
-![HNSW 索引架构](../images/shared/rag-hnsw-architecture.png)
+First, distinguish between two levels:
 
-HNSW 的核心机制有三点。
+| Level                      | Examples                    | Description                                                              |
+| -------------------------- | --------------------------- | ------------------------------------------------------------------------ |
+| Vector database            | Milvus, Qdrant, pgvector    | A complete system for storing, retrieving, and managing vectors          |
+| Supported index algorithms | HNSW, IVF-PQ, IVFFLAT, Flat | Internal implementations that determine retrieval performance and recall |
 
-第一是层次化构建。节点的最高层级由公式 `level = floor(-ln(random()) * mL)` 决定，其中 `mL` 是层级乘数。这会让越高层的节点数量指数级递减，形成类似金字塔的结构。
+The following table summarizes common index algorithms:
 
-第二是贪心搜索。检索从顶层开始，每层都移动到距离查询点最近的邻居节点。
+| Algorithm                          | Mechanism                                       | Main advantage                                       | Main drawback                                  | Typical use                                                                                                            |
+| ---------------------------------- | ----------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Flat (brute-force search)          | Calculate distance against every vector         | Exact, 100% recall                                   | Slow on large datasets                         | Small datasets, low QPS, offline evaluation, and recall baselines                                                      |
+| HNSW (graph index)                 | Hierarchical navigable small-world graph        | Fast queries and high recall                         | High memory use and slow construction          | Medium to large datasets requiring high recall and low latency; assess memory carefully at tens of millions of vectors |
+| IVFFLAT (inverted-file clustering) | Clustering and inverted-list buckets            | More memory-efficient and faster to build            | Requires training and may have lower recall    | Prioritize memory and build speed, with some recall loss acceptable                                                    |
+| IVF-PQ (product quantization)      | Clustering and aggressive vector compression    | Supports very large datasets with lower resource use | Greater accuracy loss                          | Very large datasets with memory constraints and tolerance for quantization error                                       |
+| IVF_RABITQ                         | Clustering and random-rotation bit quantization | Low memory use and better recall than traditional PQ | Newer algorithm; ecosystem support is evolving | Very large datasets with memory constraints and tolerance for quantization error                                       |
 
-第三是由粗到精。上层负责快速定位语义区域，下层负责更精细地查找候选近邻。
+IVF_RABITQ is a newer quantization algorithm proposed in 2024. Its core idea combines random rotation and bit quantization. Unlike traditional PQ, which splits vectors into subvectors and clusters them separately, RABITQ first rotates vectors randomly to make dimension distributions more uniform, then quantizes each dimension to one bit, retaining only its sign. This can reduce memory use while maintaining relatively high recall, and bitwise operations can accelerate distance calculations. Milvus 2.6.x provides the `IVF_RABITQ` index type.
 
-这种查找方式能快速定位候选近邻，不需要像暴力搜索那样比较每个点。
+## Which Vector Index Algorithm Does Your Project Use?
 
-HNSW 属于 ANN 算法，目标是在速度和召回之间取舍，不保证 100% 召回。参数调整可以改变召回率与延迟，是否满足要求要看业务评测集和最终答案质量。
+This section uses the [Spring AI interview platform with a RAG knowledge base](https://javaguide.cn/zhuanlan/interview-guide.html) as an example.
 
-HNSW 常见调优参数有三个：
+The project uses PostgreSQL's pgvector extension with an HNSW index.
 
-- `m`：每个节点的最大连接数。`m` 越大，图越密，召回率越高，但构建时间和内存消耗也会上去。
-- `ef_construction`：索引构建时的搜索范围。值越大，索引质量越好，但构建越慢。
-- `ef_search`：查询时的搜索范围。这个运行时参数最重要，直接影响查询速度和召回率。
+Why HNSW? At the current scale, it offers a reasonable balance between retrieval speed, recall, and implementation complexity.
 
-pgvector 的 HNSW 默认参数是 `m = 16`、`ef_construction = 64`、`ef_search = 40`。可以按下面这个方向调：
+You can think of HNSW as a multi-level highway network.
 
-| 参数              | 常见范围 | 调大后的影响                             | 调优建议                                     |
-| ----------------- | -------- | ---------------------------------------- | -------------------------------------------- |
-| `m`               | 8-64     | 图更密，召回率更高，但内存和构建时间增加 | 先用默认值，召回不够再调到 24 或 32          |
-| `ef_construction` | 64-256+  | 索引质量更好，但构建更慢                 | 离线构建能接受更慢时再调大                   |
-| `ef_search`       | 40-200+  | 查询召回更高，但延迟增加                 | 最适合在线调参，用评测集找召回率和延迟平衡点 |
+![HNSW index architecture](../images/shared/rag-hnsw-architecture.png)
 
-一个实用做法是先固定 `m` 和 `ef_construction` 建好索引，再通过会话参数调 `ef_search`：
+HNSW has three core mechanisms.
+
+First, it is hierarchical. A node's highest level is determined by `level = floor(-ln(random()) * mL)`, where `mL` is the level multiplier. The number of nodes decreases exponentially at higher levels, forming a pyramid-like structure.
+
+Second, it uses greedy search. Retrieval starts at the top level and moves at each level to the neighbor closest to the query point.
+
+Third, it searches from coarse to fine. Upper layers quickly locate a semantic region, while lower layers find candidate neighbors more precisely.
+
+This approach quickly finds candidate neighbors without comparing every point as brute-force search does.
+
+HNSW is an ANN algorithm that trades speed for recall and does not guarantee 100% recall. Parameters affect both recall and latency; evaluate them with a business test set and final-answer quality.
+
+HNSW has three common tuning parameters:
+
+- `m`: Maximum number of connections per node. A larger `m` creates a denser graph and may improve recall, but increases construction time and memory use.
+- `ef_construction`: Search scope during index construction. Larger values can improve index quality but make construction slower.
+- `ef_search`: Search scope at query time. This runtime parameter has the greatest direct effect on query speed and recall.
+
+pgvector's HNSW defaults are `m = 16`, `ef_construction = 64`, and `ef_search = 40`. Use the following as a starting point for tuning:
+
+| Parameter         | Common range | Effect of increasing it                                                                | Tuning advice                                                        |
+| ----------------- | ------------ | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `m`               | 8–64         | Denser graph and potentially higher recall, with more memory use and construction time | Start with the default; try 24 or 32 if recall is insufficient.      |
+| `ef_construction` | 64–256+      | Better index quality but slower construction                                           | Increase it when slower offline construction is acceptable.          |
+| `ef_search`       | 40–200+      | Higher query recall but greater latency                                                | Tune online against an evaluation set to balance recall and latency. |
+
+A practical approach is to build the index with fixed `m` and `ef_construction`, then tune `ef_search` with a session parameter:
 
 ```sql
 SET hnsw.ef_search = 100;
 ```
 
-然后用 `EXPLAIN ANALYZE` 确认是否命中索引，再用一批人工标注问题对比不同 `ef_search` 下的召回率、延迟和最终答案质量。`ef_search` 不需要无限调大，达到业务可接受召回后就该停下来，不然只是用延迟和 CPU 换一点很小的收益。
+Use `EXPLAIN ANALYZE` to confirm that the index is used, then compare recall, latency, and final-answer quality across different `ef_search` values with a set of human-labeled questions. Do not increase `ef_search` indefinitely. Stop once recall meets the business requirement; otherwise, you may trade latency and CPU for only marginal gains.
 
-扩展性也要提前想。HNSW 很吃内存。如果未来数据规模增长到千万甚至亿级，或者写入吞吐要求更高，HNSW 的内存占用和构建成本可能会变成瓶颈。
+Plan for scale as well. HNSW is memory-intensive. If the dataset grows to tens or hundreds of millions of vectors, or write throughput requirements increase, memory use and index-construction costs may become bottlenecks.
 
-这时可以考虑 IVFFLAT。IVFFLAT 基于倒排索引思想，把向量空间聚类成多个桶，从而缩小搜索范围。也可以引入 Milvus 这类专业向量数据库，它们在分布式和大规模场景下更成熟。
+At that point, consider IVFFLAT, which clusters the vector space into buckets, following the inverted-index model, to narrow the search. You could also introduce a dedicated vector database such as Milvus, which is more mature for distributed and large-scale workloads.
 
-还有一个容易忽略的点：过滤条件。
+Another easily overlooked point is filtering.
 
-pgvector 的 HNSW 索引遇到 `WHERE` 过滤条件时，要重点看执行计划。近似索引通常会先按向量距离找候选，再应用过滤条件。如果过滤条件很严格，最终结果可能少于 Top-K 预期，某些查询形态下甚至会退化成更慢的扫描。
+When using `WHERE` filters with pgvector's HNSW index, inspect the query plan. Approximate indexes usually find vector candidates first and apply filters afterward. Strict filters can leave fewer results than the requested Top-K and, for some query patterns, may result in a slower scan.
 
-比如查询“返回 10 条相似文档中 `category='Java'` 的记录”，如果候选集中只有 3 条满足条件，那就只能返回 3 条。
+For example, if a query asks for 10 similar documents where `category='Java'` and only three candidates satisfy the filter, it can return only three results.
 
-常见处理方式有几种：
+Common approaches include:
 
-1. 增大候选集：设置更大的 `ef_search` 或 `LIMIT`，让更多候选进入过滤阶段。
-2. 预过滤（Pre-filtering）：先按元数据过滤，再做向量搜索，但可能导致索引失效，退化为暴力搜索。
-3. 部分索引（Partial Index）：PostgreSQL 支持带条件的 HNSW 索引，比如 `CREATE INDEX ... WHERE category = 'Java'`，但需要为常见过滤条件创建独立索引。
-4. 迭代索引扫描（Iterative Index Scan）：pgvector 0.8.0+ 支持过滤后结果不足时继续扫描更多索引，缓解“先 ANN 后过滤导致 Top-K 不足”的问题。但它仍然需要配合 `hnsw.max_scan_tuples`、`ivfflat.max_probes` 等参数控制成本。
+1. Increase the candidate set: raise `ef_search` or `LIMIT` so more candidates reach the filtering stage.
+2. Pre-filter: filter by metadata before vector search, though this may prevent index use and fall back to brute-force search.
+3. Partial index: PostgreSQL supports conditional HNSW indexes, such as `CREATE INDEX ... WHERE category = 'Java'`, but common filter conditions may require separate indexes.
+4. Iterative index scan: pgvector 0.8.0+ can scan more of the index when too few results remain after filtering, mitigating Top-K shortfalls from "ANN first, filter later." Control the cost with parameters such as `hnsw.max_scan_tuples` and `ivfflat.max_probes`.
 
-## HNSW 索引和 IVFFLAT 索引有什么区别？
+## How Do HNSW and IVFFLAT Indexes Differ?
 
-这两者的核心区别很简单：HNSW 靠图的连通性找邻居，IVFFLAT 靠聚类缩小搜索范围。
+The key difference is simple: HNSW uses graph connectivity to find neighbors, while IVFFLAT uses clustering to narrow the search.
 
-HNSW 会构建多层图结构。查询时像在高速公路上走，先在上层做大跨度跳跃，再到底层做局部精细搜索。它的优点是查询快，召回率通常较高且稳定；缺点是内存消耗大，除了原始向量，还要存大量节点连接关系，索引构建通常也更慢。
+HNSW builds a multi-layer graph. A query moves across longer distances in upper layers, then performs a more precise local search in lower layers, like traveling on a highway. It offers fast queries and typically high, stable recall. Its drawbacks are high memory use for both vectors and node connections, and generally slower index construction.
 
-IVFFLAT 用 K-Means 把向量空间切成多个桶。查询时先找最近的几个桶，只在桶内做暴力搜索。它的优点是内存更友好，结构简单，构建通常更快；缺点是在相同召回目标下，查询性能和稳定性通常不如 HNSW。如果数据分布变化明显，还可能需要重新训练聚类中心。
+IVFFLAT uses K-Means to divide the vector space into buckets. A query selects the nearest buckets, then performs a brute-force search within them. It uses memory more efficiently, has a simpler structure, and is usually faster to build. At the same recall target, however, query performance and stability are often lower than HNSW. Significant changes in data distribution may also require retraining the centroids.
 
-| 特性       | HNSW（图索引）                                | IVFFLAT（倒排聚类）                      |
-| ---------- | --------------------------------------------- | ---------------------------------------- |
-| 底层原理   | 层次化小世界图结构                            | 聚类 + 倒排桶结构                        |
-| 查询速度   | 通常更快，召回更稳定                          | 取决于 `lists` 和 `probes`               |
-| 内存消耗   | 较高，原始向量 + 图连接指针                   | 通常低于 HNSW                            |
-| 构建速度   | 较慢，需要逐个节点插入                        | 通常更快，但需要聚类训练                 |
-| 数据动态性 | 增量添加方便，大量更新 / 删除后需观察索引健康 | 数据分布变化明显时可能需要重建索引       |
-| 适用场景   | 中大规模、高召回、低延迟场景                  | 更关注内存和构建速度，可接受一定召回损失 |
+| Feature              | HNSW (graph index)                                                                         | IVFFLAT (inverted-file clustering)                               |
+| -------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| Underlying mechanism | Hierarchical small-world graph                                                             | Clustering and inverted lists                                    |
+| Query speed          | Usually faster with more stable recall                                                     | Depends on `lists` and `probes`                                  |
+| Memory use           | Higher due to vectors and graph connections                                                | Usually lower than HNSW                                          |
+| Build speed          | Slower; nodes are inserted individually                                                    | Usually faster, but requires clustering                          |
+| Data updates         | Incremental additions are convenient; monitor index health after many updates or deletions | May need to rebuild when data distribution changes significantly |
+| Typical use          | Medium to large datasets requiring high recall and low latency                             | Prioritize memory and build speed, accepting some recall loss    |
 
-怎么选？
+Which should you choose?
 
-追求低延迟和高召回，并且服务器内存足够，优先 HNSW。更关注内存、构建速度，能接受一定召回损失，并愿意调 `lists` / `probes`，可以考虑 IVFFLAT。
+Prefer HNSW when you need low latency and high recall and have enough server memory. Consider IVFFLAT when memory and build speed matter more, some recall loss is acceptable, and you are prepared to tune `lists` and `probes`.
 
-## 有哪些向量数据库？
+## What Vector Databases Are Available?
 
-向量数据库选型没有银弹，适合项目的才是好方案。
+There is no one-size-fits-all vector database. The right choice depends on the project.
 
-### 传统数据库扩展
+### Traditional Database Extensions
 
-代表方案包括 PostgreSQL + pgvector，以及 MongoDB Atlas Vector Search。
+Examples include PostgreSQL + pgvector and MongoDB Atlas Vector Search.
 
-这类方案的优势是技术栈统一，不需要额外引入一套数据库系统；向量数据和业务数据可以在同一事务里管理；团队已有 SQL 经验可以复用；也方便把 SQL 过滤条件和向量搜索组合起来。
+These solutions keep the technology stack unified, avoid introducing another database system, and allow vector and business data to be managed in the same transaction. Teams can reuse their SQL experience and combine SQL filters with vector search.
 
-它适合项目初期或中小型项目。尤其是业务数据和向量数据需要强一致性、能在同一个事务里管理时，PostgreSQL + pgvector 的优势很明显。对已经在用 PostgreSQL 的团队来说，学习和运维成本都低。
+They suit early-stage or small-to-medium projects. PostgreSQL + pgvector is especially useful when business and vector data require strong consistency and must be managed in a single transaction. Teams already using PostgreSQL also benefit from lower learning and operations costs.
 
-### 搜索引擎演进
+### Search Engine Extensions
 
-代表方案是 Elasticsearch 和 OpenSearch。
+Examples include Elasticsearch and OpenSearch.
 
-这类方案的优势是混合搜索能力强，可以把 BM25 关键词检索和向量语义搜索结合起来。它也保留了传统搜索引擎在长文本、分词、高亮、聚合分析上的优势，并且分布式架构成熟。
+These systems provide strong hybrid search, combining BM25 keyword retrieval with vector semantic search. They also retain traditional search-engine strengths in long-text handling, tokenization, highlighting, and aggregations, with mature distributed architectures.
 
-如果你的业务本来就依赖关键词检索，比如电商搜索、文档检索、复杂过滤和聚合分析，或者团队已经有 ES 技术栈，那么复用 ES / OpenSearch 的向量能力会比较自然。
+If your business already depends on keyword search, such as e-commerce or document search with complex filtering and aggregations, or your team already uses Elasticsearch, reusing the vector capabilities in Elasticsearch or OpenSearch is a natural option.
 
-### 原生专业向量数据库
+### Purpose-Built Vector Databases
 
-代表方案包括 Milvus、Weaviate、Qdrant。
+Examples include Milvus, Weaviate, and Qdrant.
 
-Milvus 功能比较全面，社区也大；Weaviate 内置 AI 模块，支持 GraphQL 查询，易用性不错；Qdrant 用 Rust 编写，内存效率高，过滤能力也比较强。
+Milvus is feature-rich and has a large community. Weaviate includes AI modules, supports GraphQL queries, and is easy to use. Qdrant is written in Rust, with efficient memory use and strong filtering capabilities.
 
-这类数据库专门为向量检索优化，通常支持多种索引算法，比如 HNSW、IVF、LSH 等，在分区、多租户、动态更新、距离度量方面也更专业。
+These databases are optimized for vector retrieval and typically support multiple index algorithms, such as HNSW, IVF, and LSH. They also provide specialized features for partitioning, multi-tenancy, dynamic updates, and distance metrics.
 
-当向量规模达到亿级甚至更高，或者对 QPS 和延迟要求很苛刻时，原生向量数据库通常会比 pgvector 更合适。代价也很明确：多一套系统，就多一套运维、监控、备份和学习成本。
+Purpose-built vector databases may be a better fit than pgvector when the dataset reaches hundreds of millions of vectors or QPS and latency requirements are strict. The tradeoff is another system to operate, monitor, back up, and learn.
 
-### 云托管向量数据库服务
+### Managed Vector Database Services
 
-代表方案包括 Pinecone、Zilliz Cloud、Weaviate Cloud 等。
+Examples include Pinecone, Zilliz Cloud, and Weaviate Cloud.
 
-它们的优势是运维负担低，上线快，通常提供自动扩缩容和高可用 SLA。预算充足、团队不想自运维时，这类方案很有吸引力。
+These services reduce operational work, speed up deployment, and often provide automatic scaling and high-availability SLAs. They are attractive when the budget allows and the team prefers not to operate the infrastructure.
 
-不过“托管”不等于不用管。索引参数、召回评测、权限隔离、成本监控还是要自己负责。
+However, managed does not mean maintenance-free. You are still responsible for index parameters, recall evaluation, access isolation, and cost monitoring.
 
-## 向量数据库怎么选？
+## How Do You Choose a Vector Database?
 
-可以先按下面这张图粗略判断：
+Use this diagram as a rough guide:
 
 ```mermaid
 flowchart TB
@@ -296,90 +296,90 @@ flowchart TB
     classDef infra fill:#9B59B6,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef success fill:#4CA497,color:#FFFFFF,stroke:none,rx:10,ry:10
 
-    Start["向量数据库选型"]:::gateway
-    Ops{"不想自运维？"}:::gateway
+    Start["Choose a vector database"]:::gateway
+    Ops{"Prefer a managed service?"}:::gateway
     Cloud["Pinecone / Zilliz Cloud<br/>Weaviate Cloud"]:::infra
-    Existing{"已有 PG / ES？"}:::gateway
-    ExistingStack["pgvector 或 ES 向量检索"]:::primaryDB
-    Scale{"需要分布式扩展<br/>或专用向量能力？"}:::gateway
+    Existing{"Already use PostgreSQL or Elasticsearch?"}:::gateway
+    ExistingStack["pgvector or Elasticsearch vector search"]:::primaryDB
+    Scale{"Need distributed scaling<br/>or specialized vector features?"}:::gateway
     Pro["Milvus / Qdrant / Weaviate"]:::search
-    Hybrid["混合检索优先<br/>ES / Weaviate / pgvector + pg_bm25"]:::success
+    Hybrid["Prioritize hybrid search<br/>Elasticsearch / Weaviate / pgvector + pg_bm25"]:::success
 
     Start --> Ops
-    Ops -->|是| Cloud
-    Ops -->|否| Existing
-    Existing -->|是| ExistingStack
-    Existing -->|否| Scale
-    Scale -->|是| Pro
-    Scale -->|否| Hybrid
+    Ops -->|Yes| Cloud
+    Ops -->|No| Existing
+    Existing -->|Yes| ExistingStack
+    Existing -->|No| Scale
+    Scale -->|Yes| Pro
+    Scale -->|No| Hybrid
 
     linkStyle default stroke-width:2px,stroke:#333333,opacity:0.8
 ```
 
-选型时先看现有技术栈和业务约束：
+Start with your existing stack and business constraints:
 
-- 已有 PostgreSQL，并且单机资源、写入吞吐、过滤查询和延迟能够满足评测目标，可以先用 pgvector。
-- 已有 Elasticsearch / OpenSearch，且业务强依赖关键词、分词、高亮和聚合，可以复用其向量检索并组合 BM25。
-- 需要分布式扩展、独立资源隔离、多租户或更多专用索引能力时，再评估 Milvus、Qdrant、Weaviate。
-- 团队不准备自建集群时，可以比较 Pinecone、Zilliz Cloud、Weaviate Cloud 的价格、数据驻留和 SLA。
+- If you already use PostgreSQL and a single instance meets evaluation targets for resources, write throughput, filtered queries, and latency, start with pgvector.
+- If you already use Elasticsearch or OpenSearch and depend on keyword search, tokenization, highlighting, and aggregations, reuse its vector search and combine it with BM25.
+- Evaluate Milvus, Qdrant, or Weaviate when you need distributed scaling, isolated resources, multi-tenancy, or specialized index features.
+- If your team does not plan to operate a cluster, compare the pricing, data residency, and SLAs of Pinecone, Zilliz Cloud, and Weaviate Cloud.
 
-数据条数只能用于估算容量，不能单独决定产品。相同的一百万条向量，在维度、过滤比例、QPS、Top-K 和硬件不同的情况下，结果会相差很大。
+Vector count is useful for capacity estimates, but should not determine the product by itself. Results for the same one million vectors can differ significantly depending on dimensions, filter selectivity, QPS, Top-K, and hardware.
 
-## 你为什么选择 PostgreSQL + pgvector？
+## Why Choose PostgreSQL + pgvector?
 
-这里以 [《SpringAI 智能面试平台+RAG 知识库》](https://javaguide.cn/zhuanlan/interview-guide.html)项目为例。这个项目需要同时存结构化数据，比如简历、面试记录，也要存向量数据，也就是文档 Embedding。
+This section uses the [Spring AI interview platform with a RAG knowledge base](https://javaguide.cn/zhuanlan/interview-guide.html) as an example. The project stores structured data, such as resumes and interview records, as well as document Embeddings.
 
-方案对比如下：
+The options compare as follows:
 
-| 方案                    | 优点                     | 主要代价                   | 更适合的条件                                       |
-| ----------------------- | ------------------------ | -------------------------- | -------------------------------------------------- |
-| PostgreSQL + pgvector   | 一套数据库管理，运维简单 | 向量负载会与业务查询争资源 | 已使用 PostgreSQL，实测延迟、召回和容量满足要求    |
-| PostgreSQL + Milvus     | 业务数据与向量负载分离   | 多一个组件，运维复杂度增加 | 需要独立扩展向量检索，同时保留 PostgreSQL 事务数据 |
-| Pinecone / Zilliz Cloud | 托管服务，减少集群运维   | 成本、数据驻留和供应商依赖 | 团队更看重上线速度，并能接受对应合规与成本约束     |
+| Option                  | Advantage                                     | Main tradeoff                                                | Best suited for                                                                      |
+| ----------------------- | --------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| PostgreSQL + pgvector   | One database to manage and simpler operations | Vector workloads compete with business queries for resources | Already use PostgreSQL, and measured latency, recall, and capacity meet requirements |
+| PostgreSQL + Milvus     | Separates business data from vector workloads | Adds a component and operational complexity                  | Need to scale vector retrieval separately while retaining PostgreSQL transactions    |
+| Pinecone / Zilliz Cloud | Managed service with less cluster operations  | Cost, data residency, and vendor dependency                  | Prioritize deployment speed and can accept related compliance and cost constraints   |
 
-选择 pgvector 的理由主要有几个。
+There are several reasons to choose pgvector.
 
-第一，架构简单。不引入额外组件，部署和运维复杂度低。
+First, the architecture is simple. No extra component is needed, so deployment and operations remain straightforward.
 
-第二，性能够用。HNSW 索引的速度和召回率能满足当前业务要求。
+Second, performance is sufficient. HNSW index speed and recall meet current business requirements.
 
-第三，事务一致性好。向量数据和业务数据在同一个数据库里，天然支持事务。
+Third, transactional consistency is strong. Vector and business data share a database and can use the same transactions.
 
-第四，SQL 查询方便。可以结合 `WHERE` 条件过滤，但要注意过滤条件可能影响向量索引命中，所以必须检查执行计划。
+Fourth, SQL queries are convenient. They can include `WHERE` filters, but filters may affect vector index usage, so always inspect the query plan.
 
 ```sql
--- pgvector 余弦相似度搜索示例
--- <=> 是余弦距离运算符（0 = 完全相同，2 = 完全相反）
--- 余弦相似度 = 1 - 余弦距离
+-- pgvector cosine similarity search example
+-- <=> is the cosine distance operator (0 = identical, 2 = opposite)
+-- cosine similarity = 1 - cosine distance
 SELECT content, 1 - (embedding <=> $1) as cosine_similarity
 FROM vector_store
 WHERE metadata->>'category' = 'Java'
-ORDER BY embedding <=> $1  -- 按距离升序，越小越相似
+ORDER BY embedding <=> $1  -- Ascending distance; smaller means more similar.
 LIMIT 5;
 
--- ⚠️ 关键前提：查询时使用的距离运算符必须与创建 HNSW 索引时指定的
--- operator class（例如 vector_cosine_ops）严格保持一致，否则查询将
--- 无法命中索引，直接退化为全表扫描。
--- 验证方式：EXPLAIN ANALYZE 检查执行计划是否包含 Index Scan。
+-- ⚠️ Important: The query distance operator must match the operator class
+-- specified when creating the HNSW index (for example, vector_cosine_ops).
+-- Otherwise, the query cannot use the index and falls back to a full table scan.
+-- Verify with EXPLAIN ANALYZE and check for an Index Scan in the query plan.
 ```
 
-## pgvector 实践细节有哪些？
+## What Are the Practical Details of Using pgvector?
 
-pgvector 的核心不是“能不能存向量”，而是索引、距离度量和查询语句必须配套。
+The key to pgvector is not just storing vectors; the index, distance metric, and query must work together.
 
-### HNSW 索引创建示例
+### Create an HNSW Index
 
 ```sql
--- embedding 类型示例：vector(1536)
+-- Example Embedding type: vector(1536)
 CREATE INDEX idx_document_embedding_hnsw
 ON document_chunk
 USING hnsw (embedding vector_cosine_ops)
 WITH (m = 16, ef_construction = 64);
 ```
 
-如果查询用的是 `<=>` 余弦距离，索引就要使用 `vector_cosine_ops`。如果查询用 `<->`，索引就要改成 `vector_l2_ops`。
+If the query uses cosine distance (`<=>`), the index must use `vector_cosine_ops`. If it uses `<->`, use `vector_l2_ops` instead.
 
-### IVFFLAT 索引创建示例
+### Create an IVFFLAT Index
 
 ```sql
 CREATE INDEX idx_document_embedding_ivfflat
@@ -387,73 +387,73 @@ ON document_chunk
 USING ivfflat (embedding vector_cosine_ops)
 WITH (lists = 100);
 
--- 查询时控制扫描多少个聚类桶
+-- Control how many cluster lists are scanned at query time.
 SET ivfflat.probes = 10;
 ```
 
-IVFFLAT 需要先有一定数据量再建索引，因为它要先聚类。pgvector 文档给出的起步建议是：数据不超过 100 万行时可先取 `rows / 1000`，超过 100 万行时可先取 `sqrt(rows)`；这只是初始值，仍要用业务数据调优。`probes` 越大，通常召回率越高，查询也越慢。
+IVFFLAT needs a sufficient amount of data before index creation because it must cluster the vectors. pgvector's documentation suggests starting with `rows / 1000` for up to one million rows and `sqrt(rows)` above one million. These are only starting values; tune with business data. Increasing `probes` usually improves recall but slows queries.
 
-### 索引维护
+### Index Maintenance
 
-大量删除或更新后，向量索引可能出现膨胀、无效数据累积，甚至召回和延迟波动。可以在业务低峰期做 `VACUUM`、`REINDEX`，同时观察执行计划和业务评测集。
+After many deletions or updates, a vector index may bloat, accumulate dead entries, or show fluctuations in recall and latency. Run `VACUUM` and `REINDEX` during off-peak hours, and monitor query plans and business evaluation sets.
 
-`VACUUM` 仍然重要，但它不是万能的召回率修复工具。向量索引的健康状况，要通过查询延迟、召回率评测和执行计划一起看。
+`VACUUM` remains important, but it is not a universal fix for recall. Assess vector index health using query latency, recall evaluations, and query plans together.
 
-每次调整距离运算符、operator class、过滤条件或索引参数后，都要用 `EXPLAIN ANALYZE` 检查是否命中索引。
+After changing a distance operator, operator class, filter, or index parameter, use `EXPLAIN ANALYZE` to verify index usage.
 
-### 版本特性
+### Version Features
 
-- pgvector 0.5+ 支持 HNSW 索引。
-- pgvector 0.7+ 增加了 `halfvec`、`sparsevec`、`bit` 等类型和更多距离能力，适合进一步压缩存储或处理稀疏向量。
-- pgvector 0.8.0+ 支持 iterative index scans，可以在过滤后结果不足时继续扫描更多索引，缓解 Top-K 不足问题。生产环境建议固定版本，升级前跑回归评测。
+- pgvector 0.5+ supports HNSW indexes.
+- pgvector 0.7+ adds types such as `halfvec`, `sparsevec`, and `bit`, along with additional distance operations for reducing storage or handling sparse vectors.
+- pgvector 0.8.0+ supports iterative index scans, which scan more of the index when filtering leaves too few results and help address Top-K shortfalls. Pin the production version and run regression evaluations before upgrading.
 
-## 为什么不选择 MySQL 搭配向量数据库？
+## Why Not Use MySQL with a Vector Database?
 
-PostgreSQL 在这类场景里最大的优势，是扩展能力强。开发者可以在不改数据库内核的情况下，通过扩展补齐很多能力。
+PostgreSQL's main advantage in these scenarios is its extensibility. Extensions add capabilities without modifying the database kernel.
 
-比如：
+For example:
 
-- AI 向量检索：pgvector 扩展，和 PostgreSQL 原生生态结合紧密，支持 ACID、JOIN、备份恢复和 SQL 过滤，适合中小规模、希望简化技术栈的 RAG 项目。
-- 全文搜索：内置 `tsvector` 能满足基础需求，更高级的可以考虑 pg_bm25。
-- 时序数据：TimescaleDB。
-- 地理信息：PostGIS。
+- **AI vector retrieval**: The pgvector extension integrates closely with PostgreSQL and supports ACID transactions, JOINs, backup and recovery, and SQL filtering. It suits small-to-medium RAG projects that want a simpler stack.
+- **Full-text search**: Built-in `tsvector` supports basic needs; consider pg_bm25 for more advanced search.
+- **Time-series data**: TimescaleDB.
+- **Geospatial data**: PostGIS.
 
-这种“一套 PG 承担多种基础能力”的模式，对中小规模项目很友好。先用 PostgreSQL 简化技术栈，等数据规模、QPS、多租户隔离要求继续上升，再拆出 Elasticsearch、Milvus、Qdrant、Weaviate 等专业组件，会更稳。
+This approach lets one PostgreSQL instance provide several foundational capabilities, which is convenient for small-to-medium projects. Start with PostgreSQL to simplify the stack, then add specialized components such as Elasticsearch, Milvus, Qdrant, or Weaviate when data volume, QPS, or tenant isolation requirements grow.
 
-MySQL 这边要分版本看。MySQL 8.x 系列，包括 8.4 LTS，没有官方 `VECTOR` 数据类型。MySQL 9.x 已经引入 `VECTOR` 数据类型和相关函数，但从官方能力看，它更偏向向量存储和基础函数支持，还不是成熟的生产级 ANN 检索方案。
+MySQL capabilities depend on the version. The MySQL 8.x series, including 8.4 LTS, does not have an official `VECTOR` data type. MySQL 9.x introduced the `VECTOR` type and related functions, but its documented capabilities focus on vector storage and basic functions; it is not yet a mature production ANN retrieval solution.
 
-如果项目已经深度绑定 MySQL，可以继续用 MySQL 存业务数据，再搭配 pgvector、Milvus、Qdrant、Weaviate、Elasticsearch / OpenSearch 等外部向量检索组件。没必要为了 RAG 强行把所有东西塞进 MySQL。
+If the project is already closely tied to MySQL, continue using it for business data and pair it with an external vector retrieval component such as pgvector, Milvus, Qdrant, Weaviate, Elasticsearch, or OpenSearch. There is no need to force all RAG data into MySQL.
 
-![VECTOR 列不能用作任何类型的键，包括主键、外键、唯一键和分区键](../images/shared/mysql9-vector-cannot-be-used-as-any-type-of-key.png)
+![A VECTOR column cannot be used as a key, including a primary, foreign, unique, or partition key](../images/shared/mysql9-vector-cannot-be-used-as-any-type-of-key.png)
 
-关于 MySQL 和 PostgreSQL 的详细对比，可以参考我写的这篇文章：[MySQL vs PostgreSQL，如何选择？](https://mp.weixin.qq.com/s/APWD-PzTcTqGUuibAw7GGw)。
+For a detailed comparison of MySQL and PostgreSQL, see [MySQL vs PostgreSQL: Which Should You Choose?](https://mp.weixin.qq.com/s/APWD-PzTcTqGUuibAw7GGw).
 
 <!-- @include: @rag-project.snippet.md -->
 
-## 总结
+## Summary
 
-向量存储和向量索引是 RAG 系统绕不开的基础设施。选型选错了，后面很容易变成“检索慢、召回差、成本高”。
+Vector storage and indexing are essential RAG infrastructure. A poor choice can lead to slow retrieval, low recall, and high costs.
 
-没有专门向量索引时，大规模高维向量 Top-K 检索通常只能全表扫描。ANN 索引通过牺牲一点精确性，在召回率、延迟和资源消耗之间做工程取舍。
+Without a dedicated vector index, Top-K retrieval over large collections of high-dimensional vectors usually requires a full table scan. ANN indexes trade some exactness to balance recall, latency, and resource use.
 
-主流索引算法里，Flat 是暴力搜索，适合小规模、低 QPS、离线评测和召回基准；HNSW 是图索引，查询快、召回高，但内存消耗大；IVFFLAT 是倒排聚类，内存更友好、构建较快，但需要调参并接受一定召回损失；IVF-PQ 通过乘积量化支持海量数据，但会带来精度损失。
+Among common index algorithms, Flat performs brute-force search and suits small datasets, low QPS, offline evaluation, and recall baselines. HNSW is a graph index with fast queries and high recall, but uses more memory. IVFFLAT uses inverted-file clustering, with lower memory use and faster construction, but requires tuning and may reduce recall. IVF-PQ supports very large datasets through product quantization, at the cost of accuracy.
 
-HNSW 更适合低延迟和高召回，IVFFLAT 更适合内存和构建成本敏感的场景。数据库选型上，PostgreSQL + pgvector 适合中小规模，Milvus、Qdrant、Weaviate 更适合大规模或专业向量检索，Pinecone、Zilliz Cloud 适合低运维场景。
+HNSW suits low-latency, high-recall workloads; IVFFLAT suits workloads sensitive to memory and construction costs. PostgreSQL + pgvector is a good fit for small-to-medium datasets. Milvus, Qdrant, and Weaviate suit large-scale or specialized vector retrieval, while Pinecone and Zilliz Cloud suit teams seeking lower operational overhead.
 
-面试里常问这些：
+Common interview questions include:
 
-- 什么是 Embedding？为什么需要把文本转成向量？
-- RAG 场景为什么需要向量数据库？
-- 余弦相似度和欧氏距离有什么区别？RAG 场景下用哪个？
-- ANN 算法为什么可以接受不是 100% 精确的结果？
-- 有哪些向量索引算法？各自优缺点是什么？
-- HNSW 和 IVFFLAT 有什么区别？
-- HNSW 的 `ef_search` 参数怎么调？调大和调小分别会怎样？
-- 向量数据库和传统数据库最核心的区别是什么？
-- 如果向量数据从 100 万增长到 1 亿，架构上需要做什么调整？
-- pgvector 的 HNSW 索引在什么情况下会失效或退化为更慢的扫描？
-- 为什么选择 PostgreSQL + pgvector？
+- What is an Embedding, and why convert text into vectors?
+- Why does RAG need a vector database?
+- How do cosine similarity and Euclidean distance differ, and which is suitable for RAG?
+- Why can ANN algorithms return results that are not 100% exact?
+- What vector index algorithms are available, and what are their tradeoffs?
+- How do HNSW and IVFFLAT differ?
+- How do you tune HNSW's `ef_search`, and what happens when you increase or decrease it?
+- What is the key difference between a vector database and a traditional database?
+- How should the architecture change as vector data grows from one million to 100 million entries?
+- When can a pgvector HNSW index be bypassed or degrade into a slower scan?
+- Why choose PostgreSQL + pgvector?
 
-动手时建议先把 HNSW 的图结构、IVF 的聚类原理理解清楚，再用 pgvector 或 Milvus 搭一个最小 Demo，比较不同索引参数下的召回率和延迟。`ef_search`、`nprobe` 这些参数不要凭感觉调，最好拿真实业务问题做评测。
+For hands-on practice, first understand the HNSW graph and IVF clustering. Then build a small demo with pgvector or Milvus and compare recall and latency across index parameters. Do not tune `ef_search` or `nprobe` by intuition; evaluate them against real business queries.
 
-向量数据库选型和索引调优，直接决定 RAG 系统能不能在生产环境站稳脚跟。选错了，就是检索慢、召回差、成本炸三连。
+Vector database selection and index tuning have a direct impact on whether a RAG system can perform reliably in production. The wrong choice can mean slow retrieval, poor recall, and runaway costs.

@@ -1,194 +1,188 @@
 ---
-title: 分布式配置中心详解：Apollo、Nacos、Spring Cloud Config 与 K8s ConfigMap 对比
-description: 分布式配置中心原理与选型详解，涵盖 Apollo、Nacos、Spring Cloud Config、Kubernetes ConfigMap 的架构差异、配置推送机制、灰度发布、高可用设计和面试高频考点。
-category: 分布式
+title: "Distributed Configuration Centers: Apollo, Nacos, Spring Cloud Config, and Kubernetes ConfigMap"
+description: "A guide to configuration center design and selection, comparing Apollo, Nacos, Spring Cloud Config, and Kubernetes ConfigMap. Covers delivery, staged releases, and availability."
+category: Distributed Systems
 keywords:
-  - 配置中心
+  - Configuration Centers
 head:
   - - meta
     - name: keywords
-      content: 配置中心,分布式配置中心,Apollo,Nacos,Spring Cloud Config,Kubernetes ConfigMap,配置推送,长轮询,灰度发布,配置中心面试题
+      content: configuration center,Apollo,Nacos,Spring Cloud Config,Kubernetes ConfigMap,configuration delivery,long polling,staged rollout,interview questions
 ---
 
-## 为什么要用配置中心？
+## Why use a configuration center?
 
-微服务架构下，应用被拆分为大量独立部署的服务，每个服务都有自己的配置（服务地址、数据库参数、功能开关等）。配置项数量会随着服务数量、环境数量和集群数量一起增长。传统配置文件方式存在以下问题：
+In a microservice architecture, independently deployed services each have configuration such as service addresses, database settings, and feature flags. The number of settings grows with the number of services, environments, and clusters. Traditional configuration files have several limitations:
 
-- **修改需重启**：无论配置在代码库还是外部文件中，很多应用都需要重启进程才能让新配置生效。
-- **与发版耦合**：如果配置放在代码库中，配置变更往往要跟代码发版绑定，难以独立灰度和回滚。
-- **安全性不足**：敏感配置（数据库密码、API Key）直接写在代码库中容易泄露。
-- **缺乏权限控制**：无法对配置的查看、修改、发布等操作进行细粒度权限管控。
-- **配置分散难管理**：多环境（开发/测试/生产）、多集群的配置分散在各处，难以统一维护。
+- **Restarts:** Many applications must restart to apply changes, whether settings are in a repository or external file.
+- **Coupled releases:** Configuration in a code repository often ships with application releases, making independent staged rollout and rollback harder.
+- **Security:** Secrets such as database passwords and API keys can leak when stored in source control.
+- **Access control:** Viewing, editing, and publishing configuration cannot easily be governed separately.
+- **Scattered settings:** Configuration across development, test, production, and multiple clusters is hard to manage centrally.
 
-此外，配置中心通常提供以下增强能力：
+A configuration center commonly adds:
 
-- **版本管理**：记录每次配置变更的修改人、修改时间、修改内容，支持一键回滚。
-- **灰度发布**：先将配置推送给部分实例验证，降低变更风险（Apollo、Nacos 1.1.0+ 支持）。
+- **Versioning:** Record who changed what and when, and support rollback.
+- **Staged rollout:** Deliver changes to a subset of instances first to reduce risk. Apollo and Nacos 1.1.0+ support this.
 
-![Apollo 配置中心](./images/shared/view-release-history.png)
+![Apollo release history](./images/shared/view-release-history.png)
 
-当然，不是所有系统都需要上配置中心。单体应用、单环境、配置项很少且变更频率低的场景，`application-{profile}.yml`、环境变量或 Kubernetes ConfigMap + 滚动重启通常就够了。配置中心会带来额外的运维成本、故障域和排查链路，小团队或低频配置场景不必过度工程化。
+Not every system needs a configuration center. A monolith with one environment, few settings, and infrequent changes may be well served by `application-{profile}.yml`, environment variables, or Kubernetes ConfigMap with rolling restarts. A configuration center adds operational cost, a failure domain, and another troubleshooting dependency; small teams and infrequent changes may not justify it.
 
-从分布式系统视角看，配置中心属于典型控制面：它负责决定“当前应该使用哪一份配置”，客户端负责拉取、缓存、监听和刷新。配置发布、灰度、回滚、客户端本地快照，处理的都是集中决策和客户端容灾之间的取舍。这个取舍可以和 [分布式协调详解](./protocol/centralized-and-decentralized.md) 放在一起理解。
+A configuration center is part of the distributed system's control plane: it decides which configuration should be used, while clients fetch, cache, watch, and refresh it. Releases, staged rollouts, rollback, and local snapshots balance centralized decisions with client resilience. See [Distributed Coordination](./protocol/centralized-and-decentralized.md) for the broader trade-offs.
 
-配置中心还经常和 [RPC](./rpc/) 以及 [API 网关](./api-gateway.md) 一起出现：RPC 框架需要拿到服务地址、超时、重试、降级等治理配置，网关也可能依赖配置中心做动态路由和灰度规则。它们解决的问题不同，但在真实微服务体系里通常会连在同一条链路上。
+Configuration centers also appear alongside [RPC](./rpc/) and [API gateways](./api-gateway.md). RPC frameworks need governance settings such as addresses, timeouts, retries, and fallbacks; gateways may use dynamic routes and staged rollout rules. These components have different roles but often form part of the same microservice workflow.
 
-## 常见的配置中心有哪些？如何选择？
+## Common options and selection
 
-| 方案                                                                | 状态       | 特点                                   |
-| ------------------------------------------------------------------- | ---------- | -------------------------------------- |
-| [Spring Cloud Config](https://cloud.spring.io/spring-cloud-config/) | 活跃       | Spring 生态原生支持，基于 Git 存储     |
-| [Nacos](https://github.com/alibaba/nacos)                           | 活跃       | 阿里开源，配置中心 + 服务发现二合一    |
-| [Apollo](https://github.com/apolloconfig/apollo)                    | 活跃       | 携程开源，配置管理、权限和审计能力较强 |
-| K8s ConfigMap                                                       | 活跃       | Kubernetes 原生方案                    |
-| Disconf / Qconf                                                     | 长期不活跃 | 不建议新项目使用                       |
+| Option                                                              | Status        | Characteristics                                                     |
+| ------------------------------------------------------------------- | ------------- | ------------------------------------------------------------------- |
+| [Spring Cloud Config](https://cloud.spring.io/spring-cloud-config/) | Active        | Native Spring integration; Git-backed                               |
+| [Nacos](https://github.com/alibaba/nacos)                           | Active        | Alibaba open source; configuration and service discovery            |
+| [Apollo](https://github.com/apolloconfig/apollo)                    | Active        | Ctrip open source; strong configuration, access, and audit features |
+| Kubernetes ConfigMap                                                | Active        | Native Kubernetes option                                            |
+| Disconf / Qconf                                                     | Long inactive | Not recommended for new projects                                    |
 
-**选型建议**：
+**Selection guidance:**
 
-- 只需配置中心 → **Apollo**（管理能力更细）或 **Nacos**（单机启动更轻）
-- 需要配置中心 + 服务发现 → **Nacos**
-- Spring Cloud 体系且追求简单 → **Spring Cloud Config**
-- Kubernetes 环境 → **K8s ConfigMap 挂载 + 应用层文件监听**。ConfigMap 以 Volume 挂载时会被 kubelet 周期同步，最终可见时间取决于 kubelet 同步周期和本地缓存传播方式；环境变量方式和 `subPath` 挂载不会自动更新。热重载可以用 inotify 监听挂载文件，也可以用 Spring Cloud Kubernetes 通过 K8s Watch API 监听 ConfigMap 变更并触发刷新。
+- Configuration management alone: **Apollo** for finer management controls or **Nacos** for a lighter standalone startup.
+- Configuration and service discovery: **Nacos**.
+- A simple Spring Cloud deployment: **Spring Cloud Config**.
+- Kubernetes: mount a **ConfigMap volume** and watch files at the application layer. Kubelet periodically synchronizes mounted ConfigMaps; visibility depends on its sync interval and cache propagation. Environment variables and `subPath` mounts do not update automatically. Hot reload can use inotify or Spring Cloud Kubernetes watching ConfigMap changes through the Kubernetes Watch API.
 
-**Apollo vs Nacos vs Spring Cloud Config**
+### Apollo vs. Nacos vs. Spring Cloud Config
 
-> **版本说明**：以下对比基于 Apollo 2.x、Nacos 2.x、Spring Cloud Config 4.x/5.x。Spring Boot 3 体系通常对应 Spring Cloud Config 4.x，Spring Boot 4 体系对应更新的 Spring Cloud 2025.x 发行列车；如果仍在 Spring Boot 2 体系，对应的是 Spring Cloud Config 3.x。
+> **Versions:** This comparison covers Apollo 2.x, Nacos 2.x, and Spring Cloud Config 4.x/5.x. Spring Boot 3 typically uses Spring Cloud Config 4.x; Spring Boot 4 uses a newer Spring Cloud 2025.x release train. Spring Boot 2 generally uses Spring Cloud Config 3.x.
 
-| 功能点       | Apollo                                     | Nacos                                        | Spring Cloud Config                  |
-| ------------ | ------------------------------------------ | -------------------------------------------- | ------------------------------------ |
-| 配置界面     | 支持（权限、审计、发布流程较完整）         | 支持                                         | 无（通常通过 Git 平台操作）          |
-| 配置实时生效 | 支持（HTTP 长轮询，通常秒级感知）          | 支持（gRPC 变更通知 + 客户端拉取）           | 半实时（需触发 refresh 或 Bus 广播） |
-| 版本管理     | 原生支持                                   | 原生支持                                     | 依赖 Git                             |
-| 权限管理     | 支持（应用/命名空间/环境等多层粒度）       | 支持                                         | 依赖 Git 平台                        |
-| 灰度发布     | 支持（规则更细）                           | 支持（1.1.0+，能力相对基础）                 | 不支持                               |
-| 配置回滚     | 支持                                       | 支持                                         | 依赖 Git                             |
-| 告警通知     | 支持                                       | 支持                                         | 不支持                               |
-| 多语言       | 支持（Open API / 多语言客户端）            | 支持（Open API / 多语言客户端）              | 更偏 Spring 应用                     |
-| 多环境       | 支持（通常物理隔离）                       | 支持（多用 Namespace 逻辑隔离）              | 需配合多 Git 仓库                    |
-| 依赖组件     | MySQL（注册中心默认内嵌在 Config Service） | 外部 MySQL（生产推荐）/ 嵌入式 Derby + JRaft | Git + 可选消息队列                   |
+| Capability     | Apollo                                                | Nacos                                                                | Spring Cloud Config                          |
+| -------------- | ----------------------------------------------------- | -------------------------------------------------------------------- | -------------------------------------------- |
+| Management UI  | Yes; detailed permissions, audit, and release process | Yes                                                                  | No; usually managed through Git hosting      |
+| Live updates   | HTTP long polling, typically detected within seconds  | gRPC change notification followed by client fetch                    | Near real time with refresh or Bus broadcast |
+| Versions       | Built in                                              | Built in                                                             | Git                                          |
+| Permissions    | Application, namespace, environment, and other levels | Yes                                                                  | Git platform                                 |
+| Staged rollout | Yes; detailed rules                                   | Yes, since 1.1.0; more basic                                         | No                                           |
+| Rollback       | Yes                                                   | Yes                                                                  | Git                                          |
+| Alerts         | Yes                                                   | Yes                                                                  | No                                           |
+| Languages      | Open API and multilingual clients                     | Open API and multilingual clients                                    | Primarily Spring applications                |
+| Environments   | Usually physically isolated                           | Usually logically isolated by Namespace                              | Multiple Git repositories                    |
+| Dependencies   | MySQL; registry embedded in Config Service by default | External MySQL recommended for production, or embedded Derby + JRaft | Git and optional message queue               |
 
-**深度对比**：
+**Further comparison:**
 
-1. **Apollo**：在权限模型、发布审计、发布前 diff、灰度规则等管理特性上更细，适合对配置治理要求较高的团队。多环境（FAT/UAT/PROD）物理隔离场景下，需为每个环境部署 Config Service、Admin Service 和独立数据库，运维门槛中等偏高
-2. **Nacos**：配置 + 注册中心二合一，部署简单（单机模式仅一个 Jar 包）。生产集群推荐使用外部 MySQL；嵌入式 Derby + JRaft 更适合测试或小规模场景。Nacos 的 Namespace/Group/DataId 模型上手快，但环境隔离通常偏逻辑隔离
-3. **Spring Cloud Config**：架构最简单（基于 Git），但实时性差，需要额外组件实现自动刷新
+1. **Apollo:** Fine-grained permissions, release auditing, pre-release diffs, and rollout rules suit teams with demanding governance requirements. Physically isolated FAT/UAT/PROD environments each need Config Service, Admin Service, and a separate database, raising operational cost.
+2. **Nacos:** Combines configuration and discovery and can start standalone from one JAR. Production clusters should use external MySQL; embedded Derby + JRaft is more suitable for testing or small deployments. Namespace/Group/DataId is straightforward, but environment isolation is usually logical.
+3. **Spring Cloud Config:** A simple Git-based architecture, but updates are less immediate and need additional components for automatic refresh.
 
-## 配置中心、注册中心与 K8s ConfigMap 的边界
+## Boundaries: configuration centers, registries, and ConfigMap
 
-- **应用配置中心（Apollo/Nacos/Spring Cloud Config）**：主要解决业务参数、开关、阈值、连接信息等应用配置的集中管理、审计、灰度和动态刷新。
-- **服务注册中心（Eureka/Nacos/Consul）**：主要解决服务实例注册、发现和健康状态同步。Nacos 同时提供配置中心和注册中心能力，但两类职责仍然不同。
-- **Kubernetes ConfigMap**：主要解决 Pod 启动参数、环境变量、挂载文件等容器运行时配置管理，不天然提供发布审批、灰度规则和应用内对象刷新。
-- **Service Mesh / Ingress 配置**：主要解决流量路由、熔断、重试、超时、灰度流量等治理策略，配置对象通常是 CRD 或控制平面资源。
+- **Application configuration centers** such as Apollo, Nacos, and Spring Cloud Config manage application parameters, flags, thresholds, and connection information, including audit, staged rollout, and dynamic refresh.
+- **Service registries** such as Eureka, Nacos, and Consul manage instance registration, discovery, and health. Nacos supports both roles, but their responsibilities remain distinct.
+- **Kubernetes ConfigMap** manages container runtime configuration such as Pod startup parameters, environment variables, and mounted files. It does not inherently provide approval workflows, staged rollout rules, or application object refresh.
+- **Service Mesh / Ingress configuration** governs routing, circuit breaking, retries, timeouts, and traffic rollout, typically through CRDs or control-plane resources.
 
-## 配置中心核心设计要点
+## Core design considerations
 
-设计或选型配置中心时，需关注以下能力：
+### 1. Configuration delivery
 
-### 1. 配置推送机制
+| Mode             | Timeliness              | Server load                               | Complexity | Suitable for                  |
+| ---------------- | ----------------------- | ----------------------------------------- | ---------- | ----------------------------- |
+| **Push**         | High; milliseconds      | High; connections must be maintained      | High       | Strict real-time requirements |
+| **Pull**         | Low; seconds to minutes | High from unnecessary polls               | Low        | Very infrequent changes       |
+| **Long polling** | Medium to high; seconds | Moderate; many connections consume memory | Medium     | Common general-purpose use    |
 
-| 模式       | 实时性          | 服务端压力                   | 实现复杂度 | 适用场景     |
-| ---------- | --------------- | ---------------------------- | ---------- | ------------ |
-| **推模式** | 高（毫秒级）    | 高（需维护连接）             | 高         | 强实时性要求 |
-| **拉模式** | 低（秒~分钟级） | 高（无效轮询）               | 低         | 配置变更极少 |
-| **长轮询** | 中高（秒级）    | 中等（海量连接时内存压力大） | 中         | **主流方案** |
-
-> **推送机制说明**：
+> **Delivery mechanisms:**
 >
-> - **Apollo**：采用 HTTP 长轮询。客户端发起请求，服务端若有变更立即返回；无变更则挂起请求（服务端默认约 60s，客户端 read timeout 通常更长），期间一旦有变更立即响应。
-> - **Nacos 2.x**：服务发现链路升级为 gRPC 双向流，实时性更好；配置中心链路更准确地说是“变更通知 + 客户端拉取”的两阶段模型，服务端通知配置发生变化，客户端再按需拉取最新配置内容。
+> - **Apollo:** HTTP long polling. The client sends a request; the server responds immediately if a change exists, otherwise holds it open (usually around 60 seconds, with a longer client read timeout) and responds when a change occurs.
+> - **Nacos 2.x:** Service discovery uses bidirectional gRPC streams. Configuration uses a two-stage “change notification + client fetch” model: the server notifies the client, which fetches the latest content as needed.
 >
-> **注意**：严格说，长轮询仍是客户端发起的拉取请求，只是服务端通过挂起请求实现近实时；本表按行业惯例将其单列以突出运行特征。长轮询虽然比短轮询节省 CPU 和网络开销，但当客户端规模达到十万级时，服务端仍需维持海量挂起请求。以 Apollo 为例，服务端基于 Spring MVC `DeferredResult` 挂起请求，底层依托 Servlet 3.0 异步特性和 Tomcat NIO Connector 承载，对内存和连接数上限仍有要求。
+> Strictly, long polling is still client-initiated pull; it is listed separately to show its operational behavior. It saves CPU and network traffic compared with short polling, but hundreds of thousands of clients still create many pending requests. Apollo uses Spring MVC `DeferredResult`, Servlet 3.0 asynchronous processing, and the Tomcat NIO connector; memory and connection limits still matter.
 
-### 2. 必备功能清单
+### 2. Essential capabilities
 
-- **权限控制**：配置的查看、修改、发布需分级授权
-- **审计日志**：完整记录配置变更的操作人、时间、内容
-- **版本管理**：每次发布生成版本号，支持回滚到任意历史版本
-- **灰度发布**：配置先推送到部分实例，验证通过后全量发布
-- **多环境隔离**：开发、测试、生产环境配置独立管理
-- **高可用部署**：配置中心自身需要集群化部署，避免单点故障
+- **Access control:** Authorize viewing, editing, and publishing separately.
+- **Audit logs:** Record who changed what and when.
+- **Versioning:** Assign a release version and support rollback to historical versions.
+- **Staged rollout:** Deliver to some instances before releasing broadly.
+- **Environment isolation:** Manage development, test, and production independently.
+- **High availability:** Deploy the configuration center as a cluster to avoid a single point of failure.
 
-### 3. 客户端容灾与启动顺序
+### 3. Client resilience and startup
 
-配置中心是基础设施，一旦不可用会影响大量业务应用。因此客户端必须具备容灾能力：
+A configuration center is infrastructure; an outage can affect many applications. Clients need resilience:
 
-- **多级缓存**：优先读内存配置；配置中心不可用时读取本地快照；本地快照也不存在时使用代码里的兜底默认值或拒绝启动。
-- **降级启动**：对于非关键配置，可以先用本地快照启动，再异步连接配置中心；对于数据库地址、加密密钥这类关键配置，可以选择“无配置不启动”。
-- **断线重连**：长轮询或长连接断开后，客户端应带退避策略重连，避免配置中心恢复时被瞬时流量打满。
-- **刷新边界**：动态刷新不等于所有对象都会自动改变。比如 Spring 中已注入到普通字段、`final` 字段或条件装配逻辑里的值，可能不会按预期刷新，需要配合 `@RefreshScope`、监听器或重新设计 Bean 生命周期。
+- **Multiple cache levels:** Read in-memory settings first; if the center is unavailable, use a local snapshot. If none exists, use a safe default or refuse to start.
+- **Degraded startup:** Non-critical settings can use a local snapshot while reconnecting asynchronously. Critical settings such as database addresses or encryption keys may require refusing to start without configuration.
+- **Reconnect:** Use backoff after a long poll or connection fails to avoid overwhelming a recovering server.
+- **Refresh boundaries:** Dynamic refresh does not automatically update every object. Values already injected into ordinary or `final` fields, or used in conditional bean creation, may require `@RefreshScope`, listeners, or a redesigned bean lifecycle.
 
-## 以 Apollo 为例介绍配置中心的设计
+## Apollo as an example
 
-### Apollo 介绍
+### Introduction
 
-根据 Apollo 官方介绍：
+According to the [Apollo project](https://github.com/apolloconfig/apollo), Apollo is a distributed configuration center developed by Ctrip's framework team. It manages configuration across environments and clusters, pushes changes to applications, and provides permissions and release governance for microservices.
 
-> [Apollo](https://github.com/apolloconfig/apollo)（阿波罗）是携程框架部门研发的分布式配置中心，能够集中化管理应用不同环境、不同集群的配置，配置修改后能够实时推送到应用端，并且具备规范的权限、流程治理等特性，适用于微服务配置管理场景。
->
-> 服务端基于 Spring Boot 和 Spring Cloud 开发，打包后可以直接运行，不需要额外安装 Tomcat 等应用容器。
->
-> Java 客户端不依赖任何框架，能够运行于所有 Java 运行时环境，同时对 Spring/Spring Boot 环境也有较好的支持。
+Its server is built with Spring Boot and Spring Cloud and runs without a separately installed application container such as Tomcat. Its Java client does not depend on a framework and supports Java environments as well as Spring and Spring Boot integration.
 
-Apollo 核心特性：
+Key features:
 
-- **配置修改实时生效（热发布）**：基于长轮询，1s 内即可接收到最新配置
-- **灰度发布**：配置只推给部分应用，降低变更风险
-- **部署简单**：单环境仅依赖 MySQL；Apollo 自带的注册中心（默认为 Eureka）以内嵌方式运行于 Config Service 进程内，无需独立部署。多环境物理隔离时，需要为每个环境部署一套 Config Service、Admin Service 和独立数据库
-- **跨语言**：提供了 HTTP 接口，不限制编程语言
+- **Hot publishing:** Long polling can deliver changes within a second.
+- **Staged rollout:** Send a change to selected applications first.
+- **Deployment:** A single environment depends on MySQL. The bundled registry, Eureka by default, runs inside Config Service. Physically isolated environments each need their own Config Service, Admin Service, and database.
+- **Cross-language support:** HTTP APIs are available to any language.
 
-关于如何使用 Apollo 可以查看 [Apollo 官方使用指南](https://www.apolloconfig.com/#/zh/)。
+See the [Apollo user guide](https://www.apolloconfig.com/#/zh/).
 
-### Apollo 架构解析
+### Architecture
 
-官方给出的 Apollo 基础模型（图片来源：Apollo 官方文档 - Apollo Design）：
+The basic model from Apollo's design documentation:
 
-![](https://img-blog.csdnimg.cn/a75ccb863e4a401d947c87bb14af7dc3.png)
+![Apollo basic model](https://img-blog.csdnimg.cn/a75ccb863e4a401d947c87bb14af7dc3.png)
 
-1. 用户在 Apollo 配置中心修改/发布配置
-2. Apollo 配置中心通知应用配置已更改
-3. 应用访问 Apollo 配置中心获取最新配置
+1. A user edits and publishes configuration in Apollo.
+2. Apollo notifies the application that it changed.
+3. The application fetches the latest configuration.
 
-官方架构图（图片来源：Apollo 官方文档 - Apollo Design）：
+The official architecture diagram:
 
-![](https://img-blog.csdnimg.cn/79c7445f9dbc45adb45699d40ef50f44.png)
+![Apollo architecture](https://img-blog.csdnimg.cn/79c7445f9dbc45adb45699d40ef50f44.png)
 
-### 组件说明
+### Components
 
-| 组件               | 作用                                                                                    | 默认端口               |
-| ------------------ | --------------------------------------------------------------------------------------- | ---------------------- |
-| **Portal**         | Web 管理界面，提供配置的可视化管理                                                      | 8070                   |
-| **Client**         | 客户端 SDK，提供配置获取和变更监听能力                                                  | -                      |
-| **Meta Server**    | 服务发现入口，与 Config Service 同进程，供 Client/Portal 获取服务地址                   | 8080                   |
-| **Config Service** | 提供配置读取和长轮询通知接口，供 Client 调用；同时内嵌注册中心                          | 8080                   |
-| **Admin Service**  | 提供配置管理接口，供 Portal 调用                                                        | 8090                   |
-| **Eureka（内嵌）** | Config Service 同进程内嵌的注册中心实例，供 Config/Admin Service 注册发现；无需独立部署 | 与 Config Service 相同 |
-| **MySQL**          | 存储配置数据和元数据                                                                    | 3306                   |
+| Component           | Purpose                                                                                        | Default port           |
+| ------------------- | ---------------------------------------------------------------------------------------------- | ---------------------- |
+| **Portal**          | Web interface for configuration management                                                     | 8070                   |
+| **Client**          | SDK for fetching configuration and listening for changes                                       | —                      |
+| **Meta Server**     | Discovery entry point, co-located with Config Service; supplies addresses to Client and Portal | 8080                   |
+| **Config Service**  | Configuration reads and long-poll notifications for clients; embeds the registry               | 8080                   |
+| **Admin Service**   | Configuration management API for Portal                                                        | 8090                   |
+| **Embedded Eureka** | Registry within Config Service for Config/Admin Service discovery; no separate deployment      | Same as Config Service |
+| **MySQL**           | Configuration and metadata storage                                                             | 3306                   |
 
-Apollo 2.0+ 支持通过 SPI 替换服务注册发现实现，例如接入 Nacos、Consul、Polaris 等。但在默认部署模型下，Eureka 是 Config Service 内嵌能力，不应把它理解为需要单独运维的外部 Eureka 集群。
+Apollo 2.0+ supports replacing service discovery through SPI, for example with Nacos, Consul, or Polaris. In the default deployment, Eureka is embedded in Config Service; it is not a separately operated external cluster.
 
-### 核心流程
+### Main flows
 
-**Client 端（获取配置）**：
+**Client: fetching configuration**
 
-1. Client 启动时访问 Meta Server 获取 Config Service 地址列表
-2. Client 本地缓存服务地址（Eureka 故障时仍可用）
-3. Client 发起长轮询请求获取配置
-4. Config Service 检测到配置变更后立即响应
-5. Client 更新内存缓存、触发变更回调，并**异步持久化到本地文件系统**。Linux/Mac 默认缓存目录位于 `/opt/data/{appId}/config-cache/`，Windows 默认位于 `C:\opt\data\{appId}\config-cache\`，也可以通过系统属性 `apollo.cache-dir` 自定义
+1. At startup, the Client obtains Config Service addresses from Meta Server.
+2. It caches the addresses locally, remaining usable if Eureka fails.
+3. It sends a long-poll request.
+4. Config Service responds when configuration changes.
+5. The Client updates its in-memory cache, triggers callbacks, and **asynchronously persists a local snapshot**. The default cache directory is `/opt/data/{appId}/config-cache/` on Linux/macOS and `C:\\opt\\data\\{appId}\\config-cache\\` on Windows. The `apollo.cache-dir` system property can override it.
 
-> **灾备机制**：即使 Config Service 全部宕机且应用重启，Client 仍可从本地磁盘读取缓存的配置完成启动，确保应用可用性不强依赖配置中心。
+> **Recovery:** Even if all Config Service instances are down and the application restarts, the Client can start from its disk cache, reducing dependence on configuration center availability.
 
-**Portal 端（发布配置）**：
+**Portal: publishing configuration**
 
-1. 用户在 Portal 修改配置并点击发布
-2. Portal 调用 Admin Service 发布接口
-3. Admin Service 将配置写入 MySQL 并生成发布版本
-4. Config Service 通过长轮询通知 Client 配置已变更
-5. Client 重新拉取最新配置
+1. A user changes configuration in Portal and publishes it.
+2. Portal calls the Admin Service release API.
+3. Admin Service writes the configuration to MySQL and creates a release version.
+4. Config Service notifies Clients through long polling.
+5. Clients fetch the latest configuration.
 
-### Client 使用示例
+### Client examples
 
-获取配置：
+Read configuration:
 
 ```java
 Config config = ConfigService.getAppConfig();
@@ -197,14 +191,14 @@ String someDefaultValue = "someDefaultValueForTheKey";
 String value = config.getProperty(someKey, someDefaultValue);
 ```
 
-监听配置变化：
+Listen for changes:
 
 ```java
 Config config = ConfigService.getAppConfig();
 config.addChangeListener(new ConfigChangeListener() {
     @Override
     public void onChange(ConfigChangeEvent changeEvent) {
-        // 处理配置变更
+        // Handle configuration changes.
         for (String key : changeEvent.changedKeys()) {
             ConfigChange change = changeEvent.getChange(key);
             System.out.println(String.format(
@@ -215,36 +209,36 @@ config.addChangeListener(new ConfigChangeListener() {
 });
 ```
 
-在 Spring Boot 项目中，生产代码通常不会直接到处调用底层 API，而是通过 Apollo Spring 集成完成配置注入和刷新，例如使用 `@EnableApolloConfig` 启用 Apollo，通过 `@Value`、`@ConfigurationProperties` 或 `@ApolloConfigChangeListener` 监听变更。需要注意的是，条件装配类（例如 `@ConditionalOnProperty`）和已经初始化完成的复杂 Bean 不一定会因为配置变化自动重建，关键配置变更仍要结合业务刷新策略验证。
+Production Spring Boot code usually uses Apollo's Spring integration instead of calling the low-level API everywhere: enable Apollo with `@EnableApolloConfig`, inject configuration with `@Value` or `@ConfigurationProperties`, and listen with `@ApolloConfigChangeListener`. Conditional configuration such as `@ConditionalOnProperty` and already initialized complex beans may not be rebuilt automatically when values change. Verify the refresh strategy for critical settings.
 
-## Nacos 配置中心核心模型
+## Nacos configuration model
 
-Nacos 同时提供配置中心和服务发现能力，这也是它与 Apollo 的主要差异之一。从配置中心角度看，Nacos 常用三层模型来定位一份配置：
+Nacos provides both configuration management and service discovery. To locate configuration, it commonly uses three levels:
 
-- **Namespace**：通常用于环境或租户隔离，例如 dev、test、prod。
-- **Group**：通常用于业务域或应用分组，默认是 `DEFAULT_GROUP`。
-- **DataId**：具体配置文件或配置项标识，例如 `order-service.yaml`。
+- **Namespace:** Usually isolates environments or tenants, such as dev, test, and prod.
+- **Group:** Usually groups applications or business domains; the default is `DEFAULT_GROUP`.
+- **DataId:** Identifies a configuration file or item, such as `order-service.yaml`.
 
-Nacos 的配置存储也要区分部署形态：
+Storage depends on deployment:
 
-- **生产集群**：推荐使用外部 MySQL 存储配置数据，数据一致性主要由 MySQL 自身的高可用方案保障。
-- **嵌入式存储**：Nacos 也支持 Derby 等嵌入式存储。集群模式下，Nacos 通过 JRaft 将各节点的嵌入式存储组成逻辑集群，适合测试、小规模或对运维成本特别敏感的场景，但排障复杂度更高。
+- **Production cluster:** External MySQL is recommended; its own high-availability design provides data consistency.
+- **Embedded storage:** Nacos also supports Derby and similar embedded stores. In cluster mode, JRaft coordinates the nodes' embedded stores. This suits testing, small deployments, or low operational-cost requirements, but can be harder to troubleshoot.
 
-Nacos 2.x 引入 gRPC 长连接后，客户端与服务端之间的连接开销比 1.x HTTP 长轮询更低。配置变更时，服务端会通知客户端“某个配置发生变化”，客户端再拉取最新配置内容并回调监听器。这样可以避免把大配置内容直接塞进通知链路，也便于客户端做本地快照和容灾。
+Nacos 2.x uses long-lived gRPC connections, reducing connection overhead compared with 1.x HTTP long polling. When configuration changes, the server notifies the client; the client fetches the latest content and calls its listeners. This avoids sending large configuration bodies in notifications and supports local snapshots and recovery.
 
-Nacos 客户端同样会维护本地快照。配置中心不可用时，客户端可以读取本地 snapshot/failover 文件继续启动或运行；具体缓存路径会随客户端版本、命名空间、服务端地址、Group 和 DataId 变化，排障时建议以目标版本客户端日志和本地 `nacos/config` 目录为准。
+Nacos clients also keep local snapshots. If the center is unavailable, a client can read snapshot or failover files to start or continue running. Paths vary with client version, namespace, server address, Group, and DataId; check the target version's logs and local `nacos/config` directory when troubleshooting.
 
-## 参考
+## References
 
-- [Nacos 官方文档](https://nacos.io/docs/latest/what-is-nacos/)
-- [Nacos 集群模式部署](https://nacos.io/docs/v2.5/manual/admin/deployment/deployment-cluster/)
-- [Apollo 官方文档](https://www.apolloconfig.com/#/zh/README)
-- [Apollo GitHub 仓库](https://github.com/apolloconfig/apollo)
-- [Spring Cloud Config 官方文档](https://cloud.spring.io/spring-cloud-config/)
-- [Spring Cloud 版本兼容矩阵](https://spring.io/spring-cloud)
-- [Kubernetes ConfigMap 官方文档](https://kubernetes.io/docs/concepts/configuration/configmap/)
-- [Nacos 1.1.0 发布，支持灰度配置](https://nacos.io/zh-cn/blog/nacos%201.1.0.html)
-- [Apollo 在有赞的实践](https://mp.weixin.qq.com/s/Ge14UeY9Gm2Hrk--E47eJQ)
-- [微服务配置中心选型比较](https://www.itshangxp.com/spring-cloud/spring-cloud-config-center/)
+- [Nacos documentation](https://nacos.io/docs/latest/what-is-nacos/)
+- [Nacos cluster deployment](https://nacos.io/docs/v2.5/manual/admin/deployment/deployment-cluster/)
+- [Apollo documentation](https://www.apolloconfig.com/#/zh/README)
+- [Apollo GitHub repository](https://github.com/apolloconfig/apollo)
+- [Spring Cloud Config documentation](https://cloud.spring.io/spring-cloud-config/)
+- [Spring Cloud compatibility information](https://spring.io/spring-cloud)
+- [Kubernetes ConfigMap documentation](https://kubernetes.io/docs/concepts/configuration/configmap/)
+- [Nacos 1.1.0 staged configuration release](https://nacos.io/zh-cn/blog/nacos%201.1.0.html)
+- [Apollo in practice at Youzan](https://mp.weixin.qq.com/s/Ge14UeY9Gm2Hrk--E47eJQ)
+- [Comparing microservice configuration centers](https://www.itshangxp.com/spring-cloud/spring-cloud-config-center/)
 
 <!-- @include: @planet.snippet.md -->

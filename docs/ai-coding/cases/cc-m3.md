@@ -1,189 +1,191 @@
 ---
-title: MiniMax M3 + Claude Code 实战：Redis 故障排查、SCAN 算法复刻与监控面板搭建
-description: 通过 MiniMax M3 接入 Claude Code，完成线上 Redis SCAN 故障排查与降级、SCAN 游标算法从 C 到 Go 的跨语言复刻、以及前后端 Redis 监控面板搭建三个实战案例。
-category: AI 编程实战
+title: "MiniMax M3 + Claude Code in Practice: Redis Troubleshooting, SCAN Reimplementation, and a Monitoring Dashboard"
+description: "Three hands-on examples using MiniMax M3 with Claude Code: troubleshooting and mitigating a Redis issue, porting the SCAN cursor algorithm from C to Go, and building a full-stack Redis monitoring dashboard."
+category: AI Coding in Practice
 head:
   - - meta
     - name: keywords
-      content: MiniMax M3,Claude Code,AI编程,Redis SCAN,故障排查,监控面板,跨语言复刻,Agent Coding,cc-switch
+      content: MiniMax M3,Claude Code,AI Coding,Redis SCAN,Troubleshooting,Monitoring Dashboard,Cross-Language Port,Agent Coding,cc-switch
 ---
 
-你好，我是小 G。MiniMax M3 前几天发布了，不少朋友第一时间用上，反馈都还不错，也有不少朋友留言让我实测一波。
+Hi, I'm Xiao G. MiniMax M3 was released a few days ago. Many people tried it right away and gave good feedback. Quite a few readers also asked me to test it.
 
-不是不想测，前几天确实太忙了，想赶在秋招之前对 JavaGuide 进行一波优化，这是每一年都会做的事情。
+It was not a lack of interest; I had been busy optimizing JavaGuide ahead of campus recruiting, which I do every year.
 
-![读者留言希望实测 MiniMax M3](../images/shared/image-20260604122811898.png)
+![Readers ask for a MiniMax M3 evaluation](../images/shared/image-20260604122811898.png)
 
-根据 MiniMax 官方介绍，M3 是其首个同时提供 1M 上下文、原生多模态和前沿 Coding 能力的开放权重模型。这是厂商对产品的定位，是否适合具体代码库仍要靠任务验证。
+According to MiniMax, M3 is its first open-weight model to combine a 1M-token context window, native multimodality, and frontier coding capabilities. This is the vendor's description; whether it suits a particular codebase still needs to be tested against real tasks.
 
-官方公布的基准结果包括：SWE-Bench Pro 59.0%、Terminal-Bench 2.1 66.0%、MCP Atlas 74.2%。这些数字对应指定评测集和评测配置，不是本文独立复测结果。
+Published benchmark results include 59.0% on SWE-Bench Pro, 66.0% on Terminal-Bench 2.1, and 74.2% on MCP Atlas. These results correspond to specific evaluation sets and configurations; they are not independent results from this article.
 
-![MiniMax M3 官方能力介绍：Coding Frontier/SOTA + 1M 上下文 + 原生多模态](../images/shared/HJsWydIbIAAFAZL.jpeg)
+![MiniMax's description of M3: Coding Frontier/SOTA, 1M context, and native multimodality](../images/shared/HJsWydIbIAAFAZL.jpeg)
 
-我更关心它进入真实工程后的表现。
+I am more interested in how it performs in real engineering work.
 
-因此，我用一个过去遇到的线上故障来检验。已知现象是业务高峰期前台请求受影响，排查线索指向后台异步任务中的完整 Redis `SCAN` 循环；它是否因长期占用连接而构成主因，还要结合监控和复现验证。
+So I used a production issue I had encountered to evaluate it. The known symptoms were that frontend requests were affected during peak business hours, and investigation pointed to a full Redis `SCAN` loop in a background asynchronous task. Whether this loop was the primary cause because it held connections for a long time still needed to be verified through monitoring and reproduction.
 
-该案例涉及复杂业务链路推理和全局诊断。同时，我会在完成故障定位和止血后，继续用 M3 尝试 Redis 源码（C）到 Go 的功能复刻、以及前后端 Redis 监控面板搭建，从异构语言重构和全链路交付两个维度继续观察。
+This case involves reasoning across a complex business flow and diagnosing the system as a whole. After locating the issue and mitigating its impact, I also used M3 to port Redis source-code functionality from C to Go and build a full-stack Redis monitoring dashboard. These tasks let me observe cross-language reimplementation and end-to-end delivery.
 
-文章按三个任务展开：
+The article covers three tasks:
 
-1. 故障排查
-2. 底层复刻
-3. 监控落地
+1. Troubleshooting
+2. Reimplementing a low-level algorithm
+3. Delivering a monitoring dashboard
 
-## 准备工作
+## Preparation
 
-小 G 日常使用 Claude Code 开发，通过 cc-switch 统一管理模型。以下为 MiniMax M3 的配置步骤。首先打开 cc-switch 点击加号添加模型配置：
+I use Claude Code for everyday development and manage models through cc-switch. Here are the steps to configure MiniMax M3. First, open cc-switch and click the plus button to add a model:
 
-![cc-switch 点击加号添加模型配置](../images/shared/cc-switch-add-model.png)
+![Click the plus button in cc-switch to add a model](../images/shared/cc-switch-add-model.png)
 
-选择 MiniMax M3，将自己的 key 填充到 api key 选项中：
+Select MiniMax M3 and enter your key in the API key field:
 
-![选择 MiniMax M3 并填入 API Key](../images/shared/cc-switch-select-minimax-m3.png)
+![Select MiniMax M3 and enter the API key](../images/shared/cc-switch-select-minimax-m3.png)
 
-最后点击获取模型列表，完成模型的配置，以我的为例，直接将主模型设置为 MiniMax M3：
+Finally, retrieve the model list to complete setup. In my configuration, I set MiniMax M3 as the primary model:
 
-![获取模型列表并将主模型设置为 MiniMax M3](../images/shared/cc-switch-set-main-model.png)
+![Retrieve the model list and set MiniMax M3 as the primary model](../images/shared/cc-switch-set-main-model.png)
 
-配置完成后打开 Claude Code，通过对话面板验证当前模型是否生效：
+After configuration, open Claude Code and use the conversation panel to verify that the model is active:
 
-![在 Claude Code 中验证 MiniMax M3 模型已生效](../images/shared/claude-code-verify-model.png)
+![Verify that MiniMax M3 is active in Claude Code](../images/shared/claude-code-verify-model.png)
 
-## 故障排查：围绕应用层 SCAN 循环验证性能问题
+## Troubleshooting: Investigating an Application-Level SCAN Loop
 
-第一个案例复刻自我过去经历过的一次线上故障。为降低理解负担，这里用一个经典的电商场景来还原：该场景是大促期间“超时订单自动取消”的异步任务在跑，同时大量用户正在浏览商品。某一刻，页面大面积超时——已售、库存、浏览、收藏，所有热点数据全加载不出来：
+The first case recreates a production issue I encountered. To make it easier to follow, I use a familiar e-commerce scenario: during a major sale, an asynchronous job automatically cancels expired orders while many users browse products. Suddenly, pages across the site start timing out. Hot data for sales, inventory, browsing, and favorites will not load:
 
-![大促期间页面大面积超时，商品热点数据加载失败](../images/shared/ecommerce-page-timeout.png)
+![Pages time out during a major sale and product data fails to load](../images/shared/ecommerce-page-timeout.png)
 
-为了评测 MiniMax M3 对于这类复杂业务链路的排查能力，我将系统表象的截图（Claude Code 中可通过 Ctrl+V 粘贴截图，Win 系统为 Alt+V）和错误描述一并提交：
+To evaluate MiniMax M3's ability to investigate a complex business flow, I submitted a screenshot of the symptoms—using Ctrl+V in Claude Code, or Alt+V on Windows—along with a description of the error:
 
-![将故障表象截图和错误描述一并提交给 M3](../images/shared/submit-error-to-m3.png)
+![Submit a screenshot of the failure and an error description to M3](../images/shared/submit-error-to-m3.png)
 
-经过片刻分析，MiniMax M3 将问题定位到后台任务中的完整 `SCAN` 循环。它最初把原因概括成“SCAN 导致 Redis 服务端阻塞”，这个说法不够准确：`SCAN` 单次调用是增量迭代，设计目的正是避免 `KEYS` 一类长时间阻塞；真正需要检查的是循环次数、`COUNT`、Keyspace 大小、单次延迟，以及应用是否长期占用连接。
+After a short analysis, MiniMax M3 traced the issue to the full `SCAN` loop in the background task. Initially, it summarized the cause as “SCAN blocks the Redis server,” which is not precise enough. A single `SCAN` call is an incremental iteration, designed to avoid the long blocking behavior of commands such as `KEYS`. What needs to be investigated is the number of loop iterations, `COUNT`, keyspace size, latency per call, and whether the application holds connections for a long time.
 
-![M3 定位到根因：SCAN 操作导致 Redis 阻塞，引发读写排队](../images/shared/m3-root-cause-scan-blocking.png)
+![M3 identifies the SCAN loop as an area to investigate in the Redis issue](../images/shared/m3-root-cause-scan-blocking.png)
 
-为进一步核对业务链路，我要求 MiniMax M3 用 ASCII 图画出故障过程。图里从超时订单任务进入 `SCAN` 循环，再到连接池可用连接下降和页面请求排队。这里应把“Keyspace 遍历阻塞主线程”理解为需要验证的假设，而不是 `SCAN` 的固定行为：
+To check the business flow, I asked MiniMax M3 to draw the incident sequence as an ASCII diagram. It showed the expired-order task entering the `SCAN` loop, the available connections in the pool decreasing, and page requests queuing up. “Keyspace scanning blocks the main thread” should be treated as a hypothesis to verify, not as fixed behavior of `SCAN`:
 
-![M3 绘制的故障流转链路 ASCII 图：从 SCAN 触发到页面超时的端到端因果链](../images/shared/fault-chain-ascii-diagram.png)
+![M3's ASCII diagram of the incident flow, from SCAN to page timeouts](../images/shared/fault-chain-ascii-diagram.png)
 
-M3 随后给出数据结构调整、原子操作、降级和监控四类建议：
+M3 then suggested four types of mitigations: data-structure changes, atomic operations, fallback behavior, and monitoring:
 
-![M3 从数据结构、原子性、降级、监控四个维度同时给出修复建议](../images/shared/m3-four-dimension-fix.png)
+![M3 suggests fixes related to data structures, atomicity, fallback behavior, and monitoring](../images/shared/m3-four-dimension-fix.png)
 
-针对受影响的业务接口，M3 将串行 Redis 指令优化为一条原子操作，并附上降级策略，以控制极端情况下的影响面：
+For the affected business API, M3 changed a sequence of Redis commands into one atomic operation and included a fallback strategy to limit the impact in extreme cases:
 
-![串行 Redis 指令优化为一条原子操作，并附上降级策略](../images/shared/atomic-operation-optimization.png)
+![Redis commands combined into one atomic operation with a fallback strategy](../images/shared/atomic-operation-optimization.png)
 
-在工程侧，M3 还给出了监控埋点建议，并把 200 ms 作为示例告警值。这个数字不能用“人类感知停顿”来证明；Redis 后台任务的阈值应根据接口 SLO、连接池容量、任务频率和历史分位延迟确定：
+On the engineering side, M3 also suggested monitoring instrumentation and used 200 ms as an example alert threshold. That number cannot be justified by saying it is a “noticeable pause.” Set thresholds for Redis background tasks based on the API SLO, connection-pool capacity, task frequency, and historical latency percentiles:
 
-![监控埋点建议与告警阈值：SCAN 操作红线设为 200ms](../images/shared/monitoring-alert-thresholds.png)
+![Monitoring instrumentation and an example 200 ms alert threshold for SCAN](../images/shared/monitoring-alert-thresholds.png)
 
-以下是本次修改的 diff：
+Here is the diff for the changes:
 
-![修复代码的 diff，M3 在实现中体现了降级和监控的设计理念](../images/shared/fix-code-diff.png)
+![Code diff for the fix, including fallback and monitoring](../images/shared/fix-code-diff.png)
 
-以下为核心降级代码。M3 使用并发原子类处理了部分并发状态，但这只能保证对应变量或单次操作的原子性，不能证明 Redis、本地缓存和数据库回源组成的整条链路线程安全或一致。缓存击穿、重复回源和旧值覆盖仍要通过同步协议、限流以及并发测试验证：
+Here is the core fallback code. M3 used concurrent atomic classes for some shared state, but that only guarantees atomicity for the corresponding variables or individual operations. It does not prove thread safety or consistency across the full chain of Redis, local cache, and database fallback. Cache stampedes, duplicate database reads, and stale-value overwrites still need to be addressed through synchronization, rate limiting, and concurrency tests:
 
-![核心降级代码：使用并发原子类保障多级缓存操作的线程安全](../images/shared/degradation-code-atomic.png)
+![Core fallback code using concurrency primitives](../images/shared/degradation-code-atomic.png)
 
-M3 同时生成了覆盖正常降级、异常回退和并发竞态的测试。截图显示相关用例编译通过、单测全绿；“100% 逻辑覆盖”只代表被统计代码的覆盖率，不能证明所有故障场景都已验证：
+M3 also generated tests for normal fallback, exception recovery, and concurrent races. The screenshot shows that the tests compiled and passed. “100% logic coverage” only describes coverage of the measured code; it does not prove that every failure scenario has been tested:
 
-![M3 附带的测试用例：覆盖正常降级、异常回退和并发竞态，编译通过、单测全绿](../images/shared/test-cases-all-pass.png)
+![Generated tests cover fallback, error recovery, and concurrent races](../images/shared/test-cases-all-pass.png)
 
-## 深入底层：复刻 Redis SCAN 游标算法，理解 rev 二进制翻转
+## Going Deeper: Reimplementing the Redis SCAN Cursor Algorithm and Understanding Binary Reversal
 
-近期 Google 技术总监 Addy Osmani 在《Don't Outsource the Learning》一文中提出了一个值得警惕的现象：让 AI 写代码而自己跳过学习太容易了——错误被修复，但你的心智模型没有进步。他引用了 Anthropic 的一项随机实验：同样是学习新库，AI 辅助组完成任务的速度与手动组持平，但后续理解测试中得分仅为 50%，远低于手动组的 67%。有趣的是，AI 组内部也存在分化——用 AI 提问概念问题的工程师得分超过 65%，直接复制粘贴代码的则不到 40%。Osmani 的结论是：工具不会替你学习，区别在于你的使用方式：
+Recently, Google engineering director Addy Osmani highlighted a concern in his article [“Don't Outsource the Learning”](https://addyosmani.com/blog/dont-outsource-the-learning/): it is easy to let AI write code while skipping the learning process. The bug gets fixed, but your mental model does not improve.
 
-![Addy Osmani《Don't Outsource the Learning》核心观点：工具不会替你学习，区别在于你的使用方式](../images/shared/addy-osmani-dont-outsource-learning.png)
+He cited a randomized study by Anthropic: when learning a new library, the AI-assisted group completed tasks as quickly as the manual group, but scored only 50% on a follow-up comprehension test, compared with 67% for the manual group. Results also varied within the AI group. Engineers who used AI to ask conceptual questions scored above 65%, while those who copied and pasted code scored below 40%. Osmani's conclusion is that tools do not learn for you; how you use them matters:
 
-回到本次事故。故障排查和降级止血是第一步，但要理解 `SCAN` 如何遍历 dict、`COUNT` 的真实含义，以及 rev 二进制翻转如何推进游标，还得继续读文档和源码。官方文档已经说明 `COUNT` 只是工作量提示，源码则能解释具体版本如何实现。我借助 MiniMax M3 复刻 `SCAN` 的核心算法，再把结果放进好友 sharkchili 维护的 mini-redis 学习项目中验证。
+![Addy Osmani's point in “Don't Outsource the Learning”: the tool does not learn for you](../images/shared/addy-osmani-dont-outsource-learning.png)
 
-为了提供充足的上下文，我直接将 Redis SCAN 相关的源码文件通过 add-dir 传入 mini-redis 项目：
+Back to this incident. Troubleshooting and mitigation were only the first steps. To understand how `SCAN` traverses a dict, what `COUNT` really means, and how bit reversal in `rev` advances the cursor, I still needed to read the documentation and source code. The official documentation explains that `COUNT` is only a work hint; source code shows how a particular version implements it. I used MiniMax M3 to reimplement the core `SCAN` algorithm and then checked the result in mini-redis, a learning project maintained by my friend sharkchili.
 
-![通过 add-dir 将 Redis SCAN 相关源码文件传入 mini-redis 项目](../images/shared/add-dir-redis-source.png)
+To provide enough context, I added the Redis source files related to `SCAN` to the mini-redis project using `add-dir`:
 
-然后直接键入需求。M3 扫描传入的 Redis 源码后，判断这是一个长任务，调用了 plan-with-files 技能进行任务拆解和规划：
+![Add Redis SCAN source files to the mini-redis project using add-dir](../images/shared/add-dir-redis-source.png)
 
-![M3 自主调用 plan-with-files 技能进行任务拆解和规划](../images/shared/m3-plan-with-files-skill.png)
+Then I entered the request. After scanning the Redis source, M3 recognized that this was a long task and used the plan-with-files Skill to break it down and plan the work:
 
-规划完成后，M3 主动发起澄清。第一点是确认需求范围，我选择复刻 SCAN 指令：
+![M3 uses the plan-with-files Skill to break down the task](../images/shared/m3-plan-with-files-skill.png)
 
-![M3 主动发起需求澄清，确认复刻 SCAN 指令的范围](../images/shared/m3-clarify-requirements.png)
+After planning, M3 asked clarifying questions. The first confirmed the scope; I chose to reimplement the `SCAN` command:
 
-第二点是算法选型。M3 发现 mini-redis 已经复刻了 Redis 的 dict 数据结构，而不是直接使用 Go 原生 map，于是建议在现有 dict 上复刻游标推进。这能保留 Redis 算法的主要行为和学习价值。至于哈希桶顺序、内存局部性和性能是否一致，还取决于 Go 实现的数据布局和运行时，不能直接由数据结构名称推出：
+![M3 clarifies the scope of reimplementing the SCAN command](../images/shared/m3-clarify-requirements.png)
 
-![M3 推荐完整复刻 Redis SCAN 游标实现，基于已有 dict 而非另起 Go map](../images/shared/algorithm-selection-dict-vs-map.png)
+The second question was about the algorithm. M3 found that mini-redis had already reimplemented Redis's dict data structure instead of using Go's built-in map. It therefore suggested implementing cursor advancement on top of the existing dict. This preserves the main behavior and learning value of the Redis algorithm. Whether bucket ordering, memory locality, and performance are also consistent depends on the Go implementation's data layout and runtime; the data-structure names alone do not establish that:
 
-经过多轮的交互和澄清之后，我们得出如下规划：
+![M3 recommends reimplementing the SCAN cursor using the existing dict rather than a Go map](../images/shared/algorithm-selection-dict-vs-map.png)
 
-![多轮澄清后的最终复刻规划](../images/shared/final-replication-plan.png)
+After several rounds of discussion and clarification, we agreed on this plan:
 
-方案对齐后，M3 自底向上逐层完成函数实现，先搭好 dict 遍历的基础框架，再衔接游标推进和参数解析，最后更新了项目的 README 计划表：
+![The final plan after several rounds of clarification](../images/shared/final-replication-plan.png)
 
-![M3 自底向上逐层完成函数实现，并主动更新项目 README 计划表](../images/shared/m3-bottom-up-implementation.png)
+Once we agreed on the approach, M3 implemented the functions from the bottom up. It first created the foundation for dict traversal, then connected cursor advancement and parameter parsing, and finally updated the checklist in the project README:
 
-最终交付的代码结构如下。SCAN 实现覆盖了 match、count 参数解析以及游标循环逻辑：
+![M3 implements the functions bottom-up and updates the project README checklist](../images/shared/m3-bottom-up-implementation.png)
 
-![M3 生成的 SCAN 实现代码结构：覆盖 match、count 参数解析和游标循环逻辑](../images/shared/scan-implementation-code.png)
+The delivered code had this structure. The `SCAN` implementation covered parsing the `match` and `count` arguments and the cursor loop:
 
-通过这次复刻结合代码注释，我看到了 `SCAN` 的一个实现细节：当前 Redis 源码在 `scanGenericCommand` 中将 `count × 10` 设为最大迭代次数，用于限制稀疏哈希表上的单次工作量。它不是把“实际遍历桶数量固定扩大十倍”，也不保证凑够 `COUNT` 个返回值：
+![SCAN implementation covering match and count parsing and cursor iteration](../images/shared/scan-implementation-code.png)
 
-![dictScan 将实际遍历桶数量扩大到 count × 10 的细节](../images/shared/dict-scan-count-detail.png)
+By reimplementing the algorithm and reading the comments, I learned an implementation detail: in the current Redis source, `scanGenericCommand` sets `count × 10` as a maximum number of iterations to limit the amount of work in one call when the hash table is sparse. It does not mean that the implementation always scans ten times the number of buckets, nor does it guarantee that `COUNT` items will be returned:
 
-其中一个值得注意的细节：Go 语言中 `^` 同时承担异或（XOR）和按位取反（NOT）两种语义，而 C 语言中两者分别是 `^` 和 `~`。rev 算法涉及大量二进制翻转操作，每一步都必须精确区分“翻转某一位”和“翻转整个二进制数”——语义搞混一步，游标推进就会全部跑偏。这部分需要重点 Review，确认 M3 有没有把 `~` 机械替换为 `^`：
+![The count × 10 iteration limit in dictScan](../images/shared/dict-scan-count-detail.png)
 
-![M3 手写 rev 算法时精确区分 Go 语言 ^ 运算符的异或和取反两种语义](../images/shared/go-xor-not-semantics.png)
+One detail deserves attention: Go uses `^` for both XOR and bitwise NOT, while C uses `^` for XOR and `~` for NOT. The `rev` algorithm performs many bit-reversal operations, so you must distinguish precisely between “flip one bit” and “invert the entire binary number.” Confusing these semantics even once can break cursor advancement. This code deserves close review to ensure M3 did not mechanically replace `~` with `^`:
 
-基于上述实现质量，编译和单测均一次通过：
+![M3 distinguishes Go's XOR and complement uses of the ^ operator in the rev algorithm](../images/shared/go-xor-not-semantics.png)
 
-![SCAN 复刻代码编译和单测均一次通过](../images/shared/scan-test-pass.png)
+The code compiled and all unit tests passed on the first run:
 
-## 学以致用：构建轻量级 Redis 监控面板
+![The SCAN reimplementation compiled and its tests passed](../images/shared/scan-test-pass.png)
 
-完成止血和复盘之后，还需要针对既有架构补上监控能力，确保后续能实时观测 Redis 运行状态，并在问题复发时快速定位和止血。
+## Applying What We Learned: Building a Lightweight Redis Monitoring Dashboard
 
-这个环节我把既有工程作为上下文传入一个新项目，让 M3 从零设计并实现一套可视化的 Redis 监控面板，看看它在前后端全链路交付上的表现。
+After mitigating and reviewing the incident, we still needed to add monitoring to the existing architecture so we could observe Redis in real time, quickly identify a recurrence, and mitigate it.
 
-![将既有工程作为上下文传入新项目，让 M3 从零设计 Redis 监控面板](../images/shared/build-redis-monitor.png)
+For this task, I provided the existing system as context to a new project and asked M3 to design and build a visual Redis monitoring dashboard from scratch. I wanted to see how it handled end-to-end frontend and backend delivery.
 
-经过简单的问题澄清后，M3 给出了监控系统的架构 ASCII 图，理清了数据流向：
+![Provide the existing system as context and ask M3 to build a Redis monitoring dashboard](../images/shared/build-redis-monitor.png)
 
-1. 采集层（埋点上报）
-2. 缓冲层（环形缓冲区削峰）
-3. 展示层（HTTP 接口 + 前端面板）
+After a brief clarification, M3 produced an ASCII architecture diagram showing the data flow:
 
-三层之间职责清晰，耦合度低：
+1. **Collection layer:** Collect and report instrumentation data.
+2. **Buffer layer:** Use a ring buffer to absorb traffic spikes.
+3. **Presentation layer:** Provide an HTTP API and frontend dashboard.
 
-![M3 给出的监控系统三层架构 ASCII 图：采集层、缓冲层、展示层](../images/shared/monitor-three-layer-architecture.png)
+The responsibilities of the three layers were clear and loosely coupled:
 
-代码结构：
+![M3's three-layer monitoring architecture: collection, buffering, and presentation](../images/shared/monitor-three-layer-architecture.png)
 
-![监控面板项目的代码目录结构](../images/shared/monitor-code-structure.png)
+Code structure:
 
-尽管是 MVP 快速原型，底层监控埋点的环形缓冲区数据结构设计值得一看——包括预分配的固定大小数组、互斥锁保护的并发读写，以及缓冲区满时自动覆盖最旧数据：
+![Project directory structure for the monitoring dashboard](../images/shared/monitor-code-structure.png)
 
-![环形缓冲区数据结构设计：预分配固定数组、互斥锁并发保护、满时自动覆盖最旧数据](../images/shared/ring-buffer-design.png)
+Although this was a quick MVP prototype, the ring buffer design for collecting monitoring data is worth examining. It uses a preallocated fixed-size array, a mutex to protect concurrent reads and writes, and overwrites the oldest data when full:
 
-最终生成的监控面板如下。整体采用深色主题，布局上分成了多个面板：Redis 实例的实时状态（内存占用、连接数、QPS）、命令类型的分布统计图、以及慢查询的时间线排列：
+![Ring buffer design with a preallocated array, mutex protection, and overwrite-on-full behavior](../images/shared/ring-buffer-design.png)
 
-![最终生成的 Redis 监控面板：实时状态、命令分布统计和慢查询时间线](../images/shared/monitor-dashboard-final.png)
+Here is the final dashboard. It uses a dark theme and several panels: Redis instance status (memory usage, connection count, and QPS), a chart of commands by type, and a timeline of slow queries:
 
-对于 Redis 服务端，面板也针对慢查询和 key 分布进行了详尽的输出与展示，可直接用于日常观测：
+![Redis monitoring dashboard with instance status, command distribution, and slow-query timeline](../images/shared/monitor-dashboard-final.png)
 
-![Redis 服务端慢查询和 key 分布的详细展示](../images/shared/monitor-slow-query-detail.png)
+The dashboard also shows details about slow queries and key distribution on the Redis server, which can support routine monitoring:
 
-## 小结
+![Detailed Redis server view of slow queries and key distribution](../images/shared/monitor-slow-query-detail.png)
 
-这次用 M3 做了三个任务：分析 Redis 连接池故障、把 `SCAN` 游标算法从 C 复刻到 Go，以及搭建 Redis 监控面板。真正值得保留的是任务证据和暴露出的边界：
+## Summary
 
-1. 故障排查时，它给出了数据结构、原子性、降级和监控等候选方向，但对 `SCAN` 阻塞机制的最初解释不准确。
-2. 底层复刻时，它识别出项目使用了自研 dict，并区分了 Go 中 `^` 的异或与取反语义；实现仍要靠源码和测试验证。
-3. 监控面板覆盖了采集、缓冲和展示层，但环形缓冲区等设计取舍没有经过充分论证。
+I used M3 for three tasks: investigating a Redis connection-pool issue, porting the `SCAN` cursor algorithm from C to Go, and building a Redis monitoring dashboard. The evidence from these tasks and the limitations they exposed are what matter:
 
-在 Redis SCAN 从 C 到 Go 的复刻中，M3 识别出项目复刻了 dict 而非使用 Go map，并在此基础上推荐完整复刻 SCAN 游标；Go 语言 `^` 运算符兼具异或和取反两种语义，这部分也做了逐行区分。
+1. During troubleshooting, it suggested possible approaches involving data structures, atomicity, fallback behavior, and monitoring, but its initial explanation of how `SCAN` blocks was inaccurate.
+2. During the low-level port, it recognized that the project used a custom dict rather than Go's built-in map, and distinguished Go's XOR and complement operators. The implementation still needed to be verified against source code and tests.
+3. The monitoring dashboard covered collection, buffering, and presentation, but its design trade-offs were not examined thoroughly.
 
-而在监控面板场景中，M3 暴露了一个值得注意的边界：from-0-to-1 阶段，它给出的架构选择是“能跑的稳妥方案”而非“经过权衡的最优方案”。以环形缓冲区为例，为什么是环形缓冲区而不是无锁队列？缓冲区满了覆盖最旧数据在高 QPS 下会不会丢关键指标？这些决策点 M3 默认了一个标准答案，没有主动提出 trade-off。如果开发者不具备相关领域的知识储备，就没法在头脑风暴阶段完成最佳方案决策——最终拿到的只是一个“能跑”的原型，而非“设计合理”的原型。
+While porting Redis `SCAN` from C to Go, M3 found that the project reimplemented dict rather than using a Go map and recommended a faithful reimplementation of the SCAN cursor on that basis. It also distinguished the XOR and complement meanings of Go's `^` operator line by line.
 
-这也回到了 Addy Osmani 的观点：工具不会替你学习。M3 生成了降级代码和 rev 算法，但模型对 `SCAN` 阻塞和 `count × 10` 的解释仍需要文档、源码和压测来校正。对我来说，这次实测的价值就在这里——它能加快阅读和实现，工程结论仍要自己验。
+The monitoring-dashboard task exposed a noteworthy limitation: when building from zero to one, M3 chose a safe, workable approach rather than the result of a well-reasoned trade-off. For example, why use a ring buffer instead of a lock-free queue? If the buffer overwrites the oldest data, could it lose important metrics under high QPS? M3 assumed a standard answer instead of raising these trade-offs. Without relevant domain knowledge, a developer cannot choose the best approach during brainstorming. The result may be a prototype that runs, but is not necessarily well designed.
+
+This brings us back to Addy Osmani's point: tools do not learn for you. M3 generated fallback code and the `rev` algorithm, but its explanations of SCAN blocking and `count × 10` still needed correction against documentation, source code, and load tests. For me, that is the value of this evaluation: it can speed up reading and implementation, but engineering conclusions still need to be verified.

@@ -1,90 +1,90 @@
 ---
-title: 认证授权与数据安全专题：JWT、SSO、权限系统、加密、脱敏与数据校验
-description: 认证授权与数据安全面试学习路线，涵盖 Session、Token、OAuth2、JWT、SSO、RBAC、加密算法、数据脱敏、数据校验和密码安全。
-category: 系统设计
+title: "Authentication, Authorization, and Data Security: JWT, SSO, Access Control, Encryption, Masking, and Validation"
+description: A learning path for authentication, authorization, and data security, covering Session, Token, OAuth2, JWT, SSO, RBAC, encryption, data masking, validation, and password security.
+category: System Design
 tag:
-  - 认证授权
-  - 数据安全
-  - 后端面试
+  - Authentication and Authorization
+  - Data Security
+  - Backend Interviews
 sitemap:
   changefreq: weekly
   priority: 0.9
 head:
   - - meta
     - name: keywords
-      content: 认证授权,Authentication,Authorization,Session,Token,OAuth2,JWT,SSO,RBAC,权限系统,加密算法,敏感词过滤,数据脱敏,数据校验,密码安全,后端面试
+      content: authentication and authorization,Authentication,Authorization,Session,Token,OAuth2,JWT,SSO,RBAC,access-control systems,encryption,sensitive-word filtering,data masking,data validation,password security,backend interviews
 ---
 
-认证授权与数据安全专题关注后端系统里非常基础、但出错成本很高的一条链路：用户如何登录、身份如何传递、权限如何判断、敏感数据如何保护、输入数据如何校验。
+This section covers a foundational but high-impact backend workflow: how users log in, how identity is propagated, how permissions are checked, how sensitive data is protected, and how input is validated.
 
-安全不是某一个框架或某一个注解能兜住的事情。它需要从认证、授权、传输、存储、展示、输入校验和审计等多个环节一起设计。
+Security cannot be provided by a single framework or annotation. It must be designed across authentication, authorization, transmission, storage, display, input validation, and auditing.
 
-时间比较紧的话，可以先看面试突击版的 [认证与授权常见面试题总结](https://interview.javaguide.cn/system-design/authentication-and-authorization-interview-questions.html) 和 [Web 安全常见面试题总结](https://interview.javaguide.cn/system-design/security-interview-questions.html)，再回到本专题补完整原理和实现方案。
+If you are short on time, start with the interview-cram versions of [Authentication and Authorization Interview Questions](https://interview.javaguide.cn/system-design/authentication-and-authorization-interview-questions.html) and [Web Security Interview Questions](https://interview.javaguide.cn/system-design/security-interview-questions.html), then return here for the full principles and implementation approaches.
 
-## 适合谁看
+## Who Should Read This?
 
-- 正在学习登录鉴权、权限系统和数据安全的后端开发者。
-- 准备认证授权、JWT、SSO、RBAC、数据脱敏相关面试题的同学。
-- 项目中需要设计后台权限、用户体系、敏感数据展示或数据校验方案的工程师。
-- 已经用过 Spring Security、Sa-Token、Shiro 等框架，但想补齐底层概念的读者。
+- Backend developers learning authentication, access-control systems, and data security.
+- Candidates preparing for interviews about authentication, authorization, JWT, SSO, RBAC, and data masking.
+- Engineers designing administrative permissions, user systems, sensitive-data display, or validation for a project.
+- Readers who have used Spring Security, Sa-Token, Shiro, or similar frameworks and want to strengthen their understanding of the underlying concepts.
 
-## 学习重点
+## Key Concepts
 
-- 认证解决“你是谁”，授权解决“你能做什么”，两者不能混为一谈。
-- Session、Token、JWT、OAuth2、SSO 适合的场景不同，不能只用“无状态”判断优劣。
-- JWT 的优势和问题都很明显，重点在失效控制、续期、泄露风险和服务端治理。
-- 权限系统通常要从用户、角色、权限、资源、组织、数据范围等维度建模。
-- 数据安全既包括加密存储，也包括脱敏展示、输入校验、敏感词过滤和密码安全。
-- 安全方案必须考虑落地成本、用户体验、可审计性和事故处置能力。
+- Authentication answers "Who are you?" Authorization answers "What can you do?" They are distinct concepts.
+- Session, Token, JWT, OAuth2, and SSO serve different use cases; "stateless" alone does not determine which is best.
+- JWT has clear advantages and limitations. Pay attention to revocation, renewal, leakage risks, and server-side management.
+- Access-control systems commonly model users, roles, permissions, resources, organizations, and data scope.
+- Data security includes encryption at rest, masking in displays, input validation, sensitive-word filtering, and password security.
+- Security solutions must account for implementation cost, user experience, auditability, and incident response.
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [认证授权基础概念详解](./basis-of-authority-certification.md)：先区分认证、授权、Session、Token、OAuth2 等概念。
-2. [JWT 基础概念详解](./jwt-intro.md) 和 [JWT 身份认证优缺点分析](./advantages-and-disadvantages-of-jwt.md)：理解 JWT 的工作方式、优势和局限。
-3. [SSO 单点登录详解](./sso-intro.md)：理解统一认证中心、跨系统登录和登录态同步。
-4. [权限系统设计详解](./design-of-authority-system.md)：把认证授权落到 RBAC 权限系统设计。
-5. [常见加密算法总结](./encryption-algorithms.md)、[数据脱敏方案总结](./data-desensitization.md)、[为什么前后端都要做数据校验？](./data-validation.md)：补齐数据安全基础。
-6. 再根据业务场景阅读 [敏感词过滤方案总结](./sentive-words-filter.md) 和 [为什么忘记密码时只能重置，不能告诉你原密码？](./why-password-reset-instead-of-retrieval.md)。
+1. [Authentication and Authorization Fundamentals](./basis-of-authority-certification.md): Distinguish authentication, authorization, Session, Token, and OAuth2.
+2. [JWT Fundamentals](./jwt-intro.md) and [JWT Authentication: Advantages and Disadvantages](./advantages-and-disadvantages-of-jwt.md): Understand how JWT works, along with its benefits and limitations.
+3. [Single Sign-On (SSO)](./sso-intro.md): Learn about centralized authentication, cross-system login, and session synchronization.
+4. [Access-Control System Design](./design-of-authority-system.md): Apply authentication and authorization concepts to an RBAC access-control system.
+5. [Common Encryption Algorithms](./encryption-algorithms.md), [Data-Masking Approaches](./data-desensitization.md), and [Why Validate Data on Both the Frontend and Backend?](./data-validation.md): Review data-security fundamentals.
+6. Based on your business needs, continue with [Sensitive-Word Filtering](./sentive-words-filter.md) and [Why Can a Forgotten Password Only Be Reset, Not Retrieved?](./why-password-reset-instead-of-retrieval.md).
 
-## 核心文章
+## Core Guides
 
-### 认证授权
+### Authentication and Authorization
 
-- [认证授权基础概念详解](./basis-of-authority-certification.md)：讲解 Authentication、Authorization、Session、Token、OAuth2 等核心知识。
-- [JWT 基础概念详解](./jwt-intro.md)：讲解 JSON Web Token 的组成结构、签名算法、工作原理及登录鉴权应用。
-- [JWT 身份认证优缺点分析](./advantages-and-disadvantages-of-jwt.md)：分析 JWT 无法主动失效、Token 续期等问题及解决方案。
-- [SSO 单点登录详解](./sso-intro.md)：讲解统一认证中心、CAS 协议、跨域登录实现及登录态同步机制。
-- [权限系统设计详解](./design-of-authority-system.md)：基于 RBAC 讲解权限系统建模、访问控制和后台管理设计。
+- [Authentication and Authorization Fundamentals](./basis-of-authority-certification.md): Covers Authentication, Authorization, Session, Token, OAuth2, and related concepts.
+- [JWT Fundamentals](./jwt-intro.md): Explains JSON Web Token structure, signing algorithms, how it works, and its use in login authentication.
+- [JWT Authentication: Advantages and Disadvantages](./advantages-and-disadvantages-of-jwt.md): Discusses JWT revocation, Token renewal, and solutions to related problems.
+- [Single Sign-On (SSO)](./sso-intro.md): Covers centralized authentication, the CAS protocol, cross-domain login, and session synchronization.
+- [Access-Control System Design](./design-of-authority-system.md): Uses RBAC to explain access-control modeling, authorization, and administrative systems.
 
-### 数据安全
+### Data Security
 
-- [常见加密算法总结](./encryption-algorithms.md)：梳理 AES、RSA、MD5、SHA 等算法的原理与应用场景。
-- [敏感词过滤方案总结](./sentive-words-filter.md)：从暴力匹配到 Trie 树、AC 自动机，讲解敏感词过滤算法演进和工程实践。
-- [数据脱敏方案总结](./data-desensitization.md)：讲解手机号、身份证、银行卡等敏感数据脱敏规则和实现方法。
-- [为什么前后端都要做数据校验？](./data-validation.md)：解释参数校验、权限校验的重要性，以及如何防止绕过前端校验。
-- [为什么忘记密码时只能重置，不能告诉你原密码？](./why-password-reset-instead-of-retrieval.md)：解释密码哈希、加盐、Bcrypt 和密码传输安全。
+- [Common Encryption Algorithms](./encryption-algorithms.md): Reviews the principles and use cases of AES, RSA, MD5, SHA, and other algorithms.
+- [Sensitive-Word Filtering](./sentive-words-filter.md): Traces filtering techniques from brute-force matching to trie trees and Aho–Corasick, with engineering practices.
+- [Data-Masking Approaches](./data-desensitization.md): Covers masking rules and implementation for sensitive data such as phone numbers, national IDs, and bank cards.
+- [Why Validate Data on Both the Frontend and Backend?](./data-validation.md): Explains parameter and permission validation and how to prevent bypassing frontend checks.
+- [Why Can a Forgotten Password Only Be Reset, Not Retrieved?](./why-password-reset-instead-of-retrieval.md): Explains password hashing, salting, bcrypt, and password transmission security.
 
-## 高频问题
+## Common Questions
 
-- 认证和授权有什么区别？
-- Session 和 Token 有什么区别？
-- JWT 由哪几部分组成？签名解决了什么问题？
-- JWT 为什么无法天然主动失效？有哪些解决方案？
-- OAuth2 和 JWT 是什么关系？
-- SSO 单点登录的核心流程是什么？
-- RBAC 权限模型如何设计？用户、角色、权限、资源之间是什么关系？
-- 对称加密、非对称加密和哈希算法分别适合什么场景？
-- 为什么密码不能明文存储？为什么忘记密码只能重置？
-- 数据脱敏应该在存储层、服务层还是展示层做？
-- 为什么后端必须做数据校验？
-- 敏感词过滤有哪些常见实现方案？
+- How do authentication and authorization differ?
+- How do Session and Token differ?
+- What are the parts of a JWT, and what problem does its signature solve?
+- Why does JWT not support immediate revocation by default, and what approaches address this?
+- How are OAuth2 and JWT related?
+- What is the core flow of single sign-on (SSO)?
+- How should an RBAC model be designed? How do users, roles, permissions, and resources relate?
+- Which use cases suit symmetric encryption, asymmetric encryption, and hashing?
+- Why should passwords not be stored in plaintext, and why can they only be reset if forgotten?
+- Should data masking happen at the storage, service, or display layer?
+- Why must the backend validate data?
+- What are common approaches to sensitive-word filtering?
 
-## 相关专题
+## Related Topics
 
-- [系统设计知识体系](../)
-- [系统设计基础专题](../basis/)
-- [Spring & Spring Boot 专题](../framework/spring/)
-- [高可用系统知识体系](../../high-availability/)
-- [计算机网络安全](../../cs-basics/network/network-attack-means.md)
+- [System Design](../)
+- [System Design Fundamentals](../basis/)
+- [Spring and Spring Boot](../framework/spring/)
+- [High Availability](../../high-availability/)
+- [Computer-Network Security](../../cs-basics/network/network-attack-means.md)
 
 <!-- @include: @article-footer.snippet.md -->

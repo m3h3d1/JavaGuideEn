@@ -1,162 +1,162 @@
 ---
-title: 高可用系统设计详解：SLA、限流熔断、降级容灾、缓存与灰度发布
-description: 高可用系统设计指南，讲解 SLA 和多少个 9、单点故障治理、限流熔断、服务降级、缓存高可用、异步削峰、冗余容灾、灰度发布和故障恢复等核心方案。
-category: 高可用
+title: "High-Availability System Design: SLAs, Rate Limiting, Circuit Breaking, Fallback, Caching, and Canary Releases"
+description: A guide to high-availability system design, covering SLAs, availability targets, single points of failure, rate limiting, circuit breaking, fallback, cache availability, asynchronous load smoothing, redundancy, canary releases, and recovery.
+category: High Availability
 icon: "mdi:palette-swatch-outline"
 tag:
-  - 高可用
-  - 系统设计
+  - High Availability
+  - System Design
 head:
   - - meta
     - name: keywords
-      content: 高可用,高可用系统设计,高可用架构,SLA,多少个 9,单点故障,限流熔断,服务降级,缓存高可用,冗余容灾,灰度发布,故障恢复,系统稳定性
+      content: high availability,high-availability system design,high-availability architecture,SLA,availability targets,single point of failure,rate limiting,circuit breaking,service fallback,cache availability,redundancy,canary release,failure recovery,system stability
 ---
 
-不管是平时刷的购物网站、用的在线支付，还是公司内部的核心业务系统，用户对"服务不可用"的容忍度越来越低。一次持续几分钟的故障，可能就会带来大量用户流失甚至直接的经济损失。
+Whether users are browsing a shopping site, paying online, or using an internal business system, their tolerance for service outages is shrinking. An outage lasting only a few minutes can drive users away and cause direct financial losses.
 
-所以，如何让系统在各种异常情况下依然能提供稳定的服务，就成了后端开发和架构设计中绕不开的话题。这篇文章会把高可用系统设计的核心思路和常见方案梳理一遍，包括 SLA 指标、单点故障治理、限流熔断、服务降级、缓存高可用、异步削峰、冗余容灾、灰度发布和故障恢复等。
+Keeping a system reliable under abnormal conditions is therefore a central concern in backend development and architecture. This guide covers core high-availability practices, including SLA metrics, single-point-of-failure controls, rate limiting, circuit breaking, fallback, cache availability, asynchronous load smoothing, redundancy, canary releases, and recovery.
 
-## 什么是高可用？可用性的判断标准是啥？
+## What Is High Availability, and How Is It Measured?
 
-**高可用（High Availability，简称 HA）** 是指系统在绝大部分时间内能够持续提供正常服务的能力。高可用代表系统即使在发生硬件故障或者系统升级的时候，服务仍然是可用的。
+**High availability (HA)** is a system's ability to provide normal service most of the time, including during hardware failures and system upgrades.
 
-一般情况下，我们使用 **多少个 9** 来评判一个系统的可用性，比如 99.9999% 就是代表该系统在所有的运行时间中只有 0.0001% 的时间是不可用的，这样的系统就是非常非常高可用的了！可用性较差的系统可能连 90%（1 个 9）都达不到。
+Availability is often expressed as a percentage of "nines." For example, 99.9999% availability means the system is unavailable for 0.0001% of its operating time. Systems with poor availability may not even reach 90% (one nine).
 
-| 可用性等级 | 可用性百分比 | 年度停机时间 | 典型场景     |
-| ---------- | ------------ | ------------ | ------------ |
-| 1 个 9     | 90%          | 36.5 天      | 个人博客     |
-| 2 个 9     | 99%          | 3.65 天      | 普通企业系统 |
-| 3 个 9     | 99.9%        | 8.76 小时    | 在线服务     |
-| 4 个 9     | 99.99%       | 52.6 分钟    | 金融交易系统 |
-| 5 个 9     | 99.999%      | 5.26 分钟    | 电信级系统   |
+| Availability | Percentage | Annual downtime | Typical use case         |
+| ------------ | ---------- | --------------- | ------------------------ |
+| One nine     | 90%        | 36.5 days       | Personal blog            |
+| Two nines    | 99%        | 3.65 days       | General business system  |
+| Three nines  | 99.9%      | 8.76 hours      | Online service           |
+| Four nines   | 99.99%     | 52.6 minutes    | Financial trading system |
+| Five nines   | 99.999%    | 5.26 minutes    | Carrier-grade system     |
 
-除此之外，系统的可用性还可以用 **某功能的失败次数与总的请求次数之比** 来衡量，比如对网站请求 1000 次，其中有 10 次请求失败，那么可用性就是 99%。
+Availability can also be measured as **the proportion of successful requests for a feature**. For example, if 10 out of 1,000 requests to a website fail, availability is 99%.
 
-**SLA（Service Level Agreement，服务级别协议）** 是服务提供商与客户之间的正式承诺，通常会明确规定可用性目标。例如，云服务商承诺 99.95% 的 SLA，意味着每月最多允许约 22 分钟的停机时间。
+An **SLA (Service Level Agreement)** is a formal commitment between a service provider and its customer. It usually specifies availability targets. For example, a cloud provider's 99.95% monthly SLA allows about 22 minutes of downtime per month.
 
-## 哪些情况会导致系统不可用？
+## What Causes System Outages?
 
-导致系统不可用的原因可以从 **内部因素** 和 **外部因素** 两个维度来分析：
+Causes of outages can be grouped into **internal** and **external** factors:
 
-**内部因素：**
+**Internal factors:**
 
-1. **代码缺陷**：比如内存泄漏、死锁、循环依赖、空指针异常等代码质量问题，是导致线上故障的最常见原因之一。
-2. **架构设计缺陷**：单点故障、缺少限流保护、服务间强耦合等架构问题，会在流量高峰时暴露出来。
-3. **资源耗尽**：CPU、内存、磁盘、连接池等资源耗尽会直接导致服务不可用。
-4. **配置错误**：错误的配置变更（如数据库连接串、超时时间配置不当）可能导致服务异常。
+1. **Code defects**: Memory leaks, deadlocks, circular dependencies, null-pointer exceptions, and other code-quality issues are common causes of production incidents.
+2. **Architectural flaws**: Single points of failure, missing rate limits, and tightly coupled services can become visible during traffic peaks.
+3. **Resource exhaustion**: Exhausted CPU, memory, disk, or connection pools can make a service unavailable.
+4. **Configuration errors**: Incorrect changes, such as a bad database connection string or timeout, can cause failures.
 
-**外部因素：**
+**External factors:**
 
-1. **硬件故障**：服务器宕机、磁盘损坏、网络设备故障等。
-2. **流量激增**：突发的用户请求量（如秒杀活动）超过系统承载能力。
-3. **网络攻击**：DDoS 攻击、CC 攻击等恶意攻击会耗尽系统资源。
-4. **依赖服务故障**：数据库、缓存、消息队列、第三方 API 等依赖服务不可用。
-5. **自然灾害**：机房停电、火灾、地震等不可抗力因素。
+1. **Hardware failures**: Server outages, disk damage, and network-device failures.
+2. **Traffic spikes**: Sudden user traffic, such as a flash sale, exceeds system capacity.
+3. **Network attacks**: DDoS and CC attacks can exhaust system resources.
+4. **Dependency failures**: Databases, caches, message queues, and third-party APIs become unavailable.
+5. **Natural disasters**: Data-center power outages, fires, earthquakes, and other events beyond the team's control.
 
-## 有哪些提高系统可用性的方法？
+## How Can System Availability Be Improved?
 
-提高系统可用性的方法可以从 **预防**、**容错**、**恢复** 三个阶段来考虑：
+Plan availability across three stages: **prevention**, **fault tolerance**, and **recovery**.
 
-![高可用系统韧性三阶段](./images/shared/ha-system-design-resilience-stages.png)
+![Three stages of resilience in a high-availability system](./images/shared/ha-system-design-resilience-stages.png)
 
-### 注重代码质量，测试严格把关
+### Maintain Code Quality and Test Thoroughly
 
-**代码质量是系统可用性的根基**。代码质量有问题比如比较常见的内存泄漏、循环依赖都是对系统可用性极大的损害。大家都喜欢谈限流、降级、熔断，但是从代码质量这个源头把关是首先要做好的一件很重要的事情。
+**Code quality is the foundation of availability.** Memory leaks, circular dependencies, and other code-quality problems can seriously harm system reliability. Rate limiting, fallback, and circuit breaking matter, but improving code quality is an essential first step.
 
-如何提高代码质量？比较实际可用的就是 **Code Review**，不要在乎每天多花的那 1 个小时左右的时间，作用可大着呢！
+One practical way to improve code quality is **code review**. The roughly extra hour it takes each day can prevent costly defects.
 
-另外，推荐几个对提高代码质量有实际效果的工具：
+Other useful tools include:
 
-- [SonarQube](https://www.sonarqube.org/)：静态代码分析平台，可检测代码坏味道、安全漏洞和 Bug。
-- Alibaba 开源的 Java 诊断工具 [Arthas](https://arthas.aliyun.com/doc/)：可在线排查 JVM 问题，支持热更新代码。
-- [阿里巴巴 Java 代码规范](https://github.com/alibaba/p3c)（Alibaba Java Code Guidelines）：配套 IDEA 插件，实时检查代码规范。
-- IDEA 自带的代码分析等工具。
+- [SonarQube](https://www.sonarqube.org/): A static-analysis platform that detects code smells, security vulnerabilities, and bugs.
+- [Arthas](https://arthas.aliyun.com/doc/), Alibaba's Java diagnostic tool: Diagnose JVM problems online and update code at runtime.
+- [Alibaba Java Coding Guidelines](https://github.com/alibaba/p3c): Includes an IntelliJ IDEA plugin for real-time checks.
+- Code-analysis tools built into IntelliJ IDEA.
 
-### 使用集群，减少单点故障
+### Use Clusters to Reduce Single Points of Failure
 
-**单点故障（Single Point of Failure，SPOF）** 是高可用的大敌。以 Redis 缓存为例：使用集群模式避免单点故障，是保障其高可用的关键手段。
+A **single point of failure (SPOF)** is a major threat to availability. For example, Redis clustering can avoid a single-instance failure and improve cache availability.
 
-当我们使用一个 Redis 实例作为缓存的时候，该 Redis 实例宕机后，整个缓存服务就可能不可用。使用集群之后，即使一台 Redis 实例宕机，也可以通过故障转移让其他实例接管。切换时间取决于部署模式和参数配置，Redis Sentinel/Cluster 通常需要数秒到数十秒，不应简单理解为“不到一秒”。
+If a single Redis instance is used as a cache, its failure can make the entire cache unavailable. In a cluster, another instance can take over through failover. Failover time depends on the deployment and configuration; Redis Sentinel or Cluster can take seconds to tens of seconds, not necessarily less than one second.
 
-常见的集群模式：
+Common Redis deployment modes:
 
-- **主从复制（Master-Slave）**：一主多从，主节点负责写，从节点负责读，主节点故障时需要手动或借助哨兵进行故障转移。
-- **哨兵模式（Sentinel）**：在主从复制基础上增加哨兵节点，实现自动故障检测和转移。
-- **Redis Cluster 模式**：Redis 3.0+ 官方支持的数据分片方案，每个分片有主从副本，兼顾高可用和水平扩展。
+- **Primary-replica replication**: One primary handles writes and replicas handle reads. If the primary fails, failover must be performed manually or through Sentinel.
+- **Sentinel mode**: Adds Sentinel nodes to primary-replica replication for automatic failure detection and failover.
+- **Redis Cluster**: Redis's official sharding solution since 3.0. Each shard has primary and replica nodes, providing availability and horizontal scaling.
 
-### 限流
+### Rate Limiting
 
-**限流（Rate Limiting）** 是保护系统的第一道防线。其原理是监控应用流量的 QPS 或并发线程数等指标，当达到指定的阈值时对流量进行控制，以避免被瞬时的流量高峰冲垮，从而保障应用的高可用性。——来自 [alibaba-Sentinel](https://github.com/alibaba/Sentinel "Sentinel") 的 wiki。
+**Rate limiting** is the first line of defense. It monitors metrics such as QPS and concurrent threads, then controls traffic when a configured threshold is reached to prevent a sudden spike from overwhelming the application. — [Alibaba Sentinel wiki](https://github.com/alibaba/Sentinel "Sentinel")
 
-常见的限流算法包括：
+Common rate-limiting algorithms include:
 
-- **固定窗口计数器**：实现简单，但存在临界点突刺问题。
-- **滑动窗口计数器**：解决了固定窗口的临界问题，更加平滑。
-- **漏桶算法**：以固定速率处理请求，适合流量整形。
-- **令牌桶算法**：允许一定程度的突发流量，更加灵活。
+- **Fixed-window counter**: Simple to implement, but allows bursts at window boundaries.
+- **Sliding-window counter**: Reduces boundary bursts and provides smoother limits.
+- **Leaky bucket**: Processes requests at a fixed rate; useful for traffic shaping.
+- **Token bucket**: More flexible and allows limited bursts.
 
-### 超时和重试机制设置
+### Configure Timeouts and Retries
 
-一旦用户请求超过某个时间得不到响应，就抛出异常。这个是非常重要的，很多线上系统故障都是因为 **没有进行超时设置或者超时设置的方式不对** 导致的。
+If a request does not receive a response within a certain period, it should time out. This is critical: many production incidents result from **missing or incorrectly configured timeouts**.
 
-我们在读取第三方服务的时候，尤其适合设置超时和重试机制。一般我们使用一些 RPC 框架的时候，这些框架都自带的超时重试的配置。如果不进行超时设置可能会导致请求响应速度慢，甚至导致请求堆积进而让系统无法再处理请求。
+Timeouts and retries are especially useful when calling third-party services. RPC frameworks usually provide settings for both. Without timeouts, responses may be slow and requests may pile up until the system can no longer process them.
 
-**重试的次数一般设为 3 次**，再多次的重试没有好处，反而会加重服务器压力（部分场景使用失败重试机制会不太适合）。同时，重试需要配合 **指数退避** 策略，避免重试风暴。
+**A common maximum is three retries.** Additional retries may not help and can increase server load; some operations should not be retried at all. Use **exponential backoff** to reduce retry storms.
 
-需要特别注意的是，重试的接口必须具备幂等性。对于创建订单、资金扣减这类非幂等写操作，应通过唯一请求 ID、业务唯一键、状态机等方式防止重复执行，而不是简单地把失败请求再发一遍。读操作可以相对积极地重试，写操作重试前最好先查询上一次请求是否已经生效。
+Retried operations must be idempotent. Prevent duplicate execution of non-idempotent writes, such as order creation and account debits, with a unique request ID, business-unique key, or state machine. Do not simply resend a failed write. Reads can usually be retried more freely; before retrying a write, check whether the previous request took effect.
 
-### 熔断机制
+### Circuit Breaking
 
-超时和重试机制设置之外，**熔断机制** 也是很重要的。熔断机制说的是系统自动收集所依赖服务的资源使用情况和性能指标，当所依赖的服务恶化或者调用失败次数达到某个阈值时，熔断器进入 Open 状态，后续请求直接快速失败，不再调用下游服务，避免故障继续扩散。熔断通常会配合降级策略使用，比如返回兜底数据或调用备用服务。
+Along with timeouts and retries, **circuit breaking** is important. The system monitors resource use and performance of its dependencies. When a dependency degrades or failures exceed a threshold, the circuit breaker enters the Open state. Subsequent calls fail fast without reaching the downstream service, preventing the failure from spreading. Circuit breaking is often paired with fallback, such as returning cached data or calling a backup service.
 
-熔断器有三种状态：
+Circuit breakers have three states:
 
-- **关闭（Closed）**：正常状态，请求正常通过。
-- **打开（Open）**：熔断状态，请求直接失败，不调用下游服务。
-- **半开（Half-Open）**：尝试恢复状态，放行少量请求探测下游服务是否恢复。
+- **Closed**: Normal state; requests pass through.
+- **Open**: Circuit is tripped; requests fail immediately without calling downstream.
+- **Half-Open**: Recovery is being tested; a small number of requests probe the downstream service.
 
-历史上广泛使用的流量控制和熔断降级框架有 Netflix Hystrix（已进入维护模式）和 Alibaba Sentinel。新项目通常更推荐使用 Sentinel 或 Resilience4j。
+Netflix Hystrix (now in maintenance mode) and Alibaba Sentinel have both been widely used for traffic management and circuit breaking. Sentinel or Resilience4j is generally a better choice for new projects.
 
-### 降级
+### Fallback
 
-**降级（Degradation）** 是在系统压力过大或部分服务不可用时，暂时关闭一些非核心功能，保证核心功能的可用性。
+**Fallback** temporarily disables noncritical features when the system is overloaded or some services are unavailable, preserving core functionality.
 
-降级策略包括：
+Fallback strategies include:
 
-- **功能降级**：关闭推荐、评论等非核心功能。
-- **数据降级**：返回缓存数据或默认数据，而非实时查询。
-- **页面降级**：返回静态页面或简化版页面。
+- **Feature fallback**: Disable noncritical features such as recommendations and comments.
+- **Data fallback**: Return cached or default data instead of querying in real time.
+- **Page fallback**: Return a static or simplified page.
 
-### 异步调用
+### Asynchronous Calls
 
-异步调用是指调用方发起请求后不阻塞等待处理结果，而是立即返回，具体处理可以后续再做，秒杀场景用这个还是蛮多的。
+With an asynchronous call, the caller does not block while waiting for the result. It returns immediately, and the work is completed later. This is common in flash-sale systems.
 
-但是，使用异步之后我们可能需要 **适当修改业务流程进行配合**，比如 **用户在提交订单之后，不能立即返回用户订单提交成功，需要在消息队列的订单消费者进程真正处理完该订单之后，甚至出库后，再通过电子邮件或短信通知用户订单成功**。
+Asynchronous processing may require **changes to the business workflow**. For example, after a user submits an order, the system cannot confirm that it succeeded until the message-queue consumer has processed it, or even until it has shipped. It can then notify the user by email or text message.
 
-除了可以在程序中实现异步之外，我们常常还使用 **消息队列**，消息队列可以通过异步处理提高系统性能（削峰、减少响应所需时间）并且可以降低系统耦合性。
+Applications often use **message queues** for asynchronous processing. Queues can improve performance by absorbing traffic peaks and reducing response time, while also reducing coupling between services.
 
-### 使用缓存
+### Use Caches
 
-在高并发场景下，如果所有请求都直接打到数据库，数据库很可能因压力过大而崩溃。使用缓存缓存热点数据，因为缓存存储在内存中，所以速度相当地快！
+Under high concurrency, sending every request directly to the database may overwhelm it. Cache frequently accessed data to serve it from memory and reduce database load.
 
-缓存的典型应用场景：
+Common caching patterns include:
 
-- **热点数据缓存**：将访问频繁的数据放入 Redis 等缓存中。
-- **页面缓存**：将渲染后的页面缓存起来，减少服务器压力。
-- **本地缓存**：使用 Caffeine、Guava Cache 等本地缓存，减少网络开销。
+- **Hot-data caching**: Store frequently accessed data in Redis or another cache.
+- **Page caching**: Cache rendered pages to reduce server load.
+- **Local caching**: Use Caffeine or Guava Cache to reduce network calls.
 
-缓存本身也要考虑高可用下的典型故障模式：
+Account for common cache failure modes too:
 
-- **缓存穿透**：查询不存在的数据，请求全部穿透到数据库。常见应对方式有参数校验、空值缓存、布隆过滤器。
-- **缓存击穿**：热点 Key 过期瞬间，大量请求同时打到数据库。常见应对方式有互斥锁、逻辑过期、热点 Key 永不过期 + 异步刷新。
-- **缓存雪崩**：大量 Key 同时过期或缓存集群不可用。常见应对方式有过期时间加随机偏移、多级缓存、缓存集群高可用。
+- **Cache penetration**: Requests for nonexistent data all reach the database. Validate parameters, cache empty results, or use a Bloom filter.
+- **Cache breakdown**: When a hot key expires, many requests hit the database at once. Use a mutex, logical expiration, or a non-expiring hot key with asynchronous refresh.
+- **Cache avalanche**: Many keys expire at once or the cache cluster becomes unavailable. Add random offsets to expiration times, use multiple cache layers, and make the cache cluster highly available.
 
-### 其他
+### Other Practices
 
-- **核心应用和服务优先使用更好的硬件**：核心服务使用更高配置的服务器、SSD 硬盘等。
-- **监控系统资源使用情况增加报警设置**：使用 Prometheus + Grafana 等监控方案，设置合理的告警阈值。
-- **注意备份，必要时候回滚**：数据库定期备份，代码版本可追溯，支持快速回滚。
-- **灰度发布**：将服务器集群分成若干部分，每天只发布一部分机器，观察运行稳定没有故障，第二天继续发布一部分机器，持续几天才把整个集群全部发布完毕，期间如果发现问题，只需要回滚已发布的一部分服务器即可。
-- **定期检查/更换硬件**：如果不是购买的云服务的话，定期还是需要对硬件进行一波检查的，对于一些需要更换或者升级的硬件，要及时更换或者升级。
+- **Prioritize better hardware for critical services**: Use higher-specification servers and SSDs for core workloads.
+- **Monitor resource usage and configure alerts**: Use tools such as Prometheus and Grafana, with sensible alert thresholds.
+- **Keep backups and roll back when needed**: Back up databases regularly, track code versions, and support quick rollbacks.
+- **Use canary releases**: Divide the cluster into groups and deploy to one group at a time. Monitor stability before continuing over several days. If a problem appears, roll back only the updated instances.
+- **Inspect and replace hardware regularly**: For self-managed infrastructure, inspect hardware periodically and replace or upgrade components when needed.
 
 <!-- @include: @article-footer.snippet.md -->

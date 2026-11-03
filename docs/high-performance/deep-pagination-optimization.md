@@ -1,195 +1,195 @@
 ---
-title: 深度分页介绍及优化建议
-description: 深度分页是指查询偏移量过大导致性能下降的场景，本文详解深度分页产生的原因及四种优化方案：范围查询、子查询优化、INNER JOIN 延迟关联、覆盖索引，并分析各方案的适用场景与优缺点。
-category: 高性能
+title: "Deep Pagination: Problems and Optimizations"
+description: Deep pagination occurs when a large query offset degrades performance. This guide explains why it happens and compares four optimizations: range queries, subqueries, deferred joins with INNER JOIN, and covering indexes.
+category: High Performance
 head:
   - - meta
     - name: keywords
-      content: 深度分页,分页优化,LIMIT优化,MySQL分页,延迟关联,覆盖索引,游标分页
+      content: deep pagination,pagination optimization,LIMIT optimization,MySQL pagination,deferred join,covering index,cursor pagination
 ---
 
-## 什么是深度分页？怎么导致的？
+## What Is Deep Pagination, and Why Does It Happen?
 
-查询偏移量过大的场景我们称为深度分页，这会导致查询性能较低，例如：
+Deep pagination is a query with a very large offset, which can cause poor performance. For example:
 
 ```sql
-# MySQL 在无法利用索引的情况下跳过1000000条记录后，再获取10条记录
+# Skip 1,000,000 rows and fetch 10 more; MySQL may not be able to use an index
 SELECT * FROM t_order ORDER BY id LIMIT 1000000, 10
 ```
 
-当查询偏移量过大时，MySQL 的查询优化器可能会选择全表扫描而不是利用索引来优化查询。
+With a very large offset, MySQL's query optimizer may choose a full table scan instead of using an index.
 
-**深度分页变慢的根本原因**在于 MySQL 的执行机制：对于 `LIMIT offset, N`，MySQL 并非直接跳到 `offset` 处，而是必须从头扫描 `offset + N` 条记录。如果查询依赖二级索引且不满足覆盖索引，这意味着 MySQL 需要对前 `offset` 条记录执行毫无意义的**回表查询（产生海量的随机 I/O）**，最后再将这些辛苦查出的数据丢弃。即便优化器最终因代价过高退化为全表扫描，顺序扫描百万行的成本依然巨大。
+The **root cause of slow deep pagination** is how MySQL executes `LIMIT offset, N`: it does not jump directly to `offset`; it scans `offset + N` rows from the beginning. If the query uses a secondary index that does not cover the requested fields, MySQL performs unnecessary **table lookups for the first `offset` rows, causing a large amount of random I/O**, then discards those rows. Even if the optimizer switches to a full table scan because it estimates that to be cheaper, scanning a million rows is still expensive.
 
-![深度分页问题](./images/shared/deep-pagination-phenomenon.png)
+![Deep-pagination problem](./images/shared/deep-pagination-phenomenon.png)
 
-不同机器上这个查询偏移量过大的临界点可能不同，取决于多个因素，包括硬件配置（如 CPU 性能、磁盘速度）、表的大小、索引的类型和统计信息等。
+The offset at which performance starts to degrade varies by machine and depends on hardware such as CPU and disk speed, table size, index type, and statistics.
 
-![转全表扫描的临界点](./images/shared/deep-pagination-phenomenon-critical-point.png)
+![Threshold for switching to a full table scan](./images/shared/deep-pagination-phenomenon-critical-point.png)
 
-MySQL 的查询优化器采用基于成本的策略来选择最优的查询执行计划。它会根据 CPU 和 I/O 的成本来决定是否使用索引扫描或全表扫描。如果优化器认为全表扫描的成本更低，它就会放弃使用索引。不过，即使偏移量很大，如果查询中使用了覆盖索引（covering index），MySQL 仍然可能会使用索引，避免回表操作。
+MySQL's query optimizer uses a cost-based strategy to choose an execution plan. It estimates CPU and I/O costs to decide between an index scan and a full table scan. If a full scan appears cheaper, it may avoid the index. However, even with a large offset, MySQL may still use a **covering index** to avoid table lookups.
 
-## 深度分页优化建议
+## Deep-Pagination Optimizations
 
-> **本文基于 MySQL 8.0 + InnoDB 存储引擎**，不同版本优化器行为可能存在差异。
+> **This guide uses MySQL 8.0 with InnoDB.** Optimizer behavior may differ across versions.
 
-### 范围查询（游标分页）
+### Range Queries (Cursor Pagination)
 
-通过记录上一页最后一条记录的 ID，使用 `WHERE id > last_id LIMIT n` 获取下一页数据：
+Record the ID of the last row on the current page, then use `WHERE id > last_id LIMIT n` to fetch the next page:
 
 ```sql
-# 通过记录上次查询结果的最后一条记录的 ID 进行下一页的查询
+# Use the last row's ID from the previous result to fetch the next page
 SELECT * FROM t_order WHERE id > 100000 ORDER BY id LIMIT 10
 ```
 
-**游标分页的核心优势**：**不依赖 ID 的连续性**。MySQL 只需要在 B+ 树上定位到 `last_id` 的位置，然后顺序向后读取 `n` 条记录即可，中间是否有断层（如 ID 被删除）完全不影响结果的准确性和性能。
+**The key advantage of cursor pagination is that it does not depend on consecutive IDs.** MySQL locates `last_id` in the B+ tree and reads the next `n` rows sequentially. Gaps, such as deleted IDs, do not affect correctness or performance.
 
-这种方式的限制：
+Limitations:
 
-1. **不支持跳页**：无法直接跳转到第 N 页，只能逐页向后（或向前）翻页。
-2. **排序字段受限**：如果查询需要按照其他字段（如创建时间）排序而非 ID 排序，需使用联合游标 `(sort_field, id)` 保证唯一性和顺序。
-3. **并发场景**：当分页查询期间有新数据插入或删除时，可能出现：
-   - **数据遗漏**：查询第二页时，有新数据插入到第一页范围内，导致该数据被“挤”到第二页，但第二页查询已基于旧的最后 ID 跳过它。
-   - **数据重复**：查询第二页时，第一页末尾有数据被删除，原第二页的第一条数据“升”到第一页末尾，导致第二页查询再次返回它。
+1. **No direct page jumps**: You cannot jump directly to page N; pages must be fetched in sequence, forward or backward.
+2. **Sorting constraints**: If sorting by a field such as creation time instead of ID, use a composite cursor `(sort_field, id)` to preserve a unique, deterministic order.
+3. **Concurrent changes**: Inserts or deletes while paging can cause:
+   - **Skipped rows**: A new row inserted into the first page may be pushed into the second page, but the second-page query based on the previous last ID may skip it.
+   - **Duplicate rows**: If a row at the end of the first page is deleted, the first row of the second page may shift upward and appear again on the next query.
 
-### 子查询
+### Subqueries
 
-我们先查询出 limit 第一个参数对应的主键值，再根据这个主键值再去过滤并 limit，这样效率会更快一些。
+First use a subquery to find the primary key at the requested offset. Then filter by that key and apply `LIMIT`; this can be faster.
 
-阿里巴巴《Java 开发手册》中也有对应的描述：
+Alibaba's Java Development Manual describes this approach:
 
-> 利用延迟关联或者子查询优化超多分页场景。
+> Use deferred joins or subqueries to optimize deep pagination.
 >
 > ![](./images/shared/alibaba-java-development-handbook-paging.png)
 
 ```sql
--- 先通过子查询在主键索引上进行偏移，快速找到起始ID
+-- Use the primary-key index in a subquery to find the starting ID
 SELECT * FROM t_order
 WHERE id >= (
     SELECT id FROM t_order ORDER BY id LIMIT 1000000, 1
 ) ORDER BY id LIMIT 10;
 ```
 
-**工作原理**:
+**How it works:**
 
-1. 子查询 `(SELECT id FROM t_order ORDER BY id LIMIT 1000000, 1)` 利用主键索引扫描并跳过前 1000000 条记录，返回第 1000001 条记录的主键值。
-2. 主查询 `SELECT * FROM t_order WHERE id >= ... ORDER BY id LIMIT 10` 以该主键为起点，获取后续 10 条完整记录。
+1. The subquery `(SELECT id FROM t_order ORDER BY id LIMIT 1000000, 1)` scans the primary-key index, skips the first 1,000,000 rows, and returns the primary key of row 1,000,001.
+2. The main query `SELECT * FROM t_order WHERE id >= ... ORDER BY id LIMIT 10` starts from that key and retrieves the next 10 full rows.
 
-不过，某些情况下子查询可能会产生临时表，影响性能，因此在复杂查询中建议优先考虑延迟关联。
+In some cases, a subquery can create a temporary table and hurt performance. For complex queries, consider a deferred join first.
 
-> **复杂过滤场景**：在包含复杂过滤条件的分页场景中（如 `WHERE status = 1 ORDER BY id LIMIT 1000000, 10`），符合条件的 ID 往往是离散的。此时子查询的优势更加明显：通过在子查询中利用联合索引（如 `(status, id)`）实现覆盖索引扫描，可以高效地跳过前 100 万条符合条件的记录，定位到目标 ID 后，主查询只需回表 10 次。
+> **Complex filtering**: In paginated queries with complex filters, such as `WHERE status = 1 ORDER BY id LIMIT 1000000, 10`, matching IDs are often sparse. A subquery can be especially useful here: use a composite index such as `(status, id)` for a covering-index scan, skip the first million matching rows, and locate the target IDs. The main query then needs only 10 table lookups.
 
-当然，我们也可以利用子查询先去获取目标分页的 ID 集合，然后再根据 ID 集合获取内容，但这种写法非常繁琐，不如使用 INNER JOIN 延迟关联。
+You can also use a subquery to retrieve the target page's IDs, then fetch the rows for those IDs. However, this is cumbersome compared with a deferred join using `INNER JOIN`.
 
-### 延迟关联
+### Deferred Joins
 
-延迟关联与子查询的优化思路类似，都是通过将 `LIMIT` 操作转移到主键索引树上，减少回表次数。相比直接使用子查询，延迟关联通过 `INNER JOIN` 将子查询结果集成到主查询中，避免了子查询可能产生的临时表。在执行 `INNER JOIN` 时，MySQL 优化器能够利用索引进行高效的连接操作（如索引扫描或其他优化策略），因此在深度分页场景下，性能通常优于直接使用子查询。
+Deferred joins use a similar idea to subqueries: move the `LIMIT` operation to the primary-key index to reduce table lookups. Instead of using a standalone subquery, an `INNER JOIN` incorporates the subquery result into the main query and may avoid a temporary table. MySQL can use indexes for the join, so this often performs better than a direct subquery for deep pagination.
 
 ```sql
--- 使用 INNER JOIN 进行延迟关联
+-- Use INNER JOIN for a deferred join
 SELECT t1.*
 FROM t_order t1
 INNER JOIN (
-    -- 这里的子查询可以利用覆盖索引，性能极高
+    -- This subquery can use a covering index
     SELECT id FROM t_order ORDER BY id LIMIT 1000000, 10
 ) t2 ON t1.id = t2.id;
 ```
 
-**工作原理**:
+**How it works:**
 
-1. 子查询 `(SELECT id FROM t_order ORDER BY id LIMIT 1000000, 10)` 利用主键索引扫描并跳过前 1000000 条记录，返回目标分页的 10 条记录的 ID。
-2. 通过 `INNER JOIN` 将子查询结果与主表 `t_order` 关联，获取完整的记录数据。
+1. The subquery `(SELECT id FROM t_order ORDER BY id LIMIT 1000000, 10)` scans the primary-key index, skips the first 1,000,000 rows, and returns the 10 IDs for the target page.
+2. `INNER JOIN` matches those IDs against `t_order` to retrieve the full rows.
 
-除了使用 INNER JOIN 之外，还可以使用逗号连接子查询。
+You can also join the subquery with comma syntax:
 
 ```sql
--- 使用逗号进行延迟关联
+-- Use comma syntax for a deferred join
 SELECT t1.* FROM t_order t1,
 (SELECT id FROM t_order ORDER BY id LIMIT 1000000, 10) t2
 WHERE t1.id = t2.id;
 ```
 
-**注意**: 虽然逗号连接子查询也能实现类似的效果，但为了代码可读性和可维护性，建议使用更规范的 `INNER JOIN` 语法。
+**Note**: Comma syntax can produce a similar result, but `INNER JOIN` is clearer and easier to maintain.
 
-### 覆盖索引
+### Covering Indexes
 
-索引中已经包含了所有需要获取的字段的查询方式称为覆盖索引。
+A query uses a covering index when the index contains all fields it needs to retrieve.
 
-**覆盖索引的好处：**
+**Benefits of a covering index:**
 
-- **避免 InnoDB 表进行索引的二次查询，也就是回表操作**：InnoDB 是以聚集索引的顺序来存储的，对于 InnoDB 来说，二级索引在叶子节点中所保存的是行的主键信息，如果是用二级索引查询数据的话，在查找到相应的键值后，还要通过主键进行二次查询才能获取我们真实所需要的数据。而在覆盖索引中，二级索引的键值中可以获取所有的数据，避免了对主键的二次查询（回表），减少了 IO 操作，提升了查询效率。
-- **减少回表带来的随机 IO**：通过覆盖索引直接返回数据，避免了根据二级索引的主键值回表查询聚簇索引的随机 IO 操作。回表时每次按主键值查找聚簇索引，本质上是随机 IO。
+- **Avoid a second lookup in InnoDB**: InnoDB stores rows in clustered-index order. A secondary index stores the primary key in its leaf nodes, so a query using a secondary index normally needs another lookup by primary key to retrieve the requested row. A covering index contains all requested data in the secondary-index entries, avoiding this lookup and reducing I/O.
+- **Reduce random I/O from table lookups**: A covering index returns data directly instead of using each secondary-index primary key to look up the clustered index. Those lookups are effectively random I/O.
 
-假设建立了 `(code, type)` 联合索引，下面的查询即可使用覆盖索引：
+Suppose there is a composite index on `(code, type)`. The following query can use it as a covering index:
 
 ```sql
-# 在 InnoDB 中，辅助索引天然包含主键 id
-# 如果只需要查询 id, code, type 这三列，只需建立 (code, type) 的联合索引即可实现覆盖
+# InnoDB secondary indexes include the primary key ID
+# If only id, code, and type are needed, a composite index on (code, type) can cover the query
 SELECT id, code, type FROM t_order
 ORDER BY code
 LIMIT 1000000, 10;
 ```
 
-**⚠️注意**:
+**⚠️ Note:**
 
-- 当查询的结果集占表的总行数的很大一部分时，MySQL 查询优化器可能选择放弃使用索引，自动转换为全表扫描。
-- 虽然可以使用 `FORCE INDEX` 强制查询优化器走索引，但这种方式可能会导致查询优化器无法选择更优的执行计划，效果并不总是理想。
+- If the result set is a large fraction of the table, MySQL's optimizer may avoid the index and choose a full table scan.
+- `FORCE INDEX` can make the optimizer use an index, but may prevent it from choosing a better execution plan. It does not always improve performance.
 
-## 生产落地建议
+## Production Recommendations
 
-分页优化首先要和产品形态对齐。后台管理系统常常需要跳页和精确总数，信息流、评论列表、订单列表通常只需要“上一页/下一页”或“加载更多”。如果业务不需要跳到第 10000 页，就不要为了兼容传统分页牺牲查询性能。
+Choose a pagination strategy that fits the product. Admin systems often need page jumps and exact counts, while feeds, comments, and order lists usually need only previous/next or "load more." If the product does not need page 10,000, do not sacrifice query performance to support traditional offset pagination.
 
-常见选择如下：
+Common choices:
 
-| 业务形态               | 推荐方案         | 原因                             |
-| ---------------------- | ---------------- | -------------------------------- |
-| 信息流、评论、消息列表 | 游标分页         | 只需要向前/向后翻页，性能稳定    |
-| 后台列表、运营查询     | 延迟关联或子查询 | 兼容传统页码，但要限制最大页数   |
-| 固定字段榜单           | 覆盖索引         | 查询字段少，可减少回表           |
-| 复杂搜索、多条件排序   | 搜索引擎或 OLAP  | MySQL 不适合承担大跨度检索和排序 |
+| Use case                               | Recommended approach         | Reason                                                      |
+| -------------------------------------- | ---------------------------- | ----------------------------------------------------------- |
+| Feeds, comments, and message lists     | Cursor pagination            | Supports next/previous navigation with stable performance   |
+| Admin lists and operations queries     | Deferred join or subquery    | Supports traditional page numbers, but cap the maximum page |
+| Rankings with fixed fields             | Covering index               | Few fields are queried, reducing table lookups              |
+| Complex search and multi-field sorting | Search engine or OLAP system | MySQL is not suited to large-range search and sorting       |
 
-### 监控与告警
+### Monitoring and Alerts
 
-- **慢查询监控**：监控慢查询日志中 `LIMIT` 偏移量过大的 SQL，及时发现问题。
-- **阈值告警**：设置 `long_query_time` 阈值捕获深度分页查询。
-- **执行计划检查**：使用 `EXPLAIN` 定期检查关键分页 SQL 的执行计划，确保优化器按预期使用索引。
-- **接口限流**：对深页码请求单独限流，避免爬虫或异常请求拖垮数据库。
-- **最大页数限制**：例如只允许查询前 100 页，更深的数据引导用户缩小搜索条件。
+- **Slow-query monitoring**: Find SQL statements with large `LIMIT` offsets in the slow-query log.
+- **Threshold alerts**: Configure `long_query_time` to capture deep-pagination queries.
+- **Execution-plan checks**: Regularly use `EXPLAIN` on critical pagination queries to verify that the optimizer uses indexes as expected.
+- **API rate limiting**: Apply a separate rate limit to deep-page requests so crawlers or unusual traffic do not overwhelm the database.
+- **Maximum page limit**: For example, allow only the first 100 pages and ask users to narrow their search for deeper results.
 
-### 常见误区
+### Common Misconceptions
 
-| 误区                              | 事实                                                 |
-| --------------------------------- | ---------------------------------------------------- |
-| 认为 `FORCE INDEX` 能解决所有问题 | 强制索引可能阻止优化器选择更优计划，应谨慎使用       |
-| 认为覆盖索引适用于所有场景        | 字段过多时索引维护成本高，且大结果集仍可能走全表扫描 |
-| 认为游标分页能解决所有问题        | 游标分页不支持跳页，且只能按特定字段顺序翻页         |
+| Misconception                                   | Fact                                                                                               |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Assuming `FORCE INDEX` fixes every problem      | Forcing an index may prevent the optimizer from choosing a better plan; use it carefully.          |
+| Assuming covering indexes suit every query      | Indexes with many fields are costly to maintain, and a large result set may still use a full scan. |
+| Assuming cursor pagination solves every problem | Cursor pagination does not support page jumps and requires a specific sort order.                  |
 
-## 总结
+## Summary
 
-深度分页问题的根本原因在于：当 `LIMIT` 的偏移量过大时，MySQL 需要扫描并跳过大量记录才能获取目标数据，查询优化器可能放弃索引而选择全表扫描。此时即使有索引，也无法避免大量的回表操作，导致查询性能急剧下降。
+Deep pagination is slow because a large `LIMIT` offset makes MySQL scan and skip many rows before it reaches the target. The optimizer may choose a full table scan, and even an index cannot avoid many table lookups when it does not cover the query.
 
-本文介绍了四种常见的深度分页优化方案，各方案的特点及适用场景对比如下：
+This guide covered four common deep-pagination optimizations:
 
-| 优化方案     | 核心思路                                                            | 适用场景                       | 限制                                             |
-| ------------ | ------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------ |
-| **范围查询** | 记录上一页最后一条 ID，通过 `WHERE id > last_id LIMIT n` 获取下一页 | 按 ID 排序、允许游标式翻页     | 不支持跳页、非 ID 排序需使用联合游标             |
-| **子查询**   | 先通过子查询获取起始主键，再根据主键过滤                            | 需要支持传统 OFFSET 翻页       | 子查询可能产生临时表、依赖排序字段的索引         |
-| **延迟关联** | 用 `INNER JOIN` 将分页转移到主键索引，减少回表                      | 大数据量分页、需要传统翻页逻辑 | SQL 相对复杂                                     |
-| **覆盖索引** | 建立包含查询字段的联合索引，避免回表                                | 查询字段固定、可建立合适索引   | 字段较多时索引维护成本高、大结果集可能走全表扫描 |
+| Approach           | Core idea                                                                             | Suitable for                                         | Limitation                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------- |
+| **Range query**    | Record the last ID and fetch the next page with `WHERE id > last_id LIMIT n`          | ID-sorted cursor pagination                          | No page jumps; other sort orders need a composite cursor                   |
+| **Subquery**       | Find the starting primary key, then filter by it                                      | Traditional offset pagination                        | May create a temporary table and depends on an index for the sort field    |
+| **Deferred join**  | Use `INNER JOIN` to move pagination to the primary-key index and reduce table lookups | Large datasets that need traditional page navigation | More complex SQL                                                           |
+| **Covering index** | Add a composite index containing all queried fields                                   | Fixed set of query fields and a suitable index       | Indexes with many fields are costly; large result sets may use a full scan |
 
-**方案选择建议**：
+**Choosing an approach:**
 
-- **优先使用延迟关联**：对于大多数需要支持传统 `LIMIT offset, size` 翻页逻辑的场景，延迟关联是性能和可维护性较好的选择。
-- **考虑范围查询（游标分页）**：如果业务允许使用“下一页”式的游标翻页（如社交媒体 feed 流、无限滚动），范围查询性能最佳且稳定。
-- **覆盖索引作为补充**：当查询字段固定且数量不多时，可配合其他方案建立覆盖索引进一步优化。
+- **Prefer deferred joins**: They offer a good balance of performance and maintainability for most cases that need traditional `LIMIT offset, size` pagination.
+- **Consider range queries (cursor pagination)**: If the product supports next-page navigation, such as social feeds or infinite scrolling, range queries provide stable performance.
+- **Use covering indexes as a supplement**: Add one when the query fields are fixed and few, and combine it with another approach if useful.
 
-**注意事项**：
+**Keep in mind:**
 
-- 无论采用哪种方案，都应注意监控实际执行计划（`EXPLAIN`），确保优化器按预期使用索引。
-- 对于超深分页（如百万级偏移量），应从业务层面评估是否真的需要支持，考虑限制最大翻页数或采用其他检索方式（如搜索引擎）。
+- Whichever approach you use, monitor execution plans with `EXPLAIN` and verify that the optimizer uses indexes as expected.
+- For extremely deep pagination, such as offsets in the millions, confirm that the product really needs it. Consider limiting the maximum page or using another search system.
 
-## 参考
+## References
 
-- 聊聊如何解决 MySQL 深分页问题 - 捡田螺的小男孩：<https://juejin.cn/post/7012016858379321358>
-- 数据库深分页介绍及优化方案 - 京东零售技术：<https://mp.weixin.qq.com/s/ZEwGKvRCyvAgGlmeseAS7g>
-- MySQL 深分页优化 - 得物技术：<https://juejin.cn/post/6985478936683610149>
+- Solving deep pagination in MySQL — Jian Tianluo: <https://juejin.cn/post/7012016858379321358>
+- Deep pagination and database optimization — JD Retail Technology: <https://mp.weixin.qq.com/s/ZEwGKvRCyvAgGlmeseAS7g>
+- MySQL deep-pagination optimization — Dewu Tech: <https://juejin.cn/post/6985478936683610149>

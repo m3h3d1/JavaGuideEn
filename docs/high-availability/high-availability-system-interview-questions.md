@@ -1,164 +1,164 @@
 ---
-title: 2026 最新高可用系统设计面试题总结：SLA、限流熔断、重试幂等与容灾
-category: 高可用
+title: "2026 High-Availability System Design Interview Questions: SLAs, Rate Limiting, Retries, Idempotency, and Disaster Recovery"
+category: High Availability
 redirectFrom:
   - /high-availability/high-availability-interview-questions.html
-description: 2026 最新高可用系统设计面试题总结，覆盖 SLA、可用性指标、单点故障、RTO/RPO、限流降级熔断、超时重试、接口幂等、性能压测、故障演练和容灾架构等高频考点。
+description: A 2026 review of high-availability system design interview topics, including SLAs, availability metrics, single points of failure, RTO/RPO, rate limiting, fallback, circuit breaking, timeouts, retries, API idempotency, load testing, failure drills, and disaster recovery.
 tag:
-  - 高可用
-  - 面试题
-  - 系统设计
+  - High Availability
+  - Interview Questions
+  - System Design
 head:
   - - meta
     - name: keywords
-      content: 高可用面试题,高可用系统设计面试题,2026 高可用面试题,SLA 面试题,单点故障,限流面试题,降级面试题,熔断面试题,超时重试面试题,接口幂等面试题,RTO,RPO,性能压测,故障演练
+      content: high-availability interview questions,high-availability system design interview questions,2026 high-availability questions,SLA interview questions,single point of failure,rate-limiting questions,fallback questions,circuit-breaking questions,timeout and retry questions,API idempotency questions,RTO,RPO,load testing,failure drills
 ---
 
 <!-- @include: @article-header.snippet.md -->
 
-高可用面试题经常从一句“系统怎么保证不挂”开始，随后追问单点故障、限流熔断、超时重试、接口幂等和异地容灾。只罗列组件通常答不完整，还要说明故障如何被发现、影响怎样被控制、服务如何恢复，以及数据能否保持正确。
+High-availability interviews often start with "How do you keep a system from going down?" Follow-up questions cover single points of failure, rate limiting, circuit breaking, timeouts, retries, API idempotency, and geo-disaster recovery. Listing components is not enough; explain how failures are detected, how their impact is contained, how service recovers, and how data remains correct.
 
-这篇文章是 JavaGuide 高可用专题的复习入口，按高可用基础、冗余与容灾、限流降级熔断、超时重试幂等、性能测试与故障治理五部分整理。答案和实现细节放在对应专题文章中。
+This is the review guide for JavaGuide's high-availability section. It is organized into five areas: availability fundamentals, redundancy and disaster recovery, rate limiting and fallback, timeouts/retries/idempotency, and performance testing and incident management. Detailed answers and implementations are in the linked guides.
 
-时间比较紧的话，可以先看 [高可用系统常见面试题总结](https://interview.javaguide.cn/high-availability/high-availability-system-interview-questions.html)，把暂时讲不清的问题标出来，再回到本文补原理和工程细节。
+If you are short on time, start with [Common High-Availability System Interview Questions](https://interview.javaguide.cn/high-availability/high-availability-system-interview-questions.html). Note the questions you cannot answer, then return here to review the principles and engineering details.
 
-## 复习时先抓住哪些问题？
+## What Should You Focus on First?
 
-| 模块             | 需要讲清楚的内容                             | 常见追问方向                                 |
-| ---------------- | -------------------------------------------- | -------------------------------------------- |
-| 高可用基础       | 可用性如何衡量，怎样减少故障发生率和影响范围 | SLA、可用性指标、单点故障、灰度发布          |
-| 冗余与容灾       | 节点或机房故障后，备用资源怎样接管流量和数据 | RTO、RPO、冷备/热备、多活、故障转移、脑裂    |
-| 限流、降级与熔断 | 流量超过容量或下游持续异常时，怎样保护服务   | 限流算法、降级、熔断、隔离、Sentinel         |
-| 超时、重试与幂等 | 远程调用失败后能否重试，怎样避免重复写入     | Deadline、退避、Retry Budget、幂等键、状态机 |
-| 性能与故障治理   | 如何确定容量、发现瓶颈并验证容错方案         | P99、压测、容量评估、缓存问题、故障演练      |
+| Area                                          | What to explain                                                             | Common follow-ups                                                    |
+| --------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Availability fundamentals                     | Measure availability and reduce failures and their impact                   | SLA, availability metrics, single points of failure, canary releases |
+| Redundancy and disaster recovery              | Transfer traffic and data to standby resources after a node or site failure | RTO, RPO, cold/hot standby, active-active, failover, split brain     |
+| Rate limiting, fallback, and circuit breaking | Protect services from excess traffic or unhealthy dependencies              | Algorithms, fallback, circuit breaking, isolation, Sentinel          |
+| Timeouts, retries, and idempotency            | Decide when to retry a remote call and prevent duplicate writes             | Deadlines, backoff, retry budgets, idempotency keys, state machines  |
+| Performance and incident management           | Estimate capacity, find bottlenecks, and verify fault tolerance             | P99, load testing, capacity planning, cache failures, failure drills |
 
-这些机制需要放到一条调用链里理解。入口流量过大时先限流，下游响应过慢要及时超时，瞬态错误可以在预算内重试，持续异常则触发熔断；写请求还要用幂等机制防止重复副作用。
+Understand these mechanisms as part of one call chain. Rate-limit excessive ingress, time out slow downstream calls, retry transient errors within a budget, and open the circuit for persistent failures. Use idempotency to prevent duplicate side effects on writes.
 
-## 高可用基础
+## Availability Fundamentals
 
-高可用并不等于永不故障。系统设计要回答的是：怎样减少故障，故障发生后如何限制影响，以及多久能够恢复服务。多部署几个实例只能减少应用层单点，数据库、缓存、消息队列、配置中心、DNS 和负载均衡仍可能成为故障源。
+High availability does not mean that failures never happen. System design must address how to reduce failures, contain their impact, and restore service. Adding application instances reduces application-level single points of failure, but databases, caches, message queues, configuration centers, DNS, and load balancers can still fail.
 
-![提高系统可用性的三层方法](./images/shared/ha-interview-availability-methods.png)
+![Three ways to improve availability](./images/shared/ha-interview-availability-methods.png)
 
-相关内容：[高可用系统设计指南](https://javaguide.cn/high-availability/high-availability-system-design.html)
+Related guide: [High-Availability System Design](https://javaguide.cn/high-availability/high-availability-system-design.html)
 
-常见面试题：
+Common interview questions:
 
-- 什么是高可用？它和“多部署几台机器”有什么区别？
-- 可用性 99.9%、99.99% 和 99.999% 分别允许多长时间的中断？
-- 代码、发布、流量、基础设施和外部依赖会怎样导致系统不可用？
-- 提高系统可用性通常要从哪些方面入手？
-- 什么是单点故障？有冗余实例为什么还不一定消除了单点？
-- 灰度发布怎样控制变更风险？放量、监控和回滚如何配合？
+- What is high availability, and how does it differ from simply deploying more machines?
+- How much downtime do 99.9%, 99.99%, and 99.999% availability allow?
+- How can code, releases, traffic, infrastructure, and external dependencies cause outages?
+- What are the main ways to improve availability?
+- What is a single point of failure? Why might redundant instances still leave one?
+- How do canary releases control change risk? How do rollout, monitoring, and rollback work together?
 
-回答可用性指标时要先说明统计口径。按自然月还是自然年计算，计划内维护是否计入，不同接口是否使用同一套 SLA，都会影响最终数字。小数点后多一个 9，也会增加冗余、运维和演练成本。
+When discussing availability, define how it is measured. Calendar month or year, whether planned maintenance counts, and whether different endpoints share an SLA all affect the result. Every additional nine also increases redundancy, operational, and drill costs.
 
-## 冗余与容灾
+## Redundancy and Disaster Recovery
 
-冗余解决“备用资源在哪里”，容灾还要处理检测、切换、数据复制和恢复。对无状态服务，自动摘除故障实例通常比较容易；数据库主切、跨地域切流和资金链路涉及数据风险，往往需要更谨慎的确认与回切方案。
+Redundancy provides standby resources; disaster recovery also covers detection, failover, replication, and recovery. Removing a failed stateless instance is usually straightforward. Database promotion, cross-region traffic shifts, and financial workflows carry data risks and need careful confirmation and failback plans.
 
-![RTO 与 RPO](./images/shared/redundancy-optimized-rto-rpo-timeline.png)
+![RTO and RPO](./images/shared/redundancy-optimized-rto-rpo-timeline.png)
 
-相关内容：[冗余设计详解](https://javaguide.cn/high-availability/redundancy.html)
+Related guide: [Redundancy Design](https://javaguide.cn/high-availability/redundancy.html)
 
-常见面试题：
+Common interview questions:
 
-- 什么是冗余？服务、数据库、缓存和机房分别怎样做冗余？
-- RTO 和 RPO 分别约束什么？RPO=0 会带来哪些代价？
-- 冷备、温备、热备和多活有什么区别？
-- 同城灾备、同城多活和异地多活应该怎样选择？
-- 什么是故障转移？自动切换和人工确认分别适合哪些场景？
-- 故障检测太快或太慢会带来什么问题？
-- 网络分区为什么可能导致脑裂？多数派、租约和 fencing 怎样避免双主写入？
-- Redis Sentinel 故障转移能否保证 RPO=0？`quorum` 在选举中起什么作用？
+- What is redundancy? How can services, databases, caches, and data centers be made redundant?
+- What do RTO and RPO constrain? What does RPO = 0 cost?
+- How do cold, warm, and hot standby differ from active-active?
+- When should you choose same-city disaster recovery, same-city active-active, or geo-active-active?
+- What is failover? When is automatic switching appropriate, and when is manual confirmation safer?
+- What can happen if failure detection is too fast or too slow?
+- Why can a network partition cause split brain? How do quorum, leases, and fencing prevent dual-primary writes?
+- Can Redis Sentinel failover guarantee RPO = 0? What role does `quorum` play in an election?
 
-RTO/RPO 给出容灾目标，完成配置并不能证明系统已经达到目标。备份能否恢复、流量能否切走、切换后数据是否完整，都要靠定期演练验证。订单查询和资金记账对恢复时间、数据丢失的容忍度不同，也没必要强行使用同一套指标。
+RTO and RPO define recovery targets, but configuring a system does not prove it can meet them. Regular drills must verify that backups can be restored, traffic can be shifted, and data remains complete after failover. Order queries and financial ledger updates have different tolerances for recovery time and data loss, so they do not need identical targets.
 
-## 限流、降级与熔断
+## Rate Limiting, Fallback, and Circuit Breaking
 
-这三种机制处理的问题不同。限流控制进入系统的请求量，降级根据业务优先级减少服务能力，熔断在下游持续异常时停止调用。隔离则把线程、连接或并发额度分开，避免一个依赖占满全部资源。
+These mechanisms address different problems. Rate limiting controls incoming requests, fallback reduces functionality based on business priority, and circuit breaking stops calls to persistently unhealthy dependencies. Isolation separates threads, connections, or concurrency limits so one dependency cannot consume all resources.
 
-![熔断器状态机](../distributed-system/images/shared/fallback-and-circuit-breaker-fuse-state-machine.png)
+![Circuit-breaker state machine](../distributed-system/images/shared/fallback-and-circuit-breaker-fuse-state-machine.png)
 
-相关内容：
+Related guides:
 
-- [服务限流详解](https://javaguide.cn/high-availability/limit-request.html)
-- [降级&熔断详解](https://javaguide.cn/high-availability/fallback-and-circuit-breaker.html)
+- [Rate Limiting](https://javaguide.cn/high-availability/limit-request.html)
+- [Fallback and Circuit Breaking](https://javaguide.cn/high-availability/fallback-and-circuit-breaker.html)
 
-常见面试题：
+Common interview questions:
 
-- 为什么要限流？被限流的请求应该拒绝、排队还是返回降级结果？
-- 固定窗口、滑动窗口、漏桶和令牌桶分别适合什么场景？
-- 固定窗口为什么会在窗口交界处产生流量突刺？
-- 单机限流和分布式限流有什么区别？Redis 限流失效时怎样兜底？
-- 网关、接口、用户、IP 和租户限流应该怎样组合？
-- Guava `RateLimiter` 的 `SmoothBursty` 和 `SmoothWarmingUp` 有什么区别？
-- 降级和熔断分别由什么触发？恢复方式有什么不同？
-- 熔断器的 Closed、Open、HalfOpen 三种状态如何切换？
-- 超时、重试、限流、熔断和隔离怎样放进同一条调用链？
-- 线程池隔离和信号量隔离各有什么代价？
-- Fallback 为什么要尽量避免新的远程调用？
-- Hystrix、Sentinel 和 Resilience4j 应该怎样选择？
+- Why is rate limiting needed? Should a limited request be rejected, queued, or given a fallback response?
+- What use cases suit fixed windows, sliding windows, leaky buckets, and token buckets?
+- Why can a fixed window create a burst at the boundary?
+- How does local rate limiting differ from distributed rate limiting? What fallback should apply if Redis-based limiting fails?
+- How should gateway, endpoint, user, IP, and tenant limits be combined?
+- How do Guava `RateLimiter`'s `SmoothBursty` and `SmoothWarmingUp` differ?
+- What triggers fallback and circuit breaking? How does recovery differ?
+- How does a circuit breaker transition between Closed, Open, and Half-Open?
+- How do timeouts, retries, rate limiting, circuit breaking, and isolation work together in one call chain?
+- What are the costs of thread-pool and semaphore isolation?
+- Why should fallback avoid making additional remote calls?
+- How should you choose between Hystrix, Sentinel, and Resilience4j?
 
-方案不能只写阈值，还要说明阈值依据和恢复动作。熔断打开后多久进入 HalfOpen，一次放多少探测流量；限流触发后是否返回 `Retry-After`；降级结果如何标记和监控，这些都会影响线上表现。
+Do not state thresholds without explaining how they were chosen and how recovery works. Production behavior depends on how long the circuit stays Open, how much probe traffic Half-Open allows, whether rate-limited responses include `Retry-After`, and how fallback results are labeled and monitored.
 
-## 超时、重试与幂等
+## Timeouts, Retries, and Idempotency
 
-超时只表示调用方在期限内没有收到结果，不能证明服务端执行失败。查询请求可以在总时间预算内有限重试；支付、下单和库存扣减等写请求，必须先用幂等键、唯一约束或状态机控制重复执行。
+A timeout means the caller did not receive a result before its deadline; it does not prove that the server failed to execute the request. Queries can be retried within a total time budget. Writes such as payments, order creation, and inventory deductions must use idempotency keys, unique constraints, or state machines to prevent duplicate execution.
 
-![重试前必须先判断：错误类型 + 操作幂等](./images/shared/timeout-and-retry-optimized-retry-idempotency-decision.png)
+![Check the error type and operation idempotency before retrying](./images/shared/timeout-and-retry-optimized-retry-idempotency-decision.png)
 
-相关内容：
+Related guides:
 
-- [超时&重试详解](https://javaguide.cn/high-availability/timeout-and-retry.html)
-- [接口幂等方案总结](https://javaguide.cn/high-availability/idempotency.html)
+- [Timeouts and Retries](https://javaguide.cn/high-availability/timeout-and-retry.html)
+- [API Idempotency](https://javaguide.cn/high-availability/idempotency.html)
 
-常见面试题：
+Common interview questions:
 
-- 为什么远程调用必须设置超时？连接、读取、连接池和总 Deadline 分别限制什么？
-- 超时时间应该参考 P99/P999、业务等待时间还是下游 SLA？
-- 调用链中的 Timeout Budget 怎样逐层传递？
-- 重试为什么可能放大故障？指数退避和 Jitter 解决什么问题？
-- 哪些网络错误和 HTTP 状态适合重试？哪些错误应该直接失败？
-- 什么是 Retry Budget？多层 SDK 同时重试会发生什么？
-- 什么是幂等？HTTP 幂等语义和业务幂等有什么区别？
-- 幂等键、唯一索引、Redis、乐观锁和状态机各适合什么场景？
-- 支付接口怎样处理首次请求、并发重复请求和重复通知？
-- 去重和幂等有什么区别？为什么入口去重不能代替服务端幂等？
-- Token 防重复提交时，消费 Token 和执行业务的顺序有什么风险？
-- 使用悲观锁做幂等时，怎样避免范围锁、死锁和长事务？
+- Why must remote calls have timeouts? What do connect, read, connection-pool, and overall deadlines limit?
+- Should timeout values be based on P99/P999, business wait time, or the downstream SLA?
+- How should a timeout budget propagate through a call chain?
+- Why can retries amplify an outage? What do exponential backoff and jitter address?
+- Which network errors and HTTP statuses are retryable? Which should fail immediately?
+- What is a retry budget? What happens when multiple SDK layers retry at the same time?
+- What is idempotency? How does HTTP idempotency differ from business idempotency?
+- Which scenarios suit idempotency keys, unique indexes, Redis, optimistic locks, and state machines?
+- How should a payment API handle the first request, concurrent duplicates, and duplicate notifications?
+- How do deduplication and idempotency differ? Why can ingress deduplication not replace server-side idempotency?
+- What are the risks of consuming a token before or after processing a request?
+- How can pessimistic locks avoid range locks, deadlocks, and long transactions?
 
-准备这部分时要多讲结果不确定的情况：服务端已经完成扣款，响应却丢在网络上；调用方超时后再次请求，如果没有稳定的业务请求号，就可能产生第二次扣款。
+Discuss ambiguous outcomes: the server may have completed a debit while the response was lost. If the caller retries after a timeout without a stable business request ID, it may cause a second debit.
 
-## 性能测试与故障治理
+## Performance Testing and Failure Management
 
-没有容量数据和演练结果，高可用方案只能停留在设计稿。压测用于观察系统在不同流量下的延迟、吞吐和资源变化，故障演练则验证节点宕机、依赖变慢或网络分区后，保护和恢复机制是否按预期工作。
+Without capacity data and drill results, a high-availability plan remains theoretical. Load tests measure latency, throughput, and resource use at different traffic levels. Failure drills verify that protection and recovery behave as expected when a node fails, a dependency slows down, or a network is partitioned.
 
-![性能压测主流程](./images/shared/ha-interview-performance-test-flow.png)
+![Performance load-testing process](./images/shared/ha-interview-performance-test-flow.png)
 
-相关内容：[性能测试入门](https://javaguide.cn/high-availability/performance-test.html)
+Related guide: [Introduction to Performance Testing](https://javaguide.cn/high-availability/performance-test.html)
 
-常见面试题：
+Common interview questions:
 
-- RT、QPS、TPS、并发数、吞吐量和错误率分别反映什么？
-- 为什么平均 RT 不能代表长尾延迟？P95、P99 应该怎样看？
-- 性能测试、负载测试、压力测试和稳定性测试有什么区别？
-- 容量评估为什么不能只看应用服务器？怎样找到数据库、缓存或连接池瓶颈？
-- 缓存穿透、击穿和雪崩分别由什么触发？
-- 什么是故障演练？它和性能压测验证的问题有什么不同？
-- 如何设计一个高可用系统？回答时怎样串起冗余、限流、熔断、幂等和观测？
-- 超时和重试上线后，为什么要同时观察首次成功率和最终成功率？
+- What do RT, QPS, TPS, concurrency, throughput, and error rate measure?
+- Why does average RT not represent tail latency? How should P95 and P99 be interpreted?
+- How do performance, load, stress, and stability tests differ?
+- Why should capacity planning look beyond application servers? How can database, cache, and connection-pool bottlenecks be found?
+- What causes cache penetration, breakdown, and avalanche?
+- What is a failure drill, and how does it differ from a load test?
+- How would you design a highly available system and connect redundancy, rate limiting, circuit breaking, idempotency, and observability in your answer?
+- After deploying timeouts and retries, why monitor both first-attempt and final success rates?
 
-如果首次成功率持续下降、最终成功率却变化不大，系统可能正在用重试掩盖下游故障。此时不仅要看最终成功率，还要检查重试 QPS、超时率、线程池队列、连接池等待时间和熔断器状态。
+If the first-attempt success rate keeps falling while the final success rate stays stable, retries may be hiding a downstream failure. Check retry QPS, timeout rate, thread-pool queues, connection-pool wait time, and circuit-breaker state in addition to final success rate.
 
-## 按准备时间安排复习
+## Review Plan by Available Time
 
-| 剩余时间 | 建议安排                                                                                                                                                                | 复习目标                                        |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| 1～2 天  | 先过一遍 [高可用系统常见面试题总结](https://interview.javaguide.cn/high-availability/high-availability-system-interview-questions.html)，优先补限流熔断、超时重试和幂等 | 能回答高频问题，并说出主要风险和限制            |
-| 3～7 天  | 补 RTO/RPO、故障转移、隔离、容量评估和缓存高可用，再画一条完整调用链                                                                                                    | 能解释各机制怎样配合，遇到故障场景可以继续推演  |
-| 1 周以上 | 阅读全部专题文章，结合自己的项目整理一次发布、超时、流量突增或依赖故障案例                                                                                              | 能从业务 SLA 讲到方案选择、观测指标、恢复和复盘 |
+| Time available   | Suggested plan                                                                                                                                                                                                                                           | Goal                                                                       |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 1–2 days         | Review [Common High-Availability System Interview Questions](https://interview.javaguide.cn/high-availability/high-availability-system-interview-questions.html), focusing first on rate limiting, circuit breaking, timeouts, retries, and idempotency. | Answer common questions and explain key risks and limitations.             |
+| 3–7 days         | Review RTO/RPO, failover, isolation, capacity planning, and cache availability; then diagram a complete call chain.                                                                                                                                      | Explain how mechanisms work together and reason through failure scenarios. |
+| More than a week | Read all the guides and prepare a case from your own project involving a release, timeout, traffic spike, or dependency failure.                                                                                                                         | Explain the business SLA, solution choice, metrics, recovery, and review.  |
 
-社招和中高级岗位还要准备项目里的实际约束。面试官问“为什么把超时设为 500ms”时，会继续追问延迟分布、上游总预算、重试次数、下游容量和动态调整方式。没有参与过对应设计的部分，按学习和调研结果回答即可，不要编造线上数据。
+For experienced and senior roles, prepare to discuss real project constraints. If asked why a timeout is 500 ms, expect follow-ups about the latency distribution, upstream budget, retry count, downstream capacity, and dynamic adjustment. For designs you have not worked on, explain what you learned and researched; do not invent production data.
 
 <!-- @include: @article-footer.snippet.md -->

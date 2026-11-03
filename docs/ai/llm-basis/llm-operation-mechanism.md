@@ -1,328 +1,328 @@
 ---
-title: LLM 运行机制：Token、上下文窗口与采样参数怎么影响输出
-description: 从结构化输出不稳定、长上下文失忆和采样参数失控等真实问题出发，拆解 Token、上下文窗口、Temperature、Top-p、Top-k 与 Token 预算的工程影响。
-category: AI 应用开发
+title: "How LLMs Work: Tokens, Context Windows, and Sampling Parameters"
+description: Explains how tokens, context windows, Temperature, Top P, Top K, and Token budgets affect engineering problems such as unreliable structured output, long-context failures, and uncontrolled sampling.
+category: AI Application Development
 icon: "mdi:robot-outline"
 head:
   - - meta
     - name: keywords
-      content: LLM,大语言模型,Token,上下文窗口,Temperature,Top-p,采样参数,AI 应用开发
+      content: LLM,large language models,Token,context window,Temperature,Top P,sampling parameters,AI application development
 ---
 
-温度已经设为 0，结构化输出仍可能解析失败；上下文塞满文档后，模型也可能漏掉中间位置的关键约束。这些现象需要从 Token 切分、上下文容量和解码策略分别排查。
+Structured output can still fail to parse when Temperature is set to zero, and a model may miss a key constraint in the middle of a context filled with documents. Diagnose these behaviors by examining tokenization, context capacity, and decoding strategy separately.
 
-排查这些问题，要先看一次调用由哪些 Token 组成，再核对上下文预算以及 Temperature、Top-p、Top-k 等解码参数。文中的 Token 数和参数范围只用于解释机制，实际计费与能力上限仍以目标模型的 API 文档和响应 `usage` 为准。
+To investigate these issues, first identify the Tokens in a call, then check the context budget and decoding parameters such as Temperature, Top P, and Top K. Token counts and parameter ranges in this guide illustrate the mechanisms; actual billing and capability limits depend on the target model's API documentation and response `usage`.
 
-## Token 和上下文为什么决定成本与效果？
+## How Do Tokens and Context Affect Cost and Quality?
 
-当你在输入法里打“今天天气真”，它会自动建议“好”。大模型同样在预测后续内容，只不过它参考的是前面几千甚至几十万个字。每次生成一个 Token（文本碎片），再把它加入上下文并预测下一个，直到回答结束。
+When you type "The weather today is so" into a keyboard, it may suggest "nice." An LLM also predicts what comes next, but it can use thousands or even hundreds of thousands of preceding characters as context. It generates one Token (a text fragment), adds it to the context, and predicts the next until the answer is complete.
 
-这个过程叫做**自回归生成（Autoregressive Generation）**。
+This process is called **autoregressive generation**.
 
-自回归生成把后面的几个概念串在了一起：
+Autoregressive generation connects several concepts:
 
-- **Token**：模型每一步“补”的文本碎片。
-- **上下文窗口**：一次调用里模型可处理的总 Token 上限，系统提示词、历史消息、当前输入和输出预算都会占用。
-- **Temperature / Top-p**：模型选哪个候选碎片的策略。
-- **Max Tokens**：允许模型最多“补”多少步。
+- **Token**: A text fragment the model generates at each step.
+- **Context window**: The maximum number of Tokens a model can process in one call. System instructions, message history, current input, and output budget all use this capacity.
+- **Temperature / Top P**: Parameters that affect how the model chooses among candidate fragments.
+- **Max Tokens**: The maximum number of Tokens the model can generate.
 
-Tokenizer 接到文本后，会把它拆成大小不等的片段。比如 `你好，我是小 G。` 可以得到这样一组示意结果：
+The tokenizer splits input text into fragments of varying lengths. For example, `Hello, I'm little G.` might be tokenized like this:
 
-- 原文：`你好，我是小 G。`
-- 切分：`[你好]` `[，]` `[我是]` `[小 G]` `[。]`
-- 统计：原文 9 字符 → Token 数 5 个 → 压缩比约 1.8 倍
+- Text: `Hello, I'm little G.`
+- Tokens: `[Hello]` `[,]` `[I'm]` `[little G]` `[.]`
+- Count: 19 characters → 5 Tokens → compression ratio of about 3.8 characters per Token
 
-![Token 化过程示例](../images/shared/llm-token-process.png)
+![Tokenization example](../images/shared/llm-token-process.png)
 
-这组切分只用于说明过程。实际结果取决于目标模型的 Tokenizer，同一段文本换一个供应商或模型版本，Token 序列就可能改变。OpenAI 也提供了可直接查看切分结果的 [Tokenizer 工具](https://platform.openai.com/tokenizer)。
+This tokenization is illustrative. Actual results depend on the target model's tokenizer; the same text can produce a different sequence with another provider or model version. OpenAI also provides a [Tokenizer tool](https://platform.openai.com/tokenizer) for inspecting tokenization directly.
 
-如果固定按字切，词表比较小，序列却会变长；固定按词切可以缩短序列，但中文词组数量会让词表快速膨胀。BPE、Unigram 等**子词切分算法**在两者之间取舍：高频片段尽量作为整体保留，低频词继续拆小。因此，Token 和字、词都没有固定的一一对应关系。英文单词可能占多个 Token；中文也可能一词多 Token，或多字合成一个 Token。
+Character-based tokenization keeps the vocabulary relatively small but creates longer sequences. Word-based tokenization shortens sequences, but the number of Chinese word combinations would make the vocabulary grow rapidly. **Subword tokenization algorithms** such as BPE and Unigram balance the two: frequent fragments are kept intact where possible, while rare words are split into smaller pieces. Tokens therefore do not map one-to-one to characters or words. An English word may use multiple Tokens; a Chinese word may also use multiple Tokens, or several characters may form one Token.
 
-容量规划可以先用经验值估算：英文 1 Token 大约对应 3~4 个字符；中文通常在 1~2 个汉字之间，混排内容还会继续波动。DeepSeek 官方数据给出的换算是 1 个英文字符约消耗 0.3 Token、1 个中文字符约消耗 0.6 Token，也就是每个 Token 约为 3.3 个英文字符或 1.7 个中文字符。
+For capacity planning, use rough estimates: one English Token is about 3–4 characters; a Chinese Token is usually about 1–2 characters, with more variation in mixed-language text. DeepSeek's published estimate is about 0.3 Token per English character and 0.6 Token per Chinese character, or roughly 3.3 English characters or 1.7 Chinese characters per Token.
 
-Tokenizer 版本也会改变换算结果。早期模型（如 GPT-3.5）的中文压缩率较低，约为 1 字 1.5~2 Token；GPT-4o 使用词表约 20 万的 o200k_base Tokenizer，Qwen2.5 词表约 15 万。现有实测中，新闻类文本约为 1.5 字/Token，技术文档约为 1.2 字/Token，但这些数字不适合直接用于结算。
+Tokenizer versions also change these estimates. Earlier models such as GPT-3.5 had lower Chinese compression, at around 1.5–2 Tokens per character. GPT-4o uses the o200k_base tokenizer, with a vocabulary of about 200,000 tokens; Qwen 2.5 has a vocabulary of about 150,000. Some measurements found roughly 1.5 Chinese characters per Token for news text and 1.2 for technical documents, but these figures should not be used directly for billing.
 
-“趋近 1 字 1 Token”只可能出现在部分高频词上。预算阶段可以用经验值留出余量，计费与监控则读取 API 返回的 `usage`。中文歧义、生僻字和低频专业术语被切成什么粒度，也会影响模型对文本的处理效果。
+"One character per Token" may apply only to some frequent terms. Use rough estimates with a safety margin for budgeting, and read the API's `usage` response for billing and monitoring. How ambiguous Chinese text, rare characters, and infrequent technical terms are tokenized can also affect how the model processes them.
 
-**特殊 Token**：除了文本内容对应的 Token，模型内部还会使用一些特殊标记，这些也会计入 Token 总数：
+**Special Tokens**: In addition to Tokens for text content, models use internal markers that also count toward the Token total:
 
-| 特殊 Token                   | 用途                  | 示例           |
-| ---------------------------- | --------------------- | -------------- |
-| BOS（Beginning of Sequence） | 标记序列开始          | `<s>`          |
-| EOS（End of Sequence）       | 标记序列结束          | `</s>`         |
-| PAD（Padding）               | 批处理时填充短序列    | `<pad>`        |
-| 工具调用标记                 | Function Calling 边界 | `<tool_call/>` |
+| Special Token               | Purpose                           | Example        |
+| --------------------------- | --------------------------------- | -------------- |
+| BOS (Beginning of Sequence) | Marks the start of a sequence     | `<s>`          |
+| EOS (End of Sequence)       | Marks the end of a sequence       | `</s>`         |
+| PAD (Padding)               | Pads short sequences in a batch   | `<pad>`        |
+| Tool-call marker            | Marks a Function Calling boundary | `<tool_call/>` |
 
-这些特殊 Token 通常对用户不可见，但会占用上下文窗口。精确计数时建议使用官方 Tokenizer 工具而非手动估算。
+These special Tokens are usually invisible to users but take up space in the context window. Use the official tokenizer tool rather than manual estimates for precise counts.
 
-### 多模态输入的 Token 开销
+### Token Costs for Multimodal Inputs
 
-支持视觉输入的模型会把图片转换为内部表示，并按各自规则折算输入 Token。这个数不能只根据“有一张图”估算：
+Models that support vision convert images into internal representations and count input Tokens according to their own rules. The Token count cannot be estimated just by noting that there is "one image":
 
-- OpenAI 视觉模型会结合模型、图片尺寸和 `detail` 模式计费。以采用 512 像素分块规则的模型为例，低细节使用固定基础额度；高细节还会按缩放后的分块数量增加 Token。
-- Anthropic 按缩放后的图片像素数估算，官方给出的近似公式是 `tokens ≈ width × height / 750`。一张没有被缩放的 1024×1024 图片约为 1398 Tokens，并非固定的 5 或 85 Tokens。
-- Gemini 对较小图片和较大图片使用不同的分块规则。官方文档中的 258 Tokens 有尺寸条件，不能直接套到任意 1024×1024 图片上。
+- OpenAI vision models calculate usage based on the model, image dimensions, and `detail` setting. For models using 512-pixel tiles, low detail uses a fixed base amount; high detail adds Tokens based on the number of tiles after resizing.
+- Anthropic estimates usage from the resized image's pixel count. Its approximate formula is `tokens ≈ width × height / 750`. An unscaled 1024×1024 image is about 1,398 Tokens, not a fixed 5 or 85 Tokens.
+- Gemini uses different tiling rules for smaller and larger images. The 258-Token figure in its documentation has image-size conditions and should not be applied to every 1024×1024 image.
 
-模型版本会改变图片计费规则。上线前应使用供应商提供的 Token 计算接口或官方公式，并分别覆盖缩略图、截图、长图和多图请求。可参考 [OpenAI 图片与视觉输入](https://developers.openai.com/api/docs/guides/images-vision)、[Anthropic Vision](https://platform.claude.com/docs/en/build-with-claude/vision) 和 [Gemini Token 计算](https://ai.google.dev/gemini-api/docs/tokens)。
+Image billing rules can change between model versions. Before launch, use the provider's Token-counting API or official formula, and test thumbnails, screenshots, long images, and requests with multiple images. See [OpenAI Images and Vision](https://developers.openai.com/api/docs/guides/images-vision), [Anthropic Vision](https://platform.claude.com/docs/en/build-with-claude/vision), and [Gemini Token Counting](https://ai.google.dev/gemini-api/docs/tokens).
 
-图片进入多模态 RAG 后，这笔开销会同时影响预算和延迟：
+When images are included in multimodal RAG, these costs affect both the budget and latency:
 
-- 图片 Token 要和文本 Token 一起计入单次调用预算。
-- 批量图片会拉长首字延迟（TTFT），需要单独压测。
-- 任务只需要 OCR 结果时，可以先提取文字，再把纯文本送入模型。
+- Count image Tokens together with text Tokens in the per-call budget.
+- Multiple images can increase time to first token (TTFT), so load-test this separately.
+- If a task only needs OCR results, extract the text first and send that text to the model.
 
-### 上下文窗口的容量边界
+### Capacity Limits of the Context Window
 
-模型标注的 128K、200K 或 1M，指一次调用能够容纳的 Token 上限。窗口越大，单次可传入的文档和对话历史越多，但这部分容量还要分给系统提示词、工具定义和模型输出。大多数模型将输入与输出合并计算，部分供应商（如 Google Gemini）则分别设置输入和输出上限。
+Model specifications such as 128K, 200K, or 1M refer to the maximum number of Tokens a call can contain. A larger window allows more documents and conversation history in one call, but some capacity must also be reserved for system prompts, tool definitions, and model output. Most models count input and output together; some providers, such as Google Gemini, set separate limits.
 
-![上下文窗口（Context Window）= LLM 的「工作记忆」](../images/shared/llm-context-window.png)
+![Context window as the LLM's working memory](../images/shared/llm-context-window.png)
 
-- **固定内容**：System Prompt、工具调用 Schema 和格式标记。
-- **本次输入**：User Prompt、历史消息与 RAG 检索片段。
-- **生成预算**：模型即将生成的输出 Token。
+- **Fixed content**: System prompt, tool-call schemas, and formatting markers.
+- **Current input**: User prompt, message history, and retrieved RAG passages.
+- **Generation budget**: Tokens the model is allowed to generate.
 
-标称窗口减掉这些内容，剩下的才是业务数据实际可用的空间。
+After subtracting these items from the advertised window, the remainder is the capacity available for business data.
 
-注意：上下文窗口（Context Window）≠ 最大生成长度。许多模型支持 128K 甚至 1M 上下文，但单次输出上限因模型和 API 而异；参数名也可能是 `max_tokens`、`max_completion_tokens` 或 `max_output_tokens`。不要根据供应商名称推断上限，调用前读取目标模型的能力页。
+Note: the context window is not the same as the maximum output length. Many models support 128K or even 1M context, but the maximum output varies by model and API. The parameter may be named `max_tokens`, `max_completion_tokens`, or `max_output_tokens`. Do not infer limits from the provider name; check the target model's capability documentation before calling it.
 
-推理模型的多轮消息格式需要按供应商区分：
+Multi-turn message formats for reasoning models vary by provider:
 
-- [DeepSeek 思考模式](https://api-docs.deepseek.com/guides/thinking_mode)会分别返回 `reasoning_content` 和最终 `content`。没有工具调用时，上一轮 `reasoning_content` 无需参与下一轮上下文，即使传入也会被忽略；发生工具调用时，当前轮的 `reasoning_content` 必须随工具结果回传，直到该轮完成。
-- [OpenAI 推理模型](https://developers.openai.com/api/docs/guides/reasoning)不向应用暴露原始 chain-of-thought。Responses API 可以通过 `previous_response_id` 延续上下文，或者按 API 要求回传 reasoning item；应用能拿到的是可选的推理摘要，而不是内部推理原文。
+- [DeepSeek thinking mode](https://api-docs.deepseek.com/guides/thinking_mode) returns `reasoning_content` and final `content` separately. Without a tool call, the previous turn's `reasoning_content` does not need to be included in the next context and is ignored if sent. When a tool call occurs, the current turn's `reasoning_content` must be sent back with the tool result until the turn is complete.
+- [OpenAI reasoning models](https://developers.openai.com/api/docs/guides/reasoning) do not expose raw chain-of-thought to applications. The Responses API can continue context with `previous_response_id` or return reasoning items as required by the API. Applications may receive an optional reasoning summary, not the raw internal reasoning.
 
-推理 Token 虽然不一定出现在下一轮消息文本里，但本轮仍会消耗生成预算，并可能计入输出 Token 和上下文限制。不要据此得出“推理过程不占窗口或不计费”的通用结论。
+Reasoning Tokens may not appear in the next turn's message text, but they still use the current turn's generation budget and may count toward output Tokens and context limits. Do not infer that reasoning never uses context or incurs charges.
 
-### 长上下文背后的计算约束
+### Computational Constraints Behind Long Contexts
 
-Transformer 的**自注意力机制（Self-Attention）**会为长上下文带来三类开销：
+The Transformer's **self-attention** mechanism creates three costs for long contexts:
 
-- 计算成本平方级增长：计算需求与序列长度呈平方级关系（O(N²)）。输入 Token 翻倍，处理能力需求可能变为 4 倍。
-- 推理延迟增加：上下文变长后，模型生成每个新 Token 时需要关注的历史 Token 变多，首字延迟 TTFT 会显著增加。
-- 安全风险增加：更长的上下文意味着更大的攻击面。
+- **Quadratic growth in computation**: Compute requirements scale quadratically with sequence length (O(N²)). Doubling input Tokens may require four times the processing.
+- **Higher inference latency**: With a longer context, the model must attend to more historical Tokens for every new Token it generates, which can significantly increase time to first token (TTFT).
+- **Greater security risk**: A longer context creates a larger attack surface.
 
-FlashAttention、GQA/MQA、Sliding Window Attention、Ring Attention 等技术可以减少计算量或显存占用，但没有让所有长上下文都变成线性成本，O(N²) 仍是标准自注意力需要面对的理论复杂度。
+Techniques such as FlashAttention, GQA/MQA, Sliding Window Attention, and Ring Attention can reduce computation or memory use, but they do not make all long-context workloads linear in cost. O(N²) remains the theoretical complexity of standard self-attention.
 
-### 上下文溢出的真实表现
+### What Context Overflow Looks Like in Practice
 
-System Prompt 明明要求“必须输出 JSON”，模型却漏掉这条约束，是上下文过长时最容易观察到的现象之一。回答还可能在后半段偏题，或者因为 RAG 片段太多而抓不住真正相关的证据。
+A common symptom of an overly long context is that the model ignores a System Prompt instruction such as "You must return JSON." It may also drift off topic later in the answer or lose track of relevant evidence among too many RAG passages.
 
-信息放进窗口也不等于模型能同等利用每个位置。“中间丢失”描述的就是模型更容易利用开头和结尾、对中间内容召回较弱的情况。窗口扩到 1M 也不能自动消除这个问题。
+Putting information in the context window does not mean the model can use every position equally well. The "Lost in the Middle" effect describes how models may use information near the beginning and end more effectively than information in the middle. Expanding the window to 1M does not automatically eliminate this issue.
 
-长上下文还有可以直接监控的代价：输入 Token 随内容量增加，账单随之增长；预填充耗时和 TTFT 也会变长。出现这些信号时，应先检查检索片段数量、历史消息裁剪和关键信息位置，而不是继续把窗口塞满。
+Long contexts also have measurable costs: input Tokens and bills grow with the amount of content, while prefill time and TTFT increase. When these signals appear, first check the number of retrieved passages, conversation-history trimming, and the placement of key information instead of continuing to fill the context window.
 
-### 输入 Token 与输出 Token 的计费差异
+### Billing Differences Between Input and Output Tokens
 
-多数供应商会分别计算输入、缓存输入和输出 Token，推理模型还可能单列 reasoning tokens。输出单价经常高于输入单价，但不存在稳定的“2~4 倍”行业比例：模型版本、批处理、缓存命中和服务等级都会改变价格。
+Most providers bill input, cached input, and output Tokens separately. Reasoning models may also report reasoning Tokens as a separate category. Output rates are often higher than input rates, but there is no stable industry-wide "2–4 times" ratio; model version, batch processing, cache hits, and service tier all affect pricing.
 
-价格表更新频繁，不适合固化在原理文章里。成本核算应读取供应商当前价格页，并在网关中保存 `model_version`、各类 `usage` 和实际账单单价。
+Pricing changes frequently and should not be hard-coded in a fundamentals guide. Cost calculations should use the provider's current pricing page. A gateway should record `model_version`, each type of `usage`, and the actual billed rate.
 
-成本核算要分别记录输入、缓存输入、输出以及供应商返回的 reasoning tokens。RAG 先控制检索片段数量，避免无关内容推高输入 Token；输出和推理过程则用生成上限约束。由于 reasoning tokens 经常计入输出侧费用，推理模型还要单独看这部分用量。
+Track input, cached input, output, and provider-reported reasoning Tokens separately. For RAG, control the number of retrieved passages so irrelevant content does not inflate input Tokens. Limit output and reasoning with generation limits. Since reasoning Tokens are often billed as output, monitor their usage separately for reasoning models.
 
-### Prompt Caching 的省钱逻辑
+### How Prompt Caching Reduces Costs
 
-批量评测经常重复发送同一份 System Prompt，只替换末尾的样本；多轮对话也会重复携带一段固定历史。这类请求可以利用 **Prompt Caching** 复用前缀。后续请求满足模型、前缀长度、内容和有效期等条件时，命中部分会按缓存输入计费，并减少一部分预填充计算。
+Batch evaluations often send the same System Prompt repeatedly, changing only the final sample. Multi-turn conversations may also resend a fixed history. **Prompt caching** can reuse these prefixes. When later requests meet the model, prefix-length, content, and validity-period requirements, the cached portion is billed as cached input and requires less prefill computation.
 
-固定前缀较长、重复率较高的任务更容易受益：
+Tasks with long, frequently repeated prefixes are more likely to benefit:
 
-- 多轮对话（System Prompt + 历史 Message 不变）。
-- RAG 应用（检索片段重复率高）。
-- 批量评估（同一份 System Prompt，不同的简历/文章）。
+- Multi-turn conversations with an unchanged System Prompt and message history.
+- RAG applications with frequently repeated retrieved passages.
+- Batch evaluations with the same System Prompt and different resumes or articles.
 
-OpenAI Prompt Caching、Anthropic Prompt Caching 和 DeepSeek Context Caching 的触发门槛、缓存寿命与价格并不相同，有些还区分自动缓存、显式缓存和延长缓存。配置前查当前官方文档，不要把缓存时长和折扣写死在业务代码里。
+OpenAI Prompt Caching, Anthropic Prompt Caching, and DeepSeek Context Caching have different activation thresholds, cache lifetimes, and prices. Some distinguish automatic caching, explicit caching, and extended caching. Check current official documentation before configuring them; do not hard-code cache duration or discounts in business code.
 
-请求内容的排列会直接影响缓存命中：
+The order of request content directly affects cache hits:
 
-1. 把不变的内容放前面（System Prompt、工具定义、RAG Context），把变化的内容放后面（User Prompt）。
-2. 按供应商响应字段监控缓存读取和缓存写入 Token，验证缓存命中率。
-3. 批量任务尽量在缓存时间窗口内完成。
+1. Put unchanged content first (System Prompt, tool definitions, and RAG context) and variable content last (User Prompt).
+2. Monitor the provider response fields for cached-read and cached-write Tokens to verify the cache hit rate.
+3. Run batch jobs within the cache validity window where possible.
 
-### 一次调用的 Token 预算公式
+### Token Budget for a Single Call
 
-把“上下文窗口”当成一个固定容量的桶，下图展示了一个典型调用的 Token 预算分配：
+Think of the context window as a bucket with a fixed capacity. The diagram below shows a typical Token budget for one call:
 
 ```mermaid
-pie title "16K 上下文窗口典型分配（结构化输出场景）"
-    "System Prompt（含 Schema）" : 1500
-    "User Prompt（业务数据）" : 6000
-    "历史消息（多轮对话）" : 2000
-    "安全边际（供应商开销）" : 1500
-    "输出预留（Max Tokens）" : 5000
+pie title "Typical Allocation for a 16K Context Window (Structured Output)"
+    "System Prompt (including Schema)" : 1500
+    "User Prompt (business data)" : 6000
+    "Message history (multi-turn conversation)" : 2000
+    "Safety margin (provider overhead)" : 1500
+    "Reserved output (Max Tokens)" : 5000
 ```
 
-图中的数值只用于示意。普通生成模型先检查这个关系是否成立：
+The values are illustrative only. For a standard generative model, first check whether this relationship holds:
 
 **window ≥ input_tokens + max_output_tokens**
 
-推理模型要按目标 API 的参数定义单独计算。有些 API 的 `max_output_tokens` 或 `max_completion_tokens` 已经同时包含推理 Token 和可见回答，此时再加一次 `reasoning_tokens` 会重复；另一些 API 会分别限制思考过程和最终回答。上线前可以用返回的 `usage` 反推一次真实调用的组成，再校准预算公式。
+For reasoning models, calculate the budget according to the target API's parameter definitions. Some APIs include both reasoning Tokens and the visible answer in `max_output_tokens` or `max_completion_tokens`; adding `reasoning_tokens` again would double-count them. Other APIs set separate limits for reasoning and the final answer. Before launch, use returned `usage` data to determine the composition of a real call and calibrate the budget formula.
 
-其中 `input_tokens` 至少包含：
+At minimum, `input_tokens` includes:
 
-- system prompt（含 schema / 工具定义）
-- user prompt（含变量替换后的实际文本）
-- 历史消息（多轮对话时）
-- RAG context（如果拼进来了）
+- System Prompt (including schemas and tool definitions)
+- User Prompt (including text after variable substitution)
+- Message history (for multi-turn conversations)
+- RAG context, if included
 
-结构化任务的输出长度通常更容易控制，可以先确定 `max_output_tokens`，再给输入留出 10%~20% 的安全余量。预算仍然不够时，按顺序减少 RAG Top-K、合并重复片段、摘要或截断长字段；一轮塞不下的任务再拆成分批评估或两阶段生成。
+Structured tasks often have more predictable output lengths. Set `max_output_tokens` first, then reserve a 10–20% safety margin for input. If the budget is still insufficient, reduce RAG Top-K, merge duplicate passages, summarize or truncate long fields, and split tasks that still do not fit into batches or two-stage generation.
 
-## 采样参数如何影响输出稳定性？
+## How Do Sampling Parameters Affect Output Stability?
 
-### 从 logits 到概率采样
+### From Logits to Probability Sampling
 
-模型每一步会给词表中**每个**候选 Token 打一个分数（内部叫 **logits**），分数越高说明模型越觉得这个词应该出现在这里。
+At each step, the model assigns a score (called a **logit**) to **every** candidate Token in the vocabulary. A higher score means the model considers that Token more likely to belong at this position.
 
-举个例子，假设模型正在补全“今天天气真\_\_”，它可能给出这样的分数：
+For example, suppose the model is completing "The weather is so \_\_". It might assign these scores:
 
-| 候选 Token | 原始分数（logit） |
-| ---------- | ----------------- |
-| 好         | 5.0               |
-| 不错       | 3.2               |
-| 棒         | 2.1               |
-| 糟糕       | 0.5               |
-| 紫色       | -8.0              |
+| Candidate Token | Raw score (logit) |
+| --------------- | ----------------- |
+| nice            | 5.0               |
+| good            | 3.2               |
+| great           | 2.1               |
+| bad             | 0.5               |
+| purple          | -8.0              |
 
-原始分数还不是概率，需要经过 **softmax** 才能得到候选 Token 的概率分布。变换后大致是：
+Raw scores are not probabilities. They must be passed through **softmax** to produce a probability distribution over candidate Tokens. The result is approximately:
 
-| 候选 Token | 概率     |
-| ---------- | -------- |
-| 好         | 81.21%   |
-| 不错       | 13.42%   |
-| 棒         | 4.47%    |
-| 糟糕       | 0.90%    |
-| 紫色       | 约 0.00% |
+| Candidate Token | Probability |
+| --------------- | ----------- |
+| nice            | 81.21%      |
+| good            | 13.42%      |
+| great           | 4.47%       |
+| bad             | 0.90%       |
+| purple          | about 0.00% |
 
-得到概率分布后，模型再通过采样决定输出哪个 Token。
+After obtaining the probability distribution, the model samples which Token to output.
 
-解码参数（Temperature、Top-p、Top-k 等）就是在这个“打分 → 概率 → 抽签”的过程中施加控制：
+Decoding parameters such as Temperature, Top P, and Top K control the "score → probability → sample" process:
 
-- Temperature：调整概率分布的“形状”，让高分选项更突出，或者让各选项更均匀。
-- Top-p / Top-k：直接砍掉不靠谱的候选项，缩小“抽签池”。
-- Penalty 系列：对已经出现过的词降分，防止“复读机”。
+- Temperature: Changes the shape of the probability distribution, making high-scoring choices more dominant or making the options more uniform.
+- Top P / Top K: Removes lower-ranked candidates to narrow the sampling pool.
+- Penalty parameters: Lower the scores of Tokens that have already appeared to reduce repetition.
 
-### Temperature 的“冒险程度”
+### Temperature and Output Variability
 
-![Temperature 参数：控制模型输出的随机性](../images/shared/llm-temperature-params.png)
+![Temperature controls randomness in model output](../images/shared/llm-temperature-params.png)
 
-Temperature 的工作原理很简单：在 softmax 之前，先把所有分数**除以**温度值 T。
+Temperature works simply: before softmax, **divide** all scores by the temperature value T.
 
 **p(t) = softmax(z_t / T)**
 
-把前面的“今天天气真\_\_”代入公式，可以看到温度怎样改变同一组 logits：
+Applying this to the "The weather is so \_\_" example shows how Temperature changes the same logits:
 
-| 温度    | 概率分布的变化                      | 示例结果                                     |
-| ------- | ----------------------------------- | -------------------------------------------- |
-| T = 0.2 | 分布变尖，高概率 Token 更集中       | “好”约 99.99%                                |
-| T = 1.0 | 保持原始分布                        | “好”约 81.21%，“不错”约 13.42%               |
-| T = 1.5 | 分布变平，低概率 Token 获得更多机会 | “好”约 66.85%，“不错”约 20.14%，“棒”约 9.67% |
+| Temperature | Effect on the distribution                                                    | Example                                                       |
+| ----------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| T = 0.2     | Sharpens the distribution and concentrates probability on high-scoring Tokens | "nice" about 99.99%                                           |
+| T = 1.0     | Preserves the original distribution                                           | "nice" about 81.21%, "good" about 13.42%                      |
+| T = 1.5     | Flattens the distribution and gives lower-probability Tokens more chance      | "nice" about 66.85%, "good" about 20.14%, "great" about 9.67% |
 
-温度越低，输出越确定；温度越高，输出越随机。
+Lower Temperature makes output more deterministic; higher Temperature makes it more random.
 
-工程建议（经验值，非硬规则）：
+Engineering guidance (heuristics, not strict rules):
 
-| 场景                         | 推荐温度   | 说明                               |
-| ---------------------------- | ---------- | ---------------------------------- |
-| 结构化提取 / JSON 输出       | 0 ~ 0.3    | 配合严格 schema + 解析失败重试策略 |
-| 评估 / 分析 / 代码评审       | 0.4 ~ 0.8  | 平衡确定性与表达多样性             |
-| 创作类内容（文案、头脑风暴） | 0.8 ~ 1.2+ | 增加多样性，但要承担格式一致性风险 |
+| Use case                                      | Suggested Temperature | Notes                                                              |
+| --------------------------------------------- | --------------------- | ------------------------------------------------------------------ |
+| Structured extraction / JSON output           | 0–0.3                 | Combine with a strict schema and retries for parse failures        |
+| Evaluation / analysis / code review           | 0.4–0.8               | Balance determinism and expression variety                         |
+| Creative content (copywriting, brainstorming) | 0.8–1.2+              | Increase variety while accepting a risk of inconsistent formatting |
 
-如果目标 API 支持 `seed`，可以把它和固定模型版本、固定 Prompt 及固定采样参数一起保存。`seed` 通常只提供尽力而为的可复现性，不保证逐字一致；DeepSeek 当前 API 参数也没有公开 `seed`。
+If the target API supports `seed`, store it together with the model version, Prompt, and sampling parameters. A `seed` usually provides only best-effort reproducibility and does not guarantee identical output. DeepSeek's current API does not expose a `seed` parameter.
 
-以下情况仍可能导致结果不一致：
+Results may still differ because of:
 
-- 模型版本更新（底层权重变化）。
-- 跨区域调用（不同集群可能部署不同版本）。
-- 服务端解码实现、并行计算和后端配置发生变化。
+- Model version updates that change the underlying weights.
+- Cross-region calls where clusters may run different versions.
+- Changes to server-side decoding, parallel computation, or backend configuration.
 
-CI/CD 可以把真实 LLM 调用留给冒烟测试；需要稳定复现的逻辑测试仍然使用 Mock。
+Keep real LLM calls in smoke tests in CI/CD. Use mocks for logic tests that need stable, reproducible results.
 
-### Top-p 与 Top-k 的“抽签池”
+### Top-p and Top-k: The Candidate Pool
 
-Temperature 调整概率分布的形状。Top-p 和 Top-k 会截断候选集合，把尾部候选排除在采样范围之外。
+Temperature changes the shape of the probability distribution. Top-p and Top-k truncate the candidate set, excluding lower-ranked candidates from sampling.
 
-还是用“今天天气真\_\_”的例子：
+Consider the example "The weather is so \_\_":
 
-| 候选 Token | 概率     | 累计概率 |
-| ---------- | -------- | -------- |
-| 好         | 81.21%   | 81.21%   |
-| 不错       | 13.42%   | 94.63%   |
-| 棒         | 4.47%    | 99.10%   |
-| 糟糕       | 0.90%    | 约 100%  |
-| 紫色       | 约 0.00% | 100%     |
+| Candidate Token | Probability | Cumulative probability |
+| --------------- | ----------- | ---------------------- |
+| nice            | 81.21%      | 81.21%                 |
+| good            | 13.42%      | 94.63%                 |
+| great           | 4.47%       | 99.10%                 |
+| bad             | 0.90%       | about 100%             |
+| purple          | about 0.00% | 100%                   |
 
-`Top-k = 3` 固定保留概率最高的“好、不错、棒”，其余候选不再参与采样。`Top-p = 0.9` 则从高到低累加，当前示例中“好 + 不错”已经达到 94.63%，候选集只保留这两个；如果第一名自身超过 90%，就只留下一个。
+`Top-k = 3` keeps the three highest-probability candidates (`nice`, `good`, and `great`) and excludes the rest. `Top-p = 0.9` accumulates probability from highest to lowest. In this example, `nice` and `good` already total 94.63%, so only those two remain. If the top candidate alone exceeds 90%, it is the only one kept.
 
-Top-k 控制固定数量，Top-p 控制累计概率，所以 Top-p 的候选数量会随分布变化。与 Temperature 组合后，常见行为如下：
+Top-k sets a fixed number of candidates, while Top-p sets a cumulative probability threshold, so the number of candidates for Top-p varies with the distribution. Common combinations with Temperature behave as follows:
 
-| 组合                      | 效果                                           | 适用场景                 |
-| ------------------------- | ---------------------------------------------- | ------------------------ |
-| T=0（通常按贪婪解码处理） | 每步选最高分，结果仍受模型版本和服务端实现影响 | 结构化输出、低随机性场景 |
-| 低温 + Top-p=0.9          | 相对稳定，但允许措辞上有些变化                 | 分析报告、摘要           |
-| 中高温 + Top-p=0.95       | 多样性较高，但排除了极端离谱选项               | 创意写作、对话           |
+| Combination                              | Effect                                                                                                                   | Use case                                   |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
+| T=0 (usually treated as greedy decoding) | Selects the highest-scoring Token at each step; results still depend on the model version and server-side implementation | Structured output and low-randomness tasks |
+| Low Temperature + Top-p=0.9              | Relatively stable, with some variation in wording                                                                        | Analysis reports and summaries             |
+| Medium-to-high Temperature + Top-p=0.95  | More diverse, while excluding extremely unlikely options                                                                 | Creative writing and conversation          |
 
-注意：贪婪解码虽然最稳定，但可能更容易陷入重复循环。
+Note: Greedy decoding is generally the most stable, but it may be more prone to repetitive loops.
 
-### 停止条件与截断风险
+### Stop Conditions and Truncation Risks
 
-生成达到 Max Tokens 后会直接停止，哪怕 JSON 还缺右括号、列表还有项目没写完。服务端收到 `finish_reason=length` 时，应把结果标记为截断，不能交给下游继续执行。
+Generation stops when it reaches Max Tokens, even if the JSON is missing a closing brace or a list is incomplete. If the server returns `finish_reason=length`, mark the result as truncated and do not pass it to downstream processing.
 
-Stop Sequences 会在模型生成指定字符串时提前结束，例如 `"\n\n"` 或 `"```"`。停止词如果与业务文本重合，同样会截断关键字段。结构化输出需要分别覆盖达到生成上限和误触停止词这两条失败路径。
+Stop Sequences end generation when the model emits a specified string, such as `"\n\n"` or `"```"`. If a stop sequence also appears in business text, it can truncate a key field. For structured output, handle both failure cases: reaching the generation limit and triggering a stop sequence unintentionally.
 
-推理模型还要确认生成上限是否同时覆盖推理过程与最终回答。部分 API 共用一个生成预算，推理 Token 用得越多，可见回答剩余空间就越少；另一些 API 通过 `reasoning_effort` 等参数间接控制推理量。发现 `finish_reason=length` 时，要把推理 Token 和最终回答一起纳入排查。
+For reasoning models, check whether the generation limit covers both the reasoning process and the final answer. Some APIs use a shared generation budget, so more reasoning Tokens leave less room for the visible answer. Others control the amount of reasoning indirectly through parameters such as `reasoning_effort`. When `finish_reason=length` occurs, investigate both reasoning Tokens and the final answer.
 
-### Penalty 与复读问题
+### Penalties and Repetition
 
-可能遇到过模型反复输出同一句话，或者在长回答里不断重复相同观点。Penalty 参数用来缓解这类问题，它们在解码时**降低已出现 Token 的分数**：
+Models may repeat the same sentence or restate the same point throughout a long answer. Penalty parameters help mitigate this by **lowering the scores of Tokens that have already appeared** during decoding:
 
-| 参数               | 作用                                | 通俗理解                 |
-| ------------------ | ----------------------------------- | ------------------------ |
-| Repetition Penalty | 降低所有已出现 Token 的概率         | “说过的词，再说就扣分”   |
-| Presence Penalty   | 只要 Token 出现过就扣分（不看次数） | “鼓励聊新话题”           |
-| Frequency Penalty  | Token 出现次数越多扣分越重          | “同一个词说了三遍？重罚” |
+| Parameter          | Effect                                                               | In plain terms                                   |
+| ------------------ | -------------------------------------------------------------------- | ------------------------------------------------ |
+| Repetition Penalty | Lowers the probability of all Tokens that have appeared              | "Repeated words lose points"                     |
+| Presence Penalty   | Applies a penalty once a Token has appeared, regardless of frequency | "Encourages new topics"                          |
+| Frequency Penalty  | Applies a larger penalty as a Token appears more often               | "Said the same word three times? Bigger penalty" |
 
-JSON 对象可能反复出现 `"name"`、`"score"` 等字段名，Repetition Penalty 过高会连这些必要重复一起降分，结果可能缺字段。RAG 问答使用 Presence Penalty 时，模型会更倾向引入没有出现在检索内容里的新词，也会削弱回答对证据的忠实度。
+JSON objects may repeat field names such as `"name"` and `"score"`. A high Repetition Penalty can lower the scores of these necessary repetitions too, causing fields to be omitted. With RAG question answering, Presence Penalty may encourage the model to introduce terms that do not appear in retrieved content, reducing how faithfully the answer reflects its evidence.
 
-不同供应商对 Penalty 的定义并不完全一致。没有明确调参依据时，保留默认值，再用输出长度、Prompt 约束和 Schema 控制结构，排查路径会更清楚。
+Penalty definitions vary between providers. Unless you have a clear reason to tune them, keep the defaults and control structure through output length, Prompt constraints, and a Schema. This makes troubleshooting easier.
 
-### 思维链模式的参数限制
+### Parameter Limits for Reasoning Models
 
-推理模型的参数支持范围由具体 API 决定，不能把 DeepSeek 思考模式和 OpenAI 推理模型概括成同一种行为。
+Supported parameters for reasoning models depend on the specific API. Do not assume DeepSeek thinking mode and OpenAI reasoning models behave the same way.
 
-- DeepSeek V4 思考模式会返回 `reasoning_content` 与最终 `content`，并明确列出不支持或不会生效的采样参数。
-- OpenAI 不返回原始内部推理过程。Responses API 可以返回推理 item 和可选摘要；不同推理模型对 `temperature`、`top_p` 等参数的支持也可能不同。
+- DeepSeek V4 thinking mode returns `reasoning_content` and the final `content`, and explicitly lists sampling parameters that are unsupported or have no effect.
+- OpenAI does not return the raw internal reasoning process. The Responses API can return reasoning items and an optional summary. Support for parameters such as `temperature` and `top_p` may vary by reasoning model.
 
-调用前应按模型能力表过滤不支持的参数。结构稳定性仍要依赖 Structured Outputs、服务端校验和失败处理，不能只调 Temperature。
+Before making a call, filter out parameters that the model does not support based on its capability documentation. For reliable structure, use Structured Outputs, server-side validation, and failure handling; changing Temperature alone is not enough.
 
-### 流式输出与首字延迟
+### Streaming and Time to First Token
 
-同步接口要等完整内容生成后再返回；流式接口生成一个或几个 Token 就会推送增量，因此用户更早看到第一个 Token，首字延迟（TTFT，Time-To-First-Token）也更低。这里容易混淆的是首字延迟、总耗时和费用：
+Synchronous APIs return only after generating the full response. Streaming APIs send incremental output after generating one or a few Tokens, so users see the first Token sooner and time to first token (TTFT) is lower. It is easy to conflate TTFT, total latency, and cost:
 
-- 流式输出不一定降低总耗时（E2E latency），模型生成的总 Token 量没有因此减少。
-- 流式输出不会自动省钱，Token 计费不变，仍然受限流和配额影响。
-- 如果需要结构化输出（如 JSON），流式场景要考虑“半成品 JSON”在前端/网关层的处理。
+- Streaming does not necessarily reduce end-to-end latency; it does not reduce the total number of Tokens generated.
+- Streaming does not automatically reduce cost. Token billing is unchanged, and rate limits and quotas still apply.
+- For structured output such as JSON, account for how the frontend or gateway handles incomplete JSON during streaming.
 
-### Logprobs 与置信度排查
+### Logprobs for Confidence Checks
 
-部分 API（如 OpenAI）支持返回每个生成 Token 的**对数概率**（logprobs），可以理解为模型对该 Token 的“确信程度”。logprob 越接近 0，模型越确信；值越小（如 -5.0），说明模型越“犹豫”。
+Some APIs, including OpenAI, can return the **log probability** (logprob) of each generated Token. This can be treated as an indication of how "confident" the model is about that Token. A logprob closer to 0 means higher confidence; a smaller value such as -5.0 indicates more uncertainty.
 
-工程应用场景：
+Engineering use cases:
 
-- **置信度评估**：提取“金额: 1000”时，若对应 Token 的 logprob 很低，说明模型不太确定，可能需要人工复核。
-- **异常检测**：监控生产环境中模型输出的平均 logprob，若突然下降可能提示 Prompt 漂移或输入数据异常。
-- **多候选对比**：获取 Top-N 候选 Token 及其概率，用于纠错或二次排序。
+- **Confidence assessment**: When extracting `amount: 1000`, a low logprob for the corresponding Token may indicate uncertainty and the need for human review.
+- **Anomaly detection**: Monitor the average logprob of model output in production. A sudden drop may indicate Prompt drift or anomalous input data.
+- **Candidate comparison**: Retrieve the Top-N candidate Tokens and their probabilities for correction or reranking.
 
-注意事项：logprobs 会增加响应体积，且并非所有供应商都支持。使用前请查阅 API 文档。
+Note: Logprobs increase response size, and not all providers support them. Check the API documentation before use.
 
-### 采样参数配置建议
+### Recommended Sampling Parameters
 
-| 场景                | Temperature | Top-p      | Penalty    | 其他建议                       |
-| ------------------- | ----------- | ---------- | ---------- | ------------------------------ |
-| JSON / 结构化输出   | 0 ~ 0.3     | 1.0        | 保持默认   | 配合 Strict Mode + 重试策略    |
-| 代码评审 / 技术分析 | 0.4 ~ 0.7   | 0.9        | 保持默认   | 结合 CoT Prompt                |
-| 多轮对话            | 0.6 ~ 0.8   | 0.9        | 适度开启   | 控制历史消息长度               |
-| 创意写作 / 头脑风暴 | 0.8 ~ 1.2   | 0.95       | 按需开启   | 接受输出多样性，做好后处理     |
-| 推理模型            | 查模型文档  | 查模型文档 | 查模型文档 | 过滤不支持参数，保留服务端校验 |
+| Use case                         | Temperature               | Top-p                     | Penalty                   | Other recommendations                                         |
+| -------------------------------- | ------------------------- | ------------------------- | ------------------------- | ------------------------------------------------------------- |
+| JSON / structured output         | 0–0.3                     | 1.0                       | Keep defaults             | Use Strict Mode and a retry strategy                          |
+| Code review / technical analysis | 0.4–0.7                   | 0.9                       | Keep defaults             | Combine with a CoT Prompt                                     |
+| Multi-turn conversation          | 0.6–0.8                   | 0.9                       | Enable moderately         | Limit message-history length                                  |
+| Creative writing / brainstorming | 0.8–1.2                   | 0.95                      | Enable as needed          | Allow output variety and apply post-processing                |
+| Reasoning models                 | Check model documentation | Check model documentation | Check model documentation | Filter unsupported parameters and keep server-side validation |
 
-## 落地时保留哪些数据
+## Data to Retain in Production
 
-容量规划按 Token 做，计费与告警以 API 返回的 `usage` 为准。每次调用至少保存模型版本、输入 Token、缓存 Token、推理 Token（如果供应商返回）、输出 Token、上下文裁剪策略和采样参数。
+Plan capacity in Tokens, and use the API's returned `usage` for billing and alerts. For each call, retain at least the model version, input Tokens, cached Tokens, reasoning Tokens (if provided by the provider), output Tokens, context-trimming strategy, and sampling parameters.
 
-长上下文只提高可容纳的信息量，不保证模型能同等利用每个位置。结构化任务还要配合 Schema 和服务端校验；需要复现实验时，则固定模型版本、Prompt、输入与解码参数，并接受供应商服务仍可能带来的小幅非确定性。
+Long context increases the amount of information that can fit in a call, but it does not guarantee that the model can use every position equally well. Structured tasks also need a Schema and server-side validation. To reproduce experiments, fix the model version, Prompt, input, and decoding parameters, while allowing for small variations caused by the provider's service.

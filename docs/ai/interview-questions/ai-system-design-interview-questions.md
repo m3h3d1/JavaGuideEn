@@ -1,121 +1,121 @@
 ---
-title: AI 系统设计面试题总结
-description: 系统整理 AI 应用系统设计高频面试题，覆盖生产级 AI 应用架构、模型网关、Prompt 管理、RAG、Memory、Tool Calling、可观测、评测、安全合规、实时语音 Agent 等核心考点，并附对应参考文章。
+title: AI System-Design Interview Questions
+description: Common AI system-design interview questions covering production architecture, model gateways, prompt management, RAG, memory, tool calling, observability, evaluation, security, and real-time voice agents, with links to detailed guides.
 category: AI
 tag:
-  - AI系统设计
-  - AI面试
-  - 大模型应用
+  - AI System Design
+  - AI Interviews
+  - LLM Applications
 head:
   - - meta
     - name: keywords
-      content: AI系统设计面试题,AI应用架构面试题,大模型应用系统设计,LLM网关面试题,AI可观测面试题,AI评测面试题,语音Agent面试题,AI安全面试题
+      content: AI system-design interview questions,AI application architecture interviews,LLM application system design,LLM gateway interview questions,AI observability interviews,AI evaluation interviews,voice agent interviews,AI security interviews
 ---
 
-AI 系统设计题通常从一个具体场景开始，例如企业知识库、智能客服、Agent 平台或实时语音助手。随着问题展开，面试官会继续追问模型调用、上下文、检索、工具、安全、成本和评测如何放进同一条生产链路。
+AI system-design questions often begin with a concrete scenario, such as an enterprise knowledge base, customer-service system, agent platform, or real-time voice assistant. Follow-up questions explore how model calls, context, retrieval, tools, security, cost, and evaluation fit into one production workflow.
 
-题目按 JavaGuide AI 系统设计专题的内容分组。每组都附有详细文章，这里只整理常见问题，具体方案和实现细节放在对应原文中。
+The questions are grouped by topic in JavaGuide's AI system-design section. Each group links to a detailed guide; this page collects common questions, while specific solutions and implementation details remain in those guides.
 
-## 生产级 AI 应用架构
+## Production AI Application Architecture
 
-相关内容：[《AI 应用系统设计：从 Prompt Demo 到生产级架构》](../system-design/ai-application-architecture.md)
+Related guide: [AI Application System Design: From Prompt Demo to Production Architecture](../system-design/ai-application-architecture.md)
 
-架构题会从一次请求的完整链路问起，随后检查各个模块的职责，以及同步、流式和异步任务应该如何选择。Prompt、RAG、Memory 和 Tool 也需要放在各自负责的环节中讨论。
+Architecture questions start with the full request path, then examine each component's responsibilities and when to use synchronous, streaming, or asynchronous processing. Prompts, RAG, memory, and tools should be discussed in the parts of the workflow they serve.
 
-常见面试题：
+Common interview questions:
 
-- Prompt Demo 到生产系统之间有哪些工程差距？
-- 如何设计一个生产级 AI 应用的整体架构？
-- 一次 AI 请求从接入到返回结果，会经过哪些模块？
-- 入口层、编排层、Prompt/Context、RAG/Memory/Tool、模型网关和评测观测分别负责什么？
-- 同步返回、流式返回和异步任务分别适合什么场景？
-- Prompt 为什么要做版本管理？模板、变量和模型版本应该如何关联？
-- RAG、Memory 和 Tool 分别管理什么信息？为什么要分开治理？
-- 长任务的中间状态如何保存？服务重启后怎么恢复？
-- 为了支持问题回放，一次请求至少要记录哪些数据？
+- What engineering work is needed to move from a prompt demo to a production system?
+- How would you design the overall architecture of a production AI application?
+- Which components does an AI request pass through, from entry to response?
+- What are the responsibilities of the ingress, orchestration, prompt/context, RAG/memory/tool, model gateway, and evaluation/observability layers?
+- Which scenarios suit synchronous responses, streaming responses, and asynchronous tasks?
+- Why should prompts be versioned? How should templates, variables, and model versions be associated?
+- What information do RAG, memory, and tools manage, and why should they be governed separately?
+- How should the intermediate state of a long-running task be saved and recovered after a service restart?
+- What data should be recorded at minimum to support request replay?
 
-## 模型网关与调用治理
+## Model Gateways and Call Management
 
-相关内容：[《大模型网关详解：统一接入、模型路由、限流配额与成本治理》](../system-design/llm-gateway.md)、[《大模型 API 调用工程实践：流式输出、重试、限流与结构化返回》](../llm-basis/llm-api-engineering.md)
+Related guides: [LLM Gateways: Unified Access, Model Routing, Rate Limits, Quotas, and Cost Management](../system-design/llm-gateway.md) and [Engineering LLM API Calls: Streaming, Retries, Rate Limiting, and Structured Output](../llm-basis/llm-api-engineering.md)
 
-模型网关题主要检查多供应商接入、模型路由和故障处理。限流除了请求数，还会涉及 Token、并发、租户预算和上游配额。
+Gateway questions focus on multi-provider integration, model routing, and failure handling. Rate limiting involves more than request counts; it can also account for tokens, concurrency, tenant budgets, and provider quotas.
 
-常见面试题：
+Common interview questions:
 
-- 为什么生产环境需要 LLM Gateway？业务服务直接调用模型 API 有哪些问题？
-- LLM Gateway 和 LLM Router 有什么区别？
-- 模型网关通常要承担哪些能力？
-- 多个模型供应商的请求参数、响应格式和错误码如何统一？
-- 模型路由可以参考哪些信息？如何避免把请求分配给不合适的模型？
-- 大模型限流为什么要同时看 RPM、TPM、并发数和租户预算？
-- 哪些模型调用错误适合重试？哪些错误应该直接失败？
-- 如何设计模型 fallback？哪些任务不能自动降级？
-- Token 成本如何归因到租户、用户、功能、模型和 Prompt 版本？
-- 模型网关会增加多少延迟？哪些处理适合放在网关中？
-- 语义缓存适合哪些请求？如何处理数据时效和权限隔离？
-- 如果让你设计一个生产级 LLM Gateway，你会如何拆分模块？
+- Why is an LLM Gateway needed in production, and what problems arise when business services call model APIs directly?
+- How does an LLM Gateway differ from an LLM Router?
+- What capabilities does a model gateway typically provide?
+- How should request parameters, response formats, and error codes from multiple model providers be normalized?
+- What information can guide model routing, and how can requests be kept away from unsuitable models?
+- Why should LLM rate limiting consider RPM, TPM, concurrency, and tenant budgets?
+- Which model-call errors are retryable, and which should fail immediately?
+- How should model fallbacks be designed, and which tasks should not be downgraded automatically?
+- How should Token costs be attributed to tenants, users, features, models, and prompt versions?
+- How much latency does a model gateway add, and which operations belong there?
+- Which requests suit semantic caching, and how should data freshness and authorization be handled?
+- How would you divide a production LLM Gateway into modules?
 
-## 安全、权限与审计
+## Security, Authorization, and Auditing
 
-相关内容：[《LLM/Agent 安全实战：从 Prompt Injection、工具越权到沙箱隔离》](../system-design/llm-security.md)、[《AI 应用系统设计：从 Prompt Demo 到生产级架构》](../system-design/ai-application-architecture.md)、[《大模型结构化输出：从 JSON 契约到 Function Calling 落地》](../llm-basis/structured-output-function-calling.md)
+Related guides: [LLM and Agent Security in Practice: Prompt Injection, Tool Privilege Escalation, and Sandboxing](../system-design/llm-security.md), [AI Application System Design: From Prompt Demo to Production Architecture](../system-design/ai-application-architecture.md), and [Structured Output for LLMs: From JSON Contracts to Function Calling](../llm-basis/structured-output-function-calling.md)
 
-模型可以生成工具调用意图和参数，真正的业务操作仍由后端执行。这组题会继续追问身份、资源、参数、操作风险和审计记录应该在哪里校验。
+The model can generate tool-call intents and parameters, but the backend still performs the business operation. Follow-up questions examine where identity, resources, parameters, operation risks, and audit records should be validated.
 
-常见面试题：
+Common interview questions:
 
-- Tool Calling 的安全边界在哪里？
-- 为什么工具 description 和 Prompt 不能替代后端权限校验？
-- 高风险工具调用为什么需要二次确认？
-- 写操作如何处理幂等、超时和结果不确定的问题？
-- Prompt 注入攻击在系统设计层面怎么防？
-- RAG 检索如何避免召回当前用户无权查看的内容？
-- PII 脱敏应该放在输入、日志、模型调用还是输出环节？
-- 工具调用审计日志应该记录哪些字段？
-- 模型生成的结构化参数通过 Schema 校验后，为什么还不能直接执行？
+- Where is the security boundary for tool calling?
+- Why can tool descriptions and prompts not replace backend authorization checks?
+- Why do high-risk tool calls require a second confirmation?
+- How should write operations handle idempotency, timeouts, and uncertain outcomes?
+- How can prompt injection be defended against at the system-design level?
+- How can RAG retrieval prevent returning content the current user is not authorized to view?
+- Should PII masking happen at input, logging, model-call, or output stages?
+- Which fields should tool-call audit logs record?
+- Why should structured parameters not be executed directly even after passing Schema validation?
 
-## 可观测、评测与发布
+## Observability, Evaluation, and Release
 
-相关内容：[《AI 应用评测体系：从 Golden Set 构建到线上灰度闭环》](../llm-basis/llm-evaluation.md)、[《AI 应用系统设计：从 Prompt Demo 到生产级架构》](../system-design/ai-application-architecture.md)
+Related guides: [AI Application Evaluation: From Golden Sets to Online Canary Feedback](../llm-basis/llm-evaluation.md) and [AI Application System Design: From Prompt Demo to Production Architecture](../system-design/ai-application-architecture.md)
 
-AI 应用的发布检查除了接口是否成功，还要覆盖答案质量、检索结果、工具轨迹和结构化输出。模型、Prompt、检索配置和代码发生变化时，都需要能够比较和回滚。
+AI application release checks must cover answer quality, retrieval results, tool traces, and structured output, in addition to whether the API succeeds. Changes to models, prompts, retrieval settings, and code must be comparable and reversible.
 
-常见面试题：
+Common interview questions:
 
-- AI 应用的可观测指标应该包括哪些内容？
-- 为什么没有评测集就很难判断一次改动是否有效？
-- Golden Set 如何覆盖正常路径、边缘场景、对抗样本和高风险失败？
-- 离线评测、Trace 回放和线上灰度分别解决什么问题？
-- RAG、Agent 和结构化输出为什么不能共用一套评测指标？
-- LLM-as-Judge 有哪些偏差？如何用人工抽样和规则校验进行校准？
-- CI 中的 AI 评测如何控制成本和运行时间？
-- 评测记录为什么要绑定模型、Prompt、检索配置和代码版本？
-- 线上质量下降时，如何区分模型、Prompt、检索、工具和数据分布问题？
-- AI 应用如何设计灰度、回滚和失败样本回流？
+- Which observability metrics should an AI application include?
+- Why is it difficult to tell whether a change helped without an evaluation set?
+- How should a Golden Set cover normal paths, edge cases, adversarial examples, and high-risk failures?
+- What problems do offline evaluation, trace replay, and online canary releases each address?
+- Why should RAG, agents, and structured output use different evaluation metrics?
+- What biases can LLM-as-Judge have, and how can human sampling and rule-based checks calibrate it?
+- How can AI evaluation in CI control cost and runtime?
+- Why should evaluation records be tied to model, prompt, retrieval configuration, and code versions?
+- When production quality declines, how can model, prompt, retrieval, tool, and data-distribution issues be distinguished?
+- How should an AI application handle canary releases, rollback, and feedback from failed cases?
 
-## 实时语音 Agent
+## Real-Time Voice Agents
 
-相关内容：[《AI 语音技术详解：从 ASR、TTS 到实时语音 Agent 的工程化落地》](../system-design/ai-voice.md)
+Related guide: [AI Voice Technology: Engineering Real-Time Voice Agents with ASR and TTS](../system-design/ai-voice.md)
 
-实时语音系统把音频采集、VAD、ASR、LLM、工具调用、TTS 和播放串在一起。相关问题主要集中在端到端延迟、打断处理、状态管理和端云选型。
+Real-time voice systems connect audio capture, VAD, ASR, LLMs, tool calls, TTS, and playback. Questions focus on end-to-end latency, interruptions, state management, and choosing between cloud and edge processing.
 
-常见面试题：
+Common interview questions:
 
-- 如何设计一个实时语音 Agent？
-- ASR、LLM、TTS 和 VAD 在语音系统中分别负责什么？
-- 实时语音 Agent 的端到端延迟主要来自哪些环节？
-- 用户打断时，系统如何取消播放、停止生成并更新上下文？
-- `listening`、`thinking`、`speaking`、`interrupted` 等状态如何管理？
-- 级联式 ASR + LLM + TTS 和原生 Speech-to-Speech 模型各有什么优缺点？
-- 云端 API、本地模型和端云混合方案怎么选？
-- 浏览器端音频前处理会影响哪些指标？
-- 语音 Agent 的可观测数据应该包括哪些内容？
+- How would you design a real-time voice agent?
+- What roles do ASR, LLMs, TTS, and VAD play in a voice system?
+- Which stages contribute most to a voice agent's end-to-end latency?
+- When the user interrupts, how should the system stop playback and generation and update the context?
+- How should states such as `listening`, `thinking`, `speaking`, and `interrupted` be managed?
+- What are the advantages and disadvantages of cascaded ASR + LLM + TTS versus native speech-to-speech models?
+- How should cloud APIs, local models, and hybrid edge-cloud deployments be chosen?
+- Which metrics are affected by browser-side audio preprocessing?
+- What observability data should a voice agent collect?
 
-## 综合设计题
+## Integrated Design Questions
 
-- 如何设计一个多 Agent 系统，让它支持任务拆分、并行执行、状态共享、冲突处理和失败恢复？参考：[《多 Agent 协作系统设计：任务拆分、状态共享、冲突处理与失败恢复》](../agent/multi-agent.md)
-- 如何设计一个带权限控制、引用溯源和知识库更新能力的企业 RAG 系统？
-- 如何设计一个支持长任务、工具调用、中断恢复和人工接管的 Agent 平台？
-- 智能客服流量突然增加，同时模型供应商开始限流，系统应该如何排队、降级和保护核心请求？
-- 模型或 Prompt 升级后，结构化输出成功率和答案质量下降，如何定位并回滚？
-- Agent 可以查询订单并发起退款时，权限、参数校验、二次确认、幂等和审计怎么设计？
-- 如何设计一个支持实时打断、低延迟和故障降级的语音客服系统？
+- How would you design a multi-agent system that supports task decomposition, parallel execution, shared state, conflict handling, and failure recovery? See [Multi-Agent System Design: Task Decomposition, Shared State, Conflict Handling, and Failure Recovery](../agent/multi-agent.md).
+- How would you design an enterprise RAG system with authorization, source attribution, and knowledge-base updates?
+- How would you design an agent platform that supports long-running tasks, tool calls, interruption recovery, and human handoff?
+- If customer-service traffic suddenly rises while a model provider is rate-limiting requests, how should the system queue, degrade, and protect core requests?
+- After a model or prompt upgrade, structured-output success and answer quality decline. How would you diagnose and roll back the change?
+- If an agent can look up orders and issue refunds, how should authorization, parameter validation, confirmation, idempotency, and auditing be designed?
+- How would you design a voice customer-service system with real-time interruption, low latency, and failure fallback?

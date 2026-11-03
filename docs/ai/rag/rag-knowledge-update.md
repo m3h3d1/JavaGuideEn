@@ -1,74 +1,74 @@
 ---
-title: RAG 知识库文档如何更新：增量更新、版本控制、去重与全量重建
-description: 深入解析 RAG 知识库更新的核心目标与工程实践，涵盖 Embedding 模型一致性、元数据设计、同步机制、增量更新与全量重建对比、生产级灰度发布与回滚方案，以及常见踩坑点。
-category: AI 应用开发
+title: "Updating Documents in a RAG Knowledge Base: Incremental Updates, Versioning, Deduplication, and Full Rebuilds"
+description: Explains the goals and engineering practices for updating a RAG knowledge base, including Embedding model consistency, metadata design, synchronization, incremental updates versus full rebuilds, canary releases, rollbacks, and common pitfalls.
+category: AI Application Development
 head:
   - - meta
     - name: keywords
-      content: RAG知识库更新,增量索引,全量重建,版本控制,向量数据库更新,Embedding模型一致性,去重,幂等更新
+      content: RAG knowledge-base updates,incremental indexing,full rebuild,versioning,vector database updates,Embedding model consistency,deduplication,idempotent updates
 ---
 
-第一个企业知识库 RAG 系统上线后，很多团队都会碰到一个很真实的问题：文档明明更新了，回答还是老样子。
+After deploying their first enterprise RAG knowledge base, many teams encounter a familiar problem: the documents have been updated, but the answers have not changed.
 
-这时候先别急着怪 LLM。更常见的原因是知识库没有同步更新，或者更新链路只做了“写入新内容”，没有处理旧版本、权限、索引一致性这些细节。
+Do not blame the LLM right away. More often, the knowledge base was not synchronized, or the update pipeline only wrote new content without handling old versions, permissions, and index consistency.
 
-文档变更频繁之后，问题会更明显：每次都全量重建索引，成本和耗时扛不住；只更新变化部分，又怕漏掉旧块；只插入新向量，不清理旧版本，过期内容还会继续被召回；换了 Embedding 模型，历史数据到底要不要全部重索引，也绕不开。
+The problem becomes more obvious when documents change frequently. Rebuilding the entire index every time is too slow and expensive. Updating only changed content risks leaving stale chunks behind. Inserting new vectors without cleaning up old versions means outdated content can still be retrieved. And when the Embedding model changes, the question of whether to reindex all historical data cannot be avoided.
 
-知识库更新要同时处理版本、权限和多个索引之间的一致性。本文沿着新增、修改、删除三类事件，说明增量同步、全量重建、灰度、回滚和监控怎么配合。
+Knowledge-base updates must handle versioning, permissions, and consistency across multiple indexes. This guide covers how incremental synchronization, full rebuilds, canary releases, rollbacks, and monitoring work together for three events: create, update, and delete.
 
-## 知识库更新要解决哪些问题？
+## What Problems Must Knowledge-Base Updates Solve?
 
-在讲具体方案之前，先把目标说清楚。
+First, define the goals before discussing implementation.
 
-更新完成后，检索结果要与当前文档一致，不能越权；同步失败时还要能定位到具体文档和写入端，并能恢复到上一版索引。
+After an update, retrieval results must match the current document and respect access controls. If synchronization fails, the failure must be traceable to a document and destination, with a way to restore the previous index version.
 
-动态性指的是，文档变了，索引要能跟上。这个“及时”不一定都是秒级，可能是分钟级，也可能是天级，取决于业务对实时性的要求。内部制度库也许一天同步一次就够，客服知识库和合规条款就可能需要更快。
+Freshness means the index keeps up with document changes. The required update time does not always have to be seconds; it may be minutes or even a day, depending on business needs. An internal policy library may need only daily synchronization, while a customer-support knowledge base or compliance rules may need faster updates.
 
-准确性指的是，更新后召回的内容要和当前文档一致，不能文档已经改了，模型还在引用旧版本。这个问题一旦发生，用户感知会很明显。
+Accuracy means retrieved content matches the current document. The model must not cite an old version after the document has changed; users notice this immediately.
 
-一致性更麻烦。同一个文档有不同版本，向量库、元数据库、全文检索又是不同系统，任何一端漏写或延迟，都可能导致结果不一致。
+Consistency is more difficult. A document has multiple versions, and the vector database, metadata database, and full-text index are separate systems. A missed or delayed write to any one of them can create inconsistent results.
 
-可回滚是为了出故障时能快速切回上一个健康状态，而不是靠人工临时修数据。可观测则要求更新过程能监控，更新结果能评估，失败原因能追到具体环节。
+Rollback means quickly returning to the last healthy state after a failure instead of manually repairing data under pressure. Observability means monitoring the update process, evaluating its results, and tracing failures to a specific stage.
 
-这些目标看起来像常识，但很多项目只做了第一步“更新”，后面几步全靠运气。结果就是文档改了十版，回答还停在第一版；删了一篇敏感文档，过了几个月还能被召回出来。
+These goals may seem obvious, but many projects implement only the first step—"update"—and leave the rest to chance. The result: a document has gone through ten revisions, but answers still reflect the first; a sensitive document was deleted, but it can still be retrieved months later.
 
-## 为什么 Embedding 模型必须保持一致？
+## Why Must the Embedding Model Remain Consistent?
 
-这一点要单独拎出来讲：索引时用的 Embedding 模型，必须和查询时用的模型一致。
+This deserves special attention: the Embedding model used for indexing must match the one used for queries.
 
-Embedding 模型会把文本转成向量，不同模型的向量空间并不通用。同一句话用 OpenAI 的 `text-embedding-3-small` 编码，和用 sentence-transformers 的 `all-MiniLM-L6-v2` 编码，得到的向量没有可比性。如果索引用模型 A，查询用模型 B，就等于在两个不同空间里算相似度。
+Embedding models convert text into vectors, but vector spaces from different models are not interchangeable. The vectors produced for the same sentence by OpenAI's `text-embedding-3-small` and sentence-transformers' `all-MiniLM-L6-v2` are not comparable. Using model A for indexing and model B for queries is like calculating similarity across two different spaces.
 
-具体表现还要看向量维度。如果维度不同，通常无法放进同一个索引，很多向量库会直接拒绝插入或查询。如果维度相同但模型不同，相似度分数也不具备可比性，召回结果不能信。它不是简单的“随机”，而是整个排序基础已经坏了。
+The exact failure depends on vector dimensions. If dimensions differ, the vectors usually cannot share an index, and many vector databases reject the insert or query. If dimensions match but models differ, similarity scores are still incomparable and retrieval results are unreliable. The problem is not simply randomness; the basis for ranking has broken down.
 
-生产里最容易忽视的有两个场景。
+Two scenarios are easy to overlook in production.
 
-**第一个是模型升级。** 业务方觉得新模型效果更好，想从 `text-embedding-3-small` 切到 `text-embedding-3-large`。这意味着历史数据必须重新编码、重新入索引。工程上可以用双索引并行和灰度切流降低风险，但重建这一步绕不过去。
+**The first is a model upgrade.** A team may want to switch from `text-embedding-3-small` to `text-embedding-3-large` because the new model performs better. Historical data must then be re-encoded and reindexed. Running both indexes in parallel and shifting traffic gradually can reduce risk, but rebuilding is unavoidable.
 
-**第二个是本地模型和 API 模型混用。** 测试环境用本地 sentence-transformers，生产环境用 OpenAI API。这种差异在团队协作里特别常见，测试看起来正常，上线后召回率直接腰斩。
+**The second is mixing a local model with an API model.** For example, the test environment uses local sentence-transformers while production uses the OpenAI API. This is common in team workflows: tests look fine, but recall drops sharply after deployment.
 
-比较稳的做法是把 Embedding 模型信息写进元数据，每次查询时都校验模型版本。不匹配时，要么拒绝查询，要么打警告日志并降级到更保守的召回策略。
+A safer approach is to store Embedding model details in metadata and validate the model version on every query. If they do not match, either reject the query or log a warning and fall back to a more conservative retrieval strategy.
 
-| 字段                      | 说明     | 示例                     |
-| ------------------------- | -------- | ------------------------ |
-| `embedding_model`         | 模型名称 | `text-embedding-3-large` |
-| `embedding_model_version` | 模型版本 | `2025-01-15`             |
-| `embedding_dimension`     | 向量维度 | `3072`                   |
+| Field                     | Description      | Example                  |
+| ------------------------- | ---------------- | ------------------------ |
+| `embedding_model`         | Model name       | `text-embedding-3-large` |
+| `embedding_model_version` | Model version    | `2025-01-15`             |
+| `embedding_dimension`     | Vector dimension | `3072`                   |
 
-当 Embedding 模型需要升级时，建议按下面的流程走：
+When upgrading the Embedding model, use a process such as:
 
-1. 在新索引中用新模型重建所有数据。
-2. 新旧索引并行运行一段时间，对比召回率和回答质量。
-3. 确认新索引稳定后，通过索引别名把流量切到新索引。
-4. 保留旧索引一段时间，用于快速回滚。
-5. 确认没有问题后，再删除旧索引。
+1. Rebuild all data in a new index with the new model.
+2. Run both indexes in parallel for a period and compare recall and answer quality.
+3. Once the new index is stable, switch traffic to it through an index alias.
+4. Keep the old index for a period so you can roll back quickly.
+5. Delete the old index after confirming the new one works correctly.
 
-这个思路和数据库蓝绿部署很像：不要原地改，先建一套新的，验证通过后再切。
+This is similar to blue-green database deployment: do not modify the existing index in place. Build a new one, validate it, and then switch over.
 
-## 如何设计支持更新的元数据体系？
+## How Do You Design Metadata for Updates?
 
-好的元数据设计，是增量更新和回滚的前提。很多 RAG 系统跑着跑着会“失忆”，不是因为不知道文档内容，而是不知道这条向量对应哪个文档、哪个版本、什么时候入库、权限是什么。
+Good metadata design is a prerequisite for incremental updates and rollbacks. Many RAG systems appear to "forget" over time, not because they lack document content, but because they cannot tell which document or version a vector belongs to, when it was indexed, or what permissions apply.
 
-每个 Chunk 至少应该带上这些元数据：
+Every chunk should include at least this metadata:
 
 ```json
 {
@@ -81,8 +81,8 @@ Embedding 模型会把文本转成向量，不同模型的向量空间并不通�
   "chunk_overlap": 50,
   "source_id": "confluence-page-123",
   "source_type": "confluence",
-  "title": "订单中心接口文档",
-  "section_path": "技术文档 / 订单系统 / 接口规范",
+  "title": "Order Center API Documentation",
+  "section_path": "Technical Documentation / Order System / API Specification",
   "page": 5,
   "tenant_id": "tenant-001",
   "acl": ["role:admin", "team:order-team"],
@@ -95,194 +95,194 @@ Embedding 模型会把文本转成向量，不同模型的向量空间并不通�
 }
 ```
 
-切分策略也要版本化。切分方式、重叠率、解析方式一旦变化，影响不比 Embedding 模型小，也应该触发重建或双索引灰度。记录 `chunk_strategy`、`chunk_size`、`chunk_overlap` 这些字段，后面做评估和回滚才有依据。
+Version the chunking strategy as well. Changes to splitting, overlap, or parsing can have as much impact as an Embedding model change and should trigger a rebuild or a dual-index canary. Record fields such as `chunk_strategy`, `chunk_size`, and `chunk_overlap` to support evaluation and rollback.
 
-`content_hash` 是增量更新的核心。它不是文件哈希，而是文档正文或 Chunk 内容的哈希。常见算法有几种：MD5 速度快，但有碰撞风险，适合对碰撞不敏感的场景；SHA-256 碰撞风险极低，更推荐生产使用；SimHash 适合判断内容是否大致相同，常用于网页去重，但不能精确定位具体变化点。
+`content_hash` is central to incremental updates. It is a hash of the document body or chunk content, not the file. Common algorithms include MD5, which is fast but has collision risks and suits cases where collisions are not critical; SHA-256, which has a very low collision risk and is recommended for production; and SimHash, which detects roughly similar content and is often used for webpage deduplication, but cannot identify exact changes.
 
-生产环境里，`content_hash` 主要用来判断“这段文本有没有变”。入库时计算哈希，和数据库里已有记录对比。如果一致，说明内容没变，可以跳过 Embedding；如果不一致，就要重新编码。
+In production, `content_hash` is mainly used to determine whether a passage has changed. Calculate the hash during indexing and compare it with the existing record. If they match, skip Embedding; if they differ, encode the content again.
 
-`version_id` 记录文档修改次数。每次文档更新，`version_id` 加一。它配合 `content_hash` 使用，可以追踪变更历史，也方便回滚。
+`version_id` records the document revision. Increment it after each update. Together with `content_hash`, it tracks change history and supports rollback.
 
-`is_deleted` 是软删除标记。只从向量库删除记录而不在元数据库保留删除状态，会让审计、恢复和跨索引同步失去依据。收到删除事件时，可以先把 `is_deleted` 设为 `true`；重新上传时创建新版本或恢复记录，并重新计算 `content_hash`；查询时默认只保留 `is_deleted = false` 的记录。
+`is_deleted` is a soft-delete flag. Removing a record only from the vector database without retaining its deletion state in the metadata database undermines auditing, recovery, and cross-index synchronization. On a delete event, set `is_deleted` to `true`. When the document is uploaded again, create a new version or restore the record and recalculate `content_hash`. By default, queries should include only records where `is_deleted = false`.
 
-软删除不只是为了区分新旧文档，它还给审计、误删恢复、延迟物理删除、跨系统一致性留了缓冲窗口。
+Soft deletion does more than distinguish old and current documents. It provides a buffer for auditing, accidental-deletion recovery, delayed physical deletion, and cross-system consistency.
 
-`tenant_id` 和 `acl` 是多租户和权限控制的基础。所有会进入模型上下文的内容都必须先通过授权检查，通常在检索前或检索时按租户、角色、资源 ACL 过滤，避免无权限文档占用 Top-K 或泄露给模型。动态权限、跨组织继承等复杂规则可以在候选召回后再次校验，但二次校验必须发生在组装模型上下文之前；返回引用前还可以再核对一次，作为防御性检查。
+`tenant_id` and `acl` are the basis for multi-tenancy and access control. Every item included in the model context must pass authorization checks. Usually, filter by tenant, role, and resource ACL before or during retrieval so unauthorized documents do not occupy Top-K slots or reach the model. Complex rules such as dynamic permissions or cross-organization inheritance can be checked again after candidate retrieval, but the second check must occur before assembling the model context. Check once more before returning citations as a defensive measure.
 
-## 新增、修改、删除文档如何同步？
+## How Do You Synchronize Document Creations, Updates, and Deletions?
 
-文档从源系统到向量库，中间会经过多个环节。任何一环出问题，都会导致数据不一致。
+Documents pass through several stages from the source system to the vector database. A failure at any stage can cause inconsistency.
 
 ```mermaid
 flowchart TD
-    %% ========== 配色声明 ==========
+    %% ========== Color definitions ==========
     classDef source fill:#3498DB,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef process fill:#E67E22,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef storage fill:#27AE60,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef monitor fill:#9B59B6,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef error fill:#C0392B,color:#FFFFFF,stroke:none,rx:10,ry:10
 
-    Source[源系统<br/>Confluence/Git/DB]:::source
-    Detect[变更检测<br/>Webhook/CDC/定时轮询]:::process
-    Queue[消息队列<br/>Kafka/RabbitMQ]:::process
-    Process[文档处理<br/>解析/切分/哈希]:::process
-    Dedup[去重检查<br/>content_hash比对]:::process
-    Embed[Embedding<br/>生成向量]:::process
-    Metadata[元数据库<br/>PostgreSQL/MySQL]:::storage
-    Vector[向量库<br/>Pinecone/Milvus/pgvector]:::storage
-    Fulltext[全文索引<br/>ES/Solr]:::storage
-    Monitor[监控告警<br/>更新状态/召回率]:::monitor
-    Error[错误处理<br/>重试/死信队列]:::error
+    Source[Source system<br/>Confluence/Git/DB]:::source
+    Detect[Change detection<br/>Webhook/CDC/scheduled polling]:::process
+    Queue[Message queue<br/>Kafka/RabbitMQ]:::process
+    Process[Document processing<br/>parse/chunk/hash]:::process
+    Dedup[Deduplication<br/>compare content_hash]:::process
+    Embed[Embedding<br/>generate vectors]:::process
+    Metadata[Metadata database<br/>PostgreSQL/MySQL]:::storage
+    Vector[Vector database<br/>Pinecone/Milvus/pgvector]:::storage
+    Fulltext[Full-text index<br/>Elasticsearch/Solr]:::storage
+    Monitor[Monitoring and alerts<br/>update status/recall]:::monitor
+    Error[Error handling<br/>retries/dead-letter queue]:::error
 
     Source --> Detect
     Detect --> Queue
     Queue --> Process
     Process --> Dedup
-    Dedup -->|无变化| Monitor
-    Dedup -->|有变化| Embed
+    Dedup -->|unchanged| Monitor
+    Dedup -->|changed| Embed
     Embed --> Metadata
-    Metadata -->|写入失败| Error
+    Metadata -->|write failed| Error
     Embed --> Vector
-    Vector -->|写入失败| Error
-    Dedup -->|有变化| Fulltext
-    Fulltext -->|写入失败| Error
-    Process -->|处理失败| Error
-    Error -->|重试| Queue
-    Monitor -->|异常| Error
+    Vector -->|write failed| Error
+    Dedup -->|changed| Fulltext
+    Fulltext -->|write failed| Error
+    Process -->|processing failed| Error
+    Error -->|retry| Queue
+    Monitor -->|anomaly| Error
 
     linkStyle default stroke-width:2px,stroke:#333333,opacity:0.8
 ```
 
-这里要特别注意部分成功。向量库、元数据库、全文索引通常不在同一个事务域，一次写三端很可能出现部分成功。更稳的做法是以元数据库作为 source of truth，记录每个 Chunk 的索引状态，比如 `index_status = 'ready' / 'partial_failed'`。后台补偿任务定期重试失败端，再通过 reconciliation 扫描差异。
+Watch for partial success. The vector database, metadata database, and full-text index usually do not share a transaction boundary, so a write to all three may succeed only partially. A safer approach is to use the metadata database as the source of truth and record each chunk's index status, such as `index_status = 'ready' / 'partial_failed'`. A background compensation task can retry failed destinations and use reconciliation to find discrepancies.
 
-### 新增文档
+### Creating a Document
 
-新增是三类操作里最简单的。一般流程是：解析文档，提取正文、标题、层级结构；按既定策略切分 Chunk；计算每个 Chunk 的 `content_hash`；检查哈希是否已经存在；不存在时生成向量，并写入向量库、元数据库、全文索引。
+Creation is the simplest of the three operations. A typical flow parses the document and extracts its body, title, and hierarchy; splits it into chunks using the established strategy; computes each chunk's `content_hash`; checks whether the hash already exists; and, if not, generates a vector and writes it to the vector database, metadata database, and full-text index.
 
-幂等性很重要。新增操作必须能重复执行。即使消息队列重复投递同一条消息，或者 worker 崩溃重启后再次处理，也不应该产生重复记录。
+Idempotency is important. A create operation must be safe to repeat. Duplicate message delivery or a worker restarting after a crash must not create duplicate records.
 
-### 修改文档
+### Updating a Document
 
-修改比新增复杂，关键问题是旧版本数据怎么办。
+Updates are more complex than creation. The key question is what to do with the old version.
 
-需要避免查询同时看到两版内容，也要避免更新过程中暂时查不到任何版本。常见做法是先写入不可见的新版本，再原子切换活动版本：
+Prevent queries from seeing both versions at once, but also avoid a period when neither version is available. A common approach is to write a hidden new version first, then atomically switch the active version:
 
-1. 根据 `doc_id` 查询元数据库，记录当前活动版本和旧 `chunk_id` 列表。
-2. 写入带新 `version_id` 的 Chunk、向量和全文索引，并保持 `status = 'building'`，不参与在线检索。
-3. 校验三端写入结果后，在元数据库或索引别名中把活动版本原子切到新版。
-4. 将旧版标记为删除，按保留策略异步清理。
+1. Look up the active version and old `chunk_id` values by `doc_id` in the metadata database.
+2. Write chunks with the new `version_id` to the vector database and full-text index, keeping `status = 'building'` so they are excluded from online retrieval.
+3. After validating writes to all three systems, atomically switch the active version in the metadata database or through an index alias.
+4. Mark the old version for deletion and clean it up asynchronously according to the retention policy.
 
-如果向量库支持基于主键的原子更新，比如 Milvus 的 upsert，可以直接覆盖同一主键记录。但要注意，upsert 只能覆盖同一主键实体。如果文档重新切分后 Chunk 数量或 `chunk_id` 变化，仍然要按 `doc_id + version_id` 清理旧版本残留。
+If the vector database supports atomic updates by primary key, such as Milvus upsert, it can overwrite the record with the same key. However, upsert replaces only that record. If re-chunking changes the number of chunks or their `chunk_id` values, clean up old-version remnants by `doc_id + version_id`.
 
-如果存储端不能原子替换整篇文档，就用 `active_version` 过滤、索引别名或双索引切换。直接先删旧记录再写新记录，会出现短暂的空窗；直接先写新记录但不做版本过滤，则可能同时命中新旧内容。
+If the storage system cannot atomically replace an entire document, use an `active_version` filter, index aliases, or a dual-index switch. Deleting old records before writing new ones creates a gap; writing new records first without version filtering may expose both versions at once.
 
-一个很常见的坑是只写新向量，不删旧向量。
+A common pitfall is writing new vectors without deleting the old ones.
 
-如果文档修改 10 次后，向量库仍保留 10 个可检索版本，查询可能命中过时内容。修改流程必须停用旧版本，并按保留策略清理旧向量，否则知识库会持续失真。
+If the vector database retains all 10 versions after a document has been updated 10 times, queries may retrieve outdated content. The update process must deactivate old versions and clean up old vectors according to the retention policy, or the knowledge base will keep drifting.
 
-### 删除文档
+### Deleting Documents
 
-删除可以分为软删除和物理删除。
+Deletions can be soft or physical.
 
-软删除是把 `is_deleted` 标记设为 `true`。它便于保留变更历史和处理误删，但不适用于要求立即擦除数据的合规请求。
+Soft deletion sets the `is_deleted` flag to `true`. It preserves change history and supports recovery from accidental deletion, but is unsuitable for compliance requests that require immediate erasure.
 
-物理删除是从向量库、元数据库、全文索引和相关缓存中移除记录。软删除保留多久，要根据业务恢复目标、数据分类和合规要求确定，不能把固定天数当作通用默认值。
+Physical deletion removes records from the vector database, metadata database, full-text index, and related caches. Choose the soft-delete retention period based on recovery objectives, data classification, and compliance requirements; there is no universal default number of days.
 
-软删除方便恢复和审计，但会增加存储成本和过滤开销。物理删除更彻底，适合合规删除、敏感数据删除，但恢复成本高。生产上更常见的是“软删除 + 延迟物理删除 + 删除审计日志”。如果是敏感文档，还要清理 rerank 缓存、LLM 上下文缓存等旁路缓存。
+Soft deletion simplifies recovery and auditing but adds storage and filtering costs. Physical deletion is more thorough and suits compliance requests and sensitive data, but recovery is difficult. A common production pattern is soft deletion followed by delayed physical deletion, with an audit log. For sensitive documents, also clear side caches such as reranking and LLM context caches.
 
-删除还有一个隐蔽问题：权限变更后的“幽灵数据”。比如一篇文档原本所有员工可见，后来改成“仅高管可见”。如果向量库里的旧 `acl` 没更新，普通员工查询时可能仍然召回这篇文档。正确做法是权限变更触发文档重新索引，确保元数据里的 `acl` 是最新的。如果向量库支持原子更新 ACL 字段，也可以不重建向量，只更新元数据。
+Deletion has another subtle issue: "ghost data" after a permission change. A document may have been visible to all employees and later restricted to executives. If the old `acl` in the vector database is not updated, ordinary employees may still retrieve it. A permission change should trigger reindexing so the metadata contains the current `acl`. If the vector database supports atomic ACL updates, the metadata can be changed without rebuilding the vectors.
 
-## 增量更新和全量重建各适合什么场景？
+## When Should You Use Incremental Updates or Full Rebuilds?
 
-常见组合是用增量更新处理日常变化，在模型升级、切分策略迁移或严重数据不一致时执行全量重建。是否定期全量重建，要看索引实现、更新频率和一致性检查结果。
+A common approach is to use incremental updates for routine changes and full rebuilds for model upgrades, chunking-strategy migrations, or serious data inconsistency. Whether to schedule periodic rebuilds depends on the index implementation, update frequency, and consistency-check results.
 
-| 维度       | 增量更新             | 全量重建                                     |
-| ---------- | -------------------- | -------------------------------------------- |
-| 触发条件   | 文档变更事件         | 定时任务或手动触发                           |
-| 覆盖范围   | 仅变化的文档         | 整个知识库                                   |
-| 计算成本   | 低，只处理变化部分   | 高，需要处理全部数据                         |
-| 更新延迟   | 低，可近实时         | 高，可能需要数小时                           |
-| 数据一致性 | 依赖变更检测准确性   | 需基于源系统快照或版本时间戳保证与源系统一致 |
-| 适用场景   | 日常变更、高频更新   | 模型升级、策略调整、故障恢复                 |
-| 主要风险   | 变更漏检导致数据陈旧 | 占用额外算力和存储；切换方案不完整时影响服务 |
+| Dimension        | Incremental update                   | Full rebuild                                                                              |
+| ---------------- | ------------------------------------ | ----------------------------------------------------------------------------------------- |
+| Trigger          | Document change event                | Scheduled or manual                                                                       |
+| Scope            | Changed documents only               | Entire knowledge base                                                                     |
+| Compute cost     | Low; processes only changes          | High; processes all data                                                                  |
+| Update latency   | Low; can be near real time           | High; may take hours                                                                      |
+| Data consistency | Depends on accurate change detection | Must use a source-system snapshot or version timestamp to stay consistent with the source |
+| Use case         | Routine and frequent changes         | Model upgrades, strategy changes, recovery from failures                                  |
+| Main risk        | Missed changes leave data stale      | Extra compute and storage; an incomplete switch can affect service                        |
 
-### 增量更新适合什么场景？
+### When Are Incremental Updates a Good Fit?
 
-增量更新适合文档变更频率适中、对实时性有要求、知识库规模较大的场景。比如每天几十到几百次文档变更，业务能接受分钟级同步，全量重建成本又比较高。
+Incremental updates suit large knowledge bases with a moderate document-change rate and freshness requirements. For example, a system may receive dozens or hundreds of document changes per day, require synchronization within minutes, and find full rebuilds too costly.
 
-增量更新依赖变更检测机制。常见方案有三种：
+Incremental updates depend on change detection. Three common approaches are:
 
-1. Webhook / 事件驱动：源系统，比如 Confluence、Git、数据库，主动提供变更通知，RAG 系统订阅并处理。延迟最低，但要求源系统支持。
-2. CDC（Change Data Capture）：监听数据库 binlog 或变更日志，捕获数据变化。适合结构化数据源。
-3. 定时轮询：按固定间隔，比如每 5 分钟扫描源系统，对比 `updated_at` 时间戳。实现简单，但有延迟，也会给源系统带来压力。
+1. **Webhook or event-driven**: Source systems such as Confluence, Git, or a database send change notifications for the RAG system to consume. This has the lowest latency but requires source-system support.
+2. **Change Data Capture (CDC)**: Monitor database binlogs or change logs. This suits structured data sources.
+3. **Scheduled polling**: Scan the source system at a fixed interval, such as every five minutes, and compare `updated_at` timestamps. This is simple to implement but adds latency and load to the source system.
 
-生产里更稳的是事件驱动 + 轮询兜底。事件驱动处理日常增量，轮询用来防漏检。中间加消息队列，比如 Kafka、RocketMQ，用来解耦源系统和 RAG 处理流程。
+A more reliable production setup combines event-driven updates with polling as a fallback. Events handle routine changes; polling catches missed events. Add a message queue such as Kafka or RocketMQ to decouple the source system from RAG processing.
 
-### 全量重建适合什么场景？
+### When Is a Full Rebuild Appropriate?
 
-全量重建通常用于这些情况：
+Full rebuilds are commonly used in these situations:
 
-- Embedding 模型升级。这是硬需求，绕不过去。
-- Chunk 策略调整。比如从固定 500 Token 改成语义切分。可以全量重建，也可以用版本化索引逐批迁移，但同一评测和检索链路要能区分策略版本。
-- 数据结构变更。比如新增或修改元数据字段。
-- 严重故障恢复。增量链路长期失灵，数据已经明显陈旧。
-- 定期健康维护。部分向量库在高频删除后会留下 tombstone 删除标记、索引碎片，甚至出现召回退化。具体表现和索引类型、产品实现有关，比如基于 HNSW + tombstone 清理机制的产品，最好查对应向量库文档确认。
+- An Embedding model upgrade. A full rebuild is unavoidable.
+- A chunking-strategy change, such as switching from fixed 500-token chunks to semantic chunking. You can rebuild fully or migrate in batches with versioned indexes, but the evaluation and retrieval pipelines must distinguish strategy versions.
+- A data-schema change, such as adding or modifying metadata fields.
+- Recovery from a serious failure, such as a long-running incremental pipeline failure that has left data stale.
+- Periodic health maintenance. Frequent deletions can leave tombstones or index fragmentation in some vector databases, and may degrade recall. Behavior depends on the index type and product; check the database documentation for details, especially for products that combine HNSW with tombstone cleanup.
 
-全量重建最怕服务中断。比较稳的做法是索引别名切换：
+Service interruption is the main risk of a full rebuild. A safer approach is to switch through an index alias:
 
 ```mermaid
 flowchart LR
-    %% ========== 配色声明 ==========
+    %% ========== Color definitions ==========
     classDef alias fill:#9B59B6,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef index fill:#3498DB,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef active fill:#27AE60,color:#FFFFFF,stroke:none,rx:10,ry:10
 
-    subgraph Build["重建阶段"]
-        Old[旧索引<br/>index_v1]:::index
-        BuildProcess[后台重建<br/>index_v2]:::index
+    subgraph Build["Build phase"]
+        Old[Old index<br/>index_v1]:::index
+        BuildProcess[Build in background<br/>index_v2]:::index
     end
 
-    subgraph Switch["切换阶段"]
-        Alias["prod_index<br/>别名"]:::alias
-        New[新索引<br/>index_v2]:::active
-        Old2[旧索引<br/>index_v1]:::index
+    subgraph Switch["Switch phase"]
+        Alias["prod_index<br/>alias"]:::alias
+        New[New index<br/>index_v2]:::active
+        Old2[Old index<br/>index_v1]:::index
     end
 
-    Old -->|当前服务| Alias
-    BuildProcess -->|验证完成| Alias
-    Alias -->|切换| New
-    Old2 -.->|保留备用| Alias
+    Old -->|serving traffic| Alias
+    BuildProcess -->|validation complete| Alias
+    Alias -->|switch| New
+    Old2 -.->|keep as fallback| Alias
 
     linkStyle default stroke-width:2px,stroke:#333333,opacity:0.8
 ```
 
-步骤大致是：
+The steps are roughly:
 
-1. 查询服务通过索引别名 `prod_index` 访问，旧索引是 `index_v1`。
-2. 后台启动重建任务，构建新索引 `index_v2`。
-3. 新索引验证通过后，把别名 `prod_index` 指向 `index_v2`。Milvus / Zilliz 的 alias 机制支持在 collection 间切换，其他向量库是否有同等能力要单独确认。
-4. 保留旧索引 `index_v1` 一段时间，比如 7 天，用于快速回滚。
-5. 确认没问题后，删除旧索引。
+1. The query service accesses the old index, `index_v1`, through the `prod_index` alias.
+2. Start a background rebuild to create the new index, `index_v2`.
+3. After validating the new index, point `prod_index` to `index_v2`. Milvus / Zilliz aliases support switching between collections; verify whether other vector databases offer equivalent functionality.
+4. Keep `index_v1` for a period, such as seven days, for quick rollback.
+5. Delete the old index after confirming the new one works.
 
-### 生产环境的稳态策略
+### A Stable Production Strategy
 
-增量链路通过 Webhook 或 CDC 捕获日常变更，轮询和 reconciliation 用来发现漏写、漏删和乱序。全量重建按需触发：模型升级、索引策略迁移或一致性检查持续失败时再执行。部分系统会安排周期性重建，但周期要根据索引实现、删除比例、重建成本和一致性指标确定，不能统一按周或按月设置。
+Use Webhooks or CDC to capture routine changes, and polling plus reconciliation to catch missed writes, deletions, or out-of-order events. Trigger full rebuilds as needed for model upgrades, index-strategy migrations, or persistent consistency-check failures. Some systems schedule periodic rebuilds, but choose the interval based on index implementation, deletion rate, rebuild cost, and consistency metrics rather than using a universal weekly or monthly schedule.
 
-## 如何让更新链路稳定可靠？
+## How Do You Make the Update Pipeline Reliable?
 
-### 幂等更新：消息队列的好搭档
+### Idempotent Updates: A Good Fit for Message Queues
 
-消息队列天然会有重复投递。网络抖动、consumer 崩溃重启、offset 没提交，都可能导致同一条消息被重复消费。
+Message queues can deliver duplicates. Network instability, consumer crashes and restarts, or an uncommitted offset can cause the same message to be consumed more than once.
 
-幂等更新的重点是去重依据。比较可靠的是基于 `doc_id + content_hash` 或 `doc_id + version_id` 做唯一约束。但要注意，并发场景下，简单“先查再写”不够安全，两条相同或乱序消息同时到达时，仍然可能互相覆盖或重复写入。
+Idempotent updates need a reliable deduplication key. A unique constraint on `doc_id + content_hash` or `doc_id + version_id` is a good option. In concurrent workflows, however, a simple "check then write" is not safe: duplicate or out-of-order messages arriving at the same time may overwrite or insert duplicate records.
 
-更稳的做法有几种：
+More reliable approaches include:
 
-1. 依赖唯一约束：以 `doc_id + content_hash` 或 `doc_id + version_id` 建唯一索引，插入时让数据库拒绝重复。
-2. 乐观锁 / 分布式锁：写入新版本前先拿锁，防止并发覆盖。
-3. 事务 outbox：变更事件先写入 outbox 表，再由消费者幂等处理。
+1. **Use a unique constraint**: Create a unique index on `doc_id + content_hash` or `doc_id + version_id` so the database rejects duplicates.
+2. **Use optimistic or distributed locking**: Acquire a lock before writing a new version to prevent concurrent overwrites.
+3. **Use a transactional outbox**: Write change events to an outbox table first, then let consumers process them idempotently.
 
-下面的示例在唯一约束之外增加了索引状态。`index_status` 可以取 `pending`、`processing`、`partial_failed` 和 `ready`；`claim_token` 与 `claimed_at` 用于防止多个消费者同时处理同一条记录，并允许超时任务被接管。
+The example adds index status alongside a unique constraint. `index_status` can be `pending`, `processing`, `partial_failed`, or `ready`. `claim_token` and `claimed_at` prevent multiple consumers from processing the same record at once and allow another consumer to take over timed-out work.
 
 ```python
 from uuid import uuid4
@@ -294,10 +294,10 @@ def process_document_change(event):
     version_id = event.get('version_id', 1)
     chunk_hash = compute_hash(content)
 
-    # 使用完整内容哈希，避免前缀相同的不同内容发生碰撞
+    # Use the full content hash to distinguish content with a shared prefix.
     chunk_id = f"{doc_id}_{version_id}_{chunk_hash}"
 
-    # 重复事件不会创建新记录；失败记录仍可从原状态继续处理
+    # Duplicate events do not create new records; failed records can be retried.
     db.execute("""
         INSERT INTO chunks (
             doc_id, chunk_id, content_hash, version_id, is_deleted, index_status
@@ -335,13 +335,13 @@ def process_document_change(event):
         'claim_token': claim_token
     })
 
-    # 没有抢到任务，说明记录已完成或仍由另一个消费者处理
+    # If no task was claimed, the record is complete or another consumer is processing it.
     if claimed is None:
         logger.info(f"Doc {doc_id} is ready or being processed, skipping")
         return
 
     try:
-        # upsert 必须以 chunk_id 为幂等键，重复执行不会产生多份向量
+        # Use chunk_id as the upsert idempotency key to avoid duplicate vectors.
         embedding = embedding_model.encode(content)
         vector_db.upsert(doc_id, chunk_id, embedding, {
             'doc_id': doc_id,
@@ -381,192 +381,192 @@ def process_document_change(event):
         raise
 ```
 
-唯一约束负责去重，条件更新负责原子抢占任务，`partial_failed` 则让后续重试可以继续写向量。这里使用 PostgreSQL 风格的 `RETURNING` 获取抢占结果，避免依赖不同数据库驱动行为不一致的 `rowcount`。如果业务数据库和向量数据库无法放进同一事务，向量写入必须按 `chunk_id` 幂等；即使向量已经写入、状态更新却失败，重试也可以安全地再次 `upsert`。生产环境还需要由定时任务扫描超过租约时间的 `processing` 记录。
+The unique constraint handles deduplication, the conditional update atomically claims work, and `partial_failed` allows a later retry to continue writing vectors. This example uses PostgreSQL-style `RETURNING` to get the claim result rather than relying on `rowcount`, which varies across database drivers. If the business database and vector database cannot share a transaction, vector writes must be idempotent by `chunk_id`. Even if a vector write succeeds but the status update fails, retrying the upsert is safe. In production, a scheduled task should also scan for `processing` records whose lease has expired.
 
-### 乱序事件处理
+### Handle Out-of-Order Events
 
-消息队列的投递顺序不一定总是符合预期。RAG 更新链路里，先收到 v3 再收到 v2 很常见。如果不处理乱序，旧版本就可能覆盖新版本。
+Message queues do not always deliver events in the expected order. In a RAG update pipeline, receiving v3 before v2 is common. Without out-of-order handling, the older version may overwrite the newer one.
 
-通常要做几件事：
+Common safeguards include:
 
-1. 每个文档事件携带 `source_version`、`updated_at` 或单调递增的 `revision`，用于判断新旧。
-2. 写入前校验 `event.version >= current_version`，旧事件直接丢弃或写入审计日志。
-3. 对同一 `doc_id` 做分区有序消费，比如 Kafka key 使用 `doc_id`，保证同一文档的消息落在同一 partition。
-4. 对乱序丢弃做监控打点，方便发现源系统事件异常。
+1. Include `source_version`, `updated_at`, or a monotonically increasing `revision` in each document event to determine its age.
+2. Before writing, verify `event.version >= current_version`; discard older events or record them in the audit log.
+3. Consume events for each `doc_id` in partition order. For example, use `doc_id` as the Kafka key to keep each document's messages in one partition.
+4. Monitor discarded out-of-order events to detect source-system problems.
 
-### 失败重试和死信队列
+### Retry Failures and Use a Dead-Letter Queue
 
-处理链路的任何环节都可能失败：网络抖动、API 限流、向量库暂时不可用、解析器异常，都会发生。
+Any stage in the pipeline can fail because of network instability, API rate limiting, temporary vector database outages, or parser errors.
 
-比较稳的策略是指数退避重试 + 死信队列兜底。
+A reliable strategy combines exponential backoff retries with a dead-letter queue.
 
 ```python
 def process_with_retry(event, max_retries=3):
-    # max_retries 表示首次尝试失败后，最多再重试多少次
+    # max_retries is the number of retries allowed after the initial attempt fails.
     for attempt in range(max_retries + 1):
         try:
             process_document_change(event)
-            return  # 成功，直接返回
+            return  # Succeeded.
         except TransientError as e:
             if attempt == max_retries:
                 break
-            wait_time = 2 ** (attempt + 1)  # 指数退避：2s, 4s, 8s
+            wait_time = 2 ** (attempt + 1)  # Exponential backoff: 2s, 4s, 8s.
             logger.warning(f"Attempt {attempt + 1} failed: {e}, retrying in {wait_time}s")
             time.sleep(wait_time)
         except PermanentError as e:
-            # 永久性错误（如格式错误），不重试，直接打入死信队列
+            # Do not retry permanent errors, such as an invalid format; send them to the DLQ.
             logger.error(f"Permanent error, sending to DLQ: {e}")
             dlq.send(event, reason=str(e))
             return
 
-    # 超过最大重试次数，打入死信队列并告警
+    # Exceeded the retry limit; send the event to the DLQ and alert.
     logger.error(f"Max retries exceeded for {event['doc_id']}")
     dlq.send(event, reason="max_retries_exceeded")
     alert.trigger(f"Document update failed after {max_retries} retries: {event['doc_id']}")
 ```
 
-错误分类很重要。网络超时、API 限流这类瞬时错误可以重试；格式错误、字段缺失这类永久错误不应该反复重试，重试多少次都不会成功，只会浪费资源。
+Error classification is important. Retry transient errors such as network timeouts and API rate limits. Do not repeatedly retry permanent errors such as invalid formats or missing fields; retries will not help and will only waste resources.
 
-死信队列里的消息不能一直堆着。建议定期 Review，比如每周看一次，修复原因后再重新投递。
+Do not let messages accumulate indefinitely in the dead-letter queue. Review it regularly, such as weekly, and redeliver messages after fixing the underlying cause.
 
-### 回滚机制：出问题时的应急通道
+### Rollback: An Emergency Path When Things Go Wrong
 
-回滚不是后悔药，而是应急通道。好的回滚机制应该让操作者能快速切回上一个健康状态。
+Rollback is an emergency path, not a way to undo a decision casually. A good rollback mechanism lets operators quickly return to the last healthy state.
 
-索引别名切换的回滚最简单。别名切换后，如果新索引有问题，把别名指回旧索引即可。前提是旧索引还没删。
+Rollback is simplest when switching index aliases. If the new index has problems, point the alias back to the old index, provided it has not been deleted.
 
-模型升级的回滚，要在升级前记录旧模型的 `model_name`、`model_version` 和对应索引。如果新模型表现异常，优先把模型与索引一起切回旧版本；旧索引已经清理时，才需要基于旧模型重建。
+For a model-upgrade rollback, record the old model's `model_name`, `model_version`, and corresponding index before upgrading. If the new model performs poorly, switch both the model and index back to the old versions. Rebuild with the old model only if the old index has already been removed.
 
-数据版本回滚可以利用 `updated_at` 和 `version_id` 字段。需要回滚到某个时间点时，从历史快照恢复。快照可以是向量库 snapshot，也可以放在独立对象存储里。
+Data-version rollback can use `updated_at` and `version_id`. To restore a previous point in time, recover from a historical snapshot. The snapshot may be a vector database snapshot or stored in separate object storage.
 
-权限回滚要更谨慎。如果权限变更导致数据泄露，第一步不是慢慢修索引，而是立刻阻断影响范围：下线相关知识库或租户检索入口、禁用问题索引、强制引用前鉴权。只有无法界定影响面时，才考虑全局停服。
+Roll back permission changes with extra care. If a permission change caused a data leak, immediately contain the impact instead of slowly repairing the index: disable the affected knowledge base or tenant retrieval entry point, disable the affected index, and require authorization checks before citations. Consider taking the entire service offline only if the impact cannot be contained.
 
 ```python
 def rollback_to_version(target_version_id):
-    # 查询目标版本的快照
+    # Find the snapshot for the target version.
     snapshot = get_snapshot(version_id=target_version_id)
     if not snapshot:
         raise ValueError(f"No snapshot found for version {target_version_id}")
 
-    # 停止服务
+    # Stop the service.
     service.set_status('maintenance')
 
-    # 恢复快照
+    # Restore the snapshot.
     vector_db.restore(snapshot)
 
-    # 重启服务
+    # Restart the service.
     service.set_status('active')
 
-    # 发送告警
+    # Send an alert.
     alert.trigger(f"System rolled back to version {target_version_id}")
 ```
 
-### 灰度发布：新策略先小流量验证
+### Canary Release: Validate a New Strategy with Limited Traffic
 
-知识库更新策略也要像 APP 发布一样灰度，不要一把梭。
+Roll out knowledge-base update strategies gradually, just like application releases. Do not switch everything at once.
 
-常见灰度方式有几种：按文档数量灰度，比如先更新 10% 文档；按用户灰度，比如先让 5% 用户看到新索引结果；按问题类型灰度，比如先验证精确查询这类对索引变化更敏感的问题。
+Common canary strategies include rollout by document count (update 10% first), by users (show the new index results to 5% of users), or by question type (start with exact-match questions that are more sensitive to index changes).
 
-灰度期间要重点盯这些指标。下面的阈值只是示例，生产环境要基于历史基线、离线评估集和线上 A/B 结果校准，不能直接照抄。
+Monitor these metrics during a canary. The thresholds below are examples only. Calibrate them for production using historical baselines, offline evaluation sets, and online A/B results; do not copy them blindly.
 
-| 指标                          | 含义                                 | 告警阈值   |
-| ----------------------------- | ------------------------------------ | ---------- |
-| `retrieval_hit_rate@10`       | 前 10 个召回结果中包含正确答案的比例 | 下降 > 5%  |
-| `avg_answer_latency`          | 平均回答延迟                         | 上升 > 20% |
-| `citation_accuracy`           | 引用准确性                           | 下降 > 3%  |
-| `user_feedback_negative_rate` | 用户负面反馈率                       | 上升 > 2%  |
+| Metric                        | Meaning                                                       | Alert threshold |
+| ----------------------------- | ------------------------------------------------------------- | --------------- |
+| `retrieval_hit_rate@10`       | Proportion of top-10 retrievals containing the correct answer | Decrease > 5%   |
+| `avg_answer_latency`          | Average answer latency                                        | Increase > 20%  |
+| `citation_accuracy`           | Citation accuracy                                             | Decrease > 3%   |
+| `user_feedback_negative_rate` | Negative user feedback rate                                   | Increase > 2%   |
 
-任何一个关键指标触发告警，都应该暂停灰度，先排查问题。别等全量上线后才发现召回质量掉了。
+Pause the canary and investigate if any key metric triggers an alert. Do not wait until the full rollout to discover that retrieval quality has dropped.
 
-## 知识库更新有哪些常见坑？
+## What Are Common Pitfalls in Knowledge-Base Updates?
 
-### 坑一：只插入新向量，不删除旧向量
+### Pitfall 1: Insert New Vectors Without Deleting Old Ones
 
-这是最常见的问题。文档被修改 5 次，向量库里留下 5 个版本。用户查询时召回旧版本，模型基于过时信息回答。
+This is the most common problem. After five document updates, the vector database may contain five versions. A query can retrieve an old version, causing the model to answer with outdated information.
 
-解决思路很简单，但必须做：修改文档时同步处理旧向量。可以在写入新向量前，先根据 `doc_id` 清理旧记录。
+The fix is simple but essential: handle old vectors when updating the document. For example, clean up old records by `doc_id` before writing new vectors.
 
-### 坑二：Embedding 模型混用
+### Pitfall 2: Mix Embedding Models
 
-索引用模型 A，查询用模型 B，向量空间完全不兼容。
+Using model A for indexing and model B for queries makes the vector spaces incompatible.
 
-解决方式是把 `embedding_model` 和 `embedding_model_version` 作为必填元数据。查询前校验模型版本，不匹配就拒绝或降级。
+Require `embedding_model` and `embedding_model_version` in the metadata. Validate the model version before each query and reject or fall back if it does not match.
 
-### 坑三：Chunk 策略变了，但历史数据不重建
+### Pitfall 3: Change the Chunking Strategy Without Rebuilding Historical Data
 
-从固定长度切分改成语义切分，从 500 Token 改成 800 Token，只对新文档生效，历史数据还是旧策略。这会导致一个知识库里混着多套切分逻辑，召回评估也会变得很乱。
+If you switch from fixed-size to semantic chunking or increase chunk size from 500 to 800 tokens but apply the change only to new documents, historical data retains the old strategy. The knowledge base then mixes chunking strategies, making retrieval evaluation difficult to interpret.
 
-解决方式是给 Chunk 策略加版本。可以全量重建，也可以先写入新版索引并逐批迁移旧文档，验证后再切换活动版本；不能让两套策略在没有版本标记的情况下混用。
+Version the chunking strategy. Rebuild the index or write to a new index and migrate old documents in batches, then switch the active version after validation. Do not mix strategies without version markers.
 
-### 坑四：文档删除后仍被召回
+### Pitfall 4: Retrieve a Document After Deletion
 
-软删除没做好，或者删除逻辑只处理了向量库，没处理全文索引。
+Soft deletion may be incomplete, or the deletion logic may update the vector database but not the full-text index.
 
-删除操作必须三端一致：向量库、元数据库、全文索引都要同步处理。更稳的做法是用 outbox pattern 记录变更事件，消费者幂等执行；再通过定期 reconciliation 对比源系统、元数据库、向量库、全文索引，修复漏删、漏写和乱序事件。
+Deletion must be consistent across all three destinations: the vector database, metadata database, and full-text index. A more reliable approach is to record change events with the outbox pattern and process them idempotently, then periodically reconcile the source, metadata database, vector database, and full-text index to find missed deletions, writes, or out-of-order events.
 
-### 坑五：权限元数据不同步
+### Pitfall 5: Permission Metadata Is Not Synchronized
 
-文档权限从“公开”改成“仅管理员可见”，但向量库里的 `acl` 字段没更新。
+The document's permissions change from public to admin-only, but its `acl` field in the vector database is not updated.
 
-权限变更必须触发文档重新索引。如果向量库支持原子更新 ACL 字段，可以只更新元数据而不重建向量，但前提是向量库有这个能力。
+Permission changes must trigger reindexing. If the vector database supports atomic ACL updates, update only the metadata without rebuilding vectors.
 
-### 坑六：变更检测漏检
+### Pitfall 6: Miss Changes During Detection
 
-Webhook 漏发、CDC 延迟、轮询间隔太大，都会导致文档已经变了，但索引没变。
+Dropped Webhooks, delayed CDC, or long polling intervals can leave an updated document with a stale index.
 
-解决方式是事件驱动 + 轮询兜底。同时建立数据新鲜度监控，定期检查源系统和向量库里的 `updated_at`。如果源系统时间比索引时间新超过阈值，就触发告警，必要时自动重新索引。
+Use event-driven updates with polling as a fallback. Monitor data freshness by regularly comparing `updated_at` in the source system and vector database. If the source is newer than the index by more than a threshold, trigger an alert and, if needed, reindex automatically.
 
-## 如何保证知识库更新的可观测性？
+## How Do You Make Knowledge-Base Updates Observable?
 
-知识库更新链路必须有监控，否则就是盲跑。文档有没有更新、哪一步失败、失败后有没有补偿，不能靠用户投诉来发现。
+The knowledge-base update pipeline needs monitoring. Do not rely on user complaints to discover whether documents were updated, where a failure occurred, or whether compensation succeeded.
 
-关键监控指标可以从这些开始：
+Start with these monitoring metrics:
 
-| 指标                          | 说明                                   | 推荐告警阈值     |
-| ----------------------------- | -------------------------------------- | ---------------- |
-| `index_lag_seconds`           | 从文档变更到索引完成的时间             | > 5 分钟         |
-| `failed_updates_total`        | 失败的更新操作累计数                   | > 0 持续 10 分钟 |
-| `dlq_size`                    | 死信队列当前积压量                     | > 100            |
-| `retrieval_hit_rate`          | 召回准确率                             | 环比下降 > 5%    |
-| `stale_docs_count`            | 陈旧文档数量，源系统已更新但索引未更新 | > 10             |
-| `source_to_queue_lag_seconds` | 源系统变更到事件入队延迟               | > 1 分钟         |
-| `queue_to_index_lag_seconds`  | 事件入队到索引完成延迟                 | > 5 分钟         |
-| `index_success_rate`          | 索引成功率                             | < 99%            |
-| `partial_index_count`         | 部分写入成功但未完成的文档数           | > 0 持续 30 分钟 |
-| `acl_mismatch_count`          | 源系统 ACL 与索引 ACL 不一致数量       | > 0              |
+| Metric                        | Description                                          | Suggested alert threshold      |
+| ----------------------------- | ---------------------------------------------------- | ------------------------------ |
+| `index_lag_seconds`           | Time from document change to completed indexing      | > 5 minutes                    |
+| `failed_updates_total`        | Cumulative failed update operations                  | > 0 for 10 minutes             |
+| `dlq_size`                    | Current dead-letter queue backlog                    | > 100                          |
+| `retrieval_hit_rate`          | Retrieval accuracy                                   | Decrease > 5% month over month |
+| `stale_docs_count`            | Documents updated in the source but not in the index | > 10                           |
+| `source_to_queue_lag_seconds` | Delay from source change to event enqueue            | > 1 minute                     |
+| `queue_to_index_lag_seconds`  | Delay from event enqueue to completed indexing       | > 5 minutes                    |
+| `index_success_rate`          | Indexing success rate                                | < 99%                          |
+| `partial_index_count`         | Documents with partial writes that are not complete  | > 0 for 30 minutes             |
+| `acl_mismatch_count`          | ACL mismatches between source and index              | > 0                            |
 
-每次更新操作都应该记录审计日志，包括 `doc_id`、`change_type`（新增 / 修改 / 删除）、`timestamp`、`operator`（自动 / 手动）、`result`（成功 / 失败）、`error_message`。真正出问题时，这些字段能帮你快速定位是哪条记录、哪个环节、什么时候失败的。
+Record an audit log for every update, including `doc_id`, `change_type` (create, update, or delete), `timestamp`, `operator` (automatic or manual), `result` (success or failure), and `error_message`. These fields help locate the affected record, pipeline stage, and failure time.
 
-## 上线检查
+## Pre-Deployment Checklist
 
-上线前要验证四件事：
+Verify these four items before deployment:
 
-1. 索引和查询使用同一套 Embedding 模型及版本；
-2. 所有候选在进入模型上下文前完成鉴权；
-3. 文档更新通过活动版本或别名原子切换；向量库、元数据库、全文索引和缓存的失败能够被补偿任务发现。
-4. `doc_id`、`content_hash`、`version_id`、索引状态和审计日志应当贯穿这条链路。
+1. Indexing and queries use the same Embedding model and version.
+2. All candidates are authorized before entering the model context.
+3. Document updates atomically switch the active version or alias. Compensation tasks can detect failures in the vector database, metadata database, full-text index, and caches.
+4. `doc_id`, `content_hash`, `version_id`, index status, and audit logs are tracked throughout the pipeline.
 
-## 总结
+## Summary
 
-RAG 知识库更新不只是写一个定时任务重新索引。它涉及变更检测、数据一致性、幂等写入、版本控制、灰度发布、回滚机制和可观测性。
+Updating a RAG knowledge base is more than scheduling periodic reindexing. It involves change detection, data consistency, idempotent writes, versioning, canary releases, rollback, and observability.
 
-几个结论可以记住。
+Keep these points in mind:
 
-Embedding 模型一致性是硬规则。更换模型必须全量重建索引，不能偷懒。
+Embedding model consistency is mandatory. A model change requires a full index rebuild.
 
-元数据设计是增量更新的前提。`doc_id`、`content_hash`、`version_id`、`is_deleted` 这些字段，是幂等更新、版本追踪和回滚的基础。
+Metadata design is a prerequisite for incremental updates. Fields such as `doc_id`, `content_hash`, `version_id`, and `is_deleted` support idempotency, version tracking, and rollback.
 
-删除操作必须三端一致。向量库、元数据库、全文索引都要同步处理，否则迟早会出现幽灵数据。
+Deletion must be consistent across all three destinations: the vector database, metadata database, and full-text index. Otherwise, ghost data will eventually appear.
 
-增量更新负责日常变化，全量重建负责周期性健康维护。两者配合起来，系统才不容易长期漂移。
+Incremental updates handle routine changes, while full rebuilds support periodic maintenance. Together, they reduce long-term data drift.
 
-索引别名切换是生产级灰度和回滚的常用做法。先建新索引，验证后切换，旧索引保留一段时间兜底。
+Index-alias switching is a common production approach to canary releases and rollback: build and validate a new index, switch to it, and retain the old index for a while as a fallback.
 
-幂等、重试、死信队列是更新链路可靠性的基本盘。可观测性则是最后一道防线：不知道更新有没有成功，就等于没更新。
+Idempotency, retries, and a dead-letter queue are the foundation of a reliable update pipeline. Observability is the final safeguard: if you cannot tell whether an update succeeded, it is as good as not updated.
 
-RAG 知识库维护不是上线前做一次就结束，而是上线后才真正开始。
+RAG knowledge-base maintenance does not end at deployment; that is when it really begins.
 
-## 参考资料
+## References
 
 - [How to Update RAG Knowledge Base Without Rebuilding Everything](https://particula.tech/blog/update-rag-knowledge-without-rebuilding)
 - [RAG Knowledge Base Management: Updates & Refresh](https://apxml.com/courses/optimizing-rag-for-production/chapter-7-rag-scalability-reliability-maintainability/rag-knowledge-base-updates)

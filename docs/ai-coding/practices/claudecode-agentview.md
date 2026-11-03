@@ -1,248 +1,248 @@
 ---
-title: Claude Code Agent View：多会话并行管理实战
-description: Anthropic 发布的 Agent View 为 Claude Code 提供终端内的多会话管理能力，可集中查看 Agent 状态、处理输入并管理后台会话。
-category: AI 编程实战
+title: "Claude Code Agent View: Managing Multiple Sessions in Parallel"
+description: Anthropic's Agent View adds in-terminal management for multiple Claude Code sessions, letting you monitor agent status, respond to input requests, and manage background sessions.
+category: AI Coding in Practice
 head:
   - - meta
     - name: keywords
-      content: Claude Code,Agent View,多会话管理,Agent并行,AI编程,CLI工具,会话编排
+      content: Claude Code,Agent View,Multi-Session Management,Parallel Agents,AI Coding,CLI Tools,Session Orchestration
 ---
 
-大家好，我是小 G。
+Hi, I'm Xiao G.
 
-我平时用 Claude Code，经常会同时开几个会话：一个开发新功能，一个重构，一个跑测试，一个看报错，另一个整理 PR 评论或补文档。
+I often use several Claude Code sessions at once: one to develop a feature, one to refactor, one to run tests, one to investigate an error, and another to organize PR comments or update documentation.
 
-![开启多个命令行窗口，让多个 Agent 在不同会话中并行](../images/shared/multi-agent-parallel-sessions.png)
+![Multiple terminal windows running agents in parallel](../images/shared/multi-agent-parallel-sessions.png)
 
-以前这么用其实挺累。我一般会在 Ghostty 里开多个分屏，再配上几个终端标签页。窗口铺得满满当当，看起来像是把并行效率拉满了，脑子里却一直要记着：哪个会话还在跑？哪个已经完成？哪个卡在权限确认？哪个报错了？
+This used to be tiring. I would open several panes and terminal tabs in Ghostty. My screen looked busy, but I had to remember which session was running, which had finished, which was waiting for permission, and which had failed.
 
-最烦的是，有些 Agent 其实早就在等你确认了，但你根本没注意到。等你切回去一看，它已经停在那里十几分钟了。
+The worst part was missing an agent that had already stopped to ask for confirmation. By the time I switched back, it might have been waiting for ten minutes.
 
-Anthropic 前段时间推出的 **Agent View**，正好接手了这件麻烦事。它把后台会话集中到一个列表里，正在工作、等待输入、已经完成还是运行失败，扫一眼就知道。Claude 还是那个 Claude，但我终于不用靠脑子维护那张“会话状态表”了。
+Anthropic's **Agent View** takes care of this. It puts background sessions in one list and shows which are working, waiting for input, complete, or failed. Claude is still Claude, but I no longer have to keep a “session status table” in my head.
 
-我在 [AI 编程选 CLI 还是 IDE？](https://mp.weixin.qq.com/s/6a3f2U6ZAJa2N7Cp10S01Q) 里提到过，AI Coding 的一些新工作流经常先在 CLI 里试水。Agent View 算是一个例子。不过，它更接近“后台会话管理器”，还不是会自动拆任务、分工和协调冲突的多 Agent 编排平台。
+In [“AI Coding: CLI or IDE?”](https://mp.weixin.qq.com/s/6a3f2U6ZAJa2N7Cp10S01Q), I mentioned how new AI coding workflows often appear in CLI tools first. Agent View is one example. It is closer to a background session manager than a multi-agent orchestration platform that automatically decomposes tasks, assigns work, and resolves conflicts.
 
-如果你还不熟悉 Claude Code，可以先看看下面两篇：
+If you are new to Claude Code, start with these guides:
 
-- [《Claude Code 使用指南》](https://javaguide.cn/ai-coding/practices/claudecode-tips.html)：Sub-Agent 子代理、多实例协作（Multi-Claude）、CLAUDE.md 配置等
-- [《Claude Code 核心命令详解》](https://javaguide.cn/ai-coding/practices/claudecode-commands.html)：`/simplify`、`/loop`、`/batch` 等命令的实战用法
+- [Claude Code User Guide](https://javaguide.cn/ai-coding/practices/claudecode-tips.html): subagents, multiple Claude instances, `CLAUDE.md` configuration, and more.
+- [Claude Code Commands](https://javaguide.cn/ai-coding/practices/claudecode-commands.html): practical uses for commands such as `/simplify`, `/loop`, and `/batch`.
 
-## 怎么打开 Agent View
+## Opening Agent View
 
-Agent View 目前还是 Research Preview（研究预览版），需要 Claude Code `v2.1.139` 或更高版本。可以先检查一下版本：
+Agent View is currently a Research Preview and requires Claude Code `v2.1.139` or later. Check your version first:
 
 ```bash
 claude --version
 ```
 
-最直接的打开方式是在终端运行：
+The simplest way to open Agent View is to run:
 
 ```bash
 claude agents
 ```
 
-![终端直接运行 claude agents 即可进入](../images/shared/claude-agents-list-view.png)
+![Run claude agents in the terminal to open Agent View](../images/shared/claude-agents-list-view.png)
 
-打开后，每个后台会话占一行。左边是状态图标，中间是会话名和最近的执行摘要，右边是运行时长。会话默认按状态分组，需要你处理的会排在前面。
+Each background session appears on one row. The left side shows its status icon, the middle shows the session name and a recent summary, and the right shows how long it has been running. Sessions are grouped by status, with those needing attention at the top.
 
-已经打开的普通 Claude Code 会话不会自动出现在这里。想把当前会话转到后台，可以输入：
+Regular Claude Code sessions that are already open do not appear here automatically. To send the current session to the background, enter:
 
 ```text
 /bg
 ```
 
-也可以在输入框为空时按左方向键 `←`。这两个操作都是把会话分离到后台，不会结束任务。之后用方向键选中会话，再按 `Enter` 或 `→`，就能重新进入完整对话。
+You can also press the left arrow `←` when the input box is empty. Both actions detach the session and put it in the background without ending the task. Use the arrow keys to select it, then press `Enter` or `→` to return to the full conversation.
 
-![进入指定的 Agent 会话](../images/shared/enter-agent-session.png)
+![Open a specific agent session](../images/shared/enter-agent-session.png)
 
-## 先看黄色，再看红色
+## Check Yellow, Then Red
 
-Agent View 打开后，我通常先扫一遍左侧的状态图标。它比会话名更值得看，因为它直接告诉你哪里需要介入。
+When Agent View opens, I scan the status icons on the left. They matter more than the session names because they show where I need to step in.
 
 ![Claude Code Agent View](../images/shared/claude-agents-list-view-20260518102539932.png)
 
-| 状态          | 界面表现 | 怎么处理                                      |
-| ------------- | -------- | --------------------------------------------- |
-| `Needs Input` | 黄色     | 正在等回答、权限确认或登录操作，优先处理      |
-| `Working`     | 动画     | 仍在调用工具或生成回复，可以先放着            |
-| `Completed`   | 绿色     | 任务正常结束，接下来检查 Diff、测试和执行结果 |
-| `Failed`      | 红色     | 运行出错，打开摘要或日志定位原因              |
-| `Idle`        | 变暗     | 当前没有任务，可以继续发消息                  |
-| `Stopped`     | 灰色     | 会话已被手动停止，或者进程被外部结束          |
+| Status        | Display  | What to do                                                              |
+| ------------- | -------- | ----------------------------------------------------------------------- |
+| `Needs Input` | Yellow   | Waiting for an answer, permission, or sign-in. Handle this first.       |
+| `Working`     | Animated | Still calling tools or generating a response. You can leave it running. |
+| `Completed`   | Green    | The task ended normally. Review the diff, tests, and result.            |
+| `Failed`      | Red      | Something went wrong. Open the summary or logs to find the cause.       |
+| `Idle`        | Dimmed   | No current task. You can send another message.                          |
+| `Stopped`     | Gray     | The session was stopped manually or its process ended externally.       |
 
-这里有个容易误判的地方：界面里的 `Completed` 分组也会收纳失败和已停止的会话，分组名不等于所有任务都成功了。是否真的完成，还是要看图标颜色和执行结果。
+One detail is easy to misread: the `Completed` group can also contain failed or stopped sessions. The group name does not mean every task succeeded. Check the icon and execution result.
 
-黄色最有用。以前我以为某个会话还在跑，切回去才发现它早就停在“是否允许执行这个命令？”那里等我。现在看到黄色就处理，没有黄色就先做别的。
+Yellow is especially useful. I used to think a session was still running, only to find it waiting at “Allow this command?” When I see yellow now, I handle it; when I do not, I work on something else.
 
-## 不用切换，也能回复
+## Reply Without Switching Sessions
 
-选中会话后按空格键 `Space`，底部会弹出 Peek Panel，显示最近一次输出，或者 Claude 正在等待的问题。
+Select a session and press `Space` to open the Peek Panel at the bottom. It shows the latest output or the question Claude is waiting on.
 
-![Agent View 选中一个会话后按空格键弹出 Peek Panel](../images/shared/peek-panel-reply.png)
+![Press Space on a selected session to open the Peek Panel](../images/shared/peek-panel-reply.png)
 
-如果只是确认“是否允许修改这个文件”或者“要不要继续跑测试”，直接在面板里回复就行。会话收到消息后继续执行，不需要进入完整对话。
+If Claude is asking whether it can edit a file or continue running tests, reply in the panel. The session receives the message and continues without opening the full conversation.
 
-以前要先找到对应的终端标签页，看它在等什么，回复完再切回来。现在按一下空格就能处理，这种小地方用久了很省心。
+Previously, I had to find the right terminal tab, see what it was waiting for, reply, and then switch back. Handling it with one key press is a small convenience that adds up.
 
-如果要看完整上下文，按 `Enter` 或 `→` 进入会话；看完按 `←` 返回 Agent View。
+Press `Enter` or `→` to open the full context, and `←` to return to Agent View.
 
-快捷键不用专门背，界面底部会显示提示，按 `?` 还能查看完整列表。日常常用的主要是下面这些：
+You do not need to memorize the shortcuts. The interface shows hints at the bottom, and `?` opens the full list. These are the ones I use most:
 
-| 快捷键            | 功能                                 |
-| ----------------- | ------------------------------------ |
-| `↑` / `↓`         | 在会话列表中移动                     |
-| `Space`           | 打开或关闭 Peek Panel                |
-| `Enter`           | 进入会话，或在输入框有内容时派发任务 |
-| `Shift+Enter`     | 派发任务并立即进入新会话             |
-| `Alt+1` ~ `Alt+9` | 直接进入第 N 个会话                  |
-| `Ctrl+T`          | 置顶或取消置顶当前会话               |
-| `Ctrl+R`          | 重命名当前会话                       |
-| `Ctrl+X`          | 停止会话；2 秒内再按一次删除         |
+| Shortcut           | Action                                                        |
+| ------------------ | ------------------------------------------------------------- |
+| `↑` / `↓`          | Move through the session list                                 |
+| `Space`            | Open or close the Peek Panel                                  |
+| `Enter`            | Open a session, or dispatch a task when the input has text    |
+| `Shift+Enter`      | Dispatch a task and immediately open a new session            |
+| `Alt+1` to `Alt+9` | Open the corresponding session directly                       |
+| `Ctrl+T`           | Pin or unpin the current session                              |
+| `Ctrl+R`           | Rename the current session                                    |
+| `Ctrl+X`           | Stop the session; press again within two seconds to delete it |
 
-`Ctrl+X` 连按两次要谨慎。如果会话使用了 Claude Code 自动创建的 Worktree，删除会话时，里面尚未提交的修改也可能一起被删掉。
+Be careful when pressing `Ctrl+X` twice. If the session uses a Worktree created automatically by Claude Code, deleting it may also delete uncommitted changes in that Worktree.
 
-## 把任务甩到后台跑
+## Send Tasks to the Background
 
-在已有会话里输入 `/bg`，可以直接把当前任务放到后台：
+Enter `/bg` in an existing session to move its current task to the background:
 
 ```text
 /bg
 ```
 
-这会把当前会话后台化，然后返回 Agent View。
+This backgrounds the current session and returns to Agent View.
 
-![/bg 把任务甩到后台里跑](../images/shared/bg-background-session.png)
+![Use /bg to run a task in the background](../images/shared/bg-background-session.png)
 
-也可以顺手补一条指令再转入后台：
+You can also include an instruction before backgrounding it:
 
 ```text
-/bg 跑完测试并修复失败用例
+/bg Run the tests and fix any failures.
 ```
 
-如果任务还没开始，从 Shell 直接创建后台会话更省事：
+If the task has not started yet, create a background session directly from the shell:
 
 ```bash
-claude --bg "修复 auth 模块里所有失败的单元测试，直到全部通过"
+claude --bg "Fix all failing unit tests in the auth module until they pass"
 ```
 
-这类“耗时，但不需要全程盯着”的任务很适合放到后台：
+Background sessions work well for tasks that take time but do not need constant supervision:
 
-- 跑一整组失败测试并尝试修复
-- 检查某个模块的类型错误
-- 批量整理文档
-- 分析 PR 评论并给出修改建议
-- 对多个仓库同时做小范围改动
+- Run a group of failing tests and attempt to fix them.
+- Check a module for type errors.
+- Update multiple documents.
+- Analyze PR comments and suggest changes.
+- Make small changes across several repositories.
 
-Mitchell Hashimoto（HashiCorp 联合创始人、Ghostty 作者）在 [My AI Adoption Journey](https://mitchellh.com/writing/my-ai-adoption-journey) 里分享过一个挺有意思的习惯：每天最后 30 分钟，把深度调研、模糊想法探索、Issue 和 PR 分拣交给 Agent，第二天上班直接看结果。
+Mitchell Hashimoto, co-founder of HashiCorp and creator of Ghostty, described an interesting habit in [“My AI Adoption Journey”](https://mitchellh.com/writing/my-ai-adoption-journey): he spends the last 30 minutes of the workday delegating deep research, exploring vague ideas, and sorting issues and PRs to agents, then reviews the results the next morning.
 
-他也写得很克制：理想状态是始终有 Agent 在处理有用的工作，实际只有大约 10%～20% 的工作时间能做到，而且通常只跑一个 Agent。这个比例反倒更接近日常开发，不需要为了“并行”硬凑一排任务。
+He is also realistic about it. The ideal is to always have agents doing useful work, but in practice this is possible for only about 10–20% of the workday, and usually with just one agent. That is closer to everyday development; you do not need to invent tasks just to appear parallel.
 
-## Shell 命令
+## Shell Commands
 
-不想打开 Agent View，也可以直接在 Shell 里管理后台会话：
+You can also manage background sessions from the shell without opening Agent View:
 
 ```bash
-claude agents          # 打开 Agent View
+claude agents          # Open Agent View
 
-claude attach <id>     # 切换到指定会话
+claude attach <id>     # Switch to a specific session
 
-claude logs <id>       # 打印指定会话的最近输出
+claude logs <id>       # Print recent output from a session
 
-claude stop <id>       # 停止会话，也可以用 claude kill
+claude stop <id>       # Stop a session; claude kill also works
 
-claude respawn <id>    # 重启指定会话，保留对话历史
+claude respawn <id>    # Restart a session and keep its conversation history
 
-claude respawn --all   # 重启所有正在运行的后台会话
+claude respawn --all   # Restart all running background sessions
 
-claude rm <id>         # 从列表中移除会话
+claude rm <id>         # Remove a session from the list
 ```
 
-这里面我用得比较少、但很容易理解错的是 `respawn`：
+I use `respawn` less often, but it is easy to misunderstand:
 
 ```bash
 claude respawn <id>
 ```
 
-它会重启指定的 Session，原来的对话记录还在。Claude Code 更新以后想让某个后台会话使用新版本，或者会话进程异常退出时，都可以用它。
+It restarts the specified session while retaining its conversation history. Use it after updating Claude Code if a background session should use the new version, or if a session process exited unexpectedly.
 
-`respawn` 不是 Context Reset，也不会生成一份干净上下文。如果旧会话已经塞满无关日志和过期方案，重启进程也解决不了上下文污染。遇到这种情况，另开会话，再带入一份核对过的任务摘要更稳妥。
+`respawn` is not a context reset and does not create a clean context. If the old session is full of irrelevant logs and stale plans, restarting its process will not fix context contamination. In that case, start a new session with a verified task summary.
 
-另外，`claude rm <id>` 主要是从后台列表中移除会话。对话记录仍保存在本机，可以通过 `claude --resume` 找回；Claude Code 自动创建的 Worktree 只有在确认安全时才会一并清理。
+Also, `claude rm <id>` mainly removes a session from the background list. The conversation history remains on the local machine and can be recovered with `claude --resume`. A Worktree created automatically by Claude Code is cleaned up only when it is safe to do so.
 
-## 从 Agent View 里直接派发任务
+## Dispatch Tasks from Agent View
 
-Agent View 底部有一个输入框。输入任务并按 `Enter`，会新建一个后台 Session；再输入一条任务，会继续新建 Session，而不是追问上一个会话。想给已有会话补充信息，要用 Peek Panel 回复，或者先进入该会话。
+Agent View has an input box at the bottom. Enter a task and press `Enter` to create a new background session. Entering another task creates another session; it does not ask a follow-up question in the previous session. To message an existing session, reply in the Peek Panel or open that session first.
 
-输入框还支持一些特殊写法：
+The input box also supports special syntax:
 
-| 输入格式                | 效果                                             |
-| ----------------------- | ------------------------------------------------ |
-| `<agent-name> <prompt>` | 第一个词匹配自定义 Subagent 时，用它作为主 Agent |
-| `@<agent-name>`         | 在 Prompt 中指定一个自定义 Subagent              |
-| `@<repo>`               | 选择另一个仓库或目录，在那里启动会话             |
-| `/<command>`            | 搜索并使用可派发的 Skill 或命令                  |
-| `! <command>`           | 直接启动后台 Shell 任务，不调用模型              |
-| `#<number>` 或 PR URL   | 已有会话在处理该 PR 时，直接选中原会话           |
+| Input                   | Effect                                                                    |
+| ----------------------- | ------------------------------------------------------------------------- |
+| `<agent-name> <prompt>` | If the first word matches a custom subagent, use it as the primary agent. |
+| `@<agent-name>`         | Specify a custom subagent in the prompt.                                  |
+| `@<repo>`               | Select another repository or directory for the session.                   |
+| `/<command>`            | Search for and use a dispatchable Skill or command.                       |
+| `! <command>`           | Start a background shell task without calling a model.                    |
+| `#<number>` or a PR URL | Select an existing session if it is already handling that PR.             |
 
-自定义 Subagent 通常放在项目的 `.claude/agents/` 或用户目录的 `~/.claude/agents/` 下。给代码审查、测试分析这类重复任务准备一个专用 Agent，派发时就不用每次重新交代工具和边界。
+Custom subagents usually live in the project's `.claude/agents/` directory or the user's `~/.claude/agents/` directory. A dedicated agent for recurring tasks such as code review or test analysis saves you from repeating its tools and constraints each time.
 
-`#<number>` 和 PR URL 也挺实用。如果已经有一个 Session 在处理同一个 PR，Agent View 会选中原会话，避免两个会话重复修改。
+`#<number>` and PR URLs are useful, too. If a session is already handling a PR, Agent View selects it to avoid duplicate work.
 
-关于 Skills 的使用，可以继续看[推荐 6 个 Skills](https://mp.weixin.qq.com/s/55YhKrMAHsbrAgf4P2ezRA)和[万字详解 Agent Skills](https://mp.weixin.qq.com/s/5iaTBH12VTH55jYwo4wmwA)。
+For more on Skills, see [Six Recommended Skills](https://mp.weixin.qq.com/s/55YhKrMAHsbrAgf4P2ezRA) and [Agent Skills Explained in Depth](https://mp.weixin.qq.com/s/5iaTBH12VTH55jYwo4wmwA).
 
-## 什么场景适合用
+## When to Use It
 
-判断一个任务要不要放进 Agent View，我主要看两点：它能不能暂时离开我独立推进，回来后又能不能通过 Diff、测试或日志验收。两点都满足，放到后台通常比较省心。
+To decide whether to put a task in Agent View, I ask two questions: can it make progress independently while I am away, and can I verify it later through a diff, tests, or logs? If both are true, backgrounding it is usually convenient.
 
-### 同时处理几件互不依赖的小事
+### Handle Several Independent Small Tasks
 
-比如手上有 5 个小需求，可以分别交给 5 个 Session：一个修测试，一个查类型错误，一个整理文档，另外两个处理互不相关的 Bug。任务发出去以后先忙自己的，回来再看状态：黄色的先回复，红色的查日志，绿色的集中验收。
+For example, you could assign five small requests to five sessions: fix tests, check for type errors, update documentation, and fix two unrelated bugs. Then work on something else and review the statuses later: reply to yellow sessions, check logs for red ones, and review the green ones together.
 
-前提是这些任务真的能分开做。五个 Session 同时修改同一批文件，即使有 Worktree 隔离，最后仍然要处理实现冲突和重复修改。省下来的时间，很可能又花在合并代码上。
+This works only if the tasks are genuinely independent. If five sessions modify the same files, Worktree isolation may help, but you will still need to resolve implementation conflicts and duplicate work. The time saved may be lost merging the changes.
 
-[Nicholas Carlini 的 C 编译器实验](https://www.anthropic.com/engineering/building-c-compiler) 把并行规模拉到了另一个量级：16 个 Claude Opus 4.6 实例在两周内跑了近 2000 个 Claude Code Session，产出约 10 万行代码，花费接近 2 万美元。这个实验使用的是 Agent Teams 和自定义执行框架，并非 Agent View 的能力展示。
+[Nicholas Carlini's C compiler experiment](https://www.anthropic.com/engineering/building-c-compiler) scaled parallel work much further: 16 Claude Opus 4.6 instances ran nearly 2,000 Claude Code sessions over two weeks, producing about 100,000 lines of code at a cost close to $20,000. The experiment used Agent Teams and a custom execution framework; it was not a demonstration of Agent View.
 
-落到日常开发，能借鉴的是任务拆分、角色分工和测试约束。没有这些准备，多开几个 Session 只会更快地产生冲突。`/simplify` 和 `/batch` 等并行工作流的具体用法，可以看 [《Claude Code 核心命令详解》](https://javaguide.cn/ai-coding/practices/claudecode-commands.html)。
+For day-to-day development, the useful lessons are task decomposition, role assignment, and test constraints. Without that preparation, opening more sessions only creates conflicts faster. For parallel workflows such as `/simplify` and `/batch`, see [Claude Code Commands](https://javaguide.cn/ai-coding/practices/claudecode-commands.html).
 
-### 需要等待的 CI、测试和 PR
+### Wait for CI, Tests, and PRs
 
-CI、集成测试和 PR Review 经常要等外部结果。一直把 Session 留在前台，人会忍不住隔几分钟看一眼；放到后台，等状态变黄、变红或完成后再回来处理就行。
+CI, integration tests, and PR reviews often depend on external results. If you keep a session in the foreground, you may check it every few minutes. Background it and return when the status changes or the work completes.
 
-每隔一段时间检查一次 CI，可以用 `/loop`；任务有明确的结束条件，例如“持续修复，直到测试全部通过”，用 `/goal` 更合适。Agent View 只负责展示 Session 状态，实际的定时检查和持续执行仍由这些命令完成。
+Use `/loop` to check CI periodically. Use `/goal` when a task has a clear completion condition, such as “keep fixing until all tests pass.” Agent View displays session status; these commands handle the scheduled checks and continued execution.
 
-[Stripe 的 Minions](https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents) 已经把这条链路做成了一套内部系统：开发者从 Slack 派发任务，Agent 负责编码、验证和创建 PR，每周有超过 1000 个这类 PR 被合并，代码仍然由人审查。Minions 和 Agent View 是两套东西，但都绕不开测试、CI 和 Code Review。少了这些环节，列表显示绿色，也不能说明代码已经可以合并。
+[Stripe's Minions](https://stripe.dev/blog/minions-stripes-one-shot-end-to-end-coding-agents) is an internal system for this kind of workflow: developers dispatch tasks from Slack, agents write code, validate it, and create PRs. More than 1,000 such PRs are merged each week, with humans still reviewing the code. Minions and Agent View are different systems, but both depend on tests, CI, and code review. A green status in the list does not mean code is ready to merge without those steps.
 
-### 多仓库并行
+### Work Across Multiple Repositories
 
-`@<repo>` 可以把任务派到另一个仓库或目录。一个 Session 改后端接口，一个改前端页面，再开一个更新文档，状态仍然放在同一张列表里，不用分别维护几组终端窗口。
+`@<repo>` can dispatch a task to another repository or directory. One session can change a backend API, another can update the frontend, and a third can revise the documentation, all in one list instead of several groups of terminal windows.
 
-在 Git 仓库中，后台 Session 第一次准备修改文件时，Claude Code 默认会把它移到 `.claude/worktrees/` 下的独立 Worktree，避免几个 Session 直接写同一份工作区。非 Git 目录、已经处在 Worktree 中，或者项目关闭了后台 Worktree 隔离时，行为会有所不同。
+In a Git repository, Claude Code moves a background session to a separate Worktree under `.claude/worktrees/` the first time it is ready to edit files. This prevents sessions from directly writing to the same working directory. Behavior can differ for non-Git directories, directories already in a Worktree, or projects that disable background Worktree isolation.
 
-前后端任务如果依赖同一份接口约定，最好先把请求参数、响应结构和验收标准定下来。Agent View 不会替两个 Session 同步这些变化。
+If frontend and backend tasks depend on the same API contract, agree on request parameters, response structure, and acceptance criteria first. Agent View does not synchronize these changes between sessions.
 
-## 哪些场景别硬用
+## When Not to Force It
 
-### 多个任务需要频繁同步
+### Tasks That Need Frequent Coordination
 
-每个 Session 都有自己的上下文，只向你汇报进度。一个 Session 刚改完接口，另一个不会自动知道；两个 Session 同时调整同一个核心模块，也不会主动商量由谁负责。
+Each session has its own context and reports progress only to you. One session will not automatically know that another has changed an API. Two sessions editing the same core module will not decide between themselves who owns the work.
 
-临时查资料、跑测试这类支线任务，可以交给 Subagent；需要多个 Agent 共享任务列表并互相通信，可以考虑 Agent Teams。Agent View 更适合由人来分配独立任务，再统一检查结果。
+Delegate side tasks such as research or running tests to subagents. For agents that need a shared task list and communication, consider Agent Teams. Agent View is better for a person to assign independent tasks and review the results together.
 
-并行 Session 还会分别消耗订阅额度。任务开得越多，Token 消耗和触发限额的速度也越快。如果几件事本来就互相等待，串行处理可能更省事。
+Parallel sessions also consume subscription usage independently. The more tasks you launch, the faster you use tokens and hit limits. If the tasks depend on each other, handling them sequentially may be simpler.
 
-### 任务必须脱离本机持续运行
+### Tasks That Must Run Without Your Machine
 
-后台 Session 由本机 Supervisor 进程管理。关闭 Agent View、Shell 或终端窗口以后，任务可以继续；机器休眠时会保留 Session，唤醒后重新连接。
+Background sessions are managed by a local Supervisor process. They can continue after you close Agent View, the shell, or the terminal window. If the machine sleeps, the session is retained and reconnects when it wakes.
 
-关机或重启会停止正在运行的任务。下次打开 Agent View 时，这些 Session 会显示为失败，进入、预览或回复后可以接着原来的对话继续。需要机器离线后照常运行的任务，应放到云端环境。详见 [Agent View 官方文档](https://code.claude.com/docs/en/agent-view)。
+Shutting down or restarting the machine stops running tasks. The next time you open Agent View, those sessions appear as failed. You can open, preview, or reply to them to continue the conversation. For work that must keep running while your machine is offline, use a cloud environment. See the [Agent View documentation](https://code.claude.com/docs/en/agent-view).
 
-想进一步了解几种并行方式的区别，可以看 [Claude Code 并行 Agent 官方说明](https://code.claude.com/docs/en/agents)、[《上下文工程实战指南》](https://javaguide.cn/ai/agent/context-engineering.html) 和 [《Harness Engineering》](https://javaguide.cn/ai/agent/harness-engineering.html)。
+For more on parallel agent approaches, see [Claude Code's official parallel agents guide](https://code.claude.com/docs/en/agents), [Context Engineering in Practice](https://javaguide.cn/ai/agent/context-engineering.html), and [Harness Engineering](https://javaguide.cn/ai/agent/harness-engineering.html).
 
-## Research Preview 期间别写死流程
+## Keep Preview Workflows Flexible
 
-Agent View 仍处于 Research Preview 阶段，界面、状态分组和快捷键都可能变化。准备把它接进团队流程时，升级 Claude Code 后最好检查一次官方文档，不要把当前快捷键写死在长期规范里。
+Agent View is still a Research Preview, so its interface, status groups, and shortcuts may change. If you add it to a team workflow, review the official documentation after upgrading Claude Code. Avoid hard-coding today's shortcuts into long-lived team standards.
 
-如果暂时不想用，可以在 `.claude/settings.json` 里关闭：
+To disable it, add this setting to `.claude/settings.json`:
 
 ```json
 {
@@ -250,10 +250,10 @@ Agent View 仍处于 Research Preview 阶段，界面、状态分组和快捷键
 }
 ```
 
-## 总结
+## Summary
 
-我更愿意把 Agent View 理解成 Claude Code 的任务面板。它把散落在终端里的后台 Session 放到同一个列表，让我知道哪个还在运行、哪个正在等回复、哪个已经可以验收。
+I think of Agent View as a task panel for Claude Code. It puts background sessions from multiple terminals into one list, so I can see which are running, waiting for a reply, or ready for review.
 
-任务怎么拆、多个 Agent 怎么同步、最终结果是否可靠，仍然要靠 Worktree、测试、CI 和人来处理。
+Task decomposition, coordination between agents, and result verification still depend on Worktrees, tests, CI, and people.
 
-对我来说，它最实用的变化还是文章开头那个小问题：不用再去五六个终端标签页里，寻找已经等了十几分钟的权限确认。
+For me, the most useful change is the small problem from the beginning of this article: I no longer have to search through five or six terminal tabs for a permission request that has been waiting for ten minutes.

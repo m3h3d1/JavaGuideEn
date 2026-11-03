@@ -1,99 +1,95 @@
 ---
-title: 代码命名指南
-description: 代码命名规范指南，涵盖变量、方法、类的命名原则与技巧，提升代码可读性和可维护性。
-category: 代码质量
+title: A Guide to Code Naming
+description: A guide to naming variables, methods, and classes to improve code readability and maintainability.
+category: Code Quality
 head:
   - - meta
     - name: keywords
-      content: 代码命名,命名规范,变量命名,函数命名,类命名,可读性,代码质量,Code Review
+      content: Code Naming,Naming Conventions,Variable Names,Function Names,Class Names,Readability,Code Quality,Code Review
 ---
 
-我还记得我刚工作那一段时间， 项目 Code Review 的时候，我经常因为变量命名不规范而被 “diss”!
+When I first started working, I often got called out in code reviews for poor variable names.
 
-究其原因还是自己那会经验不足，而且，大学那会写项目的时候不太注意这些问题，想着只要把功能实现出来就行了。
+I lacked experience and had not paid much attention to naming in university projects. I thought the only thing that mattered was making the feature work.
 
-但是，工作中就不一样，为了代码的可读性、可维护性，项目组对于代码质量的要求还是很高的！
+At work, things were different. Our team cared about code quality, readability, and maintainability.
 
-前段时间，项目组新来的一个实习生也经常在 Code Review 因为变量命名不规范而被 “diss”，这让我想到自己刚到公司写代码那会的日子。
+Recently, a new intern on my team was also called out in code reviews for inconsistent variable names. It reminded me of when I first joined the company.
 
-于是，我就简单写了这篇关于变量命名规范的文章，希望能对同样有此困扰的小伙伴提供一些帮助。
+I wrote this short guide to help others who have the same problem.
 
-确实，编程过程中，有太多太多让我们头疼的事情了，比如命名、维护其他人的代码、写测试、与其他人沟通交流等等。
+Programming already gives us plenty to worry about: naming, maintaining other people's code, writing tests, communicating with others, and more.
 
-据说之前在 Quora 网站，由接近 5000 名程序员票选出来的最难的事情就是“命名”。
+On Quora, nearly 5,000 programmers once voted “naming” the hardest problem in programming.
 
-大名鼎鼎的《重构》的作者老马（Martin Fowler）曾经在[TwoHardThings](https://martinfowler.com/bliki/TwoHardThings.html)这篇文章中提到过 CS 领域有两大最难的事情：一是 **缓存失效** ，一是 **程序命名** 。
+Martin Fowler, author of _Refactoring_, mentioned two of the hardest problems in computer science in [“Two Hard Things”](https://martinfowler.com/bliki/TwoHardThings.html): **cache invalidation** and **naming things**.
 
 ![](../images/shared/marting-naming.png)
 
-这个句话实际上也是老马引用别人的，类似的表达还有很多。比如分布式系统领域有两大最难的事情：一是 **保证消息顺序** ，一是 **严格一次传递** 。
+Fowler was quoting someone else; many similar sayings exist. In distributed systems, for example, two of the hardest problems are **maintaining message order** and **exactly-once delivery**.
 
 ![](../images/shared/20210629104844645.png)
 
-今天咱们就单独拎出 “**命名**” 来聊聊！
+Today, let's focus on **naming**.
 
-这篇文章配合我之前发的 [《编码 5 分钟，命名 2 小时？史上最全的 Java 命名规范参考！》](https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247486449&idx=1&sn=c3b502529ff991c7180281bcc22877af&chksm=cea2443af9d5cd2c1c87049ed15ccf6f88275419c7dbe542406166a703b27d0f3ecf2af901f8&token=999884676&lang=zh_CN#rd) 这篇文章阅读效果更佳哦！
+For more examples, see my earlier article, [“Five Minutes to Code, Two Hours to Name? The Most Complete Java Naming Convention Guide”](https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247486449&idx=1&sn=c3b502529ff991c7180281bcc22877af&chksm=cea2443af9d5cd2c1c87049ed15ccf6f88275419c7dbe542406166a703b27d0f3ecf2af901f8&token=999884676&lang=zh_CN#rd).
 
-## 为什么需要重视命名？
+## Why Naming Matters
 
-咱们需要先搞懂为什么要重视编程中的命名这一行为，它对于我们的编码工作有着什么意义。
+First, understand why naming matters in programming and how it affects our work.
 
-**为什么命名很重要呢？** 这是因为 **好的命名即是注释，别人一看到你的命名就知道你的变量、方法或者类是做什么的！**
+**Good names matter because they act like comments: a reader can tell what a variable, method, or class does.**
 
-简单来说就是 **别人根据你的命名就能知道你的代码要表达的意思** （不过，前提这个人也要有基本的英语知识，对于一些编程中常见的单词比较熟悉）。
+In short, **readers should be able to understand what your code means from its names**. This assumes that they have basic English skills and know common programming terms.
 
-简单举个例子说明一下命名的重要性。
+Here is a simple example.
 
-《Clean Code》这本书明确指出：
+_Clean Code_ says:
 
-> **好的代码本身就是注释，我们要尽量规范和美化自己的代码来减少不必要的注释。**
+> **Good code is its own best documentation. We should write clear code to avoid unnecessary comments.**
 >
-> **若编程语言足够有表达力，就不需要注释，尽量通过代码来阐述。**
+> **If the programming language is expressive enough, explain intent through the code instead of comments.**
 >
-> 举个例子：
->
-> 去掉下面复杂的注释，只需要创建一个与注释所言同一事物的函数即可
+> For example, replace the following code and its long comment with a function whose name describes the same intent:
 >
 > ```java
 > // check to see if the employee is eligible for full benefits
 > if ((employee.flags & HOURLY_FLAG) && (employee.age > 65))
 > ```
 >
-> 应替换为
->
 > ```java
 > if (employee.isEligibleForFullBenefits())
 > ```
 
-## 常见命名规则以及适用场景
+## Common Naming Styles and When to Use Them
 
-这里只介绍 3 种最常见的命名规范。
+This section introduces three common naming styles.
 
-### 驼峰命名法（CamelCase）
+### Camel Case
 
-驼峰命名法应该我们最常见的一个，这种命名方式使用大小写混合的格式来区别各个单词，并且单词之间不使用空格隔开或者连接字符连接的命名方式
+Camel case uses a mix of uppercase and lowercase letters to distinguish words, without spaces or separators between them.
 
-#### 大驼峰命名法（UpperCamelCase）
+#### UpperCamelCase
 
-**类名需要使用大驼峰命名法（UpperCamelCase）**
+**Use UpperCamelCase for class names.**
 
-正例：
-
-```java
-ServiceDiscovery、ServiceInstance、LruCacheFactory
-```
-
-反例：
+Good examples:
 
 ```java
-serviceDiscovery、Serviceinstance、LRUCacheFactory
+ServiceDiscovery, ServiceInstance, LruCacheFactory
 ```
 
-#### 小驼峰命名法（lowerCamelCase）
+Poor examples:
 
-**方法名、参数名、成员变量、局部变量需要使用小驼峰命名法（lowerCamelCase）。**
+```java
+serviceDiscovery, Serviceinstance, LRUCacheFactory
+```
 
-正例：
+#### lowerCamelCase
+
+**Use lowerCamelCase for method names, parameters, fields, and local variables.**
+
+Good examples:
 
 ```java
 getUserInfo()
@@ -102,78 +98,78 @@ setNameFormat(String nameFormat)
 UserService userService;
 ```
 
-反例：
+Poor examples:
 
 ```java
-GetUserInfo()、CreateCustomThreadPool()、setNameFormat(String NameFormat)
+GetUserInfo(), CreateCustomThreadPool(), setNameFormat(String NameFormat)
 UserService user_service;
 ```
 
-### 蛇形命名法（snake_case）
+### snake_case
 
-**测试方法名可以按团队约定使用蛇形命名法（snake_case），常量和枚举常量通常使用大写蛇形命名法。**
+**Teams may use snake_case for test method names. Constants and enum constants usually use uppercase snake case.**
 
-在蛇形命名法中，各个单词之间通过下划线“\_”连接，比如`should_get_200_status_code_when_request_is_valid`、`CLIENT_CONNECT_SERVER_FAILURE`。
+Snake case joins words with underscores, for example `should_get_200_status_code_when_request_is_valid` and `CLIENT_CONNECT_SERVER_FAILURE`.
 
-蛇形命名法的优势是命名所需要的单词比较多的时候，比如我把上面的命名通过小驼峰命名法给大家看一下：“shouldGet200StatusCodeWhenRequestIsValid”。
+Snake case is useful when a name contains many words. Compare it with the lowerCamelCase version: `shouldGet200StatusCodeWhenRequestIsValid`.
 
-感觉如何？ 相比于使用蛇形命名法（snake_case）来说是不是不那么易读？
+Which one is easier to read?
 
-正例：
+Good example:
 
 ```java
 @Test
 void should_get_200_status_code_when_request_is_valid() {
-  ......
+  ...
 }
 ```
 
-另一种常见写法：
+Another common style:
 
 ```java
 @Test
 void shouldGet200StatusCodeWhenRequestIsValid() {
-  ......
+  ...
 }
 ```
 
-### 串式命名法（kebab-case）
+### kebab-case
 
-在串式命名法中，各个单词之间通过连接符“-”连接，比如`dubbo-registry`。
+kebab-case joins words with hyphens, for example `dubbo-registry`.
 
-建议项目文件夹名称使用串式命名法（kebab-case），比如 dubbo 项目的各个模块的命名是下面这样的。
+Use kebab-case for project directory names. For example, the Dubbo project's modules use names like these:
 
 ![](../images/shared/dubbo-naming.png)
 
-## 常见命名规范
+## Common Naming Conventions
 
-### Java 语言基本命名规范
+### Basic Java Naming Conventions
 
-**1、类名需要使用大驼峰命名法（UpperCamelCase）风格。方法名、参数名、成员变量、局部变量需要使用小驼峰命名法（lowerCamelCase）。**
+**1. Use UpperCamelCase for class names and lowerCamelCase for methods, parameters, fields, and local variables.**
 
-**2、测试方法没有唯一正确的命名方式，可以根据团队约定使用蛇形命名法（snake_case）**，比如`should_get_200_status_code_when_request_is_valid`。常量和枚举常量通常使用大写蛇形命名法，比如`CLIENT_CONNECT_SERVER_FAILURE`；枚举类型仍然使用大驼峰命名法。
+**2. There is no single correct style for test method names; teams may use snake_case**, such as `should_get_200_status_code_when_request_is_valid`. Constants and enum constants usually use uppercase snake case, such as `CLIENT_CONNECT_SERVER_FAILURE`. Enum type names still use UpperCamelCase.
 
-**3、项目文件夹名称使用串式命名法（kebab-case），比如`dubbo-registry`。**
+**3. Use kebab-case for project directory names**, such as `dubbo-registry`.
 
-**4、包名统一使用小写，尽量使用单个名词作为包名，各个单词通过 "." 分隔符连接，并且各个单词必须为单数。**
+**4. Use lowercase package names. Prefer a single noun, and separate multiple words with dots. Use singular nouns.**
 
-正例：`org.apache.dubbo.common.threadlocal`
+Good example: `org.apache.dubbo.common.threadlocal`
 
-反例：~~`org.apache_dubbo.Common.threadLocals`~~
+Poor example: ~~`org.apache_dubbo.Common.threadLocals`~~
 
-**5、抽象类命名使用 Abstract 开头**。
+**5. Prefix abstract class names with `Abstract`.**
 
 ```java
-//为远程传输部分抽象出来的一个抽象类（出处：Dubbo源码）
+// Abstract class for remote transport (from the Dubbo source code)
 public abstract class AbstractClient extends AbstractEndpoint implements Client {
 
 }
 ```
 
-**6、异常类命名使用 Exception 结尾。**
+**6. End exception class names with `Exception`.**
 
 ```java
-//自定义的 NoSuchMethodException（出处：Dubbo源码）
+// Custom NoSuchMethodException (from the Dubbo source code)
 public class NoSuchMethodException extends RuntimeException {
     private static final long serialVersionUID = -2725364246023268766L;
 
@@ -187,70 +183,70 @@ public class NoSuchMethodException extends RuntimeException {
 }
 ```
 
-**7、测试类命名以它要测试的类的名称开始，以 Test 结尾。**
+**7. Start test class names with the name of the class under test and end them with `Test`.**
 
 ```java
-//为 AnnotationUtils 类写的测试类（出处：Dubbo源码）
+// Test class for AnnotationUtils (from the Dubbo source code)
 public class AnnotationUtilsTest {
-  ......
+  ...
 }
 ```
 
-POJO 类中布尔类型字段是否使用 `is` 前缀，需要结合访问器生成规则和序列化框架判断。通常可以将基本类型字段命名为 `active` 并提供 `isActive()`，将包装类型 `Boolean` 字段命名为 `active` 并提供 `getActive()`；如果框架推断结果不符合预期，可以通过显式访问器或序列化注解固定属性名。
+For Boolean fields in POJOs, choose an `is` prefix based on accessor-generation rules and the serialization framework. A common convention is to name a primitive field `active` and expose `isActive()`, and to name a boxed `Boolean` field `active` and expose `getActive()`. If a framework infers a different property name than intended, define the accessor explicitly or use a serialization annotation to fix the property name.
 
-如果模块、接口、类、方法使用了设计模式，在命名时需体现出具体模式。
+If a module, interface, class, or method uses a design pattern, reflect that pattern in its name.
 
-### 命名易读性规范
+### Naming for Readability
 
-**1、为了能让命名更加易懂和易读，尽量不要缩写/简写单词，除非这些单词已经被公认可以被这样缩写/简写。比如 `CustomThreadFactory` 不可以被写成 ~~`CustomTF` 。**
+**1. Avoid abbreviations unless they are widely understood.** For example, do not shorten `CustomThreadFactory` to ~~`CustomTF`~~.
 
-**2、命名不像函数一样要尽量追求短，可读性强的名字优先于简短的名字，虽然可读性强的名字会比较长一点。** 这个对应我们上面说的第 1 点。
+**2. Unlike function bodies, names do not need to be as short as possible. Prefer a clear name over a short one, even if it is longer.**
 
-**3、避免无意义的命名，你起的每一个名字都要能表明意思。**
+**3. Avoid meaningless names. Every name should convey intent.**
 
-正例：`UserService userService;` `int userCount`;
+Good examples: `UserService userService;` and `int userCount;`
 
-反例: ~~`UserService service`~~ ~~`int count`~~
+Poor examples: ~~`UserService service`~~ and ~~`int count`~~
 
-**4、避免命名过长（50 个字符以内最好），过长的命名难以阅读并且丑陋。**
+**4. Avoid excessively long names. Aim for fewer than 50 characters; longer names are difficult to read and look awkward.**
 
-**5、不要使用拼音，更不要使用中文。** 不过像 alibaba、wuhan、taobao 这种国际通用名词可以当做英文来看待。
+**5. Do not use pinyin or Chinese names.** Widely recognized international names such as `alibaba`, `wuhan`, and `taobao` are exceptions.
 
-正例：discount
+Good example: `discount`
 
-反例：~~dazhe~~
+Poor example: ~~`dazhe`~~
 
-## Codelf:变量命名神器?
+## Codelf: A Naming Tool?
 
-这是一个由国人开发的网站，网上有很多人称其为变量命名神器， 我在实际使用了几天之后感觉没那么好用。小伙伴们可以自行体验一下，然后再给出自己的判断。
+Codelf is a website developed by a Chinese programmer. Many people online call it a variable-naming tool, but after trying it for a few days, I did not find it especially useful. Try it yourself and decide.
 
-Codelf 提供了在线网站版本，网址：[https://unbug.github.io/codelf/](https://unbug.github.io/codelf/)，具体使用情况如下：
+Codelf is available online at [https://unbug.github.io/codelf/](https://unbug.github.io/codelf/). Here is how it works:
 
-我选择了 Java 编程语言，然后搜索了“序列化”这个关键词，然后它就返回了很多关于序列化的命名。
+I selected Java and searched for the term “serialization.” It returned many possible names related to serialization.
 
 ![](./pictures/Codelf.png)
 
-并且，Codelf 还提供了 VS code 插件，看这个评价，看来大家还是很喜欢这款命名工具的。
+Codelf also has a VS Code extension. Judging by its reviews, many people like this naming tool.
 
 ![](./pictures/vscode-codelf.png)
 
-## 相关阅读推荐
+## Further Reading
 
-1. 《阿里巴巴 Java 开发手册》
-2. 《Clean Code》
-3. Google Java 代码指南：<https://google.github.io/styleguide/javaguide.html>
-4. 告别编码 5 分钟，命名 2 小时！史上最全的 Java 命名规范参考：<https://www.cnblogs.com/liqiangchn/p/12000361.html>
+1. _Alibaba Java Development Manual_
+2. _Clean Code_
+3. [Google Java Style Guide](https://google.github.io/styleguide/javaguide.html)
+4. [Five Minutes to Code, Two Hours to Name? The Most Complete Java Naming Convention Guide](https://www.cnblogs.com/liqiangchn/p/12000361.html)
 
-## 总结
+## Summary
 
-作为一个合格的程序员，小伙伴们应该都知道代码表义的重要性。想要写出高质量代码，好的命名就是第一步！
+Every programmer should understand that code communicates intent. Good names are the first step toward high-quality code.
 
-好的命名对于其他人（包括你自己）理解你的代码有着很大的帮助！你的代码越容易被理解，可维护性就越强，侧面也就说明你的代码设计的也就越好！
+Good names help everyone, including you, understand the code. The easier code is to understand, the easier it is to maintain, which often reflects better design.
 
-在日常编码过程中，我们需要谨记常见命名规范比如类名需要使用大驼峰命名法、不要使用拼音，更不要使用中文……。
+Remember common conventions: use UpperCamelCase for class names, and do not use pinyin or Chinese names.
 
-另外，国人开发的一个叫做 Codelf 的网站被很多人称为“变量命名神器”，当你为命名而头疼的时候，你可以去参考一下上面提供的一些命名示例。
+Codelf, a website created by a Chinese developer, is often called a “variable-naming tool.” If you get stuck on a name, its examples may give you ideas.
 
-最后，祝愿大家都不用再为命名而困扰!
+I hope naming becomes easier for you.
 
 <!-- @include: @article-footer.snippet.md -->

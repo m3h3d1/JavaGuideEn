@@ -1,106 +1,105 @@
 ---
-title: 软件工程简明教程
-description: 软件工程基础知识详解，涵盖软件危机、软件开发过程模型、瀑布模型、敏捷开发等软件工程核心概念。
-category: 系统设计
+title: A Concise Guide to Software Engineering
+description: An introduction to software engineering, the software crisis, software-development process models, the waterfall model, and agile development.
+category: System Design
 head:
   - - meta
     - name: keywords
-      content: 软件工程,软件危机,软件开发过程,瀑布模型,敏捷开发,需求分析,软件生命周期,工程化方法
+      content: software engineering,software crisis,software development process,waterfall model,agile development,requirements analysis,software lifecycle,engineering practices
 ---
 
-大部分软件开发从业者，都会忽略软件开发中的一些最基础、最底层的一些概念。但是，这些软件开发的概念对于软件开发来说非常重要，就像是软件开发的基石一样。这也是我写这篇文章的原因。
+Many software developers overlook foundational concepts in software development. These ideas are important: they form the basis of building software.
 
-## 何为软件工程？
+## What Is Software Engineering?
 
-1968 年 NATO（北大西洋公约组织）提出了**软件危机**（**Software crisis**）一词。同年，为了解决软件危机问题，“**软件工程**”的概念诞生了。一门叫做软件工程的学科也就应运而生。
+In 1968, NATO introduced the term **software crisis**. The concept of **software engineering** emerged that year as a response to the crisis, and software engineering became a field of study.
 
-随着时间的推移，软件工程这门学科也经历了一轮又一轮的完善，其中的一些核心内容比如软件开发模型越来越丰富实用！
+The field has continued to evolve. Core topics such as software-development models have become more varied and practical.
 
-**什么是软件危机呢？**
+**What was the software crisis?**
 
-简单来说，软件危机描述了当时软件开发的一个痛点：我们很难高效地开发出质量高的软件。
+In short, it described how difficult it was to develop high-quality software efficiently.
 
-Dijkstra（Dijkstra 算法的作者） 在 1972 年图灵奖获奖感言中也提到过软件危机，他是这样说的：“导致软件危机的主要原因是机器变得功能强大了几个数量级！坦率地说：只要没有机器，编程就完全没有问题。当我们有一些弱小的计算机时，编程成为一个温和的问题，而现在我们有了庞大的计算机，编程也同样成为一个巨大的问题”。
+Dijkstra also discussed the software crisis in his 1972 Turing Award lecture:
 
-**说了这么多，到底什么是软件工程呢？**
+> The major cause of the software crisis is that the machines have become several orders of magnitude more powerful! To put it bluntly: as long as there were no machines, programming was no problem at all; when we had a few weak computers, programming became a mild problem, and now we have gigantic computers, programming has become an equally gigantic problem.
 
-工程是为了解决实际的问题将理论应用于实践。软件工程指的就是将工程思想应用于软件开发。
+**So, what is software engineering?**
 
-上面是我对软件工程的定义，我们再来看看比较权威的定义。IEEE Std 610.12-1990《软件工程术语标准词汇表》给出的定义是这样的：　(1)将系统化的、规范的、可量化的方法应用到软件的开发、运行及维护中，即将工程化方法应用于软件。　(2)在(1)中所述方法的研究。
+Engineering applies theory to practical problems. Software engineering applies engineering principles to software development.
 
-总之，软件工程的终极目标就是：**在更少资源消耗的情况下，创造出更好、更容易维护的软件。**
+For a more authoritative definition, IEEE Std 610.12-1990, _IEEE Standard Glossary of Software Engineering Terminology_, defines software engineering as:
 
-## 软件开发过程
+1. The application of a systematic, disciplined, and quantifiable approach to the development, operation, and maintenance of software; that is, the application of engineering to software.
+2. The study of the approaches described in (1).
 
-[维基百科是这样定义软件开发过程](https://zh.wikipedia.org/wiki/%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%E8%BF%87%E7%A8%8B)的：
+In short, software engineering aims to **create better, more maintainable software while using fewer resources**.
 
-> 软件开发过程（英语：software development process），或软件过程（英语：software process），是软件开发的开发生命周期（software development life cycle），其各个阶段实现了软件的需求定义与分析、设计、实现、测试、交付和维护。软件过程是在开发与构建系统时应遵循的步骤，是软件开发的路线图。
+## Software-Development Process
 
-- 需求分析：分析用户的需求，建立逻辑模型。
-- 软件设计：根据需求分析的结果对软件架构进行设计。
-- 编码：编写程序运行的源代码。
-- 测试 : 确定测试用例，编写测试报告。
-- 交付：将做好的软件交付给客户。
-- 维护：对软件进行维护比如解决 bug，完善功能。
+[Wikipedia's definition of a software-development process](https://zh.wikipedia.org/wiki/%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%E8%BF%87%E7%A8%8B) is:
 
-软件开发过程只是比较笼统的层面上，定义了一个软件开发可能涉及到的一些流程。
+> A software-development process, or software process, is the software development life cycle. Its phases cover requirements definition and analysis, design, implementation, testing, delivery, and maintenance. It is a set of steps to follow when developing and building a system—a roadmap for software development.
 
-软件开发模型更具体地定义了软件开发过程，对开发过程提供了强有力的理论支持。
+The process commonly includes:
 
-## 软件开发模型
+- **Requirements analysis**: Analyze user needs and build a logical model.
+- **Software design**: Design the software architecture based on the requirements.
+- **Coding**: Write the source code that runs the program.
+- **Testing**: Define test cases and write test reports.
+- **Delivery**: Deliver the completed software to the customer.
+- **Maintenance**: Fix bugs and improve the software, for example by adding features.
 
-软件开发模型和方法有很多种，比如瀑布模型（Waterfall Model）、快速原型模型（Rapid Prototype Model）、V 模型（V-model）、W 模型（W-model）、敏捷开发方法。其中最具有代表性的还是 **瀑布模型** 和 **敏捷开发** 。
+A software-development process describes possible activities at a high level. A software-development model defines the process in more detail and provides a theoretical basis for carrying it out.
 
-**瀑布模型** 定义了一套完整的软件开发周期，完整地展示了一个软件的生命周期。
+## Software-Development Models
+
+There are many software-development models and methods, including the Waterfall Model, Rapid Prototyping Model, V-Model, W-Model, and agile methods. The best-known approaches are the **Waterfall Model** and **agile development**.
+
+The **Waterfall Model** defines a complete development cycle and presents the software lifecycle from beginning to end.
 
 ![](../images/shared/up-264f2750a3d30366e36c375ec3a30ec2775.png)
 
-**敏捷开发** 并不是单一的软件开发模型，而是一组价值观和原则，常见的具体方法有 Scrum、极限编程（XP）和看板（Kanban）等。敏捷开发强调个体和互动、工作的软件、客户合作和响应变化，并通过迭代和频繁交付持续获取反馈。
+**Agile development** is not a single model, but a set of values and principles. Common methods include Scrum, Extreme Programming (XP), and Kanban. Agile emphasizes individuals and interactions, working software, customer collaboration, and responding to change. Teams use iterations and frequent delivery to gather feedback.
 
-**持续集成**、**重构**、**小版本发布**、**结对编程**、**测试驱动开发** 是极限编程中常见的技术实践，**站会** 常见于 Scrum，它们并不是每一种敏捷方法都强制要求的实践。敏捷开发也不等于低文档，而是更重视工作的软件，同时保留必要且有价值的文档。
+**Continuous integration**, **refactoring**, **small releases**, **pair programming**, and **test-driven development** are common XP practices. **Daily stand-ups** are common in Scrum. These practices are not mandatory in every agile method. Agile does not mean “no documentation”; it prioritizes working software while retaining documentation that is necessary and useful.
 
-## 软件开发的基本策略
+## Basic Software-Development Strategies
 
-### 软件复用
+### Reuse
 
-我们在构建一个新的软件的时候，不需要从零开始，通过复用已有的一些轮子（框架、第三方库等）、设计模式、设计原则等等现成的物料，我们可以更快地构建出一个满足要求的软件。
+When building software, you do not need to start from scratch. Reusing existing tools—frameworks, third-party libraries, design patterns, and principles—can help you build a solution faster.
 
-像我们平时接触的开源项目就是最好的例子。我想，如果不是开源，我们构建出一个满足要求的软件，耗费的精力和时间要比现在多的多！
+Open-source projects are a good example. Without open source, building software that meets your needs would take much more time and effort.
 
-### 分而治之
+### Divide and Conquer
 
-构建软件的过程中，我们会遇到很多问题。我们可以将一些比较复杂的问题拆解为一些小问题，然后，一一攻克。
+Software development involves many problems. Break complex problems into smaller ones and solve them one by one.
 
-我结合现在比较火的软件设计方法—领域驱动设计（Domain Driven Design，简称 DDD）来说说。
+Domain-Driven Design (DDD), a widely used software-design approach, illustrates this idea. A **domain** is the problem to be solved. DDD breaks a large domain into smaller subdomains.
 
-在领域驱动设计中，很重要的一个概念就是**领域（Domain）**，它就是我们要解决的问题。在领域驱动设计中，我们要做的就是把比较大的领域（问题）拆解为若干的小领域（子域）。
+Divide and conquer is also a common algorithmic approach. To learn more, see Peking University's [Design and Analysis of Algorithms](https://www.coursera.org/learn/algorithms).
 
-除此之外，分而治之也是一个比较常用的算法思想，对应的就是分治算法。如果你想了解分治算法的话，推荐你看一下北大的[《算法设计与分析 Design and Analysis of Algorithms》](https://www.coursera.org/learn/algorithms)。
+### Evolve Incrementally
 
-### 逐步演进
+Software development is an iterative process. Build and deliver increments over time until the product meets customer needs.
 
-软件开发是一个逐步演进的过程，我们需要不断进行迭代式增量开发，最终交付符合客户价值的产品。
-
-这里补充一个在软件开发领域，非常重要的概念：**MVP（Minimum Viable Product，最小可行产品）**。
-
-最小可行产品是以最少投入获取最多经验证的客户认知的产品版本，目的是尽快验证关键假设，不一定是一个能够完整满足客户需求的产品。下面这张图片把这个思想展示的非常精髓。
+One important concept is the **Minimum Viable Product (MVP)**: a version of a product that uses minimal effort to gain the greatest amount of validated customer learning. Its goal is to test key assumptions quickly; it does not necessarily meet all customer needs.
 
 ![](../images/shared/up-a99961ff7725106c0592abca845d555568a.png)
 
-利用最小可行产品，我们可以也可以提早进行市场分析，这对于我们在探索产品不确定性的道路上非常有帮助。可以非常有效地指导我们下一步该往哪里走。
+An MVP also supports early market analysis. This can help guide decisions while the product and its market are still uncertain.
 
-### 优化折中
+### Make Trade-Offs
 
-软件开发是一个不断优化改进的过程。任何软件都有很多可以优化的点，不可能完美。我们需要不断改进和提升软件的质量。
+Software development is an ongoing process of improvement. Every system has room to improve and none is perfect. Continue improving its quality, but avoid optimizing endlessly. Make trade-offs and use available resources where they will have the greatest effect.
 
-但是，也不要陷入这个怪圈。要学会折中，在有限的投入内，以最有效的方式提高现有软件的质量。
+## References
 
-## 参考
-
-- [IEEE Std 610.12-1990：IEEE Standard Glossary of Software Engineering Terminology](https://standards.ieee.org/ieee/610.12/855/)
+- [IEEE Std 610.12-1990: IEEE Standard Glossary of Software Engineering Terminology](https://standards.ieee.org/ieee/610.12/855/)
 - [Manifesto for Agile Software Development](https://agilemanifesto.org/)
-- [Minimum Viable Product: a guide - Eric Ries](https://www.startuplessonslearned.com/2009/08/minimum-viable-product-guide.html)
-- 软件工程的基本概念-清华大学软件学院 刘强：<https://www.xuetangx.com/course/THU08091000367>
-- 软件开发过程-维基百科：[https://zh.wikipedia.org/wiki/软件开发过程](https://zh.wikipedia.org/wiki/软件开发过程)
+- [Minimum Viable Product: A Guide — Eric Ries](https://www.startuplessonslearned.com/2009/08/minimum-viable-product-guide.html)
+- Software Engineering Fundamentals, Liu Qiang, School of Software, Tsinghua University: <https://www.xuetangx.com/course/THU08091000367>
+- [Software-Development Process — Wikipedia](https://zh.wikipedia.org/wiki/%E8%BD%AF%E4%BB%B6%E5%BC%80%E5%8F%91%E8%BF%87%E7%A8%8B)
 
 <!-- @include: @article-footer.snippet.md -->

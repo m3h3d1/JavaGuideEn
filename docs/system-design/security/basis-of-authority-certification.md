@@ -1,101 +1,101 @@
 ---
-title: 认证授权基础概念详解
-description: 认证与授权基础概念详解，讲解Authentication和Authorization的区别、Session、Token、OAuth2等核心知识。
-category: 系统设计
+title: Authentication and Authorization Fundamentals
+description: An introduction to authentication, authorization, sessions, tokens, OAuth 2.0, and other core security concepts.
+category: System Design
 tag:
-  - 安全
+  - Security
 head:
   - - meta
     - name: keywords
-      content: 认证,授权,Authentication,Authorization,Session,Token,OAuth2,权限控制,安全基础
+      content: Authentication,Authorization,Session,Token,OAuth2,Access Control,Security Fundamentals
 ---
 
-## 认证 (Authentication) 和授权 (Authorization)的区别是什么？
+## What Is the Difference Between Authentication and Authorization?
 
-这是一个绝大多数人都会混淆的问题。首先先从读音上来认识这两个名词，很多人都会把它俩的读音搞混，所以我建议你先先去查一查这两个单词到底该怎么读，他们的具体含义是什么。
+This is a distinction many people confuse. The terms even sound similar, so start by learning how to pronounce them and what each one means.
 
-说简单点就是：
+In brief:
 
-- **认证 (Authentication)：** 你是谁。
-- **授权 (Authorization)：** 你有权限干什么。
+- **Authentication:** Who are you?
+- **Authorization:** What are you allowed to do?
 
-稍微正式点（啰嗦点）的说法就是：
+More formally:
 
-- **Authentication（认证）** 是验证您的身份的凭据（例如用户名/用户 ID 和密码），通过这个凭据，系统得以知道你就是你，也就是说系统存在你这个用户。所以，Authentication 被称为身份/用户验证。
-- **Authorization（授权）** 发生在 **Authentication（认证）** 之后。授权嘛，光看意思大家应该就明白，它主要掌管我们访问系统的权限。比如有些特定资源只能具有特定权限的人才能访问比如 admin，有些对系统资源操作比如删除、添加、更新只能特定人才具有。
+- **Authentication** verifies a user's identity using credentials such as a username or user ID and password. It lets the system confirm that you are who you claim to be. It is also called identity or user verification.
+- **Authorization** happens after authentication. It determines what the user can access and do. For example, only users with a specific role, such as an administrator, may access certain resources or perform operations such as deleting, adding, or updating system data.
 
-认证：
+Authentication:
 
-![认证登录](../images/shared/authentication-login.png)
+![Authentication and login](../images/shared/authentication-login.png)
 
-授权：
+Authorization:
 
-![没有权限](../images/shared/20210604161032412.png)
+![Access denied](../images/shared/20210604161032412.png)
 
-这两个一般在我们的系统中被结合在一起使用，目的就是为了保护我们系统的安全性。
+Systems usually use both to protect their security.
 
-## RBAC 模型了解吗？
+## Are You Familiar with the RBAC Model?
 
-系统权限控制最常采用的访问控制模型就是 **RBAC 模型** 。
+The **RBAC model** is one of the most common access control models.
 
-**什么是 RBAC 呢？** RBAC 即基于角色的权限访问控制（Role-Based Access Control）。这是一种通过角色关联权限，角色同时又关联用户的授权的方式。
+**What is RBAC?** Role-Based Access Control (RBAC) grants permissions through roles: permissions are assigned to roles, and users are assigned to roles.
 
-简单地说：一个用户可以拥有若干角色，每一个角色又可以被分配若干权限，这样就构造成“用户-角色-权限” 的授权模型。在这种模型中，用户与角色、角色与权限之间构成了多对多的关系。
+In simple terms, a user can have several roles, and each role can have several permissions. This forms a **user–role–permission** model with many-to-many relationships between users and roles, and between roles and permissions.
 
-![RBAC 权限模型示意图](../images/shared/rbac.png)
+![RBAC permission model](../images/shared/rbac.png)
 
-在 RBAC 权限模型中，权限与角色相关联，用户通过成为包含特定角色的成员而得到这些角色的权限，这就极大地简化了权限的管理。
+In RBAC, permissions are associated with roles. Users receive the permissions of the roles to which they belong, which greatly simplifies permission management.
 
-为了实现 RBAC 权限模型，数据库表的常见设计如下（一共 5 张表，2 张用户建立表之间的联系）：
+A common database design for this model uses five tables, two of which establish relationships between the other tables:
 
 ![](../images/shared/.png.png)
 
-通过这个权限模型，我们可以创建不同的角色并为不同的角色分配不同的权限范围（菜单）。
+This model lets us create different roles and assign each role a different set of permissions, such as menu access.
 
 ![](../images/shared/books-.png)
 
-通常来说，如果系统对于权限控制要求比较严格的话，一般都会选择使用 RBAC 模型来做权限控制。
+Systems with strict access control requirements commonly use RBAC.
 
-## 什么是 Cookie ? Cookie 的作用是什么?
+## What Is a Cookie? What Is It Used For?
 
 ![](../images/shared/cookie-sessionid.png)
 
-`Cookie` 和 `Session` 都是用来跟踪浏览器用户身份的会话方式，但是两者的应用场景不太一样。
+`Cookie` and `Session` are both used to track a browser user's session, but they have different roles.
 
-维基百科是这样定义 `Cookie` 的：
+Wikipedia defines a `Cookie` as:
 
-> `Cookies` 是某些网站为了辨别用户身份而储存在用户本地终端上的数据（通常经过加密）。
+> Data stored on a user's local device by a website to identify the user (usually in encrypted form).
 
-简单来说：**`Cookie` 存放在客户端，一般用来保存用户信息**。
+In short, **a `Cookie` is stored on the client and is commonly used to store user information**.
 
-下面是 `Cookie` 的一些应用案例：
+Common uses of `Cookie` include:
 
-1. 我们在 `Cookie` 中保存已经登录过的用户信息，下次访问网站的时候页面可以自动帮你登录的一些基本信息给填了。除此之外，`Cookie` 还能保存用户首选项，主题和其他设置信息。
-2. 使用 `Cookie` 保存 `SessionId` 或者 `Token` ，向后端发送请求的时候带上 `Cookie`，这样后端就能取到 `Session` 或者 `Token` 了。这样就能记录用户当前的状态了，因为 HTTP 协议是无状态的。
-3. `Cookie` 还可以用来记录和分析用户行为。举个简单的例子你在网上购物的时候，因为 HTTP 协议是没有状态的，如果服务器想要获取你在某个页面的停留状态或者看了哪些商品，一种常用的实现方式就是将这些信息存放在 `Cookie`
-4. ……
+1. Storing information about a user who has logged in, so a site can prefill basic information on a later visit. A `Cookie` can also store preferences, themes, and other settings.
+2. Storing a `SessionId` or `Token` and sending it with requests to the backend. The backend can then retrieve the corresponding `Session` or `Token` to identify the user's current state. This is useful because HTTP is stateless.
+3. Recording and analyzing user behavior. For example, since HTTP is stateless, a server may use a `Cookie` to track how long a user stays on a page or which products they view.
+4. …
 
-## 如何在项目中使用 Cookie 呢？
+## How Do You Use Cookies in a Project?
 
-我这里以 Spring Boot 项目为例。
+Here are examples from a Spring Boot project.
 
-**1)设置 `Cookie` 返回给客户端**
+**1. Set a `Cookie` and return it to the client**
 
 ```java
 @GetMapping("/change-username")
 public String setCookie(HttpServletResponse response) {
-    // 创建一个 cookie
+    // Create a cookie
     Cookie cookie = new Cookie("username", "Jovan");
-    //设置 cookie过期时间
+    // Set the cookie to expire in seven days
     cookie.setMaxAge(7 * 24 * 60 * 60); // expires in 7 days
-    //添加到 response 中
+    // Add it to the response
     response.addCookie(cookie);
 
     return "Username is changed!";
 }
 ```
 
-**2) 使用 Spring 框架提供的 `@CookieValue` 注解获取特定的 cookie 的值**
+**2. Use Spring's `@CookieValue` annotation to get a specific cookie's value**
 
 ```java
 @GetMapping("/")
@@ -104,7 +104,7 @@ public String readCookie(@CookieValue(value = "username", defaultValue = "Atta")
 }
 ```
 
-**3) 读取所有的 `Cookie` 值**
+**3. Read all cookie values**
 
 ```java
 @GetMapping("/all-cookies")
@@ -120,152 +120,150 @@ public String readAllCookies(HttpServletRequest request) {
 }
 ```
 
-更多关于如何在 Spring Boot 中使用 `Cookie` 的内容可以查看这篇文章：[How to use cookies in Spring Boot](https://attacomsian.com/blog/cookies-spring-boot) 。
+For more on using cookies in Spring Boot, see [How to Use Cookies in Spring Boot](https://attacomsian.com/blog/cookies-spring-boot).
 
-## Cookie 和 Session 有什么区别？
+## What Is the Difference Between a Cookie and a Session?
 
-**`Session` 的主要作用就是通过服务端记录用户的状态。** 典型的场景是购物车，当你要添加商品到购物车的时候，系统不知道是哪个用户操作的，因为 HTTP 协议是无状态的。服务端给特定的用户创建特定的 `Session` 之后就可以标识这个用户并且跟踪这个用户了。
+**A `Session` primarily lets the server keep track of a user's state.** A shopping cart is a typical example. Since HTTP is stateless, the server does not know which user is adding an item. After creating a `Session` for that user, it can identify and track them.
 
-`Cookie` 数据保存在客户端(浏览器端)，`Session` 数据保存在服务器端。相对来说 `Session` 安全性更高。如果使用 `Cookie` 的一些敏感信息不要写入 `Cookie` 中，最好能将 `Cookie` 信息加密然后使用到的时候再去服务器端解密。
+`Cookie` data is stored on the client (usually the browser), while `Session` data is stored on the server. A `Session` is generally more secure. Do not put sensitive information in a `Cookie`; if you need to store it, encrypt it and decrypt it on the server when required.
 
-**那么，如何使用 `Session` 进行身份验证？**
+**How does authentication work with a `Session`?**
 
-## 如何使用 Session-Cookie 方案进行身份验证？
+## How Does Session-Cookie Authentication Work?
 
-很多时候我们都是通过 `SessionID` 来实现特定的用户，`SessionID` 一般会选择存放在 Redis 中。举个例子：
+Applications often use a `SessionID` to identify a user, and commonly store it in Redis. For example:
 
-1. 用户成功登陆系统，然后返回给客户端具有 `SessionID` 的 `Cookie` 。
-2. 当用户向后端发起请求的时候会把 `SessionID` 带上，这样后端就知道你的身份状态了。
+1. The user logs in successfully, and the server returns a `Cookie` containing a `SessionID`.
+2. When the user sends a request to the backend, the browser includes the `SessionID`, allowing the backend to identify the session.
 
-关于这种认证方式更详细的过程如下：
+The process is shown in more detail below:
 
 ![](../../cs-basics/images/shared/session-cookie-authentication-process.png)
 
-1. 用户向服务器发送用户名、密码、验证码用于登陆系统。
-2. 服务器验证通过后，会为这个用户创建一个专属的 Session 对象（可以理解为服务器上的一块内存，存放该用户的状态数据，如购物车、登录信息等）存储起来，并给这个 Session 分配一个唯一的 `SessionID`。
-3. 服务器通过 HTTP 响应头中的 `Set-Cookie` 指令，把这个 `SessionID` 发送给用户的浏览器。
-4. 浏览器接收到 `SessionID` 后，会将其以 Cookie 的形式保存在本地。当用户保持登录状态时，每次向该服务器发请求，浏览器都会自动带上这个存有 `SessionID` 的 Cookie。
-5. 服务器收到请求后，从 Cookie 中拿出 `SessionID`，就能找到之前保存的那个 Session 对象，从而知道这是哪个用户以及他之前的状态了。
+1. The user sends a username, password, and CAPTCHA to the server to log in.
+2. After validating them, the server creates and stores a `Session` for the user. You can think of it as server-side storage for user state, such as shopping cart and login information. The server assigns the `Session` a unique `SessionID`.
+3. The server sends the `SessionID` to the user's browser in the HTTP `Set-Cookie` response header.
+4. The browser stores the `SessionID` in a `Cookie`. While the user remains logged in, the browser automatically includes this `Cookie` in requests within its scope.
+5. The server reads the `SessionID` from the `Cookie` and looks up the corresponding `Session` to identify the user and retrieve their state.
 
-使用 Session 的时候需要注意下面几个点：
+Keep the following points in mind when using sessions:
 
-- **客户端 Cookie 支持**：依赖 Session 的核心功能要确保用户浏览器开启了 Cookie。
-- **Session 过期管理**：合理设置 Session 的过期时间，平衡安全性和用户体验。
-- **Session ID 安全**：为包含 `SessionID` 的 Cookie 设置 `HttpOnly` 标志可以防止客户端脚本（如 JavaScript）窃取，设置 Secure 标志可以保证 `SessionID` 只在 HTTPS 连接下传输，增加安全性。
+- **Client cookie support:** Ensure that the browser has cookies enabled for features that depend on sessions.
+- **Session expiration:** Set an appropriate expiration time to balance security and user experience.
+- **Session ID security:** Set the `HttpOnly` flag on the `Cookie` containing the `SessionID` to prevent client-side scripts such as JavaScript from reading it. Set the `Secure` flag so the `SessionID` is sent only over HTTPS.
 
-另外，Spring Session 提供了一种跨多个应用程序或实例管理用户会话信息的机制。如果想详细了解可以查看下面几篇很不错的文章：
+Spring Session provides a way to manage user sessions across multiple applications or instances. For more details, see:
 
 - [Getting Started with Spring Session](https://codeboje.de/spring-Session-tutorial/)
 - [Guide to Spring Session](https://www.baeldung.com/spring-Session)
-- [Sticky Sessions with Spring Session & Redis](https://medium.com/@gvnix/sticky-Sessions-with-spring-Session-redis-bdc6f7438cc3)
+- [Sticky Sessions with Spring Session and Redis](https://medium.com/@gvnix/sticky-Sessions-with-spring-Session-redis-bdc6f7438cc3)
 
-## 多服务器节点下 Session-Cookie 方案如何做？
+## How Does Session-Cookie Authentication Work Across Multiple Servers?
 
-Session-Cookie 方案在单体环境是一个非常好的身份认证方案。但是，当服务器水平拓展成多节点时，Session-Cookie 方案就要面临挑战了。
+Session-Cookie authentication works well in a single-server application. When the application scales horizontally across multiple servers, it faces a challenge.
 
-举个例子：假如我们部署了两份相同的服务 A，B，用户第一次登陆的时候 ，Nginx 通过负载均衡机制将用户请求转发到 A 服务器，此时用户的 Session 信息保存在 A 服务器。结果，用户第二次访问的时候 Nginx 将请求路由到 B 服务器，由于 B 服务器没有保存 用户的 Session 信息，导致用户需要重新进行登陆。
+Suppose identical servers A and B are running. When the user logs in, Nginx routes the request to server A through load balancing, and A stores the user's session. On the next request, Nginx may route the user to server B. Since B does not have that session, the user has to log in again.
 
-**我们应该如何避免上面这种情况的出现呢？**
+**How can we prevent this?**
 
-有几个方案可供大家参考：
+Here are a few possible approaches:
 
-1. 某个用户的所有请求都通过特性的哈希策略分配给同一个服务器处理。这样的话，每个服务器都保存了一部分用户的 Session 信息。服务器宕机，其保存的所有 Session 信息就完全丢失了。
-2. 每一个服务器保存的 Session 信息都是互相同步的，也就是说每一个服务器都保存了全量的 Session 信息。每当一个服务器的 Session 信息发生变化，我们就将其同步到其他服务器。这种方案成本太大，并且，节点越多时，同步成本也越高。
-3. 单独使用一个所有服务器都能访问到的数据节点（比如缓存）来存放 Session 信息。为了保证高可用，数据节点尽量要避免是单点。
-4. Spring Session 是一个用于在多个服务器之间管理会话的项目。它可以与多种后端存储（如 Redis、MongoDB 等）集成，从而实现分布式会话管理。通过 Spring Session，可以将会话数据存储在共享的外部存储中，以实现跨服务器的会话同步和共享。
+1. Route all requests from a user to the same server using a hash strategy. Each server stores sessions for some users. If a server goes down, all sessions stored on it are lost.
+2. Synchronize session data across all servers. Whenever a session changes on one server, it is replicated to the others. This is costly, and the cost increases with the number of nodes.
+3. Store session data in a shared data store, such as a cache, that every server can access. Avoid making this store a single point of failure; it should be highly available.
+4. Use Spring Session to manage sessions across multiple servers. It integrates with backends such as Redis and MongoDB, storing session data in shared external storage so servers can access the same sessions.
 
-## 如果没有 Cookie 的话 Session 还能用吗？
+## Can Sessions Work Without Cookies?
 
-这是一道经典的面试题！
+This is a classic interview question.
 
-一般是通过 `Cookie` 来保存 `SessionID` ，假如你使用了 `Cookie` 保存 `SessionID` 的方案的话， 如果客户端禁用了 `Cookie`，那么 `Session` 就无法正常工作。
+Sessions are commonly associated with a `SessionID` stored in a `Cookie`. If the client disables cookies and the application relies on this mechanism, sessions will not work as expected.
 
-但是，服务端 Session 并不等于必须使用 Cookie。非浏览器客户端可以通过明确约定的请求头携带会话凭据。不过，不要把 `SessionID` 放进 URL：即使对它进行加密，它仍然是可以直接使用的身份凭据，并可能泄露到浏览器历史、访问日志、监控系统和 Referer 中。URL 重写只适合不得不兼容的遗留场景，不应作为新系统的登录方案。
+However, server-side sessions do not strictly require cookies. A non-browser client can send the session credential in an explicitly agreed-upon request header. Do not put a `SessionID` in a URL: even if encrypted, it remains a usable credential and may leak through browser history, access logs, monitoring systems, and the `Referer` header. URL rewriting should only be used for legacy compatibility when necessary, not as an authentication method for new systems.
 
-## 为什么基于 Cookie 的认证更需要关注 CSRF？
+## Why Does Cookie-Based Authentication Require More Attention to CSRF?
 
-**CSRF(Cross Site Request Forgery)** 一般被翻译为 **跨站请求伪造** 。那么什么是 **跨站请求伪造** 呢？说简单点，就是用你的身份去发送一些对你不友好的请求。举个简单的例子：
+**CSRF (Cross-Site Request Forgery)** is an attack that uses your identity to send requests that harm you. For example:
 
-小壮登录了某网上银行，他来到了网上银行的帖子区，看到一个帖子下面有一个链接写着“科学理财，年盈利率过万”，小壮好奇的点开了这个链接，结果发现自己的账户少了 10000 元。这是这么回事呢？原来黑客在链接中藏了一个请求，这个请求直接利用小壮的身份给银行发送了一个转账请求,也就是通过你的 Cookie 向银行发出请求。
+Xiaozhuang logs in to an online bank and visits its forum. A post contains a link saying, “Smart investing, annual returns over 10,000%.” Curious, Xiaozhuang clicks it and finds that 10,000 yuan has disappeared from the account. The attacker hid a request in the link that uses Xiaozhuang's identity to make a bank transfer—in other words, the browser sent the request with the user's `Cookie`.
 
 ```html
 <a href="http://www.mybank.com/Transfer?bankId=11&money=10000"
-  >科学理财，年盈利率过万</a
+  >Smart investing, with annual returns over 10,000%</a
 >
 ```
 
-上面也提到过，进行 `Session` 认证的时候，我们一般使用 `Cookie` 来存储 `SessionId`。浏览器登录以后会自动在符合 Cookie 作用域的请求中带上它，服务端通过 `SessionId` 识别用户。攻击者如果直接窃取了 `SessionId`，造成的是会话劫持；而 CSRF 通常不要求攻击者读取 Cookie，它利用的是浏览器会自动携带 Cookie 的特性。
+As noted above, `Session` authentication usually stores the `SessionId` in a `Cookie`. After login, the browser automatically includes the `Cookie` in requests within its scope, and the server uses the `SessionId` to identify the user. If an attacker steals the `SessionId`, that is session hijacking. CSRF usually does not require the attacker to read the `Cookie`; it exploits the browser's behavior of sending it automatically.
 
-`Session` 认证中 `Cookie` 中的 `SessionId` 是由浏览器发送到服务端的，借助这个特性，攻击者就可以通过让用户误点攻击链接，达到攻击效果。
+Because the browser sends the `SessionId` in the `Cookie`, an attacker can trick the user into clicking a malicious link and trigger an action as that user.
 
-如果客户端把 Token 作为 Bearer Token，显式放入 `Authorization` Header，浏览器不会像 Cookie 那样自动把它附带到跨站请求中，因此可以降低传统 CSRF 风险。这里起作用的是凭据的携带方式，而不是 Token 或 JWT 这种格式本身。
+When a client explicitly sends a token as a Bearer token in the HTTP `Authorization` header, the browser does not automatically attach it to cross-site requests as it does a `Cookie`. This can reduce traditional CSRF risk. The protection comes from how the credential is sent, not from the token or JWT format itself.
 
-不要因此默认把 Token 存入 `localStorage` 或 `sessionStorage`。同源页面中的恶意脚本可以读取 Web Storage，一处 XSS 漏洞就可能直接泄露 Token。浏览器应用可以根据场景选择 Backend For Frontend（BFF），或者使用设置了 `HttpOnly`、`Secure` 和合适 `SameSite` 属性的 Cookie；使用 Cookie 时还应结合 CSRF Token、`Origin`/`Referer` 校验等机制。
+Do not assume that tokens should therefore be stored in `localStorage` or `sessionStorage`. Malicious scripts running on the same origin can read Web Storage, so one XSS vulnerability may expose the token. Browser applications can use a Backend For Frontend (BFF), or cookies with `HttpOnly`, `Secure`, and an appropriate `SameSite` attribute. Cookie-based approaches should also use CSRF tokens, `Origin`/`Referer` validation, and other suitable protections.
 
 ![](../images/shared/20210615161108272.png)
 
-需要注意的是：不论是 `Cookie` 还是 `Token`，认证机制本身都无法避免 **跨站脚本攻击（Cross Site Scripting）XSS**。`HttpOnly` 可以降低脚本直接读取 Cookie 的风险，但 XSS 仍可能以用户身份发起请求，因此还需要正确的输出编码、必要时的 HTML 净化以及 CSP 等纵深防御。
+Note that neither `Cookie` nor `Token` authentication prevents **Cross-Site Scripting (XSS)**. `HttpOnly` reduces the risk of scripts directly reading a cookie, but XSS can still let an attacker make requests as the user. Use layered defenses such as correct output encoding, HTML sanitization when needed, and CSP.
 
-> 跨站脚本攻击（Cross Site Scripting）缩写为 CSS 但这会与层叠样式表（Cascading Style Sheets，CSS）的缩写混淆。因此，有人将跨站脚本攻击缩写为 XSS。
+> Cross-Site Scripting is abbreviated as CSS, but that conflicts with Cascading Style Sheets (CSS). Some people therefore abbreviate it as XSS.
 
-XSS 中攻击者会用各种方式将恶意代码注入到其他用户的页面中。就可以通过脚本盗用信息比如 `Cookie` 。
+In an XSS attack, an attacker injects malicious code into another user's page. The script may then steal information such as a `Cookie`.
 
-推荐阅读：[如何防止 CSRF 攻击？—美团技术团队](https://tech.meituan.com/2018/10/11/fe-security-csrf.html)
+Recommended reading: [How to Prevent CSRF Attacks? — Meituan Technology](https://tech.meituan.com/2018/10/11/fe-security-csrf.html)
 
-安全实践还可以参考：
+For security best practices, see:
 
 - [OWASP Session Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html)
 - [OWASP Cross-Site Request Forgery Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html)
 
-## 什么是 JWT?JWT 由哪些部分组成？
+## What Is a JWT? What Are Its Components?
 
-[JWT 基础概念详解](./jwt-intro.md)
+[JWT Fundamentals](./jwt-intro.md)
 
-## 如何基于 JWT 进行身份验证？ 如何防止 JWT 被篡改？
+## How Does JWT Authentication Work? How Can JWT Tampering Be Prevented?
 
-[JWT 基础概念详解](./jwt-intro.md)
+[JWT Fundamentals](./jwt-intro.md)
 
-## 什么是 SSO?
+## What Is SSO?
 
-SSO(Single Sign On)即单点登录说的是用户登陆多个子系统的其中一个就有权访问与其相关的其他系统。举个例子我们在登陆了京东金融之后，我们同时也成功登陆京东的京东超市、京东国际、京东生鲜等子系统。
+SSO (Single Sign-On) lets a user sign in to one application and then access other related applications. For example, after signing in to JD Finance, a user may also be signed in to other JD services such as JD Supermarket, JD Worldwide, and JD Fresh.
 
-![SSO 示意图](../images/shared/sso.png)
+![SSO diagram](../images/shared/sso.png)
 
-## SSO 有什么好处？
+## What Are the Benefits of SSO?
 
-- **用户角度** :用户能够做到一次登录多次使用，无需记录多套用户名和密码，省心。
-- **系统管理员角度** : 管理员只需维护好一个统一的账号中心就可以了，方便。
-- **新系统开发角度:** 新系统开发时只需直接对接统一的账号中心即可，简化开发流程，省时。
+- **For users:** Sign in once and access multiple services without remembering several usernames and passwords.
+- **For system administrators:** Maintain one central account system.
+- **For new application development:** Integrate with the central account system instead of building a separate login flow.
 
-## 如何设计实现一个 SSO 系统?
+## How Do You Design an SSO System?
 
-[SSO 单点登录详解](./sso-intro.md)
+[SSO Fundamentals](./sso-intro.md)
 
-## 什么是 OAuth 2.0？
+## What Is OAuth 2.0?
 
-OAuth 是一个行业的标准授权协议，主要用来授权第三方应用获取有限的权限。而 OAuth 2.0 是对 OAuth 1.0 的完全重新设计，OAuth 2.0 更快，更容易实现，OAuth 1.0 已经被废弃。详情请见：[rfc6749](https://tools.ietf.org/html/rfc6749)。
+OAuth is an industry-standard authorization protocol, primarily used to grant third-party applications limited access. OAuth 2.0 was a complete redesign of OAuth 1.0. OAuth 2.0 is faster and easier to implement; OAuth 1.0 has been deprecated. See [RFC 6749](https://tools.ietf.org/html/rfc6749) for details.
 
-实际上它就是一种授权机制，它的最终目的是为第三方应用颁发一个有时效性的令牌 Token，使得第三方应用能够通过该令牌获取相关的资源。
+OAuth 2.0 is an authorization mechanism whose goal is to issue a time-limited token that lets a third-party application access specific resources.
 
-OAuth 2.0 比较常用的场景就是第三方登录，当你的网站接入了第三方登录的时候一般就是使用的 OAuth 2.0 协议。
+Third-party login is a common OAuth 2.0 use case. OAuth 2.0 is also widely used for payments, such as WeChat Pay and Alipay, and for developer platforms such as the WeChat Open Platform and Alibaba Open Platform.
 
-另外，现在 OAuth 2.0 也常见于支付场景（微信支付、支付宝支付）和开发平台（微信开放平台、阿里开放平台等等）。
-
-下图是 [Slack OAuth 2.0 第三方登录](https://api.slack.com/legacy/oauth)的示意图：
+The diagram below illustrates [Slack OAuth 2.0 third-party login](https://api.slack.com/legacy/oauth):
 
 ![](../images/shared/20210615151716340.png)
 
-**推荐阅读：**
+**Recommended reading:**
 
-- [OAuth 2.0 的一个简单解释](http://www.ruanyifeng.com/blog/2019/04/oauth_design.html)
-- [10 分钟理解什么是 OAuth 2.0 协议](https://deepzz.com/post/what-is-oauth2-protocol.html)
-- [OAuth 2.0 的四种方式](http://www.ruanyifeng.com/blog/2019/04/oauth-grant-types.html)
-- [GitHub OAuth 第三方登录示例教程](http://www.ruanyifeng.com/blog/2019/04/github-oauth.html)
+- [OAuth 2.0 Explained Simply](http://www.ruanyifeng.com/blog/2019/04/oauth_design.html)
+- [Understanding OAuth 2.0 in 10 Minutes](https://deepzz.com/post/what-is-oauth2-protocol.html)
+- [The Four OAuth 2.0 Grant Types](http://www.ruanyifeng.com/blog/2019/04/oauth-grant-types.html)
+- [GitHub OAuth Login Example](http://www.ruanyifeng.com/blog/2019/04/github-oauth.html)
 
-## 参考
+## References
 
-- 不要用 JWT 替代 session 管理（上）：全面了解 Token,JWT,OAuth,SAML,SSO：<https://zhuanlan.zhihu.com/p/38942172>
-- Introduction to JSON Web Tokens：<https://jwt.io/introduction>
-- JSON Web Token Claims：<https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-token-claims>
+- [Do Not Replace Session Management with JWT: Understanding Tokens, JWT, OAuth, SAML, and SSO](https://zhuanlan.zhihu.com/p/38942172)
+- [Introduction to JSON Web Tokens](https://jwt.io/introduction)
+- [JSON Web Token Claims](https://auth0.com/docs/secure/tokens/json-web-tokens/json-web-token-claims)
 
 <!-- @include: @article-footer.snippet.md -->

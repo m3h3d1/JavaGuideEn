@@ -1,158 +1,158 @@
 ---
-title: AI Agent 核心概念：Agent Loop、Plan-and-Execute、结构化任务契约、Agentic Workflows、Tools 注册
-description: 深入解析 AI Agent 核心概念，梳理从被动响应到常驻自治的演进历程，对比 Agent、传统编程、Workflow 的区别和适用场景。
-category: AI 应用开发
+title: AI Agent Fundamentals: Agent Loops, Plan-and-Execute, Task Contracts, Agentic Workflows, and Tool Registration
+description: Explains core AI Agent concepts, traces their evolution from passive response to always-on autonomy, and compares Agents, traditional programming, and Workflows.
+category: AI Application Development
 head:
   - - meta
     - name: keywords
-      content: AI Agent,智能体,ReAct,Function Calling,RAG,MCP,多智能体协作,Computer Use
+      content: AI Agent,ReAct,Function Calling,RAG,MCP,multi-Agent collaboration,Computer Use
 ---
 
-“帮我排查今天早上 user-service 接口变慢的原因，并把结果发给负责人。”这类请求没有固定答案：先查监控、日志还是 Heap Dump，要看前一步拿到了什么证据。即使已经发现慢 SQL，也还得判断要不要继续查执行计划、怎样组织结论、是否可以发出通知。
+"Investigate why the user-service API slowed down this morning and send the findings to the owner." There is no fixed answer to this request: whether to check metrics, logs, or a Heap Dump depends on the evidence found in the previous step. Even after finding a slow SQL query, the Agent must decide whether to inspect the execution plan, how to organize its findings, and whether it can send a notification.
 
-聊天模型可以给出一份排查清单，却不会自己把这条路径走完。要完成任务，模型需要选择工具、读取工具结果，再据此决定下一步或结束。AI Agent 处理的就是这段连续的决策与执行过程。
+A chatbot can provide a troubleshooting checklist, but it will not carry out the entire process on its own. To complete the task, the model must select tools, read their results, and use them to decide what to do next or whether to stop. An AI Agent handles this continuous decision and execution process.
 
-工具接得越多，执行路径越不能随意放开。订单扣库存、审批流这类步骤明确的工作，仍应由传统程序或 Workflow 控制；只有中间步骤依赖实时证据、无法预先写死时，才需要让 Agent 参与判断。
+The more tools an Agent can access, the more carefully its execution path must be controlled. Tasks with explicit steps, such as deducting inventory or processing approvals, should still be controlled by traditional programs or Workflows. Use an Agent to make decisions only when intermediate steps depend on real-time evidence and cannot be predefined.
 
-后文会从演进、执行循环、工具接入和常见范式拆开这条链路，并给出 Agent、Workflow 与传统编程的选型依据。
+The following sections break down this process through its evolution, execution loops, tool integration, and common patterns, then explain when to use an Agent, a Workflow, or traditional programming.
 
-## AI Agent 的演进
+## The Evolution of AI Agents
 
-Agent 的能力不是一次性出现的。模型先获得外部调用能力，随后才有编排、长任务和长期在线这些需求。
+Agent capabilities did not emerge all at once. Models first gained the ability to call external tools, followed by the need for orchestration, long-running tasks, and continuous operation.
 
-**2022 年，ChatGPT 这类产品刚火的时候**，模型主要依据已有知识回答问题，不能主动调用外部工具，也不能自行完成操作。[Prompt Engineering](https://javaguide.cn/ai/agent/prompt-engineering.html) 是当时最重要的使用方式：把约束和上下文说清楚，输出才更稳定。
+**In 2022, when products such as ChatGPT first became popular**, models mainly answered questions using existing knowledge. They could not proactively call external tools or perform operations. [Prompt Engineering](https://javaguide.cn/ai/agent/prompt-engineering.html) was the primary way to use them: clearly state constraints and context to get more consistent output.
 
-**2023 年中，Function Calling 出现后，事情开始变了。**
+**Things began to change in mid-2023 with the introduction of Function Calling.**
 
-Function Calling 让 LLM 能调用外部 API；RAG 则把外部知识库接进回答过程。AutoGPT 等早期尝试随之出现，但它们经常在多步任务中重复调用，甚至陷入无限循环。
+Function Calling enabled LLMs to call external APIs, while RAG brought external knowledge bases into the response process. Early experiments such as AutoGPT followed, but they often repeated calls in multi-step tasks and sometimes entered infinite loops.
 
-**2023 年底，大家开始重视编排。**
+**By late 2023, orchestration had become a focus.**
 
-ReAct 开始被广泛采用：模型根据当前状态选择动作，读取工具返回结果，再继续判断。多 Agent 的分工也在这一阶段进入实践，例如把规划、执行和检查交给不同角色。
+ReAct started to see widespread adoption: the model selects an action based on the current state, reads the tool's result, and continues reasoning. Multi-Agent role separation also entered practice, with planning, execution, and review assigned to different roles.
 
-Coze、Dify 等平台用 DAG（有向无环图）约束执行路径，给完全自治的早期方案加上可观察、可控制的流程边界。
+Platforms such as Coze and Dify used DAGs (directed acyclic graphs) to constrain execution paths, adding observable and controllable workflow boundaries to early fully autonomous systems.
 
-**2024 年底，标准化和多模态开始变重要。**
+**By late 2024, standardization and multimodality had become more important.**
 
-[MCP 协议](https://javaguide.cn/ai/agent/mcp.html)开始处理工具接入碎片化的问题，Computer Use 则把可执行范围扩展到图形界面。Cursor、Claude Code、Codex 等编程工具也逐渐把代码库阅读、修改、测试和提交串进同一条任务链路，“Vibe Coding”随之被更多人讨论。
+[MCP](https://javaguide.cn/ai/agent/mcp.html) began addressing fragmented tool integrations, while Computer Use extended execution to graphical interfaces. Coding tools such as Cursor, Claude Code, and Codex also began connecting codebase reading, editing, testing, and commits into one task flow, and "Vibe Coding" became more widely discussed.
 
-**2025 年，Agent 开始往长任务执行方向走。**
+**In 2025, Agents began moving toward long-running task execution.**
 
-这一阶段，Agent 开始承接一次对话之外的长任务：接收任务、运行流程、留下结果。单条 Prompt 无法稳定覆盖这类工作，固定流程、上下文、模板、脚本和校验规则被封装为 Skill，供相似任务按需加载。
+At this stage, Agents began taking on tasks that extend beyond a single conversation: accepting a task, running a workflow, and recording results. A single Prompt cannot reliably cover this kind of work, so repeatable procedures, context, templates, scripts, and validation rules were packaged into Skills for on-demand use in similar tasks.
 
-**到了 2026 年，Agent 开始更接近长期在线的数字工作单元。**
+**By 2026, Agents were becoming more like always-on digital workers.**
 
-OpenClaw 这类项目把 Skills 和 Heartbeat 推到更显眼的位置。
+Projects such as OpenClaw brought Skills and Heartbeat to the forefront.
 
-Skills 负责封装能力，Heartbeat 周期性唤醒 Agent 去检查消息、处理任务或更新状态。它是定时唤醒，不是连续意识；本地数据主权也不代表绝对安全。能安装 Skill、访问文件和执行脚本的 Agent，必须面对权限、沙箱和供应链风险。
+Skills package capabilities. Heartbeat periodically wakes the Agent to check messages, handle tasks, or update state. This is scheduled wake-up, not continuous awareness; data sovereignty on a local machine does not mean absolute safety. An Agent that can install Skills, access files, and run scripts must account for permission, sandbox, and supply-chain risks.
 
-这也推动了 Harness Engineering。可以把它看作 `Agent = Model + Harness`：模型负责推理和生成，Harness 提供可执行、可观察、可恢复和可验证的运行环境。关注点因此从模型参数、上下文长度和 Prompt 技巧，延伸到了模型之外的工程环境。
+This also drove Harness Engineering. It can be represented as `Agent = Model + Harness`: the model reasons and generates, while the Harness provides an executable, observable, recoverable, and verifiable runtime environment. The focus therefore expanded from model parameters, context length, and Prompt techniques to the engineering environment around the model.
 
-内建记忆、预测能力，以及从数字世界扩展到物理机器人的能力仍在推进。年份只是便于理解的切片：真实产品往往同时具有多个阶段的特征。较明显的分水岭仍是 2023 年中，模型从生成文本逐步获得了执行外部操作的能力。
+Built-in memory, predictive capabilities, and expansion from digital environments to physical robots are still developing. These years are only convenient markers: real products often combine traits from multiple stages. The clearest turning point was still mid-2023, when models began moving beyond text generation toward performing external actions.
 
-### Agent、传统编程和 Workflow 区别？
+### How Do Agents Differ from Traditional Programming and Workflows?
 
-先看谁决定执行路径，就能把 Agent、自动化脚本和 Workflow 区分开：
+The key distinction between an Agent, an automation script, and a Workflow is who determines the execution path:
 
 ```text
-传统编程：程序员写代码 → 执行结果
-Workflow：产品画流程图 → 执行结果
-Agent：用户说意图 → AI 决策 → 动态执行
+Traditional programming: Developer writes code → Execution result
+Workflow: Product manager draws a flowchart → Execution result
+Agent: User states an intent → AI decides → Dynamic execution
 ```
 
-订单扣库存、支付状态流转、消息队列消费这类逻辑固定且高频的场景，适合传统程序；用 Agent 只会额外增加延迟和不确定性。
+Traditional programs are suited to fixed, frequent logic such as deducting inventory, transitioning payment states, and consuming messages from a queue. Using an Agent for these tasks only adds latency and uncertainty.
 
-审批、内容发布、线索分配等路径清晰的工作，适合 Workflow。步骤顺序和分支由图控制，问题能落到具体节点排查。
+Work with clear paths, such as approvals, content publishing, and lead assignment, is suited to a Workflow. A graph controls step order and branches, so problems can be traced to specific nodes.
 
-“排查今天早上服务变慢的原因”则不同：该查监控、日志还是 Heap Dump，要看中间证据，难以事先写死每个分支。这类自然语言意图理解与动态判断，才是 Agent 的适用范围。长流程中只有少数环节不确定时，可以用 Plan-and-Execute，在固定框架中留出动态子任务。
+"Investigate why the service slowed down this morning" is different. Whether to check metrics, logs, or a Heap Dump depends on intermediate evidence, so it is difficult to predefine every branch. Natural-language intent understanding and dynamic decisions are where Agents are useful. If only a few steps in a long process are uncertain, Plan-and-Execute can leave those subtasks dynamic within a fixed framework.
 
-### Agent 面临的挑战有哪些？
+### What Challenges Do Agents Face?
 
-聊 Agent 不能只讲愿景，也得说点真实问题。
+It is important to discuss real problems as well as the promise of Agents.
 
-- 长任务跑久了，历史信息会被截断，模型会“失忆”。更烦的是，上下文变长后推理质量不一定更好，很多模型对中间位置的信息利用效率并不高
-- 工具调用可以降低幻觉，但不能彻底消灭。LLM 在推理步骤里仍然可能生成错误判断，工具返回结果也不一定能把它拉回来
-- 多轮迭代、工具调用、日志回传、上下文压缩，每一项都在烧 Token。复杂任务跑一轮，账单可能真会让人清醒
-- Agent 能执行代码、调 API、读写文件，也就一定会面对 Prompt Injection 和越权操作风险。更现实的做法是权限最小化、沙箱隔离、高危操作人工确认
-- 深度多步推理任务里，LLM 还是容易局部最优，可能看起来一直在推进，其实已经偏题了
-- Agent 为什么做了某个决策、为什么调用了某个工具、是哪一步把上下文带偏了，排查起来很头疼
+- During long tasks, historical information may be truncated and the model may "forget." Longer context does not always improve reasoning; many models make limited use of information in the middle.
+- Tool calls can reduce hallucinations but cannot eliminate them. The LLM may still make incorrect judgments during reasoning, and tool results may not correct them.
+- Iterations, tool calls, returned logs, and context compression all consume Tokens. The bill for a complex task can be sobering.
+- Agents that run code, call APIs, and read or write files face prompt injection and privilege escalation risks. Practical safeguards include least privilege, sandbox isolation, and human approval for high-risk actions.
+- In complex multi-step reasoning, LLMs can still settle for a local optimum: they may appear to make progress while drifting off task.
+- It can be difficult to determine why an Agent made a decision or called a tool, and which step caused the context to go off track.
 
-后面比较确定的方向包括：更长上下文、分层记忆、多模态 GUI 操作、沙箱和权限体系、推理效率优化。
+Likely areas of progress include longer context, layered memory, multimodal GUI operation, sandbox and permission systems, and more efficient reasoning.
 
-## 什么是 AI Agent？
+## What Is an AI Agent?
 
-一个排障 Agent 收到“服务变慢”的请求后，可能先读监控，再根据告警查日志，最后把结论发给负责人。每一步都取决于前一步得到的证据。LangChain 等框架把这类过程封装起来，底层通常仍是一个不断读取状态、选择动作、写回结果的循环。
+When a troubleshooting Agent receives a request about a slow service, it might read metrics, inspect logs based on an alert, and then send its findings to the owner. Each step depends on evidence from the previous one. Frameworks such as LangChain package this process, but underneath it is usually a loop that reads state, selects an action, and writes back the result.
 
-AI Agent 是能感知环境、决策并执行动作的软件系统。LLM 处理意图和决策，工具执行外部操作，记忆保存当前任务和历史信息。与只生成回复的聊天机器人相比，它会在任务过程中持续观察和调整，直到结束条件满足。
+An AI Agent is a software system that can perceive its environment, make decisions, and take actions. The LLM handles intent and decisions, tools perform external operations, and memory stores the current task and historical information. Unlike a chatbot that only generates replies, an Agent observes and adjusts throughout a task until a termination condition is met.
 
-常用的拆分方式是：**Agent = LLM + Planning + Memory + Tools**。
+A common model is: **Agent = LLM + Planning + Memory + Tools**.
 
-![AI Agent 核心架构](../images/shared/agent-core-arch.png)
+![Core AI Agent architecture](../images/shared/agent-core-arch.png)
 
-**推理与规划（Reasoning / Planning）**决定下一步的目标与动作。LLM 根据当前任务状态拆解目标；Chain-of-Thought（CoT）提示技术把推理过程拆成步骤，减少直接给出未经展开的结论。
+**Reasoning / Planning** determines the next goal and action. The LLM breaks down the goal based on the current task state. Chain-of-Thought (CoT) prompting divides the reasoning process into steps instead of jumping directly to a conclusion.
 
-短期记忆通常保存在上下文历史中，用于保持对话连续；长期记忆常由向量数据库或知识图谱等外部知识库承担，用于检索过去积累的信息。
+Short-term memory is usually kept in the conversation context to maintain continuity. Long-term memory is often managed by external knowledge bases, such as vector databases or knowledge graphs, to retrieve previously accumulated information.
 
-**Tools（工具）**负责查询数据、调用 API、读写文件或执行代码。执行结果必须追加进上下文，成为下一轮的 Observation（观察）；否则模型看不到外部操作的反馈，后续动作也就无从判断。
+**Tools** query data, call APIs, read and write files, or execute code. Their results must be appended to the context as the next iteration's Observation. Otherwise, the model cannot see the feedback from external operations or decide what to do next.
 
-工具调用的完整链路、权限、二次确认、幂等、审计、超时和 Java 示例，见 [结构化输出与 Function Calling](../llm-basis/structured-output-function-calling.md)；任务完成率、工具调用和执行轨迹等指标，见 [Agent 应用怎么评测](../llm-basis/llm-evaluation.md#agent-应用怎么评测)。
+For the full tool-calling lifecycle, permissions, confirmation, idempotency, auditing, timeouts, and Java examples, see [Structured Output and Function Calling](../llm-basis/structured-output-function-calling.md). For evaluation metrics such as task completion, tool calls, and execution traces, see [How to Evaluate Agent Applications](../llm-basis/llm-evaluation.md#agent-应用怎么评测).
 
-### 什么是 Agent Loop？
+### What Is an Agent Loop?
 
-Agent Loop 把这条反馈链路连续跑起来。每轮先由 LLM 根据上下文选择动作，再执行工具并写回结果；任务完成或命中停止条件时退出。
+An Agent Loop continuously runs this feedback cycle. In each iteration, the LLM selects an action based on the context, executes a tool, and writes back the result. The loop ends when the task is complete or a stop condition is met.
 
-![Agent Loop 工作流程](../images/shared/agent-loop-flow.png)
+![Agent Loop workflow](../images/shared/agent-loop-flow.png)
 
-Loop 初始化时载入 System Prompt、工具列表和用户请求。之后模型在“直接回复”和“调用工具”之间选择；工具结果写回上下文，直到模型不再请求工具。
+At initialization, the Loop loads the System Prompt, tool list, and user request. The model then chooses between replying directly and calling a tool. Tool results are written back to the context until the model no longer requests tools.
 
-最大迭代轮次设在 10 到 20 轮是常见上限之一，也可以按 Token 消耗终止。这个边界用来阻止错误判断把任务带进无限循环。
+A common upper limit is 10 to 20 iterations; the loop can also stop based on Token usage. This boundary prevents incorrect decisions from sending a task into an infinite loop.
 
-上下文会随着每轮结果不断变长，关键信息被稀释后，模型更容易跑偏。Context Engineering 处理的正是筛选和组织这些信息的问题。LangChain、LlamaIndex、Spring AI 提供的封装不同，底层都绕不开这条 Loop。
+The context grows with each result, and as key information becomes diluted, the model is more likely to go off track. Context Engineering addresses how to filter and organize this information. LangChain, LlamaIndex, and Spring AI package things differently, but all rely on this underlying Loop.
 
-### 做一个 Agent 系统，最少要搞定哪三层？
+### What Are the Three Minimum Layers in an Agent System?
 
-接模型的代码通常归到 **LLM Call**：在这里处理 OpenAI、Anthropic、Hugging Face 等接口差异，以及流式输出、Token 截断和重试。
+Code that connects to a model usually belongs in **LLM Call**. This layer handles differences between OpenAI, Anthropic, Hugging Face, and other APIs, along with streaming, Token truncation, and retries.
 
-**Tools Call** 负责把 Function Calling、MCP、Skills，以及文件读写、网页搜索、代码沙箱和第三方 API 接给模型。外部能力是否可用、返回什么格式，都会影响下一轮决策。
+**Tools Call** connects Function Calling, MCP, Skills, file access, web search, code sandboxes, and third-party APIs to the model. The availability and format of external capabilities affect the next decision.
 
-传给模型的 Prompt、动态记忆、会话状态和工具描述由 **Context Engineering** 组织。上下文缺少任务所需信息，或混入太多无关内容时，即使模型本身能力足够，任务也可能无法推进。
+**Context Engineering** organizes the Prompt, dynamic memory, session state, and tool descriptions sent to the model. If the context lacks information needed for the task or contains too much irrelevant content, the task may stall even when the model is capable.
 
-## Tools 注册与调用遵循什么标准格式？
+## What Standard Formats Do Tools Use for Registration and Calls?
 
-Agent 想准确调用外部工具，绕不开两个东西：OpenAI Schema 和 MCP。
+To call external tools accurately, an Agent relies on two things: the OpenAI Schema and MCP.
 
-OpenAI Schema 解决数据格式问题，MCP 解决通信接入问题。
+The OpenAI Schema defines the data format; MCP handles communication and integration.
 
-### 数据格式：Function Calling Schema
+### Data Format: Function Calling Schema
 
-外部工具可以很复杂，但 LLM 推理时只认结构化描述。
+External tools can be complex, but the LLM reasons from structured descriptions.
 
-现在主流的数据格式基本都在向 OpenAI Function Calling Schema 靠拢。Anthropic、Google 这些厂商也都支持类似形式。
+Most common data formats are converging on the OpenAI Function Calling Schema. Providers such as Anthropic and Google support similar formats.
 
-它用 JSON Schema 描述工具名称、用途、参数类型、必填字段。模型根据这段描述判断要不要调用工具，以及参数该怎么填。
+It uses JSON Schema to describe a tool's name, purpose, parameter types, and required fields. The model uses this description to decide whether to call the tool and how to fill in its parameters.
 
-比如一个大数据工程师常见的工具：查询慢 SQL 日志。
+For example, a big data engineer might use a tool to query slow SQL logs:
 
 ```json
 {
   "type": "function",
   "function": {
     "name": "query_slow_sql",
-    "description": "查指定微服务在特定时间段的慢 SQL 日志。服务响应慢、数据库超时、CPU 飙升的时候用这个。如果用户问的是网络或内存问题，别调这个。",
+    "description": "Query slow SQL logs for a specified microservice and time range. Use this when a service responds slowly, a database times out, or CPU usage spikes. Do not use it for network or memory issues.",
     "parameters": {
       "type": "object",
       "properties": {
         "service_name": {
           "type": "string",
-          "description": "服务名，比如 user-service、order-service"
+          "description": "Service name, such as user-service or order-service"
         },
         "time_range": {
           "type": "string",
-          "description": "时间范围，格式 HH:MM-HH:MM，比如 09:00-09:30"
+          "description": "Time range in HH:MM-HH:MM format, such as 09:00-09:30"
         },
         "threshold_ms": {
           "type": "integer",
-          "description": "慢 SQL 判定阈值（毫秒），默认 1000"
+          "description": "Slow SQL threshold in milliseconds; defaults to 1000"
         }
       },
       "required": ["service_name", "time_range"]
@@ -161,241 +161,241 @@ OpenAI Schema 解决数据格式问题，MCP 解决通信接入问题。
 }
 ```
 
-工具描述写得好不好，会直接影响 Agent 的判断。
+The quality of a tool description directly affects the Agent's decisions.
 
-模型是否调用工具、怎样填写参数，主要依据 `description`。描述中应同时给出适用和不适用的条件。例如慢 SQL 查询工具明确排除网络和内存问题，模型就不会在方向不符时调用它。
+The model mainly relies on `description` to decide whether to call a tool and how to fill in parameters. Include both when to use the tool and when not to use it. For example, explicitly excluding network and memory issues from a slow SQL query tool helps the model avoid calling it for the wrong problem.
 
-### 进阶封装：Skills
+### A Higher-Level Wrapper: Skills
 
-一次慢查询排查往往需要依次读日志、运行分析脚本，再按团队规范组织建议。若每次都由 Agent 临时规划，步骤和输出都难以稳定复用。
+A slow-query investigation often involves reading logs, running analysis scripts, and then organizing recommendations according to team conventions. If the Agent plans these steps from scratch each time, the process and output are difficult to reuse consistently.
 
-Skill 用可按需加载的指令文件保存这条执行链的顺序、约束条件和踩坑记录。宿主判断任务匹配后，才把相关内容放入上下文。
+A Skill stores the sequence, constraints, and lessons learned in this workflow as an instruction file that can be loaded on demand. The host adds the relevant content to the context only when the task matches.
 
-常见的封装方式有两种：
+There are two common ways to package these workflows:
 
-**传统 Toolkits（黑盒）**在代码中把多个原子工具组合成高阶工具，对外只暴露 JSON Schema，LLM 看不到内部路径。它适合逻辑固定、需要减少推理步骤和 Token 消耗的场景。
+**Traditional Toolkits (black boxes)** combine multiple atomic tools into a higher-level tool in code and expose only a JSON Schema. The LLM cannot see the internal process. This is suitable for fixed logic when reducing reasoning steps and Token usage is important.
 
-需要查看执行路径的 **Agent Skills（白盒）** 通常以 `SKILL.md` 作为入口，用自然语言表达任务指令。一个 Skill 通常是独立文件夹：
+**Agent Skills (white boxes)** expose the execution process and usually use `SKILL.md` as an entry point for natural-language instructions. A Skill typically has its own directory:
 
 ```text
 .claude/skills/code-reviewer/
-├── SKILL.md          ← YAML front-matter + 详细指令
-├── scripts/xxx.py    ← 可选：配套脚本
-└── reference.md      ← 可选：参考资料
+├── SKILL.md          ← YAML front matter and detailed instructions
+├── scripts/xxx.py    ← Optional supporting scripts
+└── reference.md      ← Optional reference material
 ```
 
-`SKILL.md` 前面的轻量元数据用于发现，说明 Skill 的用途和触发条件；正文则记录流程、约束和示例。宿主先读取元数据，模型判断需要后才加载完整正文，这种延迟加载是 Agent Skills 与传统 Toolkits 的关键差异。
+The lightweight metadata at the top of `SKILL.md` makes the Skill discoverable and describes its purpose and activation conditions. The body contains procedures, constraints, and examples. The host reads the metadata first; the full instructions are loaded only if the model determines they are needed. This deferred loading is a key difference between Agent Skills and traditional Toolkits.
 
-Claude Code、Cursor 等工具会扫描项目中的 `.claude/skills/` 目录，由模型决定是否激活某个 Skill。调用路径固定时用 Toolkits；需要沉淀团队经验、又保留任务流程弹性时，Agent Skills 更合适。路由设计、`SKILL.md` 的写法和第三方 Skill 安全审计可参见：[《Agent Skills 详解》](https://javaguide.cn/ai/agent/skills.html)。
+Tools such as Claude Code and Cursor scan the project's `.claude/skills/` directory and let the model decide whether to activate a Skill. Use Toolkits when the call path is fixed; Agent Skills are better when you want to preserve team knowledge while keeping the workflow flexible. See [Agent Skills Explained](https://javaguide.cn/ai/agent/skills.html) for routing design, writing `SKILL.md`, and auditing third-party Skills for security.
 
-### 通信接入：MCP 协议
+### Communication and Integration: The MCP Protocol
 
-Function Calling Schema 描述工具的名称、参数和用途，MCP 则规定工具如何接入宿主程序；两者解决的问题不同。
+The Function Calling Schema describes a tool's name, parameters, and purpose. MCP defines how tools connect to the host application. They solve different problems.
 
-Anthropic 在 2024 年 11 月推出 MCP。它要解决的痛点很直接：以前开发者要在代码里手动维护一堆映射，比如：
+Anthropic introduced MCP in November 2024. It addresses a straightforward problem: developers previously had to maintain mappings in code by hand, such as:
 
-工具名称 → 实际执行函数 + JSON Schema 描述
+Tool name → implementation function + JSON Schema description
 
-接一个新工具，就写一堆胶水代码。工具越多，维护越难。
+Each new tool required more glue code, and maintenance became harder as the number of tools grew.
 
-MCP 提供了一套基于 JSON-RPC 2.0 的统一通信协议，经常被叫作 AI 领域的 “USB-C 接口”。外部系统通过 MCP Server 暴露能力，宿主程序连接 Server 后，就能自动发现并注册工具。
+MCP provides a unified communication protocol based on JSON-RPC 2.0. It is often called the "USB-C port" of AI. External systems expose capabilities through MCP Servers, and the host application can automatically discover and register tools after connecting to a Server.
 
-![MCP 图解](../images/shared/mcp-simple-diagram.png)
+![MCP diagram](../images/shared/mcp-simple-diagram.png)
 
-这样 AI 应用和底层外部代码就解耦了。
+This decouples the AI application from the underlying external code.
 
-MCP 定义了三类标准原语：
+MCP defines three standard primitives:
 
-| 原语类型  | 作用                     | 例子                           |
-| --------- | ------------------------ | ------------------------------ |
-| Tools     | LLM 主动调用的函数       | 查询数据库、发送邮件、执行代码 |
-| Resources | Agent 按需读取的只读数据 | 本地文件、数据库记录、日志流   |
-| Prompts   | 可复用的提示词模板       | 代码审查模板、故障报告模板     |
+| Primitive | Purpose                                           | Examples                                         |
+| --------- | ------------------------------------------------- | ------------------------------------------------ |
+| Tools     | Functions that the LLM can call                   | Query a database, send email, execute code       |
+| Resources | Read-only data that an Agent can access on demand | Local files, database records, log streams       |
+| Prompts   | Reusable prompt templates                         | Code review templates, incident report templates |
 
-这里容易混的一点是：MCP Server 对外暴露工具时，内部还是会用 JSON Schema 描述参数规范。
+One point that can be confusing: an MCP Server still uses JSON Schema internally to describe the parameters of the tools it exposes.
 
-JSON Schema 是数据格式，MCP 是通信协议层。
+JSON Schema is a data format; MCP is a communication protocol.
 
-## 什么是 Prompt Engineering？
+## What Is Prompt Engineering?
 
-Prompt 是给大语言模型的指令与上下文。Prompt Engineering 要处理的是任务边界、输出格式和约束条件：缺少这些信息时，模型只能自行猜测；条件明确后，输出才有稳定的依据。具体方法见：[《提示词工程（Prompt Engineering）》](https://javaguide.cn/ai/agent/prompt-engineering.html)。
+A Prompt is the instructions and context given to a large language model. Prompt Engineering defines task boundaries, output formats, and constraints. Without this information, the model has to guess; clear conditions make output more consistent. See [Prompt Engineering](https://javaguide.cn/ai/agent/prompt-engineering.html) for techniques.
 
-## 什么是 Context Engineering？
+## What Is Context Engineering?
 
-上下文混入过多无关信息时，模型即使具备相应能力，任务效果也会下降。
+When the context contains too much irrelevant information, task performance may decline even if the model has the necessary capabilities.
 
-Context Engineering 做的事情，就是在有限 Token 窗口里，把最有用的信息喂给模型，把噪声挡在外面。它很容易和 Prompt Engineering 混在一起。
+Context Engineering provides the most useful information to the model within a limited Token window while filtering out noise. It is easy to confuse with Prompt Engineering.
 
-Prompt Engineering 更偏提示词怎么写，Context Engineering 管得更宽，包括规则、记忆、工具描述、会话状态、外部观察结果、Token 预算。
+Prompt Engineering focuses on how to write prompts. Context Engineering covers more: rules, memory, tool descriptions, session state, external observations, and the Token budget.
 
-![Context Engineering 和 Prompt Engineering 差别](../images/shared/context-engineering-vs-context-engineering-dimension-comparison.png)
+![Difference between Context Engineering and Prompt Engineering](../images/shared/context-engineering-vs-context-engineering-dimension-comparison.png)
 
-这块展开讲内容很多，可以单独看这两篇：[《提示词工程（Prompt Engineering）》](https://javaguide.cn/ai/agent/prompt-engineering.html) 和 [《上下文工程（Context Engineering）》](https://javaguide.cn/ai/agent/context-engineering.html)。
+There is much more to cover here; see [Prompt Engineering](https://javaguide.cn/ai/agent/prompt-engineering.html) and [Context Engineering](https://javaguide.cn/ai/agent/context-engineering.html) for separate guides.
 
-## Agent 核心范式有哪些？
+## What Are the Core Agent Patterns?
 
 ### ReAct
 
-ReAct 是 Reasoning + Acting，由 Shunyu Yao 等人在 2022 年提出，论文是[《ReAct: Synergizing Reasoning and Acting in Language Models》](https://react-lm.github.io/)。
+ReAct combines Reasoning and Acting. Shunyu Yao and others introduced it in 2022 in the paper [ReAct: Synergizing Reasoning and Acting in Language Models](https://react-lm.github.io/).
 
-LangChain、LlamaIndex、AgentScope 这类框架里的 Agent 模块，很多都能看到这个范式的影子。
+Many Agent modules in frameworks such as LangChain, LlamaIndex, and AgentScope are influenced by this pattern.
 
-它的思路很直观：模型先推理一步，拿到外部环境反馈，再推理下一步，交替进行。
+The idea is straightforward: the model reasons for one step, receives feedback from the external environment, and reasons about the next step, repeating this cycle.
 
-LLM 自己容易缺少实时信息，也容易幻觉。ReAct 就让它“走一步看一步”，每一步都根据工具返回结果继续判断。
+LLMs often lack real-time information and can hallucinate. ReAct lets the model "take one step at a time," using tool results to inform each subsequent decision.
 
-![ReAct-LLM](../images/shared/react-llm.png)
+![ReAct and LLM](../images/shared/react-llm.png)
 
-比如任务是：帮我排查一下今天早上 user-service 接口变慢的原因，并把结果发给负责人。
+For example, suppose the task is to investigate why the user-service API slowed down this morning and send the findings to the owner.
 
-ReAct 跑起来大概是这样。
+This is roughly how ReAct would handle it.
 
-它先查 user-service 早上的监控，发现 9 点到 9:30 CPU 飙到 98%，同时有大量慢 SQL 告警。
+First, it checks the morning metrics for user-service and finds that CPU usage spiked to 98% between 9:00 and 9:30, along with many slow SQL alerts.
 
-然后顺着这条线去翻日志，捞出那条慢 SQL，发现是一个没走索引的全表扫描。
+It follows this lead into the logs, retrieves the slow SQL query, and finds that it performed a full table scan without using an index.
 
-接着去查服务负责人，通讯录里找到王建国，邮箱是 wangjianguo@company.com。
+Next, it looks up the service owner and finds Wang Jianguo in the contact directory at wangjianguo@company.com.
 
-最后组织排查报告，发邮件通知。
+Finally, it prepares an investigation report and sends an email notification.
 
-这个过程不是一开始就写死的。如果监控显示的是内存 OOM，第二步就应该去查 Heap Dump，而不是继续翻慢 SQL。
+This process is not predefined. If the metrics showed an out-of-memory error instead, the next step should be to inspect the Heap Dump rather than continue searching for slow SQL.
 
-ReAct 的价值就在这里：它能根据证据不断修正方向。
+That is the value of ReAct: it can adjust its approach as evidence arrives.
 
-ReAct 落地时一般需要这几个组件配合：
+ReAct implementations generally need these components:
 
-1. 历史上下文，保存推理步骤、执行动作、反馈观察
-2. 实时环境输入，比如系统告警、用户反馈等外部变量
-3. LLM 推理模块：负责逻辑分析和下一步规划
-4. 工具集与技能库，包括原子工具和 Skills
-5. 反馈观察机制，采集工具响应并追加回上下文
+1. Historical context to store reasoning steps, actions, and observations.
+2. Real-time environment input, such as system alerts and user feedback.
+3. An LLM reasoning module for analysis and planning the next step.
+4. A tool and Skill library, including atomic tools.
+5. A feedback mechanism to collect tool responses and add them to the context.
 
-![ReAct 模式流程](../images/shared/agent-react-flow.png)
+![ReAct workflow](../images/shared/agent-react-flow.png)
 
-ReAct 的每一步都由外部观察结果推动，因而比一次性生成更容易追溯决策依据，也能减少脱离环境的判断。相应地，多轮调用会增加响应延迟，效果还取决于工具和 Skills 是否可靠。
+Each ReAct step is driven by external observations, making its decisions easier to trace and less detached from the environment than one-shot generation. In return, multiple calls increase response latency, and effectiveness depends on reliable tools and Skills.
 
-例如，查监控、查日志、分析瓶颈可以封装为 `diagnose_service_performance` Skill，向 LLM 返回结构化诊断摘要。这样无需在每次排障时都从原子步骤重新组合。
+For example, checking metrics and logs and analyzing bottlenecks can be packaged into a `diagnose_service_performance` Skill that returns a structured diagnostic summary to the LLM. This avoids rebuilding the workflow from atomic steps for every investigation.
 
 ### Plan-and-Execute
 
-LangChain 团队在 2023 年提出 Plan-and-Execute：先由 LLM 生成全局分步计划，再交给执行器逐项完成。步骤较多、依赖关系明确的长任务使用这种方式，更容易保持全局进度。
+The LangChain team introduced Plan-and-Execute in 2023. The LLM first creates a global step-by-step plan, then an executor completes each item. This approach helps maintain overall progress in long tasks with many steps and clear dependencies.
 
-计划也是它的边界。执行过程中若出现未预料的结果，动态调整和容错能力会弱于边做边判断的 ReAct，行为会更接近静态工作流。
+The plan is also a limitation. If an unexpected result occurs during execution, dynamic adjustment and error recovery are weaker than in ReAct, where the model decides as it goes. Its behavior is closer to a static Workflow.
 
-两种模式可以嵌套：用 CoT 给出全局步骤，每个步骤内部运行 ReAct 子循环。计划提供结构，子循环处理局部的不确定性。
+The two patterns can be nested: use CoT to define global steps, then run a ReAct sub-loop within each step. The plan provides structure, while the sub-loops handle local uncertainty.
 
 ### Reflection
 
-Reflection 通过自然语言反馈纠正 Agent 行为，不需要修改模型权重。常见实现分别处理不同阶段：
+Reflection corrects Agent behavior through natural-language feedback without changing model weights. Common implementations handle different stages:
 
-- Reflexion 在任务失败后记录反思结论到记忆缓冲区。例如代码调试发现 `count` 在调用前未初始化，下一轮可据此规避。
-- Self-Refine 让模型在完成回答、代码或文案后审查输出，再进行迭代修改。
-- CRITIC 借助搜索引擎、代码执行器等外部工具验证事实，再按验证结果修正。
+- Reflexion records reflections in a memory buffer after task failure. For example, if debugging reveals that `count` was not initialized before a call, the Agent can avoid the issue in the next iteration.
+- Self-Refine has the model review and iteratively revise its answer, code, or copy after generating it.
+- CRITIC verifies facts using external tools such as search engines and code executors, then revises based on the results.
 
-Reflection 通常叠加在 ReAct 或 Plan-and-Execute 上：执行过程中加入校验与调整，具体任务仍由原有的执行机制完成。
+Reflection is usually layered on top of ReAct or Plan-and-Execute: validation and adjustment are added during execution, while the underlying pattern still performs the task.
 
 ### Multi-Agent
 
-任务能拆成规划、执行、验收等相对独立的职责时，可以交给多个 Agent 协作完成。**Orchestrator-Subagent 模式**由编排 Agent 制定全局计划、分发任务，子 Agent 并行或串行执行，再由编排层汇总结果。
+When a task can be divided into relatively independent roles such as planning, execution, and validation, multiple Agents can collaborate. In the **Orchestrator-Subagent pattern**, an orchestrator Agent creates a global plan and assigns tasks to subagents, which execute in parallel or sequentially. The orchestrator then combines their results.
 
-需要辩论、评审或相互验证时，可采用 **Peer-to-Peer 模式**，由地位对等的 Agent 直接对话和审查。
+For debate, review, or mutual verification, use a **Peer-to-Peer pattern**, where Agents with equal roles communicate and review each other's work directly.
 
-![Multi-Agent 系统架构](../images/shared/agent-multi-agent-arch.png)
+![Multi-Agent system architecture](../images/shared/agent-multi-agent-arch.png)
 
-当任务确实能按专业角色拆分时，Multi-Agent 可以并行执行，且单个子任务失败未必阻断整体。代价是 Agent 间的通信、协调和调试成本都会上升，Token 消耗也随之增加。
+When a task can genuinely be split by specialization, Multi-Agent systems can run tasks in parallel, and failure of one subtask may not block the rest. The tradeoff is higher communication, coordination, debugging, and Token costs.
 
-落地时还要处理任务契约、共享状态、并行写冲突、Worker 接管和检查点恢复。详细设计可以看 [《多 Agent 协作系统设计：任务拆分、状态共享、冲突处理与失败恢复》](./multi-agent.md)。
+Implementation must also handle task contracts, shared state, parallel write conflicts, Worker takeover, and checkpoint recovery. See [Multi-Agent System Design: Task Decomposition, Shared State, Conflict Handling, and Failure Recovery](./multi-agent.md) for details.
 
-### 结构化任务契约
+### Structured Task Contracts
 
-单个 Agent 升级到 Multi-Agent 后，Agent 之间怎么沟通会变成一个工程问题。
+When moving from a single Agent to a Multi-Agent system, communication between Agents becomes an engineering problem.
 
-如果还靠自然语言互相聊天，Token 消耗很高，也容易出现格式解析错误。
+Relying on natural-language conversations between Agents consumes many Tokens and can lead to parsing errors.
 
-结构化任务契约可以减少这类交接问题。
+Structured task contracts can reduce these handoff problems.
 
-它要求角色之间交付带 Schema 的结果，而不是一段自然语言，比如用 JSON、XML 表达任务字段、结果和状态流转指令。
+They require roles to exchange results that follow a Schema rather than free-form text. For example, JSON or XML can express task fields, results, and state-transition instructions.
 
-类比一下，后端微服务之间不会通过解析 HTML 页面交换数据，而是用 RESTful 或 RPC 接口传结构化对象。
+By analogy, backend microservices do not exchange data by parsing HTML pages; they use RESTful or RPC interfaces to send structured objects.
 
-结构化任务契约明确每个角色接收什么、交付什么，以及如何校验结果。
+Structured task contracts define what each role receives, what it must deliver, and how its result is validated.
 
-比如“产品经理 Agent”写完需求后，不会输出一句“我写好了，你开发一下”。它应该输出一个标准 JSON Payload，里面包含 TaskID、Dependencies、AcceptanceCriteria。开发 Agent 拿到后直接反序列化，进入执行流程。
+For example, after writing requirements, a "Product Manager Agent" should not simply say, "I finished; please implement this." It should return a standard JSON payload containing `TaskID`, `Dependencies`, and `AcceptanceCriteria`. The development Agent can deserialize it and start execution.
 
-这种结构化交付不等于实现了 A2A 协议；跨进程 Agent 的能力发现、任务状态和产物交付，见 [多 Agent 篇的 A2A 一节](./multi-agent.md#a2a-能解决什么-不能解决什么)。
+Structured delivery does not mean that the A2A protocol has been implemented. For capability discovery, task state, and artifact delivery between Agents in different processes, see the [A2A section in the Multi-Agent guide](./multi-agent.md#a2a-能解决什么-不能解决什么).
 
-![A2A 协议架构](../images/shared/agent-a2a.png)
+![A2A protocol architecture](../images/shared/agent-a2a.png)
 
 ### Agentic Workflows
 
-Agentic Workflows 是吴恩达（Andrew Ng）重点倡导的概念，强调用工程编排把推理、工具、记忆、反思和多实体协作接成可执行流程，而不只等待底层模型能力变化。
+Agentic Workflows is a concept strongly advocated by Andrew Ng. It emphasizes engineering orchestration that connects reasoning, tools, memory, reflection, and multi-Agent collaboration into executable workflows instead of waiting for underlying models to improve.
 
-![智能体工作流核心模式](../images/shared/agent-agentic-workflows.png)
+![Core patterns in Agentic Workflows](../images/shared/agent-agentic-workflows.png)
 
-其中常见的设计模式包括：
+Common design patterns include:
 
-1. Reflection——让模型检查自己的工作
-2. Tool Use——给 LLM 配网络搜索、代码执行等工具
-3. Planning——让模型提出多步计划并执行
-4. Multi-agent Collaboration——多个 Agent 协作完成任务
+1. Reflection: have the model review its own work.
+2. Tool Use: give the LLM tools such as web search and code execution.
+3. Planning: have the model propose and execute a multi-step plan.
+4. Multi-Agent Collaboration: have multiple Agents work together to complete a task.
 
-这些模式在真实项目中通常组合出现。例如先用 Planning 拆分任务，在子任务中运行 ReAct、调用 Tools，最后用 Reflection 检查结果。Agentic Workflows 描述的是这种组合方式，而不是某个单独框架。
+These patterns are usually combined in real projects. For example, use Planning to decompose a task, run ReAct and call Tools in subtasks, then use Reflection to check the result. Agentic Workflows describes this combination, not a specific framework.
 
-## AI 工作流和 Agent 到底是什么关系？
+## How Do AI Workflows and Agents Relate?
 
-“生成初稿、质量审核、按反馈修改”这类流程里，步骤顺序和重试条件可以预先写进图结构；LLM 只在某个节点生成或判断。这样的 AI 工作流能把问题定位到具体节点和边。
+In a workflow such as "generate a draft, review its quality, and revise based on feedback," the step order and retry conditions can be defined in a graph in advance; the LLM only generates or makes decisions at specific nodes. This makes it possible to trace problems to a specific node or edge.
 
-纯 Agent 则由 LLM 在运行中决定是否调用工具、调用什么工具和后续路径。它适合查什么、怎么查取决于中间证据的任务。
+In a pure Agent, the LLM decides at runtime whether to call a tool, which tool to call, and what path to take next. This suits tasks where what to investigate and how to investigate it depend on intermediate evidence.
 
-Agentic Workflows 把两种方式放在同一条链路中：全局 Workflow 固定主流程，只在路径不确定的局部嵌入 Agent 子循环。
+Agentic Workflows combine the two approaches: a global Workflow fixes the main process and embeds Agent sub-loops only where the path is uncertain.
 
-### 工作流里的 Node、Edge、State 是什么？
+### What Are Nodes, Edges, and State in a Workflow?
 
-工作流运行时，Node（节点）负责执行，Edge（边）决定控制流，State（状态）在节点之间共享上下文；三者组成有向图（Graph）。
+At runtime, a Node performs work, an Edge determines control flow, and State shares context between nodes. Together they form a directed graph.
 
-Node 只做一件事，读取状态、执行逻辑、写回结果。节点里可以调 LLM，可以是工具调用，也可以是纯代码逻辑。写文章这个场景里，典型节点是“生成初稿”“质量审核”“按反馈修改”，节点职责越单一，越容易排查。Edge 决定执行完跳到哪——顺序边按路径走，条件边根据运行时状态分支，循环边让流程回到之前的节点重试。State 记录当前草稿、评分、重试次数这类东西，条件边的跳转往往基于 State 里的值来判断。
+A Node should do one thing: read state, execute logic, and write back a result. It can call an LLM, invoke a tool, or run ordinary code. For an article-writing task, typical nodes are "generate a draft," "review quality," and "revise based on feedback." Nodes with focused responsibilities are easier to troubleshoot. An Edge determines where execution goes next: sequential edges follow a path, conditional edges branch based on runtime state, and loop edges return to an earlier node for another attempt. State stores items such as the current draft, score, and retry count; conditional edges often use these values to determine where to go.
 
-“审核不通过就回到修改，最多重试 3 次”，翻译成图结构，是一条从 ReviewNode 指向 ReviseNode 的条件边，加上 `iteration_count >= 3` 时跳到 ExitNode 的安全边界。State 里的 `iteration_count` 是让这条逻辑能跑起来的关键。
+"If the review fails, return to revision, with at most 3 retries" becomes a conditional edge from `ReviewNode` to `ReviseNode`, plus a guard that jumps to `ExitNode` when `iteration_count >= 3`. The `iteration_count` in State is what makes this logic work.
 
-这套图结构比写死的 if-else 链更容易扩展，出了问题也好定位到哪个节点哪条边。LangGraph（Python）和 Spring AI Alibaba Graph（Java）都是基于这套思路实现的。详细设计和代码实现可以看：[《AI 工作流中的 Workflow、Graph 与 Loop》](https://javaguide.cn/ai/agent/workflow-graph-loop.html)。
+This graph structure is easier to extend than a hard-coded if-else chain and makes it easier to locate problems at a specific node or edge. LangGraph (Python) and Spring AI Alibaba Graph (Java) follow this approach. See [Workflows, Graphs, and Loops in AI Workflows](https://javaguide.cn/ai/agent/workflow-graph-loop.html) for detailed design and implementation.
 
-### 什么时候用 Agent，什么时候用 Workflow？
+### When Should You Use an Agent or a Workflow?
 
-执行路径能不能提前确定，是最简单的判断标准。
+The simplest criterion is whether the execution path can be determined in advance.
 
-能确定，用 Workflow。不能确定，用 Agent。两者都有，用 Agentic Workflows。
+If it can, use a Workflow. If not, use an Agent. If both are needed, use Agentic Workflows.
 
-但有个常见认知偏差：很多人觉得任务“路径不确定”，其实是需求没拆清楚。把任务认真拆一遍后，往往会发现大部分场景是“LLM 在固定节点里做生成或判断”，这种用 Workflow 更稳，也更容易排查。
+There is a common misconception: people may think a task's path is "uncertain" when its requirements have not been clearly decomposed. After breaking down a task carefully, many cases turn out to be "the LLM generates or makes a decision at fixed nodes." A Workflow is more reliable and easier to troubleshoot for these cases.
 
-真正适合纯 Agent 的任务，是那种你提前写不出执行步骤的场景。比如“帮我排查这个线上故障”，查什么、怎么查、查到什么程度，很难事先规定死。
+Pure Agents are best suited to tasks whose execution steps cannot be written in advance. For example, when investigating a production incident, it may be impossible to predefine what to check, how to check it, or how far the investigation should go.
 
-另一个判断维度是容错要求。Workflow 执行路径固定，出问题好排查；Agent 执行路径动态，调试难度高一个数量级。To B 商业场景优先考虑 Workflow 或 Agentic Workflows。
+Another criterion is fault tolerance. A Workflow's fixed execution path is easier to troubleshoot; an Agent's dynamic path can be an order of magnitude harder to debug. For B2B business scenarios, prefer Workflows or Agentic Workflows.
 
-## 各范式怎么选？
+## Choosing Between Patterns
 
-前面讲了 ReAct、Plan-and-Execute、Reflection、Multi-Agent、AI 工作流这一堆概念，做项目时面对这些选型容易头大。做个简单的参考：
+The previous sections covered ReAct, Plan-and-Execute, Reflection, Multi-Agent systems, and AI Workflows. Choosing between them can be overwhelming, so use this table as a starting point:
 
-| 场景特征                         | 推荐方向           | 代价                            |
-| -------------------------------- | ------------------ | ------------------------------- |
-| 执行路径可提前确定，节点需要 LLM | AI 工作流（Graph） | 稳定可观测，前期设计成本高      |
-| 执行路径不确定，需要动态规划     | ReAct              | 灵活，Token 消耗高，调试难      |
-| 任务很长，步骤多但结构清晰       | Plan-and-Execute   | 不易迷路，动态调整弱            |
-| 输出质量要求高，允许多轮迭代     | 叠加 Reflection    | 和 ReAct/P&E 配合用，不单独用   |
-| 任务天然可拆成多个专业角色       | Multi-Agent        | 通信和调试成本翻倍              |
-| 长任务 + 部分子任务不可预测      | Agentic Workflows  | 全局 Workflow + 局部 ReAct 嵌套 |
+| Scenario                                                           | Recommended approach | Tradeoff                                                  |
+| ------------------------------------------------------------------ | -------------------- | --------------------------------------------------------- |
+| Execution path is known in advance, with LLMs needed at some nodes | AI Workflow (Graph)  | Stable and observable, but has higher upfront design cost |
+| Execution path is uncertain and needs dynamic planning             | ReAct                | Flexible, but uses more Tokens and is harder to debug     |
+| Long task with many clear steps                                    | Plan-and-Execute     | Easier to stay on track, but weaker at dynamic adjustment |
+| High output-quality requirements with room for iteration           | Add Reflection       | Use with ReAct or Plan-and-Execute, not on its own        |
+| Task naturally divides into specialized roles                      | Multi-Agent          | Communication and debugging costs can double              |
+| Long task with some unpredictable subtasks                         | Agentic Workflows    | Global Workflow with local ReAct sub-loops                |
 
-先用最简单的方式跑通，再根据实际失败模式决定升级哪一层。
+Start with the simplest approach that works, then decide which layer to upgrade based on actual failure patterns.
 
-上来就搞 Multi-Agent、全靠模型动态推理、上下文不做任何管理，踩进去了再爬出来会很费劲。
+Starting with Multi-Agent, relying entirely on dynamic model reasoning, and ignoring context management can create problems that are difficult to recover from.
 
-## 总结
+## Summary
 
-大部分 Agent 项目跑起来不稳定，不是模型不够好。
+Most unstable Agent projects are not unstable because the model is inadequate.
 
-基础没搭好。LLM + Planning + Memory + Tools 四块，缺哪个都有明显短板。Tools 没有，Agent 停留在“给建议”阶段；Memory 没有，稍微长一点的任务就开始失忆；上下文管不好，模型随便跑偏。
+The foundations are incomplete. Omitting any of the four parts—LLM, Planning, Memory, or Tools—creates a clear weakness. Without Tools, the Agent can only give suggestions. Without Memory, it forgets during longer tasks. Poor context management makes it easy to go off track.
 
-选型也容易选错。ReAct 灵活但调试难，Token 烧得也多；Workflow 稳但对需求拆解要求高，提前设计不够充分的话，后面改起来也费劲；Multi-Agent 接入后通信和调试成本容易超出预期。上来就搞最复杂的方案，是工程实践里最常见的陷阱。
+Pattern selection can also go wrong. ReAct is flexible but difficult to debug and consumes more Tokens. Workflows are stable but require clear requirements; insufficient upfront design makes later changes difficult. Multi-Agent systems can have unexpectedly high communication and debugging costs. Starting with the most complex solution is a common engineering trap.
 
-还有一块很容易忽略：工具描述。MCP 解决接入方式，JSON Schema 解决描述格式，但模型到底调不调这个工具、参数怎么填，最后都靠 description 里那几句话。这块省了力气，后面会双倍还回来。
+Tool descriptions are easy to overlook. MCP handles integration and JSON Schema defines the description format, but the model relies on the few sentences in `description` to decide whether to call a tool and how to set its parameters. Skimping on this work creates more work later.
 
-Agent 和工作流的选型其实没那么复杂，先把任务执行路径写出来，能写出来就用 Workflow，写不出来再上 Agent。这个判断先做好，比追框架有用得多。
+Choosing between an Agent and a Workflow is not complicated: write down the task's execution path first. If you can define it, use a Workflow; if you cannot, use an Agent. This decision is more useful than chasing frameworks.

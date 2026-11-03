@@ -1,372 +1,372 @@
 ---
-title: Harness 是什么？Harness Engineering 六层架构与 Agent 工程实践
-description: Harness 是什么？本文从 Agent = Model + Harness 出发，讲解 Agent Harness 的六层架构、上下文管理、工具调用、验证闭环与故障恢复，并结合 OpenAI、Anthropic、Stripe 等团队的工程实践说明设计取舍。
-category: AI 应用开发
+title: What Is a Harness? Six Layers of Harness Engineering and Agent Practices
+description: Starting from Agent = Model + Harness, this guide explains the six-layer Agent Harness architecture, context management, tool use, validation loops, and failure recovery, with examples from OpenAI, Anthropic, Stripe, and other teams.
+category: AI Application Development
 head:
   - - meta
     - name: keywords
-      content: Harness是什么,Harness Engineering,Agent Harness,Harness架构,Harness工程,AI Agent,智能体,Claude Code,Codex,AGENTS.md,上下文工程,Agent架构
+      content: Harness,Harness Engineering,Agent Harness,Harness architecture,AI Agent,Claude Code,Codex,AGENTS.md,Context Engineering,Agent architecture
 ---
 
-Agent Harness 是运行在大模型外部的一套执行系统。它负责组织上下文、提供工具和执行环境，并把权限控制、状态管理、结果验证与失败恢复接入任务流程。Harness Engineering 研究的就是这套系统应该怎样设计。
+An Agent Harness is an execution system that runs outside a large language model. It organizes context, provides tools and an execution environment, and incorporates permission controls, state management, result validation, and failure recovery into the task workflow. Harness Engineering is the study of how to design this system.
 
-Can.ac 的一次编码评测中，Grok Code Fast 1 仅替换文件编辑接口，得分就[从 6.7% 升到 68.3%](https://blog.can.ac/2026/02/12/the-harness-problem/)。模型参数没有变化，差别出在接口提供了什么操作、怎样返回结果，以及错误能否被下一步利用。
+In a coding evaluation by Can.ac, Grok Code Fast 1's score [rose from 6.7% to 68.3%](https://blog.can.ac/2026/02/12/the-harness-problem/) after changing only the file-editing interface. The model parameters stayed the same. The difference came from which operations the interface exposed, how it returned results, and whether the next step could use errors.
 
-这类差异也解释了常见的 Agent 故障：重复调工具、忽略约束或在长任务中丢失状态，往往不能只靠换模型或补一句提示词解决。工具接口、执行环境、反馈和恢复机制同样决定任务能否继续。
+This kind of difference also explains common Agent failures. Repeated tool calls, ignored constraints, or lost state during a long task often cannot be fixed just by changing the model or adding a line to the Prompt. Tool interfaces, the execution environment, feedback, and recovery mechanisms also determine whether a task can proceed.
 
-后文先看 Harness 的组件与分层，再对照 OpenAI、Anthropic、Stripe 和 Mitchell Hashimoto 的实现取舍。
+The following sections cover Harness components and layers, then compare the design choices made by OpenAI, Anthropic, Stripe, and Mitchell Hashimoto.
 
-## Harness 是什么？
+## What Is a Harness?
 
 ### Agent = Model + Harness
 
-工程上常用 `Agent = Model + Harness` 区分两部分。模型负责推理和生成；Harness 管理系统提示词、工具调用、文件系统、沙箱、编排逻辑、钩子中间件、反馈回路和约束。
+In engineering, `Agent = Model + Harness` is a common way to distinguish the two parts. The model handles reasoning and generation; the Harness manages system prompts, tool calls, the file system, sandbox, orchestration logic, hook middleware, feedback loops, and constraints.
 
-模型本身不会保存跨会话状态，也无法执行命令或读取测试结果。Harness 要把任务状态、操作入口、执行环境和安全边界接起来，使模型输出转成可验证的动作。
+The model itself does not retain state across sessions, execute commands, or read test results. The Harness connects task state, action interfaces, the execution environment, and safety boundaries so model output becomes verifiable action.
 
-LangChain 的 Vivek Trivedi 在《The Anatomy of an Agent Harness》中用的切分方式很实用：先列出模型能做的事，再逐项补上它做不到的部分。沿着这条线排查，问题会落到具体缺口上，例如工具结果是否可读、任务状态是否持久化、失败后是否给出可执行的修复信息。
+Vivek Trivedi of LangChain uses a practical approach in [The Anatomy of an Agent Harness]: list what the model can do, then fill in the things it cannot do. This helps pinpoint concrete gaps, such as whether tool results are readable, task state is persistent, and failures provide actionable repair information.
 
 ![Agent = Model + Harness](../images/shared/harness-agent-equals-model-harness-arch.png)
 
-### Harness 和 Prompt / Context Engineering 的关系
+### How Harness, Prompt, and Context Engineering Relate
 
-Prompt Engineering、Context Engineering、Harness Engineering 不太适合放在同一层比较。它们更像一层套一层，处理的问题范围越来越大。
+Prompt Engineering, Context Engineering, and Harness Engineering are not best compared at the same level. They are nested layers that address increasingly broad problems.
 
-![Harness 和 Prompt/Context Engineering 的关系](../images/shared/harness-engineering-layers-arch.png)
+![How Harness, Prompt, and Context Engineering relate](../images/shared/harness-engineering-layers-arch.png)
 
-| 层级                | 解决的问题                         | 关注点                                     | 典型工作                                  |
-| ------------------- | ---------------------------------- | ------------------------------------------ | ----------------------------------------- |
-| Prompt Engineering  | 怎么把指令说清楚                   | 让模型理解意图，减少局部歧义               | 系统提示词设计、Few-shot 示例、思维链引导 |
-| Context Engineering | 该给 Agent 看什么                  | 在合适时机给模型提供正确且必要的信息       | 上下文管理、RAG、记忆注入、Token 优化     |
-| Harness Engineering | 系统怎么持续执行、纠偏、观测和恢复 | 长链路任务中的持续正确、偏差修正、故障恢复 | 文件系统、沙箱、约束执行、反馈回路、观测  |
+| Layer               | Problem addressed                                         | Focus                                                                       | Typical work                                                               |
+| ------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Prompt Engineering  | How to make instructions clear                            | Help the model understand intent and reduce local ambiguity                 | System prompt design, few-shot examples, chain-of-thought guidance         |
+| Context Engineering | What the Agent should see                                 | Provide the right information when needed                                   | Context management, RAG, memory injection, Token optimization              |
+| Harness Engineering | How the system executes, corrects, observes, and recovers | Sustained correctness, error correction, and recovery in long-running tasks | File system, sandbox, constraint enforcement, feedback loop, observability |
 
-简单任务里，Prompt 可能就够了。比如让模型改一句文案，提示词说清楚，效果通常不会差。需要外部知识时，Context 更重要，你得把资料、检索结果、历史状态放到合适位置。到了长链路、可执行、低容错的商业场景，Harness 才会变成主要矛盾，因为 Agent 需要的不只是“会回答”，还要能执行、验证、回滚、继续推进。
+For simple tasks, a Prompt may be enough. For example, asking a model to revise one sentence usually works if the prompt is clear. When external knowledge is needed, Context becomes more important: reference material, retrieval results, and historical state must be provided in the right place. In long-running, executable business workflows with little tolerance for error, the Harness becomes critical because the Agent must do more than answer; it must execute, validate, roll back, and continue.
 
-Prompt 能澄清局部指令，却不能提供文件访问、测试执行、状态保存或失败恢复；这些执行问题需要由 Harness 承担。
+A Prompt can clarify local instructions, but it cannot provide file access, run tests, save state, or recover from failure. The Harness handles these execution needs.
 
-### Harness 包含哪些组件？
+### What Components Does a Harness Include?
 
-想知道 Harness 里应该放什么，可以反过来问：模型做不到什么？
+To determine what belongs in a Harness, ask the reverse question: what can the model not do?
 
-大模型看起来很能干，但从系统角度看，它仍然主要是一个输入输出函数。输入一段上下文，输出一段文本或结构化调用。它不会天然记住历史，不会自己跑命令，不会知道代码是否真的通过测试，也不会自动区分哪些信息该保留、哪些该丢掉。
+An LLM can appear capable, but from a system perspective it is still primarily an input-output function: it receives context and returns text or a structured call. It does not inherently remember history, run commands, know whether code passed tests, or distinguish which information to keep and discard.
 
-| 模型做不到的事                       | Harness 怎么补                     | 对应组件     |
-| ------------------------------------ | ---------------------------------- | ------------ |
-| 记住多轮对话历史                     | 维护对话历史，每次请求时拼进上下文 | 记忆系统     |
-| 执行代码、跑命令                     | 提供 Bash 和代码执行环境           | 通用执行环境 |
-| 获取实时信息，比如新库版本、API 变化 | 接入 Web Search、MCP 工具          | 外部知识获取 |
-| 操作文件和环境                       | 抽象文件系统，引入 Git 版本控制    | 文件系统     |
-| 判断自己有没有做对                   | 提供沙箱、测试工具、浏览器自动化   | 验证闭环     |
-| 长任务中保持连贯                     | 做上下文压缩、记忆文件、进度追踪   | 上下文管理   |
+| What the model cannot do                                              | How the Harness fills the gap                                      | Component                     |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------ | ----------------------------- |
+| Remember multi-turn conversation history                              | Maintain conversation history and add it to each request's context | Memory system                 |
+| Execute code and commands                                             | Provide Bash and a code execution environment                      | General execution environment |
+| Get current information, such as new library versions and API changes | Integrate Web Search and MCP tools                                 | External knowledge retrieval  |
+| Operate on files and environments                                     | Abstract the file system and use Git version control               | File system                   |
+| Determine whether its work is correct                                 | Provide a sandbox, test tools, and browser automation              | Validation loop               |
+| Stay coherent during long tasks                                       | Summarize context, maintain memory files, and track progress       | Context management            |
 
-把这些“模型做不了，但你又希望 Agent 能做到”的部分补齐，就是 Harness 的组件清单。LangChain 也把它拆成了几块：文件系统负责持久化，Bash 执行负责通用工具，沙箱负责隔离风险，记忆机制负责跨会话积累，上下文压缩负责对抗长上下文带来的质量下降。
+Filling in the things "the model cannot do, but you want the Agent to do" gives you a list of Harness components. LangChain also divides them into several parts: the file system provides persistence, Bash execution provides general-purpose tools, the sandbox isolates risk, memory accumulates information across sessions, and context compression mitigates quality loss in long contexts.
 
-## Harness 进阶
+## Harness Design in Practice
 
-### 一个成熟的 Harness 长什么样？
+### What Does a Mature Harness Look Like?
 
-前面是从“模型缺什么，系统补什么”的角度看 Harness。如果换成系统设计视角，一个成熟的 Harness 通常会有清晰的分层。
+The previous section viewed the Harness as filling gaps in the model. From a system design perspective, a mature Harness usually has clear layers.
 
-为了便于检查系统是否缺项，本文把前述组件归纳为六层。这是分析框架，不是某个协议或业界统一标准：
+To make it easier to check for missing components, this guide groups them into six layers. This is an analytical framework, not a protocol or an industry standard:
 
-![Harness Engineering 六层架构](../images/shared/harness-engineering-six-layer-architecture.svg)
+![Six-layer Harness Engineering architecture](../images/shared/harness-engineering-six-layer-architecture.svg)
 
-| 层级 | 名称               | 解决什么问题                   | 关键设计                                                   |
-| ---- | ------------------ | ------------------------------ | ---------------------------------------------------------- |
-| L1   | 信息边界层         | Agent 该知道什么、不该知道什么 | 定义角色与目标，裁剪无关信息，结构化组织任务状态           |
-| L2   | 工具系统层         | Agent 怎么和外部世界交互       | 选择工具、控制调用时机、提炼工具结果并反馈                 |
-| L3   | 执行编排层         | 多步骤任务怎么串起来           | 让模型按“理解目标、判断信息、分析、生成、检查”的轨道推进   |
-| L4   | 记忆与状态层       | 长任务中间结果怎么管理         | 独立管理当前任务状态、中间产物和长期记忆，避免状态混在一起 |
-| L5   | 评估与观测层       | Agent 怎么知道自己做对了没有   | 建立独立于生成过程的验证机制                               |
-| L6   | 约束、校验与恢复层 | 出错了怎么办                   | 预设规则拦截错误，失败时提供重试、回滚或降级               |
+| Layer | Name                                  | Problem addressed                                     | Key design                                                                                                 |
+| ----- | ------------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| L1    | Information boundary                  | What the Agent should and should not know             | Define roles and goals, remove irrelevant information, and structure task state                            |
+| L2    | Tool system                           | How the Agent interacts with the outside world        | Select tools, control when they are called, and summarize and return tool results                          |
+| L3    | Execution orchestration               | How to connect a multi-step task                      | Guide the model through understanding the goal, assessing information, analyzing, generating, and checking |
+| L4    | Memory and state                      | How to manage intermediate results in long tasks      | Manage current task state, intermediate artifacts, and long-term memory separately                         |
+| L5    | Evaluation and observability          | How the Agent knows whether it did the task correctly | Establish validation independent of the generation process                                                 |
+| L6    | Constraints, validation, and recovery | What to do when something goes wrong                  | Block errors with predefined rules; provide retries, rollback, or fallback on failure                      |
 
-可以把它想成给一个新员工搭工作环境。L1 是岗位说明，告诉他该关注什么；L2 是办公工具；L3 是标准操作流程；L4 是项目管理系统和笔记本；L5 是质检流程；L6 是红线规则和应急预案。
+Think of it as setting up a work environment for a new employee. L1 is the job description, which defines what to focus on; L2 is the set of work tools; L3 is the standard operating procedure; L4 is the project tracker and notebook; L5 is quality assurance; and L6 is the set of guardrails and emergency procedures.
 
-这六层覆盖从信息边界到故障恢复的链路。后文提到的 OpenAI、Anthropic 和 Stripe 虽然实现不同，但其设计都可以放到这些位置上检查。
+These six layers cover the path from information boundaries to failure recovery. OpenAI, Anthropic, and Stripe implement them differently, but their designs can all be examined through this framework.
 
-起步阶段不需要同时建设六层。可以先补 L1 和 L6：前者明确任务边界与输入，后者在越权、失败或结果不合格时拦截并恢复。等任务进入多步骤执行、需要保存中间产物或反复验证时，再补工具编排、状态管理和观测。
+You do not need to build all six layers at the start. Begin with L1 and L6: define task boundaries and inputs, then block and recover from permission violations, failures, or unacceptable results. Add tool orchestration, state management, and observability when tasks become multi-step or require intermediate artifacts and repeated validation.
 
-### 为什么瓶颈经常不在模型？
+### Why Is the Model Often Not the Bottleneck?
 
-Can.ac 的结果说明，工具调用格式本身就会改变任务完成率。LangChain 调整系统提示词、工具和中间件，并借助追踪分析优化验证回路后，在 Terminal Bench 2.0 上从当时前 30 名之外进入前 5 名，得分[从 52.8% 升至 66.5%](https://www.langchain.com/blog/improving-deep-agents-with-harness-engineering)；模型没有更换。
+Can.ac's results show that the tool-call format alone can change task completion rates. LangChain adjusted system prompts, tools, and middleware, then used traces to optimize its validation loop. On Terminal Bench 2.0, it moved from outside the top 30 into the top 5, with its score [rising from 52.8% to 66.5%](https://www.langchain.com/blog/improving-deep-agents-with-harness-engineering); the model was unchanged.
 
-因此，Agent 表现不稳时，先检查它拿到的工具接口、错误输出和验证闭环。接口让模型难以表达操作意图，或测试失败后只返回模糊错误，换更强的模型也只能在同一处反复试错。
+When an Agent performs inconsistently, first check its tool interfaces, error output, and validation loop. If the interface makes it difficult to express an action or a failed test returns only a vague error, a stronger model may simply repeat the same trial and error.
 
-还要注意 model-harness 耦合。Claude Code、Codex 这类产品会同时调优模型和工具逻辑；模型熟悉某套工具后，换到另一套 Harness 的效果可能下降。LangChain 在 Terminal Bench 2.0 排行榜中观察到，Opus 在 Claude Code Harness 下的得分低于它在其他 Harness 中的得分。
+Also consider model-Harness coupling. Products such as Claude Code and Codex tune both models and tool logic. Once a model is adapted to one set of tools, its performance may decline with another Harness. LangChain observed on the Terminal Bench 2.0 leaderboard that Opus scored lower with the Claude Code Harness than with other Harnesses.
 
-最适合当前任务的 Harness，不一定是模型在后训练时使用的那一套。选型时应以任务的工具、约束和验证需求为准，而不是默认采用模型自带的 Harness。
+The Harness best suited to a task may not be the one used during the model's post-training. Choose based on the task's tools, constraints, and validation needs rather than defaulting to the model's built-in Harness.
 
-### 为什么上下文喂越多，Agent 反而越蠢？
+### Why Can More Context Make an Agent Perform Worse?
 
-Dex Horthy 在一次公开演示中观察到：168K Token 的上下文窗口使用到大约 40% 后，Agent 输出质量开始下降。这个比例来自特定模型和任务，不能直接外推为所有 Agent 的统一阈值。
+In a public demonstration, Dex Horthy observed that an Agent's output quality began to decline after using about 40% of a 168K Token context window. This ratio came from a specific model and task; it should not be generalized into a universal threshold for all Agents.
 
-![上下文利用率的 40% 阈值现象](../images/shared/context-utilization-40-percent-threshold-phenomenon.svg)
+![The observed 40% context utilization threshold](../images/shared/context-utilization-40-percent-threshold-phenomenon.svg)
 
-| 区间       | 占比      | 表现                                 |
-| ---------- | --------- | ------------------------------------ |
-| Smart Zone | 0 - ~40%  | 推理聚焦、工具调用准确、代码质量高   |
-| Dumb Zone  | 超过 ~40% | 幻觉增多、兜圈子、格式混乱、代码变差 |
+| Zone       | Share      | Behavior                                                                                 |
+| ---------- | ---------- | ---------------------------------------------------------------------------------------- |
+| Smart Zone | 0–~40%     | Focused reasoning, accurate tool calls, high code quality                                |
+| Dumb Zone  | Above ~40% | More hallucinations, circular reasoning, inconsistent formatting, and lower code quality |
 
-Anthropic 也遇到过类似问题，他们称之为“上下文焦虑”。Sonnet 4.5 在上下文快填满时会变得犹豫，甚至倾向于提前收工，即使任务还没完成。只做压缩不够，他们后来直接采用 context resets：清空上下文窗口，但通过结构化交接文档保留关键状态。
+Anthropic encountered a similar issue, which it called "context anxiety." As Sonnet 4.5 approached its context limit, it became hesitant and sometimes tried to finish early even when the task was incomplete. Summarization alone was not enough, so the team adopted context resets: clear the context window while retaining key state in a structured handoff document.
 
-上下文管理要保留当前任务需要的材料，并及时移除已经失效或无关的历史。一线团队采用“渐进式披露”和“分层管理”，是为了避免工具日志、旧决策和重复资料挤占模型的注意力。
+Context management should keep the material needed for the current task and remove obsolete or irrelevant history. Teams use progressive disclosure and layered context to prevent tool logs, old decisions, and duplicate information from consuming the model's attention.
 
-生产环境可以监控上下文利用率，并用自有评测寻找压缩、分段执行或任务交接的触发点。40% 适合作为待验证的初始观察值，不应在缺少回放数据时直接设成告警线。
+In production, monitor context utilization and use internal evaluations to find when to summarize, split execution into stages, or hand off the task. Treat 40% as an initial observation to validate, not an alert threshold to adopt without replay data.
 
-### 从哪里开始搭 Harness？
+### Where Should You Start Building a Harness?
 
-结合一线团队的实践，可以把行动项按优先级拆开。没必要一开始做成大系统，先把 P0 做好，通常就能明显改善 Agent 表现。
+Based on practices from teams in the field, group action items by priority. There is no need to build a large system at the beginning; completing P0 items can often improve Agent performance significantly.
 
-#### P0：可以马上做
+#### P0: Do These First
 
-| 行动                        | 为什么                                           | 参考实践                             |
-| --------------------------- | ------------------------------------------------ | ------------------------------------ |
-| 创建 `AGENTS.md` 并持续维护 | Agent 每次启动自动加载，犯错后更新，形成反馈循环 | Hashimoto 每一行对应一个历史失败案例 |
-| 写自定义 Linter + 修复指令  | 错误消息直接告诉 Agent 怎么改                    | OpenAI 的 Linter 报错自带修复方法    |
-| 把团队知识放进仓库          | Slack、Wiki、Docs 里的知识对 Agent 很难稳定可见  | OpenAI 把仓库作为事实来源            |
+| Action                                         | Why                                                                                | Example                                                     |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Create and maintain `AGENTS.md`                | The Agent loads it at startup; update it after failures to form a feedback loop    | Each line in Hashimoto's file corresponds to a past failure |
+| Write a custom Linter with repair instructions | Error messages tell the Agent how to fix the issue                                 | OpenAI's Linter includes suggested fixes in its errors      |
+| Put team knowledge in the repository           | Knowledge in Slack, Wikis, and Docs may not be consistently available to the Agent | OpenAI uses the repository as the source of truth           |
 
-这里有个坑：不要把 `AGENTS.md` 写成超级 System Prompt。很多团队一上来恨不得把所有规则都塞进去，结果上下文被撑爆，Agent 反而更容易跑偏。OpenAI 的做法更克制，`AGENTS.md` 只当目录用，大约 100 行，详细规则放到子文档里按需加载。
+One pitfall: do not turn `AGENTS.md` into a massive System Prompt. Teams often try to put every rule into it, which can overwhelm the context and make the Agent more likely to go off track. OpenAI takes a more restrained approach: use `AGENTS.md` as an index of about 100 lines, with detailed rules in subdocuments loaded as needed.
 
-#### P1：P0 稳了之后再补
+#### P1: Add These After P0 Is Stable
 
-| 行动                    | 为什么                                             | 参考实践                                   |
-| ----------------------- | -------------------------------------------------- | ------------------------------------------ |
-| 分层管理上下文          | 避免把所有信息塞进一个文件，按需披露               | OpenAI 把 AGENTS.md 当目录用，约 100 行    |
-| 建立进度文件和功能列表  | 用 JSON 追踪功能状态，Agent 不太容易乱改结构化数据 | Anthropic 初始化 Agent + 编码 Agent 两阶段 |
-| 给 Agent 端到端验证能力 | 让 Agent 像用户一样验证功能                        | Anthropic 使用 Playwright / Puppeteer MCP  |
-| 控制上下文利用率        | 用自有评测确定压缩和交接阈值，避免无关历史持续累积 | Dex Horthy 的 Smart Zone / Dumb Zone 观察  |
+| Action                                  | Why                                                                               | Example                                                                     |
+| --------------------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Layer context                           | Avoid putting everything in one file; disclose information as needed              | OpenAI uses `AGENTS.md` as an index of about 100 lines                      |
+| Create progress files and feature lists | Track feature state in JSON, which is less prone to accidental structural changes | Anthropic's two-stage setup with an initialization Agent and a coding Agent |
+| Give the Agent end-to-end validation    | Let the Agent test features like a user                                           | Anthropic uses Playwright / Puppeteer MCP                                   |
+| Control context utilization             | Use internal evaluations to set summarization and handoff thresholds              | Dex Horthy's Smart Zone / Dumb Zone observation                             |
 
-#### P2：有余力再考虑
+#### P2: Consider These When You Have Capacity
 
-| 行动             | 为什么                                       | 参考实践                         |
-| ---------------- | -------------------------------------------- | -------------------------------- |
-| Agent 专业化分工 | 每个 Agent 携带更少无关信息，留在 Smart Zone | Carlini 的去重、优化、文档 Agent |
-| 定期垃圾回收     | 清理速度要跟得上生成速度                     | OpenAI 的后台清理 Agent          |
-| 可观测性集成     | 把性能优化从感觉问题变成可测量的问题         | OpenAI 接入 Chrome DevTools      |
+| Action                              | Why                                                                | Example                                                         |
+| ----------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------- |
+| Specialize Agent roles              | Each Agent has less irrelevant context and stays in the Smart Zone | Carlini's deduplication, optimization, and documentation Agents |
+| Schedule regular garbage collection | Cleanup must keep pace with generation                             | OpenAI's background cleanup Agent                               |
+| Integrate observability             | Make performance optimization measurable rather than subjective    | OpenAI's Chrome DevTools integration                            |
 
-### 你的 Harness 到哪个阶段了？
+### What Stage Is Your Harness At?
 
-下表用于定位当前的 Harness 建设阶段。Level 0 升到 Level 1 后，`AGENTS.md`、基础 Linter 和手动测试已经能覆盖一部分高频错误，不必以 Level 4 为起点。
+Use the table below to identify your current Harness stage. Moving from Level 0 to Level 1 adds `AGENTS.md`, a basic Linter, and manual tests that can catch some common errors. You do not need to start at Level 4.
 
-| 阶段                  | 特征                                  | 工程师角色              |
-| --------------------- | ------------------------------------- | ----------------------- |
-| Level 0：无 Harness   | 直接给 Agent Prompt，没有结构化约束   | 手动写代码，偶尔使用 AI |
-| Level 1：基础约束     | `AGENTS.md`、基础 Linter、手动测试    | 主要写代码，AI 辅助     |
-| Level 2：反馈回路     | CI/CD 集成、自动化测试、进度追踪      | 规划和审查为主          |
-| Level 3：专业化 Agent | 多 Agent 分工、分层上下文、持久化记忆 | 设计环境和管理执行过程  |
-| Level 4：自治循环     | 无人值守并行化、自动清理、自修复      | 架构设计和质量把关      |
+| Stage                       | Characteristics                                             | Engineer's role                             |
+| --------------------------- | ----------------------------------------------------------- | ------------------------------------------- |
+| Level 0: No Harness         | Give the Agent a Prompt directly; no structured constraints | Write code manually; use AI occasionally    |
+| Level 1: Basic constraints  | `AGENTS.md`, basic Linter, manual tests                     | Primarily write code with AI assistance     |
+| Level 2: Feedback loop      | CI/CD integration, automated tests, progress tracking       | Focus on planning and review                |
+| Level 3: Specialized Agents | Multiple Agent roles, layered context, persistent memory    | Design the environment and manage execution |
+| Level 4: Autonomous loop    | Unattended parallel tasks, automatic cleanup, self-repair   | Architecture and quality oversight          |
 
-## Harness 还没解决的问题
+## Problems Harnesses Have Not Solved Yet
 
-讲完这些实践，也要把没解决的问题摆出来。现在公开案例不少，但真正让人信服的方法论还不多，尤其是落到已有项目时，很多问题仍然悬着。
+Alongside these practices, it is important to describe the problems that remain. Many public case studies are available, but there are still few convincing methodologies, especially for adopting Harnesses in existing projects.
 
-| 问题                      | 现状                                                 | 谁在关注                                                                                                                  |
-| ------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| 棕地项目怎么改造          | 既有代码库已有公开实践，但跨团队复用的方法仍不成熟   | Stripe Minions 运行在大型既有代码库中；Böckeler 还提醒，类型系统、模块边界和框架抽象等 Ambient Affordances 会影响改造成本 |
-| 怎么验证 Agent 做对了事   | 大家更擅长限制它别做错，但验证功能正确性还很弱       | Böckeler 批评：用 AI 生成的测试来验证 AI 生成的代码，仍然像“用同一双眼睛检查自己的作业”                                   |
-| AI 生成代码的长期可维护性 | LLM 代码经常重新实现已有功能，长期效果还不好判断     | Greg Brockman 提出过这个问题，但目前没有清晰答案                                                                          |
-| Harness 该做厚还是做薄    | Manus 五次重写越做越简单，OpenAI 五个月越做越复杂    | 场景决定。通用产品更追求最小化，特定产品可以高度定制。模型变强后，已有 Harness 也应该定期简化，Anthropic 已经做过类似验证 |
-| 单 Agent 还是多 Agent     | Hashimoto 坚持单 Agent，Carlini 使用 16 个并行 Agent | 规模决定。小项目单 Agent 往往够用，大项目更容易走向专业化分工                                                             |
+| Problem                                        | Current state                                                                               | Who is addressing it                                                                                                                                                                           |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Adapting legacy projects                       | Public examples exist, but reusable methods across teams are still immature                 | Stripe Minions runs in a large existing codebase. Böckeler notes that Ambient Affordances such as type systems, module boundaries, and framework abstractions affect migration cost.           |
+| Verifying that an Agent did the right thing    | Teams are better at preventing errors than verifying functional correctness                 | Böckeler criticizes using AI-generated tests to verify AI-generated code as "checking your own homework with the same eyes."                                                                   |
+| Long-term maintainability of AI-generated code | LLMs often reimplement existing functionality, and long-term effects are unclear            | Greg Brockman has raised the issue, but there is no clear answer yet.                                                                                                                          |
+| Whether a Harness should be thick or thin      | Manus simplified its design over five rewrites; OpenAI's grew more complex over five months | It depends on the use case. General-purpose products tend toward minimalism; specialized products can be customized. Reassess and simplify Harnesses as models improve, as Anthropic has done. |
+| Single Agent or multiple Agents                | Hashimoto prefers one Agent; Carlini used 16 parallel Agents                                | It depends on scale. One Agent is often enough for small projects; larger projects are more likely to need specialized roles.                                                                  |
 
-绿地项目和棕地项目是软件工程里的经典说法。绿地项目指从零开始的新项目，没有历史包袱，就像在空地上盖房子，想怎么设计都比较自由。棕地项目指在已有代码库上改造，里面有历史架构、技术债和遗留逻辑，就像在老旧城区翻新，很多管线不能随便动。
+Greenfield and brownfield are common software engineering terms. A greenfield project starts from scratch without legacy constraints, like building on an empty site where the design is flexible. A brownfield project modifies an existing codebase with legacy architecture, technical debt, and old logic, like renovating an established neighborhood where infrastructure cannot be moved freely.
 
-Stripe Minions 在大型既有代码库中运行。对于缺少模块边界、技术债较重的十年历史项目，应先让编译与测试流程可重复执行，再为高频目录添加局部规则和结构检查，最后扩大自动执行范围。
+Stripe Minions runs in a large existing codebase. For a decade-old project with weak module boundaries and substantial technical debt, first make compilation and tests reproducible. Then add local rules and structural checks for frequently changed directories before expanding the scope of automation.
 
-## Harness 案例：这些团队是怎么做的
+## Harness Case Studies: How Teams Use Them
 
-这些案例面对的任务规模不同，但都要处理上下文、约束和验证。差别在于，有些团队在故障出现后补充机制，有些则在执行链路里预先放入约束和反馈。
+These teams work at different scales, but all must handle context, constraints, and validation. Some add mechanisms after problems appear; others build constraints and feedback into the execution flow from the beginning.
 
-### OpenAI：三个人，五个月，一百万行，零手写代码
+### OpenAI: Three People, Five Months, One Million Lines, No Handwritten Code
 
-先看 [OpenAI 原文披露的数据](https://openai.com/index/harness-engineering/)：
+First, consider the [figures reported by OpenAI](https://openai.com/index/harness-engineering/):
 
-| 指标       | 数值                           |
-| ---------- | ------------------------------ |
-| 团队规模   | 3 名工程师，后扩至 7 人        |
-| 持续时间   | 5 个月，2025 年 8 月起         |
-| 代码规模   | 约 100 万行                    |
-| 手写代码   | 0 行，设计约束                 |
-| 合并 PR 数 | 约 1,500 个                    |
-| 日均 PR/人 | 3.5 个                         |
-| 效率提升   | 团队估计耗时约为手写的十分之一 |
+| Metric                 | Value                                                                            |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| Team size              | 3 engineers, later expanded to 7                                                 |
+| Duration               | 5 months, starting August 2025                                                   |
+| Codebase               | About 1 million lines                                                            |
+| Handwritten code       | 0 lines; engineers focused on constraints and design                             |
+| Merged PRs             | About 1,500                                                                      |
+| Daily PRs per engineer | 3.5                                                                              |
+| Efficiency gain        | The team estimated the work took about one-tenth as long as writing code by hand |
 
-这些数字依赖相应的团队投入，不能直接用作一般团队的预期。表后的内容只拆解其中的工程做法。
+These figures depend on the team's level of investment and should not be treated as typical expectations. The sections below focus on the engineering practices behind them.
 
-#### 给 Agent 一张地图，不要塞一本千页手册
+#### Give the Agent a Map, Not a Thousand-Page Manual
 
-OpenAI 的 `AGENTS.md` 约 100 行，作为入口指向 `docs/` 中的设计文档、架构图、执行计划和质量评级。Agent 先读取任务所需的索引，再按路径加载细节，避免把整套规则放进每次会话。
+OpenAI's `AGENTS.md` is about 100 lines and serves as an entry point to design documents, architecture diagrams, execution plans, and quality ratings in `docs/`. The Agent first reads the index relevant to the task, then loads details by path instead of putting every rule into each session.
 
-Agent Skills 也采用了相同的渐进式披露：上下文中常驻名称、描述等元数据，命中场景后再加载详细规则和执行流程。它把 `AGENTS.md` 的目录式做法标准化了。相关阅读可以看这篇：[Agent Skills 详解：是什么？怎么用？和 Prompt、MCP 有什么区别？](https://javaguide.cn/ai/agent/skills.html)。
+Agent Skills use the same progressive disclosure approach: keep metadata such as names and descriptions in context, then load detailed rules and procedures when a matching task appears. Skills standardize the index-like approach used by `AGENTS.md`. See [Agent Skills Explained: What Are They, How to Use Them, and How They Differ from Prompts and MCP](https://javaguide.cn/ai/agent/skills.html).
 
-#### 架构约束要靠工具执行
+#### Enforce Architectural Constraints with Tools
 
-OpenAI 给每个业务领域定义了固定分层：
+OpenAI defines a fixed set of layers for each business domain:
 
 ```text
 Types → Config → Repo → Service → Runtime → UI
 ```
 
-依赖方向不能反过来。怎么保证？靠自定义 Linter 和结构测试。违反规则时，工具不只是报错，还会告诉 Agent 应该怎么改。Agent 在修错的过程中，也被反复训练成更符合团队规范的写法。
+Dependencies must flow in one direction. Custom Linters and structural tests enforce this. When a rule is violated, the tools not only report the error but also tell the Agent how to fix it. Repeatedly fixing these errors also steers the Agent toward patterns that follow the team's conventions.
 
-OpenAI 有句原话很直接：If it cannot be enforced mechanically, agents will deviate. 只写在文档里的约束不够，不能机械化执行，Agent 迟早会偏离。
+OpenAI puts it directly: "If it cannot be enforced mechanically, agents will deviate." Constraints written only in documentation are insufficient; if they cannot be enforced mechanically, Agents will eventually deviate.
 
-#### 可观测性也要给 Agent 看
+#### Give the Agent Access to Observability
 
-他们把 Chrome DevTools Protocol 接进 Agent 运行时，Agent 可以自己抓 DOM 快照和截图。日志、指标、链路追踪也通过本地可观测性栈暴露给 Agent。
+The team integrated the Chrome DevTools Protocol into the Agent runtime so the Agent could capture DOM snapshots and screenshots. Logs, metrics, and traces were also exposed through a local observability stack.
 
-这样一来，“把启动时间降到 800ms 以下”就变成了一个 Agent 可以自己测量、自己验证的目标。
+This turned "reduce startup time to below 800 ms" into a goal that the Agent could measure and verify itself.
 
-#### 熵不会自己消失
+#### Entropy Does Not Go Away on Its Own
 
-AI 生成代码越多，低质量实现、重复逻辑、文档不一致也会跟着变多。一开始 OpenAI 团队每周五花 20% 时间手动清理这些生成物。后来这件事被自动化了：后台 Agent 定期扫描文档不一致、架构违规和冗余代码，并自动提交清理 PR。
+As AI-generated code accumulates, so do low-quality implementations, duplicated logic, and inconsistent documentation. At first, the OpenAI team spent 20% of every Friday manually cleaning up generated artifacts. They later automated the work: background Agents regularly scan for inconsistent docs, architectural violations, and redundant code, then submit cleanup PRs.
 
-生成速度高于清理速度时，重复逻辑和过期文档会持续进入仓库，后续 Agent 检索到的上下文也会随之变差。
+When generation outpaces cleanup, duplicate logic and outdated documentation keep accumulating in the repository, degrading the context retrieved by later Agents.
 
-#### Slack 里的知识，Agent 很难稳定用上
+#### Knowledge in Slack Is Hard for Agents to Use Reliably
 
-写在 Slack 讨论或 Google Docs 里的知识，对 Agent 来说并不稳定。OpenAI 的做法是把团队知识作为版本控制制品放进仓库里，让仓库成为可追踪、可引用的事实来源。
+Knowledge in Slack discussions or Google Docs may not be reliably available to an Agent. OpenAI's approach is to store team knowledge in the repository as version-controlled artifacts, making it a traceable and referenceable source of truth.
 
-OpenAI 也指出，缺少相近投入时不能直接假设能够复现其结果。对一般团队来说，先建立目录式文档、可机械执行的约束和清理机制，比复制整套流程更可操作。
+OpenAI also notes that its results cannot be assumed to be reproducible without a comparable investment. For most teams, it is more practical to start with index-style documentation, mechanically enforced constraints, and cleanup processes than to copy the entire workflow.
 
-### Anthropic：从上下文焦虑到三智能体架构
+### Anthropic: From Context Anxiety to a Three-Agent Architecture
 
-Anthropic 在这个方向上有两个值得细看的实践。一个是 Carlini 用多 Agent 写 C 编译器，另一个是 Anthropic Labs 借鉴 GAN 思路做三智能体协作。
+Anthropic has two notable practices in this area: Carlini used multiple Agents to write a C compiler, and Anthropic Labs drew on the idea of GANs to build a three-Agent collaboration pattern.
 
-![Anthropic 三智能体协同架构（受 GAN 启发）](../images/shared/anthropic-three-agent-collaborative-architecture-inspired-by-gan.svg)
+![Anthropic's three-Agent collaboration architecture, inspired by GANs](../images/shared/anthropic-three-agent-collaborative-architecture-inspired-by-gan.svg)
 
-#### 用 16 个 Agent 写 C 编译器
+#### Writing a C Compiler with 16 Agents
 
-Nicholas Carlini 用大约两周时间，跑了 16 个并行 Claude Opus 实例，大约 2000 个 Claude Code 会话，做出了一个 GCC torture test 通过率 99% 的 C 编译器。
+Over about two weeks, Nicholas Carlini ran 16 parallel Claude Opus instances across about 2,000 Claude Code sessions and built a C compiler that passed 99% of the GCC torture test.
 
-| 指标             | 数值                                                         |
-| ---------------- | ------------------------------------------------------------ |
-| 持续时间         | 约 2 周                                                      |
-| 并行 Agent 数    | 16 个 Claude Opus 实例                                       |
-| 会话数           | 约 2,000 个                                                  |
-| 产出             | 10 万行 Rust 代码                                            |
-| GCC torture test | 99% 通过率                                                   |
-| 可编译项目       | PostgreSQL、Redis、FFmpeg、CPython、Linux 6.9 Kernel 等 150+ |
-| API 成本         | 约 2 万美元                                                  |
+| Metric                | Value                                                                    |
+| --------------------- | ------------------------------------------------------------------------ |
+| Duration              | About 2 weeks                                                            |
+| Parallel Agents       | 16 Claude Opus instances                                                 |
+| Sessions              | About 2,000                                                              |
+| Output                | 100,000 lines of Rust code                                               |
+| GCC torture test      | 99% pass rate                                                            |
+| Projects that compile | 150+, including PostgreSQL, Redis, FFmpeg, CPython, and Linux 6.9 Kernel |
+| API cost              | About $20,000                                                            |
 
-这个项目展示的 Harness 设计包括：
+The project demonstrates several Harness design choices:
 
-- 日志写入文件，而非控制台，并采用 grep 友好的单行格式，例如 `ERROR: [reason]`。需要诊断时再检索相应文件，避免无关日志持续占用上下文。
-- 每个 Agent 只跑 1-10% 的测试子集。单个 Agent 的子采样固定，同一次运行覆盖相同测试；不同 VM 的采样不同，合起来覆盖完整测试集。这样测试不必成为单个 Agent 连续数小时的阻塞步骤。
-- Agent 分工逐步细化为编译器实现、去重、性能、代码质量和文档。由于 LLM 容易重复实现已有功能，去重被独立出来处理。
+- Write logs to files rather than the console, using grep-friendly single-line formats such as `ERROR: [reason]`. Search the relevant files only when diagnosing a problem so irrelevant logs do not keep consuming context.
+- Have each Agent run only 1–10% of the test subset. Keep subsampling fixed for an individual Agent so it runs the same tests each time; use different samples across VMs to cover the full suite. This avoids blocking one Agent on tests for hours.
+- Gradually specialize Agent roles for compiler implementation, deduplication, performance, code quality, and documentation. Since LLMs tend to reimplement existing functionality, deduplication became a separate task.
 
-Carlini 后来说过一句话：“我必须不断提醒自己，我是在为 Claude 写这个测试框架，不是为自己写。”这里的重点是：测试框架的日志格式、测试切分和反馈方式，要先让 Agent 能稳定消费，而不只追求人类阅读时是否舒适。
+Carlini later said, "I have to constantly remind myself that I am writing this test harness for Claude, not for myself." The key idea is to make the test framework's logs, test partitioning, and feedback consistently usable by the Agent, not just comfortable for people to read.
 
-#### Anthropic 为什么借鉴 GAN？
+#### Why Did Anthropic Draw on GANs?
 
-Anthropic Labs 团队在 2026 年 3 月发布了一个受 GAN 思路启发的三智能体架构。原文说的是 Taking inspiration from GANs，意思是借鉴思路，并不是真正做对抗训练。
+In March 2026, the Anthropic Labs team published a three-Agent architecture inspired by the idea behind GANs. The original phrase is "Taking inspiration from GANs"; it means borrowing the concept, not performing adversarial training.
 
 ```ebnf
-Planner（规划者）→ Generator（执行者）⇄ Evaluator（评估者）
+Planner (planner) → Generator (executor) ⇄ Evaluator (evaluator)
 ```
 
-Planner 拿到 1-4 句话的产品描述，把它扩展成完整产品规格，并被要求“在范围上要大胆”。Generator 按功能一个个做 Sprint，每个 Sprint 有明确完成标准。Evaluator 用 Playwright MCP 实际点击运行中的应用，再按产品设计深度、功能性、视觉设计、代码质量等维度打分。
+The Planner receives a one-to-four-sentence product description and expands it into a full specification, with instructions to "be ambitious in scope." The Generator implements features one Sprint at a time, each with explicit completion criteria. The Evaluator uses Playwright MCP to interact with the running application and scores it on product depth, functionality, visual design, code quality, and other dimensions.
 
-这个架构主要处理两个问题：
+This architecture addresses two main problems:
 
-| 问题         | 表现                                   | 解法                                      |
-| ------------ | -------------------------------------- | ----------------------------------------- |
-| 上下文焦虑   | Sonnet 4.5 快到上下文上限时草草收尾    | context resets + 结构化交接，单靠压缩不够 |
-| 自我评价偏差 | Agent 自信地夸自己做得好，实际质量一般 | 生成和评估交给两个独立 Agent              |
+| Problem              | Symptom                                                              | Approach                                                                    |
+| -------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Context anxiety      | Sonnet 4.5 rushes to finish near its context limit                   | Context resets and structured handoffs; summarization alone is insufficient |
+| Self-evaluation bias | The Agent confidently praises its work even when quality is mediocre | Assign generation and evaluation to separate Agents                         |
 
-在前端任务里，设计质量和原创性的权重被设得高于功能性和代码质量，用来纠正模型偏向“功能齐全但外观平庸”的输出。
+For frontend tasks, design quality and originality receive higher weights than functionality and code quality to counter the model's tendency to produce work that is "feature-complete but visually mediocre."
 
-#### 遇到上下文焦虑，Anthropic 选择重启
+#### Anthropic Responds to Context Anxiety by Restarting
 
-Anthropic 发现 Sonnet 4.5 在上下文接近上限时会犹豫，甚至在任务未完成时提前结束，因此采用 context resets。
+Anthropic found that Sonnet 4.5 became hesitant near its context limit and sometimes stopped before completing a task, so the team adopted context resets.
 
-触发重置前，系统把当前任务状态、已完成工作和待办事项提取成结构化交接文档；随后启动新的 Agent，只把这份文档和继续任务所需的材料交给它。历史对话不再占用新会话的上下文。
+Before a reset, the system extracts the current task state, completed work, and outstanding items into a structured handoff document. It then starts a new Agent and provides only that document and the materials needed to continue. The previous conversation no longer takes up context in the new session.
 
-这种做法依赖交接文档的完整性：遗漏已改文件、失败原因或下一步验证命令，新 Agent 就会从错误状态继续。Carlini 的编译器项目同样把约 2,000 个 Claude Code 会话保持为相对独立的单元；Anthropic 则将重启和状态交接明确成了机制。
+This approach depends on a complete handoff document. If it omits changed files, failure causes, or the next validation command, the new Agent will continue from an incorrect state. Carlini's compiler project also kept its roughly 2,000 Claude Code sessions relatively independent; Anthropic made restarts and state handoffs an explicit mechanism.
 
-两种配置的成本对比如下：
+The costs of two configurations are compared below:
 
-| 配置                                | 耗时    | 花费 | 效果             |
-| ----------------------------------- | ------- | ---- | ---------------- |
-| Solo Harness，单 Agent + 最少工具   | 20 分钟 | $9   | 跑不起来的半成品 |
-| Full Harness，三 Agent + 完整工具链 | 6 小时  | $200 | 完整可用的应用   |
+| Configuration                                   | Duration   | Cost | Result                                 |
+| ----------------------------------------------- | ---------- | ---- | -------------------------------------- |
+| Solo Harness: one Agent + minimal tools         | 20 minutes | $9   | Incomplete prototype that does not run |
+| Full Harness: three Agents + complete toolchain | 6 hours    | $200 | Complete, usable application           |
 
-更复杂的任务差距还会拉大。比如用 Full Harness 做一个浏览器里的音乐制作工作站 DAW，跑了将近 4 小时，花了 $124.70，最后得到一个带编曲视图、混音台和播放控制的可用程序。
+The gap grows for more complex tasks. For example, building a browser-based digital audio workstation (DAW) with a Full Harness took nearly 4 hours and cost $124.70. The result was a usable application with an arrangement view, mixing console, and playback controls.
 
-但他们还有一个重要发现：把模型从 Sonnet 4.5 换成 Opus 4.6 后，Sprint 机制可以完全移除，Evaluator 从每个 Sprint 检查变成最后只检查一次。Anthropic 的总结很准确：Every component in a harness encodes an assumption about what the model can't do on its own, and those assumptions are worth stress testing.
+The team made another important discovery: after switching from Sonnet 4.5 to Opus 4.6, it could remove the Sprint mechanism entirely and have the Evaluator check only once at the end instead of after every Sprint. Anthropic summarized this well: "Every component in a harness encodes an assumption about what the model can't do on its own, and those assumptions are worth stress testing."
 
-Sonnet 4.5 更换为 Opus 4.6 后，Sprint 和逐轮 Evaluator 检查可以移除，说明 Harness 组件依赖于模型能力的前提。模型升级后，应重新验证这些前提，删除已经冗余的保护机制。
+Removing Sprints and per-iteration Evaluator checks after switching from Sonnet 4.5 to Opus 4.6 shows that Harness components depend on assumptions about model capabilities. Revalidate those assumptions after a model upgrade and remove safeguards that have become redundant.
 
-### Stripe：每周 1300+ 个 PR 的无人值守模式
+### Stripe: An Unattended Workflow with 1,300+ PRs a Week
 
-Stripe 的 Minions 系统是另一个极端：高度自动化、无人值守。开发者发一条 Slack 消息，Agent 就从写代码、跑 CI 到提 PR 全部完成，人只在最后审查。每周有超过 1300 个完全由 Minions 生产、没有人类手写代码的 PR 被合并。
+Stripe's Minions system is another extreme: highly automated and unattended. A developer sends a Slack message, and the Agent handles everything from writing code and running CI to opening a PR. A person reviews it only at the end. More than 1,300 PRs produced entirely by Minions, with no human-written code, are merged each week.
 
-![Stripe 混合状态机编排架构](../images/shared/stripe-hybrid-state-machine-orchestration-architecture.svg)
+![Stripe's hybrid state-machine orchestration architecture](../images/shared/stripe-hybrid-state-machine-orchestration-architecture.svg)
 
-这个数字第一次看到确实有点吓人。拆开看，它靠的是一套很成熟的工程环境，不是某个“超强 Agent”。
+That number may seem startling at first. Looking closer, it depends on a mature engineering environment, not on some "super Agent."
 
-| 组件         | 作用     | 关键设计                                                                                                |
-| ------------ | -------- | ------------------------------------------------------------------------------------------------------- |
-| Devbox       | 开发环境 | AWS EC2 预装源码和服务，预热池分配，启动约 10 秒，“牲口不是宠物”                                        |
-| 编排状态机   | 流程控制 | 混合确定性节点，比如 lint、push，和 Agent 节点，比如实现功能、修 CI；该确定的地方确定，该灵活的地方灵活 |
-| Toolshed MCP | 工具服务 | 集中式 MCP 服务，近 500 个工具，每个 Minion 拿到筛选后的子集                                            |
-| 反馈回路     | 质量保障 | Pre-push hook 秒级修 lint；推送后最多 2 轮 CI，覆盖 300 万+ 测试                                        |
+| Component                   | Role                    | Key design                                                                                                                                                                                  |
+| --------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Devbox                      | Development environment | AWS EC2 instances have source code and services preinstalled; assigned from a warm pool and start in about 10 seconds. "Cattle, not pets."                                                  |
+| Orchestration state machine | Workflow control        | Combines deterministic nodes, such as lint and push, with Agent nodes, such as implementing features and fixing CI. Use deterministic steps where possible and flexible steps where needed. |
+| Toolshed MCP                | Tool service            | Centralized MCP service with nearly 500 tools; each Minion receives a filtered subset.                                                                                                      |
+| Feedback loop               | Quality assurance       | Pre-push hooks fix lint issues in seconds; after pushing, CI runs at most twice across 3+ million tests.                                                                                    |
 
-Stripe 的编排思路很像混合流水线。跑 lint、推送代码这类步骤走确定性流程；实现功能、修 CI 错误这类需要判断的部分交给 Agent。该死板的地方死板，该灵活的地方灵活。
+Stripe's orchestration resembles a hybrid pipeline. Steps such as linting and pushing code follow deterministic procedures; tasks that require judgment, such as implementing features and fixing CI errors, go to the Agent. Keep the deterministic parts deterministic and the flexible parts flexible.
 
-他们还有一个理念：What's good for humans is good for agents。过去为人类工程师投入的 Devbox、工具链和开发者体验，在 Agent 上也会直接产生回报。Agent 不一定需要一套完全独立的基础设施，它更应该被当作开发环境中的一等公民。
+The team also follows the principle "What's good for humans is good for agents." Devboxes, toolchains, and developer experience built for human engineers also benefit Agents. Agents do not necessarily need completely separate infrastructure; they should be treated as first-class citizens in the development environment.
 
-Minions 底层是 Block 开源项目 [goose](https://github.com/block/goose) 的一个 fork，Stripe 针对无人值守场景做了定制。
+Minions is based on a fork of Block's open-source project [goose](https://github.com/block/goose), customized by Stripe for unattended use.
 
-### Mitchell Hashimoto：一个人的 Harness 工程学
+### Mitchell Hashimoto: Harness Engineering for One Person
 
-Mitchell Hashimoto 是 Vagrant、Terraform、Ghostty 终端模拟器的作者。他的路线和 Stripe 很不一样。他坚持一次只跑一个 Agent，并且保持深度参与。他明确说过：“我不打算跑多个 Agent，也不想跑。”
+Mitchell Hashimoto created Vagrant, Terraform, and the Ghostty terminal emulator. His approach differs greatly from Stripe's: he runs only one Agent at a time and stays deeply involved. He has said plainly, "I don't want to run multiple Agents. I don't want to."
 
-他的实践可以拆成六步：
+His practices can be summarized in six steps:
 
-| 步骤 | 名称              | 做法                                                                    |
-| ---- | ----------------- | ----------------------------------------------------------------------- |
-| 1    | 放弃聊天模式      | 让 Agent 在能读文件、跑程序、发 HTTP 请求的环境里直接干活               |
-| 2    | 复现自己的工作    | 每件事做两次，一次自己做，一次让 Agent 做，他形容这个过程“痛苦至极”     |
-| 3    | 下班前启动 Agent  | 每天最后 30 分钟给 Agent 布置任务，比如深度调研、模糊探索、Issue 分拣   |
-| 4    | 外包确定性任务    | 挑出 Agent 几乎一定能做好的任务后台跑，建议关掉桌面通知，避免上下文切换 |
-| 5    | 工程化 Harness    | Agent 每犯一次错，就工程化一个方案，尽量让它以后不再犯同类错误          |
-| 6    | 始终有 Agent 在跑 | 目标是 10-20% 的工作时间有后台 Agent 运行                               |
+| Step | Practice                                 | How                                                                                                                                 |
+| ---- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Move beyond chat                         | Let the Agent work directly in an environment where it can read files, run programs, and make HTTP requests.                        |
+| 2    | Reproduce your own work                  | Do each task twice, once yourself and once with the Agent. He described this as "extremely painful."                                |
+| 3    | Start an Agent before ending the workday | Use the last 30 minutes each day to assign research, open-ended exploration, or Issue triage.                                       |
+| 4    | Delegate deterministic tasks             | Run tasks that the Agent is highly likely to complete in the background. Turn off desktop notifications to avoid context switching. |
+| 5    | Engineer the Harness                     | Each time the Agent makes a mistake, build a mechanism to prevent the same type of error in the future.                             |
+| 6    | Keep an Agent running                    | Aim to have a background Agent running for 10–20% of working time.                                                                  |
 
-Ghostty 项目里的 `AGENTS.md` 很有代表性。每一行都对应一个过去的 Agent 失败案例。它是一个持续积累的防错系统。Agent 犯了一个新类型错误，就加一条规则，后面同类问题就能少一些。
+The `AGENTS.md` file in the Ghostty project is a good example. Each line corresponds to a past Agent failure. It is a continuously growing error-prevention system: when an Agent makes a new type of mistake, add a rule to reduce similar problems in the future.
 
-![持续进化的 Harness 防错反馈闭环](../images/shared/continuously-evolving-harness-error-prevention-feedback-loop.svg)
+![A continuously evolving Harness feedback loop for preventing errors](../images/shared/continuously-evolving-harness-error-prevention-feedback-loop.svg)
 
-### Birgitta Böckeler 对 Harness 的梳理
+### Birgitta Böckeler's Framework for Harnesses
 
-Birgitta Böckeler 是 Thoughtworks 的 Distinguished Engineer。她在 Martin Fowler 网站分析 OpenAI 的实践时，没有按产品功能罗列组件，而是把问题落在三个工程动作上：控制 Agent 接收的信息、把约束交给工具执行，以及处理持续生成的冗余产物。
+Birgitta Böckeler is a Distinguished Engineer at Thoughtworks. In her analysis of OpenAI's practices on the Martin Fowler website, she groups the work into three engineering activities instead of listing product features: control the information an Agent receives, enforce constraints through tools, and handle the redundant artifacts generated over time.
 
-她把 Harness 组件归为三类：
+She groups Harness components into three categories:
 
-| 归类                      | 关注点                            | 典型实践                                    |
-| ------------------------- | --------------------------------- | ------------------------------------------- |
-| Context Engineering       | 管理 Agent 看到什么、什么时候看到 | 从巨大 AGENTS.md 演化为入口文件 + 分层文档  |
-| Architectural Constraints | 确保 Agent 不跑偏                 | 自定义 Linter、结构测试、LLM Agent 充当约束 |
-| Garbage Collection        | 对抗熵积累                        | 定期运行清理 Agent，扫描不一致和违规        |
+| Category                  | Focus                                          | Typical practice                                                         |
+| ------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------ |
+| Context Engineering       | Control what the Agent sees and when           | Replace a massive `AGENTS.md` with an index and layered documentation    |
+| Architectural Constraints | Keep the Agent within architectural boundaries | Custom Linters, structural tests, or LLM Agents that enforce constraints |
+| Garbage Collection        | Counter accumulating entropy                   | Run cleanup Agents regularly to find inconsistencies and violations      |
 
-这套分类能解释前文案例为何看起来差异很大：`AGENTS.md` 的目录设计属于 Context Engineering；Linter、结构测试和状态机属于 Architectural Constraints；后台清理 Agent 则处理 Garbage Collection。它们服务的对象不同，不能用一份冗长提示词替代。
+This classification explains why the earlier case studies look so different. The index structure of `AGENTS.md` is Context Engineering; Linters, structural tests, and state machines are Architectural Constraints; background cleanup Agents perform Garbage Collection. They address different needs and cannot be replaced by one long Prompt.
 
-她还提出，Harness 可能会像现有的服务脚手架一样沉淀为模板。组织只维护少数技术栈时，可以把开发环境、检查项和可用工具预设下来；新服务创建后再根据目录和任务加载对应规则。模板能减少重复配置，却不能替代项目自身的测试、模块边界和运行数据。
+She also suggests that Harnesses may become templates like existing service scaffolds. An organization that maintains only a few technology stacks can preset development environments, checks, and available tools, then load relevant rules based on a new service's directories and tasks. Templates reduce repeated configuration, but cannot replace a project's own tests, module boundaries, or runtime data.
 
-棕地项目是最容易暴露这个边界的场景。一个运行多年、缺少架构约束的代码库接入 Agent 后，类型错误、依赖违规和测试失败可能会同时出现，最初得到的是一长串待处理事项。Böckeler 用 Ambient Affordances 描述代码库本身提供的条件：强类型语言提供类型检查，明确的模块边界允许定义依赖规则，Spring 等框架会封装部分实现细节。Stripe 的案例证明既有代码库可以运行 Agent；这些条件仍需在具体仓库中逐项检查。
+Brownfield projects expose this boundary most clearly. When an Agent is introduced into a long-running codebase with few architectural constraints, type errors, dependency violations, and test failures may appear all at once, creating a long list of issues. Böckeler uses Ambient Affordances to describe capabilities provided by the codebase itself: a strongly typed language provides type checking, clear module boundaries allow dependency rules, and frameworks such as Spring encapsulate implementation details. Stripe's case shows that Agents can work in existing codebases, but these conditions still need to be checked in each repository.
 
-功能正确性的独立验证依然是空白。架构检查能阻止错误的依赖方向，清理任务能删除重复实现，但两者都不能证明用户流程符合预期。测试和实现都由同一类模型生成时，测试通过只说明两者共享的假设没有被打破。Böckeler 的评价是：“这种做法对 AI 生成的测试寄予了很大的信任，但目前这还不够。”见她对[功能行为验证的讨论](https://martinfowler.com/articles/harness-engineering.html)。
+Independent validation of functional correctness remains an open problem. Architectural checks can prevent dependency violations, and cleanup tasks can remove duplicate implementations, but neither proves that user flows behave as expected. When the same type of model generates both tests and implementation, passing tests only shows that their shared assumptions were not broken. Böckeler writes, "This approach puts a lot of faith in AI-generated tests, and I don't think that's enough yet." See her discussion of [validating functional behavior](https://martinfowler.com/articles/harness-engineering.html).
 
-## 总结
+## Summary
 
-一次 Agent 输出要成为可交付的工程结果，需要信息边界、工具接口、执行状态和验证结果共同参与。Can.ac 的接口实验、OpenAI 的目录式文档和机械化约束、Anthropic 的状态交接、Stripe 的确定性编排，解决的都是模型生成之后的执行问题。
+For an Agent's output to become a deliverable engineering result, information boundaries, tool interfaces, execution state, and validation results must all work together. Can.ac's interface experiment, OpenAI's index-style documentation and mechanically enforced constraints, Anthropic's state handoffs, and Stripe's deterministic orchestration all address execution after model generation.
 
-实际落地时可以从最短的闭环开始：为任务写清入口和约束，让 Agent 能编译并运行测试，再把失败原因反馈成下一步可执行的操作。任务变长后，再增加状态文件、上下文压缩和端到端验证；代码持续生成后，把重复逻辑、过期文档和架构违规纳入定期清理。
+In practice, start with the smallest feedback loop: define the task entry point and constraints, let the Agent compile and run tests, then feed failure causes back as actionable next steps. As tasks grow longer, add state files, context summarization, and end-to-end validation. As code generation continues, include duplicate logic, outdated documentation, and architectural violations in regular cleanup.
 
-Harness 也要随模型能力变化重新检查。某个 Linter、评估器或多 Agent 环节曾经必要，并不意味着它会一直保留。保留能捕获真实错误的机制，移除只增加上下文和编排成本的部分，才能让 Agent 在具体项目里稳定推进。
+Reassess the Harness as model capabilities change. A Linter, evaluator, or multi-Agent step that was once necessary may not need to remain forever. Keep mechanisms that catch real errors and remove components that only add context and orchestration costs so the Agent can work reliably in a specific project.
 
-## 参考资料
+## References
 
-- [Can.ac：仅改变 Harness 的编码评测](https://blog.can.ac/2026/02/12/the-harness-problem/)
-- [LangChain：通过 Harness Engineering 改进 Deep Agents](https://www.langchain.com/blog/improving-deep-agents-with-harness-engineering)
-- [OpenAI：Harness engineering 实践](https://openai.com/index/harness-engineering/)
-- [Birgitta Böckeler：面向编码 Agent 使用者的 Harness Engineering](https://martinfowler.com/articles/harness-engineering.html)
+- [Can.ac: A coding evaluation that changed only the Harness](https://blog.can.ac/2026/02/12/the-harness-problem/)
+- [LangChain: Improving Deep Agents with Harness Engineering](https://www.langchain.com/blog/improving-deep-agents-with-harness-engineering)
+- [OpenAI: Harness Engineering in Practice](https://openai.com/index/harness-engineering/)
+- [Birgitta Böckeler: Harness Engineering for Users of Coding Agents](https://martinfowler.com/articles/harness-engineering.html)

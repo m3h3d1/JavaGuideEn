@@ -1,241 +1,241 @@
 ---
-title: 接口幂等性设计详解：幂等键、Token、唯一索引、去重表与支付回调
-description: 接口幂等性设计详解，讲解幂等概念、幂等键、重复请求来源、Token 机制、唯一索引、去重表、乐观锁、悲观锁、分布式锁，以及订单和支付回调等场景的幂等方案。
-category: 高可用
+title: "API Idempotency Design: Idempotency Keys, Tokens, Unique Indexes, Deduplication Tables, and Payment Callbacks"
+description: A guide to API idempotency, idempotency keys, sources of duplicate requests, token-based protection, unique indexes, deduplication tables, optimistic and pessimistic locking, distributed locks, and idempotency for orders and payment callbacks.
+category: High Availability
 icon: mdi:shield-lock-outline
 tag:
-  - 接口幂等
-  - 高并发
+  - API Idempotency
+  - High Concurrency
 head:
   - - meta
     - name: keywords
-      content: 接口幂等,幂等性设计,幂等键,Idempotency Key,Token 机制,唯一索引,去重表,分布式锁,乐观锁,支付回调幂等,订单幂等,重复提交,接口幂等面试题
+      content: API idempotency,idempotency design,idempotency key,token mechanism,unique index,deduplication table,distributed lock,optimistic locking,idempotent payment callback,idempotent order,duplicate submission,API idempotency interview questions
 ---
 
-接口幂等性是面试中常见的问题，也是日常开发过程中经常需要解决的问题。
+API idempotency is a common interview topic and a frequent concern in everyday development.
 
-## 什么是幂等（idempotency）？
+## What Is Idempotency?
 
-幂等（idempotency）本身是一个数学概念，常见于抽象代数中，表示一个操作执行一次和执行多次产生的效果相同。放到函数上，可以理解为 $f(f(x)) = f(x)$。例如，$f(x)=|x|$ 就是幂等的，因为对一个数取一次绝对值和取多次绝对值，结果都一样。
+Idempotency is a mathematical concept, common in abstract algebra. It means that performing an operation once has the same effect as performing it multiple times. For a function, this can be written as $f(f(x)) = f(x)$. For example, $f(x)=|x|$ is idempotent because taking the absolute value of a number once or repeatedly produces the same result.
 
-在接口语义里，幂等主要指多次相同请求对服务端资源产生的预期效果，和执行一次请求一致。至于响应内容是否完全相同，要看业务设计；资金类接口通常会额外要求返回稳定的业务结果。
+For an API, idempotency means that repeating the same request has the same intended effect on server-side resources as making it once. Whether the response content must also be identical depends on the design; financial APIs often require a stable business result as well.
 
-针对数据操作来说：
+For data operations:
 
-- 插入类操作要依赖业务唯一键或幂等键，避免重复创建数据。
-- 更新类操作要区分赋值更新和累加更新。`update set status = 'PAID'` 这类赋值更新更容易做到幂等，`update set balance = balance - 100` 这类累加更新必须额外控制重复执行。
+- Insert operations need a business-unique key or idempotency key to prevent duplicate records.
+- For updates, distinguish assignments from increments. An assignment such as `update set status = 'PAID'` is easier to make idempotent. An increment such as `update set balance = balance - 100` needs additional protection against duplicate execution.
 
-接口幂等性问题通常由网络波动、用户重复操作、客户端/网关超时重试、消息重复投递等触发；响应慢会放大这些重复请求的概率。
+API idempotency issues are commonly triggered by network interruptions, repeated user actions, client or gateway retries after a timeout, and duplicate message delivery. Slow responses make duplicate requests more likely.
 
-**不保证幂等会有什么后果？**
+**What happens if an API is not idempotent?**
 
-没有保证幂等会导致产生严重的生产级别的 Bug，比较典型的就是涉及到钱的业务场景。就比如在没有保证幂等性的情况下，我作为用户在付款的时候，同时点击了多次付款按钮，后端处理了多次相同的扣款请求，结果导致账户被扣了多次钱。这类问题在资金类业务中属于高风险生产事故。
+Lack of idempotency can cause serious production bugs, especially in financial workflows. For example, if a user clicks the payment button several times and the backend processes every debit request, the account may be charged repeatedly. This is a high-risk incident in any financial system.
 
-所以，资金、库存、订单、优惠券这类场景都需要认真处理幂等。另外，保证幂等性并不是说前端做了就可以，后端同样也要做。
+Handle idempotency carefully for payments, inventory, orders, and coupons. Frontend protection alone is not enough; the backend must enforce it too.
 
-## 如何保证接口幂等性？
+## How Can API Idempotency Be Guaranteed?
 
-前端可以在用户提交请求后将按钮置灰，或者将按钮置为不可点击。这只能降低重复提交概率，不能作为幂等保证。用户可以刷新页面、重放请求、绕过前端，也可能由网关超时重试、消息队列重复投递触发重复调用。真正的幂等边界必须放在服务端，尤其是资金、库存、订单这类会改变业务状态的接口。
+The frontend can disable a button after submission to reduce repeated clicks, but this does not guarantee idempotency. Users can refresh a page, replay a request, or bypass the frontend; gateways can retry after timeouts, and message queues can redeliver messages. Enforce idempotency on the server, especially for APIs that change payment, inventory, or order state.
 
-后端保证幂等性就稍微麻烦一点，方法也有很多种，比如悲观锁、唯一索引、去重表、乐观锁、分布式锁、Token 机制等。
+Backend idempotency takes more work. Common approaches include pessimistic locks, unique indexes, deduplication tables, optimistic locking, distributed locks, and tokens.
 
-悲观锁和分布式锁的核心思想都是通过加锁来保证同一时刻只有一个请求能被执行。但仅仅这样是不够的，还需要配合根据业务逻辑进行幂等性判断，例如，注册场景检测指定的电话/邮箱/用户名是否已经被注册、订单支付场景检测订单的状态。
+Pessimistic and distributed locks use locking to ensure that only one request runs at a time. Locking alone is not enough; also check idempotency against business rules. For example, check whether a phone number, email, or username is already registered, or verify the order state before processing a payment.
 
-实际项目里更常见的是组合方案：**业务唯一键 / 幂等号负责识别重复请求，数据库唯一索引或去重表负责兜底，状态机负责防止状态回退；分布式锁只在需要串行化同一业务资源操作时使用。**
+Production systems commonly combine approaches: **a business key or idempotency key identifies duplicate requests, a database unique index or deduplication table provides a safeguard, and a state machine prevents invalid state transitions. Use a distributed lock only when operations on the same business resource must be serialized.**
 
-常见场景可以先这样理解：
+Common scenarios:
 
-- **表单重复提交**：前端按钮置灰只能减少重复点击，服务端最好再配一次性 Token，保证同一张表单只能成功提交一次。
-- **创建订单**：订单号、请求号这类业务唯一键一定要有，数据库再加唯一索引兜底。重复请求进来时，不是再创建一笔订单，而是返回已有订单结果。
-- **支付回调**：第三方交易流水号要能唯一标识一笔回调，再配合订单状态机和去重表，避免同一笔支付被重复入账。
-- **库存扣减**：重点是防止重复扣和超卖，可以结合状态校验、乐观锁、Redis Lua 或数据库事务来做。
-- **消息消费**：消息可能重复投递，所以要用消息 ID 或业务流水号记录消费结果。已经消费过的消息，直接跳过或者返回成功。
+- **Duplicate form submissions**: Disabling the frontend button only reduces repeated clicks. Use a one-time server-side token too, so the same form can succeed only once.
+- **Order creation**: Use a unique business key such as an order number or request ID, backed by a database unique index. On a duplicate request, return the existing order instead of creating another one.
+- **Payment callbacks**: Use the third-party transaction ID to identify each callback, together with an order state machine and a deduplication table, to prevent posting the same payment twice.
+- **Inventory deduction**: Prevent duplicate deductions and overselling with state checks, optimistic locking, Redis Lua, or a database transaction.
+- **Message consumption**: Messages may be delivered more than once. Record processing results by message ID or business transaction ID, then skip or acknowledge messages already processed.
 
-方案选择时可以遵循几个优先级：
+Use these priorities when choosing an approach:
 
-1. 能用业务唯一键解决的，优先用业务唯一键。
-2. 能用数据库唯一索引兜底的，不要只依赖缓存。
-3. 涉及状态流转的，用状态机防止重复执行和状态回退。
-4. 需要保护同一业务资源的临界区时，再考虑分布式锁。
-5. 高风险资金场景要多层兜底，不要押宝单一机制。
+1. Prefer a business-unique key when it solves the problem.
+2. Use a database unique index as a safeguard instead of relying only on a cache.
+3. Use a state machine to prevent duplicate execution and invalid state transitions.
+4. Consider a distributed lock when a critical section must protect the same business resource.
+5. Add multiple safeguards for high-risk financial workflows; do not rely on a single mechanism.
 
-### 悲观锁
+### Pessimistic Locking
 
-在 Java 中，可以使用 `ReentrantLock` 类、`synchronized` 关键字这类 JDK 自带的悲观锁来保证同一时刻只有一个线程能够进行修改。不过，JDK 自带的锁属于本地锁，分布式环境下无法使用。
+In Java, JDK mechanisms such as `ReentrantLock` and the `synchronized` keyword can ensure that only one thread modifies data at a time. These are local locks and cannot coordinate processes across a distributed system.
 
 ![Local lock](./images/shared/jvm-local-lock.png)
 
-除了利用 JDK 提供的悲观锁之外，数据库自身也自带排他锁（X 锁）。排他锁又称写锁/独占锁，事务在修改记录的时候获取排他锁，不允许多个事务同时获取。如果一条记录已经被加了排他锁，其他事务不能再对这条记录加不兼容的锁。
+Databases also provide exclusive locks (X locks), in addition to JDK pessimistic locks. An exclusive lock, also called a write or exclusive lock, is acquired by a transaction when it modifies a record. Multiple transactions cannot hold it at the same time, and other transactions cannot acquire an incompatible lock on that record.
 
-在 MySQL 里使用排他锁：
+In MySQL, use `SELECT ... FOR UPDATE` to acquire an exclusive lock:
 
 ```sql
 SELECT ... FOR UPDATE
 ```
 
-排他锁只能在支持事务的存储引擎（如 InnoDB）中使用，且只能在事务中使用。`SELECT ... FOR UPDATE` 最好命中合适索引，否则 InnoDB 可能扫描并锁住大量记录，甚至接近全表锁定效果，严重影响并发。在 MySQL 默认的 RR（REPEATABLE READ）隔离级别下，InnoDB 可能使用 Next-Key Lock（记录锁 + 间隙锁），更要通过 `EXPLAIN` 确认执行计划命中索引。
+Exclusive locks require a transactional storage engine such as InnoDB and must be used inside a transaction. Ensure that `SELECT ... FOR UPDATE` uses an appropriate index. Otherwise, InnoDB may scan and lock many records, with an effect close to a table-wide lock that severely reduces concurrency. Under MySQL's default RR (REPEATABLE READ) isolation level, InnoDB may use next-key locks (record locks plus gap locks), so use `EXPLAIN` to confirm that the query plan uses an index.
 
-高并发的场景下，激烈的锁竞争会造成线程阻塞，大量阻塞线程会导致系统的上下文切换，增加系统的性能开销。并且，悲观锁还可能会存在死锁问题，影响代码的正常运行。使用悲观锁时，要保证加锁顺序一致、事务尽量短、查询命中索引，并结合 `EXPLAIN` 和死锁日志排查锁等待问题。
+Under high concurrency, lock contention blocks threads. Many blocked threads increase context switching and system overhead. Pessimistic locks can also cause deadlocks. Keep lock ordering consistent, keep transactions short, make queries use indexes, and use `EXPLAIN` and deadlock logs to investigate lock waits.
 
-### 乐观锁
+### Optimistic Locking
 
-乐观锁一般会使用版本号机制或 CAS 算法实现。
+Optimistic locking is usually implemented with a version field or a CAS algorithm.
 
-拿版本号机制来说，通过在表中增加一个版本号字段，每次更新数据时，检查当前版本号是否和数据库中的一致。如果一致，则更新成功，并且版本号加一。如果不一致，则更新失败，表示数据已经被其他请求修改过。
+With version-based locking, add a version field to the table and check it against the stored value on each update. If the versions match, update the data and increment the version. If they differ, the update fails because another request has already changed the data.
 
 ```sql
--- 更新数据，修改 price 并将 version 加一，并且检查 version 是否为 1（假设 version 的初始值为 1）
+-- Update price, increment version, and check that version is 1 (assuming an initial version of 1)
 update goods set price = price + 100, version = version + 1 where id = 1 and version = 1;
--- 由于 version 已经变为 2，因此，下面的 SQL 执行无效
+-- The version is now 2, so the following SQL update does not take effect
 update goods set price = price + 100, version = version + 1 where id = 1 and version = 1;
 ```
 
-高并发的场景下，乐观锁通常不会像悲观锁那样长时间阻塞等待，能减少锁竞争带来的线程堆积，在性能上往往会更胜一筹。但数据库更新仍可能涉及行锁，复杂事务下不能说完全没有死锁风险。如果冲突频繁发生（写占比非常多的情况），会频繁失败和重试（悲观锁的开销是固定的），这样同样会非常影响性能，导致 CPU 飙升。不过，这种方法主要适用于更新数据的场景。
+Under high concurrency, optimistic locking usually avoids the long waits associated with pessimistic locks and reduces thread buildup from lock contention, which can improve performance. Database updates may still use row locks, so complex transactions are not entirely free of deadlock risk. If conflicts are frequent, repeated failures and retries can also hurt performance and drive CPU usage up. This approach is mainly suited to update operations.
 
-乐观锁更新失败后要提前设计处理策略：可以返回明确的冲突提示，由调用方决定是否重试；也可以在服务端有限重试 2～3 次；还可以查询当前状态并返回已有结果。资金类场景不建议盲目自动重试，应优先返回冲突或查询最终状态。
+Plan how to handle failed optimistic-lock updates: return a clear conflict for the caller to handle, retry a limited number of times (such as two or three), or check the current state and return the existing result. Avoid blind automatic retries in financial workflows; return a conflict or check the final state instead.
 
-### 唯一索引
+### Unique Indexes
 
-通过在表中加上唯一索引，保证数据的唯一性。如果有重复的数据插入，会抛出异常，程序可以捕获异常并处理。不过，这种方法只适用于插入数据的场景。
+Add a unique index to a table to enforce data uniqueness. An attempt to insert a duplicate raises an exception that the application can catch and handle. This approach applies to insert operations.
 
 ```sql
 create table t_order(
-    id int unsigned PRIMARY KEY AUTO_INCREMENT COMMENT "主键",
-    `code` varchar(200) not null COMMENT "流水号",
-    `customer_id`  int unsigned COMMENT "会员id",
-    `amount` decimal(10,2) unsigned not null COMMENT "总金额",
-    -- 省略其他订单字段
-    -- 省略其他索引
-    -- 订单流水号唯一
+    id int unsigned PRIMARY KEY AUTO_INCREMENT COMMENT "Primary key",
+    `code` varchar(200) not null COMMENT "Transaction number",
+    `customer_id`  int unsigned COMMENT "Customer ID",
+    `amount` decimal(10,2) unsigned not null COMMENT "Total amount",
+    -- Other order fields omitted
+    -- Other indexes omitted
+    -- Order transaction number must be unique
     UNIQUE unq_code(`code`)
-) COMMENT="订单表";
+) COMMENT="Order table";
 ```
 
-不要只依靠唯一索引完成全部幂等逻辑，但插入类场景建议把唯一索引作为数据库层兜底，避免并发下产生重复数据。
+Do not rely on a unique index for all idempotency logic, but use one as a database-level safeguard for inserts to prevent duplicates under concurrency.
 
-### 去重表
+### Deduplication Tables
 
-去重表本质上也是一种唯一索引方案。去重表是一张专门用于记录请求信息的表，其中某个字段需要建立唯一索引，用于标识请求的唯一性。当客户端发出请求时，服务端会将这次请求的一些信息（如订单号、交易流水号等）插入到去重表中，如果插入成功，说明这是第一次请求，可以执行后续的业务逻辑；如果插入失败，说明这是重复请求，可以直接返回或者忽略。
+A deduplication table is another use of a unique index. It stores request data and has a unique index on a field that identifies each request. When a client sends a request, the server inserts identifying information, such as an order number or transaction ID. If the insert succeeds, this is the first request and the server can proceed. If it fails, the request is a duplicate and can be returned or ignored.
 
 ```sql
 CREATE TABLE deduplication_table (
-    id int unsigned PRIMARY KEY AUTO_INCREMENT COMMENT "主键",
-    processed_code varchar(200) not null COMMENT "已处理的订单流水号",
-    -- 省略其他字段
+    id int unsigned PRIMARY KEY AUTO_INCREMENT COMMENT "Primary key",
+    processed_code varchar(200) not null COMMENT "Processed order transaction number",
+    -- Other fields omitted
     UNIQUE unq_processed_code(processed_code)
-) COMMENT="去重表";
+) COMMENT="Deduplication table";
 ```
 
-去重表的插入要和后续业务操作放在同一个数据库事务中。事务提交成功，才表示“去重记录存在 = 业务已经处理完成”；如果业务逻辑失败回滚，去重记录也要一起回滚，后续请求才能正常重入。否则可能出现“去重记录已写入，但业务实际没完成”的不一致状态。分库分表导致去重表和业务表不在同一物理库时，需要额外考虑 TCC / Saga 等分布式事务方案，或者改用其他能保证一致性的设计。
+Insert into the deduplication table and perform the business operation in the same database transaction. A successful commit then means that the deduplication record exists and the business operation is complete. If the business operation fails and rolls back, the deduplication record must roll back too, so a later request can be processed. Otherwise, the record may say a request was handled when the business operation did not complete. If sharding places the deduplication and business tables in different physical databases, consider a distributed transaction approach such as TCC or Saga, or use another design that preserves consistency.
 
-### 分布式锁
+### Distributed Locks
 
-分布式系统下，不同的服务/客户端通常运行在独立的 JVM 进程上。如果需要跨 JVM 串行化同一业务资源的操作，就可以考虑使用**分布式锁**。
+In a distributed system, services and clients usually run in separate JVM processes. If operations on the same business resource must be serialized across JVMs, consider a **distributed lock**.
 
 ![Distributed lock](./images/shared/distributed-lock.png)
 
-基于 MySQL 虽然也能实现分布式锁（如利用 `SELECT ... FOR UPDATE` 或唯一索引），但性能和可靠性通常不如专门的协调服务，生产中较少采用。
+MySQL can be used to implement a distributed lock with `SELECT ... FOR UPDATE` or a unique index, but it is generally less performant and reliable than a dedicated coordination service, so it is less common in production.
 
-通常情况下，我们一般会选择基于 Redis 或者 ZooKeeper 实现分布式锁，Redis 用的要更多一点。
+Redis and ZooKeeper are common choices for implementing distributed locks; Redis is used more often.
 
-关系型数据库也可以参与分布式场景下的并发控制，比如唯一索引兜底、状态机校验、行锁串行化；但乐观锁和唯一索引通常不归类为分布式锁。
+Relational databases can also help control concurrency in distributed systems through unique-index safeguards, state-machine checks, and row-lock serialization. However, optimistic locking and unique indexes are not usually classified as distributed locks.
 
-关于分布式锁的详细介绍以及如何基于 Redis 和 ZooKeeper 实现分布式锁，我写过专门的文章介绍，推荐看看：
+For more detail on distributed locks and their implementations with Redis and ZooKeeper, see these guides:
 
-- [分布式锁介绍](https://javaguide.cn/distributed-system/distributed-lock.html)
-- [分布式锁常见实现方案总结](https://javaguide.cn/distributed-system/distributed-lock-implementations.html)
+- [Introduction to Distributed Locks](https://javaguide.cn/distributed-system/distributed-lock.html)
+- [Common Distributed Lock Implementations](https://javaguide.cn/distributed-system/distributed-lock-implementations.html)
 
-需要注意的是，这里的分布式锁是根据唯一标识（比如订单号）生成的。获取到锁只说明当前可以进入临界区，不代表历史上没有处理过。进入临界区后仍必须查询业务状态或幂等记录。例如支付接口要检查订单是否已支付、交易流水号是否已处理，再决定执行业务逻辑还是直接返回历史结果。
+Note that this distributed lock is created from a unique identifier, such as an order number. Acquiring the lock only means the request can enter the critical section; it does not mean the operation has never been processed. Once inside, still check the business state or idempotency record. For example, a payment API must check whether the order is already paid and whether the transaction ID has been processed before running the operation or returning the previous result.
 
-以下示例基于 Redisson 3.x，使用 `RLock` 实现幂等的伪代码如下：
+The following pseudocode uses `RLock` from Redisson 3.x to implement an idempotent operation:
 
 ```java
-// 唯一标识
+// Unique identifier
 String uniqueId = "order123";
 
-// 1. 根据唯一标识生成分布式锁对象
+    // 1. Create a distributed lock using the unique identifier
 RLock lock = redisson.getLock("lock:" + uniqueId);
 boolean locked = false;
 
 try {
-    // 2. 尝试获取锁，最多等待 3 秒，拿到锁后 30 秒自动释放
+    // 2. Wait up to 3 seconds for the lock; release it after 30 seconds
     locked = lock.tryLock(3, 30, TimeUnit.SECONDS);
     if (!locked) {
-        // 获取锁失败：返回处理中、稍后重试，或查询历史处理结果
+        // If lock acquisition fails, return "processing," ask the caller to retry later, or query the previous result
         return;
     }
 
-    // 3. 进入临界区后，仍要做业务幂等判断
-    // 例如：查询订单状态 / 幂等流水是否已存在
-    // 未处理才执行业务逻辑，已处理则直接返回历史结果
+    // 3. Still check business idempotency inside the critical section
+    // For example, check the order state or whether an idempotency record exists
+    // Run the operation only if it has not been processed; otherwise, return the previous result
     ...
 } finally {
-    // 4. 只有当前线程持有锁时才能释放
+    // 4. Release the lock only if the current thread holds it
     if (locked && lock.isHeldByCurrentThread()) {
         lock.unlock();
     }
 }
 ```
 
-如果不显式指定 `leaseTime`，Redisson 会通过 Watchdog 给持有中的锁续期；如果指定了 `leaseTime`，锁会在租约时间后自动释放。上面的 30 秒只是示例值，实际使用时应根据业务最长执行时间选择，通常建议设置为预估耗时的 2～3 倍。
+If `leaseTime` is not specified, Redisson's watchdog renews the lock while it is held. If `leaseTime` is specified, the lock is released automatically after that lease. The 30 seconds above is only an example; choose a value based on the maximum operation time, usually around two or three times the estimated duration.
 
-使用分布式锁还要额外关注这些问题：
+When using distributed locks, also consider:
 
-- 锁粒度：按订单号、用户 ID、资源 ID 加锁，不要使用全局锁。
-- 锁超时：业务执行时间超过 `leaseTime` 时，锁可能提前释放。
-- 锁释放：必须校验当前线程 / 当前 owner，避免释放别人的锁。
-- 拿锁失败：要决定返回“处理中”、提示稍后重试，还是查询历史处理结果。
-- 业务兜底：进入锁后仍要查订单状态或幂等流水，不能只依赖锁。
+- **Lock granularity**: Lock by order number, user ID, or resource ID; avoid a global lock.
+- **Lock timeout**: If the operation exceeds `leaseTime`, the lock may be released too early.
+- **Lock release**: Verify the current thread or owner before unlocking; do not release another owner's lock.
+- **Lock acquisition failure**: Decide whether to return "processing," ask the caller to retry later, or query the previous result.
+- **Business safeguards**: Check the order state or idempotency record after acquiring the lock; do not rely on the lock alone.
 
-### Token 机制
+### Token-Based Idempotency
 
-Token 机制的核心思想是为每一次操作生成一个唯一性的凭证 token。Token 应由服务端生成，保证随机性、不可预测和短有效期。如果服务端存储 token，可以用 Redis 记录并一次性消费；如果做无状态 token，才需要考虑签名、防篡改和过期时间。
+The token approach creates a unique token for each operation. The server should generate tokens that are random, unpredictable, and short-lived. If tokens are stored server-side, Redis can record them for one-time consumption. Stateless tokens also need a signature, tamper protection, and an expiration time.
 
-这样的话，就需要两次请求才能完成一次业务操作：
+This requires two requests to complete one business operation:
 
-1. 请求获取服务器端 token，token 需要设置有效时间（可以设置短一点），服务端将该 token 保存起来（通常保存在缓存中）。
-2. 执行真正的请求，将上一步获取到的 token 放到 header 或者作为请求参数。服务端验证 token 的有效性，如果有效，执行业务逻辑；如果无效，拒绝请求，返回提示信息。
+1. Request a token from the server. Give it a short expiration time and store it server-side, usually in a cache.
+2. Send the actual request with the token in a header or request parameter. The server validates the token and runs the operation if it is valid; otherwise, it rejects the request.
 
-服务端验证 token 时，不能先 `GET` 再 `DEL`。Redis 6.2.0 及以上版本可以使用 `GETDEL`，低版本可以使用 Lua 脚本完成“校验 + 删除”的原子操作，确保同一个 token 只能被一个请求消费。
+When validating a token, do not run `GET` and then `DEL` as separate operations. Redis 6.2.0 and later support `GETDEL`; older versions can use a Lua script to atomically validate and delete the token, ensuring that only one request can consume it.
 
-得物技术的[分布式系统设计中的并发访问解决方案](https://mp.weixin.qq.com/s/yvKASWcRLfOok-NFPrIRsw)这篇文章把这个过程图解得挺清晰。
+The Dewu Tech article [Concurrency Control Solutions for Distributed System Design](https://mp.weixin.qq.com/s/yvKASWcRLfOok-NFPrIRsw) illustrates this process.
 
 ![](./images/shared/idempotent-token.png)
 
-先执行业务逻辑再删除 token 还是先删除 token 再执行业务逻辑呢？两者似乎都有风险：
+Should the server run the business operation before deleting the token, or delete it first? Both options have risks:
 
-- 先执行业务逻辑的话，客户端可能会在该 token 还存在的时候又携带 token 发起请求，由于 token 还存在，第二次请求也会验证通过。
-- 先删除 token 的话，如果业务逻辑执行超时或者出现网络波动，客户端需要重试请求，那 token 就用不成了。
+- If the operation runs first, the client may send another request while the token still exists, and that request will pass validation too.
+- If the token is deleted first, a timeout or network interruption may force the client to retry after the token has already been consumed.
 
-一般更推荐先原子消费 token，再执行业务逻辑；但要配套失败提示、重新获取 token、业务事务回滚和幂等流水记录。资金类场景不能只靠 token，还要用订单状态和交易流水兜底。
+Usually, consume the token atomically before running the operation. Also plan for failure responses, token renewal, transaction rollback, and idempotency records. For financial operations, do not rely on a token alone; check the order state and transaction record as well.
 
-Token 机制依赖 Redis 保存 token 生命周期，也要提前设计 Redis 不可用时的降级策略。普通表单可以提示稍后重试；资金类接口不建议熔断放行，宁可返回失败，也要避免重复扣款或重复入账。
+Token-based idempotency may rely on Redis to manage token lifetimes, so plan what to do if Redis is unavailable. A regular form can ask the user to retry later. For financial APIs, do not bypass the check when a circuit breaker opens; return a failure rather than risk duplicate charges or postings.
 
-### 支付回调幂等流程
+### Idempotent Payment Callback Flow
 
-支付回调是幂等设计里非常典型的场景，第三方支付平台可能因为网络超时、响应丢失等原因多次回调同一笔交易。一个更稳妥的流程如下：
+Payment callbacks are a common idempotency scenario. A payment provider may send the same transaction callback more than once because of a timeout or a lost response. A safer flow is:
 
-1. 回调请求携带第三方交易流水号 `transaction_id`。
-2. 回调记录表对 `transaction_id` 建唯一索引。
-3. 查询订单状态，只有 `UNPAID -> PAID` 这类合法状态流转才允许更新。
-4. 更新订单状态、写资金流水、写回调记录放在同一个数据库事务中。
-5. 重复回调直接返回成功，避免第三方继续重试。
+1. The callback includes the provider's transaction ID, `transaction_id`.
+2. Add a unique index on `transaction_id` in the callback record table.
+3. Check the order state and allow only valid transitions, such as `UNPAID -> PAID`.
+4. Update the order state, write the financial ledger entry, and record the callback in one database transaction.
+5. Return success for a duplicate callback so the provider does not keep retrying.
 
-## 如何验证幂等方案？
+## How Can You Verify an Idempotency Design?
 
-幂等方案不能只看代码，还要通过测试和数据校验确认它真的有效。尤其是订单、支付、库存这类场景，不能只测“正常请求成功一次”，还要故意制造重复请求、超时、失败和回滚。
+Do not verify idempotency by reviewing code alone; confirm it with tests and data checks. For orders, payments, and inventory, test duplicate requests, timeouts, failures, and rollbacks as well as a single successful request.
 
-比较实用的验证方式有这几类：
+Useful verification methods include:
 
-1. **并发压测**：同一个订单号、支付流水号或幂等 key，同时发起 50～100 个请求，最终只能有一次真正执行业务逻辑。其他请求要么返回相同结果，要么返回“处理中”或“已处理”，不能产生多条订单、多条资金流水或多次库存扣减。
-2. **重试测试**：模拟客户端超时重试、网关重试、第三方回调重试、MQ 重复投递等情况。重点看重复请求进来后，是不是能命中幂等记录或业务状态，而不是重新执行业务逻辑。
-3. **异常测试**：在业务执行到一半时制造异常，比如订单状态已更新但流水写入失败、Token 已消费但事务回滚、拿到分布式锁后服务重启。恢复后再次请求，数据仍然要能对齐，不能出现“半成功半失败”的脏状态。
-4. **数据校验**：压测或异常测试结束后，对订单表、流水表、库存表、去重表做交叉校验。例如同一笔支付只能有一条成功流水，订单只能从 `UNPAID` 变成 `PAID` 一次，库存扣减数量要和成功业务单数一致。
-5. **日志审计**：日志里要能查到幂等 key、请求 ID、业务单号、处理状态和返回结果。线上真出问题时，能根据这些字段判断请求是第一次处理、重复处理、处理中，还是被幂等逻辑拦截了。
+1. **Concurrent load test**: Send 50–100 simultaneous requests with the same order number, payment ID, or idempotency key. The business operation should run only once. Other requests should return the same result or a status such as "processing" or "already processed". They must not create multiple orders or ledger entries or deduct inventory repeatedly.
+2. **Retry test**: Simulate retries by clients, gateways, payment providers, and duplicate MQ delivery. Confirm that repeated requests find the idempotency record or business state instead of rerunning the operation.
+3. **Failure test**: Inject failures midway through an operation, such as after updating an order but before writing a ledger entry, after consuming a token but before a transaction rolls back, or after acquiring a distributed lock and restarting the service. After recovery, the data must remain consistent, without a partially completed operation.
+4. **Data validation**: After load or failure tests, cross-check the order, ledger, inventory, and deduplication tables. For example, a payment should have only one successful ledger entry, an order should transition from `UNPAID` to `PAID` only once, and inventory deductions should match the number of successful business orders.
+5. **Log audit**: Logs should include the idempotency key, request ID, business order number, processing state, and response. These fields help determine whether a request was new, duplicated, still processing, or rejected by idempotency logic.
 
-简单来说，验证幂等不是看“接口会不会返回成功”，而是看重复请求和异常路径下，业务数据是否始终只被正确处理一次。
+In short, idempotency is not verified by checking whether an API returns success. Check that duplicate requests and failure paths still leave business data correctly processed only once.
 
-## 参考
+## References
 
-- 高并发下如何保证接口的幂等性？：<https://mp.weixin.qq.com/s/7P2KbWjjX5YPZCInoox-xQ>
-- 解决幂等问题，只需要记住这个口诀！：<https://mp.weixin.qq.com/s/EatpiCzNlTw1viO_flQIpg>
+- How to guarantee API idempotency under high concurrency: <https://mp.weixin.qq.com/s/7P2KbWjjX5YPZCInoox-xQ>
+- A mnemonic for solving idempotency problems: <https://mp.weixin.qq.com/s/EatpiCzNlTw1viO_flQIpg>

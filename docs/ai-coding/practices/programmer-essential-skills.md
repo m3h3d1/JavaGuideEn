@@ -1,241 +1,241 @@
 ---
-title: AI 编程 Skills 选型清单：需求澄清、TDD、代码审查与 UI 设计
-description: 按任务场景整理 AI 编程 Skills 选型清单，覆盖需求澄清、TDD、代码审查、UI 设计、React 性能优化、PostgreSQL、Claude API 与 Skill 开发，并说明哪些工具适合按需安装。
-category: AI 编程实战
+title: A Practical Guide to AI Coding Skills: Requirements, TDD, Code Review, and UI Design
+description: A task-based guide to AI coding Skills for requirements clarification, TDD, code review, UI design, React performance, PostgreSQL, the Claude API, and Skill development, with advice on what to install as needed.
+category: AI Coding in Practice
 head:
   - - meta
     - name: keywords
-      content: AI编程,Skills,Superpowers,mattpocock,grilling,Claude Code,Cursor,代码审查,TDD,UI设计,React,Next.js,PostgreSQL,Claude API,Skill开发
+      content: AI coding,Skills,Superpowers,mattpocock,grilling,Claude Code,Cursor,code review,TDD,UI design,React,Next.js,PostgreSQL,Claude API,Skill development
 ---
 
-你好，我是小 G。最近有朋友问我：“你平时常用的有哪些 Skills？能不能给兄弟们分享一波？”
+Hi, I'm Xiao G. A friend recently asked me, “Which Skills do you use regularly? Could you share some with us?”
 
-那当然可以啊！Skill 刚出来那会儿我就开始用了，后来也在公司内部定制过不少 Skill，同事朋友用了都说不错。
+Of course. I started using Skills soon after they appeared, and later built quite a few custom ones for my company. My colleagues and friends found them useful.
 
-按理说，列份清单应该挺简单的。可真开始整理，我发现能入选的 Skill 其实并不多。而且，在整理 Skill 的过程中我再次感叹 AI 时代技术发展的太快了！有点顶不住啊！
+Putting together a list sounded simple, but once I started, I found that few Skills were worth including. The process also reminded me how quickly technology is moving in the AI era. It can be hard to keep up.
 
-Skill 刚出来那会，模型能力还没那么强。项目还没读明白就动手，代码写完不补测试，聊久了又忘掉前面的要求，这些情况都很常见。
+When Skills first appeared, models were less capable. They often started coding before understanding a project, skipped tests, or forgot earlier requirements in a long conversation.
 
-于是我们把开发步骤一条条塞进 Skill：先澄清需求，再拆计划，测试要先写，改完还得审查。规则越细，心里越踏实。
+So we added development steps to Skills one by one: clarify requirements, make a plan, write tests first, and review the changes. More detailed rules felt safer.
 
-可模型变强得太快了。
+But models improved quickly.
 
-现在把同样的任务交给 Codex 或 Claude Code，大多数时候它们会自己读项目、查调用链、改文件、补测试、跑验证。以前需要在 `SKILL.md` 里反复叮嘱的事情，很多已经成了基础动作。
+Now, when given the same task, Codex or Claude Code can usually inspect the project, trace call paths, edit files, add tests, and run checks on its own. Many things we used to repeat in `SKILL.md` have become standard behavior.
 
-这时候还把 Skills 一股脑装满，就像给一个已经会干活的人塞了一摞操作手册。小改动也要写计划、走审查、跑完整验证，最后时间全花在流程上，多少有点折腾。
+Installing every Skill at this point is like handing a stack of manuals to someone who already knows how to work. If even a small change requires a plan, review, and a full verification cycle, the process can take more time than the task.
 
-所以这份清单会收得比较克制。我现在愿意留下的，通常能补上模型猜不到的项目约定，或者自带专业流程、脚本、模板和参考资料。只会提醒“先读代码、再修改、最后跑测试”的 Skill，我基本不会再推荐了。
+This list is intentionally selective. The Skills I keep tend to provide project-specific conventions the model cannot infer, or include specialized workflows, scripts, templates, and reference material. I generally no longer recommend Skills that only say “read the code, make a change, then run tests.”
 
-之前的[万字详解 Agent Skills](https://javaguide.cn/ai/agent/skills.html)讲过 Skill 和 Prompt、MCP 的区别；如果你想知道我为什么开始删减 Skills，可以接着看最新写的这篇 [强模型时代，AI 编程 Skills 还有必要装吗？](./skill-selection-and-pruning.md)。
+My earlier guide, [A Detailed Guide to Agent Skills](https://javaguide.cn/ai/agent/skills.html), explains the differences between Skills, prompts, and MCP. For why I started trimming my Skills, see [Are AI Coding Skills Still Useful with More Capable Models?](./skill-selection-and-pruning.md).
 
 ## Superpowers
 
-Superpowers 把需求澄清、计划、TDD、Git Worktree、子 Agent 协作、代码审查和完成前验证串成一套开发方法。它适合陌生代码库、复杂功能和高风险改动；改文案、补空值判断、调整一条校验逻辑时，这套流程通常太重。
+Superpowers combines requirements clarification, planning, TDD, Git worktrees, subagent collaboration, code review, and pre-completion verification into one development workflow. It suits unfamiliar codebases, complex features, and high-risk changes. The workflow is usually too heavy for copy edits, null checks, or a small validation change.
 
-Superpowers 会依次调用这些 Skill：
+Superpowers runs these Skills in sequence:
 
-| Skill                                             | 主要动作                               |
-| ------------------------------------------------- | -------------------------------------- |
-| `brainstorming`                                   | 编码前澄清需求、比较方案并保存设计     |
-| `using-git-worktrees`                             | 创建隔离工作区，检查测试基线           |
-| `writing-plans`                                   | 把设计拆成带文件位置和验证步骤的小任务 |
-| `subagent-driven-development` / `executing-plans` | 分派子 Agent 或按批次执行计划          |
-| `test-driven-development`                         | 执行 RED-GREEN-REFACTOR                |
-| `requesting-code-review`                          | 按严重程度审查实现                     |
-| `verification-before-completion`                  | 在宣布完成前检查证据                   |
-| `finishing-a-development-branch`                  | 验证测试并处理合并、PR 或保留分支      |
+| Skill                                             | Main action                                                                  |
+| ------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `brainstorming`                                   | Clarify requirements, compare options, and save a design before coding       |
+| `using-git-worktrees`                             | Create an isolated workspace and check the test baseline                     |
+| `writing-plans`                                   | Break the design into small tasks with file locations and verification steps |
+| `subagent-driven-development` / `executing-plans` | Delegate to subagents or execute the plan in batches                         |
+| `test-driven-development`                         | Follow RED-GREEN-REFACTOR                                                    |
+| `requesting-code-review`                          | Review the implementation by severity                                        |
+| `verification-before-completion`                  | Check the evidence before declaring the work complete                        |
+| `finishing-a-development-branch`                  | Verify tests and handle merging, a PR, or keeping the branch                 |
 
-这套流程已经适配 Claude Code、Codex、Cursor 和 OpenCode。Claude Code 对应的插件安装命令是：
+This workflow supports Claude Code, Codex, Cursor, and OpenCode. Install the Claude Code plugin with:
 
 ```text
 /plugin install superpowers@claude-plugins-official
 ```
 
-Codex App 可以在侧边栏的 Plugins 中搜索 Superpowers；Codex CLI 则可以输入 `/plugins` 后搜索安装。不同 Agent 的安装方式并不互通，使用多个 Agent 时需要分别安装。
+In the Codex app, search for Superpowers under Plugins in the sidebar. In the Codex CLI, enter `/plugins` and search for it there. Each agent has its own installation method, so install it separately if you use multiple agents.
 
-Claude Code 安装界面会让你选择作用范围：
+The Claude Code installer asks where to enable the plugin:
 
-![Superpowers 下载](../images/shared/superpowers-download.png)
+![Superpowers installation options](../images/shared/superpowers-download.png)
 
-| 选项                               | 作用范围         | 建议                                           |
-| ---------------------------------- | ---------------- | ---------------------------------------------- |
-| Install for you                    | 所有项目生效     | 已经确认自己愿意长期使用整套流程时再选         |
-| Install for all collaborators      | 项目成员共享     | 团队已经约定采用同一开发方法时再提交           |
-| Install for you, in this repo only | 只在当前仓库生效 | 第一次体验时优先选择，方便观察它是否拖慢小任务 |
+| Option                             | Scope                             | Recommendation                                                           |
+| ---------------------------------- | --------------------------------- | ------------------------------------------------------------------------ |
+| Install for you                    | Applies to all projects           | Choose this if you have decided to use the full workflow long term       |
+| Install for all collaborators      | Shared with project collaborators | Choose this if the team has agreed to use the same development workflow  |
+| Install for you, in this repo only | Applies only to this repository   | Best for a first trial, so you can see whether it slows down small tasks |
 
-我不再建议新手一上来全局安装。先在一个仓库里跑两三个真实任务，看看需求澄清、TDD 和审查流程是否真的减少返工，再决定要不要扩大范围。
+I no longer recommend that newcomers install it globally right away. Try it on two or three real tasks in one repository first, and see whether requirements clarification, TDD, and review actually reduce rework before expanding its scope.
 
-项目地址：<https://github.com/obra/superpowers>
+Project: <https://github.com/obra/superpowers>
 
 ## mattpocock/skills
 
-如果你只想加强开发流程里的某一个环节，可以看看 [mattpocock/skills](https://github.com/mattpocock/skills)。这个项目把工程经验拆成较小、容易修改、可以组合的 Skills，不会要求每个任务都走完同一套流程。
+If you only want to improve one part of your development workflow, take a look at [mattpocock/skills](https://github.com/mattpocock/skills). It breaks engineering practices into small, editable, composable Skills instead of requiring every task to follow the same process.
 
-目前比较适合程序员的模块包括：
+Modules that may be useful to developers include:
 
-| Skill                    | 适合解决的问题                                             |
-| ------------------------ | ---------------------------------------------------------- |
-| `grill-me` / `grilling`  | 开工前持续追问，把需求、决策和依赖关系确认清楚             |
-| `diagnosing-bugs`        | 按复现、缩小范围、提出假设、插桩、修复和回归测试的顺序排查 |
-| `tdd`                    | 用 RED-GREEN-REFACTOR 循环开发功能或修复 Bug               |
-| `code-review`            | 分别检查代码规范和实现是否符合原始需求                     |
-| `to-spec` / `to-tickets` | 把已有讨论整理成规格说明，再拆成带依赖关系的任务           |
-| `domain-modeling`        | 统一领域术语，并把关键决策写进 `CONTEXT.md` 和 ADR         |
+| Skill                    | What it helps with                                                                                                                           |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `grill-me` / `grilling`  | Ask follow-up questions to clarify requirements, decisions, and dependencies before starting                                                 |
+| `diagnosing-bugs`        | Investigate by reproducing the bug, narrowing its scope, forming hypotheses, adding instrumentation, fixing it, and running regression tests |
+| `tdd`                    | Develop features or fix bugs with the RED-GREEN-REFACTOR cycle                                                                               |
+| `code-review`            | Check coding standards and whether the implementation meets the original requirements                                                        |
+| `to-spec` / `to-tickets` | Turn existing discussions into a specification and break it into tasks with dependencies                                                     |
+| `domain-modeling`        | Align domain terminology and record key decisions in `CONTEXT.md` and ADRs                                                                   |
 
-跨 Agent 安装可以使用：
+Install it across agents with:
 
 ```bash
 npx skills@latest add mattpocock/skills
 ```
 
-安装器会让你选择需要的 Skills 和目标 Agent。按照项目当前的安装说明，还要勾选 `/setup-matt-pocock-skills`，然后在目标仓库运行一次，完成 Issue Tracker 和文档存放位置等配置。
+The installer lets you choose which Skills to install and for which agents. According to the project's current instructions, also select `/setup-matt-pocock-skills`, then run it once in the target repository to configure the issue tracker, documentation location, and other settings.
 
-第一次使用时，不必把整套都装上。需求经常没聊清楚，可以先选 `grill-me` 和 `grilling`；难定位的 Bug 多，再补 `diagnosing-bugs`。
+You do not need to install everything at first. If requirements are often unclear, start with `grill-me` and `grilling`. If you often struggle to locate bugs, add `diagnosing-bugs`.
 
-这套 Skills 适合已经有基本开发习惯、只想补几个薄弱环节的人。如果项目里已经有稳定的需求模板、TDD 规范和代码审查流程，重复安装对应 Skill 不会带来多少帮助。
+These Skills suit developers who already have sound development practices and want to improve a few weak areas. If a project already has established requirement templates, TDD standards, and code review workflows, installing Skills that duplicate them will add little value.
 
-这几个 Skill 的实际用法和适用边界，我单独写了一篇：[mattpocock/skills：我最推荐的 4 个 AI 编程 Skill](https://javaguide.cn/ai-coding/practices/mattpocock-skills.html)。
+I wrote a separate guide to using these Skills and understanding their limits: [mattpocock/skills: My 4 Recommended AI Coding Skills](https://javaguide.cn/ai-coding/practices/mattpocock-skills.html).
 
-项目地址：<https://github.com/mattpocock/skills>
+Project: <https://github.com/mattpocock/skills>
 
-## ECC（原 Everything Claude Code）
+## ECC (formerly Everything Claude Code)
 
-Everything Claude Code 现在已经更名为 **ECC**。
+Everything Claude Code has been renamed **ECC**.
 
-项目已经从一套 Claude Code 配置扩展为跨 Agent 的 Harness 系统，覆盖 Codex、Claude Code、Cursor、OpenCode 等工具。
+The project has grown from a Claude Code configuration into a cross-agent harness system that supports Codex, Claude Code, Cursor, OpenCode, and other tools.
 
-ECC 仓库同时放了 Skills、Agents、Hooks、Rules，以及记忆管理、安全扫描、持续学习和多语言工程规则。仓库里的 Skills 已经达到数百个，更像一套团队级 Harness 配置库。团队需要统一 Agent 的工作方式、记忆策略和安全检查时，集中管理会省去不少重复配置。
+The ECC repository includes Skills, agents, hooks, rules, memory management, security scans, continuous learning, and engineering rules for multiple languages. It now contains hundreds of Skills and is closer to a team-level harness configuration library. Centralizing these settings can reduce duplicated configuration when a team needs consistent agent behavior, memory policies, and security checks.
 
-![上下文腐化](../../ai/images/shared/context-rot-diagram.png)
+![Context rot](../../ai/images/shared/context-rot-diagram.png)
 
-组件一多，选择成本也会跟着上来。项目只缺代码审查或 TDD 时，可以用 ECC 的选择性安装，只取 Java 代码审查、上下文持久化或安全扫描等对应组件，不必把整套系统塞进每个仓库。
+More components also mean more choices. If a project only needs code review or TDD, use ECC's selective installation to add only the relevant components, such as Java code review, context persistence, or security scanning, instead of adding the whole system to every repository.
 
-项目地址：<https://github.com/affaan-m/ECC>
+Project: <https://github.com/affaan-m/ECC>
 
 ## Doc Co-Authoring
 
-程序员写代码之前，最容易被低估的一步其实是：把需求讲清楚。
+One of the most underestimated steps before writing code is clarifying the requirements.
 
-需求没讲清楚时，AI 编程 Agent 会很努力地往前冲，但冲的方向不一定对。它可能把一个还没定边界的想法直接写成实现，最后代码、测试、文档都很完整，只是和真实需求差了一截。
+When requirements are unclear, an AI coding agent may make a lot of progress in the wrong direction. It might implement an idea whose scope has not been defined. The code, tests, and documentation may all be complete, yet still miss the actual need.
 
-Anthropic 官方 Skills 仓库里的 **doc-coauthoring** 就是为这类场景准备的。它关注的重点很具体：把写 PRD、技术方案、决策文档、RFC 这类工作拆成一套协作流程，先处理上下文、结构和读者理解，句子润色只是后面的事。
+Anthropic's official Skills repository includes **doc-coauthoring** for this kind of work. It turns writing PRDs, technical proposals, decision records, and RFCs into a collaborative workflow. The focus is first on context, structure, and reader understanding; polishing sentences comes later.
 
-doc-coauthoring 用三个阶段处理一份文档：
+doc-coauthoring works through a document in three stages:
 
-| 阶段                       | 做什么                                                       |
-| -------------------------- | ------------------------------------------------------------ |
-| **Context Gathering**      | 先收集背景、约束、历史讨论、架构依赖和利益相关方关注点       |
-| **Refinement & Structure** | 按章节迭代，先提问和发散，再筛选内容，最后写成可读段落       |
-| **Reader Testing**         | 用一个全新上下文的 Claude 测试文档，检查读者是否会误解或遗漏 |
+| Stage                      | What it does                                                                                                      |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **Context Gathering**      | Collect background, constraints, prior discussions, architectural dependencies, and stakeholder concerns          |
+| **Refinement & Structure** | Iterate section by section: ask questions and explore ideas, select the useful content, then write readable prose |
+| **Reader Testing**         | Test the document with Claude in a fresh context to find likely misunderstandings or omissions                    |
 
-拿订单退款模块举例。Coding Agent 开工前，可以先让 doc-coauthoring 整理一份短技术方案，把退款状态机、接口幂等、库存和优惠券回滚、失败后的人工补偿逐项写清楚。
+Consider an order refund module. Before implementation, use doc-coauthoring to draft a short technical proposal covering the refund state machine, API idempotency, inventory and coupon rollback, and manual compensation for failures.
 
-文档定下来后，小任务可以直接把技术方案和验收标准交给 Agent；改动涉及多个模块时，再接 Superpowers 拆计划、写测试和审查代码。这样做主要是为了把分歧留在文档阶段解决，免得实现完成后再改范围。
+Once the document is agreed on, give the technical proposal and acceptance criteria to the agent for a small task. For changes across multiple modules, add Superpowers to plan the work, write tests, and review the code. The goal is to resolve disagreements during the documentation stage instead of changing scope after implementation.
 
-Claude Code 的安装命令如下：
+Install it in Claude Code with:
 
 ```bash
 /plugin marketplace add anthropics/skills
 /plugin install example-skills@anthropic-agent-skills
 ```
 
-`example-skills` 是一组示例 Skill，doc-coauthoring 只是其中之一。装过这组插件后，后面提到的 skill-creator 也会一起提供，不用重复安装。
+`example-skills` is a collection of example Skills, and doc-coauthoring is one of them. Installing this plugin also provides skill-creator, mentioned later in this guide, so you do not need to install it separately.
 
-项目地址：<https://github.com/anthropics/skills/tree/main/skills/doc-coauthoring>
+Project: <https://github.com/anthropics/skills/tree/main/skills/doc-coauthoring>
 
 ## UI UX Pro Max
 
-这是一个专为 AI 编程 Agent（Claude Code、Cursor、Windsurf 等）设计的专业 UI/UX 设计智能 Skill。
+This is a specialized UI/UX design Skill for AI coding agents such as Claude Code, Cursor, and Windsurf.
 
 ![UI UX Pro Max](../images/shared/ui-ux-pro-max-skill.png)
 
-它会根据产品类型和行业特性生成设计系统，再把配色、字体、布局、动效和反模式交给 Agent 执行。与只有几段审美提示词的轻量 Skill 相比，它带了一套可以检索的设计资料。
+It generates a design system based on the product type and industry, then gives the agent guidance on colors, typography, layout, motion, and anti-patterns. Unlike lightweight Skills with only a few aesthetic prompts, it includes a searchable design knowledge base.
 
-当前公开版本提供的主要数据包括：
+The current public version includes:
 
-| 资源类型       | 数量   | 说明                                                    |
-| -------------- | ------ | ------------------------------------------------------- |
-| UI 风格        | 84 种  | Glassmorphism、Neumorphism、Bento Grid、AI-Native UI 等 |
-| 产品类型与色板 | 192 组 | 按 SaaS、金融、医疗、电商等产品场景匹配                 |
-| 字体搭配       | 74 组  | 包含 Google Fonts 组合                                  |
-| 图表类型       | 25 种  | 面向仪表盘和分析页面                                    |
-| 推理规则       | 161 条 | 按行业生成设计系统                                      |
-| UX 准则        | 98 条  | 覆盖反模式、交互和可访问性                              |
-| 支持技术栈     | 22 种  | React、Next.js、Vue、Nuxt、SwiftUI、Flutter、JavaFX 等  |
+| Resource type              | Amount | Description                                                         |
+| -------------------------- | ------ | ------------------------------------------------------------------- |
+| UI styles                  | 84     | Includes Glassmorphism, Neumorphism, Bento Grid, and AI-native UI   |
+| Product types and palettes | 192    | Matches scenarios such as SaaS, finance, healthcare, and e-commerce |
+| Font pairings              | 74     | Includes Google Fonts combinations                                  |
+| Chart types                | 25     | For dashboards and analytics pages                                  |
+| Reasoning rules            | 161    | Generates design systems by industry                                |
+| UX guidelines              | 98     | Covers anti-patterns, interaction, and accessibility                |
+| Supported stacks           | 22     | Includes React, Next.js, Vue, Nuxt, SwiftUI, Flutter, and JavaFX    |
 
-以“帮我做一个美容 SPA 的落地页”为例，生成结果会先把页面归到健康养生场景，再给出 Soft UI 方向，配色采用淡粉、鼠尾草绿和金色点缀，字体选择 Cormorant Garamond。同一份结果还会列出反模式，例如避免常见的紫粉渐变。
+For example, given the request “Build a landing page for a beauty spa,” it classifies the page under health and wellness, suggests a Soft UI direction, uses pale pink with sage green and gold accents, and selects Cormorant Garamond. It also lists anti-patterns, such as avoiding the common purple-pink gradient.
 
-Claude Code 可以从插件市场安装：
+Install it in Claude Code from the plugin marketplace:
 
 ```text
 /plugin marketplace add nextlevelbuilder/ui-ux-pro-max-skill
 /plugin install ui-ux-pro-max@ui-ux-pro-max-skill
 ```
 
-Codex、Cursor、Windsurf 等工具更适合使用当前官方 CLI。包名是 `ui-ux-pro-max-cli`，旧的 `uipro-cli` 已经不再更新：
+For Codex, Cursor, Windsurf, and similar tools, use the current official CLI. The package is `ui-ux-pro-max-cli`; the old `uipro-cli` package is no longer maintained:
 
 ```bash
 npx ui-ux-pro-max-cli init --ai codex
 npx ui-ux-pro-max-cli init --ai cursor
 ```
 
-它的检索脚本依赖 Python 3。安装完成后，直接描述页面类型和行业即可触发：
+Its search scripts require Python 3. After installation, describe the page type and industry to use it:
 
 ```text
-帮我做一个 SaaS 产品的落地页
-设计一个医疗分析仪表盘
-做一个深色主题的金融 App
+Build a landing page for a SaaS product.
+Design a healthcare analytics dashboard.
+Create a dark-themed finance app.
 ```
 
-交付检查会继续检查图标、hover 状态、文本对比度和 `reduced-motion`，其中包括“不用 emoji 充当图标”这类明确规则。已有设计系统的项目要谨慎使用自动推荐，否则新生成的色板、字体和组件规范可能与现有规则冲突。这种情况下，把团队已有的设计规范写成项目级 Skill 会更合适。
+Its delivery checklist also checks icons, hover states, text contrast, and `reduced-motion`, including specific rules such as “do not use emoji as icons.” Use its recommendations carefully in projects with an existing design system; generated palettes, fonts, and component guidelines may conflict with established rules. In that case, encode the team's design standards in a project-level Skill instead.
 
-项目地址：<https://github.com/nextlevelbuilder/ui-ux-pro-max-skill>
+Project: <https://github.com/nextlevelbuilder/ui-ux-pro-max-skill>
 
-不需要完整设计知识库时，可以换成 Anthropic 官方的 **frontend-design** Skill。
+If you do not need a full design knowledge base, consider Anthropic's official **frontend-design** Skill instead.
 
-当前版本更强调先确定鲜明的视觉方向，再通过字体、配色、布局、动效和细节把方向落实，同时避免模板化的“AI 页面”观感。它不再把禁用 Inter、Roboto 或紫白渐变写成固定规则；是否使用某种字体和配色，应由品牌规范、内容类型和既有设计系统决定。
+The current version emphasizes choosing a distinctive visual direction first, then expressing it through typography, colors, layout, motion, and details while avoiding a generic “AI-generated” look. It no longer imposes fixed rules against Inter, Roboto, or purple-and-white gradients. Font and color choices should follow the brand, content, and existing design system.
 
 ## Vercel React Best Practices
 
-现在让 Agent 写出一个能跑的 React 页面并不难，容易被忽略的是后面的性能问题：几个本来可以并行的请求被写成串行，客户端收到一大坨用不到的数据，组件因为依赖项处理不当反复渲染，随手引入一个包又把 Bundle 撑大了。
+Getting an agent to build a working React page is not difficult. Performance issues are easier to miss: requests that could run in parallel execute in sequence, the client receives data it does not need, components rerender because dependencies are handled poorly, or an added package makes the bundle much larger.
 
-Vercel 官方维护的 **vercel-react-best-practices** 就盯着这些问题。截至 2026 年 7 月，它在 [skills.sh](https://skills.sh/vercel-labs/agent-skills/vercel-react-best-practices) 上的累计安装量约为 57 万次，包含 70 条 React 和 Next.js 性能规则，并按影响程度分成 8 类。
+Vercel's official **vercel-react-best-practices** Skill focuses on these issues. As of July 2026, it had about 570,000 total installs on [skills.sh](https://skills.sh/vercel-labs/agent-skills/vercel-react-best-practices). It contains 70 React and Next.js performance rules in eight categories, ranked by impact.
 
-| 优先级     | 主要检查内容                                                                |
-| ---------- | --------------------------------------------------------------------------- |
-| CRITICAL   | 消除请求瀑布、控制 Bundle 体积                                              |
-| HIGH       | 服务端缓存与请求去重、并行获取数据、减少 React Server Components 序列化开销 |
-| MEDIUM     | 客户端请求去重、依赖项管理、减少无效重渲染、处理 Hydration 问题             |
-| LOW-MEDIUM | DOM 批处理、缓存重复计算、用 Set 或 Map 优化高频查找                        |
+| Priority   | Main checks                                                                                                                        |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| CRITICAL   | Eliminate request waterfalls and control bundle size                                                                               |
+| HIGH       | Server-side caching and request deduplication, parallel data fetching, and reducing React Server Components serialization overhead |
+| MEDIUM     | Client-side request deduplication, dependency management, fewer unnecessary rerenders, and hydration issues                        |
+| LOW-MEDIUM | DOM batching, caching repeated computations, and using Set or Map for frequent lookups                                             |
 
-每条规则都带有错误代码、修改后的代码和适用条件。写新页面、做性能审查或者重构 React 代码时，让 Agent 按这些规则逐项检查，比临时提醒一句“帮我优化性能”更具体。
+Each rule includes an error code, corrected code, and conditions for applying it. When building a page, reviewing performance, or refactoring React code, asking the agent to check these rules is more specific than a vague request to “optimize performance.”
 
-安装命令如下：
+Install it with:
 
 ```bash
 npx skills add https://github.com/vercel-labs/agent-skills --skill vercel-react-best-practices
 ```
 
-这套规则只适合 React 和 Next.js 项目，Vue、Svelte 或后端项目没必要安装。性能优化也不能只看规则清单，涉及缓存、序列化和渲染的问题，最后还是要结合构建产物、React Profiler 和真实请求链路验证。
+These rules are for React and Next.js projects; Vue, Svelte, and backend projects do not need them. A checklist alone is not enough to optimize performance. For caching, serialization, and rendering issues, verify the results against build artifacts, the React Profiler, and real request traces.
 
-项目地址：<https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices>
+Project: <https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices>
 
 ## sanyuan-skills
 
-`sanyuan-skills` 当前收录 6 个独立 Skill，安装时可以按目录选择。只想在提交前补一轮代码审查，就装 Code Review Expert，不会同时引入需求澄清、TDD 等流程。
+`sanyuan-skills` currently includes six independent Skills that can be installed separately. If you only want a code review before committing, install Code Review Expert without adding workflows for requirements clarification, TDD, and other tasks.
 
-| Skill              | 适用场景                                               |
-| ------------------ | ------------------------------------------------------ |
-| Code Review Expert | 从 SOLID、安全、性能、错误处理和边界条件等维度审查代码 |
-| Sigma              | 通过苏格拉底式追问学习技术概念                         |
-| Skill Review       | 检查 Skill 的结构、描述、流程和 Token 使用             |
-| Skill Forge        | 创建新的 Skill                                         |
-| Wiki Ingest        | 把文章、文档或笔记整理成可交叉引用的 Wiki              |
-| Book Study         | 阅读辅导、掌握度测试和间隔复习                         |
+| Skill              | Use case                                                                     |
+| ------------------ | ---------------------------------------------------------------------------- |
+| Code Review Expert | Review code for SOLID, security, performance, error handling, and edge cases |
+| Sigma              | Learn technical concepts through Socratic questions                          |
+| Skill Review       | Check a Skill's structure, description, workflow, and token usage            |
+| Skill Forge        | Create a Skill                                                               |
+| Wiki Ingest        | Organize articles, documents, or notes into a cross-referenced wiki          |
+| Book Study         | Reading guidance, mastery checks, and spaced review                          |
 
-Java 开发者最容易直接用起来的是 Code Review Expert。它适合在提交前补一轮独立审查，但不能替代项目自己的检查规则。事务边界、错误码约定、日志字段和兼容性要求仍然要放进仓库的 `AGENTS.md`、审查说明或测试里。
+Code Review Expert may be the easiest one for Java developers to adopt. It can provide an independent review before a commit, but it cannot replace project-specific checks. Transaction boundaries, error-code conventions, log fields, and compatibility requirements still belong in the repository's `AGENTS.md`, review instructions, or tests.
 
-每个 Skill 都可以单独安装：
+Install each Skill separately:
 
 ```bash
 npx skills add sanyuan0704/sanyuan-skills --skill code-review-expert
@@ -244,94 +244,94 @@ npx skills add sanyuan0704/sanyuan-skills --skill skill-review
 npx skills add sanyuan0704/sanyuan-skills --skill skill-forge
 ```
 
-安装后可以直接调用：
+After installation, call them with:
 
 ```text
-/code-review-expert    # 审查当前 git 变更
-/sigma <主题>          # 启动学习辅导，如 /sigma React Hooks
-/skill-review          # 检查已有 Skill
-/skill-forge           # 创建新技能
+/code-review-expert    # Review current Git changes
+/sigma <topic>         # Start a study session, e.g. /sigma React Hooks
+/skill-review          # Review an existing Skill
+/skill-forge           # Create a Skill
 ```
 
-项目地址：<https://github.com/sanyuan0704/sanyuan-skills>
+Project: <https://github.com/sanyuan0704/sanyuan-skills>
 
 ## Supabase Postgres Best Practices
 
-**supabase-postgres-best-practices** 由 Supabase 官方维护，内容主要围绕 PostgreSQL，普通 PostgreSQL 项目也能用。截至 2026 年 7 月，它在 [skills.sh](https://skills.sh/supabase/agent-skills/supabase-postgres-best-practices) 上的累计安装量约为 30 万次。
+**supabase-postgres-best-practices** is maintained by Supabase. It focuses on PostgreSQL and also works for general PostgreSQL projects. As of July 2026, it had about 300,000 total installs on [skills.sh](https://skills.sh/supabase/agent-skills/supabase-postgres-best-practices).
 
-它把 PostgreSQL 相关规则分成 8 类：查询性能、连接管理、安全与 RLS、表结构设计、并发与锁、数据访问模式、监控诊断和高级特性。每条规则会说明问题出现的原因，再给出错误 SQL、修改后的 SQL、`EXPLAIN` 分析和性能指标。
+It groups PostgreSQL guidance into eight areas: query performance, connection management, security and RLS, schema design, concurrency and locks, data access patterns, monitoring and diagnostics, and advanced features. Each rule explains the problem and provides incorrect and corrected SQL, `EXPLAIN` analysis, and performance metrics.
 
-比如让 Agent 审查一条“按用户、状态和创建时间查询订单”的 SQL，它会继续检查组合索引的字段顺序、查询条件是否命中索引、连接池是否合理，以及这个改动会不会影响写入和锁竞争，不会只留下一句“加个索引”。
+For example, when reviewing a query for orders by user, status, and creation time, the agent checks the order of columns in a composite index, whether the conditions use the index, whether the connection pool is appropriate, and whether the change affects writes or lock contention. It will not just say “add an index.”
 
-安装命令如下：
+Install it with:
 
 ```bash
 npx skills add https://github.com/supabase/agent-skills --skill supabase-postgres-best-practices
 ```
 
-Java 后端项目只要使用 PostgreSQL，也可以直接拿来检查 SQL、表结构和数据库配置。MySQL 项目不要照搬其中的 RLS、索引和数据库参数；涉及建索引、改字段或调整连接池时，还要结合数据量、`EXPLAIN ANALYZE` 和压测结果判断，不能让 Agent 直接改生产库。
+Java backend projects that use PostgreSQL can use it to review SQL, schemas, and database configuration. Do not copy its RLS, index, or database settings directly into a MySQL project. When adding indexes, changing columns, or adjusting the connection pool, consider data volume, `EXPLAIN ANALYZE`, and load-test results. Do not let an agent change the production database directly.
 
-项目地址：<https://github.com/supabase/agent-skills/tree/main/skills/supabase-postgres-best-practices>
+Project: <https://github.com/supabase/agent-skills/tree/main/skills/supabase-postgres-best-practices>
 
 ## Claude API
 
-Claude API 这个 Skill 面向的是 AI 应用开发。只在 IDE 里使用 Coding Agent 时可以跳过；做智能客服、代码生成平台、文档分析工具或内部 Agent 平台时，它可以用来核对 SDK 和 API 细节。
+This Skill is for AI application development. Skip it if you only use a coding agent in your IDE. It can help verify SDK and API details when building customer-support assistants, code-generation platforms, document analysis tools, or internal agent platforms.
 
-模型名称、参数和流式事件都可能随版本变化，凭记忆写调用代码容易用到旧接口。Anthropic 官方的 **claude-api** Skill 覆盖模型选择、价格、参数、流式输出、工具调用、MCP、Agent、缓存、Token 计算和模型迁移，并按语言拆分文档：
+Model names, parameters, and streaming events can change between versions, so relying on memory when writing API calls can lead to outdated code. Anthropic's official **claude-api** Skill covers model selection, pricing, parameters, streaming, tool use, MCP, agents, caching, token counting, and model migration. Its documentation is organized by language:
 
-| 语言 / 接入方式 | 说明                             |
-| --------------- | -------------------------------- |
-| **Python**      | 使用官方 Python SDK              |
-| **TypeScript**  | 使用官方 TypeScript SDK 和 Zod   |
-| **Java**        | Java / Kotlin / Scala 项目可参考 |
-| **Go**          | Go 服务端应用可参考              |
-| **Ruby / PHP**  | 适合对应语言栈项目               |
-| **C#**          | .NET 项目可参考                  |
-| **cURL**        | 原始 HTTP、Shell 脚本或调试用    |
+| Language / method | Notes                                     |
+| ----------------- | ----------------------------------------- |
+| **Python**        | Uses the official Python SDK              |
+| **TypeScript**    | Uses the official TypeScript SDK and Zod  |
+| **Java**          | For Java, Kotlin, and Scala projects      |
+| **Go**            | For Go server applications                |
+| **Ruby / PHP**    | For projects using these languages        |
+| **C#**            | For .NET projects                         |
+| **cURL**          | For raw HTTP, shell scripts, or debugging |
 
-遇到 SDK 方法名、参数、流式事件或工具调用结构时，这个 Skill 会先查对应文档，再生成代码。它的主要作用就是减少 Agent 凭旧版本记忆猜接口的情况。
+When handling SDK method names, parameters, streaming events, or tool-call structures, this Skill checks the relevant documentation before generating code. Its main purpose is to keep the agent from guessing based on outdated information.
 
-项目地址：<https://github.com/anthropics/skills/tree/main/skills/claude-api>
+Project: <https://github.com/anthropics/skills/tree/main/skills/claude-api>
 
 ## skill-creator
 
-这是 Anthropic 官方 Skills 仓库中的一个元技能，用来创建、修改和评估 Skill。
+This is a meta-Skill in Anthropic's official Skills repository for creating, editing, and evaluating Skills.
 
-它提供了一套 Skill 开发工作流：
+It provides a Skill development workflow:
 
-| 阶段              | 工作内容                                               |
-| ----------------- | ------------------------------------------------------ |
-| **意图捕获**      | 理解你想让 Skill 做什么，明确边界和目标                |
-| **起草 SKILL.md** | 编写 Skill 的核心指令文件，包含 frontmatter 和指令内容 |
-| **测试验证**      | 创建测试用例，运行对比实验（有 Skill vs 无 Skill）     |
-| **迭代优化**      | 根据测试反馈持续改进指令                               |
-| **描述优化**      | 优化 Skill 的 description，提高触发准确性              |
+| Stage                  | Work                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------- |
+| **Capture intent**     | Understand what the Skill should do and define its scope and goals              |
+| **Draft SKILL.md**     | Write the Skill's core instruction file, including frontmatter and instructions |
+| **Test and verify**    | Create test cases and run comparisons with and without the Skill                |
+| **Iterate**            | Improve the instructions based on test feedback                                 |
+| **Refine description** | Improve the Skill description so it triggers more accurately                    |
 
-它还带有评估工具，可以对比“使用 Skill”和“不使用 Skill”的输出，记录时间、Token 和断言结果，再生成可视化报告。如果没有 Skill 时模型已经能稳定完成任务，就没有必要继续维护一份额外流程。
+It also includes evaluation tools that compare outputs with and without the Skill, record time, token usage, and assertion results, then generate a visual report. If the model already completes the task reliably without the Skill, there is no need to maintain an extra workflow.
 
-适合想给团队做专属 Skill 的开发者作为起点。
+A useful starting point for developers who want to build custom Skills for their teams.
 
-项目地址：<https://github.com/anthropics/skills/tree/main/skills/skill-creator>
+Project: <https://github.com/anthropics/skills/tree/main/skills/skill-creator>
 
-## 怎么选
+## Choosing a Skill
 
-| 你反复遇到的问题                         | 优先考虑                         | 不建议安装的情况                           |
-| ---------------------------------------- | -------------------------------- | ------------------------------------------ |
-| 复杂功能容易漏需求、漏测试               | Superpowers                      | 主要处理小改动，现有 Agent 已能稳定完成    |
-| 只想补需求澄清、Bug 诊断、TDD 或代码审查 | mattpocock/skills                | 项目已经有稳定的等价流程                   |
-| 团队要统一 Agents、Hooks、记忆和安全策略 | ECC                              | 只缺一项代码审查或 TDD 流程                |
-| PRD、技术方案经常写不清楚                | Doc Co-Authoring                 | 只是改一小段已有文档                       |
-| 没有设计系统，AI 生成页面经常千篇一律    | UI UX Pro Max                    | 项目已经有成熟的组件库和设计规范           |
-| React / Next.js 页面能跑但性能问题多     | Vercel React Best Practices      | 项目没有使用 React                         |
-| 提交前想补一轮通用代码审查               | Code Review Expert               | 项目风险主要来自内部规则，通用检查帮不上忙 |
-| PostgreSQL 查询和表结构经常需要返工      | Supabase Postgres Best Practices | 项目使用 MySQL 或其他数据库                |
-| 正在开发 Claude API 应用                 | Claude API                       | 只在 IDE 里使用 Coding Agent               |
-| 想把反复失败的任务沉淀成 Skill           | skill-creator                    | 没做过无 Skill 基线测试                    |
+| Recurring problem                                                          | Consider first                   | When not to install                                                                  |
+| -------------------------------------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------ |
+| Complex features often miss requirements or tests                          | Superpowers                      | Most work is small changes that the current agent handles reliably                   |
+| Need help with requirements, bug diagnosis, TDD, or code review            | mattpocock/skills                | The project already has a stable equivalent workflow                                 |
+| Need consistent agents, hooks, memory, and security policies across a team | ECC                              | Only need code review or TDD                                                         |
+| PRDs and technical proposals are often unclear                             | Doc Co-Authoring                 | Only editing a small part of an existing document                                    |
+| No design system, and AI-generated pages look generic                      | UI UX Pro Max                    | The project already has a mature component library and design standards              |
+| React / Next.js pages work but have performance issues                     | Vercel React Best Practices      | The project does not use React                                                       |
+| Need a general code review before committing                               | Code Review Expert               | Project risks are mostly governed by internal rules that general checks cannot cover |
+| PostgreSQL queries and schemas often need rework                           | Supabase Postgres Best Practices | The project uses MySQL or another database                                           |
+| Building a Claude API application                                          | Claude API                       | Only use a coding agent in an IDE                                                    |
+| Want to turn recurring task failures into a Skill                          | skill-creator                    | Have not tested a baseline without the Skill                                         |
 
-我的做法是先不用 Skill 跑一次同类任务。模型本来就能稳定完成，就不装；同一个问题反复出现，再去看候选项目的 `SKILL.md`、`scripts/` 和 `references/`，确认它确实补上了缺口，也没有危险命令或过宽权限。
+I first try a similar task without a Skill. If the model already handles it reliably, I do not install one. If the same problem keeps recurring, I inspect the candidate project's `SKILL.md`, `scripts/`, and `references/` to confirm that it addresses the gap and does not contain dangerous commands or overly broad permissions.
 
-第一次安装尽量限定在当前仓库。连续跑两三个真实任务后，再比较返工次数、执行时间和结果稳定性。没有明显改善就删掉，确认长期有用再考虑全局启用。
+For the first trial, limit installation to the current repository. After two or three real tasks, compare rework, execution time, and consistency. Remove it if there is no clear improvement; consider enabling it globally only after confirming its long-term value.
 
-具体从哪个开始，取决于最近哪类问题最常返工：代码审查总漏同一类风险，可以试 Code Review Expert；需求还没定清楚 Agent 就开工，可以试 Doc Co-Authoring，或者更轻量的 [`grilling`](https://github.com/mattpocock/skills/blob/main/skills/productivity/grilling/SKILL.md)。
+Where to start depends on the problem that causes the most rework. If code reviews repeatedly miss the same risks, try Code Review Expert. If the agent starts before requirements are clear, try Doc Co-Authoring or the lighter [`grilling`](https://github.com/mattpocock/skills/blob/main/skills/productivity/grilling/SKILL.md).
 
-这份清单没有默认必装项。能说清一个 Skill 解决什么问题、什么时候触发，以及失效后怎么删，它才值得留在列表里。
+There are no must-install Skills on this list. A Skill is worth keeping only if you can explain what problem it solves, when it should trigger, and how to remove it if it does not work.

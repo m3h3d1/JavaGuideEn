@@ -1,235 +1,241 @@
 ---
-title: RAG 评测：从离线数据集到线上可观测性
-description: 面向初学者介绍 RAG 评测的方法，涵盖评测集构建、Hit@K、Evidence Recall、MRR、答案忠实度、拒答评测、版本比较与线上可观测性。
-category: AI 应用开发
+title: "RAG Evaluation: From Offline Datasets to Production Observability"
+description: An introduction to RAG evaluation, covering dataset construction, Hit@K, Evidence Recall, MRR, answer faithfulness, refusal evaluation, version comparison, and production observability.
+category: AI Application Development
 head:
   - - meta
     - name: keywords
-      content: RAG评测,RAG评估,Hit@K,MRR,Faithfulness,拒答评测,LangSmith,Ragas,可观测性
+      content: RAG evaluation,Hit@K,MRR,Faithfulness,refusal evaluation,LangSmith,Ragas,observability
 ---
 
-知识库问答能返回一段通顺的文字，怎样判断它答得好不好？资料有没有找到，回答有没有依据，资料不足时会不会编造，这些都需要检查。
+If a knowledge-base Q&A system returns a fluent response, how can you tell whether it is good? You need to check whether it found the right information, whether the answer is supported, and whether it makes things up when the information is missing.
 
-本文从一条知识库问答开始，介绍如何准备评测样本、分别检查检索与生成，以及怎样用评测结果指导优化。还不熟悉问答流程的话，可以先看 [RAG 基础概念](./rag-basis.md)。
+Starting with a knowledge-base Q&A example, this guide explains how to prepare evaluation samples, assess retrieval and generation separately, and use results to guide improvements. If you are not familiar with the Q&A workflow, start with [RAG Fundamentals](./rag-basis.md).
 
-## 什么是 RAG 评测？
+## What Is RAG Evaluation?
 
-**RAG 评测，就是按照预先确定的标准，检查检索增强生成系统的表现。** 除了最终回答，还要检查检索结果和请求执行过程。
+**RAG evaluation measures a retrieval-augmented generation system against criteria defined in advance.** It checks retrieval results and request execution as well as the final answer.
 
-假设有一份用于教学的产品手册，写着：
+Suppose a sample product manual says:
 
-> 标准版文件上传上限为 20 MB，专业版为 100 MB。文件上传后保留 7 天，到期自动删除。
+> The Standard plan supports file uploads up to 20 MB; the Pro plan supports up to 100 MB. Uploaded files are retained for 7 days and deleted automatically after that.
 
-用户问：“标准版最多能上传多大的文件，上传后能保存多久？”系统需要找到上传上限和保存时间这两条证据，再回答“20 MB、7 天”。
+The user asks, "What is the maximum file size for the Standard plan, and how long are uploaded files retained?" The system should find evidence for both the upload limit and retention period, then answer "20 MB, 7 days."
 
-| 检查对象 | 要回答的问题                     | 例子                                   |
-| -------- | -------------------------------- | -------------------------------------- |
-| 检索结果 | 回答需要的证据有没有找到？       | 是否同时找到“20 MB”和“7 天”            |
-| 生成回答 | 答案是否正确、完整、有依据？     | 有没有把专业版的 100 MB 当成标准版上限 |
-| 执行过程 | 请求有没有完成，代价是否可接受？ | 是否超时、总耗时和 Token 用量是多少    |
+| What to check     | Question                                        | Example                                                                 |
+| ----------------- | ----------------------------------------------- | ----------------------------------------------------------------------- |
+| Retrieval results | Were the required facts retrieved?              | Were both "20 MB" and "7 days" found?                                   |
+| Generated answer  | Is the answer correct, complete, and supported? | Was the Pro plan's 100 MB limit mistaken for the Standard plan's limit? |
+| Execution         | Did the request complete at an acceptable cost? | Did it time out, and what were the total latency and Token usage?       |
 
-如果用户继续问“删除后能否恢复”，这段手册没有提供答案。评测还要检查系统是否说明资料不足，而不是自行补出“可以恢复”或“无法恢复”。
+If the user then asks whether a deleted file can be recovered, the manual does not provide an answer. Evaluation should check that the system identifies the missing information instead of making up "it can be recovered" or "it cannot be recovered."
 
-一轮评测通常需要问题集、固定语料、评分标准和实际运行结果。参考答案可以帮助评分，但不必要求输出与它逐字一致：“一周”和“7 天”表达的含义相同。
+An evaluation run generally needs a question set, a fixed corpus, scoring criteria, and actual results. Reference answers can guide scoring, but the output does not need to match them word for word: "one week" and "7 days" mean the same thing.
 
-## 为什么需要 RAG 评测？
+## Why Evaluate RAG?
 
-把分块大小从 800 调成 400，某道题回答变好了，能说明配置更好吗？还不能。证据可能更容易被检索，也可能只是这次生成更完整。其他问题的证据则可能被切散，效果反而下降。
+If you change the chunk size from 800 to 400 and one answer improves, does that prove the configuration is better? No. The evidence may be easier to retrieve, or the generated response may simply be more complete this time. Other evidence may have been split across chunks, making results worse.
 
-用同一批问题和资料进行比较，才能看到改动影响了哪些样本。评测主要用于：
+Compare the same questions and source material to see which samples were affected by a change. Evaluation is mainly used to:
 
-- **选择配置**：比较分块、Embedding、Top-K、重排和 Prompt 的收益与成本。
-- **定位错误**：区分没有召回证据、上下文丢失证据、生成误读，以及调用失败。
-- **检查回归**：修复一类问题后，重新验证原本正常的问题。
+- **Choose configurations**: Compare the benefits and costs of chunking, embeddings, Top-K, reranking, and prompts.
+- **Diagnose errors**: Distinguish missed retrieval, evidence lost from context, generation errors, and failed calls.
+- **Check for regressions**: After fixing one class of issue, recheck questions that previously worked.
 
-只看最终总分，很难知道该改哪里。手册里有保存时间但检索没找到，应检查召回；证据已经进入 Prompt，模型却回答“永久保存”，应检查生成。
+An overall score alone rarely shows what to fix. If the manual includes a retention period but it was not retrieved, investigate retrieval. If the evidence was in the prompt but the model answered "stored permanently," investigate generation.
 
-**离线评测**使用提前准备好的样本，适合比较版本。**线上可观测性**记录真实请求的状态、耗时和中间过程，帮助排查问题；在这些请求上抽样评分，才进一步构成线上质量评测。“离线”不意味着断网运行，调用外部模型仍可能产生费用。
+**Offline evaluation** uses prepared samples and is suitable for version comparisons. **Production observability** records the state, latency, and intermediate steps of real requests to help diagnose problems. Sampling and scoring those requests adds production quality evaluation. "Offline" does not mean the system is disconnected from the network; calls to external models may still incur costs.
 
-[LangSmith 的评测概念文档](https://docs.langchain.com/langsmith/evaluation-concepts)介绍了离线实验与线上评测的分工：线上发现问题，再整理成离线样本验证修复。
+[LangSmith's evaluation concepts guide](https://docs.langchain.com/langsmith/evaluation-concepts) describes the roles of offline experiments and online evaluation: find issues in production, then turn them into offline samples to verify fixes.
 
-## 如何准备评测集？
+## How to Prepare an Evaluation Set
 
-### 从问题、证据和参考要点开始
+### Start with Questions, Evidence, and Reference Points
 
-起步时先整理一小批能够逐条检查的问题，覆盖直接事实、同义改写、跨段证据、部分可答和知识库外问题。数量逐步增加，先确保每道题的判定依据清楚。
+Start with a small set of questions that can be reviewed individually. Include direct facts, paraphrases, evidence across multiple passages, partially answerable questions, and questions outside the knowledge base. Increase the set gradually, making sure the basis for judging each question is clear.
 
-下面是前面产品手册对应的样本示例。字段是本文的设计示例，不是某个框架要求的固定格式：
+Here is an example based on the product manual above. These fields illustrate one possible design; they are not a required format for any framework:
 
 ```json
 {
   "id": "upload-01",
-  "question": "标准版最多能上传多大的文件，上传后能保存多久？",
+  "question": "What is the maximum file size for the Standard plan, and how long are uploaded files retained?",
   "corpusVersion": "manual-v1",
   "expectedEvidence": [
-    { "id": "upload-limit", "text": "标准版文件上传上限为 20 MB" },
-    { "id": "retention", "text": "文件上传后保留 7 天，到期自动删除" }
+    {
+      "id": "upload-limit",
+      "text": "The Standard plan supports file uploads up to 20 MB"
+    },
+    {
+      "id": "retention",
+      "text": "Uploaded files are retained for 7 days and then deleted automatically"
+    }
   ],
-  "referenceKeyPoints": ["上传上限为 20 MB", "保存 7 天"],
+  "referenceKeyPoints": ["Upload limit is 20 MB", "Retained for 7 days"],
   "answerability": "FULL",
   "reviewStatus": "PENDING"
 }
 ```
 
-证据用于判断检索是否找到依据，参考要点用于判断回答是否完整。二者应当能追溯到同一版本的原文。
+Evidence is used to judge whether retrieval found support; reference points are used to judge answer completeness. Both should be traceable to the same source version.
 
-调整分块后，Chunk ID 往往会变化。因此，比较分块策略时，可以用原文位置、短证据锚点或稳定的事实 ID 做标注，再映射到检索片段。不要拿旧 Chunk ID 直接判断新分块是否命中。
+Chunk IDs often change when chunking is adjusted. To compare chunking strategies, label evidence by its source location, a short evidence anchor, or a stable fact ID, then map it to the retrieved passages. Do not use old Chunk IDs to judge whether a new chunking strategy retrieved the evidence.
 
-字符串包含判断容易实现，但也会漏掉跨块证据、表格转换或等义改写。采用这种方法时，要明确归一化规则，并人工检查疑似漏匹配的样本。
+Substring checks are easy to implement, but may miss evidence across chunks, table conversions, or paraphrases. If you use them, define normalization rules and manually inspect likely false negatives.
 
-### 区分完全可答、部分可答和不可答
+### Distinguish Fully Answerable, Partially Answerable, and Unanswerable Questions
 
-可答性应结合指定语料版本、访问权限和业务允许使用的信息来源判断。对要求只依据知识库回答的系统，可以分成三类：
+Determine answerability based on the specified corpus version, access permissions, and information sources allowed by the business. For systems required to answer only from the knowledge base, use three categories:
 
-| 分类      | 资料情况         | 期望行为                       |
-| --------- | ---------------- | ------------------------------ |
-| `FULL`    | 覆盖问题所需内容 | 完整回答，并给出依据           |
-| `PARTIAL` | 只覆盖部分内容   | 回答有依据的部分，说明缺失信息 |
-| `NONE`    | 无法支持所问内容 | 说明资料不足，不编造答案       |
+| Category  | Available information                      | Expected behavior                                               |
+| --------- | ------------------------------------------ | --------------------------------------------------------------- |
+| `FULL`    | Covers the information needed              | Answer fully and provide evidence                               |
+| `PARTIAL` | Covers only part of the question           | Answer the supported part and identify what is missing          |
+| `NONE`    | Does not support the requested information | State that information is insufficient; do not invent an answer |
 
-例如，“上传后保存多久，删除后能否恢复”属于部分可答。回答“保存 7 天；手册没有说明删除后能否恢复”符合预期。把它当成纯拒答，会丢掉已经回答的部分；要求它必须回答恢复方式，又会鼓励编造。
+For example, "How long is a file retained after upload, and can it be recovered after deletion?" is partially answerable. The expected answer is "It is retained for 7 days; the manual does not say whether it can be recovered after deletion." Treating it as a full refusal omits information that is available; requiring an answer about recovery encourages fabrication.
 
-可答性、参考要点和证据都需要复核。自动生成的标签可以先标成 `PENDING`，人工确认后再转成 `REVIEWED`。**待复核不等于通过，也不等于失败。** 正式报告应同时展示有效评分样本数和待复核数量。
+Answerability, reference points, and evidence all need review. Automatically generated labels can initially be marked `PENDING` and changed to `REVIEWED` after human confirmation. **Pending review is neither a pass nor a failure.** Formal reports should show both the number of valid scored samples and the number awaiting review.
 
-### 分开保管开发集和终评集
+### Keep Development and Holdout Sets Separate
 
-开发集用于调参和分析错误；终评集（holdout）用于检查没有参与调参的问题。相同问题的改写、相同模板生成的近似题，尽量按题目家族放在同一侧，避免数据泄漏。
+Use a development set to tune settings and analyze errors. Use a holdout set to evaluate questions that did not participate in tuning. Keep paraphrases of the same question and similar questions generated from the same template together on one side to avoid data leakage.
 
-已经反复用于修规则的题，可以继续作为回归材料，但不能再宣称它们是独立盲测。还要保留同领域干扰文档：如果知识库只有 5 个片段，Top-K 却设为 8，返回全文就可能得到很高的命中率，难以区分检索策略。
+Questions repeatedly used to fix rules can remain in the regression set, but should no longer be described as independent blind tests. Keep distractor documents from the same domain as well. If a knowledge base has only five passages and Top-K is set to eight, returning the entire corpus may produce a high hit rate that cannot distinguish retrieval strategies.
 
-## 检索质量怎么评？
+## How to Evaluate Retrieval Quality
 
-先固定评测对象：检查的是粗召回候选、重排后的 Top-K，还是最终送给模型的上下文？这几个阶段的结果可能不同。建议分别记录，避免把候选池的高召回率当成模型实际看到的证据覆盖率。
+First define what is being evaluated: the initial retrieval candidates, the reranked Top-K, or the final context sent to the model. These stages can produce different results. Record them separately so high recall in the candidate pool is not mistaken for evidence coverage in the model's actual context.
 
-对于期望证据已确认且至少有一条证据的样本，可以从三个指标开始：
+For samples with reviewed expected evidence and at least one evidence item, start with three metrics:
 
-| 指标              | 计算方式                                               | 关注点               |
-| ----------------- | ------------------------------------------------------ | -------------------- |
-| Hit@K             | Top-K 至少命中一条期望证据的题数 / 有效题数            | 有没有找到           |
-| Evidence Recall@K | 每题命中的证据数 / 该题全部期望证据数，再对题目求平均  | 找全了多少           |
-| MRR@K             | 对每题首条相关结果的倒数排名求平均；Top-K 未命中记为 0 | 正确结果排得是否靠前 |
+| Metric            | Calculation                                                                                            | What it measures                            |
+| ----------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------- |
+| Hit@K             | Number of questions with at least one expected evidence item in Top-K / valid questions                | Whether anything relevant was found         |
+| Evidence Recall@K | For each question, matched evidence items / all expected evidence items; then average across questions | How much of the required evidence was found |
+| MRR@K             | Average reciprocal rank of the first relevant result for each question; a miss in Top-K scores 0       | How highly the first relevant result ranked |
 
-这里的 Evidence Recall 按证据 ID 去重计数，采用逐题宏平均；不与按 Chunk 计数的 Recall 或其他工具的同名指标直接混用。
+Here, Evidence Recall deduplicates by evidence ID and uses macro-averaging across questions. Do not treat it as interchangeable with chunk-level Recall or a metric with the same name in another tool.
 
-沿用上传问题，需要“20 MB”和“7 天”两条证据。假设 Top-3 依次返回：
+For the upload question, both "20 MB" and "7 days" are required. Suppose the Top 3 results are:
 
-1. 账号修改说明，与问题无关。
-2. 标准版上传上限为 20 MB。
-3. 发票申请说明，与问题无关。
+1. Account-editing instructions, unrelated to the question.
+2. The Standard plan's upload limit is 20 MB.
+3. Invoice-request instructions, unrelated to the question.
 
-这道题的 Hit@3 为 1，Evidence Recall@3 为 1/2，倒数排名 RR@3 为 1/2。**MRR 是多道题 RR 的平均值。** 命中一条证据，并不能说明回答需要的资料已经找全。
+For this question, Hit@3 is 1, Evidence Recall@3 is 1/2, and reciprocal rank (RR@3) is 1/2. **MRR is the average RR across multiple questions.** Finding one piece of evidence does not mean all information needed for the answer was retrieved.
 
-还可以用 Precision@K 检查返回内容中有多少是相关结果。它按选定的结果单位计数，与按事实计数的 Evidence Recall 含义不同；返回不足 K 条时采用什么分母，也要在评测中固定。
+Precision@K can also measure how many returned results are relevant. It counts the selected result unit and differs from Evidence Recall, which counts facts. Define the denominator when fewer than K results are returned and keep it fixed across evaluations.
 
-知识库外问题没有期望证据，Recall 的分母为零，应标成不适用，转而评估拒答行为。不能把它们当成检索满分样本。
+Questions outside the knowledge base have no expected evidence, so the Recall denominator is zero. Mark the metric as not applicable and evaluate refusal behavior instead. Do not treat these questions as perfect retrieval samples.
 
-## 生成回答怎么评？
+## How to Evaluate Generated Answers
 
-### 正确性、完整性和忠实度分开看
+### Evaluate Correctness, Completeness, and Faithfulness Separately
 
-| 维度     | 比较什么                           | 典型错误                                    |
-| -------- | ---------------------------------- | ------------------------------------------- |
-| 正确性   | 回答与经过确认的参考事实           | 把标准版上限答成 100 MB                     |
-| 完整性   | 回答与参考要点                     | 只回答上传上限，漏掉保存时间                |
-| 忠实度   | 回答中的事实主张与实际提供的上下文 | 上下文没有恢复政策，却声称“30 天内可以恢复” |
-| 相关性   | 回答与用户问题                     | 用户问保存时间，回答大段账号注册流程        |
-| 引用支持 | 所引片段与对应主张                 | 附了来源链接，但来源不支持该结论            |
+| Dimension        | Compare                                       | Typical error                                                                             |
+| ---------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Correctness      | Answer vs. reviewed reference facts           | Stating the Standard plan's limit is 100 MB                                               |
+| Completeness     | Answer vs. reference points                   | Giving the upload limit but omitting retention time                                       |
+| Faithfulness     | Claims in the answer vs. the context provided | Claiming "it can be recovered within 30 days" when the context does not describe recovery |
+| Relevance        | Answer vs. user question                      | Giving a long account-registration explanation when asked about retention                 |
+| Citation support | Cited passage vs. the claim it supports       | Providing a source link that does not support the conclusion                              |
 
-正确性与忠实度尤其容易混淆。如果上下文是一份过期手册，模型照着它回答，可以忠实于上下文，却不符合当前有效政策。反过来，模型凭参数知识碰巧答对，但上下文没有依据，也不能据此认定回答忠实。
+Correctness and faithfulness are easy to confuse. If the context is an outdated manual, an answer based on it may be faithful to that context but inconsistent with the current policy. Conversely, a model might happen to answer correctly from its parameters, but without supporting context the answer is not faithful to the provided evidence.
 
-[Ragas 的 Faithfulness 指标](https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/faithfulness/)将回答拆成事实主张，再检查上下文能否支持这些主张。采用这种评分思路时，需要单独处理空答案和没有事实主张的纯拒答，不能把它们当作完整回答的满分样本。
+[Ragas's Faithfulness metric](https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/faithfulness/) splits an answer into factual claims and checks whether the context supports them. When using this scoring approach, handle empty answers and refusals without factual claims separately; do not score them as perfect complete answers.
 
-### 业务拒答与语义拒答分别记录
+### Track Programmatic and Semantic Refusals Separately
 
-业务拒答是程序记录的状态，例如 `NO_RESULT`；语义拒答是回答正文表达的含义，例如“资料没有提供恢复方式，无法确认”。这些状态名只是实现示例，不是 RAG 的统一标准。
+Programmatic refusal is a state recorded by the application, such as `NO_RESULT`. Semantic refusal is the meaning expressed in the answer, such as "The source does not explain how to recover the file, so I cannot confirm." These state names are implementation examples, not universal RAG standards.
 
-二者可能不一致：模型已经明确拒答，程序却记录为 `ANSWERED`；或者程序看到“不支持”就判拒答，误伤“标准版不支持批量上传”这类正常技术说明。
+The two can disagree: the model may clearly refuse while the application records `ANSWERED`, or the application may treat the phrase "not supported" as a refusal and misclassify a normal technical statement such as "The Standard plan does not support batch uploads."
 
-拒答评测可以分成两项检查：
+Refusal evaluation can be split into two checks:
 
-- **业务识别是否准确**：程序决定与独立复核的正文含义是否一致，分别统计漏判与误判。
-- **拒答是否符合预期**：不可答问题是否拒答；可答问题是否被错误拒答；部分可答问题是否保留了有依据的内容。
+- **Programmatic classification accuracy**: Does the application's decision match an independent review of the answer's meaning? Track missed and false classifications separately.
+- **Whether refusal was appropriate**: Did the system refuse unanswerable questions, incorrectly refuse answerable questions, or preserve supported information for partially answerable questions?
 
-例如，不可答样本的正确拒答比例，分母应是执行成功、可答性与答案语义均已确认的不可答样本；可答样本的误拒答比例则使用另一组分母。报告还应展示两组样本的覆盖数量。
+For example, the denominator for correct refusals on unanswerable samples should include only unanswerable samples with successful execution and reviewed answerability and answer semantics. The false-refusal rate for answerable samples uses a different denominator. Reports should show coverage counts for both groups.
 
-不要用生产侧同一个关键词检测器既生成业务状态，又充当语义评分标准。即使二者一致，也可能只是重复了同一个错误。规则测试适合验证已知表达，人工复核或经过校准的独立评估器用于判断回答含义。
+Do not use the same production keyword detector both to generate the programmatic status and as the semantic scoring standard. Even if they agree, they may simply be repeating the same error. Rule-based tests suit known expressions; human review or a separately calibrated evaluator should assess answer meaning.
 
-## 执行失败应该怎么算？
+## How Should Execution Failures Be Counted?
 
-网络断开、模型超时、用户取消和正常拒答要分开记录。正常拒答完成了请求，可以继续判断它是否合理；执行失败没有完整答案，不能直接计入答案正确性或忠实度的分母。
+Record network disconnections, model timeouts, user cancellations, and normal refusals separately. A normal refusal completes the request and can be evaluated for appropriateness. An execution failure has no complete answer and should not be included directly in the denominator for answer correctness or faithfulness.
 
-假设计划运行 10 题，2 题超时，其余 8 题全部通过复核，报告应同时给出：
+Suppose ten questions were scheduled, two timed out, and the other eight passed review. The report should include:
 
-- 执行成功率：8/10，即 80%。
-- 有效答案通过率：8/8，即 100%。
-- 超时数量：2，保留失败原因和耗时。
+- Execution success rate: 8/10, or 80%.
+- Pass rate among valid answers: 8/8, or 100%.
+- Timeout count: 2, with failure reasons and latency retained.
 
-只报 100% 会掩盖不可用的请求。也可以额外报告面向全部请求的端到端成功率，但要使用不同名称，写明超时如何计分。
+Reporting only 100% would hide failed requests. An end-to-end success rate across all requests can also be reported, but use a different name and state how timeouts are scored.
 
-每项质量指标还要排除不适用和未确认的标签，因此它们的有效样本数可能不同。没有有效样本时返回 `null` 或“不适用”，不要填成 0 或 100%。
+Each quality metric must also exclude not-applicable and unreviewed labels, so its valid sample count may differ. If there are no valid samples, return `null` or "not applicable"; do not substitute 0 or 100%.
 
-重试策略同样会影响比较结果。开启重试时保留尝试次数、首次失败和最终结果，累计耗时与成本；不能只留下重试成功的记录。
+Retry policies also affect comparisons. When retries are enabled, retain the number of attempts, the first failure, the final outcome, and cumulative latency and cost. Do not keep only successful retries.
 
-## 如何运行一次离线评测？
+## How to Run an Offline Evaluation
 
-不必一开始就接入完整平台。一个读取 JSONL 的脚本，也能把下面的过程跑通：
+You do not need to integrate a full platform from the start. A script that reads JSONL can run this workflow:
 
 ```text
-读取固定语料、样本与配置
-  -> 调用待评测的检索或问答链路
-  -> 保存候选片段、最终上下文和完整答案
-  -> 记录终态、阶段耗时和调用成本
-  -> 根据有效标签分别评分
-  -> 输出逐题结果与汇总报告
+Load the fixed corpus, samples, and configuration
+  -> Call the retrieval or Q&A workflow being evaluated
+  -> Save candidate passages, final context, and full answers
+  -> Record terminal state, stage latencies, and call costs
+  -> Score each metric using valid labels
+  -> Output per-question results and a summary report
 ```
 
-尽量复用应用真实的检索和上下文构建逻辑，否则评测的是另一套实现。多轮问题除了保存历史消息，还要说明是否覆盖真实会话的历史加载、裁剪和持久化；给定历史后的单次生成，不等于连续多轮交互测试。
+Reuse the application's actual retrieval and context-building logic where possible; otherwise, you are evaluating a different implementation. For multi-turn questions, in addition to saving conversation history, specify whether the evaluation covers the real session's history loading, trimming, and persistence. Generating once from supplied history is not the same as testing continuous multi-turn interaction.
 
-一次实验至少固定并记录：语料和数据集版本、代码版本、模型、分块方式、Top-K、过滤条件、重排配置、Prompt，以及评估器版本。对生成设置合理的总时限，保存失败报告后再决定是否让流水线失败退出。
+At minimum, pin and record the corpus and dataset versions, code version, model, chunking strategy, Top-K, filters, reranking configuration, prompt, and evaluator version for each experiment. Set a reasonable overall generation timeout and save failure reports before deciding whether the pipeline should exit with a failure.
 
-评分方法可以组合使用。代码规则适合结构、证据匹配和确定性检查；人工适合建立标准与处理争议；LLM-as-judge 适合按明确量表辅助批量评分。模型评分应保存理由、引用依据、评委模型与 Prompt 版本，并用人工样本检查偏差，不能直接标成“人工已复核”。
+Scoring methods can be combined. Code rules suit structure, evidence matching, and deterministic checks; human review helps establish standards and resolve disagreements; LLM-as-Judge can assist with batch scoring against a clear rubric. For model-based scores, retain the rationale, cited evidence, judge model, and prompt version. Check for bias using human-reviewed samples; do not label model scores as "human reviewed."
 
-需要参考实现时，可以看 [LangSmith 的 RAG 评测教程](https://docs.langchain.com/langsmith/evaluate-rag-tutorial)。它演示了如何分别检查答案正确性、相关性、依据和检索相关性，适合理解评分输入如何组织；实际采用时仍要补齐自己的拒答和异常处理标准。
+For a reference implementation, see [LangSmith's RAG evaluation tutorial](https://docs.langchain.com/langsmith/evaluate-rag-tutorial). It demonstrates separate checks for answer correctness, relevance, grounding, and retrieval relevance, and can help organize scoring inputs. You will still need your own standards for refusals and exceptions.
 
-## 如何判断一次优化有效？
+## How to Tell Whether an Optimization Helped
 
-先保存基线，再一次只改变一个主要因素。例如比较分块大小时，固定问题、语料、模型、Top-K 和评分方式；比较模型时，则尽量固定实际提供的上下文。
+Save a baseline, then change one main factor at a time. To compare chunk sizes, keep the questions, corpus, model, Top-K, and scoring method fixed. To compare models, keep the actual context supplied to them as consistent as possible.
 
-比较报告除了总体均值，还要保留逐题差异和分类结果。总体指标提高，可能同时伴随跨段问题变差或不可答问题开始编造。对新增错误按过程排查：
+In addition to overall averages, comparison reports should retain per-question differences and category results. Overall metrics may improve even as cross-passage questions get worse or the system starts inventing answers to unanswerable questions. Investigate new errors through the workflow:
 
-1. 原文是否存在，解析后是否保留关键条件。
-2. 证据是否进入粗召回候选池。
-3. 重排是否把证据放到截断范围之外。
-4. 去重、压缩和 Token 预算是否丢掉证据。
-5. 证据已提供时，模型是否遗漏或误读。
+1. Does the source contain the information, and did parsing preserve the key conditions?
+2. Did retrieval place the evidence in the initial candidate pool?
+3. Did reranking place it outside the truncation limit?
+4. Did deduplication, compression, or the Token budget remove the evidence?
+5. If the evidence was provided, did the model omit or misread it?
 
-模型生成有波动。差异很小、样本很少时，可对重点样本重复运行，报告每次结果和波动；不要凭一次高分宣布稳定提升。不同模型的延迟、Token 和费用也应一起比较。
+Model outputs vary. When differences are small or there are few samples, run important samples multiple times and report each result and the variation. Do not claim a stable improvement based on one high score. Compare model latency, Token use, and cost as well.
 
-回归测试与真实生成评测承担不同任务。保存一段曾被误判的正文，可以稳定检查拒答规则是否修好；它不能证明模型新生成的其他表达也都会识别正确。开发回归通过后，再用独立样本检查新答案。
+Regression tests and evaluation of real generated answers serve different purposes. Saving a previously misclassified response can reliably check whether a refusal rule was fixed, but cannot prove that the model will classify other new phrasings correctly. After the development regression passes, evaluate new answers on independent samples.
 
-## 上线后还需要观察什么？
+## What to Monitor After Launch
 
-离线题目覆盖不了全部真实请求。线上需要把问题、检索、上下文、模型调用和结果关联到同一条 Trace，才能解释一次失败发生在哪里。
+Offline questions cannot cover every real request. In production, link the question, retrieval, context, model call, and result in the same trace to identify where a failure occurred.
 
-| 记录内容                             | 排查用途                         |
-| ------------------------------------ | -------------------------------- |
-| 请求 ID、会话 ID、版本信息           | 关联反馈与具体配置               |
-| 原始问题、改写后问题                 | 判断查询改写是否改变意图         |
-| 候选片段、排名、过滤条件             | 检查证据为什么没被召回或排序靠后 |
-| 实际上下文、完整回答与引用           | 判断生成是否使用并忠实于证据     |
-| 业务终态、拒答原因、异常与重试       | 区分正常拒答、误判和执行失败     |
-| 检索、重排、首个 Token、总耗时与用量 | 定位延迟和成本变化               |
+| Data to record                                                      | Troubleshooting use                                                    |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Request ID, session ID, and version information                     | Connect feedback to a specific configuration                           |
+| Original and rewritten questions                                    | Determine whether query rewriting changed the intent                   |
+| Candidate passages, rankings, and filters                           | Check why evidence was missed or ranked too low                        |
+| Actual context, full answer, and citations                          | Determine whether generation used and stayed faithful to the evidence  |
+| Terminal business state, refusal reason, exceptions, and retries    | Distinguish normal refusals, misclassification, and execution failures |
+| Retrieval, reranking, time to first token, total latency, and usage | Locate changes in latency and cost                                     |
 
-保存问题、答案和片段时，要结合数据敏感性设置脱敏、访问权限和保留期限；不能为了排查问题绕过原有权限控制。指标标签尽量使用模型、版本和有限状态，不要把完整问题或请求 ID 放进时序指标标签。
+When storing questions, answers, and passages, set masking, access permissions, and retention periods according to data sensitivity. Do not bypass existing access controls for troubleshooting. Use model, version, and bounded-state values as metric labels; do not use full questions or request IDs as time-series metric labels.
 
-线上可以先观察执行成功率、超时率、拒答比例、延迟分位数和调用成本。拒答比例上升可能来自知识覆盖不足，也可能来自问题分布变化、权限过滤或检测器误判，不能只靠这个数定位原因。
+Start by monitoring execution success rate, timeout rate, refusal rate, latency percentiles, and call costs. An increase in refusals may be caused by poor knowledge coverage, a shift in question distribution, access filtering, or detector misclassification; this metric alone cannot identify the cause.
 
-答案质量需要进一步抽样复核。抽样时既保留正常流量，也关注用户差评、拒答和新问题类型；只检查差评样本得到的是问题分析结果，不能直接代表全部流量的质量。把确认的错误脱敏后加入开发回归集，修复后重新运行，再观察线上表现。
+Answer quality needs further review through sampling. Include normal traffic as well as negative user feedback, refusals, and new question types. Reviewing only negative feedback provides an analysis of problems, not a representative measure of overall traffic quality. After masking confirmed errors, add them to the development regression set, rerun after fixes, and monitor production behavior.
 
-## 参考资料
+## References
 
-- [LangSmith：Evaluation concepts](https://docs.langchain.com/langsmith/evaluation-concepts)：了解数据集、实验、评估器与离线/线上评测的关系。
-- [LangSmith：Evaluate a RAG application](https://docs.langchain.com/langsmith/evaluate-rag-tutorial)：参考 RAG 分维度评分的组织方式。
-- [Ragas：Faithfulness](https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/faithfulness/)：理解依据上下文检查事实主张的方法。
-- [AI 应用评测体系](../llm-basis/llm-evaluation.md)：进一步了解通用评测集、质量门禁和上线验证。
-- [RAG 优化：从召回、重排到上下文工程](./rag-optimization.md)：结合逐题评测结果定位和修复问题。
+- [LangSmith: Evaluation Concepts](https://docs.langchain.com/langsmith/evaluation-concepts): Learn how datasets, experiments, evaluators, and offline/online evaluation relate.
+- [LangSmith: Evaluate a RAG Application](https://docs.langchain.com/langsmith/evaluate-rag-tutorial): See an example of organizing RAG scores by dimension.
+- [Ragas: Faithfulness](https://docs.ragas.io/en/stable/concepts/metrics/available_metrics/faithfulness/): Learn how to check factual claims against context.
+- [AI Application Evaluation](../llm-basis/llm-evaluation.md): Learn more about general evaluation sets, quality gates, and release validation.
+- [RAG Optimization: Retrieval, Reranking, and Context Engineering](./rag-optimization.md): Use per-question evaluation results to locate and fix problems.

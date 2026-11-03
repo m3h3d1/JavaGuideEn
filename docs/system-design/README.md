@@ -1,110 +1,110 @@
 ---
-title: 系统设计知识体系：设计模式、工程基础、认证授权、数据安全与常用框架
-description: 系统设计面试与知识体系学习路线，涵盖设计模式、RESTful API、软件工程、代码重构、单元测试、认证授权、数据安全、Spring 和实时消息推送。
-category: 系统设计
+title: "System Design Guide: Patterns, Engineering, Security, and Frameworks"
+description: A system-design learning path covering design patterns, RESTful APIs, software engineering, refactoring, unit testing, authentication, data security, Spring, and real-time messaging.
+category: System Design
 tag:
-  - 系统设计
-  - 设计模式
-  - 后端面试
+  - System Design
+  - Design Patterns
+  - Backend Interviews
 sitemap:
   changefreq: weekly
   priority: 0.95
 head:
   - - meta
     - name: keywords
-      content: 系统设计,系统设计面试题,设计模式,RESTful API,软件工程,代码重构,单元测试,认证授权,JWT,SSO,权限系统,数据安全,Spring,Spring Boot,MyBatis,Netty,定时任务,实时消息推送,后端面试
+      content: system design,system design interviews,design patterns,RESTful API,software engineering,refactoring,unit testing,authentication,authorization,JWT,SSO,access control,data security,Spring,Spring Boot,MyBatis,Netty,job scheduling,real-time messaging,backend interviews
 ---
 
 <!-- @include: @small-advertisement.snippet.md -->
 
-这份 **系统设计知识体系** 面向后端学习、工程实践和面试复习，围绕“把业务需求拆成稳定、可维护、可扩展的工程方案”整理本站系统设计相关文章。
+This **system-design guide** is for backend developers learning, applying, and reviewing system design. It organizes JavaGuide articles around turning business requirements into stable, maintainable, and extensible engineering solutions.
 
-系统设计不是只背秒杀、短链、Feed 流这类场景题。真正落到后端开发里，还需要理解 API 设计、代码质量、设计模式、框架原理、认证授权、数据安全、定时任务和实时消息推送等基础能力。
+System design is more than memorizing scenarios such as flash sales, URL shorteners, and social-media feeds. Backend development also requires a foundation in API design, code quality, design patterns, framework internals, authentication, authorization, data security, job scheduling, and real-time messaging.
 
-如果你时间有限，建议先看 [系统设计常见面试题总结](./system-design-questions.md)，快速建立高频问题清单；如果想系统补基础，可以按下面的阅读顺序推进。
+If you have limited time, start with [Common System Design Interview Questions](./system-design-questions.md). To build a broader foundation, follow the reading order below.
 
-## 适合谁看
+## Who Should Read This?
 
-- 正在系统学习后端系统设计的开发者。
-- 准备校招、社招、中大厂后端面试的同学。
-- 想把“会写业务代码”进一步提升到“能设计模块和方案”的工程师。
-- 已经接触 Spring、MyBatis、权限系统、定时任务等技术，但缺少系统化梳理的读者。
+- Developers studying backend system design.
+- Candidates preparing for new-graduate or experienced-hire backend interviews, including at larger companies.
+- Engineers moving from writing business code to designing modules and technical solutions.
+- Readers who have used Spring, MyBatis, access-control systems, or job schedulers and want to organize that knowledge.
 
-## 学习重点
+## Key Topics
 
-- 系统设计面试中，如何从需求澄清、核心流程、数据模型、接口设计、扩展性和风险点组织答案？
-- RESTful API、命名、重构、单元测试这些工程基础，如何影响长期维护成本？
-- 设计模式不是背 UML 图，而是理解常见变化点如何被封装。
-- Spring、MyBatis、Netty 等框架分别解决了哪些工程复杂度？
-- 认证授权、JWT、SSO、权限系统和数据安全分别覆盖安全链路的哪些部分？
-- 定时任务和实时消息推送在生产环境里有哪些选型和稳定性问题？
+- How to structure a system-design answer around clarifying requirements, core flows, data models, APIs, extensibility, and risks.
+- How engineering practices such as RESTful API design, naming, refactoring, and unit testing affect long-term maintenance costs.
+- Why design patterns are about encapsulating points of change, not memorizing UML diagrams.
+- Which engineering problems Spring, MyBatis, Netty, and other frameworks solve.
+- How authentication, authorization, JWT, SSO, access-control systems, and data security fit into the security lifecycle.
+- Production concerns and trade-offs in job scheduling and real-time messaging.
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [系统设计常见面试题总结](./system-design-questions.md)：先建立系统设计场景题和高频问题清单。
-2. [系统设计基础专题](./basis/)：补齐 RESTful API、软件工程、代码命名、代码重构和单元测试。
-3. [设计模式常见面试题总结](./design-pattern.md)：理解常见设计模式适合解决哪些变化点。
-4. [Spring & Spring Boot 专题](./framework/spring/)：掌握 IoC、AOP、事务、自动装配、常用注解和框架设计模式。
-5. [认证授权与数据安全专题](./security/)：系统理解认证授权、JWT、SSO、权限系统、加密、脱敏和数据校验。
-6. 再根据项目需要阅读 [Java 定时任务详解](./schedule-task.md) 和 [Web 实时消息推送详解](./web-real-time-message-push.md)。
+1. [Common System Design Interview Questions](./system-design-questions.md): Start with common scenarios and interview topics.
+2. [System Design Fundamentals](./basis/): Cover RESTful APIs, software engineering, naming, refactoring, and unit testing.
+3. [Common Design Pattern Interview Questions](./design-pattern.md): Learn which changes common design patterns help manage.
+4. [Spring and Spring Boot](./framework/spring/): Study IoC, AOP, transactions, auto-configuration, common annotations, and framework patterns.
+5. [Authentication, Authorization, and Data Security](./security/): Learn authentication, authorization, JWT, SSO, access-control systems, encryption, masking, and validation.
+6. Based on your project needs, continue with [Java Job Scheduling](./schedule-task.md) and [Real-Time Web Messaging](./web-real-time-message-push.md).
 
-## 核心文章
+## Core Guides
 
-### 系统设计与工程基础
+### System Design and Engineering Fundamentals
 
-- [系统设计常见面试题总结](./system-design-questions.md)：覆盖短链系统、秒杀系统、海量数据处理等系统设计场景题。
-- [系统设计基础专题](./basis/)：从 RESTful API、软件工程讲到代码命名、代码重构和单元测试。
-- [RestFul API 简明教程](./basis/RESTfulAPI.md)：理解资源建模、HTTP 方法、状态码和接口设计规范。
-- [代码重构指南](./basis/refactoring.md)：理解代码坏味道、重构原则和常见重构手法。
-- [单元测试到底是什么？应该怎么做？](./basis/unit-test.md)：理解单元测试、Mock、Stub、测试金字塔和 JUnit 基础。
-- [设计模式常见面试题总结](./design-pattern.md)：梳理单例、工厂、代理、责任链、策略、观察者等常见设计模式。
-- [状态机与流程编排](./state-machine-and-workflow.md)：理解条件转移、并行汇聚、任务重试、幂等和流程版本管理。
+- [Common System Design Interview Questions](./system-design-questions.md): URL shorteners, flash-sale systems, large-scale data processing, and other scenarios.
+- [System Design Fundamentals](./basis/): RESTful APIs, software engineering, naming, refactoring, and unit testing.
+- [A Concise RESTful API Guide](./basis/RESTfulAPI.md): Resource modeling, HTTP methods, status codes, and API conventions.
+- [Refactoring Guide](./basis/refactoring.md): Code smells, refactoring principles, and common refactoring techniques.
+- [What Is Unit Testing, and How Should You Do It?](./basis/unit-test.md): Unit tests, mocks, stubs, the test pyramid, and JUnit fundamentals.
+- [Common Design Pattern Interview Questions](./design-pattern.md): Singleton, Factory, Proxy, Chain of Responsibility, Strategy, Observer, and other patterns.
+- [State Machines and Workflow Orchestration](./state-machine-and-workflow.md): State transitions, parallel joins, retries, idempotency, and workflow versioning.
 
-### 常用框架
+### Common Frameworks
 
-- [Spring & Spring Boot 专题](./framework/spring/)：串联 Spring、Spring MVC、Spring Boot 的常见问题。
-- [Spring常见面试题总结](./framework/spring/spring-knowledge-and-questions-summary.md)：覆盖 IoC、AOP、Bean 生命周期、依赖注入等核心问题。
-- [SpringBoot常见面试题总结](./framework/spring/springboot-knowledge-and-questions-summary.md)：覆盖自动配置、Starter、配置加载和 Actuator 等问题。
-- [MyBatis常见面试题总结](./framework/mybatis/mybatis-interview.md)：理解 `#{}`、`${}`、动态 SQL、缓存、分页插件和 Mapper 映射。
-- [Netty常见面试题总结](./framework/netty.md)：了解高性能网络编程、Reactor 模型、事件循环和 ChannelPipeline。
+- [Spring and Spring Boot](./framework/spring/): Common topics across Spring, Spring MVC, and Spring Boot.
+- [Common Spring Interview Questions](./framework/spring/spring-knowledge-and-questions-summary.md): IoC, AOP, bean lifecycles, and dependency injection.
+- [Common Spring Boot Interview Questions](./framework/spring/springboot-knowledge-and-questions-summary.md): Auto-configuration, starters, configuration loading, and Actuator.
+- [Common MyBatis Interview Questions](./framework/mybatis/mybatis-interview.md): `#{}` versus `${}`, dynamic SQL, caches, pagination plugins, and Mapper mappings.
+- [Common Netty Interview Questions](./framework/netty.md): High-performance networking, the Reactor pattern, event loops, and `ChannelPipeline`.
 
-### 认证授权与数据安全
+### Authentication, Authorization, and Data Security
 
-- [认证授权与数据安全专题](./security/)：围绕认证授权、JWT、SSO、权限系统、加密、脱敏和数据校验展开。
-- [认证授权基础概念详解](./security/basis-of-authority-certification.md)：理解认证、授权、Session、Token、OAuth2 等基础概念。
-- [JWT 基础概念详解](./security/jwt-intro.md)：理解 JWT 组成、签名、工作流程和登录鉴权场景。
-- [权限系统设计详解](./security/design-of-authority-system.md)：理解 RBAC 权限模型和权限系统设计。
-- [常见加密算法总结](./security/encryption-algorithms.md)：理解对称加密、非对称加密、哈希算法和常见应用场景。
-- [数据脱敏方案总结](./security/data-desensitization.md)：理解常见敏感数据脱敏规则和工程实现。
+- [Authentication, Authorization, and Data Security](./security/): Authentication, authorization, JWT, SSO, access-control systems, encryption, masking, and validation.
+- [Authentication and Authorization Fundamentals](./security/basis-of-authority-certification.md): Authentication, authorization, sessions, tokens, and OAuth 2.
+- [JWT Fundamentals](./security/jwt-intro.md): JWT structure, signatures, workflows, and login authentication.
+- [Access-Control System Design](./security/design-of-authority-system.md): RBAC and access-control system design.
+- [Common Encryption Algorithms](./security/encryption-algorithms.md): Symmetric encryption, asymmetric encryption, hashes, and use cases.
+- [Data-Masking Approaches](./security/data-desensitization.md): Common rules for masking sensitive data and implementing them in software.
 
-### 任务调度与消息推送
+### Job Scheduling and Messaging
 
-- [Java 定时任务详解](./schedule-task.md)：梳理 Timer、ScheduledThreadPoolExecutor、DelayQueue、时间轮、Spring @Scheduled 和分布式任务调度框架。
-- [Web 实时消息推送详解](./web-real-time-message-push.md)：理解短轮询、长轮询、SSE、WebSocket 和消息推送选型。
-- [J2EE 基础知识](./J2EE基础知识.md)：回顾 Servlet、请求转发与重定向、Session 和 Cookie 等 Java Web 基础。
+- [Java Job Scheduling](./schedule-task.md): Timer, `ScheduledThreadPoolExecutor`, `DelayQueue`, timing wheels, Spring `@Scheduled`, and distributed schedulers.
+- [Real-Time Web Messaging](./web-real-time-message-push.md): Short polling, long polling, SSE, WebSocket, and messaging choices.
+- [J2EE Fundamentals](./J2EE基础知识.md): Servlets, request forwarding and redirects, sessions, and cookies.
 
-## 高频问题
+## Common Questions
 
-- 系统设计题应该按什么结构回答？
-- RESTful API 设计里，资源路径、HTTP 方法和状态码应该如何使用？
-- 代码命名、重构和单元测试为什么会影响系统可维护性？
-- 常见设计模式分别解决什么问题？在 Spring 里有哪些应用？
-- 状态机与流程编排分别适合什么场景？并行任务如何可靠汇聚？
-- Spring IoC、AOP、Bean 生命周期和事务机制怎么理解？
-- Spring Boot 自动装配的核心流程是什么？
-- MyBatis 的 `#{}` 和 `${}` 有什么区别？一级缓存和二级缓存如何工作？
-- 认证和授权有什么区别？Session、Token、JWT、OAuth2 分别适合什么场景？
-- RBAC 权限系统应该如何设计？
-- 数据脱敏、数据校验和加密算法分别解决什么安全问题？
-- 定时任务框架应该如何选型？分布式任务调度要注意哪些问题？
-- Web 实时消息推送有哪些方案？短轮询、SSE 和 WebSocket 如何取舍？
+- How should you structure an answer to a system-design question?
+- How should RESTful API resource paths, HTTP methods, and status codes be used?
+- Why do naming, refactoring, and unit testing affect maintainability?
+- Which problems do common design patterns solve, and how does Spring use them?
+- When should you use a state machine or workflow? How can parallel tasks be joined reliably?
+- How do Spring IoC, AOP, bean lifecycles, and transactions work?
+- What are the main steps in Spring Boot auto-configuration?
+- How do MyBatis `#{}` and `${}` differ? How do its first- and second-level caches work?
+- How do authentication and authorization differ? When should you use sessions, tokens, JWT, or OAuth 2?
+- How should an RBAC access-control system be designed?
+- What security problems do data masking, validation, and encryption solve?
+- How should you choose a job scheduler? What should you consider in a distributed scheduler?
+- What options are available for real-time web messaging? How do short polling, SSE, and WebSocket compare?
 
-## 相关专题
+## Related Topics
 
-- [高性能系统知识体系](../high-performance/)
-- [高可用系统知识体系](../high-availability/)
-- [分布式系统知识体系](../distributed-system/)
-- [数据库](../database/)
-- [计算机网络](../cs-basics/network/other-network-questions.md)
+- [High-Performance Systems](../high-performance/)
+- [High-Availability Systems](../high-availability/)
+- [Distributed Systems](../distributed-system/)
+- [Databases](../database/)
+- [Computer Networks](../cs-basics/network/other-network-questions.md)
 
 <!-- @include: @article-footer.snippet.md -->

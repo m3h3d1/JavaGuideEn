@@ -1,98 +1,98 @@
 ---
-title: 高质量技术文章精选：程序员成长、工作经验、面试复盘与职业思考
-description: 程序员成长与面试复盘文章精选，整理个人经历、职场经验、技术学习方法、职业发展思考等内容，适合长期成长与阶段性复盘。
-category: 程序人生
+title: Curated Technical Articles: Career Growth, Work, Interviews, and Professional Development
+description: A collection of articles on career growth, work experience, interview reviews, career choices, and effective technical learning for long-term development.
+category: Programmer's Life
 sitemap:
   changefreq: weekly
   priority: 0.9
 head:
   - - meta
     - name: keywords
-      content: 高质量技术文章,程序员成长,程序员职业发展,程序员工作经验,程序员面试经验,技术成长,职场经验,程序人生
+      content: quality technical articles,programmer growth,career development,work experience,interview experience,technical growth,career skills
 ---
 
 <!-- @include: @small-advertisement.snippet.md -->
 
-这份 **高质量技术文章精选** 收录程序员成长、工作经验、面试复盘、职业选择和技术学习方法相关内容。它不是具体技术点清单，更适合在学习、求职、入职、转岗、晋升等阶段反复阅读。
+This collection of **curated technical articles** covers career growth, work experience, interview reviews, career choices, and how to learn technical topics. It is not a list of specific technologies. Revisit it at different stages, such as studying, job hunting, starting a job, changing roles, and seeking a promotion.
 
-如果你时间有限，建议先看 [程序员如何快速学习新技术](./advanced-programmer/programmer-quickly-learn-new-technology.md) 和 [从面试官和候选者的角度谈如何准备技术初试](./interview/technical-preliminary-preparation.md)，一个解决学习方法，一个解决面试准备。
+If you have limited time, start with [How Programmers Can Learn New Technologies Quickly](./advanced-programmer/programmer-quickly-learn-new-technology.md) and [Preparing for Technical Screening: The Interviewer's and Candidate's Perspectives](./interview/technical-preliminary-preparation.md). The first covers learning methods; the second covers interview preparation.
 
-## 适合谁看
+## Who Should Read This?
 
-- 正在从学生转向工程师、需要建立职业认知的同学。
-- 准备面试，希望理解面试官视角和真实候选人经验的读者。
-- 工作 1 到 5 年，想提升学习效率、业务理解和技术成长速度的程序员。
-- 面临入职适应、绩效考核、职业选择、成长瓶颈的工程师。
+- Students moving into engineering who want to understand professional life.
+- Candidates who want to learn about interviews from both interviewers' and applicants' experiences.
+- Programmers with one to five years of experience who want to improve their learning, business understanding, and technical growth.
+- Engineers dealing with onboarding, performance reviews, career decisions, or a growth plateau.
 
-## 学习重点
+## Key Topics
 
-- 技术成长不只是多学框架，更包括学习方法、业务理解、表达能力和工程判断。
-- 面试准备要同时站在候选人和面试官视角，既要能答题，也要能呈现真实项目能力。
-- 个人经历类文章适合用来理解不同阶段的选择、试错和复盘方式。
-- 工作经验类文章重点看“如何快速进入状态、如何和团队协作、如何面对绩效与反馈”。
-- 职业发展需要长期复盘，不要把短期 offer、职级或绩效当成唯一目标。
+- Technical growth involves more than learning frameworks. It also requires effective learning, business understanding, communication, and engineering judgment.
+- Prepare for interviews from both the candidate's and interviewer's perspectives: answer questions and demonstrate real project experience.
+- Personal stories offer examples of choices, mistakes, and reflection at different career stages.
+- Work-related advice focuses on getting up to speed, collaborating with a team, and handling performance reviews and feedback.
+- Reflect on your career over the long term. Don't make short-term offers, titles, or performance ratings your only goals.
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [程序员如何快速学习新技术](./advanced-programmer/programmer-quickly-learn-new-technology.md)：先建立学习新技术的方法。
-2. [程序员职业方向怎么选？](./programmer/programmer-career-directions.md)：在入行、转岗或换方向前，先理解几个常见方向的工作内容和门槛。
-3. [程序员的技术成长战略](./advanced-programmer/the-growth-strategy-of-the-technological-giant.md) 和 [给想成长为高级别开发同学的七条建议](./advanced-programmer/seven-tips-for-becoming-an-advanced-programmer.md)：理解技术成长的长期路线。
-4. [从面试官和候选者的角度谈如何准备技术初试](./interview/technical-preliminary-preparation.md)：用面试官视角校准准备方向。
-5. [斩获 20+ 大厂 offer 的面试经验分享](./interview/the-experience-of-get-offer-from-over-20-big-companies.md) 和 [普通人的春招总结](./interview/summary-of-spring-recruitment.md)：参考真实求职复盘。
-6. [新入职一家公司如何快速进入工作状态](./work/get-into-work-mode-quickly-when-you-join-a-company.md)：拿到机会后继续关注入职、协作和长期成长。
+1. [How Programmers Can Learn New Technologies Quickly](./advanced-programmer/programmer-quickly-learn-new-technology.md): Build an effective approach to learning new technologies.
+2. [How Should Programmers Choose a Career Path?](./programmer/programmer-career-directions.md): Compare common roles and what they involve before starting out or changing direction.
+3. [A Long-Term Strategy for Technical Growth](./advanced-programmer/the-growth-strategy-of-the-technological-giant.md) and [Seven Tips for Becoming a Senior Engineer](./advanced-programmer/seven-tips-for-becoming-an-advanced-programmer.md): Understand long-term technical growth.
+4. [Preparing for Technical Screening: The Interviewer's and Candidate's Perspectives](./interview/technical-preliminary-preparation.md): Use the interviewer's perspective to focus your preparation.
+5. [Interview Experiences from Landing Offers at 20+ Major Tech Companies](./interview/the-experience-of-get-offer-from-over-20-big-companies.md) and [Lessons from an Average Candidate's Spring Recruiting](./interview/summary-of-spring-recruitment.md): Learn from real job-search reviews.
+6. [How to Get Up to Speed Quickly at a New Company](./work/get-into-work-mode-quickly-when-you-join-a-company.md): After landing a job, focus on onboarding, collaboration, and continued growth.
 
-## 核心文章
+## Core Articles
 
-### 练级攻略
+### Growth and Learning
 
-- [程序员如何快速学习新技术](./advanced-programmer/programmer-quickly-learn-new-technology.md)：讲学习路径、资料选择、实践验证和避免低效学习。
-- [程序员的技术成长战略](./advanced-programmer/the-growth-strategy-of-the-technological-giant.md)：从长期视角理解技术成长和能力沉淀。
-- [十年大厂成长之路](./advanced-programmer/ten-years-of-dachang-growth-road.md)：复盘长期职业发展中的选择与积累。
-- [美团三年，总结的 10 条血泪教训](./advanced-programmer/meituan-three-year-summary-lesson-10.md)：从真实经历里看工程师成长常见坑。
-- [给想成长为高级别开发同学的七条建议](./advanced-programmer/seven-tips-for-becoming-an-advanced-programmer.md)：聚焦高级别工程师需要的能力。
-- [糟糕程序员的 20 个坏习惯](./advanced-programmer/20-bad-habits-of-bad-programmers.md)：帮助识别影响成长和协作的坏习惯。
-- [工作五年之后，对技术和业务的思考](./advanced-programmer/thinking-about-technology-and-business-after-five-years-of-work.md)：理解技术、业务和个人发展的关系。
+- [How Programmers Can Learn New Technologies Quickly](./advanced-programmer/programmer-quickly-learn-new-technology.md): Learning paths, choosing resources, validating knowledge in practice, and avoiding inefficient study.
+- [A Long-Term Strategy for Technical Growth](./advanced-programmer/the-growth-strategy-of-the-technological-giant.md): A long-term view of technical growth and building skills.
+- [Ten Years of Growth at a Major Tech Company](./advanced-programmer/ten-years-of-dachang-growth-road.md): Career decisions and growth over a decade.
+- [Three Years at Meituan: Ten Hard-Earned Lessons](./advanced-programmer/meituan-three-year-summary-lesson-10.md): Common engineering-growth pitfalls, drawn from experience.
+- [Seven Tips for Becoming a Senior Engineer](./advanced-programmer/seven-tips-for-becoming-an-advanced-programmer.md): Skills needed to grow into a senior engineer.
+- [20 Bad Habits of Ineffective Programmers](./advanced-programmer/20-bad-habits-of-bad-programmers.md): Habits that can undermine growth and collaboration.
+- [Reflections on Technology and Business After Five Years at Work](./advanced-programmer/thinking-about-technology-and-business-after-five-years-of-work.md): The relationship between technology, business, and personal development.
 
-### 个人经历
+### Personal Experiences
 
-- [从校招入职腾讯的四年工作总结](./personal-experience/four-year-work-in-tencent-summary.md)：复盘大厂工作、成长和选择。
-- [我在滴滴和头条的两年后端研发工作经验分享](./personal-experience/two-years-of-back-end-develop--experience-in-didi-and-toutiao.md)：了解不同团队和业务环境下的后端研发经验。
-- [一个中科大差生的 8 年程序员工作总结](./personal-experience/8-years-programmer-work-summary.md)：从较长周期看程序员成长路径。
-- [华为 OD 275 天后，我进了腾讯！](./personal-experience/huawei-od-275-days.md)：参考真实求职和职业转换经历。
+- [Four Years at Tencent After Campus Recruiting](./personal-experience/four-year-work-in-tencent-summary.md): Reflections on work, growth, and choices at a major tech company.
+- [Two Years as a Backend Developer at Didi and Toutiao](./personal-experience/two-years-of-back-end-develop--experience-in-didi-and-toutiao.md): Backend development across different teams and business contexts.
+- [Eight Years as a Programmer: Reflections from an Average USTC Graduate](./personal-experience/8-years-programmer-work-summary.md): A long-term perspective on a programmer's career.
+- [From Huawei OD to Tencent After 275 Days](./personal-experience/huawei-od-275-days.md): A real job-search and career-transition story.
 
-### 程序员
+### Career Paths
 
-- [程序员职业方向怎么选？](./programmer/programmer-career-directions.md)：对比后端、前端、全栈、AI 应用开发、数据库内核、算法、中间件、测开、平台工程和架构师等方向。
-- [程序员最该拿的几种高含金量证书](./programmer/high-value-certifications-for-programmers.md)：了解软考、PMP、云认证等证书的适用场景。
-- [程序员怎样出版一本技术书](./programmer/how-do-programmers-publish-a-technical-book.md)：了解技术书出版流程和注意事项。
-- [高效出书指南：程序员如何从 0 到 1 写一本技术书](./programmer/efficient-book-publishing-and-practice-guide.md)：补充技术写作和出版实践。
+- [How Should Programmers Choose a Career Path?](./programmer/programmer-career-directions.md): Compare backend, frontend, full stack, AI application development, database internals, algorithms, middleware, test development, platform engineering, and architecture.
+- [High-Value Certifications for Programmers](./programmer/high-value-certifications-for-programmers.md): Learn when certifications such as China's software exams, PMP, and cloud certifications are useful.
+- [How Programmers Can Publish a Technical Book](./programmer/how-do-programmers-publish-a-technical-book.md): The publishing process and considerations for technical books.
+- [A Practical Guide to Writing and Publishing a Technical Book](./programmer/efficient-book-publishing-and-practice-guide.md): Additional advice on technical writing and publishing.
 
-### 面试与工作
+### Interviews and Work
 
-- [从面试官和候选者的角度谈如何准备技术初试](./interview/technical-preliminary-preparation.md)：理解技术初试到底考什么。
-- [斩获 20+ 大厂 offer 的面试经验分享](./interview/the-experience-of-get-offer-from-over-20-big-companies.md)：参考完整求职准备和复盘方式。
-- [包装严重的 IT 行业，作为面试官，我是如何甄别应聘者的包装程度](./interview/screen-candidates-for-packaging.md)：理解面试官如何识别项目真实性。
-- [新入职一家公司如何快速进入工作状态](./work/get-into-work-mode-quickly-when-you-join-a-company.md)：帮助入职后快速熟悉业务、代码和团队节奏。
-- [32 条总结教你提升职场经验](./work/32-tips-improving-career.md)：补充沟通、协作、汇报和成长细节。
-- [聊聊大厂的绩效考核](./work/employee-performance.md)：理解绩效机制和工作反馈。
+- [Preparing for Technical Screening: The Interviewer's and Candidate's Perspectives](./interview/technical-preliminary-preparation.md): Understand what technical screening interviews assess.
+- [Interview Experiences from Landing Offers at 20+ Major Tech Companies](./interview/the-experience-of-get-offer-from-over-20-big-companies.md): A detailed job-search preparation and review.
+- [How Interviewers Identify Exaggerated IT Experience](./interview/screen-candidates-for-packaging.md): How interviewers assess whether project experience is genuine.
+- [How to Get Up to Speed Quickly at a New Company](./work/get-into-work-mode-quickly-when-you-join-a-company.md): Get familiar with the business, codebase, and team after joining.
+- [32 Tips for Growing in Your Career](./work/32-tips-improving-career.md): Communication, collaboration, reporting, and professional growth.
+- [Performance Reviews at Major Tech Companies](./work/employee-performance.md): Understand performance systems and workplace feedback.
 
-## 高频问题
+## Common Questions
 
-- 程序员如何快速学习一门新技术，而不是只收藏资料？
-- 工作几年后，如何判断自己是在成长还是重复劳动？
-- 准备技术面试时，应该如何平衡八股文、项目和算法？
-- 面试官如何判断项目是不是候选人真实做过？
-- 新入职一家公司，前几周应该重点做什么？
-- 如何面对绩效、晋升、业务压力和职业焦虑？
-- 技术能力和业务理解哪个更重要？不同阶段如何取舍？
+- How can programmers learn a new technology instead of just bookmarking resources?
+- After several years at work, how can you tell whether you are growing or repeating the same tasks?
+- How should you balance memorized interview questions, project experience, and algorithms when preparing for technical interviews?
+- How can interviewers tell whether a candidate really worked on a project?
+- What should you focus on during your first weeks at a new company?
+- How should you handle performance reviews, promotions, business pressure, and career anxiety?
+- Which matters more: technical skills or business understanding? How does the balance change over time?
 
-## 相关专题
+## Related Topics
 
-- [面试准备](../interview-preparation/)
-- [Java 知识体系](../java/)
-- [计算机基础知识体系](../cs-basics/)
-- [技术书籍精选](../books/)
-- [Java 开源项目精选](../open-source-project/)
-- [星球专属优质专栏](../zhuanlan/)
+- [Interview Preparation](../interview-preparation/)
+- [Java Guide](../java/)
+- [Computer Science Fundamentals](../cs-basics/)
+- [Recommended Technical Books](../books/)
+- [Recommended Java Open-Source Projects](../open-source-project/)
+- [Exclusive Knowledge Planet Columns](../zhuanlan/)
 
 <!-- @include: @article-footer.snippet.md -->

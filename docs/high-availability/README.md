@@ -1,85 +1,85 @@
 ---
-title: 高可用系统知识体系：SLA、限流、熔断、降级、重试、幂等、冗余与压测
-description: 高可用系统面试与架构学习路线，涵盖 SLA、可用性指标、单点故障、冗余容灾、限流、降级、熔断、超时重试、接口幂等、压测和故障演练。
-category: 高可用
+title: "High Availability: SLA, Rate Limiting, Circuit Breaking, Fallbacks, Retries, Idempotency, Redundancy, and Load Testing"
+description: A learning path for high-availability architecture and interviews, covering SLAs, availability metrics, single points of failure, redundancy, disaster recovery, rate limiting, fallbacks, circuit breakers, retries, idempotency, load testing, and failure drills.
+category: High Availability
 tag:
-  - 高可用
-  - 系统设计
-  - 后端面试
+  - High Availability
+  - System Design
+  - Backend Interviews
 sitemap:
   changefreq: weekly
   priority: 0.95
 head:
   - - meta
     - name: keywords
-      content: 高可用系统,高可用系统设计,高可用面试题,SLA,可用性指标,限流,熔断,降级,超时重试,接口幂等,冗余设计,容灾,性能测试,故障演练,后端面试
+      content: high-availability systems,high-availability system design,high-availability interview questions,SLA,availability metrics,rate limiting,circuit breaking,fallbacks,timeouts and retries,API idempotency,redundancy,disaster recovery,performance testing,failure drills,backend interviews
 ---
 
 <!-- @include: @small-advertisement.snippet.md -->
 
-这份 **高可用系统知识体系** 面向后端学习、系统设计和面试复习，围绕“减少故障、隔离故障、快速恢复、降低重复请求和异常流量影响”整理本站高可用相关文章。
+This **high-availability knowledge map** is for backend learning, system design, and interview preparation. It groups the site's high-availability articles around reducing failures, containing their impact, recovering quickly, and limiting the effects of duplicate requests and abnormal traffic.
 
-如果你时间有限，建议先看 [高可用系统设计面试题总结](./high-availability-system-interview-questions.md)，快速建立高频问题清单；如果你想系统补基础，可以按下面的阅读顺序推进。
+If you have limited time, start with [High-Availability System Design Interview Questions](./high-availability-system-interview-questions.md) for a concise list of common questions. To study the fundamentals systematically, follow the reading order below.
 
-## 适合谁看
+## Who Should Read This?
 
-- 正在系统学习高可用系统设计的后端开发者。
-- 准备校招、社招、中大厂后端面试的同学。
-- 想补齐限流、降级、熔断、重试、幂等、容灾和压测能力的工程师。
-- 已经遇到接口超时、重复请求、下游故障、流量突增、系统雪崩等问题，但缺少系统解法的读者。
+- Backend developers studying high-availability system design.
+- Candidates preparing for graduate or experienced-hire backend interviews, including those at medium-sized and large companies.
+- Engineers who want to improve their skills in rate limiting, fallbacks, circuit breaking, retries, idempotency, disaster recovery, and load testing.
+- Readers who have encountered request timeouts, duplicate requests, downstream failures, traffic spikes, or cascading failures, but lack a systematic way to address them.
 
-## 学习重点
+## Key Concepts
 
-- 高可用不是“不出故障”，而是故障发生时尽量可控、可隔离、可恢复。
-- SLA、可用性指标、RTO、RPO 是衡量高可用设计的重要语言。
-- 限流、降级、熔断、超时重试分别解决不同层面的稳定性问题。
-- 幂等设计是应对重复请求、自动重试、消息重复消费和支付回调的基础能力。
-- 冗余容灾、性能压测、故障演练和灰度发布决定系统是否能扛住真实生产风险。
+- High availability does not mean “no failures.” It means keeping failures controlled, contained, and recoverable.
+- SLAs, availability metrics, RTO, and RPO are key ways to measure high-availability design.
+- Rate limiting, fallbacks, circuit breakers, timeouts, and retries address different stability problems.
+- Idempotency is essential for handling duplicate requests, automatic retries, repeated message consumption, and payment callbacks.
+- Redundancy, disaster recovery, load testing, failure drills, and canary releases help determine whether a system can withstand production risks.
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [高可用系统设计面试题总结](./high-availability-system-interview-questions.md)：先建立 SLA、限流、熔断、重试、幂等、容灾和压测的高频问题清单。
-2. [高可用系统设计详解](./high-availability-system-design.md)：系统理解高可用架构的整体设计方法。
-3. [服务限流详解](./limit-request.md)、[服务降级与熔断详解](./fallback-and-circuit-breaker.md)、[超时和重试机制详解](./timeout-and-retry.md)：掌握稳定性治理三件套。
-4. [接口幂等性设计详解](./idempotency.md)：理解重复请求、业务幂等和支付回调等场景。
-5. [冗余设计详解](./redundancy.md) 和 [性能测试入门](./performance-test.md)：补齐容灾、压测、容量评估和故障验证。
+1. [High-Availability System Design Interview Questions](./high-availability-system-interview-questions.md): Review common questions on SLAs, single points of failure, rate limiting, fallbacks, circuit breaking, retries, idempotency, disaster recovery, and load testing.
+2. [High-Availability System Design](./high-availability-system-design.md): Learn the overall approach to designing high-availability architectures.
+3. [Rate Limiting](./limit-request.md), [Fallbacks and Circuit Breakers](./fallback-and-circuit-breaker.md), and [Timeouts and Retries](./timeout-and-retry.md): Learn the three core stability controls.
+4. [API Idempotency](./idempotency.md): Understand duplicate requests, business idempotency, payment callbacks, and related cases.
+5. [Redundancy](./redundancy.md) and [Introduction to Performance Testing](./performance-test.md): Learn disaster recovery, load testing, capacity planning, and failure validation.
 
-## 核心文章
+## Core Guides
 
-### 总览与面试路线
+### Overview and Interview Preparation
 
-- [高可用系统设计面试题总结](./high-availability-system-interview-questions.md)：串联 SLA、单点故障、限流降级熔断、超时重试、接口幂等、冗余容灾和性能压测。
-- [高可用系统设计详解](./high-availability-system-design.md)：讲解 SLA、多少个 9、单点故障治理、缓存高可用、异步削峰、灰度发布和故障恢复。
+- [High-Availability System Design Interview Questions](./high-availability-system-interview-questions.md): Covers SLAs, single points of failure, rate limiting, fallbacks, circuit breakers, retries, API idempotency, redundancy, disaster recovery, and load testing.
+- [High-Availability System Design](./high-availability-system-design.md): Explains SLAs, availability nines, single-point-of-failure mitigation, cache availability, asynchronous load smoothing, canary releases, and recovery.
 
-### 稳定性治理
+### Stability Controls
 
-- [服务限流详解](./limit-request.md)：理解固定窗口、滑动窗口、令牌桶、漏桶、Sentinel、Redis Lua 和 Redisson 限流。
-- [服务降级与熔断详解](./fallback-and-circuit-breaker.md)：理解 Fallback、降级开关、熔断器状态机、雪崩效应、隔离策略和框架选型。
-- [超时和重试机制详解](./timeout-and-retry.md)：理解连接超时、读取超时、指数退避、随机抖动、重试风暴和幂等性。
+- [Rate Limiting](./limit-request.md): Learn fixed and sliding windows, token and leaky buckets, Sentinel, Redis Lua, and Redisson rate limiting.
+- [Fallbacks and Circuit Breakers](./fallback-and-circuit-breaker.md): Learn fallbacks, fallback switches, circuit-breaker state machines, cascading failures, isolation strategies, and framework selection.
+- [Timeouts and Retries](./timeout-and-retry.md): Learn connection and read timeouts, exponential backoff, jitter, retry storms, and idempotency.
 
-### 幂等、容灾与验证
+### Idempotency, Disaster Recovery, and Validation
 
-- [接口幂等性设计详解](./idempotency.md)：讲解幂等键、Token、唯一索引、去重表、乐观锁、悲观锁、分布式锁和支付回调。
-- [冗余设计详解](./redundancy.md)：讲解硬件冗余、服务冗余、数据冗余、地域冗余、同城灾备、异地灾备和多活架构。
-- [性能测试入门](./performance-test.md)：理解 QPS、TPS、RT、P90/P99/P999、容量评估、压力测试、稳定性测试和压测工具。
+- [API Idempotency](./idempotency.md): Covers idempotency keys, tokens, unique indexes, deduplication tables, optimistic and pessimistic locking, distributed locks, and payment callbacks.
+- [Redundancy](./redundancy.md): Covers hardware, service, data, and geographic redundancy, as well as regional and cross-region disaster recovery and active-active architectures.
+- [Introduction to Performance Testing](./performance-test.md): Learn QPS, TPS, response time, P90/P99/P999, capacity planning, load and stability testing, and testing tools.
 
-## 高频问题
+## Common Questions
 
-- 高可用系统如何定义可用性？几个 9 分别意味着什么？
-- RTO 和 RPO 有什么区别？
-- 限流、降级、熔断分别解决什么问题？
-- 令牌桶和漏桶有什么区别？分布式限流如何实现？
-- 超时和重试为什么可能导致雪崩？
-- 接口幂等有哪些实现方案？支付回调如何保证幂等？
-- 冗余、容灾、同城多活、异地多活分别适合什么场景？
-- 性能测试、压力测试、稳定性测试有什么区别？
-- 如何通过故障演练验证高可用设计是否有效？
+- How is availability defined for a high-availability system? What do the different numbers of nines mean?
+- How do RTO and RPO differ?
+- What problems do rate limiting, fallbacks, and circuit breakers solve?
+- How do token buckets and leaky buckets differ? How is distributed rate limiting implemented?
+- Why can timeouts and retries cause cascading failures?
+- How can API idempotency be implemented? How can payment callbacks be made idempotent?
+- When are redundancy, disaster recovery, regional active-active, and cross-region active-active architectures appropriate?
+- How do performance, load, and stability testing differ?
+- How can failure drills validate a high-availability design?
 
-## 相关专题
+## Related Topics
 
-- [高性能系统知识体系](../high-performance/)
-- [分布式系统知识体系](../distributed-system/)
-- [系统设计](../system-design/)
-- [消息队列专题](../high-performance/message-queue/)
+- [High-Performance Systems](../high-performance/)
+- [Distributed Systems](../distributed-system/)
+- [System Design](../system-design/)
+- [Message Queues](../high-performance/message-queue/)
 
 <!-- @include: @article-footer.snippet.md -->
