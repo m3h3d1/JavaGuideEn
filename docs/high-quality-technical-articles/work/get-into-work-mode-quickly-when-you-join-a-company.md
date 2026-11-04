@@ -14,7 +14,7 @@ head:
 >
 > **Original article:** <https://www.cnblogs.com/hunternet/p/14675348.html>
 
-![How to get up to speed quickly at a new company](../images/shared/.png.png)
+![How to get up to speed quickly at a new company](../images/shared/new-hire-onboarding-mind-map.png)
 
 The annual spring hiring season is almost over. Many people changing jobs have found a role they like and are about to start—or have already started—somewhere new.
 
@@ -24,7 +24,7 @@ At the same time, a company can't give you several months to settle in at your o
 
 Some people are lucky enough to join a company with well-established onboarding, mentoring, and training. Others are less fortunate. A few years ago, when I joined a large tech company, the onboarding process was not as mature as it is now. The team was extremely busy, and on my first afternoon I was asked to investigate several production issues, with no documentation or training. People who struggle to adapt under this pressure may eventually think about quitting.
 
-![A difficult onboarding experience](https://hunter-picgos.oss-cn-shanghai.aliyuncs.com/picgo/bad175e3a380bea..jpg)
+![A difficult onboarding experience](../images/shared/difficult-onboarding-experience.jpg)
 
 **How can we get into the flow of work quickly and adapt to a new pace?**
 

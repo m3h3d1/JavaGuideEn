@@ -155,11 +155,11 @@ For each new request, select the server with the fewest connections. If several 
 
 Least-connections selection assumes that more connections mean higher load. In practice, connection count may not reflect actual server load: some connections use far more resources than others.
 
-Least Active Requests
+### Least Active Requests
 
 Least-active selection is similar to least connections but uses the number of active connections, which approximates requests currently being processed. Fewer active requests suggest more available capacity, so stronger servers can handle more requests. If counts tie, weighted random selection can break the tie.
 
-Fastest Response Time
+### Fastest Response Time
 
 Unlike least-connections and least-active selection, this algorithm chooses a server by response time. The client tracks each server's response time and routes every request to the fastest one. Weighted random selection can break ties.
 

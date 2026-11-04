@@ -101,14 +101,23 @@ public class ListNode {
 ```
 
 ```java
+/**
+ * Reverses a singly linked list.
+ *
+ * @author Snailclimb
+ * @date 2018-09-19
+ */
 public class Solution {
     public ListNode ReverseList(ListNode head) {
         ListNode next = null;
         ListNode prev = null;
 
         while (head != null) {
+            // Save the next node before changing the link.
             next = head.next;
+            // Point the current node at the reversed portion.
             head.next = prev;
+            // Advance both pointers.
             prev = head;
             head = next;
         }

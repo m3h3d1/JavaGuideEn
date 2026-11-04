@@ -392,7 +392,7 @@ The protocol was introduced in 2008 and became an international standard in 2011
 
 WebSocket is an application-layer protocol that provides persistent communication. After a single handshake, the client and server can keep a connection open and exchange data in both directions.
 
-![WebSocket uses a persistent connection for two-way communication](../images/shared/1460000042192394.png)
+![WebSocket uses a persistent connection for two-way communication](../images/shared/websocket-communication-diagram.png)
 
 Common use cases include:
 
@@ -447,7 +447,7 @@ All three approaches help a client receive new server data without a page refres
 - **Advantages:** Low latency, two-way communication, and no repeated request setup.
 - **Disadvantages:** Both sides must support WebSocket. Applications need to manage connection health and reconnection, making it more complex to implement than polling.
 
-![WebSocket compared with short and long polling](../images/shared/1460000042192394.png)
+![WebSocket compared with short and long polling](../images/shared/websocket-communication-diagram.png)
 
 ### ⭐️ How Does SSE Differ from WebSocket?
 

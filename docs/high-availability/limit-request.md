@@ -35,7 +35,7 @@ Suppose an endpoint may be called at most 33 times per minute. A fixed-window co
 - Increment `counter` for every request. Once it reaches 33 in the current minute, reject all further requests until the window ends.
 - Reset `counter` to 0 at the start of the next minute.
 
-![Fixed-window counter algorithm](https://static001.infoq.cn/resource/image/8d/15/8ded7a2b90e1482093f92fff555b3615.png)
+![Fixed-window counter algorithm](./images/shared/rate-limit-fixed-window.png)
 
 **Advantages:** Simple to implement and understand.
 
@@ -54,7 +54,7 @@ For example, to limit an endpoint to 60 requests per minute, divide the minute i
 
 **The more subwindows there are, the smoother the window movement and the more precise the rate calculation.**
 
-![Sliding-window counter algorithm](https://static001.infoq.cn/resource/image/ae/15/ae4d3cd14efb8dc7046d691c90264715.png)
+![Sliding-window counter algorithm](./images/shared/rate-limit-sliding-window.png)
 
 **Advantages:**
 
@@ -72,7 +72,7 @@ Think of incoming requests as water flowing into a bucket and request processing
 
 This is simple to implement: put requests in a queue and process them at regular intervals. This is similar to using a message queue to absorb bursts and limit throughput.
 
-![Leaky-bucket algorithm](https://static001.infoq.cn/resource/image/75/03/75938d1010138ce66e38c6ed0392f103.png)
+![Leaky-bucket algorithm](./images/shared/rate-limit-leaky-bucket.png)
 
 **Advantages:**
 
@@ -90,7 +90,7 @@ The leaky bucket has a narrower range of use cases. A token bucket is usually be
 
 The token-bucket algorithm also uses a bucket, but the bucket holds tokens. A request must acquire and consume a token before processing. If no token is available, the request waits or is rejected. Tokens are added at a configured rate, up to the bucket's capacity.
 
-![Token-bucket algorithm](https://static001.infoq.cn/resource/image/ec/93/eca0e5eaa35dac938c673fecf2ec9a93.png)
+![Token-bucket algorithm](./images/shared/rate-limit-token-bucket.png)
 
 **Advantages:**
 

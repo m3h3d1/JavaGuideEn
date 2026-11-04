@@ -18,27 +18,27 @@ Use [resume.github.io](https://resume.github.io/) to generate an online resume f
 
 Whether you include a GitHub link on your resume depends on the quality of your account. Complete projects, ongoing maintenance, clear READMEs, and a tidy commit history can strengthen your application. If the account only has empty repositories or throwaway exercises, there's no need to include it. Here is an example of the result:
 
-![GitHub resume](https://oss.javaguide.cn/2020-11/image-20201108192205620.png)
+![GitHub resume](./images/shared/github-resume-example.png)
 
 Use <https://www.githubtrends.io/wrapped> to generate a yearly review of your GitHub activity, including project contributions, most-used languages, and detailed contribution data.
 
-![](https://oss.javaguide.cn/github/dootask/image-20211226144607457.png)
+![Example GitHub year-in-review summary](./images/shared/github-year-in-review-example.png)
 
 ## Personalize Your GitHub Profile
 
 GitHub lets you customize the content displayed on your profile. Here is an example:
 
-![Personalized GitHub profile](https://oss.javaguide.cn/java-guide-blog/image-20210616221212259.png)
+![Personalized GitHub profile](./images/shared/github-profile-example.png)
 
 To do this, create a repository with the same name as your GitHub account and customize its `README.md`.
 
 Your profile will display the contents of that `README.md`. (If you don't know Markdown, take five minutes to learn it!)
 
-![Create a repository with the same name as your GitHub account](https://oss.javaguide.cn/java-guide-blog/image-20201107110309341.png)
+![Create a repository with the same name as your GitHub account](./images/shared/github-profile-readme-repository.png)
 
 You can do a lot with this. For example, the open-source project [github-readme-stats](https://hellogithub.com/periodical/statistics/click/?target=https://github.com/anuraghazra/github-readme-stats) can dynamically generate GitHub statistics for your README. Here is an example:
 
-![Dynamically generated GitHub statistics with github-readme-stats](https://oss.javaguide.cn/java-guide-blog/image-20210616221312426.png)
+![Dynamically generated GitHub statistics with github-readme-stats](./images/shared/github-readme-stats-example.png)
 
 I won't go into more detail here. Explore the options if you're interested.
 
@@ -46,31 +46,31 @@ I won't go into more detail here. Explore the options if you're interested.
 
 The badges you see on GitHub projects are generated with [Shields.io](https://shields.io/). Here are the badges for JavaGuide:
 
-![Project badges](https://oss.javaguide.cn/2020-11/image-20201107143136559.png)
+![Project badges](./images/shared/javaguide-project-badges.png)
 
 Shields.io can create static badges and badges that display your project's current status.
 
-![Custom project badges](https://oss.javaguide.cn/2020-11/image-20201107143502356.png)
+![Custom project badges](./images/shared/shields-custom-badge-examples.png)
 
 Here are some badges describing project status:
 
-![Project status badges](https://oss.javaguide.cn/2020-11/image-20201107143752642.png)
+![Project status badges](./images/shared/project-status-badges.png)
 
 ## Add a Contribution Graph to Your Project
 
 Use Repobeats to add a summary of project contributions, like this:
 
-![](https://oss.javaguide.cn/github/dootask/repobeats.png)
+![Repobeats contribution graph](./images/shared/repobeats-contribution-graph.png)
 
 Visit <https://repobeats.axiom.co/>.
 
 ## GitHub Emoji
 
-![GitHub emoji](https://oss.javaguide.cn/2020-11/image-20201107162254582.png)
+![GitHub emoji reference](./images/shared/github-emoji-reference.png)
 
 Find emoji for GitHub in the [WebFX emoji cheat sheet](https://www.webfx.com/tools/emoji-cheat-sheet/).
 
-![GitHub emoji online](https://oss.javaguide.cn/2020-11/image-20201107162432941.png)
+![Search for GitHub emoji online](./images/shared/github-emoji-search.png)
 
 ## Browse GitHub Source Code Efficiently
 
@@ -82,7 +82,7 @@ Here are a few common ways to browse GitHub source code.
 
 This is an old favorite of mine. Octotree displays a project in a tree in the browser sidebar, making it easier to browse source code as you would in an IDE.
 
-![Octotree browser extension](https://oss.javaguide.cn/2020-11/image-20201107144944798.png)
+![Octotree browser extension](./images/shared/octotree-browser-extension.png)
 
 ### Sourcegraph
 
@@ -90,11 +90,11 @@ If you don't want to clone a project locally, tools such as Sourcegraph can help
 
 After installing its browser extension, a small icon appears on the project page, as shown below. Click it to browse the source online.
 
-![](https://oss.javaguide.cn/2020-11/image-20201107145749659.png)
+![Sourcegraph browser extension](./images/shared/sourcegraph-browser-extension.png)
 
 Sourcegraph's code view looks something like this. It also displays code in a tree and lets you navigate between classes.
 
-![](https://oss.javaguide.cn/2020-11/image-20201107150307314.png)
+![Browsing code with Sourcegraph](./images/shared/sourcegraph-code-browser.png)
 
 ### Clone the Project Locally
 
@@ -108,7 +108,7 @@ git clone https://github.com/Snailclimb/JavaGuide.git
 
 **Enhanced GitHub** is a browser extension that displays repository and file sizes and lets you download individual files quickly.
 
-![](https://oss.javaguide.cn/2020-11/image-20201107160817672.png)
+![Enhanced GitHub browser extension](./images/shared/enhanced-github-browser-extension.png)
 
 ## Generate a Table of Contents for Markdown
 
@@ -116,11 +116,11 @@ Use a VS Code extension such as **Markdown Preview Enhanced** to generate a tabl
 
 The generated table of contents lets readers jump to a section by clicking a link, making the article easier to navigate.
 
-![](<https://oss.javaguide.cn/2020-11/iShot2020-11-07%2016.14.14%20(1).png>)
+![Generate a Markdown table of contents in VS Code](./images/shared/markdown-toc-vscode-extension.png)
 
 GitHub now generates a table of contents for Markdown files automatically; expand it with the table-of-contents button on the page.
 
-![](https://oss.javaguide.cn/github/cosy/image-20211227093215005.png)
+![GitHub-generated Markdown table of contents](./images/shared/github-markdown-toc.png)
 
 ## Make Good Use of GitHub Explore
 
@@ -134,7 +134,7 @@ It can:
 4. Collect related repositories in GitHub Collections. For example, [Teaching Materials for Computational Social Science](https://github.com/collections/teaching-computational-social-science) collects open-source resources for computer science courses, while [Learn to Code](https://github.com/collections/learn-to-code) collects repositories that can help you learn programming.
 5. And more...
 
-![](https://oss.javaguide.cn/github/javaguide/github-explore.png)
+![GitHub Explore page](./images/shared/github-explore-page.png)
 
 ## GitHub Actions Is Powerful
 
@@ -144,7 +144,7 @@ For a detailed introduction, see Ruan Yifeng's [Getting Started with GitHub Acti
 
 GitHub Actions has an official marketplace with Actions contributed by others that you can reuse.
 
-![](https://oss.javaguide.cn/github/javaguide/image-20211227100147433.png)
+![GitHub Actions Marketplace](./images/shared/github-actions-marketplace.png)
 
 ## Afterword
 

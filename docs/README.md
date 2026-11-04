@@ -56,7 +56,7 @@ JavaGuide is an open-source knowledge base for Java and backend developers. It b
 
 The project has been maintained since 2018, with more than 6,200 commits and contributions from over 640 people.
 
-![JavaGuide's current stars, forks, issues, and pull requests](https://oss.javaguide.cn/github/javaguide/intro/javaguide-star-issue-pr.png)
+![JavaGuide's current stars, forks, issues, and pull requests](./images/shared/javaguide-repository-stats.png)
 
 The site covers:
 
@@ -76,4 +76,4 @@ If you find JavaGuide useful, consider giving it a free ⭐ on [GitHub](https://
 - For offline reading or printing, scan the QR code below and reply **PDF** to receive the latest edition. See [2026 Backend Interview PDF Resources](./interview-preparation/pdf-interview-javaguide.md) for details.
 - To connect with the author on WeChat, scan the QR code below and reply **WeChat**. The author shares technical articles, learning resources, and project updates there.
 
-<img src="https://oss.javaguide.cn/github/javaguide/gongzhonghao-javaguide.png" alt="JavaGuide WeChat account" style="zoom: 43%; display: block; margin: 0 auto;" />
+<img src="./images/shared/javaguide-wechat-account.png" alt="JavaGuide WeChat account" style="zoom: 43%; display: block; margin: 0 auto;" />

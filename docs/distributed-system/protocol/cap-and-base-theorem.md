@@ -378,7 +378,7 @@ Therefore, **BASE is an alternative to ACID for distributed scenarios, not an ex
 
 ### The three BASE properties
 
-![The three properties of BASE](https://imgconvert.csdnimg.cn/aHR0cHM6Ly91c2VyLWdvbGQtY2RuLnhpdHUuaW8vMjAxOC81LzI0LzE2MzkxNDgwNmQ5ZTE1YzY?x-oss-process=image/format,png)
+![The three properties of BASE](../images/shared/cap-base-consistency-diagram.png)
 
 #### Basically available
 

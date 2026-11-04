@@ -25,10 +25,10 @@ Calculate the trimmed average score for all completed hard SQL exams in the `exa
 
 Sample data: `examination_info` (`exam_id`: exam ID, `tag`: exam category, `difficulty`: exam difficulty, `duration`: exam length, `release_time`: release time)
 
-| id  | exam_id | tag  | difficulty | duration | release_time        |
-| --- | ------- | ---- | ---------- | -------- | ------------------- |
-| 1   | 9001    | SQL  | hard       | 60       | 2020-01-01 10:00:00 |
-| 2   | 9002    | 算法 | medium     | 80       | 2020-08-02 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | SQL        | hard       | 60       | 2020-01-01 10:00:00 |
+| 2   | 9002    | Algorithms | medium     | 80       | 2020-08-02 10:00:00 |
 
 Sample data: `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score)
 
@@ -306,11 +306,11 @@ Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`
 
 `examination_info` (`exam_id`: exam ID, `tag`: exam category, `difficulty`: exam difficulty, `duration`: exam length, `release_time`: release time)
 
-| id  | exam_id | tag  | difficulty | duration | release_time        |
-| --- | ------- | ---- | ---------- | -------- | ------------------- |
-| 1   | 9001    | SQL  | hard       | 60       | 2020-01-01 10:00:00 |
-| 2   | 9002    | SQL  | easy       | 60       | 2020-02-01 10:00:00 |
-| 3   | 9003    | 算法 | medium     | 80       | 2020-08-02 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | SQL        | hard       | 60       | 2020-01-01 10:00:00 |
+| 2   | 9002    | SQL        | easy       | 60       | 2020-02-01 10:00:00 |
+| 3   | 9003    | Algorithms | medium     | 80       | 2020-08-02 10:00:00 |
 
 Example output:
 
@@ -435,7 +435,7 @@ For each month of 2021, calculate the total number of question attempts (`month_
 | ------------ | ----------- | ------------- |
 | 202108       | 2           | 0.065         |
 | 202109       | 3           | 0.100         |
-| 2021汇总     | 5           | 0.161         |
+| 2021 total   | 5           | 0.161         |
 
 **Explanation:** August 2021 has two question attempts, or 2/31 = 0.065 per day (rounded to three decimal places). September has three attempts, or 3/30 = 0.100 per day. There are five attempts in 2021. The yearly daily average is not meaningful, so this example divides by 31: 5/31 = 0.161.
 
@@ -486,7 +486,7 @@ FROM practice_record
 WHERE DATE_FORMAT(submit_time, '%Y') = '2021'
 GROUP BY submit_month
 UNION ALL
-SELECT '2021汇总' AS submit_month,
+SELECT '2021 total' AS submit_month,
        count(question_id) month_q_cnt,
        ROUND(COUNT(question_id) / 31, 3) avg_day_q_cnt
 FROM practice_record
@@ -518,17 +518,17 @@ The final row contains the yearly total, so add it to the result with `UNION ALL
 
 The `examination_info` table contains exam information (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
-| id  | exam_id | tag  | difficulty | duration | release_time        |
-| --- | ------- | ---- | ---------- | -------- | ------------------- |
-| 1   | 9001    | SQL  | hard       | 60       | 2020-01-01 10:00:00 |
-| 2   | 9002    | SQL  | easy       | 60       | 2020-02-01 10:00:00 |
-| 3   | 9003    | 算法 | medium     | 80       | 2020-08-02 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | SQL        | hard       | 60       | 2020-01-01 10:00:00 |
+| 2   | 9002    | SQL        | easy       | 60       | 2020-02-01 10:00:00 |
+| 3   | 9003    | Algorithms | medium     | 80       | 2020-08-02 10:00:00 |
 
 For 2021, return data for each valid user with more than one incomplete exam attempt. A valid user has at least one completed attempt and fewer than five incomplete attempts. Return the user ID, incomplete and completed attempt counts, and the set of exam tags they attempted. Sort by incomplete attempt count in descending order. The sample output is:
 
-| uid  | incomplete_cnt | complete_cnt | detail                                                                      |
-| ---- | -------------- | ------------ | --------------------------------------------------------------------------- |
-| 1002 | 2              | 4            | 2021-09-01:算法;2021-07-02:SQL;2021-09-02:SQL;2021-09-05:SQL;2021-07-05:SQL |
+| uid  | incomplete_cnt | complete_cnt | detail                                                                            |
+| ---- | -------------- | ------------ | --------------------------------------------------------------------------------- |
+| 1002 | 2              | 4            | 2021-09-01:Algorithms;2021-07-02:SQL;2021-09-02:SQL;2021-09-05:SQL;2021-07-05:SQL |
 
 **Explanation:** In 2021, every user except 1004 meets the definition of a valid user, but only 1002 has more than one incomplete attempt. The `detail` field lists the exams user 1002 attempted as `{date:tag}` pairs, with `:` between the date and tag and `;` between pairs.
 
@@ -614,19 +614,19 @@ ORDER BY incomplete_cnt DESC
 
 Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
-| id  | exam_id | tag  | difficulty | duration | release_time        |
-| --- | ------- | ---- | ---------- | -------- | ------------------- |
-| 1   | 9001    | SQL  | hard       | 60       | 2020-01-01 10:00:00 |
-| 2   | 9002    | C++  | easy       | 60       | 2020-02-01 10:00:00 |
-| 3   | 9003    | 算法 | medium     | 80       | 2020-08-02 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | SQL        | hard       | 60       | 2020-01-01 10:00:00 |
+| 2   | 9002    | C++        | easy       | 60       | 2020-02-01 10:00:00 |
+| 3   | 9003    | Algorithms | medium     | 80       | 2020-08-02 10:00:00 |
 
 Find the categories attempted by users who completed at least three exams in a month, along with the number of attempts in each category. Sort by attempt count in descending order. The sample output is:
 
-| tag  | tag_cnt |
-| ---- | ------- |
-| C++  | 4       |
-| SQL  | 2       |
-| 算法 | 1       |
+| tag        | tag_cnt |
+| ---------- | ------- |
+| C++        | 4       |
+| SQL        | 2       |
+| Algorithms | 1       |
 
 **Explanation:** Users 1002 and 1005 each completed three exams in September 2021; all other users completed fewer than three. For those two users, the exam tags ranked by attempt count are C++, SQL, and Algorithms.
 
@@ -663,24 +663,24 @@ ORDER BY tag_cnt DESC
 
 **Description:** Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
-| id  | uid  | nick_name | achievement | level | job  | register_time       |
-| --- | ---- | --------- | ----------- | ----- | ---- | ------------------- |
-| 1   | 1001 | 牛客 1 号 | 3100        | 7     | 算法 | 2020-01-01 10:00:00 |
-| 2   | 1002 | 牛客 2 号 | 2100        | 6     | 算法 | 2020-01-01 10:00:00 |
-| 3   | 1003 | 牛客 3 号 | 1500        | 5     | 算法 | 2020-01-01 10:00:00 |
-| 4   | 1004 | 牛客 4 号 | 1100        | 4     | 算法 | 2020-01-01 10:00:00 |
-| 5   | 1005 | 牛客 5 号 | 1600        | 6     | C++  | 2020-01-01 10:00:00 |
-| 6   | 1006 | 牛客 6 号 | 3000        | 6     | C++  | 2020-01-01 10:00:00 |
+| id  | uid  | nick_name | achievement | level | job        | register_time       |
+| --- | ---- | --------- | ----------- | ----- | ---------- | ------------------- |
+| 1   | 1001 | User 1    | 3100        | 7     | Algorithms | 2020-01-01 10:00:00 |
+| 2   | 1002 | User 2    | 2100        | 6     | Algorithms | 2020-01-01 10:00:00 |
+| 3   | 1003 | User 3    | 1500        | 5     | Algorithms | 2020-01-01 10:00:00 |
+| 4   | 1004 | User 4    | 1100        | 4     | Algorithms | 2020-01-01 10:00:00 |
+| 5   | 1005 | User 5    | 1600        | 6     | C++        | 2020-01-01 10:00:00 |
+| 6   | 1006 | User 6    | 3000        | 6     | C++        | 2020-01-01 10:00:00 |
 
-**Explanation:** User 1001 has the nickname "Nowcoder User 1," 3,100 achievement points, level 7, a career path in Algorithms, and a registration time of `2020-01-01 10:00:00`.
+**Explanation:** User 1001 has the nickname "User 1," 3,100 achievement points, level 7, a career path in Algorithms, and a registration time of `2020-01-01 10:00:00`.
 
 Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
-| id  | exam_id | tag  | difficulty | duration | release_time        |
-| --- | ------- | ---- | ---------- | -------- | ------------------- |
-| 1   | 9001    | SQL  | hard       | 60       | 2021-09-01 06:00:00 |
-| 2   | 9002    | C++  | easy       | 60       | 2020-02-01 10:00:00 |
-| 3   | 9003    | 算法 | medium     | 80       | 2020-08-02 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | SQL        | hard       | 60       | 2021-09-01 06:00:00 |
+| 2   | 9002    | C++        | easy       | 60       | 2020-02-01 10:00:00 |
+| 3   | 9003    | Algorithms | medium     | 80       | 2020-08-02 10:00:00 |
 
 Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
@@ -757,22 +757,22 @@ Note the final sort order: sort by user count first, then by average score to br
 
 Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
-| id  | uid  | nick_name | achievement | level | job  | register_time       |
-| --- | ---- | --------- | ----------- | ----- | ---- | ------------------- |
-| 1   | 1001 | 牛客 1 号 | 3100        | 7     | 算法 | 2020-01-01 10:00:00 |
-| 2   | 1002 | 牛客 2 号 | 2100        | 6     | 算法 | 2020-01-01 10:00:00 |
-| 3   | 1003 | 牛客 3 号 | 1500        | 5     | 算法 | 2020-01-01 10:00:00 |
-| 4   | 1004 | 牛客 4 号 | 1100        | 4     | 算法 | 2020-01-01 10:00:00 |
-| 5   | 1005 | 牛客 5 号 | 1600        | 6     | C++  | 2020-01-01 10:00:00 |
-| 6   | 1006 | 牛客 6 号 | 3000        | 6     | C++  | 2020-01-01 10:00:00 |
+| id  | uid  | nick_name | achievement | level | job        | register_time       |
+| --- | ---- | --------- | ----------- | ----- | ---------- | ------------------- |
+| 1   | 1001 | User 1    | 3100        | 7     | Algorithms | 2020-01-01 10:00:00 |
+| 2   | 1002 | User 2    | 2100        | 6     | Algorithms | 2020-01-01 10:00:00 |
+| 3   | 1003 | User 3    | 1500        | 5     | Algorithms | 2020-01-01 10:00:00 |
+| 4   | 1004 | User 4    | 1100        | 4     | Algorithms | 2020-01-01 10:00:00 |
+| 5   | 1005 | User 5    | 1600        | 6     | C++        | 2020-01-01 10:00:00 |
+| 6   | 1006 | User 6    | 3000        | 6     | C++        | 2020-01-01 10:00:00 |
 
 Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
-| id  | exam_id | tag  | difficulty | duration | release_time        |
-| --- | ------- | ---- | ---------- | -------- | ------------------- |
-| 1   | 9001    | SQL  | hard       | 60       | 2021-09-01 06:00:00 |
-| 2   | 9002    | C++  | easy       | 60       | 2021-09-01 06:00:00 |
-| 3   | 9003    | 算法 | medium     | 80       | 2021-09-01 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | SQL        | hard       | 60       | 2021-09-01 06:00:00 |
+| 2   | 9002    | C++        | easy       | 60       | 2021-09-01 06:00:00 |
+| 3   | 9003    | Algorithms | medium     | 80       | 2021-09-01 10:00:00 |
 
 Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
@@ -923,11 +923,11 @@ Select users who qualified for either campaign in 2021 and return their IDs and 
 
 Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
-| id  | exam_id | tag  | difficulty | duration | release_time        |
-| --- | ------- | ---- | ---------- | -------- | ------------------- |
-| 1   | 9001    | SQL  | hard       | 60       | 2021-09-01 06:00:00 |
-| 2   | 9002    | C++  | easy       | 60       | 2021-09-01 06:00:00 |
-| 3   | 9003    | 算法 | medium     | 80       | 2021-09-01 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | SQL        | hard       | 60       | 2021-09-01 06:00:00 |
+| 2   | 9002    | C++        | easy       | 60       | 2021-09-01 06:00:00 |
+| 3   | 9003    | Algorithms | medium     | 80       | 2021-09-01 10:00:00 |
 
 Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
@@ -1016,22 +1016,22 @@ ORDER BY UID
 
 Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
-| id  | uid  | nick_name | achievement | level | job  | register_time       |
-| --- | ---- | --------- | ----------- | ----- | ---- | ------------------- |
-| 1   | 1001 | 牛客 1 号 | 3100        | 7     | 算法 | 2020-01-01 10:00:00 |
-| 2   | 1002 | 牛客 2 号 | 2300        | 7     | 算法 | 2020-01-01 10:00:00 |
-| 3   | 1003 | 牛客 3 号 | 2500        | 7     | 算法 | 2020-01-01 10:00:00 |
-| 4   | 1004 | 牛客 4 号 | 1200        | 5     | 算法 | 2020-01-01 10:00:00 |
-| 5   | 1005 | 牛客 5 号 | 1600        | 6     | C++  | 2020-01-01 10:00:00 |
-| 6   | 1006 | 牛客 6 号 | 2000        | 6     | C++  | 2020-01-01 10:00:00 |
+| id  | uid  | nick_name | achievement | level | job        | register_time       |
+| --- | ---- | --------- | ----------- | ----- | ---------- | ------------------- |
+| 1   | 1001 | User 1    | 3100        | 7     | Algorithms | 2020-01-01 10:00:00 |
+| 2   | 1002 | User 2    | 2300        | 7     | Algorithms | 2020-01-01 10:00:00 |
+| 3   | 1003 | User 3    | 2500        | 7     | Algorithms | 2020-01-01 10:00:00 |
+| 4   | 1004 | User 4    | 1200        | 5     | Algorithms | 2020-01-01 10:00:00 |
+| 5   | 1005 | User 5    | 1600        | 6     | C++        | 2020-01-01 10:00:00 |
+| 6   | 1006 | User 6    | 2000        | 6     | C++        | 2020-01-01 10:00:00 |
 
 Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
-| id  | exam_id | tag  | difficulty | duration | release_time        |
-| --- | ------- | ---- | ---------- | -------- | ------------------- |
-| 1   | 9001    | SQL  | hard       | 60       | 2021-09-01 06:00:00 |
-| 2   | 9002    | C++  | hard       | 60       | 2021-09-01 06:00:00 |
-| 3   | 9003    | 算法 | medium     | 80       | 2021-09-01 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | SQL        | hard       | 60       | 2021-09-01 06:00:00 |
+| 2   | 9002    | C++        | hard       | 60       | 2021-09-01 06:00:00 |
+| 3   | 9003    | Algorithms | medium     | 80       | 2021-09-01 10:00:00 |
 
 Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
@@ -1131,22 +1131,22 @@ You may wonder why user 1003 still has two exam records even though the conditio
 
 Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
-| id  | uid  | nick_name | achievement | level | job  | register_time       |
-| --- | ---- | --------- | ----------- | ----- | ---- | ------------------- |
-| 1   | 1001 | 牛客 1 号 | 3100        | 7     | 算法 | 2020-01-01 10:00:00 |
-| 2   | 1002 | 牛客 2 号 | 2300        | 7     | 算法 | 2020-01-01 10:00:00 |
-| 3   | 1003 | 牛客 3 号 | 2500        | 7     | 算法 | 2020-01-01 10:00:00 |
-| 4   | 1004 | 牛客 4 号 | 1200        | 5     | 算法 | 2020-01-01 10:00:00 |
-| 5   | 1005 | 牛客 5 号 | 1600        | 6     | C++  | 2020-01-01 10:00:00 |
-| 6   | 1006 | 牛客 6 号 | 2600        | 7     | C++  | 2020-01-01 10:00:00 |
+| id  | uid  | nick_name | achievement | level | job        | register_time       |
+| --- | ---- | --------- | ----------- | ----- | ---------- | ------------------- |
+| 1   | 1001 | User 1    | 3100        | 7     | Algorithms | 2020-01-01 10:00:00 |
+| 2   | 1002 | User 2    | 2300        | 7     | Algorithms | 2020-01-01 10:00:00 |
+| 3   | 1003 | User 3    | 2500        | 7     | Algorithms | 2020-01-01 10:00:00 |
+| 4   | 1004 | User 4    | 1200        | 5     | Algorithms | 2020-01-01 10:00:00 |
+| 5   | 1005 | User 5    | 1600        | 6     | C++        | 2020-01-01 10:00:00 |
+| 6   | 1006 | User 6    | 2600        | 7     | C++        | 2020-01-01 10:00:00 |
 
 Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
-| id  | exam_id | tag  | difficulty | duration | release_time        |
-| --- | ------- | ---- | ---------- | -------- | ------------------- |
-| 1   | 9001    | SQL  | hard       | 60       | 2021-09-01 06:00:00 |
-| 2   | 9002    | C++  | easy       | 60       | 2021-09-01 06:00:00 |
-| 3   | 9003    | 算法 | medium     | 80       | 2021-09-01 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | SQL        | hard       | 60       | 2021-09-01 06:00:00 |
+| 2   | 9002    | C++        | easy       | 60       | 2021-09-01 06:00:00 |
+| 3   | 9003    | Algorithms | medium     | 80       | 2021-09-01 10:00:00 |
 
 Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 

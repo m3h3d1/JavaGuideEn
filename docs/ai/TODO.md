@@ -6,74 +6,74 @@ head:
       content: noindex, nofollow
 ---
 
-# AI 内容规划 TODO
+# AI Content Planning TODO
 
-最近整理：2026-08-15
+Last organized: 2026-08-15
 
-配套素材索引：[AI 写作素材索引](./MATERIALS.md)。写新文章前先查素材索引和现有正文，避免重复检索、重复造概念框架。
+Supporting material: `MATERIALS.md` is referenced below but is not present in this checkout. Check existing articles before writing to avoid repeating research or inventing duplicate frameworks.
 
-## 已完成或已补齐
+## Completed or Added
 
-| 内容                                                   | 状态                                                    |
-| ------------------------------------------------------ | ------------------------------------------------------- |
-| `llm-basis/llm-evaluation.md`                          | 已完成，已进入大模型基础 README 和顶层 README           |
-| `system-design/llm-gateway.md`                         | 已完成，已进入系统设计 README 和顶层 README             |
-| `agent/workflow-graph-loop.md`                         | 已进入 Agent README、顶层 README 和面试题               |
-| `agent/multi-agent.md`                                 | 已完成，已进入 Agent README、顶层 README 和面试题       |
-| `interview-questions/agent-project-interview-guide.md` | 已完成，已进入面试题 README、顶层 README 和项目经历指南 |
-| `system-design/ai-application-architecture.md`         | 已进入系统设计 README、顶层 README 和面试题             |
-| `system-design/ai-voice.md`                            | 已进入系统设计 README、顶层 README 和面试题             |
-| `MATERIALS.md`                                         | 已新增为内部写作素材索引，不进站点索引                  |
+| Content                                                | Status                                                                              |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| `llm-basis/llm-evaluation.md`                          | Complete; added to the LLM fundamentals and top-level indexes                       |
+| `system-design/llm-gateway.md`                         | Complete; added to the system design and top-level indexes                          |
+| `agent/workflow-graph-loop.md`                         | Added to the Agent and top-level indexes and interview questions                    |
+| `agent/multi-agent.md`                                 | Complete; added to the Agent and top-level indexes and interview questions          |
+| `interview-questions/agent-project-interview-guide.md` | Complete; added to the interview and top-level indexes and project experience guide |
+| `system-design/ai-application-architecture.md`         | Added to the system design and top-level indexes and interview questions            |
+| `system-design/ai-voice.md`                            | Added to the system design and top-level indexes and interview questions            |
+| `MATERIALS.md`                                         | Listed as an internal writing index, but the file is absent from this checkout      |
 
-## P0 · 系统设计和安全补全
+## P0 · System Design and Security
 
-| 文件名                              | 标题                                                   | 核心切入                                                                                                                                        |
-| ----------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `system-design/llm-security.md`     | LLM 应用安全实战：Prompt 注入、工具越权与数据泄露防护  | 从传统“输入不可信”切入 AI 新攻击面，覆盖 Prompt Injection、Indirect Injection、工具权限边界、MCP Server 风险、最小权限、审计和 OWASP LLM Top 10 |
-| `system-design/ai-observability.md` | AI 可观测性与 Trace：为什么 Agent 失败不能只看最终答案 | 一次请求里的模型调用、检索、工具调用、上下文拼装、重试、fallback 全链路 span，覆盖 Langfuse、OpenTelemetry、自建审计表和 Java 后端落地结构      |
-| `agent/tool-calling.md`（不新建）   | 补链接到已有工具调用文章（已补）                       | 已链接 [结构化输出与 Function Calling](./llm-basis/structured-output-function-calling.md)；只有 Agent Loop 特有、现文未覆盖的缺口才另写         |
+| File                                    | Title                                                                               | Focus                                                                                                                                                                                |
+| --------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `system-design/llm-security.md`         | LLM Application Security: Prompt Injection, Tool Authorization, and Data Protection | Start from untrusted input and cover direct and indirect prompt injection, tool permissions, MCP server risks, least privilege, auditing, and the OWASP Top 10 for LLM Applications. |
+| `system-design/ai-observability.md`     | AI Observability and Tracing: Why an Agent's Final Answer Is Not Enough             | Trace model calls, retrieval, tools, context assembly, retries, and fallbacks; cover Langfuse, OpenTelemetry, audit tables, and Java backend implementation.                         |
+| `agent/tool-calling.md` (do not create) | Link to the existing tool-calling article (done)                                    | Linked [Structured Output and Function Calling](./llm-basis/structured-output-function-calling.md). Write a separate article only for Agent Loop gaps not covered there.             |
 
-## P1 · Agent 工程短板补全
+## P1 · Agent Engineering Gaps
 
-| 文件名                                | 标题                                               | 核心切入                                                                                                                    |
-| ------------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `agent/agent-evaluation.md`（不新建） | 补链接到已有评测文章（已补）                       | 已链接 [Agent 应用怎么评测](./llm-basis/llm-evaluation.md#agent-应用怎么评测)；只有 Agent Loop 特有、现文未覆盖的缺口才另写 |
-| `llm-basis/llm-model-selection.md`    | 大模型选型指南：通用、推理、代码、多模态模型怎么选 | 不同能力维度对比、Router/fallback/多模型编排、客服/RAG/代码/语音 Agent 的选型表                                             |
+| File                                        | Title                                                            | Focus                                                                                                                                                                                            |
+| ------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `agent/agent-evaluation.md` (do not create) | Link to the existing evaluation article (done)                   | Linked [How Should You Evaluate an Agent Application?](./llm-basis/llm-evaluation.md#how-should-you-evaluate-an-agent-application). Write separately only for Agent Loop gaps not covered there. |
+| `llm-basis/llm-model-selection.md`          | LLM Selection: General, Reasoning, Coding, and Multimodal Models | Compare capabilities, routing, fallbacks, and multi-model orchestration; provide selection tables for customer support, RAG, coding, and voice agents.                                           |
 
-## P1 · RAG 深水区扩展
+## P1 · Advanced RAG
 
-| 文件名                  | 标题                                                         | 核心切入                                                         |
-| ----------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------- |
-| `embedding-reranker.md` | Embedding 与 Reranker 模型选型：RAG 效果差未必是向量库的问题 | 不同 Embedding 模型能力对比、Reranker 原理、选型场景             |
-| `rag-multimodal.md`     | 多模态 RAG：PDF 表格、图片、截图与视频的知识库处理           | 企业知识库最难处理的是 PDF 表格和截图、OCR、图表理解、多模态检索 |
-| `finetune-vs-rag.md`    | 微调、蒸馏与 RAG 怎么选：什么时候该做数据训练？              | SFT / LoRA / DPO / RFT 原理对比，什么时候调 Prompt 已经不够了    |
+| File                    | Title                                                                                              | Focus                                                                                                  |
+| ----------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `embedding-reranker.md` | Selecting Embedding and Reranker Models: RAG Problems Are Not Always Caused by the Vector Database | Compare embedding models, reranker principles, and selection scenarios.                                |
+| `rag-multimodal.md`     | Multimodal RAG: Processing PDF Tables, Images, Screenshots, and Video                              | Cover difficult enterprise knowledge-base content, OCR, chart understanding, and multimodal retrieval. |
+| `finetune-vs-rag.md`    | Fine-Tuning, Distillation, or RAG: When Should You Train a Model?                                  | Compare SFT, LoRA, DPO, and RFT, and explain when prompt changes are insufficient.                     |
 
-## P2 · Java AI 框架专题
+## P2 · Java AI Frameworks
 
-| 文件名                     | 标题                                                                   | 写作顺序                                   |
-| -------------------------- | ---------------------------------------------------------------------- | ------------------------------------------ |
-| `framework/README.md`      | AI 框架专题：Spring AI、LangChain4j 与 AI Workflow 工程落地            | 先补目录入口，避免 `framework/` 长期空置   |
-| `spring-ai.md`             | Spring AI 入门与实战：Java 后端如何接入大模型                          | 先写，贴合 JavaGuide 读者群体              |
-| `langchain4j.md`           | LangChain4j 实战：Java 应用如何构建 RAG 和 Agent                       | 第二篇                                     |
-| `ai-workflow-framework.md` | LangGraph / Spring AI Alibaba Graph：AI Workflow、Graph、Loop 如何落地 | 第三篇，与 workflow-graph-loop.md 互相引用 |
+| File                       | Title                                                                               | Writing order                                              |
+| -------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `framework/README.md`      | AI Frameworks: Spring AI, LangChain4j, and AI Workflow Engineering                  | Add the index first so `framework/` does not remain empty. |
+| `spring-ai.md`             | Getting Started with Spring AI: Connecting Java Backends to LLMs                    | Write first for JavaGuide readers.                         |
+| `langchain4j.md`           | LangChain4j in Practice: Building RAG and Agents in Java                            | Write second.                                              |
+| `ai-workflow-framework.md` | LangGraph and Spring AI Alibaba Graph: Implementing AI Workflows, Graphs, and Loops | Write third and cross-link with `workflow-graph-loop.md`.  |
 
-## P2 · MCP 进阶与合规
+## P2 · Advanced MCP and Compliance
 
-| 文件名             | 标题                                                            | 核心切入                            |
-| ------------------ | --------------------------------------------------------------- | ----------------------------------- |
-| `mcp-advanced.md`  | MCP 生产安全与高级能力：Roots、Sampling、Elicitation 与权限边界 | MCP Server 不是工具集合而是新攻击面 |
-| `ai-compliance.md` | AI 合规与隐私治理：AI 应用上线前安全、审计、隐私要查什么        | 企业落地越来越常见，面试频率会上升  |
+| File               | Title                                                                                            | Focus                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| `mcp-advanced.md`  | MCP Production Security and Advanced Capabilities: Roots, Sampling, Elicitation, and Permissions | MCP servers introduce an attack surface beyond their tools.                      |
+| `ai-compliance.md` | AI Compliance and Privacy: Security, Auditing, and Privacy Before Release                        | Enterprise use is growing, and these topics may appear more often in interviews. |
 
-## 建议下一步实际动手顺序
+## Suggested Work Order
 
-1. `system-design/llm-security.md`：JavaGuide 读者对安全话题接受度高，可以从传统 Web 安全自然过渡到 AI 新攻击面。
-2. `system-design/ai-observability.md`：能和 `harness-engineering.md`、`rag-optimization.md`、`llm-evaluation.md` 接上，形成“调试 -> 评测 -> 观测”闭环。
-3. 工具调用与 Agent 评测入口：已在 Agent README、入门篇和面试题补链接到已有文章；不新建 `agent/tool-calling.md` 或 `agent/agent-evaluation.md`，只有 Agent Loop 特有、现文未覆盖的缺口才另写。
-4. `framework/README.md` + `framework/spring-ai.md`：`framework/` 目前为空，先补 Java 读者最容易用上的 Spring AI。
+1. `system-design/llm-security.md`: Move from familiar web security concepts to AI-specific attack surfaces.
+2. `system-design/ai-observability.md`: Connect it with `harness-engineering.md`, `rag-optimization.md`, and `llm-evaluation.md` to cover debugging, evaluation, and observability.
+3. Tool calling and Agent evaluation: Links to existing articles have been added to the Agent index, introduction, and interview questions. Do not create `agent/tool-calling.md` or `agent/agent-evaluation.md` unless there are Agent Loop-specific gaps.
+4. `framework/README.md` and `framework/spring-ai.md`: Add the index first; Spring AI is the most accessible starting point for Java readers.
 
-## 维护规则
+## Maintenance Rules
 
-1. 新增文章后，同步检查顶层 README、子专题 README、面试题入口、`MATERIALS.md` 和本文。
-2. 写面向读者的文章时不要链接内部维护文档，内部维护文档保持 `sitemap: false` 和 `noindex, nofollow`。
-3. 具体模型、平台能力、价格、上下文窗口、API 参数这类容易变化的信息，写入正文前要重新核对官方文档。
-4. 完成一项后及时从待办移动到“已完成或已补齐”，避免下次维护时重复判断。
+1. After adding an article, check the top-level and topic indexes, interview questions, the planned materials index, and this file.
+2. Do not link internal maintenance documents from reader-facing articles. Keep internal documents marked `sitemap: false` and `noindex, nofollow`.
+3. Verify changeable details such as model and platform capabilities, prices, context windows, and API parameters against official documentation before publishing.
+4. Move completed work to “Completed or Added” promptly to avoid reassessing it later.

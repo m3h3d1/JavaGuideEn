@@ -26,7 +26,7 @@ This article moves from practical usage to implementation details. It uses Reent
 
 `ReentrantLock` is a reentrant lock: one thread can acquire the same lock repeatedly. To understand its features, let's compare it with the commonly used `synchronized`. The comparison is shown below; the blue sections are the focus of this article.
 
-![](https://p0.meituan.net/travelcube/412d294ff5535bbcddc0d979b2a339e6102264.png)
+![](./images/shared/reentrantlock-overview.png)
 
 The following pseudocode makes the comparison more concrete:
 
@@ -127,7 +127,7 @@ The answers to the questions above are not in ReentrantLock's source; they are i
 
 First, the diagram below gives an overview of the AQS framework:
 
-![](https://p1.meituan.net/travelcube/82077ccf14127a87b77cefd1ccf562d3253591.png)
+![](./images/shared/aqs-architecture.png)
 
 - Colored items in the diagram are methods; uncolored items are attributes.
 - The AQS framework has five layers, from the public API at the top to the underlying data at the bottom.
@@ -135,7 +135,7 @@ First, the diagram below gives an overview of the AQS framework:
 
 The following walkthrough examines AQS from the overall flow down to individual methods:
 
-![](https://p1.meituan.net/travelcube/d2f7f7fffdc30d85d17b44266c3ab05323338.png)
+![](./images/shared/aqs-state-machine.png)
 
 ### 2.1 Principles at a Glance
 
@@ -145,7 +145,7 @@ CLH (Craig, Landin, and Hagersten) is a singly linked queue. AQS uses a variant 
 
 The main idea is illustrated below:
 
-![](https://p0.meituan.net/travelcube/7132e4cef44c26f62835b197b239147b18062.png)
+![](./images/shared/aqs-principles.png)
 
 AQS uses a `volatile int` field to represent synchronization state, an internal FIFO queue to manage threads waiting to acquire resources, and CAS to update `state`.
 
@@ -153,7 +153,7 @@ AQS uses a `volatile int` field to represent synchronization state, an internal 
 
 The most basic AQS data structure is `Node`, a node in the CLH queue variant shown above.
 
-![](https://p1.meituan.net/travelcube/960271cf2b5c8a185eed23e98b72c75538637.png)
+![](./images/shared/aqs-node-structure.png)
 
 The following table explains the methods and fields:
 
@@ -203,9 +203,9 @@ The following methods access this field:
 
 These methods are `final`, so subclasses cannot override them. Custom synchronizers implement exclusive or shared locking by changing the synchronization state represented by `state`.
 
-![](https://p0.meituan.net/travelcube/27605d483e8935da683a93be015713f331378.png)
+![](./images/shared/aqs-state-transition.png)
 
-![](https://p0.meituan.net/travelcube/3f1e1a44f5b7d77000ba4f9476189b2e32806.png)
+![](./images/shared/aqs-state-transition-cascade.png)
 
 Custom synchronizers define how to acquire and release synchronization state in the first layer of the AQS architecture: the API layer.
 
@@ -225,7 +225,7 @@ Typically, a custom synchronizer uses either exclusive or shared mode and implem
 
 Using the non-fair lock as an example, the following section outlines how its methods connect to AQS. Each core method is explained in detail later.
 
-![](https://p1.meituan.net/travelcube/b8b53a70984668bc68653efe9531573e78636.png)
+![](./images/shared/aqs-method-interactions.png)
 
 > 🐛 Correction (see [issue #1761](https://github.com/Snailclimb/JavaGuide/issues/1761)): The diagram contains a small error. After CAS successfully updates the shared `state`, the non-fair lock has been acquired.
 >
@@ -254,7 +254,7 @@ Using the non-fair lock as an example, the following section outlines how its me
 
 To clarify how ReentrantLock and AQS methods interact, the following walkthrough separates the acquisition and release flows for a non-fair lock.
 
-![](https://p1.meituan.net/travelcube/7aadb272069d871bdee8bf3a218eed8136919.png)
+![](./images/shared/reentrantlock-acquire-methods.png)
 
 Acquisition:
 
@@ -272,7 +272,7 @@ Release:
 
 The description above summarizes the API-level method mapping for ReentrantLock acquisition and release.
 
-![](https://p0.meituan.net/travelcube/f30c631c8ebbf820d3e8fcb6eee3c0ef18748.png)
+![](./images/shared/reentrantlock-acquire-queue.png)
 
 ## 3 Understanding AQS Through ReentrantLock
 
@@ -405,7 +405,7 @@ To summarize, lock acquisition roughly proceeds as follows:
 
 2. Thread 2 requests the lock, but Thread 1 holds it.
 
-![img](https://p0.meituan.net/travelcube/e9e385c3c68f62c67c8d62ab0adb613921117.png)
+![img](./images/shared/aqs-thread-enqueue.png)
 
 3. Any additional threads requesting the lock queue up in order.
 
@@ -545,11 +545,11 @@ private final boolean parkAndCheckInterrupt() {
 
 The flow is illustrated below:
 
-![](https://p0.meituan.net/travelcube/c124b76dcbefb9bdc778458064703d1135485.png)
+![](./images/shared/condition-signal-transfer.png)
 
 As shown, the loop exits when the predecessor is the head and the current thread acquires the lock. To avoid wasting CPU in a busy loop, AQS checks the predecessor's state to decide whether to park the current thread. The `shouldParkAfterFailedAcquire` flow is shown below:
 
-![](https://p0.meituan.net/travelcube/9af16e2481ad85f38ca322a225ae737535740.png)
+![](./images/shared/condition-wait-queue.png)
 
 This explains when a node leaves the queue, but raises two more questions:
 
@@ -639,15 +639,15 @@ The diagrams below show the flow for each case.
 
 The current node is the tail.
 
-![](https://p1.meituan.net/travelcube/b845211ced57561c24f79d56194949e822049.png)
+![](./images/shared/aqs-cancelled-node-tail-removal.png)
 
 The current node is the head's successor.
 
-![](https://p1.meituan.net/travelcube/ab89bfec875846e5028a4f8fead32b7117975.png)
+![](./images/shared/aqs-cancelled-node-head-removal.png)
 
 The current node is neither the head's successor nor the tail.
 
-![](https://p0.meituan.net/travelcube/45d0d9e4a6897eddadc4397cf53d6cd522452.png)
+![](./images/shared/aqs-cancelled-node-cascade.png)
 
 The flow above shows how nodes enter and leave the `CANCELLED` state. Why does it update `next` pointers but not `prev` pointers? When are `prev` pointers updated?
 

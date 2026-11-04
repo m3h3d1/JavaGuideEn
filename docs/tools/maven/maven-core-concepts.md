@@ -50,7 +50,7 @@ For example, to add Alibaba's open-source EasyExcel:
 
 You can find many available artifacts on <https://mvnrepository.com/>. If you use Maven, you may find this site useful.
 
-![Maven repository](https://oss.javaguide.cn/github/javaguide/tools/maven/mvnrepository.com.png)
+![Maven repository](./images/shared/maven-repository-site.png)
 
 ## Maven Dependencies
 
@@ -386,7 +386,7 @@ Maven is essentially a plugin execution framework: plugins perform the build ope
 
 Default local plugin directory: `${user.home}/.m2/repository/org/apache/maven/plugins`
 
-![](https://oss.javaguide.cn/github/javaguide/tools/maven/maven-plugins.png)
+![](./images/shared/maven-plugins.png)
 
 In addition to the plugins maintained by the Maven project, third-party plugins include `jacoco-maven-plugin` for test coverage, `maven-checkstyle-plugin` for detecting style violations, and `sonar-maven-plugin` for code-quality analysis. You can also write custom plugins to meet your needs.
 
@@ -440,7 +440,7 @@ In a multi-module project, one parent module contains the child modules. The par
 
 As shown below, the Dubbo project is divided into modules such as `dubbo-common` (shared logic), `dubbo-remoting` (remote communication), and `dubbo-rpc` (remote procedure calls).
 
-![](https://oss.javaguide.cn/github/javaguide/tools/maven/dubbo-maven-multi-module.png)
+![](./images/shared/dubbo-multi-module-structure.png)
 
 ## Recommended Articles
 

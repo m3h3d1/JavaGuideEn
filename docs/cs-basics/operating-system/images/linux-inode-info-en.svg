@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 430" role="img" aria-labelledby="title desc">
+  <title id="title">Linux inode and file metadata</title>
+  <desc id="desc">Terminal output showing a hard link and the inode, link count, permissions, owner, and timestamps for a file.</desc>
+  <rect width="800" height="430" rx="8" fill="#18212b" />
+  <rect width="800" height="38" rx="8" fill="#263442" />
+  <circle cx="20" cy="19" r="6" fill="#ff6b64" />
+  <circle cx="42" cy="19" r="6" fill="#ffd15c" />
+  <circle cx="64" cy="19" r="6" fill="#4bc58a" />
+  <g font-family="monospace" font-size="13" fill="#e5edf5">
+    <text x="20" y="66" fill="#81d88d">yangguang@laptop:~/Documents$ ls -l</text>
+    <text x="20" y="87">total 24</text>
+    <text x="20" y="108">-rw-r--r-- 2 yangguang yangguang    8 Apr  4 15:36 alink</text>
+    <text x="20" y="129">-rw-r--r-- 2 yangguang yangguang    8 Apr  4 15:36 a.txt</text>
+    <text x="20" y="150">-rw-r--r-- 1 yangguang yangguang    8 Apr  4 15:36 b.txt</text>
+    <text x="20" y="171">drwxr-xr-x 2 yangguang yangguang 4096 Apr  4 15:36 Typora</text>
+    <text x="20" y="202" fill="#81d88d">yangguang@laptop:~/Documents$ stat a.txt</text>
+    <text x="20" y="223">File: a.txt</text>
+    <text x="270" y="223">Size: 8</text>
+    <text x="390" y="223">Blocks: 8</text>
+    <text x="530" y="223">IO Block: 4096 (regular file)</text>
+    <text x="20" y="244">Device: 801h/2049d</text>
+    <text x="270" y="244" fill="#79c7ff">Inode: 80504903</text>
+    <text x="480" y="244" fill="#79c7ff">Links: 2</text>
+    <text x="20" y="265">Access: (0644/-rw-r--r--)</text>
+    <text x="340" y="265">Uid: (1000/yangguang)</text>
+    <text x="590" y="265">Gid: (1000/yangguang)</text>
+    <text x="20" y="286">Access: 2020-04-04 19:18:35.399129589 +0800</text>
+    <text x="20" y="307">Modify: 2020-04-04 15:36:06.718205678 +0800</text>
+    <text x="20" y="328">Change: 2020-04-04 14:39:32.919398353 +0800</text>
+    <text x="20" y="349">Birth: -</text>
+  </g>
+  <path d="M20 372 H780" stroke="#526271" />
+  <g font-family="Arial, sans-serif" font-size="15" fill="#f1f5f9">
+    <text x="20" y="398"><tspan fill="#81d88d">alink</tspan><tspan> is a hard link to </tspan><tspan fill="#81d88d">a.txt</tspan><tspan>; both names refer to inode </tspan><tspan fill="#79c7ff">80504903</tspan><tspan>.</tspan></text>
+    <text x="20" y="419">The inode records file metadata, including permissions, owner, size, and timestamps.</text>
+  </g>
+</svg>

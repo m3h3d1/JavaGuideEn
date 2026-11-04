@@ -43,13 +43,13 @@ Spring's core features are IoC and AOP. Understanding their underlying ideas is 
 
 **Spring 5.x:**
 
-![Main modules in Spring 5.x](../../images/shared/20200831175708.png)
+![Main modules in Spring 5.x](../../images/shared/spring-5-module-overview.png)
 
 Spring 5 deprecated the Portlet component in the Web module and added WebFlux for asynchronous, reactive processing.
 
 The following diagram shows the dependencies between Spring modules:
 
-![Dependencies between Spring modules](../../images/shared/20200902100038.png)
+![Dependencies between Spring modules](../../images/shared/spring-module-dependencies.png)
 
 #### Core Container
 
@@ -105,7 +105,7 @@ The following diagram shows Spring 4.x. Spring 5.0 introduced WebFlux for reacti
 
 Spring MVC is an important Spring module for building web applications with the MVC architecture. MVC stands for Model-View-Controller. It organizes code by separating business logic, data, and presentation.
 
-![](../../images/shared/image-20210809181452421.png)
+![](../../images/shared/mvc-model-view-controller-diagram.png)
 
 Spring applications can require substantial configuration. For example, enabling some Spring features requires explicit XML or Java configuration. Spring Boot was created to simplify this setup.
 
@@ -676,7 +676,7 @@ public class LoggingAspect implements Ordered {
 
 MVC stands for Model-View-Controller. It organizes code by separating business logic, data, and presentation.
 
-![](../../images/shared/image-20210809181452421.png)
+![](../../images/shared/mvc-model-view-controller-diagram.png)
 
 Some argue that MVC is an architectural pattern rather than a design pattern. I consider it one of the many design patterns; the **[java-design-patterns](https://github.com/iluwatar/java-design-patterns)** project also covers MVC.
 
@@ -1167,7 +1167,7 @@ Spring Security is best learned through practice. This section summarizes a few 
 
 ### Which Methods Control Access to Requests?
 
-![](../../images/shared/image-20220728201854641.png)
+![](../../images/shared/spring-security-request-authorization-methods.png)
 
 - `permitAll()`: Allows access regardless of authentication.
 - `anonymous()`: Allows access only to unauthenticated users.
@@ -1205,7 +1205,7 @@ public interface PasswordEncoder {
 }
 ```
 
-![](../../images/shared/image-20220728183540954.png)
+![](../../images/shared/spring-password-encoders.png)
 
 Spring recommends adaptive one-way functions with a configurable work factor. Tune verification time for your system; examples include bcrypt, PBKDF2, scrypt, and Argon2.
 

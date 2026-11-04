@@ -136,7 +136,7 @@ See the [Apollo user guide](https://www.apolloconfig.com/#/zh/).
 
 The basic model from Apollo's design documentation:
 
-![Apollo basic model](https://img-blog.csdnimg.cn/a75ccb863e4a401d947c87bb14af7dc3.png)
+![Apollo basic model](./images/shared/apollo-basic-model.png)
 
 1. A user edits and publishes configuration in Apollo.
 2. Apollo notifies the application that it changed.
@@ -144,7 +144,7 @@ The basic model from Apollo's design documentation:
 
 The official architecture diagram:
 
-![Apollo architecture](https://img-blog.csdnimg.cn/79c7445f9dbc45adb45699d40ef50f44.png)
+![Apollo architecture](./images/shared/apollo-architecture.png)
 
 ### Components
 

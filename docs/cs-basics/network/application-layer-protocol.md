@@ -58,7 +58,7 @@ WebSocket was introduced in 2008 and became an international standard in 2011. M
 
 WebSocket is an application-layer protocol. It usually starts with an HTTP request to upgrade the connection. Once the upgrade succeeds, the client and server keep a persistent connection for bidirectional communication.
 
-![A WebSocket connection](../images/shared/1460000042192394.png)
+![A WebSocket connection](../images/shared/websocket-communication-diagram.png)
 
 Common use cases include:
 

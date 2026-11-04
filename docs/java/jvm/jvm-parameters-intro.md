@@ -21,7 +21,7 @@ This guide covers some of the most commonly used Java Virtual Machine (JVM) opti
 
 > The Java heap is the largest memory area managed by the JVM. It is **shared by all threads** and created when the virtual machine starts. **Its only purpose is to store object instances; nearly all object instances and arrays are allocated on the heap.**
 
-![Common memory configuration options](./pictures/内存区域常见配置参数.png)
+![Common memory configuration options](./pictures/memory-area-common-options.png)
 
 ### Set the heap size (`-Xms` and `-Xmx`)
 

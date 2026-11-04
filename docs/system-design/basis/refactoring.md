@@ -10,7 +10,7 @@ head:
 
 I recently reread [_Refactoring: Improving the Design of Existing Code_](https://book.douban.com/subject/30468597/) and found it valuable. Here are some of my thoughts on refactoring.
 
-![](../images/shared/image-20220311155746549.png)
+![](../images/shared/refactoring-book-edition.png)
 
 ## What Is Refactoring?
 

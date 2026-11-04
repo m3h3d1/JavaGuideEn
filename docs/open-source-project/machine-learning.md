@@ -29,7 +29,7 @@ Documentation: <https://spring.io/projects/spring-ai#learn>.
 
 [Spring AI Alibaba](https://github.com/alibaba/spring-ai-alibaba) extends the Spring AI ecosystem and is designed for multi-Agent systems and workflow orchestration. Its architecture has three layers:
 
-![Spring AI Alibaba architecture](https://oss.javaguide.cn/github/javaguide/open-source-project/ai/springai-alibaba-architecture-new.png)
+![Spring AI Alibaba architecture](./images/shared/spring-ai-alibaba-architecture.png)
 
 - **Agent Framework**: An Agent development framework based on the ReAct design, with automatic context engineering and human interaction.
 - **Graph**: A low-level workflow and multi-Agent coordination framework. It provides the runtime for the Agent Framework and supports complex application orchestration.
@@ -99,4 +99,4 @@ Documentation: <https://java.agentscope.io/zh/intro.html>.
 
 **System architecture:**
 
-![](https://oss.javaguide.cn/github/javaguide/open-source-project/ai/paiagent-architecture-diagram.jpg)
+![](./images/shared/pai-agent-architecture.jpg)

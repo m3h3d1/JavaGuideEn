@@ -18,7 +18,7 @@ Before discussing RESTful APIs, we should first answer: **What is an API?**
 
 In backend development, much of our work involves providing APIs for the frontend or other backend services, such as an API for querying user data.
 
-![](../images/shared/20210507130629538.png)
+![](../images/shared/rest-api-client-server-request.png)
 
 However, APIs are not limited to interfaces exposed by backend systems. Methods provided by a framework are APIs too.
 
@@ -67,7 +67,7 @@ Putting these ideas together, a RESTful architecture has three characteristics:
 
 ## RESTful API Conventions
 
-![](../images/shared/20210507154007779.png)
+![](../images/shared/rest-api-http-methods.png)
 
 ### HTTP Methods
 

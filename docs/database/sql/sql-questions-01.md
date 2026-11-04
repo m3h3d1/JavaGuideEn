@@ -161,11 +161,13 @@ ORDER BY quantity DESC,item_price DESC
 
 The `Vendors` table contains:
 
-| vend_name |
-| --------- |
-| 海底捞    |
-| 小龙坎    |
-| 大龙燚    |
+| vend_name     |
+| ------------- |
+| Harbor Grill  |
+| Cedar Kitchen |
+| Golden Dragon |
+
+The vendor names are Harbor Grill, Cedar Kitchen, and Golden Dragon.
 
 What is wrong with the following query? Correct it so that it runs and sorts the results by `vend_name` in descending order.
 

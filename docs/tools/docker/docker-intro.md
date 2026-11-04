@@ -30,7 +30,7 @@ Docker is a widely used containerization platform. To understand Docker, first u
 
 In simple terms, a container is a place to put things, like a backpack for stationery, a closet for clothes, or a shoe rack for shoes. In software, a container holds an application such as a website or program, along with its runtime environment.
 
-![Understanding containers](https://oss.javaguide.cn/github/javaguide/tools/docker/container.png)
+![Understanding containers](./images/shared/container.png)
 
 ### Physical Machines, Virtual Machines, and Containers
 
@@ -38,15 +38,15 @@ The comparison between virtual machines and containers is covered in more detail
 
 **Physical machine:**
 
-![Physical machine](https://oss.javaguide.cn/github/javaguide/tools/docker/%E7%89%A9%E7%90%86%E6%9C%BA%E5%9B%BE%E8%A7%A3.jpeg)
+![Physical machine](./images/shared/physical-machine-diagram.jpeg)
 
 **Virtual machine:**
 
-![Virtual machine](https://oss.javaguide.cn/github/javaguide/tools/docker/%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%9B%BE%E8%A7%A3.jpeg)
+![Virtual machine](./images/shared/virtual-machine-diagram.jpeg)
 
 **Container:**
 
-![](https://oss.javaguide.cn/javaguide/image-20211110104003678.png)
+![Shared-apartment analogy for isolated containers](./images/shared/container-virtualization-diagram.png)
 
 These diagrams suggest that **containers virtualize the operating system, not the hardware, and share the host operating system's resources. A virtual machine virtualizes hardware and runs a complete operating system on it, so containers provide a somewhat lower level of isolation.**
 
@@ -58,11 +58,11 @@ In short, **containers and virtual machines both provide resource isolation and 
 
 Traditional virtual machines emulate hardware, run a complete operating system on it, and then run applications. A container's application processes run directly on the host kernel. Containers have no separate kernel and do not virtualize hardware, which makes them lighter than traditional virtual machines.
 
-![](https://oss.javaguide.cn/javaguide/2e2b95eebf60b6d03f6c1476f4d7c697.png)
+![Container and virtual machine architecture comparison](./images/shared/container-vm-comparison.png)
 
 **Containers and virtual machines:**
 
-![](https://oss.javaguide.cn/javaguide/4ef8691d67eb1eb53217099d0a691eb5.png)
+![Comparison of containers and virtual machines](./images/shared/container-vm-benefits.png)
 
 - A container is an application-layer abstraction that packages code and dependencies. Multiple containers can run on one machine, sharing the operating-system kernel while running as isolated processes in user space. Compared with virtual machines, **containers use less disk space** (images are often only tens of megabytes) and **start almost instantly**.
 
@@ -72,7 +72,7 @@ Docker has many advantages, but virtual machines still have their place. **Virtu
 
 In my view, neither needs to replace the other; they can coexist.
 
-![](https://oss.javaguide.cn/javaguide/056c87751b9dd7b56f4264240fe96d00.png)
+![Docker engine architecture](./images/shared/docker-engine-architecture.png)
 
 ## Introduction to Docker
 
@@ -112,7 +112,7 @@ Docker can be understood in several ways:
 
 Docker has three core concepts: images, containers, and repositories. Understanding them makes Docker's lifecycle easier to follow.
 
-![](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-build-run.jpeg)
+![Dockerfile, image, and container lifecycle](./images/shared/docker-image-container-repository-lifecycle.jpeg)
 
 ### Image: A Special Filesystem
 
@@ -154,7 +154,7 @@ The most widely used public registry is **Docker Hub**, Docker's default registr
 
 For example, you can search Docker Hub for an image:
 
-![Search for images on Docker Hub](https://oss.javaguide.cn/github/javaguide/tools/docker/Screen%20Shot%202019-11-04%20at%208.21.39%20PM.png)
+![Search for images on Docker Hub](./images/shared/docker-hub-search-screenshot.png)
 
 Docker Hub search results include several details that can help you choose an image:
 
@@ -180,7 +180,7 @@ You can also **run a private Docker Registry**. Docker provides a Registry image
 
 The diagram below shows how images, containers, repositories, and registries or hubs relate:
 
-![Docker architecture](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-regitstry.png)
+![Docker image and container lifecycle](./images/shared/docker-image-container-repository-lifecycle.png)
 
 - A Dockerfile is a text file containing instructions and parameters that define how to build an image. When you run `docker build` with a Dockerfile, Docker reads its instructions, builds the image, and saves it locally.
 - `docker pull` downloads an image from a specified registry or hub. It uses Docker Hub by default.
@@ -195,7 +195,7 @@ Now that we have covered the basic Docker concepts, let's look at the phrase “
 
 The Docker website describes Docker as **“Build, Ship, and Run Any App, Anywhere.”** What does that mean?
 
-![](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-build-ship-run.jpg)
+![Build, ship, and run workflow](./images/shared/docker-build-ship-run.jpg)
 
 - **Build:** Create an image containing the application's files and runtime environment, much like packing goods into a shipping container.
 - **Ship:** Transfer the image between a host and a registry, which acts like a shipping hub.
@@ -283,7 +283,7 @@ There are two main ways to manage data in containers:
 1. Volumes
 2. Bind mounts
 
-![Docker data management](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-data-management.png)
+![Docker data management](./images/shared/docker-data-management.png)
 
 Volumes are storage areas managed by Docker. They have the following characteristics:
 

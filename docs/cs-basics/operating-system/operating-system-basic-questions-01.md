@@ -18,7 +18,7 @@ This is a quick review that connects core concepts. For deeper study, pair it wi
 
 ## Operating System Fundamentals
 
-![Operating system fundamentals mind map](../images/shared/image-20200807161118901.png)
+![Operating system fundamentals mind map](../images/shared/operating-system-overview.png)
 
 ### What Is an Operating System?
 

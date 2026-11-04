@@ -145,7 +145,7 @@ This section draws mainly on the [Java 8 Virtual Machine Specification](https://
 
 Computer science fundamentals—computer networks, operating systems, data structures, and algorithms—are covered in the [Computer Science Guide](./cs-basics/).
 
-[![Banner](https://oss.javaguide.cn/xingqiu/xingqiu.png)](./about-the-author/zhishixingqiu-two-years.md)
+[![Banner](./images/shared/knowledge-planet-banner.png)](./about-the-author/zhishixingqiu-two-years.md)
 
 ## Databases
 
@@ -404,7 +404,7 @@ Deploy multiple instances of the same service to avoid a single point of failure
 
 ## Star history
 
-![Star history](https://api.star-history.com/svg?repos=Snailclimb/JavaGuide&type=Date)
+![Star history](./images/shared/java-guide-star-history.svg)
 
 ## WeChat
 

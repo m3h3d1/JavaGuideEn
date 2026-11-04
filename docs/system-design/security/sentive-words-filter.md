@@ -83,10 +83,10 @@ A Trie has three basic properties:
 
 Assume the sensitive word dictionary contains the following words:
 
-- 高清视频
-- 高清 CV
-- 东京冷
-- 东京热
+- 高清视频 (“HD video”)
+- 高清 CV (“HD CV”)
+- 东京冷 (“Tokyo cold”)
+- 东京热 (“Tokyo hot”)
 
 The resulting Trie is shown below (red nodes mark the end of a word):
 
@@ -378,37 +378,41 @@ System.out.println(matchStr); // Output: 大
 // matchAll(text, limit, isDensityMatch, isGreedy)
 // - limit: Maximum number of matches; -1 means unlimited
 // - isDensityMatch: Whether to find overlapping matches inside an already matched word
-// - isGreedy: Whether to use greedy matching (true for the longest keyword, false for the shortest)
+// - isGreedy: Whether to continue looking for longer matches at the same position
 List<String> matchStrList = wordTree.matchAll(text, -1, false, false);
 System.out.println(matchStrList); // Output: [大, 憨憨]
 
-List<String> matchStrList2 = wordTree.matchAll(text, -1, false, true);
-System.out.println(matchStrList2); // Output: [大, 大憨憨]
+List<String> matchStrList2 = wordTree.matchAll(text, -1, true, true);
+System.out.println(matchStrList2); // Output: [大, 大憨憨, 憨憨]
 ```
+
+The text means “That person is such a big fool.” The keywords are `大` (“big”), `大憨憨` (“big fool”), and `憨憨` (“fool”).
 
 **Output explanation:**
 
 - `matchAll(text, -1, false, false)`: non-greedy, non-density matching
 
-  - Starting at position 0, `"大"` matches (the shortest match).
-  - After skipping the matched character, `"憨憨"` matches starting at position 2.
+  - Starting at index 5 in `text`, `"大"` matches (the shortest match).
+  - After skipping the matched character, `"憨憨"` matches starting at index 6.
   - Result: `[大, 憨憨]`
 
-- `matchAll(text, -1, false, true)`: greedy, non-density matching
-  - Starting at position 0, `"大憨憨"` matches (the longest match).
-  - `"大"` also matches as a prefix.
-  - Result: `[大, 大憨憨]`
+- `matchAll(text, -1, true, true)`: greedy, density matching
+  - Starting at index 5 in `text`, both `"大"` and `"大憨憨"` match.
+  - Density matching also finds `"憨憨"` at index 6.
+  - Result: `[大, 大憨憨, 憨憨]`
+
+In Hutool 5.8.40, non-density matching stops at the first match at each position, even if `isGreedy` is `true`. See the [WordTree implementation](https://github.com/dromara/hutool/blob/5.8.40/hutool-dfa/src/main/java/cn/hutool/dfa/WordTree.java).
 
 ## Handle Obfuscated Words
 
 In practice, users may try to evade sensitive word filters in several ways:
 
-| Obfuscation                        | Example               | Mitigation                                    |
-| ---------------------------------- | --------------------- | --------------------------------------------- |
-| Homophones                         | “赌博” → “读博”       | Maintain a homophone dictionary               |
-| Inserted symbols                   | "fuck" → "f\*u\*c\*k" | Strip special characters during preprocessing |
-| Traditional and Simplified Chinese | “台灣” → “台湾”       | Convert to Simplified Chinese before matching |
-| Full-width characters              | "abc" → "ａｂｃ"      | Convert full-width characters to half-width   |
+| Obfuscation                        | Example                                             | Mitigation                                    |
+| ---------------------------------- | --------------------------------------------------- | --------------------------------------------- |
+| Similar-sounding words             | “赌博” (“gambling”) → “读博” (“pursue a doctorate”) | Maintain a dictionary of similar sounds       |
+| Inserted symbols                   | "fuck" → "f\*u\*c\*k"                               | Strip special characters during preprocessing |
+| Traditional and Simplified Chinese | “台灣” → “台湾” (“Taiwan”)                          | Convert to Simplified Chinese before matching |
+| Full-width characters              | "abc" → "ａｂｃ"                                    | Convert full-width characters to half-width   |
 
 **Preprocessing** is a common way to handle obfuscated words: normalize a copy of the text before matching. The code below covers basic cases such as compatibility-equivalent characters, letter case, Unicode code points, and format-control characters. It is only an example; production systems should extend the rules based on supported languages, false-positive tolerance, and observed evasion attempts.
 
@@ -527,7 +531,7 @@ public List<String> parallelMatch(String text, int chunkSize, int maxWordLength)
 
 **Why Is an Overlap Needed?**
 
-Suppose the sensitive word `"赌博网站"` has length 4 and the chunk size is 100. If it starts at position 99, it will be split across two chunks:
+Suppose the sensitive word `"赌博网站"` (“gambling website”) has length 4 and the chunk size is 100. If it starts at position 99, it will be split across two chunks:
 
 - chunk 1: `...text ends at position 99赌`
 - chunk 2: `博网站 continues...`
@@ -581,7 +585,7 @@ private boolean quickCheck(String text, int maxWordLen) {
 
 - **Update regularly**: Maintain the dictionary over time and support hot loading to avoid restarting the service.
 - **Use sensitivity levels**: Classify words as high, medium, or low sensitivity based on the use case, with different actions such as blocking, human review, or logging.
-- **Maintain an allowlist**: Prevent false positives. For example, a sensitive word `"XXX"` may incorrectly match the normal word `"XXY"` as a substring, or `"公安"` may match `"办公安排"`. Possible mitigations include excluding allowlisted phrases, requiring a minimum match length or whole-word matches, and checking the surrounding context.
+- **Maintain an allowlist**: Prevent false positives. For example, a sensitive word `"XX"` may incorrectly match the normal word `"XXY"` as a substring, or `"公安"` (“public security”) may match `"办公安排"` (“office arrangements”). Possible mitigations include excluding allowlisted phrases, requiring a minimum match length or whole-word matches, and checking the surrounding context.
 - **Log matches**: Record match results to improve the dictionary and analyze false positives.
 
 ### Error Handling

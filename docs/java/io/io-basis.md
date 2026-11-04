@@ -243,6 +243,8 @@ The actual number of characters skipped:3
 The content read from file:我是Guide。
 ```
 
+The text after the skipped characters means “I am Guide.”
+
 ### Writer (Character Output Stream)
 
 `Writer` writes character data to a destination, usually a file. The abstract class `java.io.Writer` is the base class for all character output streams.
@@ -279,6 +281,8 @@ try (Writer output = new FileWriter("output.txt")) {
     e.printStackTrace();
 }
 ```
+
+The written text means “Hello, I am Guide.”
 
 Result:
 

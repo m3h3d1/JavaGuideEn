@@ -1,1 +1,1 @@
-[![Spring AI Interview Assistant and RAG Knowledge Base](https://oss.javaguide.cn/xingqiu/interview-guide-banner.png)](../zhuanlan/interview-guide.md)
+[![Spring AI Interview Assistant and RAG Knowledge Base](../images/shared/spring-ai-interview-assistant-banner.png)](../zhuanlan/interview-guide.md)

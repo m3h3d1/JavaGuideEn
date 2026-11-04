@@ -25,7 +25,7 @@ Docker can be understood in several ways:
 
 Official website: <https://www.docker.com/>.
 
-![Understanding containers](https://oss.javaguide.cn/github/javaguide/tools/docker/container.png)
+![Understanding containers](./images/shared/container.png)
 
 ### Why Use Docker?
 
@@ -43,7 +43,7 @@ Docker helps address this by running services such as MySQL and Redis in contain
 
 The open-source book [Docker — From Beginner to Practitioner](https://yeasy.gitbook.io/docker_practice/introduction/why) also explains why Docker is useful.
 
-![](https://oss.javaguide.cn/github/javaguide/tools/docker/20210412220015698.png)
+![Benefits of using Docker](./images/shared/why-use-docker.png)
 
 ## Installing Docker
 
@@ -51,35 +51,35 @@ The open-source book [Docker — From Beginner to Practitioner](https://yeasy.gi
 
 On Windows, Docker Desktop is the recommended option. Visit the Docker website to download the installer:
 
-![Install Docker](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-install-windows.png)
+![Install Docker](./images/shared/docker-install-windows.png)
 
 Then click `Get Started`:
 
-![Install Docker](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-install-windows-download.png)
+![Install Docker](./images/shared/docker-install-windows-download.png)
 
 Click `Download for Windows` to download the installer.
 
 Docker Desktop for Windows currently recommends the WSL 2 backend. Before installing, make sure your system meets Docker Desktop's requirements and WSL 2 is enabled. Some setups can use the Hyper-V backend. To enable it, open Control Panel and select Programs:
 
-![Enable Hyper-V](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-windows-hyperv.png)
+![Enable Hyper-V](./images/shared/docker-windows-hyperv.png)
 
 Click `Turn Windows features on or off`:
 
-![Enable Hyper-V](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-windows-hyperv-enable.png)
+![Enable Hyper-V](./images/shared/docker-windows-hyperv-enable.png)
 
 Select `Hyper-V` and click OK:
 
-![Enable Hyper-V](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-windows-hyperv-check.png)
+![Enable Hyper-V](./images/shared/docker-windows-hyperv-check.png)
 
 Restart the computer after applying the changes.
 
 After enabling `Hyper-V`, run the Docker Desktop installer and click `OK` when prompted:
 
-![Install Docker](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-windows-hyperv-install.png)
+![Install Docker](./images/shared/docker-windows-hyperv-install.png)
 
 Restart the computer after installation. If you see the following prompt:
 
-![Install Docker](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-windows-hyperv-wsl2.png)
+![Install Docker](./images/shared/docker-windows-hyperv-wsl2.png)
 
 If the installer offers WSL 2, it is generally the preferred backend for running Linux containers on Windows. Choose Hyper-V instead if your environment requires it.
 
@@ -147,21 +147,21 @@ Let's try Docker by downloading a MySQL image.
 
 Like GitHub, Docker provides Docker Hub to find images and their usage instructions. Visit [Docker Hub](https://hub.docker.com/):
 
-![Docker Hub](https://oss.javaguide.cn/github/javaguide/tools/docker/dockerhub-com.png)
+![Docker Hub](./images/shared/dockerhub-com.png)
 
 Enter `mysql` in the search box at the upper left and press Enter:
 
-![Search Docker Hub for MySQL](https://oss.javaguide.cn/github/javaguide/tools/docker/dockerhub-mysql.png)
+![Search Docker Hub for MySQL](./images/shared/dockerhub-mysql-search.png)
 
 There are many MySQL images. The `OFFICIAL IMAGE` badge identifies an official image, so select the first MySQL result:
 
-![Official MySQL image](https://oss.javaguide.cn/github/javaguide/tools/docker/dockerhub-mysql-official-image.png)
+![Official MySQL image](./images/shared/dockerhub-mysql-official-image.png)
 
 The page shows `docker pull mysql` as the pull command. It downloads the version associated with the default tag. In real projects, specify a version tag to keep the environment predictable.
 
 To download a specific version, click `View Available Tags`:
 
-![View other MySQL versions](https://oss.javaguide.cn/github/javaguide/tools/docker/dockerhub-mysql-view-available-tags.png)
+![View other MySQL versions](./images/shared/dockerhub-mysql-tags.png)
 
 This page lists image versions and their pull commands. To download MySQL 8.4, run:
 
@@ -231,7 +231,7 @@ You can search for images before pulling one:
 docker search mysql
 ```
 
-![](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-search-mysql-terminal.png)
+![Searching Docker Hub for a MySQL image from the terminal](./images/shared/docker-search-mysql-terminal.png)
 
 However, `docker search` searches repositories but does not list all tags for an image. To see available MySQL versions, use the Tags page on Docker Hub.
 
@@ -241,7 +241,7 @@ docker pull mysql:8.4
 
 If a tag does not exist, `docker pull` returns an error such as `manifest unknown`:
 
-![](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-search-mysql-404-terminal.png)
+![Docker Hub search output when no image matches](./images/shared/docker-search-mysql-404-terminal.png)
 
 Remove an image with:
 
@@ -300,7 +300,7 @@ docker pull tomcat:8.0-jre8
 
 After pulling it, run the container and list running containers with `docker ps`.
 
-![](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-ps-terminal.png)
+![Running containers listed by docker ps](./images/shared/docker-ps-terminal.png)
 
 `CONTAINER_ID` is the container ID, `IMAGE` is the image name, `COMMAND` is the command running in the container, `CREATED` is its creation time, `STATUS` is its state, `PORTS` lists the service ports, and `NAMES` is the container name.
 
@@ -314,7 +314,7 @@ In `8080:8080`, the first port is on the host and the second is in the container
 
 Tomcat is now accessible externally:
 
-![](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-run-tomact-8080.png)
+![Tomcat container published on port 8080](./images/shared/docker-run-tomcat-8080.png)
 
 For example, with this port mapping:
 
@@ -490,7 +490,7 @@ To inspect container details such as listening ports and IP addresses, use:
 docker inspect 923c969b0d91
 ```
 
-![](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-inspect-terminal.png)
+![Container details from docker inspect](./images/shared/docker-inspect-terminal.png)
 
 ## Docker Volumes
 
@@ -504,7 +504,7 @@ docker run -d -p 8080:8080 --name tomcat01 -v /opt/apps:/usr/local/tomcat/webapp
 
 Tomcat is now inaccessible:
 
-![](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-data-volume-webapp-8080.png)
+![Web application container using a data volume](./images/shared/docker-data-volume-webapp-8080.png)
 
 This shows the mount is working: Docker synchronizes the container's `webapps` directory with `/opt/apps`. Since `/opt/apps` is empty, the mounted directory is empty too, so Tomcat cannot serve the application.
 
@@ -547,7 +547,7 @@ public class HelloServlet extends HttpServlet {
 
 This simple servlet can be packaged and uploaded to `/opt/apps`; the file will then be available in the container:
 
-![](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-data-volume-webapp-8080-hello-world.png)
+![Hello World response from the web application container](./images/shared/docker-data-volume-webapp-8080-hello-world.png)
 
 This is called a **bind mount** because you specify the host directory. Docker also supports **named volumes**, which are commonly used for managed data storage.
 

@@ -254,7 +254,7 @@ JConsole is a visual monitoring and management tool based on JMX. It can monitor
 
 #### Connect to JConsole
 
-![Connect to JConsole](./pictures/jdk监控和故障处理工具总结/1JConsole连接.png)
+![Connect to JConsole](./pictures/jconsole/connect.png)
 
 To connect JConsole to a remote process, start the remote Java application with these options:
 
@@ -275,7 +275,7 @@ your.public.ip.address:60001
 
 #### View Java Application Overview
 
-![Java application overview](./pictures/jdk监控和故障处理工具总结/2查看Java程序概况.png)
+![Java application overview](./pictures/jconsole/overview.png)
 
 #### Monitor Memory
 
@@ -287,7 +287,7 @@ Clicking **Perform GC (G)** sends an explicit garbage collection request through
 > - **Old-generation GC (Major GC/Old GC):** A collection of the old generation. Sources do not use "Major GC" consistently; some use it for a full-heap collection. Check the collector and log event when interpreting GC logs.
 > - **Full GC:** A collection of the entire Java heap, often with a longer pause. Its duration depends on factors such as heap size, live objects, and the collector, so it cannot be compared with Minor GC using a fixed multiplier.
 
-![Memory monitoring](./pictures/jdk监控和故障处理工具总结/3内存监控.png)
+![Memory monitoring](./pictures/jconsole/memory-monitor.png)
 
 #### Monitor Threads
 
@@ -295,7 +295,7 @@ This provides a visual alternative to the `jstack` command described above.
 
 The **Detect Deadlock (D)** button at the bottom finds deadlocked threads and displays details about them.
 
-![Thread monitoring](./pictures/jdk监控和故障处理工具总结/4线程监控.png)
+![Thread monitoring](./pictures/jconsole/thread-monitor.png)
 
 ### VisualVM: All-in-One Troubleshooting Tool
 

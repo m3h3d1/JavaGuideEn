@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 260" role="img" aria-labelledby="title desc">
+  <title id="title">Linux directory tree</title>
+  <desc id="desc">Common directories under root, with example files in etc and home. Rectangles represent directories; circles represent non-directory files.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+      <path d="M0,0 L7,3.5 L0,7 Z" fill="#111" />
+    </marker>
+  </defs>
+  <g fill="none" stroke="#111" stroke-width="1.4">
+    <path d="M440 54 V78 H40 M440 78 H840" />
+  </g>
+  <g fill="none" stroke="#111" stroke-width="1.4" marker-end="url(#arrow)">
+    <path d="M40 78 V140 M91 78 V140 M147 78 V140 M202 78 V140 M261 78 V140 M319 78 V140 M389 78 V140 M456 78 V140 M510 78 V140 M566 78 V140 M622 78 V140 M679 78 V140 M734 78 V140 M787 78 V140 M840 78 V140" />
+    <path d="M202 168 V185 H120 V200 M202 185 H174 V200 M261 168 V185 H245 V200 M261 185 H302 V200" />
+  </g>
+  <g fill="#e8eef5" stroke="#111" stroke-width="1.4">
+    <rect x="340" y="16" width="200" height="38" rx="2" />
+    <rect x="19" y="142" width="42" height="27" />
+    <rect x="68" y="142" width="46" height="27" />
+    <rect x="126" y="142" width="42" height="27" />
+    <rect x="182" y="142" width="40" height="27" />
+    <rect x="235" y="142" width="52" height="27" />
+    <rect x="300" y="142" width="38" height="27" />
+    <rect x="348" y="142" width="82" height="27" />
+    <rect x="435" y="142" width="42" height="27" />
+    <rect x="491" y="142" width="38" height="27" />
+    <rect x="543" y="142" width="46" height="27" />
+    <rect x="600" y="142" width="44" height="27" />
+    <rect x="655" y="142" width="48" height="27" />
+    <rect x="715" y="142" width="38" height="27" />
+    <rect x="768" y="142" width="38" height="27" />
+    <rect x="821" y="142" width="38" height="27" />
+    <rect x="289" y="200" width="26" height="24" />
+  </g>
+  <g fill="#fff" stroke="#111" stroke-width="1.4">
+    <circle cx="120" cy="211" r="10" />
+    <circle cx="174" cy="211" r="10" />
+    <circle cx="245" cy="211" r="10" />
+    <rect x="882" y="191" width="30" height="20" fill="#e8eef5" />
+    <circle cx="897" cy="234" r="10" />
+  </g>
+  <g fill="#111" font-family="Arial, sans-serif" text-anchor="middle">
+    <text x="440" y="42" font-size="25">root</text>
+    <text x="40" y="161" font-size="17">bin</text>
+    <text x="91" y="161" font-size="17">boot</text>
+    <text x="147" y="161" font-size="17">dev</text>
+    <text x="202" y="161" font-size="17">etc</text>
+    <text x="261" y="161" font-size="17">home</text>
+    <text x="319" y="161" font-size="17">lib</text>
+    <text x="389" y="161" font-size="15">lost+found</text>
+    <text x="456" y="161" font-size="17">mnt</text>
+    <text x="510" y="161" font-size="17">opt</text>
+    <text x="566" y="161" font-size="17">proc</text>
+    <text x="622" y="161" font-size="17">root</text>
+    <text x="679" y="161" font-size="17">sbin</text>
+    <text x="734" y="161" font-size="17">tmp</text>
+    <text x="787" y="161" font-size="17">usr</text>
+    <text x="840" y="161" font-size="17">var</text>
+    <text x="120" y="242" font-size="15">fstab</text>
+    <text x="174" y="242" font-size="15">hosts</text>
+    <text x="245" y="242" font-size="13">.directory</text>
+    <text x="302" y="217" font-size="16">dh</text>
+    <text x="974" y="207" font-size="16">Directory</text>
+    <text x="974" y="239" font-size="16">Non-directory file</text>
+  </g>
+</svg>

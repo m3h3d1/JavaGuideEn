@@ -1,347 +1,348 @@
 ---
-title: 如何在技术初试中考察程序员的技术能力
-description: "如何在技术初试中考察程序员的技术能力：围绕技术知识与面试总结梳理关键概念、常见问题与实践要点，帮助你高效学习与备战面试。"
-category: 技术文章精选集
-author: 琴水玉
+title: Assessing a Programmer's Skills in a First Technical Interview
+description: An interviewer's approach to assessing technical fundamentals, project experience, and problem-solving skills.
+category: Selected Technical Articles
+author: Qin Shuiyu
 tag:
-  - 面试
+  - Interviews
 head:
   - - meta
     - name: keywords
-      content: 技术面试,面试官技巧,技术考察,面试方法,技术基础,项目经历考察,面试题库,技术深度
+      content: technical interviews,interviewing skills,technical assessment,interview methods,technical fundamentals,project experience,interview questions,technical depth
 ---
 
-> **推荐语**：从面试官和面试者两个角度探讨了技术面试！非常不错！
+> **Editor's note:** This article discusses technical interviews from the perspectives of both interviewer and candidate.
 >
-> **内容概览：**
+> **Overview:**
 >
-> - 实战与理论结合。比如，候选人叙述 JVM 内存模型布局之后，可以接着问：有哪些原因可能会导致 OOM , 有哪些预防措施? 你是否遇到过内存泄露的问题? 如何排查和解决这类问题?
-> - 项目经历考察不宜超过两个。因为要深入考察一个项目的详情，所占用的时间还是比较大的。一般来说，会让候选人挑选一个他或她觉得最有收获的/最有挑战的/印象最深刻的/自己觉得特有意思的项目。然后围绕这个项目进行发问。通常是从项目背景出发，考察项目的技术栈、项目模块及交互的整体理解、项目中遇到的有挑战性的技术问题及解决方案、排查和解决问题、代码可维护性问题、工程质量保障等。
-> - 多问少说，让候选者多表现。根据候选者的回答适当地引导或递进或横向移动。
+> - Combine theory with practice. After a candidate describes the JVM memory layout, ask what can cause an `OutOfMemoryError`, how to prevent it, and how they have diagnosed and fixed memory leaks.
+> - Discuss no more than two projects in depth; each takes time. Let the candidate choose a project they found rewarding, challenging, memorable, or interesting. Explore its context, stack, components and interactions, technical challenges, troubleshooting, maintainability, and engineering quality.
+> - Ask more and talk less so the candidate can demonstrate their abilities. Use their answers to guide follow-up questions, explore a topic more deeply, or move to related topics.
 >
-> **原文地址**：<https://www.cnblogs.com/lovesqcc/p/15169365.html>
+> **Original article:** <https://www.cnblogs.com/lovesqcc/p/15169365.html>
 
-## 灵魂三连问
+## Three Key Questions
 
-1. 你觉得人怎么样？ 【表达能力、沟通能力、学习能力、总结能力、自省改进能力、抗压能力、情绪管理能力、影响力、团队管理能力】
-2. 如果让他独立完成项目的设计和实现，你觉得他能胜任吗？ 【系统设计能力、项目管理能力】
-3. 他的分析和解决问题的能力，你的评价是啥？【原理理解能力、实战应用能力】
+1. What is your assessment of the candidate? Consider communication, learning, summarizing, reflection and improvement, handling pressure and emotions, influence, and team management.
+2. Could the candidate independently design and implement a project? Consider system design and project management.
+3. How well does the candidate analyze and solve problems? Consider their understanding of principles and ability to apply them.
 
-## 考察目标和思路
+## Assessment Goals and Approach
 
-首先明确，技术初试的考察目标：
+The first technical interview should assess:
 
-- 候选人的技术基础；
-- 候选人解决问题的思路和能力。
+- The candidate's technical foundations.
+- Their approach and ability to solve problems.
 
-技术基础是基石（冰山之下的东西），占七分， 解决问题的思路和能力是落地（冰山之上露出的部分），占三分。 业务和技术基础考察，三七开。
+I give technical foundations 70% of the emphasis and practical problem-solving 30%. In the iceberg analogy, foundations are below the surface and their application is visible above it. Business experience and technical fundamentals receive the same 30/70 split.
 
-核心考察目标：分析和解决问题的能力。
+The central goal is to assess the ability to analyze and solve problems.
 
-技术层面：深度 + 应用能力 + 广度。 对于校招或社招 P6 级别以下，要多注重 深度 + 应用能力，广度是加分项； 在 P6 之上，可增加 广度。
+Assess technical depth, application, and breadth. For graduates and experienced candidates below P6, emphasize depth and application; breadth is a bonus. For roles above P6, give breadth more weight.
 
-- 校招：基础扎实，思维敏捷。 主要考察内容：基础数据结构与算法、进程与并发、内存管理、系统调用与 IO 机制、网络协议、数据库范式与设计、设计模式、设计原则、编程习惯；
-- 社招：经验丰富，里外兼修。 主要考察内容：有一定深度的基础技术机制，比如 Java 内存模型及内存泄露、 JVM 机制、类加载机制、数据库索引及查询优化、缓存、消息中间件、项目、架构设计、工程规范等。
+- **Graduate hiring:** Look for solid fundamentals and agile thinking. Topics include data structures and algorithms, processes and concurrency, memory management, system calls and I/O, networking, database normalization and design, design patterns and principles, and coding habits.
+- **Experienced hiring:** Look for practical experience and understanding of internals. Topics include the Java Memory Model and memory leaks, JVM and class loading, database indexes and query optimization, caching, messaging, projects, architecture, and engineering practices.
 
-### 技术基础是什么?
+### What Are Technical Foundations?
 
-作为技术初试官，怎么去考察技术基础？究竟什么是技术基础？是知道什么，还是知道如何思考？知识作为现有的成熟原理体系，构成了基础的重要组成部分，而知道如何思考亦尤为重要。俗话说，知其然而知其所以然。知其然，是指熟悉现有知识体系，知其所以然，则是自底向上推导，真正理解知识的来龙去脉，理解为何是这样而不是那样。毕竟，对于本质是逻辑的程序世界而言，并无定法。知道如何思考，并能缜密地设计和开发，深入到细节，这就是技术基础吧。
+How should an interviewer assess fundamentals? Established knowledge is important, but so is knowing how to reason. Knowing _what_ means understanding existing concepts; knowing _why_ means deriving ideas from the ground up and understanding the choices behind them. Software is built on logic and rarely has only one solution. Technical foundations include reasoning carefully about design, implementation, and details.
 
-### 为什么要考察技术基础?
+### Why Assess Technical Foundations?
 
-程序员最重要的两种技术思维能力，是逻辑思维能力和抽象设计能力。逻辑思维能力是基础，抽象设计能力是高阶。 考察技术基础，正好可以同时考察这两种思维能力。能不能理解基础技术概念及关联，是考察逻辑思维能力；能不能把业务问题抽象成技术问题并合理的组织映射，是考察抽象设计能力。
+Two important engineering skills are logical reasoning and abstract design. Questions about fundamental concepts and their relationships test logical reasoning. Questions that ask candidates to model a business problem as a technical problem test abstraction and design.
 
-绝大部分业务问题，都可以抽象成技术问题。在某种意义上，业务问题只是技术问题的领域化表述。
+Many business problems can be expressed as technical problems in a particular domain.
 
-因此，通过技术基础考察候选者，才能考察到候选者的真实技术实力：技术深度和广度。
+Fundamentals can therefore reveal a candidate's technical depth and breadth.
 
-### 为什么不能单考察业务维度？
+### Why Not Assess Business Experience Alone?
 
-因为业务方面通常比较熟悉，可能就直接按照现有方案说出来了，很难考察到候选人的深入理解、横向拓展和归纳总结能力。
+Candidates are usually familiar with their business domain and may repeat an existing solution. That can make it difficult to assess deeper understanding, transfer to related problems, and ability to summarize lessons.
 
-这一点，建议有针对性地考察下候选人的归纳总结能力：比如， 微服务搭建或开发或维护/保证系统稳定性或性能方面的过程中，你收获了哪些可以分享的经验？
+Ask targeted reflection questions, such as: “What lessons can you share from building or maintaining microservices or improving system stability and performance?”
 
-### 为什么要考察业务维度？
+### Why Assess Business Experience?
 
-技术基础考察，容易错过的地方是，候选人的非技术能力特质，比如沟通组织能力、带项目能力、抗压能力、解决实际问题的能力、团队影响力、其它性格特质等。
+Fundamentals alone can miss qualities such as communication, organization, project leadership, handling pressure, solving practical problems, influence within a team, and other personal traits.
 
-## 考察方法
+## Assessment Methods
 
-### 技术基础考察
+### Assessing Technical Foundations
 
-技术基础怎么考察？通过有效的多角度的发问模式来考察。
+Use questions from several angles.
 
-**是什么-为什么**
+**What and why**
 
-是什么考察对概念的基本理解，为什么考察对概念的实现原理。
+“What” tests basic understanding; “why” explores the principles behind an implementation.
 
-比如索引是什么？ 索引是如何实现的？
+For example: “What is an index? How is it implemented?”
 
-**引导-横向发问-深入发问**
+**Guide, explore related topics, and go deeper**
 
-引导性，比如 “你对 java 同步工具熟悉吗？” 作个试探，得到肯定答复后，可以进一步问：“你熟悉哪些同步工具类？” 了解候选者的广度；
+Start with a prompt such as “Are you familiar with Java synchronization utilities?” If the answer is yes, ask which utilities the candidate knows to assess breadth.
 
-获取候选者的回答后，可以进一步问：“ 谈谈 ConcurrentHashMap 或 AQS 的实现原理？”
+Then ask, “How are `ConcurrentHashMap` or AQS implemented?”
 
-一个人在多大程度上把技术原理能讲得清晰，包括思路和细节，说明他对技术的掌握能力有多强。
+The clarity with which a candidate explains the approach and details can reveal how well they understand the technology.
 
-**深度有梯度和层次的发问**
+**Ask questions at increasing levels of depth**
 
-设置三个深度层次的发问。每个深度层次可以对应到某个技术深度。
+Use three levels:
 
-- 第一个发问是基本概念层次，考察候选人对概念的理解能力和深度；
-- 第二个发问是原理机制层次，考察候选人对概念的内涵和外延的理解深度；
-- 第三个发问是应用层次，考察候选人的应用能力和思维敏捷程度。
+- Basic concepts: assess understanding of the concept.
+- Principles and mechanisms: assess understanding of its internals and implications.
+- Application: assess how the candidate uses the concept and adapts their reasoning.
 
-**跳跃式/交叉式发问**
+**Move between related topics**
 
-比如，讲到哈希高效查找，可以谈谈哈希一致性算法 。 两者既有关联又有很多不同点。也是一种技术广度的考察方法。
+For example, a discussion of hash-based lookup can lead to consistent hashing. The topics are related but differ in important ways, making this a way to assess breadth.
 
-**总结性发问**
+**Ask for lessons learned**
 
-比如，你在做 XXX 中，获得了哪些可以分享的经验？ 考察候选人的归纳总结能力。
+For example: “What lessons from this work could you share?” This tests the ability to reflect and summarize.
 
-**实战与理论结合**
+**Combine theory and practice**
 
-- 比如，候选人叙述 JVM 内存模型布局之后，可以接着问：有哪些原因可能会导致 OOM , 有哪些预防措施? 你是否遇到过内存泄露的问题? 如何排查和解决这类问题?
-- 比如，候选人有谈到 SQL 优化和索引优化，那就正好谈谈索引的实现原理，如何建立最佳索引？
-- 比如，候选人有谈到事务，那就正好谈谈事务实现原理，隔离级别，快照实现等；
+- After a candidate describes JVM memory layout, ask what causes an `OutOfMemoryError`, how to prevent it, and how they have diagnosed and fixed memory leaks.
+- If they discuss SQL and index optimization, ask how indexes work and how they choose an appropriate index.
+- If they discuss transactions, ask about transaction internals, isolation levels, and snapshot implementation.
 
-**熟悉与不熟悉结合**
+**Explore familiar and unfamiliar areas**
 
-针对候选人简历上写的熟悉的部分，和没有写出的都问下。比如候选人简历上写着：熟悉 JVM 内存模型， 那我就考察下内存管理相关（熟悉部分），再考察下 Java 并发工具类（不确定是否熟悉部分）。
+Ask about both stated skills and areas not listed on the resume. For someone who lists JVM memory knowledge, ask about memory management and then Java concurrency utilities, whose familiarity is less certain.
 
-**死知识与活知识结合**
+**Combine recall and application**
 
-比如，查找算法有哪些？顺序查找、二分查找、哈希查找。这些大家通常能说出来，也是“死知识”。
+“Which search algorithms do you know?” may elicit linear search, binary search, and hash lookup. This checks recall.
 
-这些查找算法各适用于什么场景？在你工作中，有哪些场景用到了哪些查找算法？为什么？ 这些是“活知识”。
+Follow with: “When is each appropriate? Where have you used one, and why?” These questions assess application.
 
-**学习或工作中遇到的**
+**Use questions from your own learning and work**
 
-有时，在学习和工作中遇到的问题，也可以作为面试题。
+Problems encountered while learning or working can become interview questions.
 
-比如，最近在学习《操作系统导论》并发部分，有一章节是如何使数据结构成为线程安全的。这里就有一些可以提问的地方：如何实现一个锁？如何实现一个线程安全的计数器？如何实现一个线程安全的链表？如何实现一个线程安全的 Map ？如何提升并发的性能？
+For example, while reading the concurrency section of _Operating Systems: Three Easy Pieces_, I encountered a chapter on thread-safe data structures. It suggested questions: How would you implement a lock, a thread-safe counter, a linked list, or a map? How would you improve concurrency performance?
 
-工作中遇到的问题，也可以抽象提炼出来，作为技术基础面试题。
+Workplace problems can likewise be distilled into questions about fundamentals.
 
-**技术栈适配度发问**
+**Assess familiarity with the technology stack**
 
-如果候选人（简历上所写的）使用的某些技术与本公司的技术栈比较契合，则可以针对这些技术点进行深入提问，考察候选人在这些技术点的掌握程度。如果掌握程度比较好，则技术适配度相对更高一些。
+If a candidate's resume lists technologies used by your company, ask detailed questions to understand their experience with them.
 
-当然，这一点并不能作为筛掉那些没有使用该技术栈的候选人的依据。比如本公司使用 MongoDB 和 MySQL， 而一个候选人没有用过 Mongodb， 但使用过 MySQL, Redis, ES, HBase 等多种存储系统，那么适配度并不比仅使用过 MySQL 和 Mongodb 的候选人逊色，因为他所涉及的技术广度更大，可以推断出他有足够能力掌握 Mongodb。
+Do not reject someone solely for lacking the exact stack. For example, a candidate without MongoDB experience who has used MySQL, Redis, Elasticsearch, and HBase may be just as capable of learning MongoDB as someone whose experience is limited to MySQL and MongoDB.
 
-**应对背题式面试**
+**Look beyond memorized answers**
 
-首先，背题式面试，说明候选人至少是有做准备的。当然，对于招聘的一方来说，更希望找到有能力而不是仅记忆了知识的候选人。
+Memorized answers show that a candidate prepared, but an employer also needs to assess whether they can apply what they know.
 
-应对背题式面试，可以通过 “引导-横向发问-深入发问” 的方式，先对候选人关于某个知识点的深度和广度做一个了解，然后出一道实际应用题来考察他是否能灵活使用知识。
+Explore a topic's depth and breadth through guided and related follow-up questions, then present a practical problem to see how flexibly the candidate applies it.
 
-比如 Java 线程同步机制，可以出一道题：线程 A 执行了一段代码，然后创建了一个异步任务在线程 B 中执行，线程 A 需要等待线程 B 执行完成后才能继续执行，请问怎么实现？
+For example, after discussing Java synchronization, ask: “Thread A starts an asynchronous task on thread B and must wait for B to finish before continuing. How would you implement this?”
 
-”理论 + 应用题“的模式。敌知我之变，而不知我变之形。变之形，不计其数。
+Combine theory with application questions, varying the scenario as needed. An opponent may know that you adapt without knowing the form your response will take; the possibilities are countless.
 
-**实用不生僻**
+**Favor practical topics**
 
-考察工作中频繁用到的知识、技能和能力，不考察冷僻的知识。
+Assess knowledge and skills used regularly at work instead of obscure trivia.
 
-比如我偏向考察数据结构与算法、并发、设计 这三类。因为这三类非常基础非常核心。
+I favor data structures and algorithms, concurrency, and design because they are foundational.
 
-**综合串联式发问**
+**Connect questions across topics**
 
-知识之间总是相互联系着的，不要单独考察一个知识点。
+Knowledge is connected. Avoid assessing every concept in isolation.
 
-设计一个初始问题，比如说查找算法，然后从这个初始问题出发，串联起各个知识点。比如：
+Start with a topic such as search algorithms, then branch into related concepts:
 
 ![](../images/shared/502996-20220211115505399-72788909.png)
 
-在每一个技术点上，都可以应用以上发问技巧，导向不同的问题分支。同时考察面试者的深度、广度和应用能力。
+At each point, use the techniques above to explore different branches and assess depth, breadth, and application.
 
-**创造有个性的面试题库**
+**Build your own question bank**
 
-每个技术面试官都会有一个面试题库。持续积累面试题库，日常中突然想到的问题，就随手记录下来。
+Maintain a question bank and add useful questions as they occur to you in daily work.
 
-### 解决问题能力考察
+### Assessing Problem-Solving Ability
 
-仅仅只是技术基础还不够，通常最好结合实际业务，针对他项目里的业务，抽象出技术问题进行考察。
+Fundamentals alone are not enough. Use the candidate's project experience to frame technical questions around real business problems.
 
-解决思路重在层层递进。这一点对于面试官的要求也比较高，兼具良好的倾听能力、技术深度和业务经验。首先要仔细倾听候选人的阐述，找到适当的技术切入点，然后进行发问。如果进不去，那就容易考察失败。
-常见问题：
+Build the discussion step by step. This requires careful listening, technical depth, and business experience. Listen to the candidate's explanation, identify a useful technical starting point, and ask follow-up questions. Without that starting point, the assessment can easily stall.
 
-- 性能方面，qps, tps 多少？采用了什么优化措施，达成了什么效果？
-- 如果有大数据量，如何处理？如何保证稳定性？
-- 你觉得这个功能/模块/系统的关键点在哪里？有什么解决方案？
-- 为什么使用 XXX 而不是 YYY ？
-- 长字段如何做索引？
-- 还有哪些方案或思路？各自的利弊？
-- 第三方对接，如何应对外部接口的不稳定性？
-- 第三方对接，对接大量外部系统，代码可维护性？
-- 资损场景？严重故障场景？
-- 线上出现了 CPU 飙高，如何处理？ OOM 如何处理？ IO 读写尖刺，如何排查？
-- 线上运行过程中，出现过哪些问题？如何解决的？
-- 多个子系统之间的数据一致性问题？
-- 如果需要新增一个 XXX 需求，如何扩展？
-- 重来一遍，你觉得可以在哪些方面改进？
+Common questions include:
 
-系统可问的关联问题：
+- What were the QPS and TPS? What optimizations were made, and what did they achieve?
+- How would you handle a large data volume and maintain stability?
+- What are the critical parts of this feature, module, or system? What solutions are available?
+- Why did you choose one technology over another?
+- How would you index a long field?
+- What alternative approaches exist, and what are their tradeoffs?
+- How do you handle an unreliable third-party API?
+- How do you keep integration code maintainable when connecting many external systems?
+- What scenarios could cause financial loss or a serious outage?
+- How would you investigate high CPU usage, an `OutOfMemoryError`, or an I/O spike in production?
+- What production problems occurred, and how did you resolve them?
+- How is data kept consistent across subsystems?
+- How would you extend the system for a new requirement?
+- What would you improve if you built it again?
 
-- 绝大多数系统都有性能相关问题。如果没有性能问题，则说明是小系统，小系统就不值得考察了；
-- 中大型系统通常有技术选型问题；
-- 绝大多数系统都有改进空间；
-- 大多数业务系统都涉及可扩展性问题和可维护性问题；
-- 大多数重要业务系统都经历过比较惨重的线上教训；
-- 大数据量系统必定有稳定性问题；
-- 消费系统必定有时延和堆积问题；
-- 第三方系统对接必定涉及可靠性问题；
-- 分布式系统必定涉及可用性问题；
-- 多个子系统协同必定涉及数据一致性问题；
-- 交易系统有资损和故障场景；
+Related topics to explore in a system discussion include:
 
-**设计问题**
+- Performance. I believe most systems have performance concerns; if a system has none because it is small, I do not consider it worth examining in depth.
+- Technology choices in medium-sized and large systems.
+- Possible improvements to the system.
+- Extensibility and maintainability of business systems.
+- Lessons from serious production incidents.
+- Stability with large data volumes.
+- Latency and backlog in consumer systems.
+- Reliability of third-party integrations.
+- Availability in distributed systems.
+- Data consistency across cooperating subsystems.
+- Financial loss and failure scenarios in transaction systems.
 
-- 比如多个机器间共享大量业务对象，这些业务对象之间有些联合字段是重复的，如何去重？ 如果字段比较长，怎么处理？
-- 如果瞬时有大量请求涌入，如何保证服务器的稳定性？
-- 组件级别：设计一个本地缓存？ 设计一个分布式缓存？
-- 模块级别：设计一个任务调度模块？需要考虑什么因素？
-- 系统级别：设计一个内部系统，从各个部门获取销售数据然后统计出报表。复杂性体现在哪里？关键质量属性是哪些？模块划分，模块之间的关联关系？技术选型？
+**Design questions**
 
-**项目经历**
+- Many business objects are shared across machines, and some have duplicate combinations of fields. How would you deduplicate them? What if the fields are long?
+- How would you keep a server stable during a sudden request surge?
+- **Component:** Design a local cache or distributed cache.
+- **Module:** Design a task scheduler. What factors matter?
+- **System:** Design an internal reporting system that collects sales data from departments. Where is the complexity? What are the key quality attributes, modules, interactions, and technology choices?
 
-项目经历考察不宜超过两个。因为要深入考察一个项目的详情，所占用的时间还是比较大的。
+**Project experience**
 
-一般来说，会让候选人挑选一个他或她觉得最有收获的/最有挑战的/印象最深刻的/自己觉得特有意思/感受到挫折的项目。然后围绕这个项目进行发问。通常是从项目背景出发，考察项目的技术栈、项目模块及交互的整体理解、项目中遇到的有挑战性的技术问题及解决方案、排查和解决问题、代码可维护性问题、工程质量保障、重来一遍可以改进哪些等。
+Discuss no more than two projects in depth; understanding one project takes significant time.
 
-## 面试过程
+Let the candidate choose a project they found rewarding, challenging, memorable, interesting, or frustrating. Start with its context, then explore the technology stack, components and interactions, technical challenges and solutions, troubleshooting, maintainability, quality practices, and what they would improve.
 
-### 预先准备
+## The Interview Process
 
-面试官也需要做一些准备。比如熟悉候选者的技能优势、工作经历等，做一个面试设计。
+### Prepare in Advance
 
-在面试将要开始时，做好面试准备。此外，面试官也需要对公司的一些基本情况有所了解，尤其是公司所使用技术栈、业务全景及方向、工作内容、晋升制度等，这一点技术型候选人问得比较多。
+Interviewers should review the candidate's strengths and work history and plan the discussion.
 
-### 面试启动
+Be ready when the interview begins. Know the company's technology stack, business and direction, responsibilities, and promotion process; technical candidates often ask about these.
 
-一般以候选人自我介绍启动，不过候选人往往会谈得比较散，因此，我会直接提问：谈谈你有哪些优势以及自己觉得可以改进的地方？
+### Start the Interview
 
-然后以一个相对简单的基础题作为技术提问的开始：你熟悉哪些查找算法？大多数人是能答上顺序查找、二分查找、哈希查找的。
+Interviews often start with an introduction, but candidates may cover too much ground. I ask directly: “What are your strengths, and what would you like to improve?”
 
-### 问题设计
+I then start the technical discussion with a relatively simple question: “Which search algorithms do you know?” Most candidates can mention linear search, binary search, and hash lookup.
 
-提前阅读候选人简历，从简历中筛选出关键词，根据这些关键词进行有针对性地问题设计。
+### Design Questions
 
-比如候选人简历里提到 MVVM ，可以问 MVVM 与 MVC 的区别； 提到了观察者模式，可以谈谈观察者模式，顺便问问他还熟悉哪些设计模式。
+Read the resume in advance, identify key topics, and prepare targeted questions.
 
-可遵循“优势-标准-随机”原则：
+If it mentions MVVM, ask how it differs from MVC. If it mentions the observer pattern, discuss it and ask which other design patterns the candidate knows.
 
-- 首先，问他对哪方面技术感兴趣、投入较多（优势部分），根据其优势部分，阐述原理及实战应用；
-- 其次，问若干标准化的问题，看看他的原理理解、实战应用如何；
-- 最后，随机选一个问题，看看他的原理理解、实战应用如何；
+One approach is “strengths, standard questions, and a random question”:
 
-对于项目同样可以如此：
+- First, ask which technologies interest the candidate and where they have invested most. Explore the principles and practical application of a strength.
+- Next, ask standardized questions to assess understanding and application.
+- Finally, choose another question at random and explore its principles and use.
 
-- 首先，问他最有成就感的项目，技术栈、模块及关联、技术选型、设计关键问题、解决方案、实现细节、改进空间；
-- 其次，问他有挫折感的项目，问题在哪里、做过什么努力、如何改进；
+Use a similar approach for projects:
 
-### 宽松氛围
+- Ask about a project the candidate is proud of: its stack, modules and interactions, technology choices, key design problems, solutions, implementation details, and possible improvements.
+- Ask about a frustrating project: what went wrong, what they tried, and what they would improve.
 
-即使问的问题比较多比较难，也要注意保持宽松氛围。
+### Create a Relaxed Atmosphere
 
-在面试前，根据候选人基本信息适当调侃一下，比如一位候选人叫汪奎，那我就说：之前我们团队有位叫袁奎，我们都喊他奎爷。
+Keep the atmosphere relaxed even when asking many difficult questions.
 
-在面试过程中，适当提示，或者给出少量自己的看法，也能缓解候选人的紧张情绪。
+An appropriate light remark about something in the candidate's background can help. For example, when interviewing Wang Kui, I mentioned a former teammate named Yuan Kui whom we called “Master Kui.”
 
-### 学会倾听
+A useful hint or a brief perspective during the interview can also ease tension.
 
-多问少说，让候选者多表现。根据候选者的回答适当地引导或递进或横向移动。
+### Listen
 
-引导候选人表现他最优势的一面，让他或她感觉好一些：毕竟一场面试双方都付出了时间和精力，不应该是面试官 Diss 候选人的场合，而应该让彼此有更好的交流。很大可能，你也能从候选人那里学到不少东西。
+Ask more and talk less. Let candidates demonstrate their abilities, and use their answers to guide deeper or related questions.
 
-面试这件事，只不过双方的角色和立场有所不同，但并不代表面试官的水平就一定高于候选人。
+Help candidates show their strengths. Both sides invest time and effort, so an interview should be a useful exchange, not an opportunity to belittle someone. You may learn from the candidate too.
 
-### 记录重点
+Interviewer and candidate have different roles; the interviewer is not necessarily more capable.
 
-认真客观地记录候选人的回答，尽可能避免任何主观评价，亦不作任何加工（比如自己给总结一下，总结能力也是候选人的一个特质）。
+### Record Key Points
 
-### 多练习
+Record answers carefully and objectively. Avoid adding your own interpretation or summarizing for the candidate; their ability to summarize is itself relevant.
 
-模拟面试。
+### Practice
 
-### 作出判断
+Conduct mock interviews.
 
-面试过程是一种铺垫，关键的是作出判断。
+### Make a Decision
 
-作出判断最容易陷入误区的是：贪深求全。总希望候选人技术又深入又全面。实际上，这是一种奢望。如果候选人的技术能力又深入又全面，很可能也会面临两种情况：1. 候选人有更好的选择； 2. 候选人在其它方面可能存在不足，比如团队协作方面。
+The interview provides evidence for a decision.
 
-一个比较合适的尺度是：1. 他或她的技术水平能否胜任当前工作； 2. 他或她的技术水平与同组团队成员水平如何； 3. 他或她的技术水平是否与年限相对匹配，是否有潜力胜任更复杂的任务。
+Avoid expecting every candidate to be both exceptionally deep and broad. Such candidates may have better options, and technical strength alone does not establish strengths in areas such as teamwork.
 
-### 不同年龄看重的东西不一样
+Consider whether the candidate can do the current job, how their skills compare with the team, whether their experience and ability align, and whether they can grow into more complex work.
 
-对于三年以下的工程师，应当更看重其技术基础，因为这代表着他的未来潜能；同时也考察下他在实际开发中的体现，比如团队协作、业务经验、抗压能力、主动学习的热情和能力等。
+### Consider Experience Level
 
-对于三年以上的工程师，应当更看重其业务经验、解决问题能力，看看他或她是如何分析具体问题，在业务范畴内考察其技术基础的深度和广度。
+For engineers with less than three years of experience, emphasize fundamentals as an indicator of potential. Also consider teamwork, business experience, resilience, and enthusiasm and ability to learn.
 
-如何判断一个候选人的真实技术水平及是否适合所需，这方面，我也在学习中。
+For engineers with more than three years of experience, give more weight to business experience and problem-solving. Explore how they analyze concrete problems and apply their technical knowledge.
 
-## 面试初上路
+I am still learning how to assess a candidate's true ability and fit.
 
-- 提前准备好摄像头和音频，可以用耳机测试下。
-- 提前阅读候选人简历，从中筛选关键字，准备几个基本问题。
-- 多问技术基础题，培养下面试感觉。
-- 适当深入问下原理和实现。
-- 如果候选人简历有突出的地方，就先问那个部分；如果没有，就让候选人介绍项目背景，根据项目背景及经验来提问。
-- 小量练习“连问”技巧，直到能够熟悉使用。
-- 着重考察分析和解决问题的能力，必要的话，可以出个编程题。
-- 留出时间给对方问：你有什么想问的？并告知对方三个工作日内回复面试结果。
+## Getting Started as an Interviewer
 
-## 高效考察
+- Prepare the camera and audio; test them with headphones if needed.
+- Read the resume, identify key topics, and prepare basic questions.
+- Ask about fundamentals to build interviewing experience.
+- Explore principles and implementation where appropriate.
+- Start with a standout area on the resume. Otherwise, ask for project context and use it to guide questions.
+- Practice connecting follow-up questions until it feels natural.
+- Focus on analysis and problem-solving; use a coding problem when appropriate.
+- Leave time for the candidate's questions and explain that they will hear the result within three working days.
 
-当作为技术面试官有一定熟悉度时，就需要提升面试效率。即：在更少的时间内有效考察候选人的技术深度和技术广度。可以准备一些常见的问题，作为标准化测试。
+## Assessing Efficiently
 
-比如我喜欢考察内存管理及算法、数据库索引、缓存、并发、系统设计、问题分析和思考能力等子主题。
+Once you are comfortable interviewing, improve efficiency: assess technical depth and breadth in less time. Prepare common questions to provide a consistent baseline.
 
-- 熟悉哪些用于查找的数据结构和算法？ 请任选一种阐述其思想以及你认为有意思的地方。
-- 如果运行到一个 Java 方法，里面创建了一个对象列表，内存是如何分配的？什么时候可能导致栈溢出？什么时候可能导致 OOM ？ 导致 OOM 的原因有哪些？如何避免？ 线上是否有遇到过 OOM ，怎么解决的？
-- Java 分代垃圾回收算法是怎样的？ 项目里选用的垃圾回收器是怎样的？为什么选择这个回收器而不是那个？
-- Java 并发工具有哪些？不同工具适合于什么场景？
-- `Atomic` 原子类的实现原理 ？ `ConcurrentHashMap` 的实现原理？
-- 如何实现一个可重入锁？
-- 举个项目中的例子，哪些字段使用了索引？为什么是这些字段？你觉得还有什么优化空间？如何建一个好的索引？
-- 缓存的可设置的参数有哪些？分别的影响是什么？
-- Redis 过期策略有哪些？ 如何选择 redis 过期策略？
-- 如何实现病毒文件检测任务去重？
-- 熟悉哪些设计模式和设计原则？
-- 从 0 到 1 搭建一个模块/完整系统？你如何着手？
+I often cover memory management, algorithms, database indexes, caching, concurrency, system design, and problem analysis.
 
-如果候选人答不上，可以问：如果你来设计这样一个 XXX， 你会怎么做？
+- Which data structures and algorithms for lookup do you know? Explain one and what you find interesting about it.
+- When a Java method creates a list of objects, how is memory allocated? What can cause a stack overflow or `OutOfMemoryError`? How can you prevent an OOM? Have you resolved one in production?
+- How does generational garbage collection work in Java? Which collector did your project use, and why?
+- Which Java concurrency utilities do you know, and when would you use each?
+- How do the `Atomic` classes and `ConcurrentHashMap` work internally?
+- How would you implement a reentrant lock?
+- Which fields were indexed in a project, and why? What could be improved? How do you design a good index?
+- Which cache settings can be configured, and what does each affect?
+- What expiration strategies does Redis use, and how would you choose settings?
+- How would you deduplicate virus-scanning tasks?
+- Which design patterns and principles do you know?
+- How would you start building a module or complete system from scratch?
 
-时间占比大概为：技术基础（25-30 分钟） + 项目（20-25 分钟） + 候选人提问（5-10 分钟）
+If a candidate does not know an implementation, ask how they would design it themselves.
 
-## 给候选人的话
+One possible schedule is 25–30 minutes on fundamentals, 20–25 minutes on projects, and 5–10 minutes for the candidate's questions.
 
-**为什么候选人需要关注技术基础**
+## Advice for Candidates
 
-一个常见的疑惑是：开发业务系统的大多数时候，基本不涉及数据结构与算法的设计与实现，为什么要考察 `HashMap` 的实现原理？为什么要学好数据结构与算法、操作系统、网络通信这些基础课程？
+**Why focus on technical foundations?**
 
-现在我可以给出一个答案了：
+A common question is: if business development rarely requires implementing data structures and algorithms, why ask about `HashMap` internals or study algorithms, operating systems, and networking?
 
-- 正如上面所述，绝大多数的业务问题，实际上最终都会映射到基础技术问题上：数据结构与算法的实现、内存管理、并发控制、网络通信等；这些是理解现代互联网大规模程序以及解决程序疑难问题的基石，—— 除非能祝福自己永远都不会遇到疑难问题，永远都只满足于编写 CRUD；
-- 这些技术基础正是程序世界里最有趣最激动人心的地方。如果对这些不感兴趣，就很难在这个领域里深入进去，不如及早转行从事其它职业，非技术的世界一直都很精彩广阔（有时我也想多出去走走，不想局限于技术世界）；
-- 技术基础是程序员的内功，而具体技术则是招式。徒有招式而内功不深，遇到高手（优秀同行从业者的竞争及疑难杂症）容易不堪一击；
-- 具备扎实的专业技术基础，能达到的上限更高，未来更有可能胜任复杂的技术问题求解，或者在同样的问题上能够做到更好的方案；
-- 人们喜欢跟与自己相似的人合作，牛人倾向于与牛人合作能得到更好的效果；如果一个团队大部分人技术基础比较好，那么进来一个技术基础比较薄弱的人，协作成本会变高；如果你想和牛人一起合作拿到更好的结果，那就要让自己至少在技术基础上能够与牛人搭配的上；
-- 在 CRUD 的基础上拓展其它才能也不失为一种好的选择，但这不会是一个真正的程序员的姿态，顶多是有技术基础的产品经理、项目经理、HR、运营、客满等其它岗位人才。这是职业选择的问题，已经超出了考察程序员的范畴。
+Here is my view:
 
-**不要在意某个问题回答不上来**
+- Business problems often lead to fundamentals such as data structures, memory management, concurrency, and networking. These help engineers understand large systems and diagnose difficult problems, unless they never encounter such problems and are content to write only CRUD code.
+- I find these fundamentals among the most interesting parts of programming. If they do not interest you, it may be difficult to go deeper in the field; other careers offer many opportunities too. I sometimes want to explore beyond technology myself.
+- Fundamentals are like a martial artist's underlying strength; individual technologies are techniques. Techniques without a strong foundation may not hold up against difficult problems or competition.
+- Strong foundations can help you solve more complex problems and find better solutions to familiar ones.
+- People often work well with others who have similar foundations. On a team with strong fundamentals, a large gap can increase collaboration costs; strengthening yours can help you contribute alongside experienced peers.
+- Building other skills alongside CRUD development is another career choice. In my view, without deeper technical study, that path is less like being a dedicated programmer and more like becoming a technically literate product manager, project manager, HR professional, operations specialist, or customer-service professional. That career choice is beyond the scope of assessing programmers.
 
-如果面试官问你很多问题，而有些没有回答上来，不要在意。面试官很可能只是在测试你的技术深度和广度，然后判断你是否达到某个水位线。
+**Do not dwell on one unanswered question**
 
-重点是：有些问题你答得很有深度，也体现了你的深度思考能力。
+If you cannot answer every question, do not dwell on it. The interviewer may be exploring your depth and breadth to determine whether you meet the role's requirements.
 
-这一点是我当了技术面试官才领会到的。当然，并不是每位技术面试官都是这么想的，但我觉得这应该是个更合适的方式。
+What matters is that some answers demonstrate depth and thoughtful reasoning.
 
-## 参考资料
+I learned this after becoming an interviewer. Not every interviewer thinks this way, but I believe it is a better approach.
 
-- [技术面试官的 9 大误区](https://zhuanlan.zhihu.com/p/51404304)
-- [如何当一个好的面试官？](https://www.zhihu.com/question/26240321)
+## References
+
+- [Nine Common Mistakes Made by Technical Interviewers](https://zhuanlan.zhihu.com/p/51404304)
+- [How Can You Be a Good Interviewer?](https://www.zhihu.com/question/26240321)
 
 <!-- @include: @article-footer.snippet.md -->

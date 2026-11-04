@@ -81,7 +81,7 @@ If you have limited time, start with [Common System Design Interview Questions](
 
 - [Java Job Scheduling](./schedule-task.md): Timer, `ScheduledThreadPoolExecutor`, `DelayQueue`, timing wheels, Spring `@Scheduled`, and distributed schedulers.
 - [Real-Time Web Messaging](./web-real-time-message-push.md): Short polling, long polling, SSE, WebSocket, and messaging choices.
-- [J2EE Fundamentals](./J2EE基础知识.md): Servlets, request forwarding and redirects, sessions, and cookies.
+- [J2EE Fundamentals](./j2ee-fundamentals.md): Servlets, request forwarding and redirects, sessions, and cookies.
 
 ## Common Questions
 

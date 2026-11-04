@@ -33,7 +33,7 @@ So far, these materials have been downloaded more than **350,000 times** across 
 
 As always, there are no hoops to jump through. To get the PDFs for free, reply **PDF** to the **JavaGuide** WeChat public account.
 
-<img src="https://oss.javaguide.cn/github/javaguide/gongzhonghao-javaguide.png" alt="JavaGuide WeChat public account"  style="zoom: 43%; display: block; margin: 0 auto;" />
+<img src="../images/shared/javaguide-wechat-account.png" alt="JavaGuide WeChat public account"  style="zoom: 43%; display: block; margin: 0 auto;" />
 
 Since PDFs can become outdated, I recommend reading the continuously updated content online at [JavaGuide](https://javaguide.cn/) for the best experience.
 
@@ -59,4 +59,4 @@ Since PDFs can become outdated, I recommend reading the continuously updated con
 
 As always, there are no hoops to jump through. To get the PDFs for free, reply **PDF** to the **JavaGuide** WeChat public account.
 
-<img src="https://oss.javaguide.cn/github/javaguide/gongzhonghao-javaguide.png" alt="JavaGuide WeChat public account"  style="zoom: 43%; display: block; margin: 0 auto;" />
+<img src="../images/shared/javaguide-wechat-account.png" alt="JavaGuide WeChat public account"  style="zoom: 43%; display: block; margin: 0 auto;" />

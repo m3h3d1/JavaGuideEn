@@ -13,7 +13,7 @@ head:
 
 I have a friend who runs a small website and wants to add Web push notifications for inbox messages. The feature is the familiar red notification badge shown below.
 
-![Web inbox notification](./images/shared/1460000042192380.png)
+![Web inbox notification](./images/shared/web-inbox-notification.png)
 
 He hasn't decided how to implement it, so I have outlined a few options and provided simple examples.
 
@@ -31,13 +31,13 @@ Example of a mobile push notification:
 
 Example of a Web push notification:
 
-![Example of a Web push notification](./images/shared/image-20220819100512941.png)
+![Example of a Web push notification](./images/shared/web-push-notification-example.png)
 
 Before looking at implementations, let's clarify the requirement. When an event occurs, such as a user sharing a resource or the server sending a notification, the red badge on the web page should increment immediately.
 
 The server usually stores notifications in one or more tables, recording messages associated with different user events. The client can either query (pull) the user's unread-message count or receive it from the server (push).
 
-![Message notification tables](./images/shared/1460000042192384.png)
+![Message notification tables](./images/shared/message-notification-table-schema.png)
 
 Message delivery uses either push or pull. Let's look at the common approaches.
 
@@ -76,7 +76,7 @@ Long polling is still a form of polling. If the server has no new data, it holds
 
 This example uses `DeferredResult`, Spring's wrapper around the asynchronous request mechanism introduced in Servlet 3.0. It lets the application return a result later.
 
-![Long polling diagram](./images/shared/1460000042192386.png)
+![Long polling diagram](./images/shared/long-polling-flow.png)
 
 `DeferredResult` lets the container release the Servlet thread handling the request. Later, an application thread, message callback, or other event source can call `setResult()` to resume response processing. `DeferredResult` does not start a worker thread; the application determines which thread runs the business logic.
 
@@ -156,7 +156,7 @@ iframe streaming inserts a hidden `<iframe>` into the page. Its `src` requests t
 
 The server usually sends HTML or embedded JavaScript to update the page in real time.
 
-![iframe streaming diagram](./images/shared/1460000042192388.png)
+![iframe streaming diagram](./images/shared/iframe-streaming-flow.png)
 
 This approach is simple to implement; the frontend only needs an `<iframe>` element.
 
@@ -168,7 +168,7 @@ The server must keep the response open, write new data when available, and flush
 
 iframe streaming has high server overhead. Browsers such as IE and Chrome also remain in the loading state, with the icon spinning continuously.
 
-![iframe streaming in action](./images/shared/1460000042192389.gif)
+![iframe streaming in action](./images/shared/iframe-streaming-demo.gif)
 
 iframe streaming is inconvenient and strongly discouraged.
 
@@ -182,13 +182,13 @@ Streaming chat is a typical use case for SSE. The server can continuously write 
 
 SSE is based on HTTP. The server does not open a connection without a request; the client initiates the request, and the server keeps the HTTP response open while continuously writing events.
 
-![SSE diagram](./images/shared/1460000042192390.png)
+![SSE diagram](./images/shared/server-sent-events-illustration.png)
 
 SSE opens a one-way channel between the server and client. Instead of a single response payload, the server returns a `text/event-stream` stream and sends updates to the client as they become available.
 
 The idea is similar to online video playback, where a stream is continuously sent to the browser. You can also think of it as a long-running download.
 
-![SSE illustration](./images/shared/1460000042192391.png)
+![SSE illustration](./images/shared/server-sent-events-architecture.png)
 
 SSE and WebSocket both enable communication between a server and browser and allow the server to push messages to the client, but they differ in several ways:
 
@@ -283,7 +283,7 @@ The `Map<String, SseEmitter>` example above keeps only one connection per user; 
 
 **Note:** SSE is not supported by Internet Explorer, but is supported by other major browsers.
 
-![SSE browser compatibility](./images/shared/1460000042192393.png)
+![SSE browser compatibility](./images/shared/server-sent-events-browser-support.png)
 
 ### WebSocket
 
@@ -291,7 +291,7 @@ WebSocket is a familiar way to implement message push, and we have already compa
 
 WebSocket is a protocol for full-duplex communication over a TCP connection. After a handshake, the browser and server establish a persistent connection and can send data in both directions.
 
-![WebSocket diagram](../cs-basics/images/shared/1460000042192394.png)
+![WebSocket diagram](../cs-basics/images/shared/websocket-communication-diagram.png)
 
 The WebSocket handshake and communication work as follows:
 
@@ -462,7 +462,7 @@ The frontend opens a WebSocket connection, monitors its state, and receives data
 
 The page establishes a WebSocket connection on initialization and can then communicate in both directions.
 
-![](./images/shared/1460000042192395.png)
+![](./images/shared/websocket-server-log.png)
 
 ### MQTT
 

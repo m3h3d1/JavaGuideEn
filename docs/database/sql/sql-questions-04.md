@@ -13,6 +13,8 @@ head:
 
 > Questions are from [Nowcoder - Advanced SQL Challenges](https://www.nowcoder.com/exam/oj?page=1&tab=SQL%E7%AF%87&topicId=240).
 
+The sample data uses English category labels and nicknames for readability.
+
 Depending on your experience and interview needs, you may choose to skip the harder problems.
 
 ## Window Functions
@@ -78,11 +80,11 @@ Window functions are generally used with an `OVER` clause, which defines the win
 
 Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
-| id  | exam_id | tag  | difficulty | duration | release_time        |
-| --- | ------- | ---- | ---------- | -------- | ------------------- |
-| 1   | 9001    | SQL  | hard       | 60       | 2021-09-01 06:00:00 |
-| 2   | 9002    | SQL  | hard       | 60       | 2021-09-01 06:00:00 |
-| 3   | 9003    | 算法 | medium     | 80       | 2021-09-01 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | SQL        | hard       | 60       | 2021-09-01 06:00:00 |
+| 2   | 9002    | SQL        | hard       | 60       | 2021-09-01 06:00:00 |
+| 3   | 9003    | Algorithms | medium     | 80       | 2021-09-01 10:00:00 |
 
 Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
@@ -101,14 +103,14 @@ Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`
 
 Find the top three users by score in each exam category. If two users have the same maximum score, rank the user with the higher minimum score first. If still tied, rank the user with the higher `uid` first. The sample output is:
 
-| tid  | uid  | ranking |
-| ---- | ---- | ------- |
-| SQL  | 1003 | 1       |
-| SQL  | 1004 | 2       |
-| SQL  | 1002 | 3       |
-| 算法 | 1005 | 1       |
-| 算法 | 1006 | 2       |
-| 算法 | 1003 | 3       |
+| tid        | uid  | ranking |
+| ---------- | ---- | ------- |
+| SQL        | 1003 | 1       |
+| SQL        | 1004 | 2       |
+| SQL        | 1002 | 3       |
+| Algorithms | 1005 | 1       |
+| Algorithms | 1006 | 2       |
+| Algorithms | 1003 | 3       |
 
 **Explanation:** The categories with scored attempts are SQL and Algorithms. For SQL, users 1001, 1002, 1003, and 1004 have maximum scores of 81, 81, 89, and 85, and minimum scores of 78, 81, 86, and 40. Ranking by maximum score, then minimum score, gives 1003, 1004, and 1002 as the top three.
 
@@ -139,11 +141,11 @@ WHERE ranking <= 3
 
 Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
-| id  | exam_id | tag  | difficulty | duration | release_time        |
-| --- | ------- | ---- | ---------- | -------- | ------------------- |
-| 1   | 9001    | SQL  | hard       | 60       | 2021-09-01 06:00:00 |
-| 2   | 9002    | C++  | hard       | 60       | 2021-09-01 06:00:00 |
-| 3   | 9003    | 算法 | medium     | 80       | 2021-09-01 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | SQL        | hard       | 60       | 2021-09-01 06:00:00 |
+| 2   | 9002    | C++        | hard       | 60       | 2021-09-01 06:00:00 |
+| 3   | 9003    | Algorithms | medium     | 80       | 2021-09-01 10:00:00 |
 
 Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
@@ -301,20 +303,20 @@ ORDER BY exam_complete_cnt DESC,
 
 Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
-| id  | uid  | nick_name    | achievement | level | job  | register_time       |
-| --- | ---- | ------------ | ----------- | ----- | ---- | ------------------- |
-| 1   | 1001 | 牛客 1 号    | 3200        | 7     | 算法 | 2020-01-01 10:00:00 |
-| 2   | 1002 | 牛客 2 号    | 2500        | 6     | 算法 | 2020-01-01 10:00:00 |
-| 3   | 1003 | 牛客 3 号 ♂ | 2200        | 5     | 算法 | 2020-01-01 10:00:00 |
+| id  | uid  | nick_name | achievement | level | job        | register_time       |
+| --- | ---- | --------- | ----------- | ----- | ---------- | ------------------- |
+| 1   | 1001 | User 1    | 3200        | 7     | Algorithms | 2020-01-01 10:00:00 |
+| 2   | 1002 | User 2    | 2500        | 6     | Algorithms | 2020-01-01 10:00:00 |
+| 3   | 1003 | User 3 ♂ | 2200        | 5     | Algorithms | 2020-01-01 10:00:00 |
 
 Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
-| id  | exam_id | tag    | difficulty | duration | release_time        |
-| --- | ------- | ------ | ---------- | -------- | ------------------- |
-| 1   | 9001    | SQL    | hard       | 60       | 2020-01-01 10:00:00 |
-| 2   | 9002    | SQL    | hard       | 80       | 2020-01-01 10:00:00 |
-| 3   | 9003    | 算法   | hard       | 80       | 2020-01-01 10:00:00 |
-| 4   | 9004    | PYTHON | medium     | 70       | 2020-01-01 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | SQL        | hard       | 60       | 2020-01-01 10:00:00 |
+| 2   | 9002    | SQL        | hard       | 80       | 2020-01-01 10:00:00 |
+| 3   | 9003    | Algorithms | hard       | 80       | 2020-01-01 10:00:00 |
+| 4   | 9004    | PYTHON     | medium     | 70       | 2020-01-01 10:00:00 |
 
 Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
@@ -439,12 +441,12 @@ ORDER BY t1.uid,
 
 Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
-| id  | exam_id | tag    | difficulty | duration | release_time        |
-| --- | ------- | ------ | ---------- | -------- | ------------------- |
-| 1   | 9001    | SQL    | hard       | 60       | 2021-01-01 10:00:00 |
-| 2   | 9002    | C++    | hard       | 80       | 2021-01-01 10:00:00 |
-| 3   | 9003    | 算法   | hard       | 80       | 2021-01-01 10:00:00 |
-| 4   | 9004    | PYTHON | medium     | 70       | 2021-01-01 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | SQL        | hard       | 60       | 2021-01-01 10:00:00 |
+| 2   | 9002    | C++        | hard       | 80       | 2021-01-01 10:00:00 |
+| 3   | 9003    | Algorithms | hard       | 80       | 2021-01-01 10:00:00 |
+| 4   | 9004    | PYTHON     | medium     | 70       | 2021-01-01 10:00:00 |
 
 Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
@@ -481,13 +483,13 @@ Explanation: In the first half of 2020, completed attempts were recorded for thr
 
 In the first half of 2021, completed attempts were recorded for two categories: Algorithms and SQL. Their counts were 3 and 2, with ranks 1 and 2:
 
-| tag    | start_year | exam_cnt | exam_cnt_rank |
-| ------ | ---------- | -------- | ------------- |
-| C++    | 2020       | 3        | 1             |
-| SQL    | 2020       | 3        | 1             |
-| PYTHON | 2020       | 2        | 3             |
-| 算法   | 2021       | 3        | 1             |
-| SQL    | 2021       | 2        | 2             |
+| tag        | start_year | exam_cnt | exam_cnt_rank |
+| ---------- | ---------- | -------- | ------------- |
+| C++        | 2020       | 3        | 1             |
+| SQL        | 2020       | 3        | 1             |
+| PYTHON     | 2020       | 2        | 3             |
+| Algorithms | 2021       | 3        | 1             |
+| SQL        | 2021       | 2        | 2             |
 
 Only SQL has data for both periods. Its completed attempts decreased from 3 to 2, a decline of 33.3% (rounded to one decimal place), and its rank moved from 1 to 2.
 
@@ -595,12 +597,12 @@ ORDER BY
 
 Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
-| id  | exam_id | tag    | difficulty | duration | release_time        |
-| --- | ------- | ------ | ---------- | -------- | ------------------- |
-| 1   | 9001    | SQL    | hard       | 60       | 2020-01-01 10:00:00 |
-| 2   | 9002    | C++    | hard       | 80       | 2020-01-01 10:00:00 |
-| 3   | 9003    | 算法   | hard       | 80       | 2020-01-01 10:00:00 |
-| 4   | 9004    | PYTHON | medium     | 70       | 2020-01-01 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | SQL        | hard       | 60       | 2020-01-01 10:00:00 |
+| 2   | 9002    | C++        | hard       | 80       | 2020-01-01 10:00:00 |
+| 3   | 9003    | Algorithms | hard       | 80       | 2020-01-01 10:00:00 |
+| 4   | 9004    | PYTHON     | medium     | 70       | 2020-01-01 10:00:00 |
 
 Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 

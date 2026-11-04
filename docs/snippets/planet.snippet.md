@@ -20,7 +20,7 @@ Here are some of the services included (click the image for details about Knowle
 
 Here are some recent reviews from members. They are all genuine. Some training companies and agencies make up reviews to sell expensive services, which is unfortunately common in the industry.
 
-![Genuine member reviews of Knowledge Planet](https://oss.javaguide.cn/xingqiu/praise-that-the-planet-received.png)
+![Genuine member reviews of Knowledge Planet](../images/shared/knowledge-planet-member-reviews.png)
 
 **I don't use hard-sell tactics. I focus on making useful content and hope it helps.** If you're interested, take about three minutes to read the [full introduction to JavaGuide's Knowledge Planet](../about-the-author/zhishixingqiu-two-years.md).
 

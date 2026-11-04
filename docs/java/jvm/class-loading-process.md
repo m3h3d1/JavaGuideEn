@@ -88,9 +88,19 @@ The main purpose of symbolic reference verification is to ensure that resolution
 2. Conceptually, class variables belong to the **method area**. Before JDK 7, HotSpot implemented the method area using PermGen, which matched this model. In JDK 7 and later, HotSpot moved the string pool, static variables, and some other data out of PermGen and onto the heap; class variables are stored on the Java heap alongside their `Class` objects. See [errata #75 for _Understanding the JVM (3rd Edition)_](https://github.com/fenixsoft/jvm_book/issues/75).
 3. The initial value is usually the type's default zero value, such as `0`, `0L`, `null`, or `false`. For example, `public static int value = 111` typically receives `0` during preparation and `111` during initialization. If a field has a `ConstantValue` attribute, preparation assigns the value specified by that attribute directly. A compile-time constant such as `public static final int value = 111` is a typical example, but not every `static final` field has a `ConstantValue` attribute.
 
-**Default values of primitive types** (image from section 7.3.3 of _Understanding the JVM_, 3rd edition):
+**Default values of primitive types** (from section 7.3.3 of _Understanding the JVM_, 3rd edition):
 
-![Default values of primitive types](../images/shared/-.png)
+| Type           | Default value |
+| -------------- | ------------- |
+| `int`          | `0`           |
+| `long`         | `0L`          |
+| `short`        | `(short) 0`   |
+| `char`         | `'\u0000'`    |
+| `byte`         | `(byte) 0`    |
+| `boolean`      | `false`       |
+| `float`        | `0.0f`        |
+| `double`       | `0.0d`        |
+| Reference type | `null`        |
 
 ### Resolution
 

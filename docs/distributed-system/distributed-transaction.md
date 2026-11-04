@@ -41,7 +41,7 @@ The classic example is a bank transfer. If Alex transfers $1,000 to Sam, two ope
 
 A transaction treats these operations as one logical unit: either both succeed or both fail. This prevents Alex's balance from decreasing without Sam's balance increasing.
 
-![](./images/shared/-.png)
+![](./images/shared/bank-transfer-transaction-diagram.png)
 
 ## Database Transactions
 
@@ -88,7 +88,7 @@ The author of [_Designing Data-Intensive Applications_ (DDIA)](https://book.doub
 
 _Designing Data-Intensive Applications_ is highly recommended and rewards rereading. Its Chinese translation is available on GitHub: [Vonng/ddia](https://github.com/Vonng/ddia).
 
-![](https://img-blog.csdnimg.cn/20210526162552353.png)
+![](./images/shared/distributed-transaction-overview.png)
 
 **How are database transactions implemented?**
 
@@ -387,7 +387,7 @@ RocketMQ, Kafka, Pulsar, and QMQ provide transaction-related features. These let
 
 This section uses RocketMQ as an example (image source: _Advanced Message Queueing_). Further reading: [RocketMQ transactional message documentation](https://rocketmq.apache.org/docs/featureBehavior/04transactionmessage/).
 
-![](https://img-blog.csdnimg.cn/2021060810404597.png)
+![](./images/shared/distributed-transaction-protocol.png)
 
 1. The MQ producer (for example, a shipping service) starts a transaction with the message queue and sends a “half message” to the MQ server/broker. The message is hidden from subscribers/consumers (for example, a third-party notification service) until the transaction commits.
 2. After the half message is sent successfully, the producer executes its local transaction.
@@ -401,13 +401,13 @@ The RocketMQ broker periodically checks the producer for the outcome of its loca
 
 The transaction-check mechanism relies on an interface implemented by the business code. For example, to check whether a local transaction created shipping information successfully, query the database to see whether that information exists.
 
-![](https://img-blog.csdnimg.cn/20210608114710962.png)
+![](./images/shared/distributed-transaction-sequence.png)
 
 **What if a regular message is not consumed successfully?**
 
 If message consumption fails, RocketMQ retries it automatically. If it still fails after the maximum number of retries, RocketMQ treats it as a problematic message and moves it to a **dead-letter queue**.
 
-![](https://img-blog.csdnimg.cn/20210608120207740.png)
+![](./images/shared/distributed-transaction-flow.png)
 
 Messages in the dead-letter queue usually require manual investigation and handling.
 
@@ -441,7 +441,7 @@ Saga is a solution for long-running transactions. Its core idea is to split a lo
 
 The following diagram is from Microsoft's technical documentation on [Saga distributed transactions](https://docs.microsoft.com/zh-cn/azure/architecture/reference-architectures/saga/saga).
 
-![](https://img-blog.csdnimg.cn/20210611101344496.png)
+![](./images/shared/distributed-transaction-example.png)
 
 If all the short transactions T1, T2, ..., Tn complete successfully, the overall transaction succeeds. Otherwise, the system enters a recovery mode.
 

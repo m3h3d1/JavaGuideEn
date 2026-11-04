@@ -26,13 +26,13 @@ Many people save different versions by copying the whole project directory and r
 
 To address this, people developed local version-control systems that record file changes in a simple database.
 
-![Local version-control system](https://oss.javaguide.cn/github/javaguide/tools/git/%E6%9C%AC%E5%9C%B0%E7%89%88%E6%9C%AC%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F.png)
+![Local version-control system](./images/shared/local-version-control-system.png)
 
 ### Centralized Version-Control Systems
 
 The next challenge was enabling developers on different computers to collaborate. Centralized version-control systems (CVCS) addressed this by keeping all file revisions on one central server. Collaborators connect to that server to retrieve the latest files or submit changes.
 
-![Centralized version-control system](https://oss.javaguide.cn/github/javaguide/tools/git/%E9%9B%86%E4%B8%AD%E5%8C%96%E7%9A%84%E7%89%88%E6%9C%AC%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F.png)
+![Centralized version-control system](./images/shared/centralized-version-control-system.png)
 
 This solved the collaboration problem, but centralized systems still have some drawbacks:
 
@@ -45,7 +45,7 @@ Distributed version-control systems (DVCS) addressed these limitations. Git is a
 
 Instead of retrieving only the latest file snapshot, each client gets a complete copy of the repository. If a collaboration server fails, any local clone can be used to restore it. Each clone is effectively a full backup of the repository.
 
-![Distributed version-control system](https://oss.javaguide.cn/github/javaguide/tools/git/%E5%88%86%E5%B8%83%E5%BC%8F%E7%89%88%E6%9C%AC%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F.png)
+![Distributed version-control system](./images/shared/distributed-version-control-system.png)
 
 Distributed systems can work offline because everyone has a complete repository on their own computer. After changing files, you can send your changes to others. In practice, teams rarely push changes directly to each other. Instead, they use a server as a convenient place to exchange changes. The server is not essential; it just makes sharing easier.
 
@@ -69,7 +69,7 @@ Most version-control systems, including CVS, Subversion, Perforce, and Bazaar, s
 
 The diagram below shows the basic idea: whenever you commit a file, the system records its changes as increments, or deltas (Δ).
 
-![](https://oss.javaguide.cn/github/javaguide/tools/git/2019-3deltas.png)
+![How version-control systems store file changes as deltas across check-ins](./images/shared/git-delta-storage.png)
 
 **How do we get the latest version of a file?**
 
@@ -81,7 +81,7 @@ If there are many changes, reconstructing the latest file can take time and comp
 
 Git stores data differently. It treats it more like a series of snapshots of a small filesystem. Whenever you commit an update or save a project state, Git takes a snapshot of the files at that point and stores an index to it. For efficiency, if a file hasn't changed, Git doesn't store it again; it keeps a link to the previously stored file. Git treats data more like a **stream of snapshots**.
 
-![](https://oss.javaguide.cn/github/javaguide/tools/git/2019-3snapshots.png)
+![How Git stores file snapshots across commits](./images/shared/git-snapshot-storage.png)
 
 ### The Three States in Git
 
@@ -93,7 +93,7 @@ A file in Git can be in one of three states:
 
 This leads to three areas in a Git project: the **Git directory** (`.git`), the **working directory**, and the **staging area**.
 
-![](https://oss.javaguide.cn/github/javaguide/tools/git/2019-3areas.png)
+![Git's working directory, staging area, and repository](./images/shared/git-three-areas.png)
 
 **A basic Git workflow looks like this:**
 
@@ -219,7 +219,7 @@ When you switch branches, Git updates the working directory to match the latest 
 
 Older Git versions also commonly use `git checkout test`.
 
-![](https://oss.javaguide.cn/github/javaguide/tools/git/2019-3%E5%88%87%E6%8D%A2%E5%88%86%E6%94%AF.png)
+![Switching to the test branch with `git switch`](./images/shared/git-switching-branches.png)
 
 Create and switch to a branch in one command:
 

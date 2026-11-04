@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 490" role="img" aria-labelledby="title desc">
+  <title id="title">Shell scripting in backend job requirements</title>
+  <desc id="desc">Examples from campus Java and backend job listings mention Linux or Unix, Shell or other scripting languages, networks, and databases.</desc>
+  <rect width="1000" height="490" rx="12" fill="#f5f7fa" />
+  <text x="500" y="55" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="700" fill="#203247">Shell Scripting in Backend Job Requirements</text>
+  <g font-family="Arial, sans-serif" fill="#243447">
+    <rect x="34" y="91" width="296" height="355" rx="10" fill="#fff" stroke="#d5dde6" />
+    <rect x="352" y="91" width="296" height="355" rx="10" fill="#fff" stroke="#d5dde6" />
+    <rect x="670" y="91" width="296" height="355" rx="10" fill="#fff" stroke="#d5dde6" />
+    <rect x="34" y="91" width="296" height="58" rx="10" fill="#e8f2ff" />
+    <rect x="352" y="91" width="296" height="58" rx="10" fill="#e9f7f0" />
+    <rect x="670" y="91" width="296" height="58" rx="10" fill="#fff2df" />
+    <text x="182" y="127" text-anchor="middle" font-size="19" font-weight="700">Campus Java Developer</text>
+    <text x="500" y="127" text-anchor="middle" font-size="19" font-weight="700">Backend Developer</text>
+    <text x="818" y="127" text-anchor="middle" font-size="19" font-weight="700">Java Developer</text>
+  </g>
+  <g font-family="Arial, sans-serif" font-size="16" fill="#334155">
+    <text x="57" y="184">• Bachelor's degree or above</text>
+    <text x="57" y="225">• Java, HTML, CSS, and JavaScript</text>
+    <text x="57" y="266">• Linux/Unix project experience</text>
+    <text x="57" y="307">• Python, Shell, or Perl</text>
+    <text x="57" y="348">• Backend services and web systems</text>
+
+    <text x="375" y="184">• C, C++, or Java fundamentals</text>
+    <text x="375" y="225">• Algorithms and data structures</text>
+    <text x="375" y="266">• TCP/UDP, sockets, and networking</text>
+    <text x="375" y="307">• Python, Shell, or Perl</text>
+    <text x="375" y="348">• SQL, NoSQL, and key-value stores</text>
+    <text x="375" y="389">• Multithreaded programming</text>
+
+    <text x="693" y="184">• Linux/Unix</text>
+    <text x="693" y="225">• Java and scripting languages</text>
+    <text x="693" y="266">• Relational and NoSQL databases</text>
+    <text x="693" y="307">• TCP/IP and HTTP</text>
+    <text x="693" y="348">• Network and backend development</text>
+  </g>
+  <text x="500" y="472" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#64748b">Examples summarized from job listings shown in the original image.</text>
+</svg>

@@ -30,7 +30,7 @@ Authentication:
 
 Authorization:
 
-![Access denied](../images/shared/20210604161032412.png)
+![Access denied](../images/shared/unauthorized-access-message.png)
 
 Systems usually use both to protect their security.
 
@@ -48,11 +48,11 @@ In RBAC, permissions are associated with roles. Users receive the permissions of
 
 A common database design for this model uses five tables, two of which establish relationships between the other tables:
 
-![](../images/shared/.png.png)
+![](../images/shared/rbac-database-schema.png)
 
 This model lets us create different roles and assign each role a different set of permissions, such as menu access.
 
-![](../images/shared/books-.png)
+![](../images/shared/rbac-role-menu-example.png)
 
 Systems with strict access control requirements commonly use RBAC.
 
@@ -202,7 +202,7 @@ When a client explicitly sends a token as a Bearer token in the HTTP `Authorizat
 
 Do not assume that tokens should therefore be stored in `localStorage` or `sessionStorage`. Malicious scripts running on the same origin can read Web Storage, so one XSS vulnerability may expose the token. Browser applications can use a Backend For Frontend (BFF), or cookies with `HttpOnly`, `Secure`, and an appropriate `SameSite` attribute. Cookie-based approaches should also use CSRF tokens, `Origin`/`Referer` validation, and other suitable protections.
 
-![](../images/shared/20210615161108272.png)
+![](../images/shared/browser-local-storage-token.png)
 
 Note that neither `Cookie` nor `Token` authentication prevents **Cross-Site Scripting (XSS)**. `HttpOnly` reduces the risk of scripts directly reading a cookie, but XSS can still let an attacker make requests as the user. Use layered defenses such as correct output encoding, HTML sanitization when needed, and CSP.
 
@@ -251,7 +251,7 @@ Third-party login is a common OAuth 2.0 use case. OAuth 2.0 is also widely used 
 
 The diagram below illustrates [Slack OAuth 2.0 third-party login](https://api.slack.com/legacy/oauth):
 
-![](../images/shared/20210615151716340.png)
+![](../images/shared/oauth-authorization-flow.png)
 
 **Recommended reading:**
 

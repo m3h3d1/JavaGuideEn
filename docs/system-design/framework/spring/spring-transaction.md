@@ -36,7 +36,7 @@ Money transfers are a classic example. If Alice transfers 1,000 yuan to Bob, two
 
 If an error occurs between these operations—for example, a bank system crash or network failure—Alice's balance could decrease without Bob's balance increasing. A transaction ensures that both operations succeed or both fail.
 
-![Transaction illustration](../../../distributed-system/images/shared/-.png)
+![Transaction illustration](../../../distributed-system/images/shared/bank-transfer-transaction-diagram.png)
 
 ```java
 public class OrdersService {

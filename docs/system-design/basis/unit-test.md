@@ -84,7 +84,7 @@ The idea is to write test cases before implementing a feature, then write the pr
 
 The TDD cycle is **Red – Green – Refactor**.
 
-![](https://static001.geekbang.org/resource/image/09/7f/090e1fc6aff08b4aa66376f776c2337f.png)
+![](../images/shared/unit-test-pyramid.png)
 
 TDD can be difficult to adopt because it requires a different way of thinking from traditional development and calls for strong development skills.
 

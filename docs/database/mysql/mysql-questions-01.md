@@ -623,7 +623,7 @@ The classic example is a bank transfer. Suppose Alex transfers 1,000 units of cu
 
 A transaction treats these operations as one logical unit. They either both succeed or both fail, preventing Alex's balance from decreasing without Sam's balance increasing.
 
-![Transaction diagram](../../distributed-system/images/shared/-.png)
+![Transaction diagram](../../distributed-system/images/shared/bank-transfer-transaction-diagram.png)
 
 ### What Is a Database Transaction?
 

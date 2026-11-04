@@ -45,7 +45,7 @@ Shell is widely used in IT operations, including service monitoring, deployment,
 
 Many technology companies also expect backend developers to know some Shell scripting. The image below shows examples from job listings at well-known companies.
 
-![Shell scripting requirements from major technology companies](../images/shared/60190220.png)
+![Examples of Shell scripting requirements in backend job listings](../images/shared/shell-job-requirements-en.svg)
 
 ### What Is a Shell?
 
@@ -84,7 +84,7 @@ In Shell scripts, `#` starts a comment. **The first line is usually a shebang (`
 
 4. Run the script with `./helloworld.sh`. The `./` tells the system to look in the current directory. Without it, the Shell searches the directories listed in `PATH`, which usually do not include the current directory. This also applies to other executable files.
 
-![Hello world in Shell](../images/shared/55296212.png)
+![Hello world in Shell](../images/shared/shell-hello-world-output.png)
 
 ## Shell Variables
 
@@ -122,7 +122,7 @@ echo $hello
 echo  "helloworld!"
 ```
 
-![Using a user-defined variable](../images/shared/19835037.png)
+![Using a user-defined variable](../images/shared/shell-variable-output.png)
 
 **Variable naming rules in Shell:**
 
@@ -196,7 +196,7 @@ echo $greeting_2  $greeting_3
 
 Output:
 
-![Output from Shell string concatenation](../images/shared/51148933.png)
+![Output from Shell string concatenation](../images/shared/shell-string-concatenation-output.png)
 
 **Getting a string's length:**
 

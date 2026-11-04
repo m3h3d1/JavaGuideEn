@@ -13,6 +13,8 @@ head:
 
 > Questions are from [Nowcoder - Advanced SQL Challenges](https://www.nowcoder.com/exam/oj?page=1&tab=SQL%E7%AF%87&topicId=240).
 
+The sample data uses English category labels and nicknames for readability. The string-length examples retain Chinese text to show how byte length differs from character length.
+
 Depending on your experience and interview needs, you may choose to skip the harder problems.
 
 ## Handling NULL Values
@@ -100,18 +102,18 @@ HAVING
 
 Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
-| id  | uid  | nick_name | achievement | level | job  | register_time       |
-| --- | ---- | --------- | ----------- | ----- | ---- | ------------------- |
-| 1   | 1001 | 牛客 1 号 | 10          | 0     | 算法 | 2020-01-01 10:00:00 |
-| 2   | 1002 | 牛客 2 号 | 2100        | 6     | 算法 | 2020-01-01 10:00:00 |
+| id  | uid  | nick_name | achievement | level | job        | register_time       |
+| --- | ---- | --------- | ----------- | ----- | ---------- | ------------------- |
+| 1   | 1001 | User 1    | 10          | 0     | Algorithms | 2020-01-01 10:00:00 |
+| 2   | 1002 | User 2    | 2100        | 6     | Algorithms | 2020-01-01 10:00:00 |
 
 Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
-| id  | exam_id | tag  | difficulty | duration | release_time        |
-| --- | ------- | ---- | ---------- | -------- | ------------------- |
-| 1   | 9001    | SQL  | hard       | 60       | 2020-01-01 10:00:00 |
-| 2   | 9002    | SQL  | easy       | 60       | 2020-01-01 10:00:00 |
-| 3   | 9004    | 算法 | medium     | 80       | 2020-01-01 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | SQL        | hard       | 60       | 2020-01-01 10:00:00 |
+| 2   | 9002    | SQL        | easy       | 60       | 2020-01-01 10:00:00 |
+| 3   | 9004    | Algorithms | medium     | 80       | 2020-01-01 10:00:00 |
 
 Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
@@ -161,13 +163,13 @@ ORDER BY UID
 
 Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
-| id  | uid  | nick_name   | achievement | level | job  | register_time       |
-| --- | ---- | ----------- | ----------- | ----- | ---- | ------------------- |
-| 1   | 1001 | 牛客 1 号   | 1000        | 2     | 算法 | 2020-01-01 10:00:00 |
-| 2   | 1002 | 牛客 2 号   | 1200        | 3     | 算法 | 2020-01-01 10:00:00 |
-| 3   | 1003 | 进击的 3 号 | 2200        | 5     | 算法 | 2020-01-01 10:00:00 |
-| 4   | 1004 | 牛客 4 号   | 2500        | 6     | 算法 | 2020-01-01 10:00:00 |
-| 5   | 1005 | 牛客 5 号   | 3000        | 7     | C++  | 2020-01-01 10:00:00 |
+| id  | uid  | nick_name | achievement | level | job        | register_time       |
+| --- | ---- | --------- | ----------- | ----- | ---------- | ------------------- |
+| 1   | 1001 | User 1    | 1000        | 2     | Algorithms | 2020-01-01 10:00:00 |
+| 2   | 1002 | User 2    | 1200        | 3     | Algorithms | 2020-01-01 10:00:00 |
+| 3   | 1003 | Guest 3   | 2200        | 5     | Algorithms | 2020-01-01 10:00:00 |
+| 4   | 1004 | User 4    | 2500        | 6     | Algorithms | 2020-01-01 10:00:00 |
+| 5   | 1005 | User 5    | 3000        | 7     | C++        | 2020-01-01 10:00:00 |
 
 Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
@@ -202,15 +204,15 @@ Sample data from `practice_record` (`uid`: user ID, `question_id`: question ID, 
 | 4   | 1002 | 8002        | 2021-09-02 19:38:01 | 70    |
 | 5   | 1003 | 8002        | 2021-09-01 19:38:01 | 80    |
 
-Find users whose nicknames start with "牛客" and end with "号", whose achievement points are between 1,200 and 2,500, and whose most recent activity (question or exam attempt) was in September 2021.
+Find users whose nicknames start with "User " and end with a digit, whose achievement points are between 1,200 and 2,500, and whose most recent activity (question or exam attempt) was in September 2021.
 
 The sample output is:
 
 | uid  | nick_name | achievement |
 | ---- | --------- | ----------- |
-| 1002 | 牛客 2 号 | 1200        |
+| 1002 | User 2    | 1200        |
 
-**Explanation:** Users 1002 and 1004 have nicknames that start with "牛客" and end with "号", and achievement points between 1,200 and 2,500.
+**Explanation:** Users 1002 and 1004 have nicknames that start with "User " and end with a digit, and achievement points between 1,200 and 2,500.
 
 User 1002's most recent exam and question activity was in September 2021. User 1004's most recent exam activity was in August 2021, and they have no question activity.
 
@@ -220,7 +222,7 @@ Therefore, only user 1002 meets all the conditions.
 
 Start by writing the main query conditions:
 
-Nicknames that start with "牛客" and end with "号": `nick_name LIKE '牛客%号'`.
+Nicknames of the form `User ` followed by digits: `nick_name REGEXP '^User [0-9]+$'`.
 
 Achievement points between 1,200 and 2,500: `achievement BETWEEN 1200 AND 2500`.
 
@@ -235,7 +237,7 @@ SELECT DISTINCT u_info.uid,
 FROM user_info u_info
 LEFT JOIN exam_record record ON record.uid = u_info.uid
 LEFT JOIN practice_record pr ON u_info.uid = pr.uid
-WHERE u_info.nick_name LIKE "牛客%号"
+WHERE u_info.nick_name RLIKE "^User [0-9]+$"
   AND u_info.achievement BETWEEN 1200
   AND 2500
   AND (date_format(record.submit_time, '%Y%m')= 202109
@@ -249,14 +251,14 @@ GROUP BY u_info.uid
 
 Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
-| id  | uid  | nick_name    | achievement | level | job  | register_time       |
-| --- | ---- | ------------ | ----------- | ----- | ---- | ------------------- |
-| 1   | 1001 | 牛客 1 号    | 1900        | 2     | 算法 | 2020-01-01 10:00:00 |
-| 2   | 1002 | 牛客 2 号    | 1200        | 3     | 算法 | 2020-01-01 10:00:00 |
-| 3   | 1003 | 牛客 3 号 ♂ | 2200        | 5     | 算法 | 2020-01-01 10:00:00 |
-| 4   | 1004 | 牛客 4 号    | 2500        | 6     | 算法 | 2020-01-01 10:00:00 |
-| 5   | 1005 | 牛客 555 号  | 2000        | 7     | C++  | 2020-01-01 10:00:00 |
-| 6   | 1006 | 666666       | 3000        | 6     | C++  | 2020-01-01 10:00:00 |
+| id  | uid  | nick_name | achievement | level | job        | register_time       |
+| --- | ---- | --------- | ----------- | ----- | ---------- | ------------------- |
+| 1   | 1001 | User 1    | 1900        | 2     | Algorithms | 2020-01-01 10:00:00 |
+| 2   | 1002 | User 2    | 1200        | 3     | Algorithms | 2020-01-01 10:00:00 |
+| 3   | 1003 | User 3 ♂ | 2200        | 5     | Algorithms | 2020-01-01 10:00:00 |
+| 4   | 1004 | User 4    | 2500        | 6     | Algorithms | 2020-01-01 10:00:00 |
+| 5   | 1005 | User 555  | 2000        | 7     | C++        | 2020-01-01 10:00:00 |
+| 6   | 1006 | 666666    | 3000        | 6     | C++        | 2020-01-01 10:00:00 |
 
 Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
@@ -289,7 +291,7 @@ Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`
 | 14  | 1005 | 9001    | 2021-02-01 11:01:01 | 2021-02-01 11:31:01 | 84     |
 | 15  | 1006 | 9001    | 2021-02-01 11:01:01 | 2021-09-01 11:31:01 | 84     |
 
-For users whose nicknames are either "牛客" followed by digits and "号", or digits only, find the completed exam IDs and average scores for categories beginning with the letter C (such as C, C++, or c#). Sort by user ID and then average score in ascending order. The sample output is:
+For users whose nicknames are either "User " followed by digits, or digits only, find the completed exam IDs and average scores for categories beginning with the letter C (such as C, C++, or c#). Sort by user ID and then average score in ascending order. The sample output is:
 
 | uid  | exam_id | avg_score |
 | ---- | ------- | --------- |
@@ -310,9 +312,9 @@ User 1002 completed exam 9002 with scores of 90, 82, and 83, for an average of 8
 
 As before, start by writing each condition from the prompt.
 
-To match nicknames consisting of "牛客" + digits + "号", or digits only, a first attempt might be `nick_name LIKE '牛客%号' OR nick_name REGEXP '^[0-9]+$'`. However, this would also match a nickname such as "牛客 H 号".
+To match nicknames consisting of "User " + digits, or digits only, a first attempt might be `nick_name LIKE 'User %' OR nick_name REGEXP '^[0-9]+$'`. However, this would also match a nickname such as "User H".
 
-Use a regular expression instead: `nick_name LIKE '^牛客[0-9]+号'`.
+Use a regular expression instead: `nick_name REGEXP '^User [0-9]+$'`.
 
 For exam categories beginning with C, use `e_info.tag LIKE 'c%'` or `tag REGEXP '^[cC]'`. The first pattern may also match uppercase C depending on the collation.
 
@@ -326,7 +328,7 @@ FROM exam_record
 WHERE UID IN
     (SELECT UID
      FROM user_info
-     WHERE nick_name RLIKE "^牛客[0-9]+号 $"
+     WHERE nick_name RLIKE "^User [0-9]+$"
        OR nick_name RLIKE "^[0-9]+$")
   AND exam_id IN
     (SELECT exam_id
@@ -343,14 +345,14 @@ ORDER BY UID,avg_score;
 
 Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
-| id  | uid  | nick_name   | achievement | level | job  | register_time       |
-| --- | ---- | ----------- | ----------- | ----- | ---- | ------------------- |
-| 1   | 1001 | 牛客 1 号   | 19          | 0     | 算法 | 2020-01-01 10:00:00 |
-| 2   | 1002 | 牛客 2 号   | 1200        | 3     | 算法 | 2020-01-01 10:00:00 |
-| 3   | 1003 | 进击的 3 号 | 22          | 0     | 算法 | 2020-01-01 10:00:00 |
-| 4   | 1004 | 牛客 4 号   | 25          | 0     | 算法 | 2020-01-01 10:00:00 |
-| 5   | 1005 | 牛客 555 号 | 2000        | 7     | C++  | 2020-01-01 10:00:00 |
-| 6   | 1006 | 666666      | 3000        | 6     | C++  | 2020-01-01 10:00:00 |
+| id  | uid  | nick_name | achievement | level | job        | register_time       |
+| --- | ---- | --------- | ----------- | ----- | ---------- | ------------------- |
+| 1   | 1001 | User 1    | 19          | 0     | Algorithms | 2020-01-01 10:00:00 |
+| 2   | 1002 | User 2    | 1200        | 3     | Algorithms | 2020-01-01 10:00:00 |
+| 3   | 1003 | Guest 3   | 22          | 0     | Algorithms | 2020-01-01 10:00:00 |
+| 4   | 1004 | User 4    | 25          | 0     | Algorithms | 2020-01-01 10:00:00 |
+| 5   | 1005 | User 555  | 2000        | 7     | C++        | 2020-01-01 10:00:00 |
+| 6   | 1006 | 666666    | 3000        | 6     | C++        | 2020-01-01 10:00:00 |
 
 Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
@@ -569,14 +571,14 @@ CASE
 
 Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
-| id  | uid  | nick_name    | achievement | level | job  | register_time       |
-| --- | ---- | ------------ | ----------- | ----- | ---- | ------------------- |
-| 1   | 1001 | 牛客 1 号    | 19          | 0     | 算法 | 2020-01-01 10:00:00 |
-| 2   | 1002 | 牛客 2 号    | 1200        | 3     | 算法 | 2020-01-01 10:00:00 |
-| 3   | 1003 | 牛客 3 号 ♂ | 22          | 0     | 算法 | 2020-01-01 10:00:00 |
-| 4   | 1004 | 牛客 4 号    | 25          | 0     | 算法 | 2020-01-01 10:00:00 |
-| 5   | 1005 | 牛客 555 号  | 2000        | 7     | C++  | 2020-01-01 10:00:00 |
-| 6   | 1006 | 666666       | 3000        | 6     | C++  | 2020-01-01 10:00:00 |
+| id  | uid  | nick_name | achievement | level | job        | register_time       |
+| --- | ---- | --------- | ----------- | ----- | ---------- | ------------------- |
+| 1   | 1001 | User 1    | 19          | 0     | Algorithms | 2020-01-01 10:00:00 |
+| 2   | 1002 | User 2    | 1200        | 3     | Algorithms | 2020-01-01 10:00:00 |
+| 3   | 1003 | User 3 ♂ | 22          | 0     | Algorithms | 2020-01-01 10:00:00 |
+| 4   | 1004 | User 4    | 25          | 0     | Algorithms | 2020-01-01 10:00:00 |
+| 5   | 1005 | User 555  | 2000        | 7     | C++        | 2020-01-01 10:00:00 |
+| 6   | 1006 | 666666    | 3000        | 6     | C++        | 2020-01-01 10:00:00 |
 
 Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
@@ -681,22 +683,22 @@ ORDER BY a.LEVEL DESC,
 
 Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
-| id  | uid  | nick_name    | achievement | level | job  | register_time       |
-| --- | ---- | ------------ | ----------- | ----- | ---- | ------------------- |
-| 1   | 1001 | 牛客 1 号    | 19          | 0     | 算法 | 2020-01-01 10:00:00 |
-| 2   | 1002 | 牛客 2 号    | 1200        | 3     | 算法 | 2020-02-01 10:00:00 |
-| 3   | 1003 | 牛客 3 号 ♂ | 22          | 0     | 算法 | 2020-01-02 10:00:00 |
-| 4   | 1004 | 牛客 4 号    | 25          | 0     | 算法 | 2020-01-02 11:00:00 |
-| 5   | 1005 | 牛客 555 号  | 4000        | 7     | C++  | 2020-01-11 10:00:00 |
-| 6   | 1006 | 666666       | 3000        | 6     | C++  | 2020-11-01 10:00:00 |
+| id  | uid  | nick_name | achievement | level | job        | register_time       |
+| --- | ---- | --------- | ----------- | ----- | ---------- | ------------------- |
+| 1   | 1001 | User 1    | 19          | 0     | Algorithms | 2020-01-01 10:00:00 |
+| 2   | 1002 | User 2    | 1200        | 3     | Algorithms | 2020-02-01 10:00:00 |
+| 3   | 1003 | User 3 ♂ | 22          | 0     | Algorithms | 2020-01-02 10:00:00 |
+| 4   | 1004 | User 4    | 25          | 0     | Algorithms | 2020-01-02 11:00:00 |
+| 5   | 1005 | User 555  | 4000        | 7     | C++        | 2020-01-11 10:00:00 |
+| 6   | 1006 | 666666    | 3000        | 6     | C++        | 2020-11-01 10:00:00 |
 
 Find the three users with the earliest registration times. The sample output is:
 
-| uid  | nick_name    | register_time       |
-| ---- | ------------ | ------------------- |
-| 1001 | 牛客 1       | 2020-01-01 10:00:00 |
-| 1003 | 牛客 3 号 ♂ | 2020-01-02 10:00:00 |
-| 1004 | 牛客 4 号    | 2020-01-02 11:00:00 |
+| uid  | nick_name | register_time       |
+| ---- | --------- | ------------------- |
+| 1001 | User 1    | 2020-01-01 10:00:00 |
+| 1003 | User 3 ♂ | 2020-01-02 10:00:00 |
+| 1004 | User 4    | 2020-01-02 11:00:00 |
 
 Explanation: Sort by registration time, then return the first three users' IDs, nicknames, and registration times.
 
@@ -713,27 +715,27 @@ SELECT uid, nick_name, register_time
 
 **Description:** Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
-| id  | uid  | nick_name    | achievement | level | job  | register_time       |
-| --- | ---- | ------------ | ----------- | ----- | ---- | ------------------- |
-| 1   | 1001 | 牛客 1       | 19          | 0     | 算法 | 2020-01-01 10:00:00 |
-| 2   | 1002 | 牛客 2 号    | 1200        | 3     | 算法 | 2020-01-01 10:00:00 |
-| 3   | 1003 | 牛客 3 号 ♂ | 22          | 0     | 算法 | 2020-01-01 10:00:00 |
-| 4   | 1004 | 牛客 4 号    | 25          | 0     | 算法 | 2020-01-01 10:00:00 |
-| 5   | 1005 | 牛客 555 号  | 4000        | 7     | 算法 | 2020-01-11 10:00:00 |
-| 6   | 1006 | 牛客 6 号    | 25          | 0     | 算法 | 2020-01-02 11:00:00 |
-| 7   | 1007 | 牛客 7 号    | 25          | 0     | 算法 | 2020-01-02 11:00:00 |
-| 8   | 1008 | 牛客 8 号    | 25          | 0     | 算法 | 2020-01-02 11:00:00 |
-| 9   | 1009 | 牛客 9 号    | 25          | 0     | 算法 | 2020-01-02 11:00:00 |
-| 10  | 1010 | 牛客 10 号   | 25          | 0     | 算法 | 2020-01-02 11:00:00 |
-| 11  | 1011 | 666666       | 3000        | 6     | C++  | 2020-01-02 10:00:00 |
+| id  | uid  | nick_name | achievement | level | job        | register_time       |
+| --- | ---- | --------- | ----------- | ----- | ---------- | ------------------- |
+| 1   | 1001 | User 1    | 19          | 0     | Algorithms | 2020-01-01 10:00:00 |
+| 2   | 1002 | User 2    | 1200        | 3     | Algorithms | 2020-01-01 10:00:00 |
+| 3   | 1003 | User 3 ♂ | 22          | 0     | Algorithms | 2020-01-01 10:00:00 |
+| 4   | 1004 | User 4    | 25          | 0     | Algorithms | 2020-01-01 10:00:00 |
+| 5   | 1005 | User 555  | 4000        | 7     | Algorithms | 2020-01-11 10:00:00 |
+| 6   | 1006 | User 6    | 25          | 0     | Algorithms | 2020-01-02 11:00:00 |
+| 7   | 1007 | User 7    | 25          | 0     | Algorithms | 2020-01-02 11:00:00 |
+| 8   | 1008 | User 8    | 25          | 0     | Algorithms | 2020-01-02 11:00:00 |
+| 9   | 1009 | User 9    | 25          | 0     | Algorithms | 2020-01-02 11:00:00 |
+| 10  | 1010 | User 10   | 25          | 0     | Algorithms | 2020-01-02 11:00:00 |
+| 11  | 1011 | 666666    | 3000        | 6     | C++        | 2020-01-02 10:00:00 |
 
 Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
-| id  | exam_id | tag  | difficulty | duration | release_time        |
-| --- | ------- | ---- | ---------- | -------- | ------------------- |
-| 1   | 9001    | 算法 | hard       | 60       | 2020-01-01 10:00:00 |
-| 2   | 9002    | 算法 | hard       | 80       | 2020-01-01 10:00:00 |
-| 3   | 9003    | SQL  | medium     | 70       | 2020-01-01 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | Algorithms | hard       | 60       | 2020-01-01 10:00:00 |
+| 2   | 9002    | Algorithms | hard       | 80       | 2020-01-01 10:00:00 |
+| 3   | 9003    | SQL        | medium     | 70       | 2020-01-01 10:00:00 |
 
 Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
@@ -801,8 +803,8 @@ FROM exam_record t
 JOIN examination_info USING (exam_id)
 JOIN user_info t1 ON t.uid = t1.uid
 AND date(t.submit_time) = date(t1.register_time)
-WHERE job = '算法'
-  AND tag = '算法'
+WHERE job = 'Algorithms'
+  AND tag = 'Algorithms'
 GROUP BY t1.uid,
          LEVEL,
          register_time
@@ -816,20 +818,20 @@ LIMIT 6,3
 
 **Description:** Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
-| id  | exam_id | tag            | difficulty | duration | release_time        |
-| --- | ------- | -------------- | ---------- | -------- | ------------------- |
-| 1   | 9001    | 算法           | hard       | 60       | 2021-01-01 10:00:00 |
-| 2   | 9002    | 算法           | hard       | 80       | 2021-01-01 10:00:00 |
-| 3   | 9003    | SQL            | medium     | 70       | 2021-01-01 10:00:00 |
-| 4   | 9004    | 算法,medium,80 |            | 0        | 2021-01-01 10:00:00 |
+| id  | exam_id | tag                  | difficulty | duration | release_time        |
+| --- | ------- | -------------------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | Algorithms           | hard       | 60       | 2021-01-01 10:00:00 |
+| 2   | 9002    | Algorithms           | hard       | 80       | 2021-01-01 10:00:00 |
+| 3   | 9003    | SQL                  | medium     | 70       | 2021-01-01 10:00:00 |
+| 4   | 9004    | Algorithms,medium,80 |            | 0        | 2021-01-01 10:00:00 |
 
 Some exam data was entered incorrectly: the category (`tag`), difficulty, and duration were all entered into the `tag` column. Find these rows, split the values, and return them under the correct columns.
 
 The sample output is:
 
-| exam_id | tag  | difficulty | duration |
-| ------- | ---- | ---------- | -------- |
-| 9004    | 算法 | medium     | 80       |
+| exam_id | tag        | difficulty | duration |
+| ------- | ---------- | ---------- | -------- |
+| 9004    | Algorithms | medium     | 80       |
 
 **Approach:**
 
@@ -897,25 +899,25 @@ WHERE
 
 **Description:** Sample data from `user_info` (`uid`: user ID, `nick_name`: nickname, `achievement`: achievement points, `level`: level, `job`: career path, `register_time`: registration time):
 
-| id  | uid  | nick_name              | achievement | level | job  | register_time       |
-| --- | ---- | ---------------------- | ----------- | ----- | ---- | ------------------- |
-| 1   | 1001 | 牛客 1                 | 19          | 0     | 算法 | 2020-01-01 10:00:00 |
-| 2   | 1002 | 牛客 2 号              | 1200        | 3     | 算法 | 2020-01-01 10:00:00 |
-| 3   | 1003 | 牛客 3 号 ♂           | 22          | 0     | 算法 | 2020-01-01 10:00:00 |
-| 4   | 1004 | 牛客 4 号              | 25          | 0     | 算法 | 2020-01-01 11:00:00 |
-| 5   | 1005 | 牛客 5678901234 号     | 4000        | 7     | 算法 | 2020-01-11 10:00:00 |
-| 6   | 1006 | 牛客 67890123456789 号 | 25          | 0     | 算法 | 2020-01-02 11:00:00 |
+| id  | uid  | nick_name           | achievement | level | job        | register_time       |
+| --- | ---- | ------------------- | ----------- | ----- | ---------- | ------------------- |
+| 1   | 1001 | User 1              | 19          | 0     | Algorithms | 2020-01-01 10:00:00 |
+| 2   | 1002 | User 2              | 1200        | 3     | Algorithms | 2020-01-01 10:00:00 |
+| 3   | 1003 | User 3 ♂           | 22          | 0     | Algorithms | 2020-01-01 10:00:00 |
+| 4   | 1004 | User 4              | 25          | 0     | Algorithms | 2020-01-01 11:00:00 |
+| 5   | 1005 | User 5678901234     | 4000        | 7     | Algorithms | 2020-01-11 10:00:00 |
+| 6   | 1006 | User 67890123456789 | 25          | 0     | Algorithms | 2020-01-02 11:00:00 |
 
 Some users have long nicknames that can disrupt the layout. Return users whose nicknames have more than 10 characters. For nicknames longer than 13 characters, return the first 10 characters followed by an ellipsis (`...`).
 
 The sample output is:
 
-| uid  | nick_name          |
-| ---- | ------------------ |
-| 1005 | 牛客 5678901234 号 |
-| 1006 | 牛客 67890123...   |
+| uid  | nick_name     |
+| ---- | ------------- |
+| 1005 | User 56789... |
+| 1006 | User 67890... |
 
-Explanation: Users 1005 and 1006 have nicknames longer than 10 characters, with lengths of 13 and 17. Therefore, user 1006's nickname is truncated.
+Explanation: Users 1005 and 1006 have nicknames longer than 13 characters, so both are truncated to the first 10 characters followed by an ellipsis.
 
 **Approach:**
 
@@ -961,18 +963,18 @@ GROUP BY
 
 Sample data from `examination_info` (`exam_id`: exam ID, `tag`: category, `difficulty`: difficulty, `duration`: exam length, `release_time`: release time):
 
-| id  | exam_id | tag  | difficulty | duration | release_time        |
-| --- | ------- | ---- | ---------- | -------- | ------------------- |
-| 1   | 9001    | 算法 | hard       | 60       | 2021-01-01 10:00:00 |
-| 2   | 9002    | C++  | hard       | 80       | 2021-01-01 10:00:00 |
-| 3   | 9003    | C++  | hard       | 80       | 2021-01-01 10:00:00 |
-| 4   | 9004    | sql  | medium     | 70       | 2021-01-01 10:00:00 |
-| 5   | 9005    | C++  | hard       | 80       | 2021-01-01 10:00:00 |
-| 6   | 9006    | C++  | hard       | 80       | 2021-01-01 10:00:00 |
-| 7   | 9007    | C++  | hard       | 80       | 2021-01-01 10:00:00 |
-| 8   | 9008    | SQL  | medium     | 70       | 2021-01-01 10:00:00 |
-| 9   | 9009    | SQL  | medium     | 70       | 2021-01-01 10:00:00 |
-| 10  | 9010    | SQL  | medium     | 70       | 2021-01-01 10:00:00 |
+| id  | exam_id | tag        | difficulty | duration | release_time        |
+| --- | ------- | ---------- | ---------- | -------- | ------------------- |
+| 1   | 9001    | Algorithms | hard       | 60       | 2021-01-01 10:00:00 |
+| 2   | 9002    | C++        | hard       | 80       | 2021-01-01 10:00:00 |
+| 3   | 9003    | C++        | hard       | 80       | 2021-01-01 10:00:00 |
+| 4   | 9004    | sql        | medium     | 70       | 2021-01-01 10:00:00 |
+| 5   | 9005    | C++        | hard       | 80       | 2021-01-01 10:00:00 |
+| 6   | 9006    | C++        | hard       | 80       | 2021-01-01 10:00:00 |
+| 7   | 9007    | C++        | hard       | 80       | 2021-01-01 10:00:00 |
+| 8   | 9008    | SQL        | medium     | 70       | 2021-01-01 10:00:00 |
+| 9   | 9009    | SQL        | medium     | 70       | 2021-01-01 10:00:00 |
+| 10  | 9010    | SQL        | medium     | 70       | 2021-01-01 10:00:00 |
 
 Sample data from `exam_record` (`uid`: user ID, `exam_id`: exam ID, `start_time`: attempt start time, `submit_time`: submission time, `score`: score):
 
@@ -1004,12 +1006,12 @@ The sample output is:
 
 Explanation: Exams 9001, 9002, 9003, and 9004 have attempts. Their tags and attempt counts are:
 
-| exam_id | tag  | answer_cnt |
-| ------- | ---- | ---------- |
-| 9001    | 算法 | 4          |
-| 9002    | C++  | 6          |
-| 9003    | c++  | 2          |
-| 9004    | sql  | 2          |
+| exam_id | tag        | answer_cnt |
+| ------- | ---------- | ---------- |
+| 9001    | Algorithms | 4          |
+| 9002    | C++        | 6          |
+| 9003    | c++        | 2          |
+| 9004    | sql        | 2          |
 
 The tags with fewer than three attempts are `c++` and `sql`. After conversion to uppercase, only `C++` has an existing count, so the result reports six attempts for `c++` after conversion.
 

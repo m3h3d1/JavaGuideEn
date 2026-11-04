@@ -429,11 +429,11 @@ Study patterns and practice applying them. They aren't a silver bullet: **don't 
 
 For a book, see _Relearning Java Design Patterns_. It explains patterns through examples and practical cases. Practice the examples to build experience applying them.
 
-![](https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/b4da6f8cc0cf4a8e8238d3d8671e0462~tplv-k3u1fbpfcp-watermark.image)
+![](./images/shared/design-patterns-diagram.png)
 
 For video lessons, see [Shangguigu's Java Design Patterns: Diagrams and Framework Source Code](https://www.bilibili.com/video/BV1G4411c7N4).
 
-![](https://p1-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/029687d24c7b4882ba81b5b629c323a1~tplv-k3u1fbpfcp-watermark.image)
+![](./images/shared/design-patterns-summary.png)
 
 The course covers the seven design principles, UML class diagrams and their relationships, and the 23 design patterns and their categories.
 

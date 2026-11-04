@@ -22,7 +22,7 @@ JVM stands for Java Virtual Machine. It is an abstract machine defined by a spec
 
 Put simply, you can think of the JVM as a small computer running on an operating system such as Windows or Linux. It interacts with the operating system rather than directly with the hardware; the operating system handles hardware interactions.
 
-![](https://static001.geekbang.org/infoq/da/da0380a04d9c04facd2add5f6dba06fa.png)
+![](./images/shared/jvm-overview-diagram.png)
 
 ### 1.1 How Does Java Run a Source File?
 
@@ -34,7 +34,7 @@ The **JVM** does not execute source text directly. The source must be **compiled
 
 For the **JVM** to execute a **`.class`** file, a **class loader** loads it into the JVM. You can think of the loader as a worker that brings class files into the runtime.
 
-![](https://static001.geekbang.org/infoq/2f/2f012fde94376f43a25dbe1dd07e0dd8.png)
+![](./images/shared/class-loader-diagram.png)
 
 #### 2. Method Area
 
@@ -56,7 +56,7 @@ You may also encounter the terms native method stack and Java Native Interface (
 
 The program counter records the address of the JVM instruction currently being executed by a thread. The JVM uses it to resume execution after branches, loops, exception handling, or thread switches. Like the stack, it is **thread-private**. The specification does not define its value while a native method is running.
 
-![](https://static001.geekbang.org/infoq/c6/c602f57ea9297f50bbc265f1821d6263.png)
+![](./images/shared/program-counter-diagram.png)
 
 #### Summary
 
@@ -68,11 +68,11 @@ The program counter records the address of the JVM instruction currently being e
 
 A simple `Student` class:
 
-![](https://static001.geekbang.org/infoq/12/12f0b239db65b8a95f0ce90e9a580e4d.png)
+![](./images/shared/student-class-example.png)
 
 A `main` method:
 
-![](https://static001.geekbang.org/infoq/0c/0c6d94ab88a9f2b923f5fea3f95bc2eb.png)
+![](./images/shared/main-method-example.png)
 
 The JVM runs `main` in these steps:
 
@@ -226,13 +226,13 @@ The old generation mainly stores long-lived objects and objects promoted directl
 
 If a Full GC cannot free enough space for an allocation, the JVM may throw an OOM error. The heap may be too small, in which case `-Xms` and `-Xmx` may need adjustment. The application may also create many large objects that remain reachable and cannot be collected.
 
-![](https://static001.geekbang.org/infoq/39/398255141fde8ba208f6c99f4edaa9fe.png)
+![](./images/shared/eden-survivor-object-allocation.png)
 
 Note about `-XX:TargetSurvivorRatio`: objects do not always need to reach `-XX:MaxTenuringThreshold` before promotion. For example, if objects of age 5 use 30% of the Survivor space, age 6 use 36%, and age 7 use 34%, adding age 6 would exceed the `TargetSurvivorRatio` target. Objects of age 6 and older may then be promoted without waiting for the threshold of 15. Exact behavior depends on the collector.
 
 #### 3.3.8 How Does the JVM Determine Whether an Object Is Reachable?
 
-![](https://static001.geekbang.org/infoq/1b/1ba7f3cff6e07c6e9c6765cc4ef74997.png)
+![](./images/shared/gc-reachability-analysis.png)
 
 The program counter, JVM stack, and native method stack live as long as their thread. Their memory is reclaimed when the thread ends, so they are not managed like heap objects. The heap and method area are shared and allocated dynamically, so the garbage collector focuses on reclaiming data in those areas.
 
@@ -260,7 +260,7 @@ First, consider the **`finalize()`** method.
 
 Do not rely on `finalize()` to rescue an object. Its execution time is unpredictable, it is not guaranteed to run, it has a high cost, and the order of calls is not guaranteed. `finalize()` was deprecated in Java 9 and marked for removal in Java 18. Use `try-with-resources` or `java.lang.ref.Cleaner` to manage off-heap resources, as appropriate; `Cleaner` is not another name for strong, soft, weak, or phantom references.
 
-![](https://static001.geekbang.org/infoq/8d/8d7f0381c7d857c7ceb8ae5a5fef0f4a.png)
+![](./images/shared/finalization-lifecycle.png)
 
 Objects that override `finalize()` and have not yet run it are often described as going through a two-stage process:
 
@@ -277,7 +277,7 @@ For an in-depth look at common GC algorithms, see [JVM Garbage Collection](https
 
 Garbage collectors available in HotSpot and their use cases:
 
-![](https://static001.geekbang.org/infoq/9f/9ff72176ab0bf58bc43e142f69427379.png)
+![](./images/shared/gc-collectors-overview.png)
 
 In a common JDK 8 Server HotSpot configuration, the default collector pair is usually Parallel Scavenge and Parallel Old. Actual defaults may vary by JVM implementation, runtime mode, and platform.
 
@@ -330,7 +330,7 @@ System.out.println("total mem=" + Runtime.getRuntime().totalMemory() / 1024.0 / 
 
 Note: These options set the Java heap size, which includes the young and old generations.
 
-![](https://static001.geekbang.org/infoq/11/114f32ddd295b2e30444f42f6180538c.png)
+![](./images/shared/heap-options-example-1.png)
 
 Set these VM options:
 
@@ -338,11 +338,11 @@ Set these VM options:
 -Xmx20m -Xms5m -XX:+PrintGCDetails
 ```
 
-![](https://static001.geekbang.org/infoq/7e/7ea0bf0dec20e44bf95128c571d6ef0e.png)
+![](./images/shared/heap-options-example-2.png)
 
 Run `main()` again.
 
-![](https://static001.geekbang.org/infoq/c8/c89edbd0a147a791cfabdc37923c6836.png)
+![](./images/shared/heap-options-example-3.png)
 
 The GC log reports an allocation failure in `PSYoungGen`, the young generation.
 
@@ -358,7 +358,7 @@ System.out.println("free mem=" + Runtime.getRuntime().freeMemory() / 1024.0 / 10
 System.out.println("total mem=" + Runtime.getRuntime().totalMemory() / 1024.0 / 1024 + "M");
 ```
 
-![](https://static001.geekbang.org/infoq/db/dbeb6aea0a90949f7d7fe4746ddb11a3.png)
+![](./images/shared/heap-options-example-4.png)
 
 Free memory has decreased, but total memory has not changed. Java tries to keep the committed heap at the initial heap size when possible.
 
@@ -370,7 +370,7 @@ System.out.println("free mem=" + Runtime.getRuntime().freeMemory() / 1024.0 / 10
 System.out.println("total mem=" + Runtime.getRuntime().totalMemory() / 1024.0 / 1024 + "M");  // Currently committed heap size.
 ```
 
-![](https://static001.geekbang.org/infoq/b6/b6a7c522166dbd425dbb06eb56c9b071.png)
+![](./images/shared/heap-options-example-5.png)
 
 Creating a 10 MB byte array exceeds the initial heap size. The committed heap has grown to 15 MB to accommodate it.
 
@@ -383,7 +383,7 @@ System.out.println("free mem=" + Runtime.getRuntime().freeMemory() / 1024.0 / 10
 System.out.println("total mem=" + Runtime.getRuntime().totalMemory() / 1024.0 / 1024 + "M");  // Currently committed heap size.
 ```
 
-![](https://static001.geekbang.org/infoq/8d/8dd6e8fccfd1394b83251c136ee44ceb.png)
+![](./images/shared/heap-options-example-6.png)
 
 Calling `System.gc()` only requests garbage collection; it does not guarantee a Full GC. This run triggered a collection and reduced the committed heap, but results vary with JVM options and the collector.
 

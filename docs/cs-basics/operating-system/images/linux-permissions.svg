@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 160" role="img" aria-labelledby="title desc">
+  <title id="title">Linux permission fields</title>
+  <desc id="desc">The mode -rwxrwxr-- has a file type, owner, group, and other-user permission fields.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#222" />
+    </marker>
+  </defs>
+  <g fill="#222" font-family="Arial, sans-serif" text-anchor="middle">
+    <text x="50" y="22" font-size="17">Read</text>
+    <text x="145" y="22" font-size="17">Write</text>
+    <text x="234" y="22" font-size="17">Execute</text>
+    <text x="395" y="22" font-size="17">No write or execute</text>
+    <text x="78" y="147" font-size="12">File type</text>
+    <text x="121" y="147" font-size="12">Owner</text>
+    <text x="179" y="147" font-size="12">Group</text>
+    <text x="240" y="147" font-size="12">Other</text>
+  </g>
+  <g fill="none" stroke="#222" stroke-width="1.5" marker-end="url(#arrow)">
+    <path d="M50 29 L103 69" />
+    <path d="M145 29 L122 69" />
+    <path d="M234 29 L141 69" />
+    <path d="M390 29 L246 68" />
+  </g>
+  <text x="74" y="94" fill="#222" font-family="monospace" font-size="32">-rwxrwxr--</text>
+  <g fill="none" stroke="#222" stroke-width="1.5">
+    <path d="M64 105 v10 h28 v-10" />
+    <path d="M93 105 v10 h57 v-10" />
+    <path d="M151 105 v10 h56 v-10" />
+    <path d="M208 105 v10 h57 v-10" />
+  </g>
+</svg>

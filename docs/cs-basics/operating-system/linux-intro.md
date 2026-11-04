@@ -13,9 +13,11 @@ head:
 
 ## A First Look at Linux
 
-Linux is a free and open-source operating system kernel first released by Linus Torvalds in 1991. It is used in servers, embedded systems, mobile devices, and desktop computers. Strictly speaking, Linux is the kernel; the complete operating system combines it with user-space tools, libraries, and applications.
+### Linux Overview
 
-Torvalds also started the Git project and was one of its principal developers.
+Linux is a free and open-source Unix-like kernel first released by Linus Torvalds in 1991. By itself, the kernel is not a complete operating system; distributions package it with user-space tools, libraries, and applications. Linux is used in servers, embedded systems, mobile devices, and desktop computers.
+
+Torvalds wrote the first Linux kernel and led its early architecture. He also started the Git project and was one of its principal developers.
 
 ![Linux creator Linus Torvalds](../images/shared/linux-father.png)
 
@@ -77,7 +79,7 @@ The distinction between inode and block is:
 - **Inode:** Records file attributes and metadata; inspect it with `stat`.
 - **Block/extent:** Stores file content or describes a contiguous range of data blocks. Allocation and sharing depend on the filesystem; a block does not always belong to exactly one file.
 
-![Use stat to inspect file inode information](./images/文件inode信息.png)
+![Linux ls and stat output showing inode and file metadata](./images/linux-inode-info-en.svg)
 
 Linux/Unix filesystems use inodes to identify filesystem objects. Renaming a file within the same filesystem usually changes a directory entry without changing its inode number. After the last hard link is removed and no process has the file open, the inode can be freed and its number reused later.
 
@@ -133,7 +135,7 @@ srwxrwxrwx  1 user  group     0 Apr 14 10:00 socket
 
 Linux organizes files and directories in a hierarchy called the directory tree. It starts at the root directory `/` and branches into directories and subdirectories. A directory can contain files and more directories.
 
-![Linux directory tree](./images/Linux目录树.png)
+![Linux directory tree](./images/linux-directory-tree.svg)
 
 Common directories include:
 
@@ -229,7 +231,7 @@ Use `ls -l` to inspect permissions:
 
 ![Example of Linux permission commands](./images/Linux权限命令.png)
 
-![Explanation of Linux permission fields](./images/Linux权限解读.png)
+![Linux permission fields](./images/linux-permissions.svg)
 
 The first column shows the file type and permissions:
 

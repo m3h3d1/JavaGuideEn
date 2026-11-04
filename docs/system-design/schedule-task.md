@@ -85,7 +85,7 @@ In short, `ScheduledThreadPoolExecutor` is a more capable replacement for `Timer
 
 `ScheduledExecutorService` is an interface with several implementations. `ScheduledThreadPoolExecutor` is the most commonly used.
 
-![](./images/shared/20210607154324712.png)
+![](./images/shared/scheduled-executor-inheritance.png)
 
 `ScheduledThreadPoolExecutor` is a thread pool that can run tasks concurrently. It uses `DelayedWorkQueue` internally as its task queue.
 

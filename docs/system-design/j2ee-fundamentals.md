@@ -51,7 +51,7 @@ Reference: _Java Web Integration Development: The Return of the King_, p. 81.
 
 This topic has been widely discussed on Zhihu: <https://www.zhihu.com/question/28586791>.
 
-![](https://static001.geekbang.org/infoq/04/0454a5fff1437c32754f1dfcc3881148.png)
+![](./images/shared/j2ee-fundamentals-diagram.png)
 
 GET and POST are two commonly used HTTP request methods. They have different semantics and are suited to different purposes. The main differences are:
 

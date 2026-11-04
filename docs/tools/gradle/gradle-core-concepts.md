@@ -56,7 +56,7 @@ Gradle Wrapper runs builds using a declared Gradle version, downloading it first
 
 The diagram below shows the [Gradle Wrapper workflow](https://docs.gradle.org/current/userguide/gradle_wrapper.html):
 
-![Gradle Wrapper workflow](https://oss.javaguide.cn/github/javaguide/csdn/efa7a0006b04051e2b84cd116c6ccdfc.png)
+![Gradle Wrapper workflow](./images/shared/gradle-wrapper-workflow.png)
 
 The process has three main steps:
 
@@ -263,11 +263,11 @@ Although plugins and `.gradle` files can offer similar functionality, plugins pa
 
 A Gradle build has three phases: **initialization, configuration, and execution**.
 
-![](https://oss.javaguide.cn/github/javaguide/csdn/dadbdf59fccd9a2ebf60a2d018541e52.png)
+![](./images/shared/gradle-build-lifecycle.png)
 
 You can add custom hooks between initialization and configuration, after configuration, and after execution.
 
-![](https://oss.javaguide.cn/github/javaguide/csdn/5c297ccc4dac83229ff3e19caee9d1d2.png)
+![](./images/shared/gradle-build-lifecycle-hooks.png)
 
 ### Initialization
 

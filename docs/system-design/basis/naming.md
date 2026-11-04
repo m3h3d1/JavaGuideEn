@@ -28,7 +28,7 @@ Martin Fowler, author of _Refactoring_, mentioned two of the hardest problems in
 
 Fowler was quoting someone else; many similar sayings exist. In distributed systems, for example, two of the hardest problems are **maintaining message order** and **exactly-once delivery**.
 
-![](../images/shared/20210629104844645.png)
+![](../images/shared/naming-hard-problems-quotes.png)
 
 Today, let's focus on **naming**.
 
