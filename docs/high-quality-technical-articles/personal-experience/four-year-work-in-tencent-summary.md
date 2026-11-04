@@ -1,5 +1,5 @@
 ---
-title: Four Years at Tencent: A Work Retrospective
+title: "Four Years at Tencent: A Work Retrospective"
 description: A retrospective on four years at Tencent, covering projects, performance reviews, the EPC engineering productivity platform, workplace culture, and career growth.
 category: Curated Technical Articles
 author: pioneeryi

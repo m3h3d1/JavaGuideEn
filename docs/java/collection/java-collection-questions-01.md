@@ -482,10 +482,10 @@ public  class Person implements Comparable<Person> {
 ```java
     public static void main(String[] args) {
         TreeMap<Person, String> pdata = new TreeMap<Person, String>();
-        pdata.put(new Person("张三", 30), "zhangsan");
-        pdata.put(new Person("李四", 20), "lisi");
-        pdata.put(new Person("王五", 10), "wangwu");
-        pdata.put(new Person("小红", 5), "xiaohong");
+        pdata.put(new Person("Alice", 30), "alice");
+        pdata.put(new Person("Bob", 20), "bob");
+        pdata.put(new Person("Carol", 10), "carol");
+        pdata.put(new Person("Diana", 5), "diana");
         // Get each key and its corresponding value
         Set<Person> keys = pdata.keySet();
         for (Person key : keys) {
@@ -495,13 +495,13 @@ public  class Person implements Comparable<Person> {
     }
 ```
 
-Output：
+Output:
 
 ```plain
-5-小红
-10-王五
-20-李四
-30-张三
+5-Diana
+10-Carol
+20-Bob
+30-Alice
 ```
 
 ### What Do Unordered and Unique Mean?

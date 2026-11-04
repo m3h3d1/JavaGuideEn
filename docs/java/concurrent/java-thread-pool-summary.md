@@ -74,7 +74,7 @@ When you submit a **`Runnable`** or **`Callable`** implementation to **`ThreadPo
 
 **How to use the `Executor` framework:**
 
-![How to use the Executor framework](./images/java-thread-pool-summary/Executor框架的使用示意图.png)
+![How to use the Executor framework](./images/java-thread-pool-summary/executor-framework-usage.png)
 
 1. The main thread creates a task object that implements `Runnable` or `Callable`.
 2. It passes the task to `ExecutorService.execute(Runnable command)` or submits it with `ExecutorService.submit(Runnable task)` or `ExecutorService.submit(Callable<T> task)`.

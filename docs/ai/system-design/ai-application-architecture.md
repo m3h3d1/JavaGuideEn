@@ -1,64 +1,64 @@
 ---
-title: AI 应用系统设计：从 Prompt Demo 到生产级架构
-description: 深入拆解生产级 AI 应用系统设计，覆盖 Prompt 管理、模型网关、RAG、Memory、Tool、异步任务、可观测、评测、安全合规与 Java 后端落地方案。
-category: AI 应用开发
+title: "AI Application System Design: From Prompt Demo to Production Architecture"
+description: An engineering guide to production AI application architecture, covering Prompt management, model gateways, RAG, Memory, tools, asynchronous tasks, observability, evaluation, security, compliance, and Java backend implementation.
+category: AI Application Development
 head:
   - - meta
     - name: keywords
-      content: AI 应用架构,Prompt 管理,模型网关,RAG,Memory,Tool Calling,LLM Observability,LLM Evaluation,Java 后端
+      content: AI application architecture,Prompt management,model gateway,RAG,Memory,Tool Calling,LLM Observability,LLM Evaluation,Java backend
 ---
 
 <!-- @include: @article-header.snippet.md -->
 
-一个最小版 AI 应用很好搭：前端收一句用户问题，后端把问题和系统提示词拼到一起，调一次模型 API，页面上就能返回一段看起来还不错的答案。
+A minimal AI application is easy to build: the frontend accepts a question, the backend combines it with a system prompt, calls a model API once, and returns a plausible-looking answer.
 
-Demo 演示到这里基本够了。
+That is usually enough for a demo.
 
-真实用户进来以后，问题会变得具体很多：用户问内部制度，检索层把他没有权限的文档也塞进上下文；运营改了一版 Prompt，昨天还能答对的问题今天开始跑偏；模型调用超时，浏览器一直等；月底看账单，只知道 Token 消耗涨了，却说不清花在哪个租户、哪个功能、哪个模型上；线上事故复盘时，只能从应用日志、向量库命中结果和模型返回里一点点拼当时发生了什么。
+Once real users arrive, problems become concrete. A user asks about an internal policy, and retrieval adds documents they are not allowed to access to the context. An operator changes a Prompt, and questions answered correctly yesterday start going off track. A model call times out while the browser keeps waiting. At month-end, the bill shows higher Token usage but not which tenant, feature, or model drove the cost. During an incident review, the team has to piece together events from application logs, vector-store results, and model responses.
 
-这篇文章讨论的是后面这部分：怎么把一个能跑通的 Prompt Demo，改造成能上线、能排查、能回滚、能控成本的生产级 AI 应用。
+This guide explains how to turn a working Prompt demo into a production AI application that can be deployed, debugged, rolled back, and cost-controlled.
 
-这是一篇总览：先比较 Demo 与生产系统的差距，再按入口、业务编排、模型网关、Prompt/Context、RAG、Memory、Tool、异步任务和评测观测说明职责。Java 后端的模块拆分、表设计和服务接口会穿插在对应章节中；需要深入某个主题时，可以继续阅读文中的专题链接。
+This is an overview. It first compares demos with production systems, then explains the responsibilities of the entry layer, business orchestration, model gateway, Prompt/Context, RAG, Memory, tools, asynchronous tasks, evaluation, and observability. Java backend modules, table design, and service interfaces appear in the relevant sections, with links to deeper guides.
 
-## Demo 架构为什么扛不住生产流量
+## Why Doesn't a Demo Architecture Hold Up Under Production Traffic?
 
-先看一个最常见的 Demo：
+Consider a common demo:
 
 ```text
-前端输入问题 -> 后端拼 Prompt -> 调用模型 API -> 返回答案
+Frontend submits a question -> backend builds the Prompt -> calls the model API -> returns an answer
 ```
 
-这条链路能演示产品想法，但它缺了生产系统最关键的 6 件事。
+This flow can demonstrate a product idea, but it lacks six capabilities essential to production systems.
 
-| 维度     | Prompt Demo                | 生产级架构                                                   |
-| -------- | -------------------------- | ------------------------------------------------------------ |
-| 稳定性   | 单模型、单调用，失败就报错 | 多模型路由、重试、fallback、熔断、降级响应                   |
-| 权限     | 默认用户能问什么就查什么   | 检索前权限过滤，工具调用按用户和租户鉴权                     |
-| 成本     | 只看一次调用能不能成功     | Token 预算、模型分层、缓存、成本归因和限额                   |
-| 可观测   | 记录用户问题和最终答案     | 记录 Prompt、检索片段、工具调用、模型输出、Token、延迟、错误 |
-| 评测     | 靠人工试几条样例           | 固定评测集、线上抽样、LLM-as-Judge、人工复核闭环             |
-| 数据治理 | 文档直接入库，日志随便存   | PII 脱敏、数据留存、审计、版本化、删除和授权链路             |
+| Dimension       | Prompt demo                                      | Production architecture                                                                 |
+| --------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------- |
+| Reliability     | One model and one call; failure returns an error | Multi-model routing, retries, fallback, circuit breaking, and graceful degradation      |
+| Permissions     | Assume users may query anything they ask about   | Filter permissions before retrieval and authorize tool calls by user and tenant         |
+| Cost            | Check only whether a single call succeeds        | Token budgets, model tiers, caching, cost attribution, and quotas                       |
+| Observability   | Record the user question and final answer        | Record Prompts, retrieved chunks, tool calls, model output, Tokens, latency, and errors |
+| Evaluation      | Manually try a few examples                      | Fixed evaluation sets, production sampling, LLM-as-Judge, and human review              |
+| Data governance | Ingest documents and store logs without controls | PII redaction, retention, auditing, versioning, deletion, and authorization             |
 
-表里的能力不是给原有接口多套一层壳。模型输出由概率生成，同一个问题会受到 Prompt 版本、上下文顺序、检索结果、工具描述和采样参数的共同影响。答案跑偏时，未必能像普通 `if-else` 一样沿调用栈直接定位到一行代码。
+These capabilities are not just another wrapper around the existing API. Model output is probabilistic: the same question can be affected by the Prompt version, context order, retrieval results, tool descriptions, and sampling parameters. When an answer goes off track, the cause may not be traceable to one line in the call stack as it often is with ordinary `if-else` logic.
 
-生产系统需要把每次请求使用了什么输入、经过哪些步骤、产生了什么结果记录下来。这样才能回放一次错误回答，判断问题来自检索、模型、权限过滤还是输出解析。
+Production systems need to record each request's inputs, processing steps, and results. This makes it possible to replay a bad answer and determine whether the issue came from retrieval, the model, permission filtering, or output parsing.
 
-如果你对大模型 API 的调用链还不熟，可以先看 [大模型 API 调用工程实践：流式输出、重试、限流与结构化返回](../llm-basis/llm-api-engineering.md)。如果是想补 Token、上下文窗口和采样参数这些基础，再看 [LLM 运行机制：Token、上下文窗口与采样参数怎么影响输出](../llm-basis/llm-operation-mechanism.md)。
+If you are unfamiliar with LLM API calls, start with [LLM API Engineering: Streaming, Retries, Rate Limits, and Structured Responses](../llm-basis/llm-api-engineering.md). For background on Tokens, context windows, and sampling parameters, see [How Tokens, Context Windows, and Sampling Parameters Affect LLM Output](../llm-basis/llm-operation-mechanism.md).
 
-## 一套可落地的 AI 应用分层
+## A Practical Layered Architecture for AI Applications
 
-一条请求从入口进入后，要先确定身份和权限，再决定是否检索知识、调用工具或异步执行，最后把调用过程写入观测系统。下图按这条链路划分职责；实际项目可以合并模块，也不必把它当成固定的行业标准。
+After a request enters the system, determine identity and permissions first. Then decide whether to retrieve knowledge, call tools, or run asynchronously, and record the call flow in the observability system. The diagram assigns responsibilities along this path; real projects may combine modules, and this is not a fixed industry standard.
 
 ```mermaid
 flowchart LR
-    Client[客户端]:::client
-    Entry[入口层]:::gateway
-    Orchestrator[业务编排层]:::business
-    ContextHub[Prompt 与 Context 管理]:::infra
-    Gateway[模型网关]:::gateway
-    Knowledge[知识与记忆层]:::storage
-    Tools[工具运行时]:::business
-    EvalObs[评测与观测]:::infra
+    Client[Client]:::client
+    Entry[Entry layer]:::gateway
+    Orchestrator[Business orchestration]:::business
+    ContextHub[Prompt and Context management]:::infra
+    Gateway[Model gateway]:::gateway
+    Knowledge[Knowledge and Memory]:::storage
+    Tools[Tool runtime]:::business
+    EvalObs[Evaluation and observability]:::infra
 
     Client --> Entry --> Orchestrator
     Orchestrator --> ContextHub
@@ -77,17 +77,17 @@ flowchart LR
     linkStyle default stroke-width:2px,stroke:#333333,opacity:0.8
 ```
 
-### 入口层：把用户请求变成可治理的任务
+### Entry Layer: Turn User Requests into Governable Tasks
 
-用户请求到达系统时，入口层先把它约束成后续服务能够处理的任务：
+When a user request reaches the system, the entry layer converts it into a task that downstream services can handle:
 
-- 认证鉴权：确认用户、租户、角色、数据范围。
-- 请求标准化：把 Web、App、API、Webhook、定时任务统一成内部任务模型。
-- 限流与防刷：按用户、租户、模型能力和业务场景限流。
-- 幂等控制：可重试的异步任务和带副作用的工具调用需要幂等键；只读查询是否需要去重，可按费用和一致性要求决定。
-- 敏感内容预处理：PII 脱敏、恶意输入检测、Prompt 注入初筛。
+- Authentication and authorization: Identify the user, tenant, role, and data scope.
+- Request normalization: Convert Web, app, API, Webhook, and scheduled-job requests into an internal task model.
+- Rate limiting and abuse prevention: Apply limits by user, tenant, model capability, and business scenario.
+- Idempotency: Retriable asynchronous tasks and tool calls with side effects need idempotency keys. Deduplicate read-only queries when cost or consistency requirements justify it.
+- Sensitive-content preprocessing: Redact PII, detect malicious input, and screen for Prompt Injection.
 
-后续链路应接收结构化请求，而不是只接收一段用户输入：
+Downstream components should receive a structured request, not just a string of user input:
 
 ```java
 public record AiRequest(
@@ -102,114 +102,114 @@ public record AiRequest(
 }
 ```
 
-### 业务编排层：决定这次请求怎么跑
+### Business Orchestration: Decide How to Handle Each Request
 
-业务编排层决定这次请求采用哪条执行路径：
+The business orchestration layer selects the execution path for each request:
 
-- 这次是普通问答、RAG 问答、Agent 多步任务，还是批处理任务？
-- 需要哪些上下文：历史会话、用户画像、知识库、实时业务数据？
-- 是否允许调用工具？哪些工具需要二次确认？
-- 应该走同步、流式，还是异步？
-- 输出要不要进入评测、人工审核或后处理？
+- Is this ordinary Q&A, RAG-based Q&A, a multi-step Agent task, or a batch task?
+- Which context is needed: conversation history, user profile, knowledge base, or live business data?
+- Are tool calls allowed? Which tools require confirmation?
+- Should the request run synchronously, stream, or run asynchronously?
+- Should the output go through evaluation, human review, or post-processing?
 
-例如，用户是否有权限读取某个文档、一次操作是否需要确认，都应由业务规则判断；模型适合处理规则难以穷举的语言理解。把两类决策混进一个“超级 Prompt”后，出错时很难区分是规则失效还是模型判断偏差。
+Business rules should determine whether a user may read a document or whether an action requires confirmation. The model is better suited to language understanding that is difficult to exhaustively encode as rules. Combining both decisions in a “super Prompt” makes it hard to tell whether a failure came from a broken rule or incorrect model judgment.
 
-### 模型网关：把模型调用变成基础设施
+### Model Gateway: Make Model Calls Infrastructure
 
-模型网关负责统一接入 OpenAI、Anthropic、Google Gemini、私有化模型、Embedding 模型、Rerank 模型等能力。它隐藏不同 API 的差异，对上提供稳定接口。模型网关本身可以单独展开一篇，细节可以看 [大模型网关详解：多模型路由、Fallback、限流与成本控制](./llm-gateway.md)。
+The model gateway provides a unified interface to OpenAI, Anthropic, Google Gemini, self-hosted models, embedding models, rerankers, and other capabilities. It hides API differences and exposes a stable interface to upstream services. For details, see [LLM Gateway: Multi-Model Routing, Fallback, Rate Limits, and Cost Control](./llm-gateway.md).
 
-![LLM 网关示意图](../images/shared/llm-gateway-overview.png)
+![LLM gateway overview](../images/shared/llm-gateway-overview.png)
 
-模型调用在网关处收口后，路由、限额和观测才有一致的处理位置：
+Centralizing model calls at the gateway gives routing, quotas, and observability a consistent control point:
 
-- 多模型路由：按场景、成本、延迟、语言、上下文长度和成功率选择模型。
-- fallback：主模型失败、超时、限额不足时切到备用模型。
-- 限流与熔断：避免供应商异常拖垮业务线程池。
-- Token 预算：估算输入输出 Token，超预算时压缩上下文或降级模型。
-- 成本归因：按租户、用户、场景、Prompt 版本记录成本。
-- 统一观测：记录模型请求、响应、错误、TTFT、总延迟、Token usage。
+- Multi-model routing: Select models by scenario, cost, latency, language, context length, and success rate.
+- Fallback: Switch to a backup when the primary model fails, times out, or reaches its quota.
+- Rate limiting and circuit breaking: Prevent provider failures from overwhelming business thread pools.
+- Token budget: Estimate input and output Tokens; compress context or use a less capable model when the budget is exceeded.
+- Cost attribution: Track costs by tenant, user, scenario, and Prompt version.
+- Unified observability: Record model requests, responses, errors, TTFT, total latency, and Token usage.
 
-OpenAI、Anthropic、Google 等官方文档都在持续更新模型、工具、流式、评测和成本相关能力。涉及具体模型名、上下文窗口、价格、可用区域和工具支持时，建议在配置中心或模型注册表里维护，并标注“以官方文档最新展示为准”，不要写死在业务代码里。
+Official documentation from OpenAI, Anthropic, Google, and others continually changes details about models, tools, streaming, evaluation, and costs. Maintain model names, context windows, prices, availability, and tool support in a configuration center or model registry, and verify them against current official documentation instead of hard-coding them in business logic.
 
-### Prompt 与 Context 管理：不要把 Prompt 当代码里的字符串
+### Prompt and Context Management: Do Not Treat Prompts as Code Strings
 
-线上请求使用的 Prompt 应有明确版本，不能散落在代码里的多行字符串中。一次发布和回滚需要能查到具体内容、变量约束与生效范围：
+Prompts used in production should have explicit versions instead of being scattered as multiline strings in code. Each release and rollback should identify the content, variable constraints, and scope:
 
-- 模板版本：每次修改生成新版本，旧版本可回放。
-- 变量注入：业务变量、用户输入、检索结果、工具结果分区注入。
-- 灰度发布：按租户、用户比例、场景开关选择 Prompt 版本。
-- 快速回滚：线上效果变差时能切回稳定版本。
-- 审计记录：谁在什么时间改了什么，为什么改。
-- 运行时绑定：每次请求记录使用的 Prompt 名称、版本和变量摘要。
+- Template versioning: Create a new version for each change and keep old versions replayable.
+- Variable injection: Inject business variables, user input, retrieval results, and tool results in separate sections.
+- Gradual rollout: Select a Prompt version by tenant, user percentage, or scenario flag.
+- Fast rollback: Restore a stable version when production quality drops.
+- Audit records: Track who changed what, when, and why.
+- Runtime binding: Record the Prompt name, version, and variable summary for each request.
 
-Prompt 改动会改变回答内容，也可能改变检索、工具调用、成本和评测结果。因此，变更记录、运行 Trace 与评测结果需要能关联到同一个 Prompt 版本。Langfuse 把 Prompt Management、Tracing、Evaluation 放在同一套平台中，处理的正是这类关联；是否使用该工具取决于项目，但关联关系本身不能缺。
+Prompt changes affect answers and may also change retrieval, tool calls, costs, and evaluation results. Change records, runtime Traces, and evaluation results must therefore link to the same Prompt version. Langfuse combines Prompt Management, Tracing, and Evaluation to support these links. Whether you use it depends on the project, but the links themselves are essential.
 
-Prompt 写法本身可以看 [大模型提示词工程（Prompt Engineering）是什么？提示词技巧有哪些？](../agent/prompt-engineering.md)。如果你关心的是“哪些信息该进上下文、进多少、什么时候压缩”，更适合看 [上下文工程（Context Engineering）是什么？和 Prompt Engineering 有什么区别？](../agent/context-engineering.md)。
+For Prompt-writing techniques, see [What Is Prompt Engineering, and Which Prompting Techniques Are Useful?](../agent/prompt-engineering.md). For deciding which information belongs in context, how much to include, and when to compress it, see [What Is Context Engineering, and How Does It Differ from Prompt Engineering?](../agent/context-engineering.md).
 
-![Context Engineering 和 Prompt Engineering 差别](../images/shared/context-engineering-vs-context-engineering-dimension-comparison.png)
+![Context Engineering and Prompt Engineering compared](../images/shared/context-engineering-vs-context-engineering-dimension-comparison.png)
 
-### RAG、Memory、Tool：三类上下文不要混在一起
+### RAG, Memory, and Tools: Keep These Context Types Separate
 
-检索文档、用户偏好和工具返回都会进入模型上下文，但它们的来源、更新方式和风险不同：
+Retrieved documents, user preferences, and tool results may all enter the model context, but they have different sources, update cycles, and risks:
 
-| 类型   | 存什么                                       | 生命周期         | 核心风险                               |
-| ------ | -------------------------------------------- | ---------------- | -------------------------------------- |
-| RAG    | 企业文档、产品手册、制度、代码文档、工单知识 | 由知识库更新决定 | 检索不到、越权召回、过期文档、引用错配 |
-| Memory | 用户偏好、历史决策、长期画像、任务经验       | 随用户和会话演化 | 错误记忆固化、隐私泄露、过时记忆干扰   |
-| Tool   | 查询订单、创建工单、发邮件、改配置、查数据库 | 运行时按需调用   | 参数错误、权限越界、敏感操作误执行     |
+| Type   | Stored data                                                                  | Lifecycle                       | Main risks                                                                      |
+| ------ | ---------------------------------------------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------- |
+| RAG    | Enterprise documents, product manuals, policies, code docs, ticket knowledge | Updated with the knowledge base | Missed retrieval, unauthorized retrieval, stale documents, mismatched citations |
+| Memory | User preferences, past decisions, long-term profiles, task experience        | Evolves with users and sessions | Persistent errors, privacy leaks, stale memory                                  |
+| Tool   | Query orders, create tickets, send email, change settings, query databases   | Called on demand at runtime     | Invalid parameters, excess permissions, unintended sensitive actions            |
 
-它们底层都可能使用向量检索、结构化存储和重排，但不能按同一套规则治理。RAG 对应共享知识源，Memory 保存个性化背景，Tool 则连接真实业务系统；权限检查和失效策略要分别设计。
+They may all use vector retrieval, structured storage, and reranking underneath, but they need different governance. RAG provides shared knowledge, Memory stores personalized context, and tools connect to business systems. Design separate permission checks and invalidation policies for each.
 
-![长期记忆与 RAG（检索增强生成）的区别](../images/shared/agent-memory-rag-vs-memory.svg)
+![Long-term memory compared with RAG](../images/shared/agent-memory-rag-vs-memory.svg)
 
-不要把 Memory 当成个人版 RAG 随便写入。记忆一旦写错，后续多轮对话都会受到影响。不同类型的 Memory 需要不同控制：用户明确确认的偏好可以同步写入；由模型抽取的长期事实更适合先做 Schema 校验、来源记录和置信度过滤，再按风险决定是否异步写入、设置过期时间或进入人工审核。
+Do not treat Memory as personal RAG and write to it indiscriminately. An incorrect memory can affect many later conversations. Apply different controls to different memory types: write user-confirmed preferences synchronously; validate model-extracted long-term facts against a Schema, record their source, and filter by confidence before deciding whether to write them asynchronously, set an expiration, or send them for human review.
 
-RAG 的基础概念可以从 [RAG 基础概念：检索、生成与工程取舍](../rag/rag-basis.md) 看起；文档如何解析、清洗和切 Chunk，可以看 [RAG 文档处理与切分策略](../rag/rag-document-processing.md)；检索效果调优看 [RAG 优化：从召回、重排到上下文工程](../rag/rag-optimization.md)。Memory 单独展开的话，可以看 [AI Agent 记忆系统：短期记忆、长期记忆与记忆演化机制](../agent/agent-memory.md)。
+For RAG fundamentals, see [RAG Fundamentals: Retrieval, Generation, and Engineering Tradeoffs](../rag/rag-basis.md). For document parsing, cleaning, and chunking, see [RAG Document Processing and Chunking Strategies](../rag/rag-document-processing.md). For retrieval tuning, see [RAG Optimization: From Recall and Reranking to Context Engineering](../rag/rag-optimization.md). For Memory, see [AI Agent Memory: Short-Term and Long-Term Memory and How Memory Evolves](../agent/agent-memory.md).
 
-## 同步、流式、异步三种交互模式怎么选
+## Choosing Between Synchronous, Streaming, and Asynchronous Interactions
 
-AI 应用不是所有请求都适合 HTTP 同步等待。交互模式选错，用户体验和系统稳定性都会被拖垮。
+Not every AI request should wait for a synchronous HTTP response. Choosing the wrong interaction mode can harm both user experience and system reliability.
 
-| 模式     | 适合场景                                   | 优势                         | 风险                           | 后端设计要点                         |
-| -------- | ------------------------------------------ | ---------------------------- | ------------------------------ | ------------------------------------ |
-| 同步请求 | 短问答、分类、抽取、低延迟小任务           | 实现简单，调用链清晰         | 超时敏感，容易占满线程         | 设置短超时、快速失败、结果缓存       |
-| 流式响应 | 聊天、长答案、代码生成、语音前置文本       | 首字体验好，用户感知等待更短 | 中途失败处理复杂，前端状态更多 | SSE/WebSocket、TTFT 监控、可取消生成 |
-| 异步任务 | 报告生成、批量评测、长文档分析、多工具任务 | 可排队、可重试、可恢复       | 任务状态和通知链路复杂         | 任务表、队列、进度事件、幂等和补偿   |
+| Mode                | Suitable scenarios                                                            | Benefits                                      | Risks                                                | Backend considerations                                        |
+| ------------------- | ----------------------------------------------------------------------------- | --------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------- |
+| Synchronous request | Short Q&A, classification, extraction, low-latency tasks                      | Simple implementation and clear call flow     | Sensitive to timeouts; can exhaust threads           | Short timeouts, fail fast, cache results                      |
+| Streaming response  | Chat, long answers, code generation, speech pre-transcripts                   | Faster first token and shorter perceived wait | Complex mid-stream failures and more frontend states | SSE/WebSocket, TTFT monitoring, cancelable generation         |
+| Asynchronous task   | Report generation, batch evaluation, long-document analysis, multi-tool tasks | Queueable, retriable, recoverable             | Complex task state and notifications                 | Task table, queue, progress events, idempotency, compensation |
 
-如果请求能在约 3 秒内稳定完成，并且客户端超时、网关超时也允许，同步调用通常更省事。这个时间不是固定标准，要结合自己的超时配置确定。
+If a request reliably finishes in about three seconds and fits within client and gateway timeouts, a synchronous call is usually simpler. This is not a fixed threshold; choose one based on your timeout settings.
 
-用户需要立刻看到生成过程时，流式响应更合适；依赖长文档、多轮工具调用或批量处理时，把任务放进队列更容易重试和恢复。
+Use streaming when users need to see generation immediately. Queue tasks that depend on long documents, multiple tool calls, or batch processing so they are easier to retry and recover.
 
-标签分类、风险评分、路由决策这类内部调用通常不需要首字反馈。为它们维护 SSE 或 WebSocket 连接，只会增加中断、取消和前端状态处理的成本。
+Internal calls such as label classification, risk scoring, and routing decisions usually do not need first-token feedback. Maintaining SSE or WebSocket connections for them only adds the cost of handling interruptions, cancellation, and frontend state.
 
-流式输出、重试、限流和结构化返回在 [大模型 API 调用工程实践](../llm-basis/llm-api-engineering.md) 里有更完整的工程拆解。如果场景是实时语音，还要考虑 VAD、ASR、TTS、打断和端到端延迟，可以继续看 [AI 语音技术详解：从 ASR、TTS 到实时语音 Agent 的工程化落地](./ai-voice.md)。
+For a detailed engineering discussion of streaming, retries, rate limiting, and structured responses, see [LLM API Engineering](../llm-basis/llm-api-engineering.md). Real-time voice also involves VAD, ASR, TTS, interruption handling, and end-to-end latency; see [AI Voice Engineering: From ASR and TTS to Real-Time Voice Agents](./ai-voice.md).
 
-## Prompt 管理：从模板字符串到版本系统
+## Prompt Management: From Template Strings to Versioning
 
-生产级 Prompt 管理可以先按 5 个对象建模：
+Model production-grade Prompt management around five entities:
 
-- `prompt_template`：Prompt 基本信息，例如名称、场景、类型、状态。
-- `prompt_version`：具体内容、变量定义、模型参数、创建人、变更说明。
-- `prompt_release`：某个版本发布到哪个环境、哪些租户、多少流量。
-- `prompt_run`：每次调用绑定的 Prompt 版本、变量摘要和模型输出。
-- `prompt_eval_result`：某个 Prompt 版本在评测集上的结果。
+- `prompt_template`: Prompt metadata such as name, scenario, type, and status.
+- `prompt_version`: Content, variable definitions, model parameters, author, and change notes.
+- `prompt_release`: The environment, tenants, and traffic share for a released version.
+- `prompt_run`: The Prompt version, variable summary, and model output for each call.
+- `prompt_eval_result`: Evaluation results for a Prompt version.
 
-核心表可以这样设计：
+Core tables might look like this:
 
-| 表名                 | 关键字段                                                                                                        | 作用                       |
-| -------------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------- |
-| `ai_prompt_template` | `id`、`tenant_id`、`name`、`scene_code`、`type`、`status`                                                       | 管理 Prompt 逻辑名称       |
-| `ai_prompt_version`  | `id`、`template_id`、`version_no`、`content`、`variables_schema`、`model_config`、`created_by`、`change_reason` | 保存可回放的 Prompt 内容   |
-| `ai_prompt_release`  | `id`、`template_id`、`version_id`、`env`、`traffic_ratio`、`tenant_scope`、`status`                             | 控制灰度和回滚             |
-| `ai_prompt_run`      | `id`、`request_id`、`version_id`、`variables_hash`、`input_tokens`、`output_tokens`、`created_at`               | 连接线上请求与 Prompt 版本 |
+| Table                | Key fields                                                                                                      | Purpose                                     |
+| -------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `ai_prompt_template` | `id`, `tenant_id`, `name`, `scene_code`, `type`, `status`                                                       | Manage logical Prompt names                 |
+| `ai_prompt_version`  | `id`, `template_id`, `version_no`, `content`, `variables_schema`, `model_config`, `created_by`, `change_reason` | Store replayable Prompt content             |
+| `ai_prompt_release`  | `id`, `template_id`, `version_id`, `env`, `traffic_ratio`, `tenant_scope`, `status`                             | Control gradual rollout and rollback        |
+| `ai_prompt_run`      | `id`, `request_id`, `version_id`, `variables_hash`, `input_tokens`, `output_tokens`, `created_at`               | Link production requests to Prompt versions |
 
-变量注入最容易在两个地方出问题。用户输入、工具结果和检索片段可能携带注入指令；分区标签和转义只能帮助模型识别不可信内容，后端仍要限制可调用工具，并在执行前再次校验参数和权限。
+Variable injection commonly causes two problems. User input, tool results, and retrieved chunks may contain injection instructions. Delimiters and escaping can help the model identify untrusted content, but the backend must still restrict available tools and revalidate parameters and permissions before execution.
 
-另一类问题来自版本错配：Prompt 新增变量而代码没有传值，渲染结果就会缺少上下文。`variables_schema` 可以在运行时提前拦住这类请求。
+Another problem is version mismatch: a Prompt adds a variable that the code does not supply, leaving the rendered result without required context. `variables_schema` can reject such requests at runtime.
 
-`ai_prompt_run` 通常只保存变量摘要、Hash、Token 和关联 ID。完整用户输入、检索片段或工具返回含有 PII、业务敏感信息时，再按安全等级决定是否脱敏、加密和缩短留存期；不能为了回放方便把所有明文都写入表中。
+`ai_prompt_run` should usually store only variable summaries, hashes, Tokens, and correlation IDs. If full user input, retrieved chunks, or tool results contain PII or sensitive business data, decide whether to redact, encrypt, or shorten retention based on risk. Do not store all plaintext just to make replay easier.
 
-一个最小接口示例：
+A minimal interface might look like this:
 
 ```java
 public interface PromptService {
@@ -222,73 +222,73 @@ public interface PromptService {
 }
 ```
 
-如果 Prompt 输出要被程序稳定解析，最好不要只靠“请返回 JSON”。结构化输出、JSON Schema、Function Calling 的工程细节可以看 [大模型结构化输出：从 JSON 契约到 Function Calling 落地](../llm-basis/structured-output-function-calling.md)。
+If software must parse Prompt output reliably, do not rely only on “return JSON.” For engineering details on structured output, JSON Schema, and Function Calling, see [Structured Outputs for LLMs: From JSON Contracts to Function Calling](../llm-basis/structured-output-function-calling.md).
 
-## 模型网关：多模型路由、fallback 与成本控制
+## Model Gateway: Multi-Model Routing, Fallback, and Cost Control
 
-模型网关很容易被低估。很多团队一开始直接在业务代码里调用某个供应商 SDK，等到要换模型、做灰度、查成本时才发现处处耦合。
+Model gateways are easy to underestimate. Teams often call a vendor SDK directly from business code, then discover tight coupling when they need to switch models, roll out gradually, or investigate costs.
 
-### 模型网关策略对比
+### Comparing Model-Gateway Strategies
 
-| 策略         | 核心逻辑                               | 适合场景                         | 风险                             |
-| ------------ | -------------------------------------- | -------------------------------- | -------------------------------- |
-| 固定模型     | 某个场景固定调用一个模型               | 早期系统、低复杂度任务           | 成本和稳定性受单供应商影响       |
-| 成本优先路由 | 默认走低成本模型，失败或低置信度再升级 | 分类、摘要、轻量问答             | 低成本模型误判会传导到下游       |
-| 质量优先路由 | 高价值请求优先走高能力模型             | 法务、金融、医疗辅助、复杂 Agent | 成本高，需要预算控制             |
-| 延迟优先路由 | 按 P95/P99 延迟和可用区选择模型        | 实时聊天、语音、在线客服         | 可能牺牲复杂推理质量             |
-| 多模型投票   | 多模型并行生成，再由评审器选择         | 高风险内容、关键报告             | 成本和延迟都高                   |
-| fallback 链  | 主模型失败后切备用模型                 | 大多数生产系统                   | 备用模型能力差异会影响输出一致性 |
+| Strategy              | Core behavior                                                         | Suitable scenarios                                 | Risk                                                       |
+| --------------------- | --------------------------------------------------------------------- | -------------------------------------------------- | ---------------------------------------------------------- |
+| Fixed model           | Always call one model for a scenario                                  | Early systems and low-complexity tasks             | Cost and reliability depend on one vendor                  |
+| Cost-first routing    | Use a low-cost model by default; upgrade on failure or low confidence | Classification, summaries, lightweight Q&A         | Errors from a low-cost model can affect downstream systems |
+| Quality-first routing | Route high-value requests to a more capable model                     | Legal, finance, medical assistance, complex Agents | High cost requires budget controls                         |
+| Latency-first routing | Select a model by P95/P99 latency and region availability             | Real-time chat, voice, online support              | May reduce complex reasoning quality                       |
+| Multi-model voting    | Generate in parallel and choose with a judge                          | High-risk content, critical reports                | High cost and latency                                      |
+| Fallback chain        | Switch to a backup when the primary fails                             | Most production systems                            | Backup capability differences affect consistency           |
 
-### Token 预算怎么做
+### How to Set a Token Budget
 
-模型网关在调用前要估算上下文和最大输出会占用多少 Token：
+Before calling a model, the gateway should estimate how many Tokens the context and maximum output will use:
 
 ```text
-预计输入 Token = System Prompt + 用户输入 + 历史消息 + RAG 片段 + Memory + Tool Schema
-预计总 Token = 预计输入 Token + 最大输出 Token
+Estimated input Tokens = System Prompt + user input + conversation history + RAG chunks + Memory + Tool Schema
+Estimated total Tokens = estimated input Tokens + maximum output Tokens
 ```
 
-超出预算时，优先移除与当前问题关联较弱的内容，而不是从字符串中间直接截断：
+When the budget is exceeded, remove content less relevant to the current question instead of truncating the middle of a string:
 
-1. 删除低相关 RAG 片段。
-2. 压缩早期历史消息。
-3. 减少工具 Schema，只保留候选工具。
-4. 降低最大输出长度。
-5. 切换长上下文模型。
-6. 拒绝执行并提示用户缩小范围。
+1. Remove low-relevance RAG chunks.
+2. Compress older conversation messages.
+3. Reduce the tool Schema list to candidate tools.
+4. Lower the maximum output length.
+5. Switch to a long-context model.
+6. Reject the request and ask the user to narrow its scope.
 
-这里的 Token 预算和上下文压缩，和前面提到的 Context Engineering 是同一类问题。更完整的上下文装配、按需加载和降级策略，可以看 [上下文工程（Context Engineering）是什么？和 Prompt Engineering 有什么区别？](../agent/context-engineering.md)。
+Token budgeting and context compression are part of Context Engineering. For context assembly, on-demand loading, and fallback strategies, see [What Is Context Engineering, and How Does It Differ from Prompt Engineering?](../agent/context-engineering.md).
 
-OpenTelemetry 文档里的 GenAI registry 能看到 `gen_ai.request.model`、`gen_ai.response.model`、`gen_ai.usage.input_tokens`、`gen_ai.usage.output_tokens`、`gen_ai.response.time_to_first_chunk`、retrieval、tool 等字段。不过 OpenTelemetry 站内也提示 GenAI 语义约定已迁移到独立仓库，落地时不要只复制一篇旧文档里的字段名，最好锁定当前版本并做字段映射。无论你用 Langfuse、LangSmith，还是自建观测平台，都建议尽量向通用字段靠拢，后续迁移和统一监控会轻松很多。
+The OpenTelemetry GenAI registry includes fields such as `gen_ai.request.model`, `gen_ai.response.model`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, and `gen_ai.response.time_to_first_chunk`, as well as retrieval and tool fields. OpenTelemetry notes that GenAI semantic conventions have moved to a separate repository. Do not copy field names from an old page without checking; pin a current version and map fields explicitly. Whether you use Langfuse, LangSmith, or a custom observability platform, prefer common field conventions to simplify future migrations and unified monitoring.
 
-## 工具调用与权限：让模型只提出动作，系统决定能不能做
+## Tool Calls and Permissions: The Model Proposes; the System Decides
 
-Tool Calling 很容易让人产生错觉：模型返回了一个函数名和参数，系统执行就行。
+Tool Calling can create the impression that the system should simply execute the function name and parameters returned by the model.
 
-这在生产环境很危险。
+That is dangerous in production.
 
-更稳的心智模型是：**模型只能提出“想调用什么工具”，真正执行前必须经过系统校验**。
+A safer mental model is: **the model proposes which tool to call; the system validates before execution**.
 
-工具运行时至少要包含 6 道关：
+The tool runtime should include at least six checks:
 
-| 环节     | 作用                                                                 |
-| -------- | -------------------------------------------------------------------- |
-| 工具注册 | 声明工具名称、描述、参数 Schema、权限标签、风险等级                  |
-| 工具检索 | 从大量工具中选出当前任务相关的少数工具，避免上下文膨胀               |
-| 参数校验 | 用 JSON Schema 或强类型对象校验必填、格式、枚举、范围                |
-| 权限校验 | 按用户、租户、角色、资源 ID 做后端鉴权                               |
-| 确认策略 | 删除、支付、发送消息、改配置等操作按风险和预授权范围决定是否再次确认 |
-| 审计日志 | 记录模型建议、最终参数、执行人、执行结果和回滚信息                   |
+| Stage                | Responsibility                                                                                                                          |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Tool registration    | Declare the tool name, description, parameter Schema, permission tags, and risk level                                                   |
+| Tool retrieval       | Select a small set of tools relevant to the task to avoid context bloat                                                                 |
+| Parameter validation | Validate required fields, formats, enums, and ranges with JSON Schema or typed objects                                                  |
+| Authorization        | Check access on the backend by user, tenant, role, and resource ID                                                                      |
+| Confirmation policy  | Require confirmation for deletion, payment, messaging, configuration changes, and similar actions based on risk and prior authorization |
+| Audit log            | Record the model proposal, final parameters, executor, result, and rollback details                                                     |
 
-Anthropic、OpenAI 和 Google 的官方工具/函数调用文档都强调工具定义、参数结构和调用处理；Google 的文档还明确提醒，对会发送订单、更新数据库等有明显后果的函数调用，要在执行前让用户确认。已经获得明确预授权的低风险操作可以按策略自动执行，但权限判断必须由业务系统完成，不能交给模型。
+Official tool/function-calling documentation from Anthropic, OpenAI, and Google emphasizes tool definitions, parameter structures, and call handling. Google also advises asking users to confirm function calls with significant consequences, such as sending orders or updating a database. Low-risk actions covered by explicit prior authorization may run automatically under policy, but the business system—not the model—must make authorization decisions.
 
-即使供应商提供 server-side tool，业务侧也不能省掉自己的 ACL、审计和确认流。供应商负责把工具能力接进模型，业务系统负责判断这个用户、这个租户、这个资源在当前场景下能不能执行。
+Even when a vendor provides server-side tools, the business layer still needs its own ACLs, auditing, and confirmation flow. The vendor connects tools to the model; the business system decides whether this user, tenant, and resource may use them in the current scenario.
 
-工具调用这块如果想从概念补起，可以先看 [大模型结构化输出：从 JSON 契约到 Function Calling 落地](../llm-basis/structured-output-function-calling.md)。如果你的工具要被多个模型、Agent 或 IDE 复用，再看 [什么是 Model Context Protocol（MCP）？和 Function Calling、Agent 什么关系？](../agent/mcp.md)。
+For an introduction to tool calls, see [Structured Outputs for LLMs: From JSON Contracts to Function Calling](../llm-basis/structured-output-function-calling.md). If tools must be reused across models, Agents, or IDEs, see [What Is the Model Context Protocol (MCP), and How Does It Relate to Function Calling and Agents?](../agent/mcp.md).
 
-![Function Calling 完整调用链路：模型只生成调用意图，真正执行工具的是业务侧](../images/shared/structured-output-function-calling-function-calling-pipeline.png)
+![Function Calling flow: the model generates a call intent, while the business layer executes the tool](../images/shared/structured-output-function-calling-function-calling-pipeline.png)
 
-工具接口可以这样定义：
+A tool interface might look like this:
 
 ```java
 public interface AiTool {
@@ -299,7 +299,7 @@ public interface AiTool {
 }
 ```
 
-工具定义需要把副作用和风险等级分开。只读不等于低风险，例如读取密钥、医疗记录或大批量客户数据没有写入动作，但仍需要更严格的授权与审计：
+Tool definitions should distinguish side effects from risk level. Read-only does not always mean low risk: reading secrets, medical records, or large volumes of customer data has no write side effect but still requires stricter authorization and auditing.
 
 ```java
 public enum ToolSideEffect {
@@ -314,154 +314,154 @@ public enum ToolRiskLevel {
 }
 ```
 
-编排层根据 `sideEffect + riskLevel + preAuthorization` 选择控制策略。高风险写操作默认转换成“待确认动作”；高风险读取则要加强资源级鉴权、字段脱敏、结果数量限制和审计。如果业务允许预授权自动执行写操作，也要使用范围明确、可撤销的授权凭证，并配套幂等、审计和补偿机制。
+The orchestration layer selects controls based on `sideEffect + riskLevel + preAuthorization`. By default, convert high-risk writes into actions pending confirmation. High-risk reads require stronger resource-level authorization, field redaction, result limits, and auditing. If the business allows preauthorized writes to run automatically, use a clearly scoped, revocable credential and add idempotency, auditing, and compensation mechanisms.
 
-![工具调用安全风险分层：按风险等级匹配不同的控制策略](../images/shared/structured-output-function-calling-tool-call-security.png)
+![Tool-call security tiers: match controls to the risk level](../images/shared/structured-output-function-calling-tool-call-security.png)
 
-## RAG 与 Memory：共享知识和个性化记忆怎么协作
+## How Do RAG and Memory Combine Shared Knowledge with Personal Context?
 
-RAG 和 Memory 都会把外部信息塞进上下文，但它们的治理方式不同。
+RAG and Memory both add external information to the context, but they require different governance.
 
-### 一次请求里的协作顺序
+### Recommended Order Within a Request
 
-一次请求里的推荐顺序如下：
+For a request, use this order:
 
-1. 入口层确认用户身份和权限范围。
-2. Memory 服务在用户范围内检索偏好和长期事实。
-3. RAG 服务在租户和资源权限范围内检索共享知识库。
-4. Context 管理层对两类结果分别去重、过滤、压缩。
-5. 编排层把 Memory 放进“用户背景”区域，把 RAG 放进“证据资料”区域。
-6. 模型输出时要求区分“基于资料的事实”和“基于用户偏好的表达方式”。
+1. The entry layer verifies user identity and permission scope.
+2. The Memory service retrieves preferences and long-term facts within the user's scope.
+3. The RAG service retrieves shared knowledge within the tenant and resource permission scope.
+4. The Context manager deduplicates, filters, and compresses each result set separately.
+5. The orchestration layer places Memory in a “user context” section and RAG in an “evidence” section.
+6. Instruct the model to distinguish facts based on source material from wording based on user preferences.
 
-这套顺序主要是为了避免上下文污染。具体项目也可以先查 RAG 再查 Memory，但权限范围必须先确定，不能把“先检索、后过滤”当成默认方案。
+This order helps prevent context contamination. A project may query RAG before Memory, but permission scope must be established first; do not make “retrieve first, filter later” the default.
 
-### 怎么避免上下文污染
+### How to Prevent Context Contamination
 
-| 污染类型        | 典型表现                             | 防护方式                                    |
-| --------------- | ------------------------------------ | ------------------------------------------- |
-| RAG 噪声污染    | 检索到无关文档，模型被带偏           | Hybrid Search、Rerank、Top-N 压缩、引用校验 |
-| 权限污染        | 用户拿到无权访问的文档片段           | 检索前 ACL 过滤，租户隔离，审计召回结果     |
-| Memory 错误固化 | 用户一次临时说法被当成长期偏好       | 写入置信度、过期时间、用户可编辑、人工复核  |
-| 新旧事实冲突    | 旧版本制度和新版本制度同时进入上下文 | 版本字段、时间过滤、冲突检测                |
-| Prompt 注入污染 | 文档里写着“忽略前面规则”             | 文档内容分区、指令优先级、注入检测          |
+| Contamination type      | Typical symptom                                           | Safeguard                                                                 |
+| ----------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------- |
+| RAG noise               | Irrelevant documents skew the model                       | Hybrid Search, reranking, Top-N compression, citation checks              |
+| Permission              | User receives document chunks they cannot access          | ACL filtering before retrieval, tenant isolation, audit retrieved results |
+| Persistent Memory error | A temporary user statement becomes a long-term preference | Confidence thresholds, expiration, user editing, human review             |
+| Conflicting facts       | Old and new policy versions enter the context together    | Version fields, time filters, conflict detection                          |
+| Prompt Injection        | A document says “ignore the rules above”                  | Delimit document content, set instruction priorities, detect injections   |
 
-RAG 和 Memory 的结果不要直接拼成一段“背景资料”。要给模型清晰标注来源、时间、权限和可信度，避免把“用户偏好”“公司制度”“工具结果”混成同一类信息。
+Do not concatenate RAG and Memory results into generic “background information.” Clearly label their source, time, permissions, and confidence so the model does not confuse user preferences, company policies, and tool results.
 
-知识库不是一次导入就结束。文档版本、增量同步、去重、回滚和全量重建都会影响线上答案，具体可以看 [RAG 知识库文档如何更新：增量更新、版本控制、去重与全量重建](../rag/rag-knowledge-update.md)。如果问题需要跨文档关系、实体关系和全局摘要，传统向量检索不一定够用，可以继续看 [GraphRAG：用图结构补充向量检索](../rag/graphrag.md)。
+Knowledge-base management does not end after an initial import. Document versions, incremental sync, deduplication, rollback, and full rebuilds can all affect production answers. See [Updating RAG Knowledge-Base Documents](../rag/rag-knowledge-update.md). For cross-document and entity relationships or global summaries, traditional vector retrieval may not be enough; see [GraphRAG: Adding Graph Structure to Vector Retrieval](../rag/graphrag.md).
 
-## 可观测与评测：没有回放，就没有优化
+## Observability and Evaluation: No Replay, No Improvement
 
-### Trace 应该记录什么
+### What Should a Trace Record?
 
-AI 应用排查问题时，最怕只看到最终答案。
+When troubleshooting an AI application, seeing only the final answer is not enough.
 
-一次完整请求至少要记录可关联的元数据。原文只在确有回放需要、获得相应授权并配置加密、访问控制和保留期时保存：
+Record enough correlated metadata for each request. Retain raw content only when replay is necessary and after setting authorization, encryption, access control, and retention:
 
-| 类别   | 默认记录的元数据                                                    |
-| ------ | ------------------------------------------------------------------- |
-| Prompt | 模板名、版本、变量 Hash 或脱敏摘要、消息角色和长度                  |
-| 检索   | 脱敏 Query 或 Hash、Chunk ID、分数、来源、权限过滤结果、Rerank 排名 |
-| Memory | 命中的记忆 ID、来源、更新时间、置信度                               |
-| Tool   | 工具名称、参数 Hash 或脱敏字段、权限结果、执行耗时、结果码、错误    |
-| 模型   | 供应商、模型名、采样参数、输入输出 Token、finish reason             |
-| 延迟   | 入口耗时、检索耗时、模型 TTFT、总耗时、工具耗时                     |
-| 成本   | 输入成本、输出成本、缓存命中、按租户和场景归因                      |
-| 结果   | 响应 Hash、结构化解析结果、用户反馈、评测分数                       |
+| Category  | Metadata to record by default                                                                       |
+| --------- | --------------------------------------------------------------------------------------------------- |
+| Prompt    | Template name, version, variable hash or redacted summary, message roles and lengths                |
+| Retrieval | Redacted query or hash, Chunk ID, score, source, permission-filter result, reranking order          |
+| Memory    | Retrieved memory IDs, source, update time, confidence                                               |
+| Tool      | Tool name, parameter hash or redacted fields, permission result, execution time, result code, error |
+| Model     | Provider, model name, sampling parameters, input/output Tokens, finish reason                       |
+| Latency   | Entry processing, retrieval, model TTFT, total duration, tool duration                              |
+| Cost      | Input and output costs, cache hits, attribution by tenant and scenario                              |
+| Result    | Response hash, structured parse result, user feedback, evaluation score                             |
 
-Langfuse、LangSmith、Google Vertex AI 和 OpenTelemetry 的官方文档里，都能看到 tracing、datasets、evaluators、token usage、latency 这类对象。工具可以不同，但你要抓的信号大体相同。
+Official documentation for Langfuse, LangSmith, Google Vertex AI, and OpenTelemetry covers concepts such as tracing, datasets, evaluators, Token usage, and latency. Tools may differ, but the signals to capture are broadly similar.
 
-### 评测应该怎么做
+### How Should You Evaluate the Application?
 
-评测要有固定样本、明确的通过条件和可回放的目标版本。如何准备评测集、拆分 RAG 与 Agent 指标，以及把 LLM-as-Judge 接入 CI，可参见 [AI 应用评测体系](../llm-basis/llm-evaluation.md)。
+Evaluation needs a fixed dataset, clear pass criteria, and replayable target versions. For building datasets, separating RAG and Agent metrics, and integrating LLM-as-Judge into CI, see [AI Application Evaluation](../llm-basis/llm-evaluation.md).
 
-只给最终答案打一个“好不好”的分数，无法解释问题发生在召回、生成还是工具执行。各环节可分别记录以下指标；不同平台名称可能不同，内部口径要保持一致：
+Scoring only whether the final answer is “good” cannot show whether a problem occurred during retrieval, generation, or tool execution. Track metrics for each stage. Platform names may differ, but keep internal definitions consistent:
 
-- **Context Recall**：正确证据有没有被召回。
-- **Context Precision**：放进上下文的片段有多少是有用的。
-- **Faithfulness**：答案是否忠于给定证据。
-- **Answer Relevancy**：答案是否回应了用户问题。
-- **Tool Success Rate**：工具调用是否成功完成。
-- **Format Valid Rate**：结构化输出是否能被解析。
-- **Cost per Success**：每次成功回答的平均成本。
+- **Context Recall**: Whether the correct evidence was retrieved.
+- **Context Precision**: How much of the context is useful.
+- **Faithfulness**: Whether the answer is faithful to the evidence.
+- **Answer Relevancy**: Whether the answer addresses the user's question.
+- **Tool Success Rate**: Whether tool calls complete successfully.
+- **Format Valid Rate**: Whether structured output can be parsed.
+- **Cost per Success**: Average cost per successful response.
 
-LLM-as-Judge 适合大规模初筛、回归对比和线上抽样，但它的判断不能代替关键业务的规则校验、人工复核和用户反馈。外部评测平台的接口和能力会变化，评测任务、样本和结果应保存在自己的数据模型中，平台负责执行或展示即可。
+LLM-as-Judge is useful for large-scale screening, regression comparisons, and production sampling, but its judgment cannot replace business-rule validation, human review, or user feedback for critical use cases. External evaluation platforms change over time, so store evaluation tasks, datasets, and results in your own data model; use the platform to run or display them.
 
-线上样本进入评测系统后的回放与发布链路为：
+The replay and release flow for production samples is:
 
 ```text
-线上失败样本 -> 进入数据集 -> 固定版本回放 -> 定位 Prompt/RAG/Tool/模型问题 -> 灰度新策略 -> 对比指标 -> 再发布
+Production failure sample -> add to dataset -> replay against pinned versions -> identify Prompt/RAG/Tool/model issue -> gradually roll out a new strategy -> compare metrics -> release
 ```
 
-没有固定版本的回放，Prompt、检索策略和模型版本发生变化后，就很难判断一次调整到底改善了什么。
+Without replay against fixed versions, it is difficult to tell what an adjustment improved after the Prompt, retrieval strategy, or model changes.
 
-## 安全与合规：AI 应用的风险入口更多
+## Security and Compliance: AI Applications Have More Risk Entry Points
 
-AI 应用的安全面比传统 CRUD 系统更宽。因为用户输入、检索文档、工具返回、历史记忆都可能影响模型行为。
+AI applications have a broader attack surface than traditional CRUD systems because user input, retrieved documents, tool results, and stored memories can all influence model behavior.
 
-### 风险项要落到代码和流程里
+### Enforce Risk Controls in Code and Workflows
 
-| 风险             | 说明                                             | 处理建议                                 |
-| ---------------- | ------------------------------------------------ | ---------------------------------------- |
-| PII 泄露         | 日志、Prompt、评测集里包含手机号、身份证、邮箱等 | 入库前脱敏，敏感字段加密，最小化留存     |
-| 权限绕过         | 检索或工具调用绕过业务 ACL                       | 检索前过滤，工具执行前二次鉴权           |
-| Prompt 注入      | 用户或文档诱导模型忽略系统规则                   | 内容分区、指令优先级、注入检测、拒答策略 |
-| 数据留存失控     | 模型请求和观测日志保存过久                       | 按租户和场景配置留存周期                 |
-| 训练数据风险     | 把用户敏感数据用于微调或评测                     | 明确授权、脱敏、隔离、可删除             |
-| 高风险动作误执行 | 模型误调用删除、支付、发信等工具                 | 风险分级、二次确认、审计和补偿           |
+| Risk                        | Description                                                                      | Mitigation                                                                               |
+| --------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| PII disclosure              | Logs, Prompts, or evaluation sets contain phone numbers, IDs, or email addresses | Redact before storage, encrypt sensitive fields, minimize retention                      |
+| Authorization bypass        | Retrieval or tool calls bypass business ACLs                                     | Filter before retrieval and reauthorize before tool execution                            |
+| Prompt Injection            | User or document content persuades the model to ignore system rules              | Separate content, set instruction priorities, detect injections, define refusal behavior |
+| Uncontrolled retention      | Model requests and observability logs are stored too long                        | Set retention periods by tenant and scenario                                             |
+| Training-data risk          | Sensitive user data is used for fine-tuning or evaluation                        | Obtain explicit authorization, redact, isolate, and support deletion                     |
+| Unintended high-risk action | The model incorrectly calls tools to delete, pay, or send messages               | Risk tiers, confirmation, auditing, and compensation                                     |
 
-这里有个容易忽略的细节：**安全策略不能只写在 Prompt 里**。Prompt 可以提醒模型“不要泄露隐私”，但权限过滤、脱敏、审计、确认流必须由代码和基础设施强制执行。
+One easy-to-miss point: **security policies cannot live only in Prompts**. A Prompt can tell the model not to disclose private information, but code and infrastructure must enforce permission filtering, redaction, auditing, and confirmation flows.
 
-### 第三方模型要单独管数据边界
+### Manage Data Boundaries for Third-Party Models
 
-如果请求会发往第三方模型，还要单独确认数据授权、区域、留存和训练使用策略。拿不准时，默认按最小化原则处理：能不发的字段不发，必须发的字段先脱敏或摘要化，并把留存周期写进配置和审计里。
+If requests go to a third-party model, verify data authorization, region, retention, and training-use policies. When uncertain, follow data minimization: do not send fields that are not needed, redact or summarize fields that must be sent, and record retention periods in configuration and audit logs.
 
-Prompt 注入、上下文分区和工具权限其实是连在一起的，前面提到的 [Prompt Engineering](../agent/prompt-engineering.md)、[Context Engineering](../agent/context-engineering.md) 和 [MCP](../agent/mcp.md) 这几篇可以配合看。
+Prompt Injection, context separation, and tool permissions are connected. See the related guides on [Prompt Engineering](../agent/prompt-engineering.md), [Context Engineering](../agent/context-engineering.md), and [MCP](../agent/mcp.md).
 
-如果系统已经允许 Agent 读取外部内容并调用写工具，还需要继续设计资源级鉴权、参数绑定审批、MCP Token、代码与网络隔离以及安全回归，详见 [LLM/Agent 安全实战](./llm-security.md)。
+If an Agent can read external content and call write tools, also design resource-level authorization, parameter-bound approvals, MCP Tokens, code and network isolation, and security regression tests. See [LLM and Agent Security](./llm-security.md).
 
-## Java 后端落地建议
+## Java Backend Implementation
 
-如果用 Java 做生产级 AI 应用，更适合按“领域能力”拆模块，不要按供应商 SDK 拆模块。
+For a production AI application in Java, organize modules around domain capabilities rather than vendor SDKs.
 
-### 模块拆分
+### Module Breakdown
 
-| 模块               | 职责                                             |
-| ------------------ | ------------------------------------------------ |
-| `ai-api`           | 对外 REST/SSE/WebSocket 接口，请求鉴权和协议适配 |
-| `ai-orchestrator`  | 业务编排、交互模式选择、任务状态机               |
-| `ai-prompt`        | Prompt 模板、版本、灰度、渲染、回滚              |
-| `ai-context`       | 上下文组装、Token 预算、历史压缩、上下文分区     |
-| `ai-gateway`       | 模型路由、fallback、限流、熔断、成本统计         |
-| `ai-rag`           | 知识库检索、权限过滤、Rerank、引用管理           |
-| `ai-memory`        | 用户记忆写入、检索、冲突处理、过期策略           |
-| `ai-tool`          | 工具注册、参数校验、执行、二次确认、审计         |
-| `ai-eval`          | 数据集、评测任务、LLM-as-Judge、人工反馈         |
-| `ai-observability` | Trace、指标、日志、成本、告警                    |
+| Module             | Responsibility                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------- |
+| `ai-api`           | External REST/SSE/WebSocket endpoints, request authorization, and protocol adaptation |
+| `ai-orchestrator`  | Business orchestration, interaction-mode selection, task state machine                |
+| `ai-prompt`        | Prompt templates, versions, gradual rollout, rendering, rollback                      |
+| `ai-context`       | Context assembly, Token budgets, history compression, context separation              |
+| `ai-gateway`       | Model routing, fallback, rate limiting, circuit breaking, cost tracking               |
+| `ai-rag`           | Knowledge retrieval, permission filtering, reranking, citation management             |
+| `ai-memory`        | User-memory writes and retrieval, conflict handling, expiration policies              |
+| `ai-tool`          | Tool registration, parameter validation, execution, confirmation, auditing            |
+| `ai-eval`          | Datasets, evaluation runs, LLM-as-Judge, human feedback                               |
+| `ai-observability` | Traces, metrics, logs, costs, alerts                                                  |
 
-### 核心表设计
+### Core Table Design
 
-这组表不要求第一版全部建完，它主要说明生产系统里哪些数据要有归属。第一版至少要把请求 Trace、模型调用、Prompt 版本、RAG 召回记录落下来，后面排查问题才有材料。
+You do not need to build all these tables in the first release. They show which data needs an owner in a production system. At minimum, record request Traces, model calls, Prompt versions, and RAG retrievals so there is enough information to investigate issues.
 
-| 表名               | 建议关键字段                                                                                                                                                          | 作用                                                     |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `ai_request_trace` | `id`、`request_id`、`tenant_id`、`user_id`、`scene_code`、`mode`、`status`、`total_latency_ms`、`error_code`、`created_at`                                            | 一次 AI 请求的主 Trace，记录用户、租户、场景、状态、耗时 |
-| `ai_model_call`    | `id`、`request_id`、`provider`、`model_name`、`prompt_version_id`、`input_tokens`、`output_tokens`、`ttft_ms`、`latency_ms`、`finish_reason`、`error_code`            | 模型调用明细，记录模型、参数、Token、TTFT、错误          |
-| `ai_context_item`  | `id`、`request_id`、`source_type`、`source_id`、`content_hash`、`token_count`、`inject_position`、`sensitivity_level`                                                 | 上下文条目，记录来源类型、来源 ID、Token、注入位置       |
-| `ai_rag_chunk_hit` | `id`、`request_id`、`knowledge_base_id`、`doc_id`、`chunk_id`、`score`、`rank_no`、`acl_result`、`citation_url`                                                       | RAG 召回明细，记录分数、排名、文档权限、引用信息         |
-| `ai_memory_item`   | `id`、`tenant_id`、`user_id`、`memory_type`、`content`、`source_type`、`source_id`、`evidence_hash`、`request_id`、`confidence`、`expires_at`、`status`、`updated_at` | 长期记忆条目，记录内容、来源证据、置信度、过期时间和状态 |
-| `ai_tool_call`     | `id`、`request_id`、`tool_name`、`risk_level`、`arguments_hash`、`permission_result`、`confirm_status`、`execute_status`、`latency_ms`                                | 工具调用明细，记录工具、参数摘要、权限结果、执行结果     |
-| `ai_eval_dataset`  | `id`、`name`、`scene_code`、`version_no`、`status`、`created_by`                                                                                                      | 评测集元信息                                             |
-| `ai_eval_case`     | `id`、`dataset_id`、`input`、`expected_behavior`、`tags`、`difficulty`、`status`                                                                                      | 评测样本，包含输入、期望行为、标签                       |
-| `ai_eval_run`      | `id`、`dataset_id`、`target_type`、`target_version`、`judge_config`、`status`、`started_at`、`finished_at`                                                            | 某次评测任务                                             |
-| `ai_eval_result`   | `id`、`run_id`、`case_id`、`score`、`pass_status`、`judge_reason`、`error_code`                                                                                       | 单条样本评测结果                                         |
+| Table              | Suggested key fields                                                                                                                                                  | Purpose                                                                      |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `ai_request_trace` | `id`, `request_id`, `tenant_id`, `user_id`, `scene_code`, `mode`, `status`, `total_latency_ms`, `error_code`, `created_at`                                            | Main Trace for an AI request: user, tenant, scenario, status, duration       |
+| `ai_model_call`    | `id`, `request_id`, `provider`, `model_name`, `prompt_version_id`, `input_tokens`, `output_tokens`, `ttft_ms`, `latency_ms`, `finish_reason`, `error_code`            | Model-call details: model, parameters, Tokens, TTFT, errors                  |
+| `ai_context_item`  | `id`, `request_id`, `source_type`, `source_id`, `content_hash`, `token_count`, `inject_position`, `sensitivity_level`                                                 | Context item source, ID, Token count, injection position                     |
+| `ai_rag_chunk_hit` | `id`, `request_id`, `knowledge_base_id`, `doc_id`, `chunk_id`, `score`, `rank_no`, `acl_result`, `citation_url`                                                       | RAG retrieval details: score, rank, document permissions, citations          |
+| `ai_memory_item`   | `id`, `tenant_id`, `user_id`, `memory_type`, `content`, `source_type`, `source_id`, `evidence_hash`, `request_id`, `confidence`, `expires_at`, `status`, `updated_at` | Long-term memory content, source evidence, confidence, expiration, status    |
+| `ai_tool_call`     | `id`, `request_id`, `tool_name`, `risk_level`, `arguments_hash`, `permission_result`, `confirm_status`, `execute_status`, `latency_ms`                                | Tool-call details: tool, parameter summary, permission and execution results |
+| `ai_eval_dataset`  | `id`, `name`, `scene_code`, `version_no`, `status`, `created_by`                                                                                                      | Evaluation dataset metadata                                                  |
+| `ai_eval_case`     | `id`, `dataset_id`, `input`, `expected_behavior`, `tags`, `difficulty`, `status`                                                                                      | Evaluation case input, expected behavior, and tags                           |
+| `ai_eval_run`      | `id`, `dataset_id`, `target_type`, `target_version`, `judge_config`, `status`, `started_at`, `finished_at`                                                            | An evaluation run                                                            |
+| `ai_eval_result`   | `id`, `run_id`, `case_id`, `score`, `pass_status`, `judge_reason`, `error_code`                                                                                       | Result for an individual evaluation case                                     |
 
-表设计里有 3 个细节别省：
+Do not skip these three details in the table design:
 
-1. `request_id` 要贯穿 Prompt、RAG、Memory、Tool、Model Call 和 Eval，最好全链路唯一。
-2. 大字段不要无脑进 MySQL。完整 Prompt、模型输出、工具返回可以放对象存储或日志系统，业务表里保留摘要、Hash、敏感级别和引用地址。
-3. 运行时表要按 `tenant_id`、`scene_code`、`created_at`、`status` 设计索引和归档策略，否则观测表很快会变成新的性能瓶颈。
+1. Carry `request_id` through Prompt, RAG, Memory, Tool, Model Call, and Evaluation; make it unique across the full flow where possible.
+2. Do not put large fields in MySQL indiscriminately. Store full Prompts, model outputs, and tool results in object storage or a logging system; keep summaries, hashes, sensitivity levels, and references in business tables.
+3. Index and archive runtime tables by `tenant_id`, `scene_code`, `created_at`, and `status`, or observability tables may quickly become a performance bottleneck.
 
-### 核心接口设计
+### Core Interfaces
 
 ```java
 public interface ModelGateway {
@@ -472,7 +472,7 @@ public interface ModelGateway {
 }
 ```
 
-如果项目没有用 WebFlux，`Flux<ModelStreamEvent>` 可以替换成 JDK `Flow.Publisher`、SSE emitter 或内部事件回调。重点是把“同步生成”和“流式事件”分成两个接口语义，不要让调用方猜返回值到底什么时候完整。
+If the project does not use WebFlux, replace `Flux<ModelStreamEvent>` with JDK `Flow.Publisher`, an SSE emitter, or an internal event callback. The key is to separate synchronous generation from streaming events so callers know when a result is complete.
 
 ```java
 public interface ContextAssembler {
@@ -495,88 +495,88 @@ public interface EvaluationService {
 }
 ```
 
-### 一个最小请求链路
+### A Minimal Request Flow
 
 ```text
 Controller
-  -> RequestGuard 鉴权、限流、脱敏
-  -> Orchestrator 选择同步/流式/异步
-  -> ContextAssembler 拉取 RAG、Memory、历史
-  -> PromptService 渲染模板版本
-  -> ModelGateway 路由模型并记录 Token
-  -> OutputParser 校验结构化输出
-  -> TraceService 写入观测数据
+  -> RequestGuard: authorize, rate-limit, redact
+  -> Orchestrator: select synchronous, streaming, or asynchronous execution
+  -> ContextAssembler: retrieve RAG, Memory, and history
+  -> PromptService: render a template version
+  -> ModelGateway: route to a model and record Token usage
+  -> OutputParser: validate structured output
+  -> TraceService: write observability data
 ```
 
-企业知识库问答的第一版可以先实现 `ai-api`、`ai-prompt`、`ai-gateway`、`ai-rag` 和 `ai-observability`。Memory、Tool、Eval 随业务需要再加入；但每次请求的 Trace 与实际使用的 Prompt 版本应从第一版就记录，否则线上答案出问题时没有可用的排查材料。
+For an initial enterprise knowledge-base Q&A release, start with `ai-api`, `ai-prompt`, `ai-gateway`, `ai-rag`, and `ai-observability`. Add Memory, Tool, and Evaluation as needed. Record each request's Trace and Prompt version from the first release; otherwise, there will be little evidence to investigate incorrect production answers.
 
-如果想从 Java 后端调用大模型 API 的细节入手，可以先看 [大模型 API 调用工程实践](../llm-basis/llm-api-engineering.md)；如果团队准备把模型调用统一成基础设施，建议把 [大模型网关详解](./llm-gateway.md) 单独读一遍。
+For Java backend details on calling LLM APIs, see [LLM API Engineering](../llm-basis/llm-api-engineering.md). If the team plans to standardize model calls as infrastructure, read the [LLM Gateway guide](./llm-gateway.md).
 
-## 面试怎么讲这套架构
+## How to Explain This Architecture in an Interview
 
-回答这个问题时，可以从一次请求开始讲，而不是先罗列框架名称。用户请求进入入口层后先做鉴权和限流；编排层决定是否检索、调用工具或异步执行；Prompt/Context 组装完成后由模型网关路由模型；输出经过解析并写入 Trace。接着说明 Prompt 版本、Token 预算、工具权限和 PII 脱敏分别解决什么风险，最后补充固定样本集和失败样本回放如何验证改动。
+Start with a request flow instead of listing framework names. After the request reaches the entry layer, authenticate and rate-limit it. The orchestration layer decides whether to retrieve data, call tools, or run asynchronously. Once Prompt and Context are assembled, the model gateway routes the call; parse the output and write a Trace. Then explain how Prompt versioning, Token budgets, tool permissions, and PII redaction address risk. Finish by describing how fixed datasets and replayed failures validate changes.
 
-如果你是按面试路线复习，可以直接看 [AI 系统设计面试题总结](../interview-questions/ai-system-design-interview-questions.md)。RAG、Agent 和大模型基础也分别有 [RAG 面试题总结](../interview-questions/rag-interview-questions.md)、[AI Agent 面试题总结](../interview-questions/agent-interview-questions.md) 和 [大模型基础面试题总结](../interview-questions/llm-interview-questions.md)。
+For interview preparation, see [AI System Design Interview Questions](../interview-questions/ai-system-design-interview-questions.md), [RAG Interview Questions](../interview-questions/rag-interview-questions.md), [AI Agent Interview Questions](../interview-questions/agent-interview-questions.md), and [LLM Fundamentals Interview Questions](../interview-questions/llm-interview-questions.md).
 
-## 高频面试问题
+## Common Interview Questions
 
-**1. Prompt Demo 到生产系统最大的差距是什么？**
+**1. What is the biggest gap between a Prompt demo and a production system?**
 
-Demo 验证的是模型能否完成一次回答。生产系统还要处理超时和降级、租户与资源权限、Token 成本、调用 Trace、评测回放以及敏感数据留存。
+A demo tests whether a model can answer once. A production system must also handle timeouts and fallbacks, tenant and resource permissions, Token costs, call Traces, evaluation replay, and sensitive-data retention.
 
-**2. 为什么需要模型网关？**
+**2. Why do you need a model gateway?**
 
-模型网关把供应商 API 差异收敛在一处，并负责模型路由、fallback、限流、熔断、Token 预算、成本统计和观测。业务服务因此不必分别耦合各家模型 API。
+A model gateway centralizes vendor API differences and handles model routing, fallback, rate limiting, circuit breaking, Token budgets, cost tracking, and observability. Business services do not need to couple to each vendor's API separately.
 
-**3. 同步、流式、异步怎么选？**
+**3. How do you choose between synchronous, streaming, and asynchronous execution?**
 
-能在客户端超时内稳定完成的短任务可同步返回；聊天和长答案需要尽早反馈时使用流式；报告生成、批处理和多工具任务放入异步队列。判断依据是耗时、是否需要首字反馈，以及失败后是否需要重试和恢复。
+Return short tasks synchronously when they reliably finish within the client timeout. Stream chat and long answers when users need early feedback. Queue report generation, batch processing, and multi-tool tasks. Base the choice on duration, first-token requirements, and whether failures need retries or recovery.
 
-**4. Prompt 为什么要做版本管理？**
+**4. Why version Prompts?**
 
-Prompt 会改变输出、检索策略、工具调用和 Token 消耗。版本号使线上请求能够关联到具体内容，也让灰度、回滚、审计和离线回放有明确对象。
+Prompts can change output, retrieval strategy, tool calls, and Token usage. Versioning links production requests to specific content and gives gradual rollouts, rollback, auditing, and offline replay a clear target.
 
-**5. Tool Calling 的安全边界在哪里？**
+**5. Where is the security boundary for Tool Calling?**
 
-模型只产生工具调用意图。参数校验、资源级权限校验、敏感操作确认和审计日志都由后端系统执行。
+The model only produces a tool-call intent. The backend validates parameters and resource-level permissions, confirms sensitive actions, and writes audit logs.
 
-**6. RAG 和 Memory 有什么区别？**
+**6. How do RAG and Memory differ?**
 
-RAG 查询企业文档、产品手册等共享知识；Memory 保存用户偏好、历史决策等个性化长期事实。两类结果可以同时使用，但要分区注入并分别处理权限、来源和过期时间。
+RAG retrieves shared knowledge such as enterprise documents and product manuals. Memory stores personalized long-term facts such as user preferences and past decisions. Both can be used together, but inject them separately and handle permissions, sources, and expiration independently.
 
-**7. AI 应用可观测要看哪些指标？**
+**7. Which metrics matter for AI application observability?**
 
-一次请求至少关联 Prompt 版本、检索命中、工具调用、模型输出、输入输出 Token、TTFT、总延迟、成功与错误状态、成本和评测分数。
+At minimum, correlate each request with the Prompt version, retrieval hits, tool calls, model output, input/output Tokens, TTFT, total latency, success or error status, cost, and evaluation score.
 
-**8. LLM-as-Judge 能不能替代人工评测？**
+**8. Can LLM-as-Judge replace human evaluation?**
 
-不能。它可以承担自动化回归、线上抽样和大规模初筛；关键业务仍需规则校验、人工复核和用户反馈闭环。
+No. It can support automated regression, production sampling, and large-scale screening, but critical use cases still need rule validation, human review, and user-feedback loops.
 
-## 总结
+## Summary
 
-模型调用只是生产链路中的一步。入口层处理权限、限流和脱敏；编排层选择同步、流式或异步路径并组织检索、记忆和工具；模型网关处理模型选择、Token 和故障兜底；评测与观测为每次调整提供证据。Memory、Tool、Eval 可以按业务需求逐步接入，但 Prompt 版本和 Trace 要尽早建立。
+Model calls are only one step in a production flow. The entry layer handles permissions, rate limits, and redaction. The orchestration layer selects synchronous, streaming, or asynchronous execution and coordinates retrieval, memory, and tools. The model gateway handles model selection, Tokens, and fallbacks. Evaluation and observability provide evidence for each change. Memory, tools, and evaluation can be added as needed, but establish Prompt versioning and Traces early.
 
-## 参考资料
+## References
 
-JavaGuide 相关阅读：
+Related JavaGuide guides:
 
-- [AI 应用开发知识体系：大模型、Agent、RAG、MCP、Prompt 工程与系统设计](../README.md)
-- [AI 系统设计专题：生产级架构、模型网关、评测治理与语音 Agent](./README.md)
-- [大模型基础专题：运行机制、API 调用、结构化输出与评测](../llm-basis/README.md)
-- [RAG 专题：文档处理、向量数据库、GraphRAG、检索优化与知识库更新](../rag/README.md)
-- [AI Agent 专题：Agent Loop、Memory、Prompt、Context、MCP 与 Skills](../agent/README.md)
+- [AI Application Development: LLMs, Agents, RAG, MCP, Prompt Engineering, and System Design](../README.md)
+- [AI System Design: Production Architecture, Model Gateways, Evaluation, and Voice Agents](./README.md)
+- [LLM Fundamentals: Model Mechanics, API Calls, Structured Output, and Evaluation](../llm-basis/README.md)
+- [RAG: Document Processing, Vector Databases, GraphRAG, Retrieval, and Knowledge-Base Updates](../rag/README.md)
+- [AI Agents: Agent Loops, Memory, Prompts, Context, MCP, and Skills](../agent/README.md)
 
-- [OpenAI API 官方文档](https://developers.openai.com/api/docs)
-- [OpenAI Function Calling 官方文档](https://developers.openai.com/api/docs/guides/function-calling)
-- [OpenAI Streaming 官方文档](https://developers.openai.com/api/docs/guides/streaming-responses)
-- [OpenAI Evals 官方文档](https://developers.openai.com/api/docs/guides/evals)
-- [OpenAI Agents SDK 观测与集成](https://developers.openai.com/api/docs/guides/agents/integrations-observability)
-- [Anthropic Tool Use 官方文档](https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview)
-- [Anthropic Prompt Caching 官方文档](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
-- [Google Gemini Function Calling 官方文档](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/tools/function-calling)
-- [Google 生成式 AI 评测官方文档](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/evaluation-overview)
-- [Google RAG Grounding 官方文档](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/grounding/ground-responses-using-rag)
-- [Langfuse Observability 官方文档](https://langfuse.com/docs/observability/overview)
-- [Langfuse Prompt Management 官方文档](https://langfuse.com/docs/prompt-management/overview)
-- [LangSmith Evaluation 官方文档](https://docs.langchain.com/langsmith/evaluation)
-- [OpenTelemetry GenAI 属性注册表](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/)
+- [OpenAI API documentation](https://developers.openai.com/api/docs)
+- [OpenAI Function Calling documentation](https://developers.openai.com/api/docs/guides/function-calling)
+- [OpenAI Streaming documentation](https://developers.openai.com/api/docs/guides/streaming-responses)
+- [OpenAI Evals documentation](https://developers.openai.com/api/docs/guides/evals)
+- [OpenAI Agents SDK observability and integrations](https://developers.openai.com/api/docs/guides/agents/integrations-observability)
+- [Anthropic Tool Use documentation](https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview)
+- [Anthropic Prompt Caching documentation](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
+- [Google Gemini Function Calling documentation](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/tools/function-calling)
+- [Google Generative AI evaluation documentation](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/evaluation-overview)
+- [Google RAG grounding documentation](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/grounding/ground-responses-using-rag)
+- [Langfuse Observability documentation](https://langfuse.com/docs/observability/overview)
+- [Langfuse Prompt Management documentation](https://langfuse.com/docs/prompt-management/overview)
+- [LangSmith Evaluation documentation](https://docs.langchain.com/langsmith/evaluation)
+- [OpenTelemetry GenAI attribute registry](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/)

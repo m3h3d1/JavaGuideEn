@@ -1,66 +1,66 @@
 ---
-title: Maven 专题：POM、坐标、仓库、依赖管理、生命周期、插件与多模块项目
-description: Maven 面试与项目构建学习路线，涵盖 POM、坐标、仓库、依赖范围、生命周期、插件、多模块项目、Maven Wrapper 和最佳实践，适合 Java 后端开发者。
-category: 开发工具
+title: "Maven: POMs, Coordinates, Repositories, Dependencies, Lifecycles, Plugins, and Multi-Module Projects"
+description: A learning path for Maven, project builds, and interviews, covering POMs, coordinates, repositories, dependency scopes, lifecycles, plugins, multi-module projects, Maven Wrapper, and best practices for Java backend developers.
+category: Development Tools
 tag:
   - Maven
-  - 项目构建
-  - 依赖管理
+  - Project Builds
+  - Dependency Management
 sitemap:
   changefreq: weekly
   priority: 0.85
 head:
   - - meta
     - name: keywords
-      content: Maven,POM,Maven坐标,Maven仓库,依赖管理,依赖范围,Maven生命周期,Maven插件,多模块项目,Java项目构建
+      content: Maven,POM,Maven coordinates,Maven repositories,dependency management,dependency scopes,Maven lifecycle,Maven plugins,multi-module projects,Java project builds
 ---
 
-Maven 是 Java 后端项目中最常见的构建和依赖管理工具。学习 Maven 时，不要只会复制 `pom.xml`，还要理解坐标、仓库、依赖传递、生命周期、插件和多模块管理这些基础概念。
+Maven is one of the most common build and dependency-management tools for Java backend projects. Do not just copy a `pom.xml`; learn the fundamentals of coordinates, repositories, transitive dependencies, lifecycles, plugins, and multi-module management.
 
-## 适合谁看
+## Who Should Read This?
 
-- 正在学习 Java 项目构建和依赖管理的同学。
-- 使用 Maven 写项目，但遇到依赖冲突、版本不统一、多模块管理、CI 构建时容易卡住的开发者。
-- 准备面试，需要讲清 Maven 核心概念和最佳实践的读者。
-- 需要维护 Spring Boot、微服务或多模块 Java 项目的工程师。
+- Developers learning Java project builds and dependency management.
+- Developers who use Maven but run into dependency conflicts, inconsistent versions, multi-module management, or CI build problems.
+- Candidates preparing to explain Maven fundamentals and best practices in interviews.
+- Engineers maintaining Spring Boot, microservice, or multi-module Java projects.
 
-## 学习重点
+## Key Concepts
 
-- POM 是 Maven 项目的核心配置，坐标用于唯一标识一个构件。
-- Maven 仓库分为本地仓库、私服仓库和中央仓库，依赖解析会按一定顺序查找。
-- 依赖范围、依赖传递、依赖排除和版本管理决定项目最终使用哪些 Jar 包。
-- 生命周期定义构建阶段，插件负责真正执行编译、测试、打包等任务。
-- Maven Wrapper 能固定项目使用的 Maven 版本，适合团队协作和 CI 环境。
-- 多模块项目要重点关注父 POM、`dependencyManagement`、`pluginManagement` 和模块边界。
+- The POM is Maven's central project configuration; coordinates uniquely identify an artifact.
+- Maven uses local, private, and central repositories, searching for dependencies in a defined order.
+- Dependency scopes, transitive dependencies, exclusions, and version management determine which JARs a project uses.
+- Lifecycles define build phases; plugins perform tasks such as compilation, testing, and packaging.
+- Maven Wrapper pins the Maven version used by a project and is useful for team collaboration and CI.
+- In multi-module projects, pay attention to the parent POM, `dependencyManagement`, `pluginManagement`, and module boundaries.
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [Maven 核心概念总结](./maven-core-concepts.md)：先理解 POM、坐标、仓库、依赖、生命周期、插件和多模块项目。
-2. [Maven 最佳实践](./maven-best-practices.md)：再学习标准目录结构、编译版本、BOM、依赖版本管理、Maven Wrapper、CI 和常见实践。
-3. 结合一个 Spring Boot 项目查看 `pom.xml`：重点看父工程、依赖范围、插件配置和最终依赖树。
+1. [Maven Fundamentals](./maven-core-concepts.md): Learn about POMs, coordinates, repositories, dependencies, lifecycles, plugins, and multi-module projects.
+2. [Maven Best Practices](./maven-best-practices.md): Study standard directory layouts, Java versions, BOMs, dependency-version management, Maven Wrapper, CI, and common practices.
+3. Review a Spring Boot project's `pom.xml`, focusing on the parent project, dependency scopes, plugin configuration, and resolved dependency tree.
 
-## 核心文章
+## Core Guides
 
-- [Maven 核心概念总结](./maven-core-concepts.md)：系统介绍 Maven 的定位、POM、坐标、仓库、依赖、生命周期、插件和多模块项目。
-- [Maven 最佳实践](./maven-best-practices.md)：整理标准目录结构、编译版本、依赖版本统一、Maven Wrapper、CI 和日常使用建议。
+- [Maven Fundamentals](./maven-core-concepts.md): Covers Maven's purpose, POMs, coordinates, repositories, dependencies, lifecycles, plugins, and multi-module projects.
+- [Maven Best Practices](./maven-best-practices.md): Covers standard directory layouts, Java versions, dependency-version alignment, Maven Wrapper, CI, and daily use.
 
-## 高频问题
+## Common Questions
 
-- Maven 是什么？它主要解决哪些问题？
-- POM、groupId、artifactId、version 分别是什么？
-- 本地仓库、私服仓库、中央仓库有什么区别？
-- Maven 依赖传递是什么？依赖冲突如何排查？
-- `dependencyManagement` 和 `dependencies` 有什么区别？
-- Maven 生命周期和插件是什么关系？
-- 为什么团队项目建议提交 Maven Wrapper？
-- `compile`、`provided`、`runtime`、`test` 等依赖范围有什么区别？
-- 多模块项目为什么通常需要父 POM？
+- What is Maven, and which problems does it solve?
+- What are a POM, `groupId`, `artifactId`, and `version`?
+- How do local, private, and central repositories differ?
+- What are transitive dependencies, and how should dependency conflicts be diagnosed?
+- How do `dependencyManagement` and `dependencies` differ?
+- How are Maven lifecycles and plugins related?
+- Why should team projects include Maven Wrapper?
+- How do dependency scopes such as `compile`, `provided`, `runtime`, and `test` differ?
+- Why do multi-module projects usually use a parent POM?
 
-## 相关专题
+## Related Topics
 
-- [开发工具知识体系](../)
-- [Gradle 核心概念总结](../gradle/gradle-core-concepts.md)
-- [Git 专题](../git/)
-- [Java 基础](../../java/basis/java-basic-questions-01.md)
+- [Development Tools](../)
+- [Gradle Fundamentals](../gradle/gradle-core-concepts.md)
+- [Git](../git/)
+- [Java Fundamentals](../../java/basis/java-basic-questions-01.md)
 
 <!-- @include: @article-footer.snippet.md -->

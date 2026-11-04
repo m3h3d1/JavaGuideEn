@@ -1,6 +1,6 @@
 ---
 title: "Deep Pagination: Problems and Optimizations"
-description: Deep pagination occurs when a large query offset degrades performance. This guide explains why it happens and compares four optimizations: range queries, subqueries, deferred joins with INNER JOIN, and covering indexes.
+description: "Deep pagination occurs when a large query offset degrades performance. This guide explains why it happens and compares four optimizations: range queries, subqueries, deferred joins with INNER JOIN, and covering indexes."
 category: High Performance
 head:
   - - meta

@@ -1,136 +1,136 @@
 ---
-title: Claude Code 上下文管理详解：窗口预算、压缩与长任务治理
-description: 从 Claude Code 的上下文窗口出发，讲清固定与动态开销、Context Rot、工具结果清理、AutoCompact、Context Reset、Sub-agent 隔离和 handoff，帮助你管理长任务中的信息流与任务状态。
-category: AI 编程原理
+title: "Claude Code Context Management: Window Budgets, Compaction, and Long Tasks"
+description: A practical guide to fixed and dynamic context costs, Context Rot, tool-result cleanup, AutoCompact, Context Reset, subagent isolation, and handoffs in long-running tasks.
+category: AI Coding Principles
 tag:
   - Claude Code
-  - 上下文工程
+  - Context Engineering
   - Context Management
-  - AI 编程
+  - AI Coding
 head:
   - - meta
     - name: keywords
-      content: Claude Code,上下文管理,Context Engineering,上下文窗口,Context Rot,AutoCompact,/compact,Sub-agent,Context Reset,长任务,AI编程
+      content: Claude Code,context management,Context Engineering,context window,Context Rot,AutoCompact,/compact,subagent,Context Reset,long-running tasks,AI coding
 ---
 
-大家好，我是小 G。最近星球里有不少 G 友分享 Agent 岗位的面经，我看了一下，发现问到上下文管理的次数比较多。
+Hi, I'm Xiao G. Recently, several readers in my community have shared interview experiences for Agent roles. Context management comes up often.
 
-![Claude Code、Skills 与上下文工程面试题记录](../images/shared/claude-code-context-management-interview-questions.png)
+![Interview questions about Claude Code, Skills, and Context Engineering](../images/shared/claude-code-context-management-interview-questions.png)
 
-我在之前的文章中已经分享过一篇： [上下文工程(Context Engineering) 是什么？和 Prompt Engineering 有什么区别？](https://javaguide.cn/ai/agent/context-engineering.html)，介绍了上下文管理的核心内容。
+I previously published [What Is Context Engineering, and How Does It Differ from Prompt Engineering?](https://javaguide.cn/ai/agent/context-engineering.html), which covers the fundamentals of context management.
 
-所以，这篇想结合最顶级的 Coding Agent——Claude Code，进一步挖掘一下底层思想。
+This article uses Claude Code, a leading coding agent, to explore the underlying ideas in more detail.
 
-它不只是怎么压缩聊天记录，还关系到任务目标、工具输出、文件记录和交接信息分别该留在哪里。
+Context management is about more than compressing chat history. It also determines where task goals, tool output, file records, and handoff notes should live.
 
-Claude Code 执行 `/compact` 后，会用结构化摘要替换此前的会话历史，并重新加载部分持久化指令。
+When Claude Code runs `/compact`, it replaces earlier conversation history with a structured summary and reloads some persistent instructions.
 
-摘要通常会保留任务目标、重要约束、关键决策、当前进度和相关代码线索，但不保证保留完整的文件内容、检索结果及测试输出。后续如果需要这些材料的精确内容，应重新读取或重新执行。
+The summary usually keeps the task goal, key constraints and decisions, current progress, and relevant code pointers. It does not guarantee that full file contents, search results, or test output will be retained. Read or run them again when you need the exact details.
 
-长任务真正要解决的，是把信息放在合适的位置：窗口只保留眼下要用的材料；可复查、可复用的内容写入文件；切换会话时，只交接下一步所需的结论和线索。清理工具输出、压缩历史、持久化文件、使用子代理和进行会话交接，都是为此服务。
+Long tasks require putting information in the right place: keep only what is needed now in the context window, write reusable and reviewable information to files, and hand off only the findings and pointers needed for the next step. Tool-output cleanup, history compaction, persistent files, subagents, and session handoffs all support this goal.
 
-本文涉及两类材料。官方文档能确认的行为按文档描述；文中提到的“逆向观察”和“源码里能看到”，主要来自 Claude Code 2.1.x 附近的非公开源码材料与社区整理，不属于官方稳定接口。
+This article draws on two kinds of material. Behaviors confirmed by official documentation are described as documented. References to reverse engineering or source code are based mainly on non-public source material and community research around Claude Code 2.1.x; they are not stable, officially supported interfaces.
 
-## Claude Code 架构全景
+## Claude Code Architecture Overview
 
-![Claude Code 架构全景](../images/shared/ctx-mgmt-arch-arch.png)
+![Claude Code architecture overview](../images/shared/ctx-mgmt-arch-arch.png)
 
-窗口承压时，可以直接清理工具结果、压缩历史、重置上下文，或者把支线隔离到子代理。Skills 的按需加载、任务状态写入文件系统，以及后台任务的独立执行，也会改变可用预算。
+When the context window is under pressure, you can clear tool results, compact history, reset the context, or isolate side tasks in subagents. On-demand Skill loading, writing task state to the file system, and running background tasks independently also affect the available budget.
 
-运行中的 Claude Code 需要直接访问系统提示词、工具定义、项目规则、对话历史、工具结果和最近读过的文件。上下文窗口就是承载这些材料的工作内存。
+Claude Code needs direct access to the system prompt, tool definitions, project rules, conversation history, tool results, and recently read files. The context window is the working memory that holds them.
 
-其中混入过期日志、重复搜索结果或互相冲突的旧判断后，Agent 更容易漏约束、重复探索或过早收尾。
+Stale logs, duplicate search results, and conflicting earlier conclusions can make an Agent miss constraints, repeat exploration, or stop too soon.
 
-在 `Agent = Model + Harness` 这个公式里，模型提供推理能力，Harness 负责信息获取、工具调用和任务推进。上下文管理属于 Harness：它决定当前窗口保留哪些状态，清理哪些临时结果，以及哪些内容应写到窗口外。
+In the formula `Agent = Model + Harness`, the model provides reasoning, while the Harness gathers information, calls tools, and advances the task. Context management is part of the Harness: it decides which state stays in the window, which temporary results to clear, and what to store outside it.
 
 ![Agent = Model + Harness](../../ai/images/shared/harness-agent-equals-model-harness-arch.png)
 
-面试中问到这类问题，考察的通常是能否把 Agent 看作一个有状态系统。它和传统后端系统有一些相似之处（以下类比用于帮助理解，不是机制等价）：
+Interviewers asking about this often want to know whether you can treat an Agent as a stateful system. It has some similarities to traditional backend systems (these analogies aid understanding; the mechanisms are not equivalent):
 
-| Agent 概念     | 后端类比              | 共同点                       |
-| -------------- | --------------------- | ---------------------------- |
-| 上下文窗口     | JVM 堆内存            | 容量有限，塞满后质量下降     |
-| Compaction     | GC                    | 回收旧内容，保留还活着的状态 |
-| Context Reset  | 进程重启 + 检查点恢复 | 丢掉脏历史，从交接状态继续   |
-| Sub-agent 隔离 | 微服务拆分            | 独立上下文处理局部任务       |
-| Context Rot    | 缓存污染 / 内存泄漏   | 旧信息越积越多，拖慢判断     |
-| 工具结果清理   | LRU 缓存淘汰          | 近期内容保留，过期内容清掉   |
+| Agent concept       | Backend analogy               | Similarity                                      |
+| ------------------- | ----------------------------- | ----------------------------------------------- |
+| Context window      | JVM heap                      | Limited capacity; quality can decline when full |
+| Compaction          | Garbage collection            | Reclaims old content while keeping live state   |
+| Context Reset       | Restart + checkpoint recovery | Drops stale history and resumes from a handoff  |
+| Subagent isolation  | Microservice separation       | Handles a local task in an independent context  |
+| Context Rot         | Cache pollution / memory leak | Accumulated stale information slows decisions   |
+| Tool-result cleanup | LRU cache eviction            | Keeps recent content and removes stale content  |
 
-Prompt Engineering 和 Context Engineering 的区别也在这里。前者关心单次输入怎么写，后者关心整个会话里的信息怎么流动。
+This also shows the difference between Prompt Engineering and Context Engineering. The former focuses on writing a single input; the latter focuses on how information flows through an entire session.
 
-你把 System Prompt 写得再详细，也没办法搞定上下文管理。这反而会起到反作用，增加固定开销，让窗口更早进入高压区/危险区。
+Making the system prompt more detailed does not solve context management. It can make things worse by increasing fixed overhead and pushing the window into a high-pressure state sooner.
 
-![Context Engineering 和 Prompt Engineering 差别](../../ai/images/shared/context-engineering-vs-context-engineering-dimension-comparison.png)
+![Context Engineering compared with Prompt Engineering](../../ai/images/shared/context-engineering-vs-context-engineering-dimension-comparison.png)
 
-## 窗口预算与信息加载
+## Context Budgets and Information Loading
 
-### 窗口里有哪些开销
+### What Uses the Context Window
 
-普通聊天里，用户通常一轮发一段话，偶尔贴一段代码。Claude Code 不一样。它启动时就带着工具和规则，执行任务时还会自己读文件、跑测试、查 Git 历史、调用 MCP。
+In an ordinary chat, a user usually sends one message per turn and occasionally pastes code. Claude Code starts with tools and rules, then reads files, runs tests, checks Git history, and calls MCP tools as it works.
 
-文件内容、命令输出和对话历史会持续进入窗口。一次只讨论一个问题，和一次读取几十个文件、跑完整测试，带来的上下文增量完全不同；后者更容易让 Claude 漏掉早期约束、重复搜索，或在已经排除的方向上继续打转。
+File contents, command output, and conversation history keep adding to the window. Discussing one question adds far less context than reading dozens of files and running a full test suite. The latter makes Claude more likely to miss earlier constraints, repeat searches, or revisit rejected approaches.
 
-更强的模型只能推迟这类退化，并不改变输入持续增长的事实。
+More capable models may delay this degradation, but they do not stop the input from growing.
 
-窗口占用可以分为两部分：启动时就存在的 System Prompt、规则和工具注册，以及任务中不断追加的工具结果和对话历史。前者决定会话起步时的余量；读文件、跑命令和收集日志会不断推高后者。
+Window usage has two parts: the system prompt, rules, and registered tools present at startup, and the tool results and conversation history added as the task proceeds. The first part determines the initial headroom; reading files, running commands, and collecting logs increase the second.
 
-![上下文窗口（Context Window）= LLM 的工作记忆](../../ai/images/shared/llm-context-window.png)
+![The context window is an LLM's working memory](../../ai/images/shared/llm-context-window.png)
 
-启动开销主要来自 System Prompt、`CLAUDE.md`、Skills 描述和部分工具信息。观察到的实现会尽量延迟加载一部分 MCP 工具定义：
+Startup overhead mainly comes from the system prompt, `CLAUDE.md`, Skill descriptions, and some tool information. In observed implementations, some MCP tool definitions are loaded lazily:
 
-- 在 ToolSearch 启用、且工具没有被配置成“启动时强制加载”时，部分 MCP 工具会先只暴露名称；
-- 等模型真的选中这个工具，再把完整 JSON Schema 拉进来；
-- 也有一些工具会在启动时就加载完整描述。
+- When ToolSearch is enabled and a tool is not configured to load at startup, some MCP tools initially expose only their names;
+- The full JSON Schema is loaded after the model selects one of those tools;
+- Other tools load their full descriptions at startup.
 
-规则文件写得越长、Skills 和 MCP Server 越多，起步时剩下的空间就越少。
+The longer the rule files and the more Skills and MCP servers there are, the less context space remains at startup.
 
-想看当前会话实际占用，可以使用 `/context` 命令。它会把当前模型窗口、已用 Token、剩余空间，以及 System Prompt、工具、Skills、消息等分类占用列出来。
+Use `/context` to inspect current session usage. It shows the model's context window, used tokens, remaining space, and usage by category, including the system prompt, tools, Skills, and messages.
 
-![Claude Code /context 命令运行结果](../images/shared/claude-code-context-command-result.png)
+![Output from the Claude Code /context command](../images/shared/claude-code-context-command-result.png)
 
-动态内容里，工具调用通常是大头。一个几百行的源文件可能就是几千 Token；搜索结果和测试日志可能更长。工具调用参数和结果会进入当前会话，文件内容、命令输出和搜索结果会随着任务推进不断累积。接近窗口上限时，Claude Code 会先清理较旧的工具结果，空间仍然不够时再压缩会话。
+Tool calls usually account for most dynamic content. A source file with a few hundred lines can take thousands of tokens; search results and test logs can be longer. Tool arguments and results enter the current session, and file contents, command output, and search results accumulate as the task proceeds. Near the context limit, Claude Code first clears older tool results, then compacts the session if more space is needed.
 
-上下文变长还会影响信息利用效果。输入越多，延迟和成本通常也会增加。模型也不一定能同等利用窗口里的每段内容，相关信息位于长上下文中间时，模型的检索和问答表现可能下降，这类位置敏感现象通常被称为 Lost in the Middle。窗口变大能装下更多信息，但不能保证这些信息都会被稳定使用。
+Longer context also affects how well information is used. More input usually increases latency and cost. Models may not use every part of the window equally; retrieval and question-answering can degrade when relevant information is buried in the middle of a long context. This position-sensitive effect is often called Lost in the Middle. A larger window holds more information, but does not guarantee that the model will use it reliably.
 
-这就是我们常说的上下文腐化（Context Rot）问题。**上下文越长，信息越杂，模型利用上下文的稳定性就越可能变差。**
+This is the context degradation often called Context Rot. **As context grows longer and noisier, the model may use it less reliably.**
 
-![上下文腐化](../../ai/images/shared/context-rot-diagram.png)
+![Context Rot](../../ai/images/shared/context-rot-diagram.png)
 
-Claude Code 每次调用 LLM 时，窗口里通常有这些内容：
+Each time Claude Code calls an LLM, the context window usually contains:
 
-| 组成部分         | 内容                                                             | 性质               |
-| ---------------- | ---------------------------------------------------------------- | ------------------ |
-| 会话初始化上下文 | System Prompt、`CLAUDE.md`、无条件 `.claude/rules/`、Auto Memory | 固定开销           |
-| 路径规则         | 带 `paths` 的 `.claude/rules/`                                   | 读取匹配文件时加载 |
-| MCP 和工具描述   | 内置工具定义、MCP 工具名称及已加载的 Schema                      | 固定或按需         |
-| Hook 注入内容    | Hook 显式返回的 additionalContext、提示或工具反馈                | 动态注入           |
-| Skills           | 默认加载简短描述；正文在调用后进入上下文                         | 按需加载           |
-| 对话历史         | 用户消息、Claude 回复                                            | 持续增长           |
-| 工具调用及结果   | 调用参数、返回值、日志、文件内容                                 | 持续增长           |
-| 环境和 IDE 状态  | 工作区、选中代码等客户端或集成提供的信息                         | 按配置注入         |
-| 子代理汇报       | Sub-agent 返回的摘要和少量元数据                                 | 按需               |
+| Component                 | Contents                                                                 | Behavior                            |
+| ------------------------- | ------------------------------------------------------------------------ | ----------------------------------- |
+| Session startup context   | System prompt, `CLAUDE.md`, unconditional `.claude/rules/`, Auto Memory  | Fixed overhead                      |
+| Path-specific rules       | `.claude/rules/` files with `paths`                                      | Loaded when matching files are read |
+| MCP and tool descriptions | Built-in tool definitions, MCP tool names, and loaded schemas            | Fixed or on demand                  |
+| Hook-injected content     | `additionalContext`, prompts, or tool feedback returned by hooks         | Injected dynamically                |
+| Skills                    | Short descriptions load by default; the body enters context when invoked | On demand                           |
+| Conversation history      | User messages and Claude's replies                                       | Grows over time                     |
+| Tool calls and results    | Arguments, return values, logs, and file contents                        | Grows over time                     |
+| Environment and IDE state | Workspace, selected code, and other client-provided information          | Injected by configuration           |
+| Subagent reports          | Summaries and limited metadata returned by subagents                     | On demand                           |
 
-固定开销通常不会随着对话轮次增长，但它决定了任务开始时还剩多少空间。动态内容才是长任务里的主要增量。同样是 20 轮对话，只聊天和每轮都读文件、跑测试，最终占用可能差很多，因此不能单纯用轮数判断上下文压力。
+Fixed overhead usually does not grow with the number of turns, but it determines how much space remains when a task starts. Dynamic content drives most growth in long tasks. Two 20-turn sessions can use very different amounts of context if one is chat-only and the other reads files and runs tests every turn. Turn count alone is therefore a poor measure of context pressure.
 
-Prompt Caching 能省成本和延迟，但不能释放上下文空间。即使 System Prompt、工具定义和 `CLAUDE.md` 命中缓存，它们仍然属于当前请求的输入内容。
+Prompt caching can reduce cost and latency, but it does not free context space. Even when the system prompt, tool definitions, and `CLAUDE.md` are cached, they remain part of the current request's input.
 
-Extended Thinking 也要算进这笔账。当前轮的 thinking budget 属于 `max_tokens` 的一部分，会按输出 Token 计费，也会计入速率限制。
+Extended Thinking also uses the budget. The current turn's thinking budget is part of `max_tokens`, is billed as output tokens, and counts toward rate limits.
 
-更容易被忽略的是历史 Thinking Blocks。按当前 API 文档，Opus 4.5 及之后的 Opus、Sonnet 4.6 及之后的 Sonnet、Fable 5、Mythos 5 和 Mythos Preview 默认会保留历史 Thinking Blocks。
+Historical Thinking Blocks are easier to overlook. According to the current API documentation, Opus 4.5 and later, Sonnet 4.6 and later, Fable 5, Mythos 5, and Mythos Preview retain historical Thinking Blocks by default.
 
-更早的 Opus / Sonnet 和 Haiku 模型会自动从上下文里剥离这些历史块。所以，长会话里的 Thinking 是否持续占窗口，取决于具体模型和配置。
+Earlier Opus and Sonnet models, as well as Haiku models, automatically remove these historical blocks from context. Whether Thinking continues to use window space in a long session therefore depends on the model and configuration.
 
-如果同时使用工具，规则更严格：返回 `tool_result` 时必须把本轮工具调用对应的 Thinking Block 原样带回，包括 `signature`。工具循环结束后，是否继续保留，再按模型默认行为或 context editing 配置处理。
+Tool use adds a stricter requirement: when returning a `tool_result`, include the Thinking Block associated with that turn's tool call exactly as received, including its `signature`. After the tool loop ends, retention follows the model's default behavior or the context-editing configuration.
 
-### 有效窗口和触发阈值
+### Effective Window and Trigger Thresholds
 
-概念上，有效窗口可以这么估：
+Conceptually, estimate the effective window as:
 
 ```text
-有效上下文 ≈ 总窗口容量 - 固定开销 - 历史开销
+Effective context ≈ total window capacity - fixed overhead - history overhead
 ```
 
-源码大概是这样的逻辑：
+The source logic is roughly:
 
 ```typescript
 function getEffectiveContextWindowSize(
@@ -142,32 +142,32 @@ function getEffectiveContextWindowSize(
 }
 ```
 
-这里的返回值用于后续警告、自动压缩、阻塞等判断。`getEffectiveContextWindowSize()` 只负责从模型窗口中扣除摘要输出预留。System Prompt、规则、消息历史和工具结果已经包含在实际 Token 使用量中，不会在这个函数里逐项扣除。
+The returned value is used for warnings, automatic compaction, and blocking. `getEffectiveContextWindowSize()` only subtracts the reserved summary-output space from the model window. The system prompt, rules, message history, and tool results are already included in actual token usage; this function does not subtract them individually.
 
-这些阈值同样来自上述材料，不属于公开稳定接口，后续版本可能调整。
+These thresholds also come from the material described above. They are not public, stable interfaces and may change in later versions.
 
-几个常量值：
+The implementation uses these constants:
 
-| 常量                              | 值     | 用途                                                                |
-| --------------------------------- | ------ | ------------------------------------------------------------------- |
-| `AUTOCOMPACT_BUFFER_TOKENS`       | 13,000 | 相对有效窗口再提前触发 AutoCompact 的缓冲带，让压缩在仍有余量时启动 |
-| `WARNING_THRESHOLD_BUFFER_TOKENS` | 20,000 | 请求前预警，提示可以手动 `/compact`                                 |
-| `ERROR_THRESHOLD_BUFFER_TOKENS`   | 20,000 | 标记上下文进入危险区                                                |
-| `MANUAL_COMPACT_BUFFER_TOKENS`    | 3,000  | 手动压缩时的最小安全余量                                            |
+| Constant                          | Value  | Purpose                                                                             |
+| --------------------------------- | ------ | ----------------------------------------------------------------------------------- |
+| `AUTOCOMPACT_BUFFER_TOKENS`       | 13,000 | Starts AutoCompact before the effective window is full, leaving room for compaction |
+| `WARNING_THRESHOLD_BUFFER_TOKENS` | 20,000 | Warns before a request and suggests manual `/compact`                               |
+| `ERROR_THRESHOLD_BUFFER_TOKENS`   | 20,000 | Marks the context as being in a danger zone                                         |
+| `MANUAL_COMPACT_BUFFER_TOKENS`    | 3,000  | Minimum safety margin for manual compaction                                         |
 
-这里有两个数字容易混。
+Two values here are easy to confuse.
 
-`reservedForSummary = min(maxOutputTokens, 20000)` 负责**预留摘要输出空间**。源码注释里提到摘要 p99.99 约 17.3K，所以 20K 上限能覆盖这类极端输出。
+`reservedForSummary = min(maxOutputTokens, 20000)` **reserves space for summary output**. A source comment says the summary's p99.99 is about 17.3K tokens, so the 20K cap covers such extreme outputs.
 
-`AUTOCOMPACT_BUFFER_TOKENS`（13K）在有效窗口上限前留出缓冲带，并在仍有余量时启动 AutoCompact。摘要输出空间由 20K 预留承担。
+`AUTOCOMPACT_BUFFER_TOKENS` (13K) leaves a buffer before the effective-window limit and starts AutoCompact while space remains. The separate 20K reservation covers summary output.
 
-13K 只是 AutoCompact 的 buffer；摘要 p99.99 注释对应的是 20K 摘要输出预留。这样设计的好处是可预测：模型窗口从 200K 扩到 500K 时，摘要侧输出预算不会跟着等比例膨胀。
+The 13K value is only the AutoCompact buffer; the p99.99 summary comment refers to the 20K summary-output reservation. This design is predictable: increasing the model window from 200K to 500K does not proportionally increase the summary-output budget.
 
-真正独立的阶段主要是预警、AutoCompact 和阻塞上限。`isAboveAutoCompactThreshold` 触发 AutoCompact；`isAtBlockingLimit` 阻止新请求，强制压缩或重置。
+The independent stages are warning, AutoCompact, and the blocking limit. `isAboveAutoCompactThreshold` triggers AutoCompact; `isAtBlockingLimit` blocks new requests until the context is compacted or reset.
 
-参考实现里还保留了 `isAboveWarningThreshold` 和 `isAboveErrorThreshold` 两个状态字段。观察到的版本中，两者使用相同的 20K 阈值，所以 Token 触发点一致。它们可能在不同 UI 或调用路径里承担不同用途，但不代表两个独立的占用区间。
+The reference implementation also has `isAboveWarningThreshold` and `isAboveErrorThreshold` state fields. In the observed version, both use the same 20K threshold and therefore trigger at the same token count. They may serve different purposes in different UI or call paths, but they do not represent separate usage ranges.
 
-请求发出前的判断链大概是（以下为社区提取的源码镜像中的实现，不是 Anthropic 承诺稳定的 API）。这条链路默认按 AutoCompact 开启时理解；如果 AutoCompact 关闭，warning / error 会退回以有效窗口为基准：
+The checks before a request are roughly as follows (this implementation comes from a community-extracted source mirror; it is not an API that Anthropic guarantees to be stable). This describes the flow with AutoCompact enabled. If AutoCompact is disabled, warning and error thresholds are based on the effective window instead:
 
 ```typescript
 reservedForSummary = min(maxOutputTokens, 20_000)
@@ -179,183 +179,183 @@ errorThreshold = autoCompactThreshold - 20_000
 blockingLimit = effectiveWindow - 3_000
 
 if currentUsageEstimate >= warningThreshold:
-  给出上下文预警
+  issue a context warning
 
 if currentUsageEstimate >= autoCompactThreshold:
-  触发 AutoCompact
+  trigger AutoCompact
 
 if currentUsageEstimate >= blockingLimit:
-  阻止新请求，要求手动 compact 或重置
+  block new requests and require manual compaction or a reset
 ```
 
-以 200K 窗口和 20K 摘要预留为例，有效窗口为 180K。AutoCompact 在 167K 触发，预警 / 错误线为 147K，阻塞线为 177K；预警和错误线都由 AutoCompact 线继续减去 20K 得出。
+For a 200K window with 20K reserved for summaries, the effective window is 180K. AutoCompact triggers at 167K, the warning and error thresholds are 147K, and the blocking limit is 177K. The warning and error thresholds are each 20K below the AutoCompact threshold.
 
-### 信息怎么进上下文
+### How Information Enters Context
 
-定位 `TokenRefreshService` 的调用方时，先用 `Grep` 找到符号，再根据 `tests/test_utils.py` 与 `src/core_logic/test_utils.py` 这类路径判断文件角色。确认相关后才用 `Read` 打开片段；`ls`、`find`、`git log` 和测试命令在需要补证据时执行。
+To find callers of `TokenRefreshService`, first use `Grep` to locate the symbol, then infer each file's role from paths such as `tests/test_utils.py` and `src/core_logic/test_utils.py`. Use `Read` to inspect relevant sections after confirming they matter. Run `ls`, `find`, `git log`, and tests when more evidence is needed.
 
-Read、Glob、Grep、Bash 和子代理沿着任务逐步取材，开始时不需要为整个仓库建立向量索引。路径、符号、导入关系和最新文件状态用于缩小范围；调用关系仍以源码和验证结果为准。
+Read, Glob, Grep, Bash, and subagents gather information as the task progresses; there is no need to build a vector index of the entire repository first. Paths, symbols, imports, and current file state narrow the search. Verify call relationships against the source and test results.
 
-自然语言问答或概念检索可以通过 MCP、插件或自定义 Skill 接入 RAG（Retrieval-Augmented Generation）。代码探索时，RAG 返回的片段还要和关键词搜索、符号分析、直接读取一起验证。
+Natural-language questions and concept searches can use RAG (Retrieval-Augmented Generation) through MCP, a plugin, or a custom Skill. For code exploration, verify retrieved snippets with keyword searches, symbol analysis, and direct reads.
 
-这类定位先看目录和文件名，再落到关键行；确认需要时才展开完整内容：
+This workflow starts with directories and file names, then narrows down to relevant lines; read the full content only when needed:
 
-| 设计决策       | 具体做法                                                 | 好处                                               |
-| -------------- | -------------------------------------------------------- | -------------------------------------------------- |
-| 元数据即信息   | 文件路径、目录结构、时间戳、文件大小本身就是有价值的信号 | 不读内容就能做初步判断                             |
-| 按需加载       | 只在需要时读具体文件，不预加载全部内容                   | 上下文始终只装必要信息                             |
-| 迭代深入       | 先粗后细：目录 → 文件名 → 关键行 → 完整内容              | 减少无效探索的上下文消耗                           |
-| 直接探索工作区 | 使用 Glob、Grep、Read、Git 和测试工具逐步定位            | 无需提前维护独立索引，读取结果通常与当前工作区一致 |
+| Design choice                  | Approach                                                                       | Benefit                                                                      |
+| ------------------------------ | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| Metadata as information        | File paths, directory structure, timestamps, and file sizes are useful signals | Make an initial assessment without reading contents                          |
+| Load on demand                 | Read specific files only when needed instead of preloading everything          | Keep only necessary information in context                                   |
+| Explore iteratively            | Narrow the search: directory → file name → relevant lines → full contents      | Reduce context spent on unproductive exploration                             |
+| Inspect the workspace directly | Use Glob, Grep, Read, Git, and tests to investigate                            | No separate index to maintain; results usually reflect the current workspace |
 
-我们之前聊过很多的 Skill，也是类似的顺序：启动时只加载元数据，模型决定调用后才取具体文档。详细机制可以看我写的这篇：[Agent Skills 是什么？和 Prompt、MCP 到底差在哪？](https://javaguide.cn/ai/agent/skills.html "Agent Skills 是什么？和 Prompt、MCP 到底差在哪？")。
+Skills follow a similar pattern: load only metadata at startup and fetch the specific document after the model decides to invoke one. See [What Are Agent Skills, and How Do They Differ from Prompts and MCP?](https://javaguide.cn/ai/agent/skills.html "What Are Agent Skills, and How Do They Differ from Prompts and MCP?") for details.
 
-文档、知识库和历史记录适合先经 RAG 召回。路径、配置、依赖和测试结果持续变化的代码仓库，则需要边搜索、边读取、边验证；搜索词选错时会多走几轮，跨仓库检索、概念检索或大型单体项目也可能更适合语义索引。
+RAG works well for retrieving documents, knowledge bases, and historical records. Code repositories contain changing paths, configuration, dependencies, and test results, so search, read, and verify them as you go. Poor search terms can require extra rounds; cross-repository or concept searches and large monoliths may benefit from semantic indexes.
 
-| 场景                         | 更适合的方式           |
-| ---------------------------- | ---------------------- |
-| 查知识库、文档、历史记录     | RAG                    |
-| 探索代码仓库、配置、目录结构 | Progressive Disclosure |
-| 既有文档又有代码的大项目     | 两者结合               |
+| Scenario                                                      | Better fit             |
+| ------------------------------------------------------------- | ---------------------- |
+| Search knowledge bases, documents, and history                | RAG                    |
+| Explore repositories, configuration, and directory structures | Progressive Disclosure |
+| Large projects with both documents and code                   | Combine both           |
 
-Cursor 这类 AI IDE 会做 Codebase Indexing，用索引辅助低延迟补全和快速问答。Claude Code 的任务还要经过读取、判断和验证，因此工具驱动的多轮探索占比更高。
+AI IDEs such as Cursor use codebase indexing for low-latency completion and quick questions. Claude Code tasks also involve reading, reasoning, and verification, so they rely more on iterative, tool-driven exploration.
 
-## 上下文为什么会退化
+## Why Context Degrades
 
-长任务里，窗口扩大后会同时装入更多约束、日志和旧判断，当前决策所需的材料因此更难被稳定取用。一些社区实践把 40% 左右当作清理或压缩的提醒线；模型、任务类型和上下文结构不同，出现波动的位置也会变化。
+In long tasks, a larger window can contain more constraints, logs, and earlier conclusions, making the information needed for a current decision harder to use reliably. Some community practices use roughly 40% as a prompt to clean up or compact context. The point at which quality changes varies by model, task, and context structure.
 
-![社区经验中的上下文利用率管理线](../../ai/images/shared/context-utilization-40-percent-threshold-phenomenon.svg)
+![A context-usage threshold drawn from community experience](../../ai/images/shared/context-utilization-40-percent-threshold-phenomenon.svg)
 
-第 3 轮写下“不要改数据库 schema”，到第 30 轮时，这条限制可能被搜索结果和测试日志夹在中间。这类开头与结尾更容易被注意、中间内容容易遗漏的现象，通常称为 **Lost in the Middle**。
+If someone says "do not change the database schema" in turn 3, search results and test logs may bury that constraint by turn 30. This tendency to notice the beginning and end more readily than the middle is commonly called **Lost in the Middle**.
 
-根级 `CLAUDE.md` 和无路径限制规则会在压缩后重新注入；当前用户输入与最近工具结果位于消息末尾；旧工具返回值和过时对话会优先被清理。三者共同降低关键限制被旧内容淹没的概率。规则仍是模型指令，安全限制应交给权限规则、Sandbox 或 `PreToolUse` Hook。
+The root `CLAUDE.md` and rules without path restrictions are injected again after compaction. The current user input and recent tool results are near the end of the messages, while older tool results and stale conversation are cleared first. Together, these reduce the chance that old content buries a key constraint. Rules are still model instructions; enforce security constraints with permission rules, the sandbox, or a `PreToolUse` hook.
 
-窗口接近上限时，剩余空间还要留给输出和错误恢复。历史继续增长，模型可能在任务未完成前提前收束；Anthropic 将这种现象称为 **Context Anxiety**。
+Near the context limit, space must also remain for output and error recovery. If history keeps growing, the model may wrap up before finishing the task. Anthropic calls this **Context Anxiety**.
 
-[Harness design for long-running application development](https://www.anthropic.com/engineering/harness-design-long-running-apps "Harness design for long-running application development")这篇文章中的完整描述如下：
+The article [Harness Design for Long-Running Application Development](https://www.anthropic.com/engineering/harness-design-long-running-apps "Harness Design for Long-Running Application Development") describes it as follows:
 
-![context-anxiety-harness-design-long-running-apps](../images/shared/context-anxiety-harness-design-long-running-apps.png)
+![Context Anxiety described in Anthropic's long-running application harness design](../images/shared/context-anxiety-harness-design-long-running-apps.png)
 
-旧判断、重复搜索结果、已解决问题和无用日志也会消耗注意力，即使窗口还没有临界。它们在每轮请求里反复出现，新决策却可能只有一句；这种信噪比下降的状态称为 **Context Rot**。窗口变大只能延后压力，信息过多仍会让中间位置的限制被遗漏，最后还可能进入 Context Anxiety。
+Earlier conclusions, duplicate search results, resolved issues, and useless logs consume attention even before the window is full. They recur in each request, while a new decision may be only one sentence. This declining signal-to-noise ratio is called **Context Rot**. A larger window only delays the pressure: too much information can still bury constraints in the middle and eventually lead to Context Anxiety.
 
-## Claude Code 怎么治理上下文
+## How Claude Code Manages Context
 
-工具结果可以重新获取，就不用一直占着窗口。Claude Code 会先处理这一层，再压缩历史；仍接不上任务时，才重置上下文或把支线交给子代理。
+If tool results can be retrieved again, they do not need to occupy the window indefinitely. Claude Code handles these results first, then compacts history. If that is not enough to continue the task, reset the context or delegate side tasks to subagents.
 
-### 先清工具结果
+### Clear Tool Results First
 
-一次 `Read` 可能返回 500 行，一次测试也可能刷出几千行日志。它们很占空间，但原始内容可以再次读取，先处理这部分的信息损失相对较低，也不需要额外调用模型。
+One `Read` call may return 500 lines, and a test run may produce thousands of log lines. These use substantial space, but the original content can be retrieved again. Clearing them first causes relatively little information loss and requires no additional model call.
 
-在本文参考的 2.1.x 附近实现里，大工具结果会写入会话存储里的 `tool-results`，通常位于 `~/.claude/projects/...` 对应的会话数据下；窗口里只保留预览和文件引用。
+In the 2.1.x implementation examined for this article, large tool results are written to `tool-results` in the session store, usually under the session data in `~/.claude/projects/...`. The window keeps only a preview and a file reference.
 
-默认阈值是约 50,000 字符，不是 50KB。不同工具还可能有更低阈值，比如 Bash / PowerShell 约 30,000 字符，Grep 约 20,000 字符。同一条消息里的工具结果合计超过约 200,000 字符时，也会优先把最大的结果写盘。
+The default threshold is about 50,000 characters, not 50 KB. Some tools may have lower limits: about 30,000 characters for Bash or PowerShell and 20,000 for Grep. If tool results in one message exceed about 200,000 characters in total, the largest results are also written to disk first.
 
-这里有个例外：`Read` 工具结果豁免 `maxResultSizeChars = Infinity`。这类没有有限阈值的工具，通常不会被 Tool Result Budget 当作大结果处理。否则会出现“读文件 -> 太大写盘 -> 摘要看到路径 -> 又读回来”的循环。
+There is an exception: `Read` results use `maxResultSizeChars = Infinity`. Tools without a finite threshold are generally not treated as oversized by the Tool Result Budget. Otherwise, the process could loop: read a file → write it to disk because it is too large → include its path in the summary → read it again.
 
-工具结果还可能由 Tool Result Budget 处理。这条路径受版本和实验开关影响，并非所有环境都会启用。其状态可分为 `mustReapply`、`frozen` 和 `fresh`。
+Tool Result Budget may also process tool results. This path depends on the version and experimental flags, so it is not enabled in every environment. Its states include `mustReapply`, `frozen`, and `fresh`.
 
-`mustReapply` 表示之前已经被持久化或替换过的工具结果，需要重新应用替换内容；`frozen` 是已经见过、暂不再处理的结果；`fresh` 是新近产生的工具结果，在单消息预算超限时可能被挑出来写盘替换。
+`mustReapply` means a previously persisted or replaced result needs its replacement applied again. `frozen` is a result already processed and temporarily excluded from further handling. `fresh` is a new result that may be written to disk and replaced when a single-message budget is exceeded.
 
-参考实现还包含 Snip 和 MicroCompact。Snip 删除一段历史 range 后会重连消息链，并将释放的 Token 数交给后续 AutoCompact 判断，避免刚释放空间就再次过度压缩。
+The reference implementation also includes Snip and MicroCompact. Snip removes a range of history, reconnects the message chain, and passes the number of freed tokens to later AutoCompact checks, avoiding an unnecessary compaction immediately after space is freed.
 
-MicroCompact 会把旧工具结果替换为 `[Old tool result content cleared]`。调用和引用关系仍留在消息链中，大段返回内容则被移除。
+MicroCompact replaces old tool results with `[Old tool result content cleared]`. Calls and references remain in the message chain, while large result bodies are removed.
 
-**为什么不直接删整条消息？**
+**Why not delete the entire message?**
 
-后续消息可能仍引用前面的 `tool_use` ID。若直接删除调用记录，消息链会断开，模型也无法判断哪些操作已经完成。代价是丢失具体内容；后续需要精确行号时，仍要重新读取文件。
+Later messages may still reference an earlier `tool_use` ID. Deleting the call record would break the message chain and prevent the model from knowing which operations completed. The tradeoff is losing the exact content; reread the file if you later need precise line numbers.
 
-请求发出前或出现上下文压力提示时，MicroCompact 会保留最近的若干工具结果，并替换更早的结果。如果当前环境、模型或 Sub-agent 路径不支持它，流程会跳过该步骤，后续由 AutoCompact 继续处理。
+Before a request or when context pressure is reported, MicroCompact keeps several recent tool results and replaces earlier ones. If the current environment, model, or subagent path does not support it, this step is skipped and AutoCompact handles the context later.
 
-另一条入口与 Prompt Cache 过期有关。两次 API 调用相隔较久、服务端缓存可能失效时，发送前清掉旧工具结果可避免全量重传继续膨胀。这条路径默认关闭，并受 GrowthBook gate 控制。
+Another entry point is Prompt Cache expiration. If enough time passes between API calls for the server-side cache to expire, clearing old tool results before sending can prevent the full request from growing further. This path is disabled by default and controlled by a GrowthBook gate.
 
-参考实现中还出现 cache prefix / cache sharing 路径：压缩时会尝试复用缓存前缀，失败后回退到常规压缩。它属于版本相关的缓存优化，不应视作稳定能力。
+The reference implementation also has cache-prefix and cache-sharing paths. Compaction attempts to reuse a cached prefix and falls back to regular compaction if that fails. This is a version-specific cache optimization, not a stable capability.
 
-这层清理的边界要看信息能不能重新获取。Read、Grep、Glob、日志查询这类输出，后续需要时大多能重新跑；Edit、Write 这类有副作用的工具，不应该靠重放输出来恢复状态，而要回到文件系统里核对。子代理分析结果、任务状态快照这类一次性产物也不能随便清，因为丢了就真丢了，只能靠摘要或附件保住。
+Decide what to clear based on whether the information can be retrieved again. Outputs from Read, Grep, Glob, and log queries can usually be generated again. For side-effecting tools such as Edit and Write, do not restore state by replaying output; check the file system. One-off artifacts such as subagent analysis and task-state snapshots cannot be casually cleared because they may be lost. Preserve them in a summary or attachment.
 
-### 再压缩历史
+### Compact History Next
 
-工具结果清理完还不够，才轮到历史压缩。AutoCompact 不是唯一的压缩手段。接近窗口上限前，Claude Code 会先尝试清理较旧的工具输出；释放空间仍然不够时，才需要把会话压缩成摘要。
+Compact history only after clearing tool results proves insufficient. AutoCompact is not the only compaction method. As the context limit approaches, Claude Code first tries to clear older tool output; if that does not free enough space, it summarizes the session.
 
-工具结果清掉以后，对话历史还在涨。到一定程度，就需要把旧历史改写成状态摘要。在本文观察的实现里，这件事会走一条多级流水线。官方文档能确认的是：接近上限时会先清旧工具结果，不够再摘要会话。
+Conversation history continues to grow after tool results are cleared. At some point, earlier history must be rewritten as a state summary. The implementation examined here uses a multistage pipeline. Official documentation confirms that older tool results are cleared first as the limit approaches, followed by session summarization if needed.
 
-![五级渐进压缩流水线](../images/shared/ctx-mgmt-pipeline-flow.png)
+![Five-stage progressive compaction pipeline](../images/shared/ctx-mgmt-pipeline-flow.png)
 
-| 级别 | 名称         | 动作                                       | 信息损失   | API 成本 |
-| ---- | ------------ | ------------------------------------------ | ---------- | -------- |
-| 0    | 大结果存磁盘 | 超过阈值的工具输出写入会话存储             | 极低       | 无       |
-| 1    | Snip         | 删除一段历史 range，并重连消息链           | 极低       | 无       |
-| 2    | MicroCompact | 清掉旧工具结果内容，或走 API 层 cache edit | 低到中     | 无       |
-| 3    | Collapse     | 把已完成消息组折叠成状态快照               | 中         | 低       |
-| 4    | AutoCompact  | 调度 Session Memory 或 LLM 全量摘要        | 取决于路径 | 高       |
+| Stage | Name                  | Action                                                       | Information loss    | API cost |
+| ----- | --------------------- | ------------------------------------------------------------ | ------------------- | -------- |
+| 0     | Persist large results | Write oversized tool output to session storage               | Very low            | None     |
+| 1     | Snip                  | Remove a history range and reconnect the message chain       | Very low            | None     |
+| 2     | MicroCompact          | Clear old tool-result content or use API-level cache editing | Low to medium       | None     |
+| 3     | Collapse              | Fold completed message groups into a state snapshot          | Medium              | Low      |
+| 4     | AutoCompact           | Use Session Memory or an LLM to summarize the full session   | Depends on the path | High     |
 
-大结果写盘、Snip 和 MicroCompact 能处理一部分会话。窗口占用继续上升时，流程才会进入 Collapse 或 AutoCompact。
+Persisting large results, Snip, and MicroCompact can handle some sessions. The process moves to Collapse or AutoCompact only if context usage continues to rise.
 
-Collapse 也属于这部分实现，比 AutoCompact 更轻。调用 API 时，它动态生成压缩视图：完整历史留在本地，模型接收折叠后的版本。
+Collapse is another part of this implementation and is lighter than AutoCompact. For an API call, it creates a compacted view dynamically: the full history stays local while the model receives the folded version.
 
-这个思路可以理解成 **视图与存储分离** 。按该实现观察到的阈值，约 90% 利用率时，Collapse 开始处理已完成消息组；约 95% 利用率时，会阻止新的 Sub-agent spawn，避免继续给上下文加压。
+This is similar to **separating the view from storage**. In the observed implementation, Collapse starts processing completed message groups at about 90% utilization. At about 95%, it prevents new subagents from spawning to avoid adding more context pressure.
 
-因为 Collapse 的信息损失更小，它通常会先于 AutoCompact 激活。折叠后仍然不够，才进入更重的全量摘要。Collapse 这类分层细节不要当成公开稳定接口。
+Because Collapse loses less information, it usually activates before AutoCompact. If folding does not free enough space, the system proceeds to a heavier full summary. Do not treat implementation details such as Collapse as public, stable interfaces.
 
-AutoCompact 会用一份新的状态摘要替换旧聊天记录。目标、进度、决策和待办会被保留，读过哪些文件、搜过哪些关键词以及测试输出全文通常不会；需要这些细节时，Agent 需重新从文件系统读取。
+AutoCompact replaces old chat history with a new state summary. It retains goals, progress, decisions, and pending tasks, but usually not which files were read, which keywords were searched, or full test output. The Agent must retrieve those details from the file system when needed.
 
-![AutoCompact 压缩前后对比](../images/shared/ctx-mgmt-compare.png)
+![Context before and after AutoCompact](../images/shared/ctx-mgmt-compare.png)
 
-手动 `/compact` 与自动压缩使用同类能力，但输入参数不同。手动调用可以明确指定摘要必须保留的内容；自动调用会打开 `suppressFollowUpQuestions`，避免摘要器在中途追问。
+Manual `/compact` and automatic compaction use similar capabilities but different inputs. A manual command can specify what the summary must retain. Automatic compaction sets `suppressFollowUpQuestions` so the summarizer does not interrupt with questions.
 
-阶段结束、`/context` 显示占用明显升高，或工具调用开始重复时，可以主动执行 `/compact` 并指定保留重点：
+At the end of a phase, when `/context` shows high usage, or when tool calls start repeating, run `/compact` and specify what to retain:
 
 ```text
-/compact 保留数据库 schema、支付状态机和当前失败用例
+/compact Keep the database schema, payment state machine, and current failing tests.
 ```
 
-### 压缩恢复和兜底
+### Recovery and Fallbacks
 
-第三层处理压缩后的恢复和失败兜底。
+The third layer restores context after compaction and handles failures.
 
-**Session Memory** 是 Full Compact 前的一条快速路径。这里说的 Session Memory，是内部实现里用于压缩的会话辅助状态，不是 Claude Code 官方文档里的 Auto Memory。它会按 Token 增长和工具调用节奏刷新结构化会话笔记；触发 AutoCompact 时，如果这份笔记加上近期消息、附件和 Hook 结果已经能压到阈值以下，就可以跳过 Full Compact。
+**Session Memory** is a fast path before Full Compact. Here, Session Memory means internal session state used for compaction; it is not the Auto Memory described in Claude Code's official documentation. It refreshes structured session notes based on token growth and tool-call cadence. When AutoCompact triggers, Full Compact can be skipped if the notes, recent messages, attachments, and hook results fit below the threshold.
 
-这两个名字容易混，可以先拆开看：
+These names are easy to confuse. The distinction is:
 
-| 对比 | Session Memory                              | Auto Memory                                                |
-| ---- | ------------------------------------------- | ---------------------------------------------------------- |
-| 定位 | 当前会话里的压缩辅助笔记                    | 跨会话的项目经验记忆                                       |
-| 来源 | 内部流程按 Token 增长和工具调用节奏刷新     | Claude 根据纠正、偏好和项目经验写入                        |
-| 作用 | 给 AutoCompact 复用，减少 Full Compact 概率 | 会话启动时加载，给 Agent 提供长期偏好和经验                |
-| 存储 | 内部实现细节，版本相关                      | `~/.claude/projects/<project>/memory/`，`MEMORY.md` 是索引 |
+| Aspect  | Session Memory                                                   | Auto Memory                                                             |
+| ------- | ---------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Purpose | Current-session notes that support compaction                    | Project knowledge that persists across sessions                         |
+| Source  | Refreshed internally based on token growth and tool-call cadence | Written by Claude from corrections, preferences, and project experience |
+| Role    | Reused by AutoCompact to reduce the chance of Full Compact       | Loaded at session start to provide long-term preferences and experience |
+| Storage | Internal, version-specific implementation detail                 | `~/.claude/projects/<project>/memory/`; `MEMORY.md` is the index        |
 
-它也有成本，Session Memory 的更新本身需要后台模型调用。它减少的是临近窗口上限时再做一次大规模摘要的概率，同时把压缩工作分摊到了会话执行过程中。
+It also has a cost: updating Session Memory requires a background model call. It reduces the chance of a large summary near the context limit by spreading compaction work across the session.
 
-在本文观察的实现里，Session Memory 不是会话一开始就启动。首次达到约 10,000 Token 后才初始化。
+In the implementation examined here, Session Memory does not start at the beginning of a session. It is initialized after usage first reaches about 10,000 tokens.
 
-后续更新也有节奏：通常要再增长约 5,000 Token，并且累计一定数量的工具调用，或者刚好处于没有工具调用的自然断点，才会刷新笔记。
+Updates follow a cadence: notes are usually refreshed after another 5,000 tokens and a certain number of tool calls, or at a natural pause with no active tool calls.
 
-笔记模板按固定章节组织，比如 Current State、Task specification、Files and Functions、Errors & Corrections 等。每个 section 的软上限约 2,000 Token，全文硬上限是 12,000 Token；超过硬上限时，会提示模型 `MUST condense`。
+The notes use fixed sections such as Current State, Task Specification, Files and Functions, and Errors & Corrections. Each section has a soft limit of about 2,000 tokens; the hard limit for the full document is 12,000 tokens. When it is exceeded, the model is told it `MUST condense`.
 
-在 Session Memory compact 开启、且已有有效 Session Memory 时，AutoCompact 会优先尝试复用它：用笔记、近期消息、附件和 Hook 结果组装新消息链，估算 Token 是否低于阈值。如果能降到阈值以下就跳过 Full Compact；如果笔记为空、消息边界找不到，或者组装后仍然太大，则退回完整摘要。
+When Session Memory compaction is enabled and valid Session Memory exists, AutoCompact first tries to reuse it. It assembles a new message chain from the notes, recent messages, attachments, and hook results, then estimates token usage. If it falls below the threshold, Full Compact is skipped. If the notes are empty, the message boundary cannot be found, or the assembled chain is still too large, the system falls back to a full summary.
 
-**Full Compact** 自己也可能因为输入太长而报 `prompt_too_long`。在手动 `/compact` 或 AutoCompact 触发 Full Compact 时，如果摘要请求自身报 `prompt_too_long`，系统会进入 **PTL（Prompt Too Long）** 兜底路径。
+**Full Compact** can itself fail with `prompt_too_long` if its input is too long. If the summary request fails this way during manual `/compact` or AutoCompact, the system uses the **PTL (Prompt Too Long)** fallback.
 
-按 API round 分组的目的，是保证 `tool_use` 和 `tool_result` 不被拆散。如果错误里带了 `tokenGap`，系统可以按超出的 Token 量更精确地丢弃；没有 `tokenGap` 时，就会按更粗的比例处理，比如先丢掉约 20% 的旧消息组。Reactive Compact 是另一条从 API `prompt_too_long` 错误恢复的路径，也会截断消息后重试；具体截断方向和策略属于版本相关实现，不建议统一写死。
+Grouping by API round keeps `tool_use` and `tool_result` together. If the error includes `tokenGap`, the system can remove content based on the excess token count. Without `tokenGap`, it uses a rougher proportion, such as dropping about 20% of older message groups. Reactive Compact is another recovery path for an API `prompt_too_long` error; it truncates messages and retries. The truncation direction and strategy are version-specific and should not be treated as fixed.
 
-这套实现里的 **Partial Compact** 同时解决两个问题：只压缩一段历史以减少状态损失，以及在某些方向上尽可能保留缓存前缀。Full Compact 通常会重建主要消息链，原缓存前缀基本失效；Partial Compact 只压缩一段历史，尽量保留一端消息以复用缓存。压缩不能只看压缩率，还要看压完以后缓存、接续、信息损失三件事怎么平衡。
+In this implementation, **Partial Compact** addresses two concerns: it compacts only part of the history to reduce state loss, and in some directions preserves the cached prefix where possible. Full Compact usually rebuilds the main message chain and invalidates most of the cached prefix. Partial Compact compacts a section while retaining one end of the messages for cache reuse. Compaction should balance cache reuse, task continuity, and information loss, not just compression ratio.
 
-Partial Compact 有两个方向：
+Partial Compact has two directions:
 
-1. `from`：压缩 pivot 之后的消息，保留更早的部分。适合已经有一段早期摘要的长会话，同时更有利于复用缓存前缀；
-2. `up_to`：压缩 pivot 之前的消息，保留最近的部分。适合 Agent 正在处理某个文件或 Bug，中间状态不应被摘要打断。但由于摘要插到了保留消息之前，原缓存前缀通常会失效。
+1. `from`: compact messages after the pivot and retain the earlier portion. This suits long sessions that already have an earlier summary and can better preserve the cached prefix.
+2. `up_to`: compact messages before the pivot and retain the recent portion. This suits an Agent working on a file or bug where intermediate state should not be interrupted by a summary. Since the summary is inserted before the retained messages, the original cached prefix is usually invalidated.
 
-Full Compact 使用的是一份结构化摘要 Prompt，不是简单要求模型“总结一下”。
+Full Compact uses a structured summary prompt rather than simply asking the model to "summarize this."
 
-Full Compact 的摘要 Prompt 会在首尾限制工具调用：该步骤只应产出文字，不应再执行 `Read`、`Write` 或 `Bash`，否则会引入新的工具结果。模型先在 `<analysis>` 中整理信息，再把后续会话需要的内容写入 `<summary>`；只有后者会成为接续材料。
+The Full Compact prompt restricts tool calls before and after summarization: this step should produce text only and must not run `Read`, `Write`, or `Bash`, which would add new tool results. The model first organizes information in `<analysis>`, then writes what the next session needs in `<summary>`. Only the latter becomes the handoff material.
 
-`<summary>` 按固定章节组织，包括 Primary Request and Intent、Key Technical Concepts、Files and Code Sections、Errors and fixes、Problem Solving、All user messages、Pending Tasks、Current Work 和 Optional Next Step。
+`<summary>` uses fixed sections: Primary Request and Intent, Key Technical Concepts, Files and Code Sections, Errors and Fixes, Problem Solving, All User Messages, Pending Tasks, Current Work, and Optional Next Step.
 
-`All user messages` 记录的不只是历史：用户补充的需求、方向和限制会改变后续判断，遗漏后 Agent 可能接错任务。`Current Work` 也应写明文件名、函数名、失败用例和下一条命令；“正在排查模块问题”不足以让压缩后的 Agent 直接继续。
+`All User Messages` is more than a transcript: additional user requirements, direction, and constraints affect later decisions. If they are omitted, the Agent may continue the wrong task. `Current Work` should also specify file and function names, failing tests, and the next command. "Investigating a module issue" is not enough for the compacted Agent to continue.
 
-参考实现还显示，不同模型版本对压缩 Prompt 的遵循程度可能不同。例如在特定配置下，新版模型尝试调用工具的比例明显高于旧版。也就是说，压缩规则要随模型版本重新验证，不能假设一句“不要调用工具”在所有模型上都同样管用。
+The reference implementation also shows that different model versions may follow the compaction prompt differently. For example, under a specific configuration, a newer model tried to call tools much more often than an older one. Compaction rules therefore need to be revalidated for each model version; do not assume that "do not call tools" works equally well across models.
 
-压缩完成后，Claude Code 会在本地会话事件 / JSONL 中写入 `subtype: "compact_boundary"` 的 system 记录。样例里的 `compactMetadata` 主要记录 `trigger`、`preTokens` 等信息，部分路径还会带 `preservedSegment`。压缩后的 Token 数可能出现在压缩结果或 telemetry 里，不适合当成 boundary metadata 的稳定字段。边界标记告诉后续加载器：历史在这里已经被摘要替换，别把它当成普通对话继续拼。
+After compaction, Claude Code writes a system record with `subtype: "compact_boundary"` to the local session events or JSONL. The sample `compactMetadata` mainly records values such as `trigger` and `preTokens`; some paths also include `preservedSegment`. The post-compaction token count may appear in the result or telemetry, so it should not be treated as a stable boundary-metadata field. The boundary tells later loaders that history here was replaced by a summary and should not be appended as ordinary conversation.
 
-本地记录里能看到类似这样的结构，字段会随版本变化：
+The local record may look like this; fields vary by version:
 
 ```json
 {
@@ -374,255 +374,255 @@ Full Compact 的摘要 Prompt 会在首尾限制工具调用：该步骤只应�
 }
 ```
 
-Full / Partial Compact 结束后，新的消息链通常包含边界标记、摘要消息、附件和 Hook 结果。Session Memory compact 的恢复范围更窄，主要围绕 summary、保留消息、plan 和 hook。最近访问的文件、活跃计划、当前 Skill、后台任务状态会受到数量和 Token 预算限制；System Prompt 则不参与摘要，压缩后会重新组装最新的工具列表、权限设置和 MCP Server 列表。
+After Full or Partial Compact, the new message chain usually contains the boundary marker, summary message, attachments, and hook results. Session Memory compaction restores a narrower set, mainly the summary, retained messages, plan, and hooks. Recently accessed files, active plans, the current Skill, and background-task state are subject to count and token budgets. The system prompt is not summarized; the latest tool list, permissions, and MCP server list are assembled again after compaction.
 
-压缩后不应把此前读过的文件全量重新加载，否则很容易回到“压缩 -> 膨胀 -> 再压缩”的循环。恢复当前任务必需的文件即可。
+Do not reload every file read before compaction. That can easily restart the cycle of compaction → context growth → compaction. Restore only the files needed for the current task.
 
-系统会重新估算边界标记、摘要、恢复附件和 Hook 结果构成的实际消息载荷；若其仍接近阈值，下一轮可能立刻再次压缩。部分临时状态和缓存也会按实现路径重置，具体清理项随版本变化。
+The system recalculates the actual message payload from the boundary marker, summary, restored attachments, and hook results. If it remains near the threshold, compaction may run again immediately on the next turn. Some temporary state and caches are also reset depending on the implementation path; the exact cleanup varies by version.
 
-附件恢复需要按相关性取舍。最近访问的文件、活跃 Plan、正在使用的 Skill 和后台任务状态都可能帮助 Agent 接续任务，但也会占用窗口。源码路径常按最近访问、文件数 / Token 预算、排除规则和 preserved tail 去重约束筛选；例如处理支付状态机时，应恢复状态机文件、失败测试和相关计划，而非此前顺手读过的日志或无关模块。
+Restore attachments based on relevance. Recently accessed files, active plans, the current Skill, and background-task state can help the Agent continue, but they also use window space. The source path often filters by recency, file-count and token budgets, exclusion rules, and deduplicated preserved tails. For example, when working on a payment state machine, restore its source file, failing tests, and relevant plan—not logs or unrelated modules read earlier.
 
-项目根级 `CLAUDE.md` 与无路径限制规则会在压缩后从磁盘重新注入，无需重复写入摘要。子目录 `CLAUDE.md` 和带 `paths` 的规则则会等到再次读取匹配文件时才重新加载。
+The project-root `CLAUDE.md` and rules without path restrictions are injected again from disk after compaction, so they do not need to be repeated in the summary. Nested `CLAUDE.md` files and rules with `paths` are reloaded when matching files are read again.
 
-为压缩选择更便宜的模型时，要同时评估摘要保真度、额外探索成本和缓存命中情况。模型价格只是一个变量，判断标准仍是压缩后能否准确接续任务。
+When choosing a cheaper model for compaction, also evaluate summary fidelity, the cost of additional exploration, and cache hits. Model price is only one factor; the key is whether the task can continue accurately after compaction.
 
-### 重置、隔离和断路器
+### Reset, Isolation, and Circuit Breakers
 
-第四层就不再执着于“把旧窗口救回来”了。Compaction 是在旧上下文上修补，修补次数多了，细节损失会叠加。到了某个点，继续压不如直接重开。Context Reset 的做法是清空窗口，把当前状态写成交接文档，新的 Agent 从交接文档恢复。
+The fourth layer stops trying to "save the old window." Compaction patches the old context, and repeated patches accumulate detail loss. At some point, starting over is better than further compaction. Context Reset clears the window, writes the current state to a handoff document, and lets a new Agent resume from it.
 
-![上下文重置交接流程](../images/shared/ctx-mgmt-reset-flow.png)
+![Context Reset handoff workflow](../images/shared/ctx-mgmt-reset-flow.png)
 
-Anthropic 在基于 Sonnet 4.5 的特定长任务 Harness 中观察到，模型接近上下文上限时会草草收尾，也就是 Context Anxiety。这个场景下，单靠 Compaction 不够。
+In a specific long-task Harness based on Sonnet 4.5, Anthropic observed that the model wrapped up hastily near the context limit. This is Context Anxiety, and compaction alone was not enough in that scenario.
 
-Reset 配合结构化 handoff 的作用，是丢掉旧上下文，只用 handoff 留住关键信息，让新的 Agent 接着干。
+Reset paired with a structured handoff discards the old context while preserving key information in the handoff for a new Agent to continue.
 
-但这不是长任务的固定必选步骤。后来切换到 Opus 4.5 后，同一个 Harness 已经可以移除 Reset，只依赖自动压缩。因此 Reset 更像模型和任务相关的工程手段，而不是通用流程。
+However, Reset is not a required step for every long task. After switching to Opus 4.5, the same Harness could remove Reset and rely on automatic compaction. Reset is an engineering technique for specific models and tasks, not a universal workflow.
 
-Reset 的风险也清楚，交接材料是主要桥梁。它不一定只有一份 Markdown，也可以包括进度文件、失败测试记录、Git diff、任务列表和关键日志。漏了边界条件、临时决策、失败原因，新 Agent 就会在缺信息的状态下继续跑。
+The main risk of Reset is the handoff material, which forms the bridge to the new session. It can include more than one Markdown file: progress notes, failing-test records, a Git diff, a task list, and key logs can all help. If edge cases, temporary decisions, or failure reasons are omitted, the new Agent resumes without necessary information.
 
-新会话要从上一次执行点继续，handoff 至少保存目标和完成标准、已完成工作、当前文件与函数、排除方案、失败用例或错误日志，以及接手后的第一步：
-
-```text
-1. 当前任务目标：一句话说明最终要交付什么
-2. 已完成工作：列出已经改完和验证过的部分
-3. 当前断点：写到文件、函数、测试用例或命令
-4. 关键约束：不能改什么、必须兼容什么、用户特别强调过什么
-5. 排除记录：试过哪些方案，为什么放弃
-6. 当前故障：失败日志、报错栈、复现步骤
-7. 启动动作：新会话接手后先看哪个文件或先跑哪条命令
-```
-
-只有“继续完成剩余任务”这一句时，改过的文件、失败测试和已排除的方案都不会随新会话出现。
-
-分析几千行日志、跨文件定位或独立审查时，主会话通常不需要看到全部过程。Sub-agent 在独立窗口完成这些支线后，只回传摘要和必要证据；全文日志与中间试错留在子代理历史中。
-
-![Claude Code Sub-Agent：让主对话保持干净](../images/shared/claudecode-sub-agent.png)
-
-主会话只需根因和证据的日志任务适合拆出。任务小到几步就能完成、子任务频繁相互等待，或边界本身说不清时，调度和摘要反而会带来额外成本。
-
-子代理启动时获得的上下文也不同：
-
-| 模式                      | 上下文行为                                                                              | 适合场景                                 |
-| ------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------- |
-| Named / non-fork Subagent | 不继承父会话消息历史；但仍会加载工具 / 权限、`CLAUDE.md` / memory、Git 状态等运行上下文 | 隔离搜索噪声、日志分析、独立审查         |
-| Fork                      | 继承父会话上下文，而不是从空窗口启动                                                    | 背景依赖重、需要沿用父会话状态的支线任务 |
-
-两种模式都只把结果返回主会话。拥有 `Agent` 工具的子代理可以继续派生，深度到 5 层后不再提供该工具；Fork 不能继续生成 Fork。
-
-主会话压缩后不会重新载入子代理的完整 transcript，只恢复摘要和少量元数据。
-
-### 断路器
-
-Circuit Breaker 是自动压缩的硬保护。官方文档说明：某个大文件或工具输出导致每次摘要后窗口迅速再次填满时，Claude Code 会在多次尝试后停止自动压缩，避免重复消耗 API 调用。
-
-参考实现使用连续失败计数：AutoCompact 成功后清零，连续失败达到 `MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES`（3）时，后续请求跳过 AutoCompact。
+To resume from the previous stopping point, the handoff should include the goal and acceptance criteria, completed work, current files and functions, rejected approaches, failing tests or error logs, and the first step for the next session:
 
 ```text
-自动压缩
-  -> 摘要后很快再次填满，或者压缩失败
-连续失败计数增加
-  -> 达到 3 次后跳过 AutoCompact
+1. Task goal: State the expected deliverable in one sentence.
+2. Completed work: List what has been changed and verified.
+3. Current stopping point: Name the file, function, test, or command.
+4. Key constraints: What must not change, what must remain compatible, and what the user emphasized.
+5. Rejected approaches: What was tried and why it was discarded.
+6. Current failure: Include logs, stack traces, and reproduction steps.
+7. First action: Tell the next session which file to inspect or command to run.
 ```
 
-没有这层保护，会话会陷入“压缩 -> 立刻膨胀 -> 再压缩”的循环。若 AutoCompact 未及时执行、API 已返回 `prompt_too_long`，Reactive Compact 会从错误中恢复，截断消息后重试。
+If the only handoff says "continue the remaining work," the new session will not know which files changed, which tests failed, or which approaches were ruled out.
 
-### 总结
+When analyzing thousands of log lines, tracing behavior across files, or performing an independent review, the main session usually does not need the full process. A subagent can handle the side task in its own window and return only a summary and necessary evidence; full logs and intermediate attempts remain in its history.
 
-可以按信息是否可重新获取来安排处理顺序：
+![Claude Code subagent keeping the main conversation focused](../images/shared/claudecode-sub-agent.png)
 
-| 上下文压力来自哪里     | 优先处理方式                             | 代价                                 |
-| ---------------------- | ---------------------------------------- | ------------------------------------ |
-| 工具输出太长           | 写盘、MicroCompact，必要时 Snip 历史片段 | 信息损失低，通常不需要额外模型调用   |
-| 对话历史太长           | Collapse、AutoCompact、Full Compact      | 会丢一部分过程细节，需要摘要质量兜底 |
-| 主会话被搜索和日志拖脏 | Sub-agent 隔离支线任务                   | 多一次调度，主会话只接收摘要         |
-| 压缩后仍然接不住任务   | handoff + Context Reset                  | 交接文档写漏了，新会话就会缺信息     |
+Delegate log tasks when the main session needs only the root cause and evidence. When a task takes only a few steps, subtasks frequently depend on each other, or boundaries are unclear, scheduling and summarization add overhead instead.
 
-日常使用时，先清理可重新获取的工具结果；历史过长再压缩；搜索、审查和日志分析交给 Sub-agent；压缩后仍无法稳定接续，再写 handoff 并重开会话。处理越靠后，信息损失和调度成本越高，因此不应一开始就 Reset。
+Subagents also start with different context depending on the mode:
 
-## 长任务怎么落地
+| Mode                      | Context behavior                                                                                                                            | Suitable use                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Named / non-fork subagent | Does not inherit the parent message history, but still loads runtime context such as tools, permissions, `CLAUDE.md`, memory, and Git state | Isolate noisy searches, log analysis, and independent reviews    |
+| Fork                      | Inherits the parent context instead of starting with an empty window                                                                        | Side tasks that depend on substantial background or parent state |
 
-### 两个极端案例
+Both modes return only their results to the main session. A subagent with the `Agent` tool can spawn other subagents; that tool is no longer available at depth 5. A Fork cannot create another Fork.
 
-Anthropic Labs 团队在 2026 年发了一个受 **GAN（Generative Adversarial Network，生成对抗网络）** 思路启发的三智能体架构：
+After the main session is compacted, it does not reload a subagent's full transcript; it restores only the summary and limited metadata.
 
-![Anthropic 三智能体架构](../images/shared/ctx-mgmt-triagent-arch.png)
+### Circuit Breaker
 
-Planner 把 1-4 句话的产品描述扩成完整规格，Generator 按 Sprint 实现功能，Evaluator 再用 Playwright MCP 实际操作运行中的应用，并按产品设计深度、功能性、视觉设计和代码质量打分。角色分工让规划、实现和评估各自保有独立上下文。
+The circuit breaker protects automatic compaction. Official documentation says that if a large file or tool output quickly fills the window again after each summary, Claude Code stops automatic compaction after several attempts to avoid repeated API calls.
 
-早期基于 Sonnet 4.5 的 long-running Harness 用 Context Reset 缓解 Context Anxiety。到 Opus 4.5 的三智能体 Harness，Anthropic 改用连续会话，由 Claude Agent SDK 的自动压缩控制上下文增长。
+The reference implementation counts consecutive failures. A successful AutoCompact resets the count. After `MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES` (3) consecutive failures, subsequent requests skip AutoCompact.
 
-- Planner 只做规划，不背实现细节；
-- Generator 每个 Sprint 后借助自动压缩控制历史长度，避免历史拖住后续实现；
-- Evaluator 独立评估，不受 Generator 的上下文污染。
+```text
+AutoCompact
+  -> The window fills again soon after a summary, or compaction fails
+Increase the consecutive-failure count
+  -> Skip AutoCompact after 3 failures
+```
 
-两种配置的成本与结果如下：
+Without this protection, a session can loop through "compact → fill up immediately → compact again." If AutoCompact does not run in time and the API returns `prompt_too_long`, Reactive Compact recovers from the error by truncating messages and retrying.
 
-| 配置                                | 耗时    | 花费  | 效果             |
-| ----------------------------------- | ------- | ----- | ---------------- |
-| Solo Harness，单 Agent + 最少工具   | 20 分钟 | \$9   | 跑不起来的半成品 |
-| Full Harness，三 Agent + 完整工具链 | 6 小时  | \$200 | 完整可用的应用   |
+### Summary
 
-Carlini 的案例更极端：16 个并行 Claude Opus 实例、约 2,000 个独立会话，持续约 2 周。
+Choose the order of operations based on whether the information can be retrieved again:
 
-最后产出 10 万行 Rust 代码，GCC torture test 通过率 99%，API 成本约 2 万美元。
+| Source of context pressure                      | First response                                           | Cost                                                                  |
+| ----------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------- |
+| Tool output is too large                        | Persist it, use MicroCompact, and Snip history if needed | Low information loss; usually no extra model call                     |
+| Conversation history is too long                | Collapse, AutoCompact, or Full Compact                   | Some process details are lost; summary quality matters                |
+| Searches and logs clutter the main session      | Isolate side tasks in subagents                          | Adds a dispatch step; the main session receives only a summary        |
+| The task still cannot continue after compaction | Handoff + Context Reset                                  | Omissions in the handoff leave the new session without needed context |
 
-这里的关键是把工作分到大量独立会话中并行推进。日志写入文件而不刷到控制台，测试也做子采样：每个 Agent 只跑 1%-10% 用例，避免测试输出占满窗口。
+In practice, clear retrievable tool results first and compact only when history is too long. Delegate searches, reviews, and log analysis to subagents so the main session receives only a summary. If the task still cannot continue reliably after compaction, write a handoff and start a new session. Later steps incur greater information loss and scheduling cost, so do not reset at the outset.
 
-Carlini 后来在 [Building a C compiler with a team of parallel Claudes](https://www.anthropic.com/engineering/building-c-compiler "Building a C compiler with a team of parallel Claudes") 里说过一句话：
+## Applying This to Long Tasks
+
+### Two Extreme Examples
+
+In 2026, Anthropic Labs published a three-agent architecture inspired by **GANs (Generative Adversarial Networks)**:
+
+![Anthropic's three-agent architecture](../images/shared/ctx-mgmt-triagent-arch.png)
+
+The Planner expands a one- to four-sentence product description into a full specification. The Generator implements features in sprints. The Evaluator uses Playwright MCP to operate the running application and score product depth, functionality, visual design, and code quality. Separating roles gives planning, implementation, and evaluation their own contexts.
+
+An earlier long-running Harness based on Sonnet 4.5 used Context Reset to mitigate Context Anxiety. In the three-agent Harness with Opus 4.5, Anthropic switched to continuous sessions and used automatic compaction in the Claude Agent SDK to control context growth.
+
+- The Planner handles planning and does not carry implementation details.
+- The Generator uses automatic compaction after each sprint to keep history from slowing later implementation.
+- The Evaluator works independently and is not affected by the Generator's context.
+
+The two configurations had these costs and results:
+
+| Configuration                               | Time       | Cost  | Result                           |
+| ------------------------------------------- | ---------- | ----- | -------------------------------- |
+| Solo Harness: one Agent + minimal tools     | 20 minutes | \$9   | Incomplete app that does not run |
+| Full Harness: three Agents + full toolchain | 6 hours    | \$200 | Complete, usable app             |
+
+Carlini's case was more extreme: 16 parallel Claude Opus instances and about 2,000 independent sessions over roughly two weeks.
+
+The project produced 100,000 lines of Rust code, passed 99% of the GCC torture tests, and cost about $20,000 in API usage.
+
+The key was distributing work across many independent sessions. Logs went to files instead of the console, and tests were subsampled: each Agent ran only 1–10% of the test cases to keep output from filling the context window.
+
+Carlini later wrote in [Building a C Compiler with a Team of Parallel Claudes](https://www.anthropic.com/engineering/building-c-compiler "Building a C Compiler with a Team of Parallel Claudes"):
 
 > “I had to constantly remind myself that I was writing this test harness for Claude and not for myself.”
 
-在 Carlini 的分工中，核心编译器、去重、性能优化、代码质量和文档逐渐由不同角色负责。LLM 容易重复实现已有功能，单独安排去重角色能减少主 Agent 同时编码、查重复和维护历史的负担。
+In Carlini's setup, different roles gradually took responsibility for the core compiler, deduplication, performance optimization, code quality, and documentation. LLMs can reimplement existing features; a dedicated deduplication role reduces the main Agent's burden of coding, finding duplicates, and maintaining context at the same time.
 
-模型升级也会改变 Harness 的取舍。Anthropic 从 Opus 4.5 升到 Opus 4.6 后，移除了原有 Sprint 机制，并把逐 Sprint 的强约束评估收敛为末尾集中 QA / 少量评估轮。拆分、检查和重置都依赖模型能力假设，版本变化后需要重新验证。
+Model upgrades also change Harness tradeoffs. After Anthropic moved from Opus 4.5 to Opus 4.6, it removed the original sprint mechanism and replaced strict per-sprint evaluation with final QA and a small number of evaluation rounds. Task decomposition, checks, and resets all rely on assumptions about model capabilities, so validate them again after a version change.
 
-日常项目当然不需要三智能体，也不需要 2,000 个独立会话。先判断任务会消耗多少代码上下文。
+Everyday projects do not need three agents or 2,000 separate sessions. Start by estimating how much code context the task will consume.
 
-### 日常项目怎么选
+### Choosing an Approach for Everyday Projects
 
-我自己在面试平台项目里踩过一次坑。一个任务跨了好几个模块，我当时觉得单 Agent 能扛住。结果跑到中途 Claude Code 自己停了，上下文撑爆。后来改成 Sub-agent 并行：每个子任务只看自己负责的模块，最后把摘要交回主 Agent，才一次完成。
+I ran into this while working on an interview-platform project. A task spanned several modules, and I thought one Agent could handle it. Claude Code stopped halfway through because the context filled up. I switched to parallel subagents, each limited to its own module, and had them return summaries to the main Agent. That completed the task.
 
-| 任务规模                   | 推荐策略                                             | 上下文管理方式                                  |
-| -------------------------- | ---------------------------------------------------- | ----------------------------------------------- |
-| 小：单文件修改、补一个函数 | 单 Agent                                             | 工具结果自动清理足够                            |
-| 中：一个模块或一个功能     | 单 Agent + 主动 Compaction                           | 阶段结束或 `/context` 显示占用升高时 `/compact` |
-| 大：跨模块重构、新子系统   | 主 Agent + Sub-agent                                 | 搜索、审查、日志分析交给子代理                  |
-| 超大：长期迭代或独立系统   | 多 Agent + handoff / Reset，或连续会话 + AutoCompact | 阶段切换写 handoff，是否 Reset 取决于模型和任务 |
+| Task size                                            | Recommended approach                                                    | Context management                                                            |
+| ---------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Small: single-file change or one function            | One Agent                                                               | Automatic tool-result cleanup is enough                                       |
+| Medium: one module or feature                        | One Agent + proactive compaction                                        | Run `/compact` at phase boundaries or when `/context` shows high usage        |
+| Large: cross-module refactor or new subsystem        | Main Agent + subagents                                                  | Delegate searches, reviews, and log analysis                                  |
+| Very large: long-term iteration or standalone system | Multiple Agents + handoff / Reset, or continuous sessions + AutoCompact | Write a handoff at phase boundaries; choose Reset based on the model and task |
 
-`/compact`、Sub-agent、`/context` 的命令细节，可以看之前的 [Claude Code 使用指南](https://javaguide.cn/ai-coding/claudecode-tips.html "Claude Code 使用指南") 和 [Claude Code 核心命令详解](https://javaguide.cn/ai-coding/claudecode-commands.html "Claude Code 核心命令详解")。
+For details on `/compact`, subagents, and `/context`, see the [Claude Code User Guide](https://javaguide.cn/ai-coding/claudecode-tips.html "Claude Code User Guide") and [Claude Code Command Reference](https://javaguide.cn/ai-coding/claudecode-commands.html "Claude Code Command Reference").
 
-我一般不会等 AutoCompact 贴线才动。`/context` 到七成左右，或者已经出现重复搜索、忘约束的苗头时，手动 `/compact` 并告诉它要保留什么，摘要器手里会有更清楚的重点。等系统被动触发，窗口里往往已经混进旧日志、旧判断和一堆临时探索结果。
+I do not wait for AutoCompact to reach its threshold. When `/context` shows about 70% usage, or repeated searches and forgotten constraints start to appear, I run `/compact` manually and specify what to keep. This gives the summarizer clearer priorities. By the time the system triggers compaction, the window may already contain stale logs, old conclusions, and temporary exploration results.
 
-探索阶段结束时，可以把模块边界、关键文件、排除方案和失败测试写入压缩指令：
-
-```text
-/compact 保留模块边界、关键文件、已排除方案、当前失败测试
-```
-
-数据库问题则应把需要接续的 Schema、迁移和失败 SQL 写明：
+At the end of the exploration phase, include module boundaries, key files, rejected approaches, and failing tests in the compaction instruction:
 
 ```text
-/compact 保留所有数据库 schema、迁移脚本、实体关系和当前失败 SQL
+/compact Keep module boundaries, key files, rejected approaches, and current failing tests.
 ```
 
-跨模块任务读完文件并确认模块边界后，可以先执行一次压缩；方案、约束和风险确定后，再压缩一次；代码改完并完成验证后更新状态。`PLAN.md` 或 `design.md` 保存关键状态，摘要传递目标、取舍和下一步，行号、失败 SQL、接口细节仍留在文件中。
+For a database issue, specify the schema, migrations, and failing SQL needed to continue:
 
-多文件项目可以按场景选策略：
+```text
+/compact Keep all database schemas, migration scripts, entity relationships, and current failing SQL.
+```
 
-| 场景                 | 推荐做法                                            |
-| -------------------- | --------------------------------------------------- |
-| 一次性读了大量文件   | 用 MicroCompact / Snip / 压缩清掉已完成分析的旧内容 |
-| 中断很久后继续       | 让系统清理过期工具结果，必要时重新读关键文件        |
-| 连续推进多个独立功能 | 每完成一个功能就压缩一次                            |
-| 横跨多个模块大改     | 按阶段拆分，阶段末压缩并更新笔记文件                |
-| 大量日志或测试输出   | 只保留失败摘要、复现命令和关键栈，不保留全量输出    |
-| 需要并行搜索或审查   | 派给 Sub-agent，主 Agent 只接收摘要                 |
+For a cross-module task, compact once after reading files and confirming module boundaries, then again after settling on an approach, constraints, and risks. After changing and verifying the code, update the status. Keep key state in `PLAN.md` or `design.md`; let the summary carry the goal, tradeoffs, and next step while line numbers, failing SQL, and interface details remain in files.
 
-探索阶段读过的大量文件，后续通常只需保留结论；设计阶段的约束和取舍需要留下；可复现的失败日志不必长期保留全文。信息稳定到这个程度时，再执行压缩更合适。
+For multi-file projects, choose an approach based on the situation:
 
-### 状态外化、记忆和 Hooks
+| Scenario                                  | Recommended approach                                                     |
+| ----------------------------------------- | ------------------------------------------------------------------------ |
+| Read many files in one pass               | Use MicroCompact, Snip, or compaction to clear completed analysis        |
+| Resume after a long interruption          | Let the system clear stale tool results; reread key files if needed      |
+| Work through several independent features | Compact after each feature                                               |
+| Make a large change across modules        | Split into phases; compact and update notes at each phase boundary       |
+| Produce many logs or test results         | Keep only failure summaries, reproduction commands, and key stack traces |
+| Need parallel search or review            | Delegate to subagents; return only summaries to the main Agent           |
 
-`TaskCreate`、`TaskUpdate` 等 Tasks API 把大目标拆成任务节点，记录 `pending`、`in_progress`、`completed` 等状态与依赖关系，并持久化为结构化任务列表（内部存储格式不属于稳定接口）。Agent 通过 Task Tools 读取当前进度，不必依赖对话历史回忆“做到哪了”。
+After exploration, keep the conclusions rather than every file read. Preserve design constraints and tradeoffs; full reproducible failure logs do not need to remain in context. Compact once the information has stabilized.
 
-多个 Agent 同时写同一仓库时，worktree 隔离能让各自的 `git status` 只显示本人的改动。全量测试、跨文件搜索和大模块分析可以放到后台，完成后只回传摘要；压缩时仍在运行的任务状态会作为附件重新注入新上下文。
+### External State, Memory, and Hooks
 
-同样的原则也用于记忆：只记录源码无法推导的内容。
+Task APIs such as `TaskCreate` and `TaskUpdate` break large goals into task nodes, record states such as `pending`, `in_progress`, and `completed` and their dependencies, then persist them as a structured task list. (The internal storage format is not a stable interface.) Agents can use Task Tools to inspect progress instead of relying on conversation history to remember what is done.
 
-| 该记                             | 不该记                                    |
-| -------------------------------- | ----------------------------------------- |
-| 用户偏好，比如编码风格和语言习惯 | 项目目录结构，执行 `glob` 能查到          |
-| 项目特有约定，比如 API 前缀      | 接口函数签名，源码里有                    |
-| 某次技术决策的原因               | 依赖版本，`package.json` / `pom.xml` 里有 |
-| 踩过的坑和修复方法               | Git 提交历史，`git log` 能查到            |
+When multiple Agents work in one repository, worktree isolation lets each one's `git status` show only its own changes. Run full tests, cross-file searches, and large-module analysis in the background, then return only a summary. Task states for jobs still running during compaction are re-injected into the new context as attachments.
 
-会话历史只服务当前会话，之后可能被压缩。用户或项目写入的持久指令放在 `CLAUDE.md` / Rules；Auto Memory 按 Git 仓库保存经验笔记，默认路径为 `~/.claude/projects/<project>/memory/`，可由 `CLAUDE_COWORK_MEMORY_PATH_OVERRIDE` 或可信 settings 中的 `autoMemoryDirectory` 覆盖。会话启动时只加载 `MEMORY.md` 的前 200 行或 25KB。
+Apply the same principle to memory: record only information that cannot be inferred from the source code.
+
+| Store                                               | Do not store                                               |
+| --------------------------------------------------- | ---------------------------------------------------------- |
+| User preferences, such as coding style and language | Project directory structure, discoverable with `glob`      |
+| Project-specific conventions, such as API prefixes  | Function signatures, available in the source               |
+| The reason for a technical decision                 | Dependency versions, listed in `package.json` or `pom.xml` |
+| Past problems and their fixes                       | Git history, available with `git log`                      |
+
+Conversation history serves only the current session and may later be compacted. Store persistent user or project instructions in `CLAUDE.md` or Rules. Auto Memory stores experience notes by Git repository at `~/.claude/projects/<project>/memory/` by default. The path can be changed with `CLAUDE_COWORK_MEMORY_PATH_OVERRIDE` or `autoMemoryDirectory` in trusted settings. At session startup, only the first 200 lines or 25 KB of `MEMORY.md` are loaded.
 
 ![Claude Code Auto Memory](../images/shared/claude-code-auto-memory.png)
 
-记忆文件变多后，启动时只加载索引；需要具体细节再打开对应文件。
+As the number of memory files grows, load only the index at startup and open individual files when their details are needed.
 
-有些 Agent 项目也会把 `AGENTS.md` 当索引用。
+Some Agent projects also use `AGENTS.md` as an index.
 
-![CLAUDE.md 和 AGENTS.md](../images/shared/claude-agents-md.png)
+![CLAUDE.md and AGENTS.md](../images/shared/claude-agents-md.png)
 
-可以参考 [Harness Engineering: Why Coding Agents Need Infrastructure](https://alexlavaee.me/blog/harness-engineering-why-coding-agents-need-infrastructure/ "Harness Engineering: Why Coding Agents Need Infrastructure")。这类文件负责告诉 Agent “资料在哪、什么时候读”，不是把所有资料提前塞进上下文。
+See [Harness Engineering: Why Coding Agents Need Infrastructure](https://alexlavaee.me/blog/harness-engineering-why-coding-agents-need-infrastructure/ "Harness Engineering: Why Coding Agents Need Infrastructure"). These files tell an Agent where information is and when to read it; they should not preload everything into context.
 
-官方 Auto Memory 按 Git 仓库存储，同一仓库的不同 worktree 共享同一份记忆。
+Official Auto Memory is stored by Git repository, so different worktrees of the same repository share the same memory.
 
-个人规则、项目规则、组织规则会叠加进窗口，不要指望后加载的那条自动盖掉前面的偏好。项目里如果一定要压过个人习惯，就在项目规则里写明优先级。
+Personal, project, and organization rules accumulate in the context window. Do not assume a later rule automatically overrides an earlier preference. If a project rule must take precedence over a personal preference, state its priority explicitly.
 
-面试时问“Agent 怎么实现跨会话记忆”，回答“存到文件里”太薄了。更完整的答法是：只存源码里查不到的信息，按作用范围分层，启动时先加载轻量索引，需要时再读细节，别把整份记忆塞进窗口。
+If asked in an interview how an Agent implements cross-session memory, "store it in a file" is too vague. A stronger answer is to store only information unavailable in the source, organize it by scope, load a lightweight index at startup, and read details only when needed instead of putting all memory in the context window.
 
-按官方文档看，三类持久化信息可以这样放：
+According to the official documentation, these three types of persistent information can be stored as follows:
 
-| 类型              | 作用                             | 存储                                                                                                                                                    |
-| ----------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 会话历史          | 当前任务临时状态，可能被压缩     | 内存中的 `messages[]`                                                                                                                                   |
-| CLAUDE.md / Rules | 用户、项目、组织写入的持久指令   | 项目 `.claude/` 或 `~/.claude/`                                                                                                                         |
-| Auto Memory       | Claude 按 Git 仓库维护的经验笔记 | 默认在 `~/.claude/projects/<project>/memory/`，可被 `CLAUDE_COWORK_MEMORY_PATH_OVERRIDE` 或可信 settings 覆盖；`MEMORY.md` 是索引入口，跨 worktree 共享 |
+| Type                 | Purpose                                                       | Storage                                                                                                                                                                                    |
+| -------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Conversation history | Temporary state for the current task; may be compacted        | In-memory `messages[]`                                                                                                                                                                     |
+| CLAUDE.md / Rules    | Persistent user, project, or organization instructions        | Project `.claude/` or `~/.claude/`                                                                                                                                                         |
+| Auto Memory          | Experience notes maintained by Claude for each Git repository | `~/.claude/projects/<project>/memory/` by default; can be overridden by `CLAUDE_COWORK_MEMORY_PATH_OVERRIDE` or trusted settings. `MEMORY.md` is the index and is shared across worktrees. |
 
-![Claude Code  /memory](../images/shared/claudecode-memory-command.png)
+![Claude Code /memory command](../images/shared/claudecode-memory-command.png)
 
-临时绕过 Bug 的方案一旦写入项目记忆，后续会话可能继续沿用错误前提。文件路径、依赖版本和函数签名可直接从源码查询，无需重复记录；条目增加会抬高固定开销，错误条目还会持续影响判断。
+If a temporary bug workaround is saved to project memory, later sessions may keep relying on a false assumption. File paths, dependency versions, and function signatures can be read from the source and do not need to be stored. More entries increase fixed overhead, and incorrect entries can keep distorting decisions.
 
-还有一部分固定开销来自配置。Claude Code 的普通配置键遵循这条优先级：
+Configuration also contributes to fixed overhead. Ordinary Claude Code settings follow this precedence:
 
 ```text
-Managed（组织托管）> CLI 参数 > 项目本地 > 项目共享 > 用户配置
+Managed (organization policy) > CLI arguments > project-local > shared project > user settings
 ```
 
-权限、Sandbox 路径等数组类型配置是例外，可能采用合并和去重规则，而不是简单覆盖。
+Array-valued settings such as permissions and sandbox paths are exceptions; they may be merged and deduplicated instead of simply overridden.
 
-项目配置新增 5 条规则、用户配置新增 3 条、MCP 再增加 2 个服务时，规则、权限和工具定义合起来可能占用几千 Token。通用规则放在全局，项目特有规则放在项目级，可以减少重复注入。
+If project settings add five rules, user settings add three, and MCP adds two servers, the rules, permissions, and tool definitions can use thousands of tokens. Put general rules in global settings and project-specific rules at the project level to avoid repeated injection.
 
-Hook 用于在指定节点干预上下文：`SessionStart` 注入记忆，`PreCompact` 追加压缩指令，`PostCompact` 负责通知或展示；`PostToolUse` 调整 MCP 工具输出，`PreToolUse` 判断工具是否允许执行。
+Hooks can modify context at specific lifecycle points: `SessionStart` injects memory, `PreCompact` adds compaction instructions, and `PostCompact` handles notifications or display. `PostToolUse` can adjust MCP tool output, while `PreToolUse` checks whether a tool call is allowed.
 
-Hook 输出会进入上下文，因此并非没有成本。外部网页、脚本输出或临时文件混入脏指令时，也可能带来 prompt injection。普通编码项目通常使用内置清理、压缩和断路器即可。
+Hook output enters the context and therefore has a cost. Untrusted instructions from external webpages, script output, or temporary files can also introduce prompt injection. For ordinary coding projects, built-in cleanup, compaction, and circuit breakers are usually enough.
 
-下表列出这些 Hook 介入上下文的时机：
+The table shows when these hooks affect context:
 
-| 事件                         | 触发时机       | 上下文管理作用                   |
-| ---------------------------- | -------------- | -------------------------------- |
-| `SessionStart`               | 会话开始       | 注入记忆、环境信息               |
-| `InstructionsLoaded`         | 规则加载后     | 通知、审计观察                   |
-| `PreToolUse`                 | 工具调用前     | 判断工具是否允许执行             |
-| `PostToolUse`                | MCP 工具返回后 | 调整 MCP 工具输出                |
-| `PreCompact` / `PostCompact` | 压缩前后       | 压缩前追加指令，摘要后通知或展示 |
+| Event                        | Trigger                     | Context-management role                                                 |
+| ---------------------------- | --------------------------- | ----------------------------------------------------------------------- |
+| `SessionStart`               | Session starts              | Inject memory and environment information                               |
+| `InstructionsLoaded`         | After rules load            | Notification and audit observation                                      |
+| `PreToolUse`                 | Before a tool call          | Check whether the tool call is allowed                                  |
+| `PostToolUse`                | After an MCP tool returns   | Adjust MCP tool output                                                  |
+| `PreCompact` / `PostCompact` | Before and after compaction | Add instructions before compaction; notify or display after the summary |
 
-每多一个 Hook，就多一份可能进入上下文的输出。团队项目存在强领域约束、合规审计或工具输出清洗需求时，再为这些场景配置 Hook。
+Each additional hook can add more output to the context. Configure hooks when a team project has strict domain constraints, compliance-audit requirements, or a need to sanitize tool output.
 
-## 面试回答版本
+## Interview Answer
 
-我们可以把上下文管理看成有限工作内存的治理。Agent 做长任务时，要同时带着任务目标、项目规则、已读代码、工具输出、计划和中间结论继续推理。窗口一直累积，旧日志、重复搜索结果和已经解决的问题就会挤占注意力；接近上限时，模型还可能因为可用输出空间不足而过早收束任务。
+Context management is the governance of limited working memory. During a long task, an Agent must reason with the goal, project rules, code already read, tool output, plans, and intermediate conclusions. As the window grows, stale logs, duplicate search results, and resolved issues compete for attention. Near the limit, the model may also stop too soon because too little output space remains.
 
-我会先区分两类信息。一次搜索搜到的几十条结果、全量测试日志、已经确认过的长文件原文，之后都能再取，不值得一直占着窗口。任务目标、业务约束、关键决策、失败用例、已修改文件和下一步则必须留下来；这些信息会被压成能继续执行的摘要，再写进 `PLAN.md`、设计文档或任务文件，避免只存在某一轮对话里。
+I first separate two kinds of information. Dozens of search results, full test logs, and long file contents can be retrieved again, so they do not need to stay in the window. The task goal, business constraints, key decisions, failing tests, changed files, and next step must be preserved. Summarize them in a form that supports continued work, then write them to `PLAN.md`, a design document, or a task file instead of leaving them only in one conversation turn.
 
-放到 Claude Code 里，我会让它先处理可重新获取的工具结果，历史过长时再执行 `/compact`，保留目标、约束、决策和待办。如果压缩后仍需要换会话，handoff 至少会写清当前改动、失败测试、已排除的方案和下一步验证方式。对于日志分析、跨文件搜索、独立审查这类支线，我会交给 Sub-agent，主会话只接收结论和必要证据，不把完整过程重新塞回来。
+In Claude Code, I would clear retrievable tool results first and run `/compact` when the history becomes too long, preserving the goal, constraints, decisions, and pending work. If the task still needs a new session after compaction, the handoff should state the current changes, failing tests, rejected approaches, and next verification step. I would delegate side tasks such as log analysis, cross-file searches, and independent reviews to subagents, returning only conclusions and necessary evidence to the main session.
 
-所以判断上下文管理是否做好，不看窗口里存了多少信息，而看任务能不能在压缩、换会话或拆分后继续接上：窗口服务当前推理，文件系统保存可复用、可追溯的任务状态。
+Good context management is measured by whether work can continue after compaction, a session change, or task delegation—not by how much information the window contains. The window supports current reasoning; the file system stores reusable, traceable task state.
 
-## 总结
+## Summary
 
-窗口被占满时，先处理工具结果、测试日志和搜索输出等可重新获取的临时材料；阶段结束后再压缩过长的对话历史。搜索、审查和日志分析等支线放到 Sub-agent，主会话只保留结论。
+When the window fills, clear retrievable temporary material such as tool results, test logs, and search output first. Compact long conversation history at the end of a phase. Delegate searches, reviews, and log analysis to subagents, and keep only their conclusions in the main session.
 
-若压缩后的会话仍无法接续，handoff 要交代失败用例、临时约束、正在修改的文件和已排除的方案，再由新会话处理。Plan、Spec、失败 SQL 和设计取舍等后续仍会使用的信息，写入 `PLAN.md`、`design.md`、`NOTES.json` 或项目自己的任务文件。这样，窗口只保留临时材料，文件系统负责保存任务状态。
+If the task still cannot continue after compaction, the handoff should describe failing tests, temporary constraints, files being changed, and rejected approaches for the next session. Store information that will be needed later—plans, specifications, failing SQL, and design tradeoffs—in `PLAN.md`, `design.md`, `NOTES.json`, or the project's task files. The window holds temporary material; the file system preserves task state.

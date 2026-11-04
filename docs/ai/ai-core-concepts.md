@@ -1,723 +1,723 @@
 ---
-title: AI 核心概念总览：LLM、Agent、RAG、MCP 与系统设计
-description: 汇总 JavaGuide AI 专题中的核心概念，按大模型基础、Agent、RAG 和系统设计四条主线串联 Token、Function Calling、Agent Loop、MCP、Skills、多 Agent、Embedding、Rerank、模型网关、评测、可观测性与安全等内容。
+title: "AI Core Concepts: LLMs, Agents, RAG, MCP, and System Design"
+description: An overview of JavaGuide's AI topics, connecting LLM fundamentals, agents, RAG, and system design with concepts such as tokens, Function Calling, Agent Loops, MCP, Skills, multi-agent systems, embeddings, reranking, model gateways, evaluation, observability, and security.
 category: AI
 tag:
   - AI
-  - 大模型
+  - LLMs
   - AI Agent
   - RAG
   - MCP
-  - AI 系统设计
+  - AI System Design
 head:
   - - meta
     - name: keywords
-      content: AI核心概念,大模型核心概念,LLM,Token,Agent,Agent Loop,ReAct,Plan-and-Execute,RAG,Embedding,MCP,Skills,多Agent,Prompt Engineering,Context Engineering,Function Calling,Tool Calling,GraphRAG,LLM Gateway,AI评测,AI可观测性,Prompt Injection,语音Agent
+      content: AI core concepts,LLM,Token,Agent,Agent Loop,ReAct,Plan-and-Execute,RAG,Embedding,MCP,Skills,Multi-Agent,Prompt Engineering,Context Engineering,Function Calling,Tool Calling,GraphRAG,LLM Gateway,AI evaluation,AI observability,Prompt Injection,voice agent
 ---
 
 <!-- @include: @small-advertisement.snippet.md -->
 
-模型为什么每次回答不完全一样？Agent 为什么需要循环？RAG 已经检索到文档，为什么仍然可能答错？这些问题分别落在模型生成、任务执行、知识检索和应用治理几条链路上。
+Why does a model produce a different answer each time? Why does an agent need a loop? Why can RAG still return a wrong answer even after retrieving documents? These questions involve model generation, task execution, knowledge retrieval, and application governance.
 
-本文把 JavaGuide AI 专题中的相关概念放到一起，具体实现和案例仍由各专题文章展开。
+This article brings together concepts from JavaGuide's AI section. Detailed implementations and examples remain in the individual guides.
 
-## 大模型基础
+## LLM Fundamentals
 
-相关原文：
+Related guides:
 
-- [LLM 运行机制：Token、上下文窗口与采样参数怎么影响输出](./llm-basis/llm-operation-mechanism.md)
-- [大模型 API 调用工程实践：流式输出、重试、限流与结构化返回](./llm-basis/llm-api-engineering.md)
-- [大模型提示词工程（Prompt Engineering）是什么？提示词技巧有哪些？](./agent/prompt-engineering.md)
-- [大模型结构化输出：从 JSON 契约到 Function Calling 落地](./llm-basis/structured-output-function-calling.md)
-- [AI 应用评测体系：从 Golden Set 构建到线上灰度闭环](./llm-basis/llm-evaluation.md)
+- [How LLMs Work: Tokens, Context Windows, and Sampling Parameters](./llm-basis/llm-operation-mechanism.md)
+- [Engineering LLM API Calls: Streaming, Retries, Rate Limits, and Structured Responses](./llm-basis/llm-api-engineering.md)
+- [What Is Prompt Engineering? Core Techniques and Best Practices](./agent/prompt-engineering.md)
+- [Structured Output and Function Calling: From JSON Contracts to Production](./llm-basis/structured-output-function-calling.md)
+- [Evaluating AI Applications: From Golden Sets to Production Rollouts](./llm-basis/llm-evaluation.md)
 
-### LLM
+### LLMs
 
-输入法看到“今天天气真”时，可能把“好”放在候选词里。自回归大模型的生成过程与此类似：它根据当前上下文预测一个 Token，把结果追加到上下文，再预测下一个，直到遇到结束标记或达到输出限制。这个过程称为**自回归生成（Autoregressive Generation）**。
+When a keyboard sees “The weather is,” it might suggest “nice” as the next word. Autoregressive LLM generation works similarly: the model predicts a Token from the current context, appends it to the context, then predicts another until it reaches a stop marker or the output limit. This process is called **autoregressive generation**.
 
-一次生成里，Token 是模型逐步处理和输出的文本单元；上下文窗口限制单次调用能够容纳的 Token 总量；Temperature、Top-p 等参数影响候选 Token 的采样；Max Tokens 控制本次输出最多占用多少 Token。
+During generation, a Token is a text unit the model processes and emits step by step. The context window limits the total tokens in one call. Parameters such as Temperature and Top-p affect token sampling, while Max Tokens limits the length of the output.
 
-### Token
+### Tokens
 
-模型先用 Tokenizer 把文本切成大小不等的片段。这里没有固定的“一字一 Token”或“一词一 Token”：英文单词可能被拆开，中文词也可能拆成多个 Token，某些高频字词又可能合在一起。
+A model first uses a Tokenizer to split text into pieces of different lengths. There is no fixed rule of one Token per character or word: English words may be split, Chinese words may use several Tokens, and some frequent terms may be combined.
 
-逐字切分会拉长序列，整词切分则需要很大的词表。BPE、Unigram 等**子词切分算法**在两者之间取舍：高频片段尽量保留，低频词继续拆分。具体切分结果由模型供应商使用的 Tokenizer 决定。
+Splitting every character makes sequences longer, while keeping whole words requires a large vocabulary. **Subword tokenization algorithms** such as BPE and Unigram balance the two: common pieces are retained, while less common words are split further. The provider's Tokenizer determines the actual result.
 
-容量规划可以先按经验估算，计费和监控则应读取 API 返回的实际 `usage`。
+Use estimates for capacity planning, but use the actual `usage` returned by the API for billing and monitoring.
 
-**Token 化过程示例**：
+**Example tokenization:**
 
-- 原文：`你好，我是小 G。`
-- 切分：`[你好]` `[，]` `[我是]` `[小 G]` `[。]`
-- 统计：原文 9 字符 → Token 数 5 个 → 压缩比约 1.8 倍
+- Text: `Hello, I'm little G.`
+- Tokens: `[Hello]` `[,]` `[I'm]` `[little]` `[G]` `[.]`
+- Count: 20 characters → 6 Tokens → compression ratio of about 3.3:1
 
-![Token 化过程示例](./images/shared/llm-token-process.png)
+![Example tokenization process](./images/shared/llm-token-process.png)
 
-上面的切分只用于说明过程，不代表某个具体模型的真实结果。不同供应商或模型使用的 Tokenizer 不同，同一段文本得到的 Token 序列也可能不同。
+This example only illustrates the process; it does not show the actual output of a specific model. Providers and models may use different Tokenizers, so the same text can produce different Token sequences.
 
-### 上下文窗口
+### Context Window
 
-**上下文窗口**是 LLM 的“工作记忆”（Working Memory）。它决定了模型在任何时刻可以处理或“记住”的文本量（以 Token 为单位）。
+The **context window** is an LLM's working memory. It determines how much text, measured in Tokens, the model can process or “remember” at a time.
 
-- 对话连续性：决定模型能进行多长的多轮对话而不遗忘早期细节。
-- 单次处理能力：决定模型一次性能够处理的最大文档、代码库或数据样本。
+- Conversation continuity: determines how long the model can maintain a multi-turn conversation without losing earlier details.
+- Per-call capacity: determines the largest document, codebase, or dataset the model can process in one call.
 
-“模型支持 128K/200K/1M”指的是一次调用里能放进模型的总 Token 上限。大多数模型的上下文窗口包含输入与输出的总和，但部分供应商（如 Google Gemini）对输入和输出分别设限，使用前请查阅具体 API 文档。
+“Supports 128K/200K/1M” refers to the total Token limit for one call. Most models count input and output together in the context window, but some providers, such as Google Gemini, set separate input and output limits. Check the relevant API documentation before use.
 
-上下文窗口往往被隐形成本占用：
+The context window is shared by several less obvious costs:
 
-![上下文窗口（Context Window）= LLM 的「工作记忆」](./images/shared/llm-context-window.png)
+![The context window as an LLM's working memory](./images/shared/llm-context-window.png)
 
-- System Prompt：调节模型行为的系统指令（对用户隐藏，但占用窗口）。
-- User Prompt：业务数据与指令。
-- 多轮对话历史：过往的消息记录。
-- RAG 检索片段：从外部知识库检索到的补充信息。
-- 工具调用 Schema：函数定义与参数结构。
-- 格式开销：特殊字符、换行符、Markdown 标记等。
-- 模型生成的输出 Token：**输出也占用上下文窗口**。
+- System Prompt: instructions that shape model behavior (hidden from users but still occupying the window).
+- User Prompt: application data and instructions.
+- Conversation history: previous messages.
+- RAG passages: additional information retrieved from an external knowledge base.
+- Tool-call Schemas: function definitions and parameter structures.
+- Formatting overhead: special characters, line breaks, Markdown markers, and more.
+- Model output Tokens: **output also uses the context window**.
 
-这些内容会共同占用窗口，因此能留给业务正文的空间往往远小于标称上限。
+All of this shares the window, so the space left for the main application content is often much smaller than the advertised limit.
 
-### 采样参数
+### Sampling Parameters
 
-模型每一步会给词表中**每个**候选 Token 打一个分数（内部叫 **logits**），分数越高说明模型越觉得这个词应该出现在这里。
+At each step, the model assigns a score to **every** candidate Token in its vocabulary. These scores are called **logits**; a higher score means the model considers that Token more likely to appear next.
 
-举个例子，假设模型正在补全“今天天气真\_\_”，它可能给出这样的分数：
+For example, when completing “The weather is really \_\_,” a model might assign these scores:
 
-| 候选 Token | 原始分数（logit） |
-| ---------- | ----------------- |
-| 好         | 5.0               |
-| 不错       | 3.2               |
-| 棒         | 2.1               |
-| 糟糕       | 0.5               |
-| 紫色       | -8.0              |
+| Candidate Token | Raw score (logit) |
+| --------------- | ----------------- |
+| nice            | 5.0               |
+| good            | 3.2               |
+| great           | 2.1               |
+| awful           | 0.5               |
+| purple          | -8.0              |
 
-原始分数不是概率，需要经过 **softmax** 才能得到概率分布。假设候选集合只有表中的五项，计算结果约为：
+Raw scores are not probabilities. Apply **softmax** to get a probability distribution. If the candidate set contains only the five items above, the probabilities are approximately:
 
-| 候选 Token | 概率     |
-| ---------- | -------- |
-| 好         | 81.21%   |
-| 不错       | 13.42%   |
-| 棒         | 4.47%    |
-| 糟糕       | 0.90%    |
-| 紫色       | < 0.001% |
+| Candidate Token | Probability |
+| --------------- | ----------- |
+| nice            | 81.21%      |
+| good            | 13.42%      |
+| great           | 4.47%       |
+| awful           | 0.90%       |
+| purple          | < 0.001%    |
 
-模型随后按这个概率分布采样，决定输出哪个 Token。
+The model samples from this distribution to choose the next Token.
 
-解码参数（Temperature、Top-p、Top-k 等）就是在这个“打分 → 概率 → 抽签”的过程中施加控制：
+Decoding parameters such as Temperature, Top-p, and Top-k control the “score → probability → sample” process:
 
-- Temperature：调整概率分布的“形状”，让高分选项更突出，或者让各选项更均匀。
-- Top-p / Top-k：直接砍掉不靠谱的候选项，缩小“抽签池”。
-- Penalty 系列：对已经出现过的词降分，防止“复读机”。
+- Temperature: changes the shape of the probability distribution, making high-scoring options more prominent or making the options more uniform.
+- Top-p / Top-k: remove less suitable candidates to narrow the sampling pool.
+- Penalties: lower the scores of tokens that have already appeared to reduce repetition.
 
-![Temperature 参数：控制模型输出的随机性](./images/shared/llm-temperature-params.png)
+![Temperature controls randomness in model output](./images/shared/llm-temperature-params.png)
 
-### Prompt
+### Prompts
 
-Prompt 是输入给大语言模型（LLM）的任务指令。LLM 根据当前上下文生成后续 Token，也能表现出一定的语义理解和指令跟随能力；但任务边界不清时，它仍可能偏题或补写不存在的信息。
+A Prompt is a task instruction given to a large language model (LLM). The model generates subsequent Tokens from the current context and can follow instructions and interpret meaning to some extent. When task boundaries are unclear, it may still go off topic or make up information.
 
-Prompt 的作用是缩小模型的生成范围，质量与长度没有直接关系。比起堆叠修饰词，更重要的是交代清楚 Role、Task、Context 和 Format 四项信息。
+A Prompt narrows the model's output space; quality is not directly related to length. Clearly specify the Role, Task, Context, and Format instead of piling on descriptive words.
 
-![Prompt 四要素框架](./images/shared/prompt-four-element-framework.svg)
+![Four-part Prompt framework](./images/shared/prompt-four-element-framework.svg)
 
-| 要素              | 作用                             | 常见表述                                        |
-| ----------------- | -------------------------------- | ----------------------------------------------- |
-| Role（角色）      | 告诉模型该用哪个领域的知识和语气 | “你是一位 10 年经验的 Java 架构师”              |
-| Task（任务）      | 说明要完成什么动作               | “请评审以下代码的性能问题”                      |
-| Context（上下文） | 补充和任务相关的背景             | “当前线上 QPS 2000，响应时间超 500ms”           |
-| Format（格式）    | 规定输出长什么样                 | “输出 JSON，包含 bottleneck、solution 两个字段” |
+| Element | Purpose                                      | Example                                                              |
+| ------- | -------------------------------------------- | -------------------------------------------------------------------- |
+| Role    | Sets the model's domain perspective and tone | “You are a Java architect with 10 years of experience.”              |
+| Task    | States what the model should do              | “Review the following code for performance issues.”                  |
+| Context | Provides relevant background                 | “Production traffic is 2,000 QPS, and response time exceeds 500 ms.” |
+| Format  | Defines the output structure                 | “Return JSON with `bottleneck` and `solution` fields.”               |
 
-### 结构化输出
+### Structured Output
 
-先看一个非常常见的 Prompt：
+Consider this common Prompt:
 
 ```text
-请判断下面用户反馈属于哪类工单，返回 JSON。
+Classify the following customer feedback as a ticket type and return JSON.
 
-用户反馈：我付款成功了，但是订单一直显示待支付。
+Customer feedback: My payment succeeded, but the order still shows as unpaid.
 ```
 
-模型可能返回：
+The model might return:
 
 ```json
 {
   "category": "payment",
   "priority": "high",
-  "reason": "用户付款成功但订单状态未更新"
+  "reason": "The user's payment succeeded, but the order status was not updated."
 }
 ```
 
-这段结果可以阅读，却还不是后端能够稳定消费的契约。业务侧还要明确这些边界：
+This result is readable, but it is not yet a contract that a backend can consume reliably. The application must also define these constraints:
 
-- `category` 只能是 `PAYMENT`、`LOGISTICS`、`AFTER_SALE`、`ACCOUNT`。
-- `priority` 只能是 `LOW`、`MEDIUM`、`HIGH`。
-- `confidence` 必须是 `0` 到 `1` 之间的小数。
-- `reason` 可以为空吗？最大长度是多少？
-- 如果用户输入缺少信息，应该返回 `NEED_MORE_INFO`，还是继续猜？
+- `category` must be one of `PAYMENT`, `LOGISTICS`, `AFTER_SALE`, or `ACCOUNT`.
+- `priority` must be `LOW`, `MEDIUM`, or `HIGH`.
+- `confidence` must be a decimal between `0` and `1`.
+- Can `reason` be empty, and what is its maximum length?
+- If the user input is incomplete, should the model return `NEED_MORE_INFO` or keep guessing?
 
-自然语言 Prompt 很难长期守住这些边界，还需要分清 JSON Mode、JSON Schema 和 Structured Outputs 各自负责什么：
+Natural-language Prompts have difficulty enforcing these constraints consistently. It is also important to distinguish the roles of JSON Mode, JSON Schema, and Structured Outputs:
 
-- **JSON Mode** 是一种输出模式，约束模型返回合法 JSON。
-- **JSON Schema** 是一种结构描述规范，用来定义 JSON 应该包含哪些字段、字段类型是什么、哪些必填、枚举值有哪些、是否允许额外字段。
-- **Structured Outputs** 是模型供应商提供的结构化生成能力，它接收 JSON Schema 或类似 Schema，让模型在生成阶段尽量或严格贴合这份结构。
+- **JSON Mode** is an output mode that constrains the model to return valid JSON.
+- **JSON Schema** describes the structure: which fields and types are required, which enum values are allowed, and whether extra fields are permitted.
+- **Structured Outputs** is a structured-generation capability provided by a model provider. It takes a JSON Schema or similar definition and guides or constrains generation to match it.
 
-JSON Schema 负责描述契约，Structured Outputs、Function Calling / Tool Calling 等模型 API 能力负责在生成阶段应用这份契约。只提供 Schema 文本而没有对应的生成约束，模型仍可能返回不符合字段要求的内容。
+JSON Schema describes the contract. Model API capabilities such as Structured Outputs and Function Calling / Tool Calling apply that contract during generation. If you provide Schema text without a corresponding generation constraint, the model may still return content that violates the field requirements.
 
-![生成阶段三层约束：JSON Mode 管语法，JSON Schema 管契约，Structured Outputs 把契约前移到模型生成阶段](./images/shared/structured-output-function-calling-three-layer-constraint.png)
+![Three layers of generation constraints: JSON Mode handles syntax, JSON Schema defines the contract, and Structured Outputs applies the contract during generation](./images/shared/structured-output-function-calling-three-layer-constraint.png)
 
-### Function Calling / Tool Calling
+### Function Calling and Tool Calling
 
-模型返回 `query_order` 和参数 `{"orderId": "1029384756"}` 时，Java 方法还没有执行。Function Calling / Tool Calling 只让模型生成结构化的调用意图，后端服务、Agent Runtime、MCP Host 或供应商托管环境才负责执行工具。
+When a model returns `query_order` with `{"orderId": "1029384756"}`, no Java method has run yet. Function Calling / Tool Calling lets the model produce a structured call intent. A backend service, Agent Runtime, MCP Host, or provider-hosted environment is responsible for executing the tool.
 
-一次完整调用包含模型生成意图、业务校验、工具执行和结果回填：
+One complete call consists of generating the intent, validating it in the application, executing the tool, and returning the result to the model:
 
-![Function Calling 完整调用链路：模型只生成调用意图，真正执行工具的是业务侧](./images/shared/structured-output-function-calling-function-calling-pipeline.png)
+![Function Calling lifecycle: the model generates the call intent, and the application executes the tool](./images/shared/structured-output-function-calling-function-calling-pipeline.png)
 
-1. 服务端注册工具名、用途和参数 Schema。
-2. 用户提出“帮我查一下订单 1029384756 到哪了”。
-3. 模型选择 `query_order`，并生成参数 `{"orderId": "1029384756"}`。
-4. 业务侧校验字段类型、必填项、用户权限、订单归属和幂等键。
-5. 校验通过后，业务侧再调用订单系统、数据库或 HTTP API。
-6. 工具结果连同 `tool_use_id` 回填给模型。Anthropic 要求 `tool_use_id` 严格匹配，Gemini 3 也会为每个 `functionCall` 生成唯一 `id`；并行调用时缺少对应 ID，返回结果可能配错工具请求。
-7. 模型根据工具结果组织最终回复。
+1. The server registers the tool name, purpose, and parameter Schema.
+2. The user asks, “Can you check the status of order 1029384756?”
+3. The model selects `query_order` and generates `{"orderId": "1029384756"}`.
+4. The application validates field types, required values, user permissions, order ownership, and the idempotency key.
+5. After validation, the application calls the order system, database, or HTTP API.
+6. Return the tool result to the model with its `tool_use_id`. Anthropic requires an exact `tool_use_id` match, and Gemini 3 also assigns a unique `id` to each `functionCall`. If a parallel call omits the corresponding ID, the result may be associated with the wrong tool request.
+7. The model uses the tool result to produce its final response.
 
-### 生产级 LLM 调用
+### Production-Grade LLM Calls
 
-用户看到的一次模型回复，背后会经过业务校验、上下文组装、模型路由、供应商调用、响应解析和结果落库。某一段缺少状态记录或错误处理，页面上往往只剩一句笼统的“模型调用失败”。
+A model response shown to a user passes through business validation, context assembly, model routing, provider calls, response parsing, and persistence. If any stage lacks state tracking or error handling, the user may see only a generic “model call failed” message.
 
-生产系统至少要记录八个阶段：
+Production systems should track at least these eight stages:
 
-1. 校验用户身份、租户、套餐、功能权限和请求大小。
-2. 组装 System Prompt、用户输入、历史消息、RAG 证据、工具 Schema 和输出格式约束。
-3. 预估输入 Token 并预留输出预算，必要时裁剪历史、压缩上下文或切换模型。
-4. 通过统一客户端或模型网关选择模型、供应商、超时、重试和限流策略。
-5. 调用供应商 API，接收同步响应或 SSE、WebSocket 等流式响应。
-6. 解析增量文本、结束原因、工具调用、Token 用量、拒答和结构化结果。
-7. 保存回答、调用尝试、成本、错误原因和业务状态。
-8. 记录 Trace、TTFT、总耗时、重试次数、限流比例和解析失败率。
+1. Validate user identity, tenant, plan, feature permissions, and request size.
+2. Assemble the System Prompt, user input, conversation history, RAG evidence, tool Schemas, and output constraints.
+3. Estimate input Tokens and reserve an output budget; trim history, compress context, or switch models when needed.
+4. Use a shared client or model Gateway to select the model, provider, timeout, retry, and rate-limit policies.
+5. Call the provider API and receive a synchronous or streaming response over SSE, WebSocket, or another supported protocol.
+6. Parse incremental text, finish reason, tool calls, token usage, refusals, and structured output.
+7. Save the response, call attempts, cost, error reason, and business state.
+8. Record traces, TTFT, total duration, retry count, rate-limit ratio, and parsing failure rate.
 
-重试时还要区分错误类型。网络瞬断、部分供应商 5xx 和过载错误可以在总体截止时间内有限重试；参数错误、鉴权错误和安全拒答继续提交同一请求通常没有意义。只要存在重试，就要设计幂等键，并把业务消息、模型调用尝试和供应商请求分别记录，避免重复回答或重复执行带副作用的工具。
+Retries should also depend on the error type. Transient network failures, some provider 5xx errors, and overload errors can be retried a limited number of times within the overall deadline. Repeating a request with invalid parameters, an authentication error, or a safety refusal is usually pointless. If retries are possible, define idempotency keys and record the business message, model-call attempt, and provider request separately to avoid duplicate responses or repeated execution of tools with side effects.
 
-### AI 应用评测
+### Evaluating AI Applications
 
-公开 Benchmark 可以用来筛掉明显不合适的模型，不能代替业务验证。真实请求会带有错别字、口语缩写、截图、多语言和前后矛盾，少数高风险路径也可能被平均分掩盖。
+Public benchmarks can rule out obviously unsuitable models, but cannot replace application-specific validation. Real requests may contain typos, colloquial abbreviations, screenshots, multiple languages, or contradictions. Average scores can also hide failures on a small number of high-risk paths.
 
-业务评测通常从 Golden Set 开始。每条用例都要包含输入、预期结果或成功标准、场景标签和评分方式。RAG 需要分别评估检索与生成；Agent 除了最终回答，还要检查工具选择、参数、执行轨迹和外部系统的真实状态。
+Application evaluation usually starts with a Golden Set. Each case should include input, an expected result or success criteria, a scenario label, and a grading method. Evaluate retrieval and generation separately for RAG. For agents, check tool selection, parameters, execution traces, and the actual state of external systems as well as the final response.
 
-常用评分方式各有分工：
+Common grading methods serve different purposes:
 
-| 方法         | 适合检查的内容                                    | 主要限制                   |
-| ------------ | ------------------------------------------------- | -------------------------- |
-| 规则评测     | JSON 格式、字段完整性、枚举值、数值边界、测试结果 | 只能覆盖可明确编码的条件   |
-| LLM-as-Judge | 相关性、忠实度、完整性、连贯性和语气              | 存在位置、长度等评分偏差   |
-| 人工评测     | 高风险样本、复杂语义和争议结果                    | 速度慢、成本高、一致性难控 |
+| Method       | Suitable checks                                                             | Main limitation                                       |
+| ------------ | --------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Rule-based   | JSON format, required fields, enum values, numeric bounds, and test results | Covers only conditions that can be explicitly encoded |
+| LLM-as-Judge | Relevance, faithfulness, completeness, coherence, and tone                  | May have position or length biases                    |
+| Human review | High-risk examples, complex semantics, and disputed results                 | Slow, costly, and difficult to keep consistent        |
 
-一套可持续的评测流程会把离线评测、生产 Trace 回放和线上灰度串起来：开发阶段用固定数据集比较版本，发布前回放真实轨迹，上线后从 Badcase 和用户反馈中补充样本。Prompt、模型、检索策略、工具版本和评测结果必须关联，否则分数变化后仍然找不到原因。
+A sustainable evaluation process combines offline evaluation, production trace replay, and staged rollouts. Compare versions on a fixed dataset during development, replay real traces before release, and add bad cases and user feedback to the set after launch. Associate evaluation results with the Prompt, model, retrieval strategy, and tool versions; otherwise, score changes will be difficult to explain.
 
 ## Agent
 
-相关原文：
+Related guides:
 
-- [AI Agent 核心概念：Agent Loop、Plan-and-Execute、A2A、Agentic Workflows、Tools 注册](./agent/agent-basis.md)
-- [AI 工作流中的 Workflow、Graph 与 Loop：从概念到实现](./agent/workflow-graph-loop.md)
-- [上下文工程(Context Engineering) 是什么？和 Prompt Engineering 有什么区别？](./agent/context-engineering.md)
-- [AI Agent 记忆系统：短期记忆、长期记忆与记忆演化机制](./agent/agent-memory.md)
-- [多 Agent 协作系统设计：任务拆分、状态共享、冲突处理与失败恢复](./agent/multi-agent.md)
-- [什么是 Model Context Protocol (MCP)？和 Function Calling、Agent 什么关系？](./agent/mcp.md)
-- [Agent Skills 是什么？和 Prompt、MCP 到底差在哪？](./agent/skills.md)
-- [Harness Engineering：六层检查框架、上下文管理与工程实践](./agent/harness-engineering.md)
-- [Loop Engineering 是什么？为什么说它是新瓶装旧酒？](./agent/loop-engineering.md)
+- [AI Agent Fundamentals: Agent Loops, Plan-and-Execute, A2A, Agentic Workflows, and Tool Registration](./agent/agent-basis.md)
+- [Workflows, Graphs, and Loops in AI: From Concepts to Implementation](./agent/workflow-graph-loop.md)
+- [What Is Context Engineering, and How Does It Differ from Prompt Engineering?](./agent/context-engineering.md)
+- [AI Agent Memory: Short-Term and Long-Term Memory and How They Evolve](./agent/agent-memory.md)
+- [Multi-Agent System Design: Task Decomposition, Shared State, Conflict Handling, and Recovery](./agent/multi-agent.md)
+- [What Is the Model Context Protocol (MCP), and How Does It Relate to Function Calling and Agents?](./agent/mcp.md)
+- [What Are Agent Skills, and How Do They Differ from Prompts and MCP?](./agent/skills.md)
+- [Harness Engineering: A Six-Layer Checklist, Context Management, and Engineering Practices](./agent/harness-engineering.md)
+- [What Is Loop Engineering?](./agent/loop-engineering.md)
 
-### 什么是 Agent？
+### What Is an Agent?
 
-普通模型调用生成一段文本后就结束了。Agent Runtime 会继续检查模型是否提出了工具调用，执行工具，把结果写回上下文，再让模型决定下一步。LangChain 等框架的 Agent 实现因此经常围绕一个循环展开。
+A standard model call ends after generating text. An Agent Runtime checks whether the model requested a tool call, executes the tool, writes the result back into context, and asks the model to decide what to do next. Agent implementations in frameworks such as LangChain are therefore often built around a loop.
 
-这套系统通常写成：**Agent = LLM + Planning + Memory + Tools**。LLM 处理任务理解和决策，Planning 管理步骤与依赖，Memory 保存当前状态或历史信息，Tools 连接数据库、API、文件系统和代码执行环境。
+A common representation of the system is **Agent = LLM + Planning + Memory + Tools**. The LLM interprets the task and makes decisions; Planning manages steps and dependencies; Memory stores current state or history; and Tools connect to databases, APIs, file systems, and code execution environments.
 
-![AI Agent 核心架构](./images/shared/agent-core-arch.png)
+![Core AI Agent architecture](./images/shared/agent-core-arch.png)
 
-短期记忆通常保留本次会话和任务状态，长期记忆负责跨会话复用用户偏好、历史决策或任务经验。工具执行产生的返回值属于 Observation（观察），运行时把它追加到上下文，模型才能根据真实结果继续判断。
+Short-term memory usually retains the current conversation and task state. Long-term memory reuses user preferences, past decisions, or task experience across sessions. Tool results are Observations; the runtime appends them to the context so the model can make its next decision based on actual results.
 
-### Agent Loop
+### Agent Loops
 
-Agent Loop 把模型决策和工具执行连成反馈循环。每轮读取当前上下文，由模型选择直接回复还是调用工具；运行时执行动作并保存结果，然后进入下一轮。
+An Agent Loop connects model decisions and tool execution in a feedback cycle. At each step, the model reads the current context and chooses whether to respond directly or call a tool. The runtime executes the action, saves the result, and starts the next step.
 
-![Agent Loop 工作流程](./images/shared/agent-loop-flow.png)
+![Agent Loop workflow](./images/shared/agent-loop-flow.png)
 
-1. 初始化 System Prompt、工具列表和用户请求。
-2. 模型读取上下文，返回文本或工具调用意图。
-3. 运行时执行工具，把结果和状态写回上下文。
-4. 模型不再调用工具时结束；达到轮次、Token、时间或费用上限时，由运行时强制停止。
+1. Initialize the System Prompt, tool list, and user request.
+2. The model reads the context and returns text or a tool-call intent.
+3. The runtime executes the tool and writes the result and state back to the context.
+4. Finish when the model makes no more tool calls. The runtime must stop execution when it reaches the turn, token, time, or cost limit.
 
-循环本身并不复杂。任务持续时间变长后，历史消息、工具结果和中间状态会不断占用上下文，早期约束也可能被后续内容稀释。Context Engineering 负责决定哪些信息继续保留、何时压缩，以及下一轮真正需要看到什么。
+The loop itself is simple. As a task runs longer, conversation history, tool results, and intermediate state consume more context, and later content may dilute earlier constraints. Context Engineering determines what to retain, when to compress it, and what the model needs to see in the next step.
 
 ### ReAct
 
-ReAct 是 Reasoning + Acting，由 Shunyu Yao 等人在 2022 年提出，论文是[《ReAct: Synergizing Reasoning and Acting in Language Models》](https://react-lm.github.io/)。它把推理、行动和观察交替放进同一条轨迹：模型先决定一个动作，环境返回结果，下一轮再依据这份结果继续。
+ReAct stands for Reasoning + Acting. Shunyu Yao and colleagues introduced it in 2022 in the paper [“ReAct: Synergizing Reasoning and Acting in Language Models”](https://react-lm.github.io/). It alternates reasoning, actions, and observations in one trace: the model chooses an action, the environment returns a result, and the model uses that result in the next step.
 
-比如模型不知道订单当前状态时，可以先调用查询工具。订单系统返回“已支付、待发货”后，模型再决定直接回答，还是继续查询物流。外部结果给后续判断提供了依据，但不会自动保证答案正确。
+For example, if the model does not know an order's current status, it can call a query tool. If the order system returns “paid, awaiting shipment,” the model can answer directly or check the shipping status. External results inform later decisions, but do not guarantee that the answer is correct.
 
-![ReAct-LLM](./images/shared/react-llm.png)
+![ReAct and LLM interaction](./images/shared/react-llm.png)
 
-落地 ReAct 时，运行时要保存执行历史和当前状态，向模型提供可用工具或 Skills，并把工具响应作为 Observation 关联到对应调用。系统告警、用户补充信息等环境变化，也要在后续轮次中更新。
+To implement ReAct, the runtime must save the execution history and current state, provide the available tools or Skills to the model, and associate each tool response as an Observation with its call. Environmental changes, such as system alerts or additional user input, should also be reflected in later steps.
 
-![ReAct 模式流程](./images/shared/agent-react-flow.png)
+![ReAct workflow](./images/shared/agent-react-flow.png)
 
-多轮工具调用会增加响应延迟和 Token 消耗，结果质量也受工具描述、参数校验、返回数据和停止条件影响。Trace 可以记录它执行过哪些动作，但模型输出的推理文本不能直接等同于内部决策机制。
+Multiple rounds of tool calls add latency and token usage. Result quality also depends on tool descriptions, parameter validation, returned data, and stop conditions. A trace can record the actions taken, but reasoning text in a model's output should not be treated as a direct representation of its internal decision process.
 
 ### Plan-and-Execute
 
-Plan-and-Execute 是 LangChain 团队在 2023 年提出的模式。规划阶段先产出步骤和依赖关系，执行器再逐项处理，因此更适合能够提前识别主要阶段的长任务。
+Plan-and-Execute is a pattern introduced by the LangChain team in 2023. The planning stage produces steps and dependencies, then an executor handles them one by one. It suits long tasks whose main stages can be identified in advance.
 
-全局计划能让依赖和完成条件更早暴露出来。环境或任务目标在执行中发生变化时，旧计划也可能失效，这时需要重新规划，而不是继续照着原步骤运行。
+A global plan makes dependencies and completion criteria visible earlier. If the environment or task objective changes during execution, the plan may become invalid and should be revised instead of followed blindly.
 
-项目里可以用计划控制外层阶段，在某个步骤内部运行 ReAct 子循环。确定性依赖由计划约束，局部信息不足时再通过工具调用补齐。
+A project can use a plan to control outer stages and run a ReAct sub-loop inside a step. The plan constrains deterministic dependencies; tool calls fill in local information when it is missing.
 
-### Workflow、Graph 与 Loop
+### Workflows, Graphs, and Loops
 
-Agent 把下一步选择交给模型，Workflow 则由代码或图结构预先规定节点顺序、条件跳转和失败处理。两者都能调用模型和工具，差别主要在控制权放在哪里。
+An agent lets the model choose the next step. A workflow uses code or a graph to define node order, conditional transitions, and failure handling in advance. Both can call models and tools; the main difference is where control resides.
 
-步骤稳定、权限要求明确的流程通常交给 Workflow。遇到无法提前穷举的检索、分析或工具选择时，可以在某个节点中嵌入 Agent 子循环。这类 Agentic Workflow 由外层流程限制执行范围，局部决策再交给模型。
+Use a workflow for stable processes with clear permission requirements. If retrieval, analysis, or tool selection cannot be enumerated in advance, embed an agent loop in a node. This Agentic Workflow uses the outer process to limit execution while leaving local decisions to the model.
 
-AI 工作流的数据结构是有向图（Graph），三个元素：Node（节点）负责执行，Edge（边）负责控制流，State（状态）在节点之间共享上下文。
+An AI workflow can be represented as a directed graph with three elements: Nodes perform work, Edges control flow, and State shares context between nodes.
 
-### 多 Agent
+### Multi-Agent Systems
 
-多 Agent 管理的是能够独立完成子目标的执行者，多阶段 Prompt Chain 管理的是一条 Workflow 中的处理步骤。把一个角色拆成独立 Agent 的前提，是它拥有自己的 Prompt、工具、上下文、权限、运行状态和交付结果。
+A multi-agent system coordinates workers that can independently complete subtasks; a multi-stage Prompt Chain coordinates steps in one workflow. A role should be a separate agent only when it has its own Prompt, tools, context, permissions, runtime state, and deliverable.
 
-不同环节需要明显不同的工具、权限和上下文，或者任务能够拆成几个相对独立的方向时，多 Agent 才可能带来收益。若几个角色共用相同上下文和工具，只是分别生成相似文本，增加的主要是模型调用次数、延迟和归并成本。
+Multi-agent systems may help when stages need clearly different tools, permissions, and context, or when a task can be divided into relatively independent directions. If several roles share the same context and tools and produce similar text, the main result is more model calls, latency, and aggregation cost.
 
-常见编排方式包括：
+Common orchestration patterns include:
 
-| 模式               | 控制方式                                    | 适用场景                             |
-| ------------------ | ------------------------------------------- | ------------------------------------ |
-| Sequential         | 代码按固定顺序调用多个 Agent                | 步骤确定，前后依赖清楚               |
-| Parallel           | 独立任务并行执行，完成后统一归并            | 多路检索、多维评审、投票             |
-| Router             | 规则或模型把请求路由给一个或多个专家        | 业务域清楚、分类相对稳定             |
-| Supervisor/Manager | 主 Agent 动态拆任务并调用子 Agent           | 子任务无法提前完全确定，需要统一答案 |
-| Handoff            | 当前 Agent 把控制权和必要上下文交给其他角色 | 客服分流、分阶段对话                 |
+| Pattern            | Control model                                                    | Suitable scenarios                                                       |
+| ------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Sequential         | Code calls several agents in a fixed order                       | Defined steps with clear dependencies                                    |
+| Parallel           | Independent tasks run concurrently and are aggregated            | Multiple retrieval paths, multi-perspective review, voting               |
+| Router             | Rules or a model route requests to one or more specialists       | Clear domains and relatively stable classification                       |
+| Supervisor/Manager | A primary agent dynamically decomposes tasks and calls subagents | Subtasks cannot be fully defined in advance and need one combined answer |
+| Handoff            | An agent transfers control and necessary context to another role | Customer support routing and staged conversations                        |
 
-角色拆分后还要定义任务契约，包括子目标、成功标准、依赖、允许使用的工具、输出 Schema、产物位置、超时、Token 预算和失败策略。多个 Agent 同时写共享状态或调用有副作用的工具时，仍然要靠幂等、版本控制、锁、补偿和检查点保证一致性，不能让模型自行协商写入顺序。
+After splitting roles, define a task contract with the subgoal, success criteria, dependencies, allowed tools, output Schema, artifact location, timeout, token budget, and failure policy. If multiple agents write shared state or call tools with side effects, use idempotency, versioning, locks, compensation, and checkpoints to ensure consistency. Do not let the models negotiate write order.
 
 ### Context Engineering
 
-上下文混乱时，即使模型能力足够，Agent 也可能漏掉约束、重复调用工具或偏离当前任务。
+When context is disorganized, an agent may miss constraints, call tools repeatedly, or drift from the task even if the model is capable.
 
-Context Engineering 负责在有限的 Token 窗口中选择、组织和更新模型当前需要的信息，包括规则、记忆、工具描述、会话状态、外部观察结果和 Token 预算。Prompt Engineering 更关注指令本身如何表达，是其中一个更局部的问题。
+Context Engineering selects, organizes, and updates the information a model needs within a limited Token window. This includes rules, memory, tool descriptions, session state, external observations, and token budgets. Prompt Engineering focuses more narrowly on how the instructions themselves are expressed.
 
-![Context Engineering 和 Prompt Engineering 差别](./images/shared/context-engineering-vs-context-engineering-dimension-comparison.png)
+![Context Engineering compared with Prompt Engineering](./images/shared/context-engineering-vs-context-engineering-dimension-comparison.png)
 
-进一步的设计方法见[《提示词工程（Prompt Engineering）》](https://javaguide.cn/ai/agent/prompt-engineering.html)和[《上下文工程（Context Engineering）》](https://javaguide.cn/ai/agent/context-engineering.html)。
+For further guidance, see [Prompt Engineering](https://javaguide.cn/ai/agent/prompt-engineering.html) and [Context Engineering](https://javaguide.cn/ai/agent/context-engineering.html).
 
 ### Memory
 
-![Agent 记忆分类全景图](./images/shared/agent-memory-memory-taxonomy.svg)
+![Agent memory taxonomy](./images/shared/agent-memory-memory-taxonomy.svg)
 
-记忆系统通常分两层：短期记忆和长期记忆。短期记忆是 Session 级的，服务当前任务；长期记忆跨越 Session，保存需要复用的用户偏好、历史决策和任务经验。两类数据的生命周期、权限和更新方式不同，存储时应在逻辑上分开。
+Memory systems usually have two layers: short-term and long-term memory. Short-term memory is scoped to a Session and supports the current task. Long-term memory spans Sessions and stores user preferences, past decisions, and task experience for reuse. Because these data have different lifecycles, permissions, and update patterns, keep them logically separate.
 
-![AI Agent 记忆系统架构](./images/shared/agent-memory-arch.png)
+![AI Agent memory architecture](./images/shared/agent-memory-arch.png)
 
-按功能目的看，Agent 记忆可以分成三类。
+Agent memory can be grouped into three types by purpose:
 
-| 功能类型 | 核心问题           | 存储内容                     | 典型场景               |
-| -------- | ------------------ | ---------------------------- | ---------------------- |
-| 事实记忆 | 智能体知道什么     | 用户偏好、环境状态、显式事实 | 记住用户的技术栈偏好   |
-| 经验记忆 | 智能体如何改进     | 过往轨迹、成败教训、策略知识 | 从失败的代码审查中学习 |
-| 工作记忆 | 智能体当前思考什么 | 当前推理上下文、任务进展     | 多步推理中的中间状态   |
+| Type                | Core question                           | Stored information                                                   | Example use                                |
+| ------------------- | --------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------ |
+| Factual memory      | What does the agent know?               | User preferences, environment state, explicit facts                  | Remember a user's preferred tech stack     |
+| Experiential memory | How can the agent improve?              | Past traces, lessons from successes and failures, strategy knowledge | Learn from a failed code review            |
+| Working memory      | What is the agent currently processing? | Current reasoning context and task progress                          | Intermediate state in multi-step reasoning |
 
-长期记忆和 RAG 技术上很像，都会用向量库和语义检索。但它们服务的对象不一样。
+Long-term memory and RAG are technically similar: both may use vector stores and semantic retrieval. They serve different purposes, however.
 
-RAG 挂载的是可检索知识源，比如公司规章、产品文档、实时数据库查询结果。它既可以服务共享知识库，也可以根据用户、租户、角色和会话执行权限过滤或个性化检索。RAG 与长期记忆的主要区别在数据来源和生命周期：前者检索外部知识，后者保存交互中形成、需要跨会话复用的信息。
+RAG connects to retrievable knowledge sources such as company policies, product documentation, and real-time database query results. It can serve a shared knowledge base or apply permission filtering and personalized retrieval by user, tenant, role, or session. The main difference from long-term memory is the data source and lifecycle: RAG retrieves external knowledge, while long-term memory stores information formed through interactions for reuse across sessions.
 
-长期记忆管理的是 Agent 与特定用户交互中动态沉淀的个性化经验，比如用户偏好、习惯、历史决策、专属背景。它高度个性化，因人而异。
+Long-term memory manages personalized information accumulated through an agent's interactions with a specific user, such as preferences, habits, past decisions, and individual context. It varies from user to user.
 
-![长期记忆与 RAG（检索增强生成）的区别](./images/shared/agent-memory-rag-vs-memory.svg)
+![Long-term memory compared with RAG](./images/shared/agent-memory-rag-vs-memory.svg)
 
 ### MCP
 
-MCP 全称是 Model Context Protocol，中文一般叫“模型上下文协议”。名称中的三个词对应了协议的适用范围：
+MCP stands for Model Context Protocol. The three words describe its scope:
 
-- Model：面向大模型应用；
-- Context：把外部上下文、工具和数据源带给模型；
-- Protocol：用一套标准协议把交互方式定下来。
+- Model: for LLM applications.
+- Context: brings external context, tools, and data sources to a model.
+- Protocol: standardizes how the components interact.
 
-MCP 定义了 **MCP Client 和 MCP Server 之间的通信方式**。Host 承载用户交互和模型调用，Client 与 Server 通信，Server 对外提供具体能力；模型本身不会因为接入 MCP 而获得内置插件。
+MCP defines **how an MCP Client communicates with an MCP Server**. The Host handles user interaction and model calls, the Client communicates with Servers, and Servers expose capabilities. Connecting MCP does not give the model built-in plugins.
 
-![MCP 图解](./images/shared/mcp-simple-diagram.png)
+![MCP overview](./images/shared/mcp-simple-diagram.png)
 
-Function Calling、MCP、Agent 和 Skills 经常出现在同一套系统里，但各自处理不同问题：Function Calling 让模型表达调用工具的意图；MCP 规定宿主如何发现外部能力并连接后端服务；Agent 负责在多轮执行中决定下一步；Skills 则保存完成某类任务所需的流程和经验。
+Function Calling, MCP, agents, and Skills often appear in the same system, but address different concerns. Function Calling lets a model express an intent to use a tool. MCP defines how a host discovers external capabilities and connects to backend services. An agent decides what to do across multiple steps. Skills store the procedures and experience needed for a type of task.
 
-![FC/MCP/Agent 三层关系图](./images/shared/mcp-fc-agent-layer.png)
+![Relationship between Function Calling, MCP, and Agents](./images/shared/mcp-fc-agent-layer.png)
 
 ### Skills
 
-用户提出“帮我分析这份报表”时，Prompt 只表达了当前任务。模型若要读取文件，会通过 Function Calling 生成 `read_file` 的结构化参数；这个工具可以由 MCP Server 提供。至于分析顺序，例如先核对字段含义，再查异常值，最后结合业务解释结果，更适合写进 Skill。
+When a user asks, “Analyze this report,” the Prompt states the current task. If the model needs to read a file, it can use Function Calling to generate structured parameters for `read_file`; an MCP Server can provide that tool. The analysis procedure—checking field meanings, finding anomalies, then interpreting them in context—is better captured in a Skill.
 
-Skill 是一份可被 Agent 发现、按需加载的任务说明。接口格式、日志字段、慢 SQL 排查顺序、代码 Review 的检查重点等团队经验，都可以放进 `SKILL.md`，避免每次把整套规则写进 Prompt。它与 Prompt、Function Calling 和 MCP 分别处理任务输入、调用意图、工具连接和执行方法，职责可以同时出现在一次任务里。
+A Skill is a task guide that an agent can discover and load when needed. Team knowledge such as API formats, log fields, slow SQL investigation steps, and code review criteria can go in `SKILL.md`, so the entire set of rules does not need to be repeated in every Prompt. Prompts, Function Calling, MCP, and Skills handle task input, call intent, tool connectivity, and execution procedures respectively; all may be involved in one task.
 
-![ Skill 和 Prompt、MCP、Function Calling 对比](./images/shared/skill-prompt-function-calling-mcp-comparison.webp)
+![Skills compared with Prompts, MCP, and Function Calling](./images/shared/skill-prompt-function-calling-mcp-comparison.webp)
 
-Skill 的加载和执行包含五步：
+Skill loading and execution have five steps:
 
-![Agent 执行链路](./images/shared/skill-agent-execution-link.webp)
+![Agent execution flow](./images/shared/skill-agent-execution-link.webp)
 
-1. 用户提出任务（Prompt）
-2. 宿主把可用 Skills 的简短描述放进上下文（Skill 元数据）
-3. 模型判断当前任务命中了某个 Skill（Skill 路由）
-4. 宿主再把完整 `SKILL.md` 加载进来（延迟加载）
-5. 模型按照 Skill 里的流程去调工具、读资料、写结果（执行）
+1. The user submits a task (Prompt).
+2. The host adds short descriptions of available Skills to the context (Skill metadata).
+3. The model determines that a Skill matches the task (Skill routing).
+4. The host loads the full `SKILL.md` (lazy loading).
+5. The model follows the Skill procedure to call tools, read material, and write results (execution).
 
 ### Harness Engineering
 
-模型负责推理和生成，却不会自行保存任务状态、限制文件权限、执行测试或处理工具超时。系统提示词、工具调用、文件系统、沙箱、编排、Hooks、反馈和约束机制共同组成 Harness。工程上常用 **Agent = Model + Harness** 提醒开发者：模型之外的运行环境同样决定任务能否持续执行。
+The model reasons and generates output, but does not save task state, restrict file permissions, run tests, or handle tool timeouts on its own. The Harness consists of the System Prompt, tool calls, file system, sandbox, orchestration, Hooks, feedback, and constraints. Engineers often use **Agent = Model + Harness** to emphasize that the runtime environment outside the model also determines whether a task can execute reliably.
 
-Vivek Trivedi 在《The Anatomy of an Agent Harness》中也采用了先区分模型职责、再检查外围系统的思路。排查 Agent 时，除了模型输出，还要看上下文是否完整、工具是否可用、执行环境是否受控，以及失败后能否恢复。
+Vivek Trivedi takes a similar approach in “The Anatomy of an Agent Harness”: distinguish the model's responsibilities, then inspect the surrounding system. When debugging an agent, check context completeness, tool availability, execution controls, and recovery behavior as well as the model output.
 
 ![Agent = Model + Harness](./images/shared/harness-agent-equals-model-harness-arch.png)
 
-Prompt Engineering、Context Engineering 和 Harness Engineering 的作用范围不同。Prompt 关注指令表达，Context 决定当前调用要提供哪些信息，Harness 管理模型之外的执行、验证、观测和恢复机制。
+Prompt Engineering, Context Engineering, and Harness Engineering have different scopes. Prompt Engineering focuses on expressing instructions. Context Engineering determines what information to provide for a call. Harness Engineering manages execution, validation, observability, and recovery outside the model.
 
-![Harness 和 Prompt/Context Engineering 的关系](./images/shared/harness-engineering-layers-arch.png)
+![How Harness Engineering relates to Prompt and Context Engineering](./images/shared/harness-engineering-layers-arch.png)
 
-| 层级                | 解决的问题                         | 关注点                                     | 典型工作                                  |
-| ------------------- | ---------------------------------- | ------------------------------------------ | ----------------------------------------- |
-| Prompt Engineering  | 怎么把指令说清楚                   | 让模型理解意图，减少局部歧义               | 系统提示词设计、Few-shot 示例、思维链引导 |
-| Context Engineering | 该给 Agent 看什么                  | 在合适时机给模型提供正确且必要的信息       | 上下文管理、RAG、记忆注入、Token 优化     |
-| Harness Engineering | 系统怎么持续执行、纠偏、观测和恢复 | 长链路任务中的持续正确、偏差修正、故障恢复 | 文件系统、沙箱、约束执行、反馈回路、观测  |
+| Layer               | Question it answers                                         | Focus                                                       | Typical work                                                                 |
+| ------------------- | ----------------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Prompt Engineering  | How should instructions be expressed?                       | Help the model understand intent and reduce local ambiguity | System Prompt design, few-shot examples, Chain-of-Thought guidance           |
+| Context Engineering | What information should the agent see?                      | Provide the right information at the right time             | Context management, RAG, memory injection, token optimization                |
+| Harness Engineering | How does the system execute, correct, observe, and recover? | Reliability and recovery across long-running tasks          | File systems, sandboxes, enforced constraints, feedback loops, observability |
 
 ### Loop Engineering
 
-Loop Engineering 为 Agent 的重复执行补齐触发、目标、上下文、验证、状态和停止条件。每一轮都要留下可检查的结果，任务完成、失败、预算耗尽或需要审批时退出循环。
+Loop Engineering defines the triggers, goals, context, validation, state, and stop conditions for repeated agent execution. Each iteration should produce a checkable result. Exit the loop when the task completes or fails, the budget runs out, or approval is needed.
 
-落到工程上，主要看这些点：
+In practice, consider:
 
-- 触发：谁来启动这轮任务？手动命令、定时任务、CI 失败、PR 创建、Issue 更新，还是某个消息事件。
-- 目标：什么状态算完成？全部测试通过、CI green、覆盖率达到某个数值、页面截图对齐设计稿，还是只生成待人工确认的草稿。
-- 上下文：Agent 每轮要看哪些文件、规则、历史状态、工具结果和项目约定。
-- 行动：Agent 能改代码、跑测试、查 GitHub、读日志、发 PR，还是只能输出建议。
-- 观察：它怎么知道刚才那一步做对了？测试输出、lint、类型检查、截图、审查评论、日志摘要都可以是观察结果。
-- 状态：这轮试过什么、失败在哪里、下一步做什么，要写到外部文件、Issue、Linear 卡片或数据库里，不能只靠当前对话记住。
-- 停止：什么时候退出，什么时候转人工，什么时候因为预算或轮次耗尽直接停。
+- Trigger: What starts an iteration—a manual command, scheduled task, CI failure, PR creation, Issue update, or message event?
+- Goal: What counts as complete—all tests passing, CI green, coverage reaching a threshold, screenshots matching a design, or a draft awaiting human review?
+- Context: Which files, rules, prior state, tool results, and project conventions should the agent see in each iteration?
+- Action: Can the agent edit code, run tests, query GitHub, read logs, create a PR, or only make recommendations?
+- Observation: How does it know the last step worked? Test output, lint, type checks, screenshots, review comments, and log summaries can all provide feedback.
+- State: Record what the iteration tried, where it failed, and what comes next in an external file, Issue, Linear ticket, or database; do not rely on the current conversation to remember it.
+- Stop: When should it exit, hand off to a person, or stop because its budget or iteration limit is exhausted?
 
-![Loop Engineering 外层循环](./images/shared/loop-engineering-outer-loop.webp)
+![Loop Engineering outer loop](./images/shared/loop-engineering-outer-loop.webp)
 
-最小循环可以写成一条执行链：读取上下文 → 判断下一步 → 调用工具或输出答案 → 回写结果 → 检查停止条件。ReAct 把 Reasoning 和 Acting 交替放进这条循环；Loop Engineering 还要处理循环外部的触发、验证、持久化、预算和人工接管。
+A minimal loop is: read context → choose the next step → call a tool or produce an answer → write back the result → check stop conditions. ReAct alternates Reasoning and Acting inside the loop. Loop Engineering also handles triggers, validation, persistence, budgets, and human takeover around it.
 
 ## RAG
 
-相关原文：
+Related guides:
 
-- [RAG 基础概念：检索、生成与工程取舍](./rag/rag-basis.md)
-- [RAG 向量索引算法和向量数据库](./rag/rag-vector-store.md)
-- [RAG 文档处理与切分策略：从解析、清洗、Chunking 到多模态内容处理](./rag/rag-document-processing.md)
-- [RAG 优化：从召回、重排到上下文工程](./rag/rag-optimization.md)
-- [GraphRAG：用图结构补充向量检索](./rag/graphrag.md)
-- [RAG 知识库文档如何更新：增量更新、版本控制、去重与全量重建](./rag/rag-knowledge-update.md)
+- [RAG Fundamentals: Retrieval, Generation, and Engineering Tradeoffs](./rag/rag-basis.md)
+- [RAG Vector Index Algorithms and Vector Databases](./rag/rag-vector-store.md)
+- [RAG Document Processing and Chunking: Parsing, Cleaning, and Multimodal Content](./rag/rag-document-processing.md)
+- [RAG Optimization: From Retrieval and Reranking to Context Engineering](./rag/rag-optimization.md)
+- [GraphRAG: Enhancing Vector Retrieval with Graphs](./rag/graphrag.md)
+- [Updating a RAG Knowledge Base: Incremental Updates, Versioning, Deduplication, and Rebuilds](./rag/rag-knowledge-update.md)
 
-### 什么是 RAG？
+### What Is RAG?
 
-**RAG（Retrieval-Augmented Generation，检索增强生成）** 把信息检索接入大语言模型的生成过程。系统先从数据库、文档集合或企业内部系统中查找与问题相关的内容，再把检索结果和原始问题一起交给 LLM。模型由此获得参数知识之外的证据。
+**Retrieval-Augmented Generation (RAG)** adds information retrieval to an LLM's generation process. The system first finds relevant content in a database, document collection, or internal system, then sends the retrieved results and original question to the LLM. This gives the model evidence beyond its parametric knowledge.
 
-![RAG 示意图](./images/shared/rag-simplified-architecture-diagram.png)
+![RAG overview](./images/shared/rag-simplified-architecture-diagram.png)
 
-RAG 主要补充三类信息缺口：
+RAG primarily addresses three information gaps:
 
-- **知识时效性**：预训练模型的参数知识停在训练数据截止时间点。RAG 可以在请求发生时检索新事件、政策和产品文档。
-- **私有数据访问**：企业产品文档、知识库和客户数据不在公开训练语料中。应用可以先按用户权限检索，再只提供回答所需的片段。
-- **答案依据**：检索证据能约束模型的回答范围，但不能彻底消除幻觉。检索错误、上下文噪声、引用错配和模型不遵循指令仍会产生错误答案，生产系统还要配合引用校验、答案评估、拒答和人工反馈。
+- **Knowledge freshness:** An LLM's parametric knowledge is limited by its training data cutoff. RAG can retrieve current events, policies, and product documentation when a request arrives.
+- **Access to private data:** Company documentation, knowledge bases, and customer data are not part of public training data. An application can retrieve content according to the user's permissions and provide only the passages needed for an answer.
+- **Evidence for answers:** Retrieved evidence can constrain the model's answer, but cannot eliminate hallucinations. Retrieval errors, noisy context, mismatched citations, and failure to follow instructions can still produce incorrect answers. Production systems also need citation checks, answer evaluation, refusals, and human feedback.
 
-### RAG 工作原理
+### How RAG Works
 
-RAG 的工程链路通常分两个阶段：离线索引和在线检索生成。索引阶段把原始文档处理成可检索的数据结构；在线阶段在用户提问时完成查询理解、检索召回、上下文构建和答案生成。
+The RAG pipeline usually has two stages: offline indexing and online retrieval and generation. Indexing transforms source documents into searchable data structures. At query time, the online stage interprets the query, retrieves results, builds context, and generates an answer.
 
-索引和检索阶段的简化流程图如下：
+A simplified view of indexing and retrieval:
 
-![索引和检索阶段的简化流程图](./images/shared/rag-rag-engineering-link.png)
+![Simplified indexing and retrieval flow](./images/shared/rag-rag-engineering-link.png)
 
-索引阶段主要做这些事：
+The indexing stage typically does the following:
 
-1. 输入文档：文本文件、PDF、网页、数据库记录都可以，只要有内容。
-2. 清理文档：去掉 HTML 标签、特殊字符等噪声。
-3. 增强文档：补充元数据，比如时间戳、分类标签，为后续检索提供过滤维度。
-4. 文档拆分（Chunking）：用文本分割器把文档切成较小片段。这一步要兼顾语义完整性、Embedding 模型输入长度、生成模型上下文窗口和召回粒度。Chunk 太大容易引入噪声，太小又可能丢上下文。拆分策略会直接影响召回质量，详细可以看 [RAG 文档处理篇](./rag/rag-document-processing.md)。
-5. 向量化表示（Embedding Generation）：通过嵌入模型将文本片段映射为语义向量，也就是高维稠密向量。常见嵌入模型包括 OpenAI 的 `text-embedding-3-small` / `text-embedding-3-large`，以及 Hugging Face 上的开源模型。
-6. 存储到向量存储或索引系统：把嵌入向量、原始内容和对应元数据存入向量存储或向量索引系统，比如 Milvus、pgvector、Elasticsearch / OpenSearch 向量检索，或基于 Faiss 构建本地向量索引。向量数据库选型、索引算法和 pgvector 实践可以看 [RAG 向量库篇](./rag/rag-vector-store.md)。
+1. **Load documents:** Source content can come from text files, PDFs, web pages, or database records.
+2. **Clean documents:** Remove noise such as HTML tags and special characters.
+3. **Enrich documents:** Add metadata such as timestamps and categories to support filtering during retrieval.
+4. **Chunk documents:** Split documents into smaller passages. Balance semantic completeness, the embedding model's input limit, the generation model's context window, and retrieval granularity. Large chunks can add noise; small chunks can lose context. Chunking strategy directly affects retrieval quality. See [RAG Document Processing](./rag/rag-document-processing.md) for details.
+5. **Generate embeddings:** Use an embedding model to map each text passage to a semantic vector, a high-dimensional dense vector. Common choices include OpenAI's `text-embedding-3-small` and `text-embedding-3-large`, as well as open-source models on Hugging Face.
+6. **Store vectors and metadata:** Save embeddings, source content, and metadata in a vector store or index, such as Milvus, pgvector, Elasticsearch or OpenSearch vector search, or a local Faiss index. See [RAG Vector Stores](./rag/rag-vector-store.md) for database selection, index algorithms, and pgvector.
 
 ### Embedding
 
-Embedding 就是把文本变成一串数字。更准确地说，它会把文本映射到一个高维稠密向量空间里，让语义接近的文本在向量空间中距离更近。
+An embedding maps text to a sequence of numbers. More precisely, it maps text into a high-dimensional dense vector space where semantically similar texts are closer together.
 
-比如这三句话：
+For example, these questions:
 
-- “如何申请退款？”
-- “退款流程是什么？”
-- “订单怎么取消并退钱？”
+- “How do I request a refund?”
+- “What is the refund process?”
+- “How do I cancel an order and get my money back?”
 
-它们字面不一样，但语义接近。好的 Embedding 模型会把它们映射到相近位置，向量检索才能把相关 Chunk 找出来。
+The wording differs, but the meaning is similar. A good embedding model maps them to nearby points so vector retrieval can find relevant chunks.
 
-![Embedding：把文本映射到语义空间](./images/shared/rag-2-embedding-map-text-to-semantic-space.png)
+![Embeddings map text to a semantic space](./images/shared/rag-2-embedding-map-text-to-semantic-space.png)
 
-Embedding 维度常见的有 768、1024、1536、3072 等。维度是模型设计和训练方式的一部分，不能脱离模型直接得出“维度越高，语义效果越好”的结论；较高维度通常会增加存储、索引和相似度计算成本。以 OpenAI Embedding 为例，`text-embedding-3-small` 默认输出 1536 维，`text-embedding-3-large` 默认输出 3072 维，并支持通过 `dimensions` 参数降低输出维度。
+Common embedding dimensions include 768, 1024, 1536, and 3072. Dimension is part of a model's design and training; a higher number does not by itself mean better semantic quality. Higher dimensions usually increase storage, indexing, and similarity-computation costs. For example, OpenAI's `text-embedding-3-small` outputs 1536 dimensions by default, and `text-embedding-3-large` outputs 3072. Both support a lower dimension through the `dimensions` parameter.
 
-### 向量检索与向量数据库
+### Vector Search and Vector Databases
 
-RAG 的检索流程里，最基础的一步是：把用户问题和文档都变成向量，再用相似度搜索找到最相关的文档片段。
+The basic retrieval step in RAG is to embed both the user's question and the documents, then find the most relevant passages through similarity search.
 
-可以把它理解成这样：
+The flow is:
 
-1. 文档进入知识库后，先被切成 Chunk。
-2. 每个 Chunk 通过 Embedding 模型转成一个向量。
-3. 向量和原文、元数据一起写入向量数据库。
-4. 用户提问时，问题也会被转成查询向量。
-5. 向量数据库检索出最相似的 Top-K 文档向量。
-6. 系统把这些文档片段放进 Prompt，交给 LLM 生成答案。
+1. Split documents into chunks before adding them to the knowledge base.
+2. Use an embedding model to convert each chunk into a vector.
+3. Store the vectors alongside their source text and metadata in a vector database.
+4. Embed a user's question as a query vector.
+5. Retrieve the Top-K document vectors with the highest similarity.
+6. Add the corresponding passages to the Prompt and ask the LLM to generate an answer.
 
-![Embedding 和向量检索是什么关系？](./images/shared/rag-embedding-vector-retrieval.png)
+![How embeddings relate to vector retrieval](./images/shared/rag-embedding-vector-retrieval.png)
 
-Embedding 负责把文本变成可比较的向量，向量检索据此查找语义接近的内容。向量检索只是 RAG 的一种实现；RAG 还可以使用 BM25、SQL、知识图谱、搜索 API 或其他业务查询来取得外部证据。
+Embeddings convert text into comparable vectors, which vector search uses to find semantically similar content. Vector search is only one RAG implementation. RAG can also retrieve external evidence through BM25, SQL, knowledge graphs, search APIs, or other application queries.
 
-在小规模 Demo 里，几千条文档向量可以直接放在内存里暴力搜索。但真实 RAG 系统里，文档量很快会到百万级、千万级，甚至更大。
+In a small demo, a few thousand document vectors can be searched by brute force in memory. A production RAG system can quickly grow to millions or tens of millions of documents, or more.
 
-向量数据库除了保存向量，还要处理相似度索引、元数据过滤、更新删除、并发查询和持久化等工程问题：
+In addition to storing vectors, a vector database must handle similarity indexes, metadata filters, updates and deletes, concurrent queries, and persistence:
 
-![RAG 场景为什么需要向量数据库？](./images/shared/rag-why-need-vector-store.png)
+![Why RAG may need a vector database](./images/shared/rag-why-need-vector-store.png)
 
-### 文档处理
+### Document Processing
 
-文档从上传到进入向量库，中间要经过至少六个环节：
+Documents pass through at least six stages between upload and vector storage:
 
-![RAG 文档处理总链路：上传前半段决定了后半段效果上限](./images/shared/rag-document-processing-overall-link.png)
+![RAG document-processing pipeline: early stages set an upper bound on later quality](./images/shared/rag-document-processing-overall-link.png)
 
-质量校验不应只发生在入库之后。Chunking 阶段完成采样校验，可以提前发现问题，避免把低质量数据大批量写入向量库。
+Do not wait until after indexing to validate quality. Sample and check chunks during Chunking to catch issues before large volumes of low-quality data enter the vector database.
 
-每个环节的核心风险：
+Key risks at each stage:
 
-| 环节        | 典型问题                           | 最终影响                   |
-| ----------- | ---------------------------------- | -------------------------- |
-| 文件上传    | 格式伪造、大小超限、编码混乱       | 解析器崩溃或静默失败       |
-| 格式校验    | 扩展名和实际 MIME 类型不符         | 选错解析器                 |
-| Layout 解析 | PDF 多栏、表格合并单元格、页眉页脚 | 结构丢失、上下文错位       |
-| 清洗去噪    | 乱码、特殊字符、重复空行、目录残留 | 噪声入索引、Embedding 失真 |
-| Chunking    | 语义截断、上下文断裂、块太大或太小 | 召回不准、答案残缺         |
-| Metadata    | 没保存来源、页码、版本、权限       | 无法过滤、无法引用         |
-| 入库        | 向量维度不一致、Token 超限         | 检索失败、索引损坏         |
+| Stage          | Common issue                                                                        | Impact                                        |
+| -------------- | ----------------------------------------------------------------------------------- | --------------------------------------------- |
+| File upload    | Spoofed format, size limit exceeded, inconsistent encoding                          | Parser crashes or silently fails              |
+| Format check   | File extension does not match actual MIME type                                      | Wrong parser is selected                      |
+| Layout parsing | Multi-column PDFs, merged table cells, headers and footers                          | Structure is lost and context is misaligned   |
+| Cleaning       | Garbled text, special characters, duplicate blank lines, leftover table of contents | Noise enters the index and embeddings degrade |
+| Chunking       | Semantic cuts, broken context, or chunks that are too large or small                | Poor retrieval and incomplete answers         |
+| Metadata       | Missing source, page, version, or permission data                                   | Filtering and citations are unavailable       |
+| Indexing       | Inconsistent vector dimensions or token limits exceeded                             | Retrieval fails or the index is corrupted     |
 
-很多团队把精力放在换哪个 embedding 模型上面，但实际上如果数据在这一步就已经坏掉了，换模型只会让损坏更稳定。
+Many teams focus on changing the embedding model. If the data is already corrupted at this stage, changing models only makes the bad results more consistent.
 
 ### Chunking
 
-![如何选择合适的切分策略？](./images/shared/rag-document-processing-chunking-strategy.png)
+![Choosing a chunking strategy](./images/shared/rag-document-processing-chunking-strategy.png)
 
-如果文档本身有清晰结构，按结构切通常更合适。NVIDIA 的一组测试中，Page-Level Chunking（按页面切分）在金融报告和法律文档上表现最好，平均准确率为 0.648，方差也最低。页面边界在这类材料中经常承载章节或版式语义，切分时应尽量保留。
+When documents have a clear structure, chunking by that structure is often more suitable. In one NVIDIA evaluation, Page-Level Chunking performed best on financial reports and legal documents, with a mean accuracy of 0.648 and the lowest variance. Page boundaries often carry section or layout semantics in these materials, so preserve them where possible.
 
-不过别盲目迷信页面级切分。这个优势相对于 Token 切分其实只有 0.3-4.5 个百分点，而且在 FinanceBench 数据集上，1024-token 切分反而比页面级更优（0.579 vs 0.566）。NVIDIA 测试的文档类型（金融报告、法律文档）是分页本身就携带语义的场景——如果你的 PDF 是 Word 随便导出的那种，页面级切分不会带来额外收益。另外，查询类型也影响最优策略：事实型查询适合 256-512 Token 的小块，分析型查询适合 1024+ Token 或页面级切分。
+Do not assume page-level chunking is always best. Its advantage over token-based chunking was only 0.3–4.5 percentage points, and on the FinanceBench dataset, 1024-token chunks performed better than page-level chunks (0.579 vs. 0.566). The documents in NVIDIA's evaluation—financial reports and legal documents—carry semantics in their page layout. Page-level chunking may not help with PDFs exported casually from Word. Query type also affects the best strategy: factual queries often suit small 256–512 Token chunks, while analytical queries may suit 1024+ Token or page-level chunks.
 
-不同文档类型可以先选一组符合其结构的切分方式，再用业务查询评测：
+Start with chunking strategies suited to each document type, then evaluate them using application queries:
 
-| 文档类型 | 推荐切分方式                  | 实现工具                          |
-| -------- | ----------------------------- | --------------------------------- |
-| Markdown | 按标题层级（H1/H2/H3）切      | `MarkdownHeaderTextSplitter`      |
-| HTML     | 按标签层级切（h1~h6、p、div） | `HTMLHeaderTextSplitter`          |
-| PDF      | 按页或章节切                  | `chunk_by_title`、`chunk_by_page` |
-| 代码     | 按函数、类、包切              | `PythonCodeTextSplitter`          |
-| 论文     | 按章节、段落、表格切          | Layout-aware Parser               |
+| Document type   | Suggested chunking strategy            | Example implementation            |
+| --------------- | -------------------------------------- | --------------------------------- |
+| Markdown        | Split by heading level (H1/H2/H3)      | `MarkdownHeaderTextSplitter`      |
+| HTML            | Split by tag hierarchy (h1–h6, p, div) | `HTMLHeaderTextSplitter`          |
+| PDF             | Split by page or section               | `chunk_by_title`, `chunk_by_page` |
+| Code            | Split by function, class, or package   | `PythonCodeTextSplitter`          |
+| Research papers | Split by section, paragraph, or table  | Layout-aware parser               |
 
-Chunk 较小时，向量检索更容易命中具体句子，但模型拿到的上下文可能不完整；Chunk 较大时，段落信息保留得更多，无关内容也会一起进入候选集。
+Smaller chunks make it easier for vector search to match specific sentences, but may leave the model with incomplete context. Larger chunks preserve more of a passage, but also bring more irrelevant content into the candidate set.
 
-Parent-Child Chunk 将检索粒度和生成上下文分开。比如先用约 300 Token 的子块建立索引，每个子块再关联一个约 1200 Token 的父段落。查询命中子块后，系统把对应父段落交给模型。300/1200 只是起始参数，仍要根据文档结构、查询类型和评测结果调整。
+Parent-Child Chunking separates retrieval granularity from generation context. For example, index child chunks of about 300 Tokens and associate each with a parent passage of about 1200 Tokens. When a query matches a child, provide the corresponding parent passage to the model. These are only starting values; tune them based on document structure, query type, and evaluation results.
 
 ### Hybrid Search
 
-“如何取消订阅”和“关闭自动续费”用词不同，向量检索更容易建立语义关联；`E1027`、`ABX-4421` 这类错误码和型号则更适合 BM25 的精确词匹配。Hybrid Search 同时保留两路候选。
+“How do I cancel my subscription?” and “Turn off auto-renewal” use different wording, but vector search can connect them semantically. Error codes and model numbers such as `E1027` and `ABX-4421` are better suited to exact BM25 matching. Hybrid Search keeps candidates from both methods.
 
-| 查询类型                  | 向量检索表现         | BM25 表现      | 建议               |
-| ------------------------- | -------------------- | -------------- | ------------------ |
-| “如何取消订阅”            | 能匹配“关闭自动续费” | 可能匹配不到   | 保留向量召回       |
-| “错误码 E1027”            | 可能召回泛化故障     | 精确命中错误码 | 必须保留关键词召回 |
-| “ABX-4421 型号参数”       | 容易找相似型号       | 精确命中 SKU   | 必须保留关键词召回 |
-| “Java 线程池拒绝策略区别” | 语义理解较好         | 能匹配关键词   | 混合更稳           |
-| “最新 v3.2 价格政策”      | 需要语义和时间条件   | 可匹配版本号   | Metadata + Hybrid  |
+| Query type                            | Vector search                       | BM25                  | Recommendation                     |
+| ------------------------------------- | ----------------------------------- | --------------------- | ---------------------------------- |
+| “How do I cancel my subscription?”    | Can match “turn off auto-renewal”   | May not match         | Keep vector retrieval              |
+| “Error code E1027”                    | May retrieve generic errors         | Exact code match      | Keep keyword retrieval             |
+| “ABX-4421 model specifications”       | May find similar models             | Exact SKU match       | Keep keyword retrieval             |
+| “Java thread-pool rejection policies” | Good semantic match                 | Can match keywords    | Hybrid search is more reliable     |
+| “Latest v3.2 pricing policy”          | Needs semantic and time constraints | Can match the version | Combine metadata and hybrid search |
 
-两路结果需要经过融合，才能进入后续重排：
+Fuse both result sets before reranking:
 
-- 向量检索返回语义相似候选。
-- BM25 或稀疏向量返回关键词候选。
-- 用 RRF 或归一化加权分数合并。
-- 对合并后的候选去重，再进入 Rerank。
+- Vector search returns semantically similar candidates.
+- BM25 or sparse vectors return keyword candidates.
+- Combine the results with RRF or normalized weighted scores.
+- Deduplicate the combined candidates before reranking.
 
-Microsoft Azure AI Search、Google Vertex AI Vector Search、Weaviate 等产品的官方文档都介绍了 Hybrid Search 和 RRF。RRF 按候选的排名位置融合结果，不必直接比较 BM25 分数和向量余弦分数。
+The documentation for products such as Microsoft Azure AI Search, Google Vertex AI Vector Search, and Weaviate describes Hybrid Search and RRF. RRF combines results by rank position, avoiding the need to directly compare BM25 scores with vector cosine scores.
 
-混合检索是否值得引入要看查询分布。错误码、产品型号、配置项和专有名词较多时，关键词召回通常不能省；文档高度结构化且查询很少包含精确词时，增加一路 BM25 未必能带来足够收益。
+Whether Hybrid Search is worthwhile depends on the query distribution. Keyword retrieval is usually necessary when queries contain many error codes, product models, configuration options, or proper nouns. If documents are highly structured and queries rarely contain exact terms, adding BM25 may not provide enough benefit.
 
-### Query Rewrite
+### Query Rewriting
 
-用户提交给检索系统的往往是这些短句：
+Users often submit short queries such as:
 
-- “这个报错咋整？”
-- “钱能退吗？”
-- “线上那个限流问题是不是又来了？”
+- “How do I fix this error?”
+- “Can I get my money back?”
+- “Is that rate-limit issue happening again in production?”
 
-“这个”“钱”“线上那个问题”依赖会话上下文，直接检索时缺少对象和约束。Query Rewrite 会补充必要实体、同义表达或过滤条件，让查询更接近知识库中的写法，同时保留用户原始意图。
+Terms such as “this,” “my money,” and “that issue in production” depend on conversation context. Direct retrieval lacks the entity or constraints. Query rewriting adds necessary entities, synonyms, or filters to bring the query closer to the knowledge base's wording while preserving the user's intent.
 
-常见策略如下：
+Common strategies include:
 
-| 策略                | 适用场景                   | 例子                                                        |
-| ------------------- | -------------------------- | ----------------------------------------------------------- |
-| 规范化改写          | 口语化、缩写、上下文缺失   | “钱能退吗”改成“退款政策、退款条件、退款流程”                |
-| Multi-Query         | 表达可能有多种说法         | 同时检索“取消订阅”“关闭自动续费”“停止会员计划”              |
-| Query Decomposition | 问题包含多个子问题         | 把“对比 Stripe 和 Square 的手续费和争议处理”拆成 4 个子问题 |
-| Step-back Query     | 问题太细，缺背景           | 先检索“订阅计费规则”，再回答具体取消问题                    |
-| HyDE                | 查询太短，和文档形态差异大 | 先生成假设答案，再用假设答案向量检索真实文档                |
-| Self-Query          | 问题里包含过滤条件         | 从“查 2025 年 Java 相关政策”提取年份和类别过滤              |
+| Strategy            | Suitable scenario                                   | Example                                                                            |
+| ------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Normalization       | Colloquial language, abbreviations, missing context | Rewrite “Can I get my money back?” as “refund policy, eligibility, and process”    |
+| Multi-Query         | A concept has several common phrasings              | Search “cancel subscription,” “turn off auto-renewal,” and “end membership”        |
+| Query Decomposition | A question contains multiple subquestions           | Split “Compare Stripe and Square fees and dispute handling” into four subquestions |
+| Step-back Query     | A question is too specific and lacks context        | Retrieve “subscription billing rules” before answering a cancellation question     |
+| HyDE                | Query is short or differs from document style       | Generate a hypothetical answer and use its embedding to retrieve real documents    |
+| Self-Query          | The question includes filters                       | Extract year and category filters from “Find Java policies from 2025”              |
 
-LangChain 的 `MultiQueryRetriever`、`SelfQueryRetriever` 等组件提供了对应实现。原始 query 应保留为一路召回输入，再与改写 query 的结果融合；只保留改写结果时，模型一旦理解错意图，后续候选会整体偏离。
+LangChain provides components such as `MultiQueryRetriever` and `SelfQueryRetriever`. Keep the original query as one retrieval input and fuse its results with rewritten-query results. If only rewritten queries are used, a misunderstanding can skew the entire candidate set.
 
-### Rerank
+### Reranking
 
-用户问：“线程池为什么会触发拒绝策略？”
+Suppose a user asks, “Why does a thread pool trigger a rejection policy?”
 
-向量召回可能找出这些片段：
+Vector retrieval might return these passages:
 
-1. 线程池核心参数说明。
-2. 拒绝策略枚举列表。
-3. 队列满、线程数达到 maximumPoolSize 后触发拒绝策略的条件。
-4. 线程池使用示例代码。
+1. An explanation of core thread-pool parameters.
+2. A list of rejection policies.
+3. The conditions for triggering a rejection policy when the queue is full and the pool has reached `maximumPoolSize`.
+4. Example thread-pool code.
 
-前两条与“线程池”“拒绝策略”在语义上接近，第 3 条才直接说明触发条件。双塔检索分别编码 query 和 document，再按向量距离快速召回；Rerank 通常使用 Cross-Encoder 或专用重排模型，把 query 与每条候选一起评分，将能够回答问题的内容排到前面。精度更细，计算开销也更高，因此一般只处理粗召回后的少量候选。
+The first two results are semantically related to “thread pool” and “rejection policy,” but the third directly explains the trigger conditions. Dual-encoder retrieval encodes the query and documents separately, then quickly retrieves candidates by vector distance. Reranking usually uses a Cross-Encoder or specialized reranker to score the query together with each candidate, moving passages that answer the question to the top. It is more precise but more expensive, so it usually processes only a small set of retrieved candidates.
 
-一条常见链路如下，候选数量要结合延迟预算和评测结果调整：
+A common pipeline is shown below. Tune candidate counts based on the latency budget and evaluation results:
 
-1. Metadata 预过滤。
-2. Hybrid Search 粗召回 30 到 100 条。
-3. 去重和相邻片段合并。
-4. Rerank 选出 5 到 10 条。
-5. 上下文压缩后放入 Prompt。
+1. Prefilter by metadata.
+2. Use Hybrid Search to retrieve 30–100 candidates.
+3. Deduplicate and merge adjacent passages.
+4. Use a reranker to select 5–10 passages.
+5. Compress the context and add it to the Prompt.
 
 ### GraphRAG
 
-![什么是 GraphRAG？](./images/shared/graphrag-simplified-architecture-diagram.png)
+![GraphRAG overview](./images/shared/graphrag-simplified-architecture-diagram.png)
 
-GraphRAG（Graph-based Retrieval-Augmented Generation）是一类把图结构用于检索增强的方案。系统可以把文档中的实体、关系和结构化上下文显式建模，查询时沿图关系收集证据，再交给大模型生成答案。
+Graph-based Retrieval-Augmented Generation (GraphRAG) uses graph structures for retrieval-augmented generation. A system explicitly models entities, relationships, and structured context from documents, then follows graph relationships to gather evidence for the LLM to answer a query.
 
-GraphRAG 改变了检索对象。图数据库可以承载这些数据，但是否使用某个图数据库产品并不是判断 GraphRAG 的唯一条件。
+GraphRAG changes what the system retrieves. A graph database can store the data, but using a particular graph database product is not the only criterion for calling a system GraphRAG.
 
-传统向量 RAG 主要检索文本 Chunk。GraphRAG 可以检索节点、边、图路径和原始文本证据；社区摘要是 Microsoft GraphRAG 等实现采用的一种索引形式，并非所有 GraphRAG 系统都要求使用。
+Traditional vector RAG primarily retrieves text chunks. GraphRAG can retrieve nodes, edges, graph paths, and source-text evidence. Community summaries are one indexing method used by implementations such as Microsoft GraphRAG, but are not required by every GraphRAG system.
 
-打个比方：
+One analogy is:
 
-- **向量 RAG** 像在图书馆里按语义找几页相似内容。
-- **GraphRAG** 像先整理出人物关系图、事件时间线和主题目录，再沿着关系线索找证据。
+- **Vector RAG** is like finding a few semantically similar pages in a library.
+- **GraphRAG** is like first organizing a relationship map, event timeline, and topic index, then following those connections to find evidence.
 
-向量 RAG 擅长判断“这段话和我的问题像不像”，GraphRAG 更擅长理解“这些对象之间到底怎么连起来”。
+Vector RAG is good at finding passages that resemble a question. GraphRAG is better suited to exploring how entities are connected.
 
-![GraphRAG 和传统向量 RAG 的本质区别](./images/shared/graphrag-vs-rag.png)
+![GraphRAG compared with traditional vector RAG](./images/shared/graphrag-vs-rag.png)
 
-| 维度     | 传统向量 RAG               | GraphRAG                               |
-| -------- | -------------------------- | -------------------------------------- |
-| 检索对象 | 文本 Chunk                 | 实体、关系、路径、社区摘要、原文片段   |
-| 核心能力 | 语义相似度召回             | 关系推理、图遍历、全局主题聚合         |
-| 数据结构 | 向量索引为主               | 知识图谱 + 向量索引 + 全文索引         |
-| 适合问题 | 局部事实问答、文档片段解释 | 多跳关系问答、跨文档归纳、复杂业务分析 |
+| Dimension       | Traditional vector RAG                        | GraphRAG                                                                                  |
+| --------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Retrieval unit  | Text chunks                                   | Entities, relationships, paths, community summaries, and source passages                  |
+| Core capability | Semantic similarity retrieval                 | Relationship reasoning, graph traversal, and global topic aggregation                     |
+| Data structure  | Primarily a vector index                      | Knowledge graph, vector index, and full-text index                                        |
+| Suitable tasks  | Local fact questions and passage explanations | Multi-hop relationship questions, cross-document synthesis, and complex business analysis |
 
-### 知识库更新
+### Knowledge Base Updates
 
-RAG 知识库需要持续处理新增、修改和删除。更新完成后，检索结果要与当前文档一致，权限元数据也要同步；某个写入端失败时，系统还要能定位具体文档，并恢复到上一版健康索引。
+A RAG knowledge base must continuously process additions, modifications, and deletions. After an update, retrieved results should match the current documents and permission metadata should be synchronized. If one index target fails, the system must identify the affected documents and recover to the last healthy index.
 
-索引和查询必须使用同一套 Embedding 模型及版本。不同模型生成的向量空间不通用，即使维度相同，相似度分数也没有可比性。升级 Embedding 模型或 Chunk 策略时，通常需要建立新索引，用同一批评测数据对比后再切换别名，旧索引保留一段时间用于回滚。
+Indexing and querying must use the same Embedding model and version. Different models produce incompatible vector spaces; even vectors with the same dimensions have incomparable similarity scores. When upgrading an Embedding model or Chunking strategy, build a new index, compare it with the same evaluation set, then switch the alias. Keep the old index temporarily for rollback.
 
-日常更新和结构性迁移适合用不同策略：
+Use different strategies for routine updates and structural migrations:
 
-| 维度     | 增量更新                       | 全量重建                                 |
-| -------- | ------------------------------ | ---------------------------------------- |
-| 处理范围 | 只处理新增、修改和删除的文档   | 重新处理整个知识库                       |
-| 适用场景 | 高频日常变更、分钟级同步       | 模型升级、Chunk 策略调整、严重故障恢复   |
-| 主要依赖 | Webhook、CDC、轮询和消息队列   | 源系统快照、新旧索引并行和原子别名切换   |
-| 主要风险 | 事件漏检、乱序、重复和部分成功 | 重建成本高，切换或回滚设计不完整影响服务 |
+| Dimension         | Incremental update                                            | Full rebuild                                                                  |
+| ----------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Scope             | Process only added, modified, and deleted documents           | Reprocess the entire knowledge base                                           |
+| Suitable for      | Frequent routine changes and minute-level synchronization     | Model upgrades, Chunking changes, and recovery from major failures            |
+| Main dependencies | Webhooks, CDC, polling, and message queues                    | Source-system snapshot, parallel old and new indexes, and atomic alias switch |
+| Main risks        | Missed, out-of-order, or duplicate events and partial success | High rebuild cost; incomplete switch or rollback can affect service           |
 
-生产环境常用“事件驱动 + 轮询兜底 + 对账修复”的组合。元数据库记录文档版本、内容 Hash、Embedding 版本、Chunk 版本和各索引端状态；向量库、全文索引与元数据库发生部分成功时，后台补偿任务根据状态重试和对账。
+Production systems often combine event-driven updates, polling as a fallback, and reconciliation. A metadata database records document versions, content hashes, Embedding and Chunk versions, and the status of each index. If the vector store, full-text index, and metadata database are only partially updated, background compensation jobs retry and reconcile based on their recorded states.
 
-## AI 系统设计
+## AI System Design
 
-相关原文：
+Related guides:
 
-- [AI 应用系统设计：从 Prompt Demo 到生产级架构](./system-design/ai-application-architecture.md)
-- [大模型网关详解：多模型路由、Fallback、限流与成本控制](./system-design/llm-gateway.md)
-- [AI 可观测性与 Trace：如何还原 Agent 的完整执行过程](./system-design/ai-observability.md)
-- [LLM/Agent 安全实战：从 Prompt Injection、工具越权到沙箱隔离](./system-design/llm-security.md)
-- [AI 语音技术详解：从 ASR、TTS 到实时语音 Agent 的工程化落地](./system-design/ai-voice.md)
+- [AI Application System Design: From Prompt Demo to Production Architecture](./system-design/ai-application-architecture.md)
+- [LLM Gateway Explained: Model Routing, Fallback, Rate Limiting, and Cost Control](./system-design/llm-gateway.md)
+- [AI Observability and Tracing: Reconstructing an Agent's Execution](./system-design/ai-observability.md)
+- [LLM/Agent Security in Practice: Prompt Injection, Tool Privilege Escalation, and Sandboxing](./system-design/llm-security.md)
+- [AI Voice Technology: From ASR and TTS to Production Voice Agents](./system-design/ai-voice.md)
 
-### 生产级 AI 应用架构
+### Production-Grade AI Application Architecture
 
-最简单的 AI Demo 只有一条链路：前端提交问题，后端拼接 Prompt，调用模型 API，再返回答案。它能验证产品想法，却没有处理生产系统里的稳定性、权限、成本、可观测、评测和数据治理。
+The simplest AI demo has one path: the frontend submits a question, the backend builds a Prompt, calls a model API, and returns the answer. It can validate a product idea, but does not address production reliability, permissions, cost, observability, evaluation, or data governance.
 
-生产级 AI 应用通常按职责拆成几层：
+Production AI applications are often divided into layers by responsibility:
 
-| 层级                   | 主要职责                                                         |
-| ---------------------- | ---------------------------------------------------------------- |
-| 入口层                 | 认证鉴权、请求标准化、限流、幂等和敏感内容预处理                 |
-| 业务编排层             | 选择普通问答、RAG、Agent 或异步任务，控制确认、重试和降级        |
-| Prompt 与 Context 管理 | 管理模板版本、变量注入、Token 预算、灰度发布和回滚               |
-| 模型网关               | 统一模型接入、路由、限流、Fallback、成本归因和调用观测           |
-| 知识、记忆与工具层     | 分别管理外部知识、个性化记忆和真实业务操作                       |
-| 评测与观测层           | 记录调用链、版本、质量、延迟、成本和 Badcase，支持回放与发布门禁 |
+| Layer                         | Main responsibilities                                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Entry                         | Authentication, request normalization, rate limiting, idempotency, and sensitive-content preprocessing  |
+| Business orchestration        | Choose standard Q&A, RAG, an agent, or an asynchronous task; manage confirmation, retries, and fallback |
+| Prompt and Context management | Manage template versions, variable injection, token budgets, staged releases, and rollbacks             |
+| Model Gateway                 | Unify model access, routing, rate limits, fallback, cost attribution, and call observability            |
+| Knowledge, memory, and tools  | Manage external knowledge, personalized memory, and real business operations separately                 |
+| Evaluation and observability  | Record traces, versions, quality, latency, cost, and bad cases; support replay and release gates        |
 
-这些模块不一定都要独立部署。早期项目可以在单体应用中划分清楚职责，调用量、团队数量或治理需求增长后再拆服务。关键是让模型生成和确定性业务规则分开：模型负责理解意图、生成内容和提出工具调用，身份、权限、金额、审批与幂等由代码和业务系统决定。
+These modules do not all need separate deployments. Early projects can define clear responsibilities inside a monolith and split services later as call volume, team size, or governance needs grow. Keep model generation separate from deterministic business rules: the model interprets intent, generates content, and proposes tool calls; code and business systems decide identity, permissions, amounts, approvals, and idempotency.
 
 ### LLM Gateway
 
-LLM Gateway 是应用层和模型供应商之间的治理入口。它除了处理鉴权、限流、转发等普通 API 问题，还要管理模型选择、Token 预算、上下文长度、供应商差异、流式输出、工具调用、结构化响应、成本统计和 Prompt 版本。
+An LLM Gateway is a governance layer between the application and model providers. In addition to authentication, rate limiting, and forwarding, it manages model selection, token budgets, context length, provider differences, streaming, tool calls, structured responses, cost tracking, and Prompt versions.
 
-LLM Router 只负责为当前请求选择模型，是 Gateway 中的一个环节。Gateway 管理的是从请求进入到结果返回的完整生命周期，包括统一接入、路由、Fallback、错误处理、观测、审计和成本归因。
+An LLM Router only selects a model for the current request; it is one component of the Gateway. The Gateway manages the full lifecycle from request arrival to result delivery, including unified access, routing, fallback, error handling, observability, auditing, and cost attribution.
 
-模型调用量很小、只接一家供应商的内部工具，可以先用共享 `LLMClient` 统一处理密钥、超时、重试和日志。多个服务、团队或租户开始复用模型能力后，再逐步补充模型注册表、配额、路由、缓存、成本和审计；LLM Gateway 是一组需要集中治理的职责，不一定从第一天起就是独立服务。
+An internal tool with low call volume and one provider can start with a shared `LLMClient` for keys, timeouts, retries, and logs. Add a model registry, quotas, routing, caching, cost tracking, and auditing as multiple services, teams, or tenants begin to share models. An LLM Gateway is a set of responsibilities to govern centrally; it does not need to be a separate service from day one.
 
-### AI 可观测性与 Trace
+### AI Observability and Tracing
 
-AI 接口返回 HTTP 200，不代表回答正确或任务完成。RAG 可能在问题改写、召回、重排或上下文截断阶段出错；Agent 还可能选错工具、重复执行有副作用的操作，或者在多 Agent 归并时漏掉结果。
+An AI endpoint returning HTTP 200 does not mean the answer is correct or the task is complete. RAG can fail during query rewriting, retrieval, reranking, or context truncation. An agent may select the wrong tool, repeat an action with side effects, or omit a result during multi-agent aggregation.
 
-常见观测信号各自回答不同问题：
+Common observability signals answer different questions:
 
-| 信号       | 主要回答的问题               | 典型内容                                         |
-| ---------- | ---------------------------- | ------------------------------------------------ |
-| Metrics    | 系统整体是否异常             | 请求量、错误率、P95 延迟、Token 用量、工具失败率 |
-| Logs       | 某个时间点发生了什么事件     | 异常堆栈、状态变更、重试原因、业务告警           |
-| Trace      | 一次请求经历了哪些步骤       | 模型、检索、工具、Agent 和上下游关系             |
-| Evaluation | 输出质量和任务结果是否合格   | 正确性、忠实度、工具选择、任务完成度、安全性     |
-| Audit      | 谁在什么权限下执行了什么操作 | 用户身份、审批记录、权限决策、外部写操作         |
+| Signal     | Main question                                      | Typical content                                                         |
+| ---------- | -------------------------------------------------- | ----------------------------------------------------------------------- |
+| Metrics    | Is the system behaving abnormally overall?         | Request volume, error rate, P95 latency, token usage, tool failure rate |
+| Logs       | What happened at a specific time?                  | Exception stack, state changes, retry reason, business alerts           |
+| Trace      | Which steps did one request take?                  | Models, retrieval, tools, agents, and upstream/downstream relationships |
+| Evaluation | Did the output and task result meet requirements?  | Correctness, faithfulness, tool choice, task completion, safety         |
+| Audit      | Who performed which action under what permissions? | User identity, approval records, permission decisions, external writes  |
 
-长任务还要区分 Session、Run、Trace、Span 和 Attempt。Session 串起多轮会话，Run 表示一次任务，Trace 对应一次实际调用链，Span 表示其中的模型、检索或工具操作，Attempt 记录同一步骤的第几次尝试。人工审批或异步恢复后可以创建新 Trace，但要沿用同一个 `runId`。
+For long-running tasks, distinguish Session, Run, Trace, Span, and Attempt. A Session connects multiple conversation turns; a Run represents one task; a Trace is one actual call path; a Span represents a model, retrieval, or tool operation within it; and an Attempt records which try a step is on. Human approval or asynchronous recovery may create a new Trace, but should retain the same `runId`.
 
-确认过的失败 Trace 应脱敏后回流到 Badcase 集合。修复 Prompt、RAG、工具或编排逻辑后，用这些轨迹执行离线回放和回归评测，再通过灰度发布验证线上效果。
+Sanitize confirmed failure traces before adding them to the bad-case set. After fixing a Prompt, RAG, tool, or orchestration logic, replay these traces offline and run regression evaluations, then verify the change through a staged production rollout.
 
-### LLM 与 Agent 安全
+### LLM and Agent Security
 
-Agent 接入 RAG、Memory、工具、MCP、Skills、浏览器和代码执行后，外部内容既能影响模型判断，也可能触发真实业务操作。用户输入、网页、邮件、RAG 片段、Memory、工具结果、其他 Agent 消息和模型生成的参数都要按不可信数据处理。
+When an agent uses RAG, memory, tools, MCP, Skills, a browser, or code execution, external content can influence model decisions and may trigger real business operations. Treat user input, web pages, email, RAG passages, memory, tool results, messages from other agents, and model-generated parameters as untrusted data.
 
-Prompt Injection 描述的是攻击指令进入应用并改变既定任务；间接注入的指令藏在网页、邮件、文档、图片、RAG 或工具结果中；Jailbreak 主要试图绕过模型本身的安全策略。三者可以重叠，靠 System Prompt 中的一句“忽略外部指令”无法覆盖完整调用链。
+Prompt injection describes attack instructions entering an application and changing its intended task. Indirect injection hides instructions in web pages, email, documents, images, RAG passages, or tool results. A jailbreak primarily attempts to bypass the model's own safety policies. These threats can overlap, and one System Prompt instruction to “ignore external instructions” cannot protect the full call path.
 
-安全控制要落在模型之外：
+Security controls must be enforced outside the model:
 
-- 检索前根据用户、租户和数据范围做权限过滤。
-- 根据场景和身份裁剪可见工具，执行前重新鉴权。
-- 将通用读写接口拆成业务动作明确、参数受限的工具。
-- 高风险操作绑定具体工具、参数、资源版本和有效期进行审批。
-- Prompt、日志和 Trace 默认只保存必要元数据，原文按用途、权限和期限受控留存。
-- 代码执行和网络访问放进受限环境，并限制文件、进程、资源和网络出口。
-- 把模型、Prompt、MCP Server、Skill、数据集、容器镜像和评测器纳入供应链治理。
+- Filter permissions by user, tenant, and data scope before retrieval.
+- Limit visible tools by scenario and identity, then reauthorize before execution.
+- Replace generic read/write endpoints with tools that have clear business actions and restricted parameters.
+- Bind approvals for high-risk actions to the specific tool, parameters, resource version, and expiration time.
+- Store only necessary metadata in Prompts, logs, and traces by default; retain raw content under controls for purpose, access, and duration.
+- Run code execution and network access in a restricted environment with limits on files, processes, resources, and network egress.
+- Include models, Prompts, MCP Servers, Skills, datasets, container images, and evaluators in supply-chain governance.
 
-模型可以提出操作建议，最终权限、业务规则、审批和执行结果必须由服务端校验。
+The model may propose an action, but the server must validate permissions, business rules, approvals, and execution results.
 
-### 实时语音 Agent
+### Real-Time Voice Agents
 
-语音 Agent 在普通 Agent 链路之外增加了音频采集、前处理、VAD、ASR、TTS、流式播放和打断处理。一轮对话会依次经过这些环节：
+In addition to a standard agent pipeline, a voice agent handles audio capture, preprocessing, VAD, ASR, TTS, streaming playback, and interruptions. One conversation turn passes through these stages:
 
 ```text
-音频采集 -> 降噪/回声消除 -> VAD -> 流式 ASR -> 上下文组装
-        -> LLM/工具调用 -> 流式 TTS -> 音频播放 -> 状态回写
+Audio capture -> Noise reduction / echo cancellation -> VAD -> Streaming ASR -> Context assembly
+               -> LLM / tool calls -> Streaming TTS -> Audio playback -> State update
 ```
 
-文本聊天慢 1 秒通常还能接受，语音对话慢 1 秒就会出现明显停顿。优化时要看端到端 P95/P99 延迟，把能并行的环节提前：ASR 产生稳定前缀后预判意图，LLM 输出第一个短句后立即启动 TTS，客户端收到音频块后边收边播。
+A one-second delay may be acceptable in text chat but creates an obvious pause in voice conversation. Optimize end-to-end P95/P99 latency and start independent stages early: predict intent from a stable ASR prefix, start TTS as soon as the LLM emits its first short sentence, and have the client play audio as chunks arrive.
 
-打断也不只是暂停播放器。系统要停止当前 TTS、清空待播放队列、取消仍在生成的模型请求，并判断已经触发的工具能否撤销。工具存在外部副作用时，打断策略需要和幂等、补偿及任务状态一起设计。
+An interruption is more than pausing the player. The system must stop the current TTS, clear queued audio, cancel any model request still generating, and determine whether tools already invoked can be canceled. For tools with external side effects, design interruption handling together with idempotency, compensation, and task state.
 
 <!-- @include: @article-footer.snippet.md -->

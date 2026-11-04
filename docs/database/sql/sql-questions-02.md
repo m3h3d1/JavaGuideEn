@@ -32,14 +32,14 @@ Common ways to insert rows in SQL:
 
 The `exam_record` table already exists with the schema below. Insert both records with one statement.
 
-| Filed       | Type       | Null | Key | Extra          | Default | Comment  |
-| ----------- | ---------- | ---- | --- | -------------- | ------- | -------- |
-| id          | int(11)    | NO   | PRI | auto_increment | (NULL)  | 自增 ID  |
-| uid         | int(11)    | NO   |     |                | (NULL)  | 用户 ID  |
-| exam_id     | int(11)    | NO   |     |                | (NULL)  | 试卷 ID  |
-| start_time  | datetime   | NO   |     |                | (NULL)  | 开始时间 |
-| submit_time | datetime   | YES  |     |                | (NULL)  | 提交时间 |
-| score       | tinyint(4) | YES  |     |                | (NULL)  | 得分     |
+| Filed       | Type       | Null | Key | Extra          | Default | Comment           |
+| ----------- | ---------- | ---- | --- | -------------- | ------- | ----------------- |
+| id          | int(11)    | NO   | PRI | auto_increment | (NULL)  | Auto-increment ID |
+| uid         | int(11)    | NO   |     |                | (NULL)  | User ID           |
+| exam_id     | int(11)    | NO   |     |                | (NULL)  | Exam ID           |
+| start_time  | datetime   | NO   |     |                | (NULL)  | Start time        |
+| submit_time | datetime   | YES  |     |                | (NULL)  | Submission time   |
+| score       | tinyint(4) | YES  |     |                | (NULL)  | Score             |
 
 **Answer:**
 
@@ -56,14 +56,14 @@ INSERT INTO exam_record (uid, exam_id, start_time, submit_time, score) VALUES
 
 `exam_record`:
 
-| Filed       | Type       | Null | Key | Extra          | Default | Comment  |
-| ----------- | ---------- | ---- | --- | -------------- | ------- | -------- |
-| id          | int(11)    | NO   | PRI | auto_increment | (NULL)  | 自增 ID  |
-| uid         | int(11)    | NO   |     |                | (NULL)  | 用户 ID  |
-| exam_id     | int(11)    | NO   |     |                | (NULL)  | 试卷 ID  |
-| start_time  | datetime   | NO   |     |                | (NULL)  | 开始时间 |
-| submit_time | datetime   | YES  |     |                | (NULL)  | 提交时间 |
-| score       | tinyint(4) | YES  |     |                | (NULL)  | 得分     |
+| Filed       | Type       | Null | Key | Extra          | Default | Comment           |
+| ----------- | ---------- | ---- | --- | -------------- | ------- | ----------------- |
+| id          | int(11)    | NO   | PRI | auto_increment | (NULL)  | Auto-increment ID |
+| uid         | int(11)    | NO   |     |                | (NULL)  | User ID           |
+| exam_id     | int(11)    | NO   |     |                | (NULL)  | Exam ID           |
+| start_time  | datetime   | NO   |     |                | (NULL)  | Start time        |
+| submit_time | datetime   | YES  |     |                | (NULL)  | Submission time   |
+| score       | tinyint(4) | YES  |     |                | (NULL)  | Score             |
 
 The `exam_record_before_2021` table has been created to back up completed exam attempts from before 2021. It has the same schema as `exam_record`. Import the completed attempts from before 2021 into it.
 
@@ -82,14 +82,14 @@ WHERE YEAR(submit_time) < 2021;
 
 `examination_info`:
 
-| Filed        | Type        | Null | Key | Extra          | Default | Comment      |
-| ------------ | ----------- | ---- | --- | -------------- | ------- | ------------ |
-| id           | int(11)     | NO   | PRI | auto_increment | (NULL)  | 自增 ID      |
-| exam_id      | int(11)     | NO   | UNI |                | (NULL)  | 试卷 ID      |
-| tag          | varchar(32) | YES  |     |                | (NULL)  | 类别标签     |
-| difficulty   | varchar(8)  | YES  |     |                | (NULL)  | 难度         |
-| duration     | int(11)     | NO   |     |                | (NULL)  | 时长(分钟数) |
-| release_time | datetime    | YES  |     |                | (NULL)  | 发布时间     |
+| Filed        | Type        | Null | Key | Extra          | Default | Comment            |
+| ------------ | ----------- | ---- | --- | -------------- | ------- | ------------------ |
+| id           | int(11)     | NO   | PRI | auto_increment | (NULL)  | Auto-increment ID  |
+| exam_id      | int(11)     | NO   | UNI |                | (NULL)  | Exam ID            |
+| tag          | varchar(32) | YES  |     |                | (NULL)  | Category tag       |
+| difficulty   | varchar(8)  | YES  |     |                | (NULL)  | Difficulty         |
+| duration     | int(11)     | NO   |     |                | (NULL)  | Duration (minutes) |
+| release_time | datetime    | YES  |     |                | (NULL)  | Release time       |
 
 **Answer:**
 
@@ -102,14 +102,14 @@ REPLACE INTO examination_info VALUES
 
 **Description:** The `examination_info` table has the following schema:
 
-| Filed        | Type     | Null | Key | Extra          | Default | Comment  |
-| ------------ | -------- | ---- | --- | -------------- | ------- | -------- |
-| id           | int(11)  | NO   | PRI | auto_increment | (NULL)  | 自增 ID  |
-| exam_id      | int(11)  | NO   | UNI |                | (NULL)  | 试卷 ID  |
-| tag          | char(32) | YES  |     |                | (NULL)  | 类别标签 |
-| difficulty   | char(8)  | YES  |     |                | (NULL)  | 难度     |
-| duration     | int(11)  | NO   |     |                | (NULL)  | 时长     |
-| release_time | datetime | YES  |     |                | (NULL)  | 发布时间 |
+| Filed        | Type     | Null | Key | Extra          | Default | Comment           |
+| ------------ | -------- | ---- | --- | -------------- | ------- | ----------------- |
+| id           | int(11)  | NO   | PRI | auto_increment | (NULL)  | Auto-increment ID |
+| exam_id      | int(11)  | NO   | UNI |                | (NULL)  | Exam ID           |
+| tag          | char(32) | YES  |     |                | (NULL)  | Category tag      |
+| difficulty   | char(8)  | YES  |     |                | (NULL)  | Difficulty        |
+| duration     | int(11)  | NO   |     |                | (NULL)  | Duration          |
+| release_time | datetime | YES  |     |                | (NULL)  | Release time      |
 
 Change every `tag` value of `PYTHON` to `Python` in `examination_info`.
 
@@ -134,14 +134,14 @@ SET tag = REPLACE(tag,'PYTHON','Python')
 
 **Description:** The `exam_record` table contains users' exam attempts from many years. Its schema is shown below. In this table, **`submit_time`** is the completion time.
 
-| Filed       | Type       | Null | Key | Extra          | Default | Comment  |
-| ----------- | ---------- | ---- | --- | -------------- | ------- | -------- |
-| id          | int(11)    | NO   | PRI | auto_increment | (NULL)  | 自增 ID  |
-| uid         | int(11)    | NO   |     |                | (NULL)  | 用户 ID  |
-| exam_id     | int(11)    | NO   |     |                | (NULL)  | 试卷 ID  |
-| start_time  | datetime   | NO   |     |                | (NULL)  | 开始时间 |
-| submit_time | datetime   | YES  |     |                | (NULL)  | 提交时间 |
-| score       | tinyint(4) | YES  |     |                | (NULL)  | 得分     |
+| Filed       | Type       | Null | Key | Extra          | Default | Comment           |
+| ----------- | ---------- | ---- | --- | -------------- | ------- | ----------------- |
+| id          | int(11)    | NO   | PRI | auto_increment | (NULL)  | Auto-increment ID |
+| uid         | int(11)    | NO   |     |                | (NULL)  | User ID           |
+| exam_id     | int(11)    | NO   |     |                | (NULL)  | Exam ID           |
+| start_time  | datetime   | NO   |     |                | (NULL)  | Start time        |
+| submit_time | datetime   | YES  |     |                | (NULL)  | Submission time   |
+| score       | tinyint(4) | YES  |     |                | (NULL)  | Score             |
 
 **Task:** Mark all incomplete attempts in `exam_record` that started **before** September 1, 2021 as completed. Set the completion time to `2099-01-01 00:00:00` and the score to 0.
 
@@ -159,14 +159,14 @@ UPDATE exam_record SET submit_time = '2099-01-01 00:00:00', score = 0 WHERE DATE
 
 In `exam_record`, **`start_time`** is when the attempt began, and **`submit_time`** is when it was submitted, or completed.
 
-| Filed       | Type       | Null | Key | Extra          | Default | Comment  |
-| ----------- | ---------- | ---- | --- | -------------- | ------- | -------- |
-| id          | int(11)    | NO   | PRI | auto_increment | (NULL)  | 自增 ID  |
-| uid         | int(11)    | NO   |     |                | (NULL)  | 用户 ID  |
-| exam_id     | int(11)    | NO   |     |                | (NULL)  | 试卷 ID  |
-| start_time  | datetime   | NO   |     |                | (NULL)  | 开始时间 |
-| submit_time | datetime   | YES  |     |                | (NULL)  | 提交时间 |
-| score       | tinyint(4) | YES  |     |                | (NULL)  | 得分     |
+| Filed       | Type       | Null | Key | Extra          | Default | Comment           |
+| ----------- | ---------- | ---- | --- | -------------- | ------- | ----------------- |
+| id          | int(11)    | NO   | PRI | auto_increment | (NULL)  | Auto-increment ID |
+| uid         | int(11)    | NO   |     |                | (NULL)  | User ID           |
+| exam_id     | int(11)    | NO   |     |                | (NULL)  | Exam ID           |
+| start_time  | datetime   | NO   |     |                | (NULL)  | Start time        |
+| submit_time | datetime   | YES  |     |                | (NULL)  | Submission time   |
+| score       | tinyint(4) | YES  |     |                | (NULL)  | Score             |
 
 **Task:** Delete rows from `exam_record` for attempts lasting less than five minutes with a failing score (below 60).
 
@@ -218,14 +218,14 @@ DELETE FROM exam_record WHERE TIMESTAMPDIFF(MINUTE, start_time, submit_time) < 5
 
 In `exam_record`, `start_time` is when the attempt began, and `submit_time` is when it was submitted, or completed. It is `NULL` if the attempt is incomplete.
 
-| Filed       | Type       | Null | Key | Extra          | Default | Comment  |
-| ----------- | ---------- | :--: | --- | -------------- | ------- | -------- |
-| id          | int(11)    |  NO  | PRI | auto_increment | (NULL)  | 自增 ID  |
-| uid         | int(11)    |  NO  |     |                | (NULL)  | 用户 ID  |
-| exam_id     | int(11)    |  NO  |     |                | (NULL)  | 试卷 ID  |
-| start_time  | datetime   |  NO  |     |                | (NULL)  | 开始时间 |
-| submit_time | datetime   | YES  |     |                | (NULL)  | 提交时间 |
-| score       | tinyint(4) | YES  |     |                | (NULL)  | 分数     |
+| Filed       | Type       | Null | Key | Extra          | Default | Comment           |
+| ----------- | ---------- | :--: | --- | -------------- | ------- | ----------------- |
+| id          | int(11)    |  NO  | PRI | auto_increment | (NULL)  | Auto-increment ID |
+| uid         | int(11)    |  NO  |     |                | (NULL)  | User ID           |
+| exam_id     | int(11)    |  NO  |     |                | (NULL)  | Exam ID           |
+| start_time  | datetime   |  NO  |     |                | (NULL)  | Start time        |
+| submit_time | datetime   | YES  |     |                | (NULL)  | Submission time   |
+| score       | tinyint(4) | YES  |     |                | (NULL)  | Score             |
 
 **Task:** Among attempts that are incomplete **or** lasted less than five minutes, delete the three rows with the earliest start times.
 
@@ -246,14 +246,14 @@ LIMIT 3
 
 **Description:** The `exam_record` table contains users' exam attempts from many years. Its schema is shown below.
 
-| Filed       | Type       | Null | Key | Extra          | Default | Comment  |
-| ----------- | ---------- | :--: | --- | -------------- | ------- | -------- |
-| id          | int(11)    |  NO  | PRI | auto_increment | (NULL)  | 自增 ID  |
-| uid         | int(11)    |  NO  |     |                | (NULL)  | 用户 ID  |
-| exam_id     | int(11)    |  NO  |     |                | (NULL)  | 试卷 ID  |
-| start_time  | datetime   |  NO  |     |                | (NULL)  | 开始时间 |
-| submit_time | datetime   | YES  |     |                | (NULL)  | 提交时间 |
-| score       | tinyint(4) | YES  |     |                | (NULL)  | 分数     |
+| Filed       | Type       | Null | Key | Extra          | Default | Comment           |
+| ----------- | ---------- | :--: | --- | -------------- | ------- | ----------------- |
+| id          | int(11)    |  NO  | PRI | auto_increment | (NULL)  | Auto-increment ID |
+| uid         | int(11)    |  NO  |     |                | (NULL)  | User ID           |
+| exam_id     | int(11)    |  NO  |     |                | (NULL)  | Exam ID           |
+| start_time  | datetime   |  NO  |     |                | (NULL)  | Start time        |
+| submit_time | datetime   | YES  |     |                | (NULL)  | Submission time   |
+| score       | tinyint(4) | YES  |     |                | (NULL)  | Score             |
 
 **Task:** Delete all rows from `exam_record` **and reset the auto-incrementing primary key**.
 
@@ -283,29 +283,29 @@ TRUNCATE  exam_record;
 
 The original user information table:
 
-| Filed         | Type        | Null | Key | Default           | Extra          | Comment  |
-| ------------- | ----------- | ---- | --- | ----------------- | -------------- | -------- |
-| id            | int(11)     | NO   | PRI | (NULL)            | auto_increment | 自增 ID  |
-| uid           | int(11)     | NO   | UNI | (NULL)            |                | 用户 ID  |
-| nick_name     | varchar(64) | YES  |     | (NULL)            |                | 昵称     |
-| achievement   | int(11)     | YES  |     | 0                 |                | 成就值   |
-| level         | int(11)     | YES  |     | (NULL)            |                | 用户等级 |
-| job           | varchar(32) | YES  |     | (NULL)            |                | 职业方向 |
-| register_time | datetime    | YES  |     | CURRENT_TIMESTAMP |                | 注册时间 |
+| Filed         | Type        | Null | Key | Default           | Extra          | Comment            |
+| ------------- | ----------- | ---- | --- | ----------------- | -------------- | ------------------ |
+| id            | int(11)     | NO   | PRI | (NULL)            | auto_increment | Auto-increment ID  |
+| uid           | int(11)     | NO   | UNI | (NULL)            |                | User ID            |
+| nick_name     | varchar(64) | YES  |     | (NULL)            |                | Nickname           |
+| achievement   | int(11)     | YES  |     | 0                 |                | Achievement points |
+| level         | int(11)     | YES  |     | (NULL)            |                | User level         |
+| job           | varchar(32) | YES  |     | (NULL)            |                | Career path        |
+| register_time | datetime    | YES  |     | CURRENT_TIMESTAMP |                | Registration time  |
 
 As a data analyst, **create a premium user information table named `user_info_vip`** with the same schema as the user information table.
 
 The expected output is shown below. Write a `CREATE TABLE` statement that includes all constraints and comments shown in the table.
 
-| Filed         | Type        | Null | Key | Default           | Extra          | Comment  |
-| ------------- | ----------- | ---- | --- | ----------------- | -------------- | -------- |
-| id            | int(11)     | NO   | PRI | (NULL)            | auto_increment | 自增 ID  |
-| uid           | int(11)     | NO   | UNI | (NULL)            |                | 用户 ID  |
-| nick_name     | varchar(64) | YES  |     | (NULL)            |                | 昵称     |
-| achievement   | int(11)     | YES  |     | 0                 |                | 成就值   |
-| level         | int(11)     | YES  |     | (NULL)            |                | 用户等级 |
-| job           | varchar(32) | YES  |     | (NULL)            |                | 职业方向 |
-| register_time | datetime    | YES  |     | CURRENT_TIMESTAMP |                | 注册时间 |
+| Filed         | Type        | Null | Key | Default           | Extra          | Comment            |
+| ------------- | ----------- | ---- | --- | ----------------- | -------------- | ------------------ |
+| id            | int(11)     | NO   | PRI | (NULL)            | auto_increment | Auto-increment ID  |
+| uid           | int(11)     | NO   | UNI | (NULL)            |                | User ID            |
+| nick_name     | varchar(64) | YES  |     | (NULL)            |                | Nickname           |
+| achievement   | int(11)     | YES  |     | 0                 |                | Achievement points |
+| level         | int(11)     | YES  |     | (NULL)            |                | User level         |
+| job           | varchar(32) | YES  |     | (NULL)            |                | Career path        |
+| register_time | datetime    | YES  |     | CURRENT_TIMESTAMP |                | Registration time  |
 
 **Approach:** If the old table's name were given, you could use `CREATE TABLE new_table AS SELECT * FROM old_table;`. Since it is not provided, create the table yourself and specify its defaults and keys. (On Nowcoder, the comments must match the problem exactly, including capitalization, and the character set must also be set.)
 
@@ -313,13 +313,13 @@ Answer:
 
 ```sql
 CREATE TABLE IF NOT EXISTS user_info_vip(
-    id INT(11) PRIMARY KEY AUTO_INCREMENT COMMENT '自增ID',
-    uid INT(11) UNIQUE NOT NULL COMMENT '用户ID',
-    nick_name VARCHAR(64) COMMENT '昵称',
-    achievement INT(11) DEFAULT 0 COMMENT '成就值',
-    `level` INT(11) COMMENT '用户等级',
-    job VARCHAR(32) COMMENT '职业方向',
-    register_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间'
+    id INT(11) PRIMARY KEY AUTO_INCREMENT COMMENT 'Auto-increment ID',
+    uid INT(11) UNIQUE NOT NULL COMMENT 'User ID',
+    nick_name VARCHAR(64) COMMENT 'Nickname',
+    achievement INT(11) DEFAULT 0 COMMENT 'Achievement points',
+    `level` INT(11) COMMENT 'User level',
+    job VARCHAR(32) COMMENT 'Career path',
+    register_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Registration time'
 )CHARACTER SET UTF8
 ```
 
@@ -329,15 +329,15 @@ CREATE TABLE IF NOT EXISTS user_info_vip(
 
 **User information table `user_info`:**
 
-| Filed         | Type        | Null | Key | Default           | Extra          | Comment  |
-| ------------- | ----------- | ---- | --- | ----------------- | -------------- | -------- |
-| id            | int(11)     | NO   | PRI | (NULL)            | auto_increment | 自增 ID  |
-| uid           | int(11)     | NO   | UNI | (NULL)            |                | 用户 ID  |
-| nick_name     | varchar(64) | YES  |     | (NULL)            |                | 昵称     |
-| achievement   | int(11)     | YES  |     | 0                 |                | 成就值   |
-| level         | int(11)     | YES  |     | (NULL)            |                | 用户等级 |
-| job           | varchar(32) | YES  |     | (NULL)            |                | 职业方向 |
-| register_time | datetime    | YES  |     | CURRENT_TIMESTAMP |                | 注册时间 |
+| Filed         | Type        | Null | Key | Default           | Extra          | Comment            |
+| ------------- | ----------- | ---- | --- | ----------------- | -------------- | ------------------ |
+| id            | int(11)     | NO   | PRI | (NULL)            | auto_increment | Auto-increment ID  |
+| uid           | int(11)     | NO   | UNI | (NULL)            |                | User ID            |
+| nick_name     | varchar(64) | YES  |     | (NULL)            |                | Nickname           |
+| achievement   | int(11)     | YES  |     | 0                 |                | Achievement points |
+| level         | int(11)     | YES  |     | (NULL)            |                | User level         |
+| job           | varchar(32) | YES  |     | (NULL)            |                | Career path        |
+| register_time | datetime    | YES  |     | CURRENT_TIMESTAMP |                | Registration time  |
 
 **Task:** Add a `school` column after `level` that can store up to 15 characters. Rename `job` to `profession` and change its `VARCHAR` length to 10. Set the default value of `achievement` to 0.
 

@@ -149,7 +149,7 @@ A growing queue means tasks are arriving faster than they are completing. A traf
 
 Add machines when the service lacks overall capacity and tasks can be distributed horizontally. Add threads when an instance has spare CPU and downstream capacity but too little concurrency. If a task has expired, further queueing is pointless. Tasks that cannot be lost should first be written to a message queue or database and handled by a retryable consumer.
 
-For a production thread-pool backlog, see [Troubleshooting Java Backend Production Issues](../jvm/jvm-in-action.md#线程池队列堆积怎么排查) and compare submission and completion rates, thread dumps, and downstream health.
+For a production thread-pool backlog, see [Troubleshooting Java Backend Production Issues](../jvm/jvm-in-action.md#how-do-you-investigate-a-growing-thread-pool-queue) and compare submission and completion rates, thread dumps, and downstream health.
 
 ## Can `CallerRunsPolicy` Provide Backpressure?
 

@@ -1,50 +1,48 @@
 ---
-title: 个人介绍 Q&A
-description: JavaGuide作者Guide个人介绍，19年本科毕业、大学期间变现20w+实现经济独立、坚持写博客的经历与收获分享。
-category: 走近作者
+title: "About the Author: Q&A"
+description: "About Guide, the author of JavaGuide: graduating in 2019, earning over CNY 200,000 during college, becoming financially independent, and learning from years of blogging."
+category: About the Author
 ---
 
-<!-- @include: @small-advertisement.snippet.md -->
+This article introduces me through a few questions and answers.
 
-这篇文章我会通过 Q&A 的形式简单介绍一下我自己。
+## When Did I Graduate?
 
-## 我是什么时候毕业的？
+Some long-time readers may know that I graduated with a bachelor's degree in 2019. After graduation, I joined a foreign-owned company, where the work was relatively relaxed.
 
-很多老读者应该比较清楚，我是 19 年本科毕业的，刚毕业就去了某家外企“养老”。
+My academic background is not strong. I did not do well on the national college entrance exam and scored only about 20 points above the former first-tier university cutoff. I attended an ordinary university in Jingzhou that was neither a Project 985 nor a Project 211 institution. Still, I did not let that define me. I worked harder than many of my classmates and had a rewarding college experience.
 
-我的学校背景是比较差的，高考失利，勉强过了一本线 20 来分，去了荆州的一所很普通的双非一本。不过，还好我没有因为学校而放弃自己，反倒是比身边的同学都要更努力，整个大学还算过的比较充实。
-
-下面这张是当时拍的毕业照（后排最中间的就是我）：
+Here is a photo from my graduation. I am in the middle of the back row.
 
 ![](https://oss.javaguide.cn/javaguide/%E4%B8%AA%E4%BA%BA%E4%BB%8B%E7%BB%8D.png)
 
-## 我坚持写了多久博客？
+## How Long Have I Been Blogging?
 
-时间真快啊！我自己是从大二开始写博客的。那时候就是随意地在博客平台上发发自己的学习笔记和自己写的程序。就比如 [谢希仁老师的《计算机网络》内容总结](../cs-basics/network/computer-network-xiexiren-summary.md) 这篇文章就是我在大二学习计算机网络这门课的时候对照着教材总结的。
+Time passes quickly. I started blogging in my second year of college, posting study notes and small programs on blogging platforms. For example, I wrote [this summary of Xie Xiren's computer networks textbook](../cs-basics/network/computer-network-xiexiren-summary.md) while taking a networking course.
 
-身边也有很多小伙伴经常问我：“我现在写博客还晚么？”
+People often ask me, “Is it too late for me to start a blog?”
 
-我觉得哈！如果你想做什么事情，尽量少问迟不迟，多问自己值不值得，只要你觉得有意义，就尽快开始做吧！人生很奇妙，我们每一步的重大决定，都会对自己未来的人生轨迹产生影响。是好还是坏，也只有我们自己知道了！
+If you want to do something, spend less time asking whether it is too late and more time asking whether it is worthwhile. If it matters to you, start. Major decisions can shape the course of your life, and only you can judge their effects.
 
-对我自己来说，坚持写博客这一项决定对我人生轨迹产生的影响是非常正面的！所以，我也推荐大家养成坚持写博客的习惯。
+For me, choosing to keep blogging had a very positive impact. I encourage others to make writing a regular habit too.
 
-## 我在大学期间赚了多少钱？
+## How Much Did I Earn in College?
 
-在校期间，我还通过办培训班、接私活、技术培训、编程竞赛等方式变现 20w+，成功实现“经济独立”。我用自己赚的钱去了重庆、三亚、恩施、青岛等地旅游，还给家里补贴了很多，减轻了父母的负担。
+While in college, I earned more than **CNY 200,000** by running training classes, taking freelance jobs, teaching programming, and competing in programming contests. I became financially independent. I used some of that money to travel to Chongqing, Sanya, Enshi, Qingdao, and other places, and I helped support my family.
 
-下面这张是我大一下学期办补习班的时候拍的（离开前的最后一顿饭）：
+This photo was taken during my first year, after I ran a tutoring class. It shows our last dinner before we parted ways.
 
-![补习班的最后一顿晚餐](https://oss.javaguide.cn/p3-juejin/f36bfd719b9b4463b2f1d3edc51faa97~tplv-k3u1fbpfcp-zoom-1.jpeg)
+![Last dinner with the tutoring class](https://oss.javaguide.cn/p3-juejin/f36bfd719b9b4463b2f1d3edc51faa97~tplv-k3u1fbpfcp-zoom-1.jpeg)
 
-下面这张是我大三去三亚的时候拍的：
+This photo was taken during a trip to Sanya in my third year.
 
 ![](https://oss.javaguide.cn/javaguide/psc.jpeg)
 
-其实，我在大学就这么努力地开始赚钱，也主要是因为家庭条件太一般，父母赚钱都太辛苦了！也正是因为我自己迫切地想要减轻父母的负担，所以才会去尝试这么多赚钱的方法。
+I worked hard to earn money in college largely because my family did not have much, and my parents worked hard to support us. I wanted to ease that burden, so I tried several ways to earn an income.
 
-我发现做咱们程序员这行的，很多人的家庭条件都挺一般的，选择这个行业的很大原因不是因为自己喜欢，而是为了多赚点钱。
+Many programmers also come from modest backgrounds. Some choose this field less from passion than from the opportunity to earn a better living.
 
-如果你也想通过接私活变现的话，可以在我的公众号后台回复“**接私活**”来了解一些我的个人经验分享。
+If you are interested in freelancing, reply **“接私活”** (“freelance work”) to my official account for some lessons from my experience.
 
 ::: center
 
@@ -52,20 +50,18 @@ category: 走近作者
 
 :::
 
-## 为什么自称 Guide？
+## Why Do I Go by “Guide”?
 
-可能是因为我的项目名字叫做 JavaGuide , 所以导致有很多人称呼我为 **Guide 哥**。
+Because my project is called JavaGuide, many readers started calling me **Guide**. I adopted it as a pen name because it is easier for readers to use.
 
-后面，为了读者更方便称呼，我就将自己的笔名改成了 **Guide**。
-
-我早期写文章用的笔名是 SnailClimb 。很多人不知道这个名字是啥意思，给大家拆解一下就清楚了。SnailClimb=Snail（蜗牛）+Climb(攀登)。我从小就非常喜欢听周杰伦的歌曲，特别是他的《蜗牛》🐌 这首歌曲，另外，当年我高考发挥的算是比较失常，上了大学之后还算是比较“奋青”，所以，我就给自己起的笔名叫做 SnailClimb ，寓意自己要不断向上攀登，嘿嘿 😁
+My earlier pen name was SnailClimb: “Snail” plus “Climb.” I have loved Jay Chou's music since childhood, especially his song “Snail” 🐌. I also did not perform well on the college entrance exam. At university I was motivated to keep moving forward, so the name SnailClimb reflected my wish to continue climbing. 😁
 
 ![](https://oss.javaguide.cn/p3-juejin/37599546f3b34b92a32db579a225aa45~tplv-k3u1fbpfcp-watermark.png)
 
-## 后记
+## Closing Thoughts
 
-凡心所向，素履所往，生如逆旅，一苇以航。
+> Where the heart leads, let simple steps follow. Life is a journey through hardship; keep moving forward with what you have.
 
-生活本就是有苦有甜。共勉！
+Life has both difficult and joyful moments. Let us encourage one another.
 
-![JavaGuide 官方公众号](https://oss.javaguide.cn/github/javaguide/gongzhonghaoxuanchuan.png)
+![JavaGuide official account](https://oss.javaguide.cn/github/javaguide/gongzhonghaoxuanchuan.png)

@@ -20,7 +20,7 @@ The questions are grouped by the chapters in JavaGuide's AI agent section. Each 
 
 Related guides: [AI Agent Fundamentals: Agent Loops, Plan-and-Execute, Task Contracts, Agentic Workflows, and Tool Registration](../agent/agent-basis.md) and [Multi-Agent System Design: Task Decomposition, Shared State, Conflict Handling, and Failure Recovery](../agent/multi-agent.md)
 
-For the full tool-calling lifecycle, permissions, confirmation, idempotency, auditing, timeouts, and Java examples, see [Structured Output and Function Calling](../llm-basis/structured-output-function-calling.md). For evaluation metrics such as task completion, tool calls, and execution traces, see [How to Evaluate Agent Applications](../llm-basis/llm-evaluation.md#agent-应用怎么评测).
+For the full tool-calling lifecycle, permissions, confirmation, idempotency, auditing, timeouts, and Java examples, see [Structured Output and Function Calling](../llm-basis/structured-output-function-calling.md). For evaluation metrics such as task completion, tool calls, and execution traces, see [How to Evaluate Agent Applications](../llm-basis/llm-evaluation.md#how-do-you-evaluate-an-agent-application).
 
 Questions usually start with the definition of an agent, followed by its execution loop and orchestration. Be ready to distinguish chatbots, workflows, and agents in how they handle task flow, state, and tools.
 

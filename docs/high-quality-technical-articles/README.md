@@ -1,5 +1,5 @@
 ---
-title: Curated Technical Articles: Career Growth, Work, Interviews, and Professional Development
+title: "Curated Technical Articles: Career Growth, Work, Interviews, and Professional Development"
 description: A collection of articles on career growth, work experience, interview reviews, career choices, and effective technical learning for long-term development.
 category: Programmer's Life
 sitemap:

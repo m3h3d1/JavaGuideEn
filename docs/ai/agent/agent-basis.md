@@ -1,5 +1,5 @@
 ---
-title: AI Agent Fundamentals: Agent Loops, Plan-and-Execute, Task Contracts, Agentic Workflows, and Tool Registration
+title: "AI Agent Fundamentals: Agent Loops, Plan-and-Execute, Task Contracts, Agentic Workflows, and Tool Registration"
 description: Explains core AI Agent concepts, traces their evolution from passive response to always-on autonomy, and compares Agents, traditional programming, and Workflows.
 category: AI Application Development
 head:
@@ -95,7 +95,7 @@ Short-term memory is usually kept in the conversation context to maintain contin
 
 **Tools** query data, call APIs, read and write files, or execute code. Their results must be appended to the context as the next iteration's Observation. Otherwise, the model cannot see the feedback from external operations or decide what to do next.
 
-For the full tool-calling lifecycle, permissions, confirmation, idempotency, auditing, timeouts, and Java examples, see [Structured Output and Function Calling](../llm-basis/structured-output-function-calling.md). For evaluation metrics such as task completion, tool calls, and execution traces, see [How to Evaluate Agent Applications](../llm-basis/llm-evaluation.md#agent-应用怎么评测).
+For the full tool-calling lifecycle, permissions, confirmation, idempotency, auditing, timeouts, and Java examples, see [Structured Output and Function Calling](../llm-basis/structured-output-function-calling.md). For evaluation metrics such as task completion, tool calls, and execution traces, see [How to Evaluate Agent Applications](../llm-basis/llm-evaluation.md#how-do-you-evaluate-an-agent-application).
 
 ### What Is an Agent Loop?
 
@@ -322,7 +322,7 @@ Structured task contracts define what each role receives, what it must deliver, 
 
 For example, after writing requirements, a "Product Manager Agent" should not simply say, "I finished; please implement this." It should return a standard JSON payload containing `TaskID`, `Dependencies`, and `AcceptanceCriteria`. The development Agent can deserialize it and start execution.
 
-Structured delivery does not mean that the A2A protocol has been implemented. For capability discovery, task state, and artifact delivery between Agents in different processes, see the [A2A section in the Multi-Agent guide](./multi-agent.md#a2a-能解决什么-不能解决什么).
+Structured delivery does not mean that the A2A protocol has been implemented. For capability discovery, task state, and artifact delivery between Agents in different processes, see the [A2A section in the Multi-Agent guide](./multi-agent.md#what-can-a2a-solve-and-what-is-outside-its-scope).
 
 ![A2A protocol architecture](../images/shared/agent-a2a.png)
 

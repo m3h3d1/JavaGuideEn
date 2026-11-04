@@ -1,5 +1,5 @@
 ---
-title: A Practical Guide to AI Coding Skills: Requirements, TDD, Code Review, and UI Design
+title: "A Practical Guide to AI Coding Skills: Requirements, TDD, Code Review, and UI Design"
 description: A task-based guide to AI coding Skills for requirements clarification, TDD, code review, UI design, React performance, PostgreSQL, the Claude API, and Skill development, with advice on what to install as needed.
 category: AI Coding in Practice
 head:

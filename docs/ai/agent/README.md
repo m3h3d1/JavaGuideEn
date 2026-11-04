@@ -39,11 +39,11 @@ This **AI agent section** is for developers who want to understand and build age
 
 As you read, distinguish among three kinds of loops:
 
-| Layer                         | Responsibility                                                                                                    | Related guide                                                             |
-| ----------------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Inner Agent Loop              | Repeatedly reason, call tools, and read results during one task until it completes or reaches a stop condition.   | [Agent fundamentals](./agent-basis.md#what-is-an-agent-loop)              |
-| Back edge in a workflow graph | Returns to an earlier node based on state and conditions so that part of the workflow can iterate.                | [Workflow, Graph, and Loop](./workflow-graph-loop.md#loop-graph-上的回溯) |
-| Outer Loop Engineering        | Connects an existing loop to CI, scheduled jobs, and stop conditions to decide when to start the next task cycle. | [Loop Engineering](./loop-engineering.md)                                 |
+| Layer                         | Responsibility                                                                                                    | Related guide                                                                           |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Inner Agent Loop              | Repeatedly reason, call tools, and read results during one task until it completes or reaches a stop condition.   | [Agent fundamentals](./agent-basis.md#what-is-an-agent-loop)                            |
+| Back edge in a workflow graph | Returns to an earlier node based on state and conditions so that part of the workflow can iterate.                | [Workflow, Graph, and Loop](./workflow-graph-loop.md#loop-backtracking-through-a-graph) |
+| Outer Loop Engineering        | Connects an existing loop to CI, scheduled jobs, and stop conditions to decide when to start the next task cycle. | [Loop Engineering](./loop-engineering.md)                                               |
 
 ## Core Guides
 
@@ -61,7 +61,7 @@ As you read, distinguish among three kinds of loops:
 For complete guides to tool calling and evaluation, see:
 
 - [Structured Output and Function Calling](../llm-basis/structured-output-function-calling.md): Covers the full tool-calling lifecycle, permissions, confirmation, idempotency, auditing, timeouts, and Java examples.
-- [How to Evaluate Agent Applications](../llm-basis/llm-evaluation.md#agent-应用怎么评测): Covers task completion, tool calls, execution traces, error recovery, and consistency across repeated runs.
+- [How to Evaluate Agent Applications](../llm-basis/llm-evaluation.md#how-do-you-evaluate-an-agent-application): Covers task completion, tool calls, execution traces, error recovery, and consistency across repeated runs.
 
 ## Common Questions
 

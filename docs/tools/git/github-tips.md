@@ -1,155 +1,155 @@
 ---
-title: GitHub 实用小技巧总结
-description: 汇总 GitHub 的高效使用技巧，包括个人主页、项目徽章、代码阅读、GitHub Actions、Explore/Trending 和开源协作提效方法。
-category: 开发工具
+title: Practical GitHub Tips
+description: Practical GitHub tips for profiles, project badges, code browsing, GitHub Actions, Explore, Trending, and open-source collaboration.
+category: Developer Tools
 tag:
   - Git
 head:
   - - meta
     - name: keywords
-      content: GitHub 技巧,个人主页,README,统计信息,开源贡献,GitHub Actions,代码阅读
+      content: GitHub tips,profile,README,statistics,open-source contributions,GitHub Actions,code browsing
 ---
 
-GitHub 不只是代码托管平台。对开发者来说，它同时承担了项目展示、代码阅读、开源协作、自动化构建和个人主页的作用。这篇文章整理一些比较实用的 GitHub 使用技巧。
+GitHub is more than a code-hosting platform. Developers also use it to showcase projects, browse source code, collaborate on open source, automate builds, and maintain a professional profile. Here are some practical tips.
 
-## 一键生成 GitHub 简历与 GitHub 年报
+## Generate a GitHub Resume and Year in Review
 
-通过 [https://resume.github.io/](https://resume.github.io/) 这个网站你可以一键生成一个在线的 GitHub 简历。
+Use [resume.github.io](https://resume.github.io/) to generate an online resume from your GitHub profile.
 
-不过，简历里是否放 GitHub 链接要看账号内容质量。如果账号里有完整项目、持续维护记录、清晰 README 和比较规范的提交历史，GitHub 链接会加分；如果只有空仓库或者临时练习代码，就没必要强行放。生成后的效果如下图所示。
+Whether you include a GitHub link on your resume depends on the quality of your account. Complete projects, ongoing maintenance, clear READMEs, and a tidy commit history can strengthen your application. If the account only has empty repositories or throwaway exercises, there's no need to include it. Here is an example of the result:
 
-![GitHub简历](https://oss.javaguide.cn/2020-11/image-20201108192205620.png)
+![GitHub resume](https://oss.javaguide.cn/2020-11/image-20201108192205620.png)
 
-通过 <https://www.githubtrends.io/wrapped> 这个网站，你可以生成一份 GitHub 个人年报，这个年报会列举出你在这一年的项目贡献情况、最常使用的编程语言、详细的贡献信息。
+Use <https://www.githubtrends.io/wrapped> to generate a yearly review of your GitHub activity, including project contributions, most-used languages, and detailed contribution data.
 
 ![](https://oss.javaguide.cn/github/dootask/image-20211226144607457.png)
 
-## 个性化 GitHub 首页
+## Personalize Your GitHub Profile
 
-GitHub 目前支持在个人主页自定义展示一些内容。展示效果如下图所示。
+GitHub lets you customize the content displayed on your profile. Here is an example:
 
-![个性化首页展示效果](https://oss.javaguide.cn/java-guide-blog/image-20210616221212259.png)
+![Personalized GitHub profile](https://oss.javaguide.cn/java-guide-blog/image-20210616221212259.png)
 
-想要做到这样非常简单，你只需要创建一个和你的 GitHub 账户同名的仓库，然后自定义`README.md`的内容即可。
+To do this, create a repository with the same name as your GitHub account and customize its `README.md`.
 
-展示在你主页的自定义内容就是`README.md`的内容（_不会 Markdown 语法的小伙伴自行面壁 5 分钟_）。
+Your profile will display the contents of that `README.md`. (If you don't know Markdown, take five minutes to learn it!)
 
-![创建一个和你的GitHub账户同名的仓库](https://oss.javaguide.cn/java-guide-blog/image-20201107110309341.png)
+![Create a repository with the same name as your GitHub account](https://oss.javaguide.cn/java-guide-blog/image-20201107110309341.png)
 
-这个也是可以玩出花来的！比如说：通过 [github-readme-stats](https://hellogithub.com/periodical/statistics/click/?target=https://github.com/anuraghazra/github-readme-stats) 这个开源项目，你可以在 README 中展示动态生成的 GitHub 统计信息。展示效果如下图所示。
+You can do a lot with this. For example, the open-source project [github-readme-stats](https://hellogithub.com/periodical/statistics/click/?target=https://github.com/anuraghazra/github-readme-stats) can dynamically generate GitHub statistics for your README. Here is an example:
 
-![通过github-readme-stats动态生成GitHub统计信息 ](https://oss.javaguide.cn/java-guide-blog/image-20210616221312426.png)
+![Dynamically generated GitHub statistics with github-readme-stats](https://oss.javaguide.cn/java-guide-blog/image-20210616221312426.png)
 
-关于个性化首页这个就不多提了，感兴趣的小伙伴自行研究一下。
+I won't go into more detail here. Explore the options if you're interested.
 
-## 自定义项目徽章
+## Customize Project Badges
 
-你在 GitHub 上看到的项目徽章都是通过 [https://shields.io/](https://shields.io/) 这个网站生成的。我的 JavaGuide 这个项目的徽章如下图所示。
+The badges you see on GitHub projects are generated with [Shields.io](https://shields.io/). Here are the badges for JavaGuide:
 
-![项目徽章](https://oss.javaguide.cn/2020-11/image-20201107143136559.png)
+![Project badges](https://oss.javaguide.cn/2020-11/image-20201107143136559.png)
 
-并且，你不光可以生成静态徽章，shield.io 还可以动态读取你项目的状态并生成对应的徽章。
+Shields.io can create static badges and badges that display your project's current status.
 
-![自定义项目徽章](https://oss.javaguide.cn/2020-11/image-20201107143502356.png)
+![Custom project badges](https://oss.javaguide.cn/2020-11/image-20201107143502356.png)
 
-生成的描述项目状态的徽章效果如下图所示。
+Here are some badges describing project status:
 
-![描述项目状态的徽章](https://oss.javaguide.cn/2020-11/image-20201107143752642.png)
+![Project status badges](https://oss.javaguide.cn/2020-11/image-20201107143752642.png)
 
-## 自动为项目添加贡献情况图标
+## Add a Contribution Graph to Your Project
 
-通过 repobeats 这个工具可以为 GitHub 项目添加如下图所示的项目贡献基本情况图表。
+Use Repobeats to add a summary of project contributions, like this:
 
 ![](https://oss.javaguide.cn/github/dootask/repobeats.png)
 
-地址：<https://repobeats.axiom.co/> 。
+Visit <https://repobeats.axiom.co/>.
 
-## GitHub 表情
+## GitHub Emoji
 
-![GitHub表情](https://oss.javaguide.cn/2020-11/image-20201107162254582.png)
+![GitHub emoji](https://oss.javaguide.cn/2020-11/image-20201107162254582.png)
 
-如果你想要在 GitHub 使用表情的话，可以在这里找找：[www.webfx.com/tools/emoji-cheat-sheet/](https://www.webfx.com/tools/emoji-cheat-sheet/)。
+Find emoji for GitHub in the [WebFX emoji cheat sheet](https://www.webfx.com/tools/emoji-cheat-sheet/).
 
-![在线GitHub表情](https://oss.javaguide.cn/2020-11/image-20201107162432941.png)
+![GitHub emoji online](https://oss.javaguide.cn/2020-11/image-20201107162432941.png)
 
-## 高效阅读 GitHub 项目的源代码
+## Browse GitHub Source Code Efficiently
 
-GitHub Codespaces 可以提供类似 VS Code 的在线开发环境，适合临时阅读、调试或快速参与开源项目。对于大型项目或需要本地服务依赖的项目，还是建议 clone 到本地，用自己熟悉的 IDE 阅读和调试。
+GitHub Codespaces provides an online development environment similar to VS Code. It is useful for briefly reading or debugging code, or contributing to an open-source project. For large projects or projects that need local services, clone the repository and use an IDE you know.
 
-简单介绍几种常用的 GitHub 项目源码阅读方式。
+Here are a few common ways to browse GitHub source code.
 
-### Chrome 插件 Octotree
+### Octotree Browser Extension
 
-这个已经老生常谈了，是我最喜欢的一种方式。使用了 Octotree 之后网页侧边栏会按照树形结构展示项目，为我们带来 IDE 般的阅读源代码的感受。
+This is an old favorite of mine. Octotree displays a project in a tree in the browser sidebar, making it easier to browse source code as you would in an IDE.
 
-![Chrome插件Octotree](https://oss.javaguide.cn/2020-11/image-20201107144944798.png)
+![Octotree browser extension](https://oss.javaguide.cn/2020-11/image-20201107144944798.png)
 
 ### Sourcegraph
 
-不想将项目 clone 到本地时，也可以使用 Sourcegraph 这类代码搜索和阅读工具。Sourcegraph 支持跨仓库代码搜索、引用跳转等功能，阅读大型项目时比较有帮助。
+If you don't want to clone a project locally, tools such as Sourcegraph can help search and browse code. Sourcegraph supports cross-repository code search and navigation to references, which is useful when reading large projects.
 
-当你下载了这个插件之后，你的项目主页会多出一个小图标如下图所示。点击这个小图标即可在线阅读项目源代码。
+After installing its browser extension, a small icon appears on the project page, as shown below. Click it to browse the source online.
 
 ![](https://oss.javaguide.cn/2020-11/image-20201107145749659.png)
 
-使用 Sourcegraph 阅读代码的效果类似下面这样，同样是树形结构展示代码，还支持类之间的跳转。
+Sourcegraph's code view looks something like this. It also displays code in a tree and lets you navigate between classes.
 
 ![](https://oss.javaguide.cn/2020-11/image-20201107150307314.png)
 
-### 克隆项目到本地
+### Clone the Project Locally
 
-先把项目克隆到本地，然后使用自己喜欢的 IDE 来阅读。想深入理解一个项目，首选这种方式。
+Clone the project, then browse it with your preferred IDE. This is the best way to understand a project in depth.
 
 ```bash
 git clone https://github.com/Snailclimb/JavaGuide.git
 ```
 
-## 扩展 GitHub 的功能
+## Extend GitHub in Your Browser
 
-**Enhanced GitHub** 可以让你的 GitHub 更好用。这个浏览器插件可以展示仓库大小、文件大小，并支持快速下载单个文件。
+**Enhanced GitHub** is a browser extension that displays repository and file sizes and lets you download individual files quickly.
 
 ![](https://oss.javaguide.cn/2020-11/image-20201107160817672.png)
 
-## 自动为 Markdown 文件生成目录
+## Generate a Table of Contents for Markdown
 
-如果你想为 Markdown 文件生成目录，通过 VS Code 的 **Markdown Preview Enhanced** 这类插件就可以了。
+Use a VS Code extension such as **Markdown Preview Enhanced** to generate a table of contents for Markdown files.
 
-生成的目录效果如下图所示。你直接点击目录中的链接即可跳转到文章对应的位置，可以优化阅读体验。
+The generated table of contents lets readers jump to a section by clicking a link, making the article easier to navigate.
 
 ![](<https://oss.javaguide.cn/2020-11/iShot2020-11-07%2016.14.14%20(1).png>)
 
-不过，目前 GitHub 已经会为 Markdown 文件自动生成目录，只是需要通过页面上的目录按钮展开。
+GitHub now generates a table of contents for Markdown files automatically; expand it with the table-of-contents button on the page.
 
 ![](https://oss.javaguide.cn/github/cosy/image-20211227093215005.png)
 
-## 善用 GitHub Explore
+## Make Good Use of GitHub Explore
 
-GitHub 自带的 Explore 是一个非常强大且好用的功能，适合用来发现项目、主题和技术趋势。
+GitHub Explore is a powerful, convenient way to discover projects, topics, and technology trends.
 
-简单来说，GitHub Explore 可以提供下面这些服务：
+It can:
 
-1. 可以根据你的个人兴趣为你推荐项目；
-2. GitHub Topics 按照类别/话题将一些项目进行了分类汇总。比如 [Data visualization](https://github.com/topics/data-visualization) 汇总了数据可视化相关的一些开源项目，[Awesome Lists](https://github.com/topics/awesome) 汇总了 Awesome 系列的仓库；
-3. 通过 GitHub Trending 我们可以看到最近比较热门的一些开源项目，我们可以按照语言类型以及时间维度对项目进行筛选；
-4. GitHub Collections 类似一个收藏夹集合。比如 [Teaching materials for computational social science](https://github.com/collections/teaching-computational-social-science) 这个收藏夹就汇总了计算机课程相关的开源资源，[Learn to Code](https://github.com/collections/learn-to-code) 这个收藏夹就汇总了对你学习编程有帮助的一些仓库；
-5. ……
+1. Recommend projects based on your interests.
+2. Group projects by category or topic through GitHub Topics. For example, [Data Visualization](https://github.com/topics/data-visualization) collects data-visualization projects, and [Awesome Lists](https://github.com/topics/awesome) collects repositories in the Awesome series.
+3. Show popular open-source projects through GitHub Trending. Filter by programming language and time period.
+4. Collect related repositories in GitHub Collections. For example, [Teaching Materials for Computational Social Science](https://github.com/collections/teaching-computational-social-science) collects open-source resources for computer science courses, while [Learn to Code](https://github.com/collections/learn-to-code) collects repositories that can help you learn programming.
+5. And more...
 
 ![](https://oss.javaguide.cn/github/javaguide/github-explore.png)
 
-## GitHub Actions 很强大
+## GitHub Actions Is Powerful
 
-你可以简单地将 GitHub Actions 理解为 GitHub 自带的自动化平台。通过 GitHub Actions，你可以直接在 GitHub 上完成构建、测试、部署、依赖扫描、定时任务等工作。
+You can think of GitHub Actions as GitHub's built-in automation platform. Use it to build, test, deploy, scan dependencies, and run scheduled tasks directly on GitHub.
 
-关于 GitHub Actions 的详细介绍，推荐看一下阮一峰老师写的 [GitHub Actions 入门教程](https://www.ruanyifeng.com/blog/2019/09/getting-started-with-github-actions.html) 。
+For a detailed introduction, see Ruan Yifeng's [Getting Started with GitHub Actions](https://www.ruanyifeng.com/blog/2019/09/getting-started-with-github-actions.html).
 
-GitHub Actions 有一个官方市场，上面有很多别人提交的 Actions，可以直接复用。
+GitHub Actions has an official marketplace with Actions contributed by others that you can reuse.
 
 ![](https://oss.javaguide.cn/github/javaguide/image-20211227100147433.png)
 
-## 后记
+## Afterword
 
-GitHub 技巧不需要一次性全部记住。个人主页、项目徽章、代码阅读、Explore/Trending、GitHub Actions 这几块先用起来，就已经能覆盖大部分日常场景。
+You don't need to memorize every GitHub tip at once. Start with profiles, project badges, code browsing, Explore and Trending, and GitHub Actions; that covers most everyday needs.
 
-另外，这篇文章没有展开讲 GitHub 搜索语法。实际使用中，关键词搜索、语言筛选、Star 数排序、更新时间筛选，往往比死记复杂语法更常用。
+This article doesn't cover GitHub's search syntax. In practice, keyword search, language filters, sorting by star count, and filtering by update time are often more useful than memorizing complex syntax.
 
 <!-- @include: @article-footer.snippet.md -->

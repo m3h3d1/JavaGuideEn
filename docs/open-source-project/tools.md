@@ -1,59 +1,59 @@
 ---
-title: Java 优质开源开发工具
-description: Java优质开源开发工具推荐，涵盖代码质量检查、代码安全分析、项目构建、测试框架、容器化部署等开发必备工具精选。
-category: 开源项目
+title: Recommended Open-Source Development Tools
+description: A curated list of open-source tools for Java development, covering code quality, security analysis, builds, testing, and container deployment.
+category: Open-Source Projects
 icon: "mdi:tools"
 ---
 
-本页收录独立运行的 GUI、CLI、平台，以及接入构建流程的检查工具。可以直接作为业务代码依赖的通用库放在[工具类库](./tool-library.md)。
+This page lists standalone GUIs, CLIs, platforms, and code-checking tools that integrate with build workflows. General-purpose libraries that can be used directly as business-code dependencies are listed in [Utility Libraries](./tool-library.md).
 
-## 代码质量
+## Code Quality
 
-- [SonarQube](https://github.com/SonarSource/sonarqube "sonarqube")：持续代码质量检查平台，用于发现缺陷、安全热点、重复代码和可维护性问题。
-- [Spotless](https://github.com/diffplug/spotless)：Spotless 是支持多种语言的代码格式化工具，支持 Maven 和 Gradle 以 Plugin 的形式构建。
-- [Checkstyle](https://github.com/checkstyle/checkstyle "checkstyle")：检查 Java 源码是否符合编码规范，可接入 Maven、Gradle 和 CI 流程。
-- [PMD](https://github.com/pmd/pmd "pmd")：可扩展的多语言静态代码分析器。
-- [SpotBugs](https://github.com/spotbugs/spotbugs "spotbugs")：FindBugs 的继任者，通过字节码静态分析查找 Java 代码中的缺陷。
-- [Error Prone](https://github.com/google/error-prone)：在编译阶段捕获常见 Java 编码错误，可接入 `javac`、Maven 和 Gradle 构建流程。
-- [NullAway](https://github.com/uber/NullAway)：低构建开销的 Java 空指针静态检查工具，通常与 Error Prone 配合使用。它依赖空值注解和增量接入，不能替代运行时测试。
-- [ArchUnit](https://github.com/TNG/ArchUnit)：用 Java 测试代码声明并检查分层、依赖方向、包结构等架构规则，适合把团队约定变成自动化测试。
+- [SonarQube](https://github.com/SonarSource/sonarqube "sonarqube"): A continuous code quality platform for finding bugs, security hotspots, duplicated code, and maintainability issues.
+- [Spotless](https://github.com/diffplug/spotless): A code formatter for multiple languages, available as a Maven or Gradle plugin.
+- [Checkstyle](https://github.com/checkstyle/checkstyle "checkstyle"): Checks Java source code against coding standards and can be integrated with Maven, Gradle, and CI workflows.
+- [PMD](https://github.com/pmd/pmd "pmd"): An extensible static analyzer for multiple languages.
+- [SpotBugs](https://github.com/spotbugs/spotbugs "spotbugs"): Successor to FindBugs; statically analyzes bytecode to find defects in Java code.
+- [Error Prone](https://github.com/google/error-prone): Catches common Java coding errors at compile time and integrates with `javac`, Maven, and Gradle.
+- [NullAway](https://github.com/uber/NullAway): A Java nullability checker with low build overhead, often used with Error Prone. It relies on nullability annotations and incremental adoption, and does not replace runtime testing.
+- [ArchUnit](https://github.com/TNG/ArchUnit): Lets you declare and test architectural rules for layers, dependency direction, package structure, and more in Java tests. Useful for turning team conventions into automated checks.
 
-## 代码安全
+## Code Security
 
-- [OpenTaint](https://github.com/seqra/opentaint/blob/main/docs/translations/README.zh.md "opentaint")：面向 Java、Kotlin 和 Spring Boot 应用的开源污点分析/SAST 工具，可用于检测 SQL 注入、XSS、SSRF 等安全风险。
+- [OpenTaint](https://github.com/seqra/opentaint/blob/main/docs/translations/README.zh.md "opentaint"): An open-source taint analysis/SAST tool for Java, Kotlin, and Spring Boot applications. It can detect security risks such as SQL injection, XSS, and SSRF.
 
-## 项目构建
+## Build Tools
 
-- [Maven](https://maven.apache.org/)：一个软件项目管理和理解工具。基于项目对象模型 (Project Object Model，POM) 的概念，Maven 可以从一条中心信息管理项目的构建、报告和文档。详细介绍：[Maven 核心概念总结](https://javaguide.cn/tools/maven/maven-core-concepts.html)。
-- [Gradle](https://gradle.org/) ：一个开源的构建自动化工具，它足够灵活，可以构建几乎任何类型的软件。Gradle 对你要构建什么或者如何构建它做了很少的假设，这使得 Gradle 特别灵活。详细介绍：[Gradle 核心概念总结](https://javaguide.cn/tools/gradle/gradle-core-concepts.html)。
+- [Maven](https://maven.apache.org/): A software project management and comprehension tool. Based on the Project Object Model (POM), Maven manages a project's builds, reports, and documentation from a central description. Further reading: [Maven Core Concepts](https://javaguide.cn/tools/maven/maven-core-concepts.html).
+- [Gradle](https://gradle.org/): A flexible open-source build automation tool that can build almost any type of software. Gradle makes few assumptions about what you are building or how to build it. Further reading: [Gradle Core Concepts](https://javaguide.cn/tools/gradle/gradle-core-concepts.html).
 
-## 反编译
+## Decompilers
 
-- [JADX](https://github.com/skylot/jadx)：用于从 Android Dex 和 Apk 文件生成 Java 源代码的命令行和 GUI 工具。
+- [JADX](https://github.com/skylot/jadx): A command-line and GUI tool that generates Java source code from Android DEX and APK files.
 
-## 数据库
+## Databases
 
-### 数据库管理
+### Database Management
 
-- [Chat2DB](https://github.com/OtterMind/Chat2DB)：跨平台数据库客户端和 SQL 工作台，支持多种数据库，并提供 SQL 生成、解释和优化等 AI 辅助能力。
-- [Beekeeper Studio](https://github.com/beekeeper-studio/beekeeper-studio)：跨平台数据库管理工具，颜值高，支持 SQLite、MySQL、MariaDB、Postgres、CockroachDB、SQL Server、Amazon Redshift。
-- [DBeaver](https://github.com/dbeaver/dbeaver)：基于 Java 的跨平台数据库管理工具。社区版支持 MySQL、PostgreSQL、MariaDB、SQLite、Oracle、Db2、SQL Server 等多种数据库。
-- [Kangaroo](https://gitee.com/dbkangaroo/kangaroo)：跨平台数据库管理客户端，支持 SQLite、MySQL、PostgreSQL 等数据库，以及查询、建模、同步和导入导出等操作。
+- [Chat2DB](https://github.com/OtterMind/Chat2DB): A cross-platform database client and SQL workbench that supports multiple databases and AI-assisted SQL generation, explanation, and optimization.
+- [Beekeeper Studio](https://github.com/beekeeper-studio/beekeeper-studio): A polished, cross-platform database management tool supporting SQLite, MySQL, MariaDB, Postgres, CockroachDB, SQL Server, and Amazon Redshift.
+- [DBeaver](https://github.com/dbeaver/dbeaver): A cross-platform database management tool written in Java. The Community Edition supports databases including MySQL, PostgreSQL, MariaDB, SQLite, Oracle, Db2, and SQL Server.
+- [Kangaroo](https://gitee.com/dbkangaroo/kangaroo): A cross-platform database client supporting SQLite, MySQL, PostgreSQL, and operations such as querying, modeling, synchronization, import, and export.
 
 ### Redis
 
-- [Another Redis Desktop Manager](https://github.com/qishibo/AnotherRedisDesktopManager/blob/master/README.zh-CN.md)：跨平台 Redis 桌面客户端，兼容 Windows、macOS 和 Linux。
-- [Tiny RDM](https://github.com/tiny-craft/tiny-rdm)：基于 WebView2 的跨平台 Redis 桌面客户端，兼容 Windows、macOS 和 Linux。
-- [RedisInsight](https://github.com/RedisInsight/RedisInsight)：Redis 官方 GUI，可用于浏览键值、运行命令、分析内存占用和排查慢查询。
-- [CacheCloud](https://github.com/sohutv/cachecloud)：一个 Redis 云管理平台，支持 Redis 多种架构(Standalone、Sentinel、Cluster)高效管理、有效降低大规模 Redis 运维成本，提升资源管控能力和利用率。
-- [RedisShake](https://github.com/tair-opensource/RedisShake)：一个用于处理和迁移 Redis 数据的工具。
+- [Another Redis Desktop Manager](https://github.com/qishibo/AnotherRedisDesktopManager/blob/master/README.zh-CN.md): A cross-platform Redis desktop client for Windows, macOS, and Linux.
+- [Tiny RDM](https://github.com/tiny-craft/tiny-rdm): A cross-platform Redis desktop client built with WebView2, for Windows, macOS, and Linux.
+- [RedisInsight](https://github.com/RedisInsight/RedisInsight): The official Redis GUI for browsing keys and values, running commands, analyzing memory usage, and investigating slow queries.
+- [CacheCloud](https://github.com/sohutv/cachecloud): A Redis cloud management platform supporting standalone, Sentinel, and Cluster deployments. It helps manage large Redis installations, reduce operating costs, and improve resource control and utilization.
+- [RedisShake](https://github.com/tair-opensource/RedisShake): A tool for processing and migrating Redis data.
 
 ## Docker
 
-- [Portainer](https://github.com/portainer/portainer)：通过 Web 界面管理容器、镜像、网络和存储等资源。
+- [Portainer](https://github.com/portainer/portainer): A web interface for managing containers, images, networks, storage, and other resources.
 
 ## Kafka
 
-- [Kafbat UI](https://github.com/kafbat/kafka-ui)：用于监控和管理 Apache Kafka 集群的开源 Web UI。
-- [Kafdrop](https://github.com/obsidiandynamics/kafdrop)：用于查看 Kafka Topic、消息和 Consumer Group 的 Web UI。
-- [Redpanda Console](https://github.com/redpanda-data/console)：面向 Kafka 和 Redpanda 的 Web 管理界面，可浏览 Topic、Consumer Group、Schema 和实时消息。
+- [Kafbat UI](https://github.com/kafbat/kafka-ui): An open-source web UI for monitoring and managing Apache Kafka clusters.
+- [Kafdrop](https://github.com/obsidiandynamics/kafdrop): A web UI for browsing Kafka topics, messages, and consumer groups.
+- [Redpanda Console](https://github.com/redpanda-data/console): A web management interface for Kafka and Redpanda. Browse topics, consumer groups, schemas, and live messages.

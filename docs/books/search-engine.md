@@ -1,34 +1,34 @@
 ---
-title: 搜索引擎必读经典书籍
-description: 搜索引擎书籍推荐，Lucene入门、Elasticsearch核心技术与实战、源码解析与优化实战等经典书籍精选。
-category: 计算机书籍
+title: Essential Books on Search Engines
+description: Recommended books on search engines, including Lucene fundamentals, Elasticsearch concepts and practice, source code analysis, and optimization.
+category: Computer Science Books
 icon: "mdi:magnify"
 ---
 
 ## Lucene
 
-Elasticsearch 在 Apache Lucene 的基础上开发而成，学习 ES 之前，建议简单了解一下 Lucene 的相关概念。
+Elasticsearch is built on Apache Lucene. Before learning Elasticsearch, it is helpful to first review some Lucene concepts.
 
-**[《Lucene 实战》](https://book.douban.com/subject/6440615/)** 是国内为数不多的中文版本讲 Lucene 的书籍，适合用来学习和了解 Lucene 相关的概念和常见操作。
+**[_Lucene in Action_](https://book.douban.com/subject/6440615/)** is one of the few Chinese-language books about Lucene. It is useful for learning Lucene concepts and common operations.
 
-![《Lucene实战》-实战](./images/shared/vAJkdYEyol4e6Nr.png)
+![*Lucene in Action*](./images/shared/vAJkdYEyol4e6Nr.png)
 
 ## Elasticsearch
 
-**[《一本书讲透 Elasticsearch：原理、进阶与工程实践》](https://book.douban.com/subject/36716996/)**
+**[_Elasticsearch Explained: Principles, Advanced Topics, and Engineering Practice_](https://book.douban.com/subject/36716996/)**
 
 ![](./images/shared/one-book-guide-to-elasticsearch.png)
 
-基于 8.x 版本编写，目前全网最新的 Elasticsearch 讲解书籍。内容覆盖 Elastic 官方认证的核心知识点，源自真实项目案例和企业级问题解答。
+Written for version 8.x, this is currently one of the latest books covering Elasticsearch. It covers core topics from Elastic's official certification and draws on real project examples and enterprise questions.
 
-**[《Elasticsearch 核心技术与实战》](http://gk.link/a/10bcT "《Elasticsearch 核心技术与实战》")**
+**[_Elasticsearch: Core Concepts and Practice_](http://gk.link/a/10bcT "Elasticsearch: Core Concepts and Practice")**
 
-极客时间的这门课程基于 Elasticsearch 7.1 版本讲解，还算比较新。并且，作者是 eBay 资深技术专家，有 20 年的行业经验，课程质量有保障！
+This Geek Time course covers Elasticsearch 7.1, which is still relatively recent. The author is a senior technical expert at eBay with 20 years of industry experience, so the course is high quality.
 
-![《Elasticsearch 核心技术与实战》-极客时间](./images/shared/20210420231125225.png)
+![*Elasticsearch: Core Concepts and Practice* (Geek Time)](./images/shared/20210420231125225.png)
 
-**[《Elasticsearch 源码解析与优化实战》](https://book.douban.com/subject/30386800/)**
+**[_Elasticsearch Source Code Analysis and Optimization in Practice_](https://book.douban.com/subject/30386800/)**
 
-![《Elasticsearch 源码解析与优化实战》-豆瓣](./images/shared/f856485931a945639d5c23aaed74fb38-tplv-k3u1fbpfcp-zoom-1.png)
+![*Elasticsearch Source Code Analysis and Optimization in Practice* (Douban)](./images/shared/f856485931a945639d5c23aaed74fb38-tplv-k3u1fbpfcp-zoom-1.png)
 
-如果你想进一步深入研究 Elasticsearch 原理的话，可以看看张超老师的这本书。这是市面上唯一一本写 Elasticsearch 源码的书。
+If you want to study Elasticsearch internals in more depth, consider this book by Zhang Chao. It is the only book on the market that examines the Elasticsearch source code.

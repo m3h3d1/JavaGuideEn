@@ -1,96 +1,96 @@
 ---
-title: 大模型结构化输出：从 JSON 契约到 Function Calling 落地
-description: 从“请返回 JSON”在生产环境为什么不可靠讲起，拆解 Structured Outputs、JSON Schema、Function Calling、MCP 与 Java 后端工具调用的工程落地。
-category: AI 应用开发
+title: "Structured Outputs for LLMs: From JSON Contracts to Function Calling"
+description: Why “return JSON” is unreliable in production, with an engineering guide to Structured Outputs, JSON Schema, Function Calling, MCP, and Java backend tool execution.
+category: AI Application Development
 head:
   - - meta
     - name: keywords
-      content: 结构化输出,JSON Schema,JSON Mode,Structured Outputs,Function Calling,Tool Calling,MCP,Agent Skill,AI 应用开发,Java
+      content: structured output,JSON Schema,JSON Mode,Structured Outputs,Function Calling,Tool Calling,MCP,Agent Skill,AI application development,Java
 ---
 
-Prompt 里写一句“请返回 JSON”，模型通常能吐出一个对象，但这份对象还不能直接当业务接口使用。
+Writing “return JSON” in a Prompt will usually make the model return an object, but that object is not necessarily ready to use as a business interface.
 
-有时它会在 JSON 前面加一句“好的，以下是结果”；有时少一个必填字段；有时本来应该是数字的 `orderId` 变成字符串；更麻烦的是，边界条件一复杂，模型会补出一个业务系统根本不认识的枚举值。解析器一报错，整条链路就断了。
+Sometimes it adds “Sure, here is the result” before the JSON, omits a required field, or turns a numeric `orderId` into a string. More seriously, complex edge cases may lead it to invent an enum value the business system does not recognize. A parser error can break the entire flow.
 
-自然语言提示没有类型系统，也不能执行权限校验。结构化输出把字段、类型和枚举交给 Schema 约束；Function Calling 再把模型生成的工具意图交给可信执行层校验。JSON Mode、Structured Outputs、MCP 与 Java 服务端分别处在这条调用链的不同位置。
+Natural-language prompts have no type system and cannot enforce authorization. Structured output uses a Schema to constrain fields, types, and enums; Function Calling then passes the model's tool intent to a trusted execution layer for validation. JSON Mode, Structured Outputs, MCP, and a Java backend each occupy a different part of this call chain.
 
-说明：OpenAI、Anthropic、Gemini、MCP 等产品和协议都在持续演进，生产系统应从官方文档最新展示获取能力描述。本文不引用未经验证的 benchmark，也不做绝对化性能结论。
+Note: OpenAI, Anthropic, Gemini, MCP, and related products and protocols continue to evolve. For production systems, consult the latest official documentation for supported capabilities. This guide does not cite unverified benchmarks or make absolute performance claims.
 
-## 为什么“请返回 JSON”不可靠？
+## Why Is “Return JSON” Unreliable?
 
-先看一个非常常见的 Prompt：
+Consider a common Prompt:
 
 ```text
-请判断下面用户反馈属于哪类工单，返回 JSON。
+Classify the following user feedback as a ticket type and return JSON.
 
-用户反馈：我付款成功了，但是订单一直显示待支付。
+User feedback: My payment succeeded, but the order still shows as awaiting payment.
 ```
 
-模型可能返回：
+The model might return:
 
 ```json
 {
   "category": "payment",
   "priority": "high",
-  "reason": "用户付款成功但订单状态未更新"
+  "reason": "Payment succeeded, but the order status was not updated"
 }
 ```
 
-看起来没问题。但这只是“看起来”。
+It looks fine. But appearances can be misleading.
 
-后端需要一份可以稳定消费的契约。比如：
+The backend needs a contract it can consume reliably. For example:
 
-- `category` 只能是 `PAYMENT`、`LOGISTICS`、`AFTER_SALE`、`ACCOUNT`。
-- `priority` 只能是 `LOW`、`MEDIUM`、`HIGH`。
-- `confidence` 必须是 `0` 到 `1` 之间的小数。
-- `reason` 可以为空吗？最大长度是多少？
-- 如果用户输入缺少信息，应该返回 `NEED_MORE_INFO`，还是继续猜？
+- `category` must be one of `PAYMENT`, `LOGISTICS`, `AFTER_SALE`, or `ACCOUNT`.
+- `priority` must be `LOW`, `MEDIUM`, or `HIGH`.
+- `confidence` must be a decimal between `0` and `1`.
+- Can `reason` be empty? What is its maximum length?
+- If the user's input is incomplete, should the model return `NEED_MORE_INFO` or keep guessing?
 
-自然语言 Prompt 很难把这些边界稳定地传递到每一次调用，格式、字段、类型、追加文本和边界条件都可能失守。
+Natural-language Prompts cannot reliably enforce these boundaries on every call. Formatting, fields, types, extra text, and edge cases can all drift.
 
-### 格式漂移
+### Format Drift
 
-你要求模型返回 JSON，它大部分时候会返回 JSON，但不代表每次都只返回 JSON。
+You ask the model to return JSON. It usually does, but that does not mean every response contains only JSON.
 
-常见输出长这样：
+A common output looks like this:
 
 ```text
-以下是分类结果：
+Classification result:
 {
   "category": "PAYMENT",
   "priority": "HIGH"
 }
 ```
 
-这段结果对人来说能读懂，解析器却无法直接消费。流式输出、长上下文和多轮对话还会让模型重新带上解释性文字。
+This is readable to a person, but a parser cannot consume it directly. Streaming, long contexts, and multi-turn conversations may also cause the model to add explanatory text again.
 
-### 字段缺失
+### Missing Fields
 
-你要求：
+You asked for:
 
 ```json
 {
   "category": "PAYMENT",
   "priority": "HIGH",
   "confidence": 0.92,
-  "reason": "用户已支付但订单状态未同步"
+  "reason": "Payment succeeded, but the order status was not synchronized"
 }
 ```
 
-它可能返回：
+It may return:
 
 ```json
 {
   "category": "PAYMENT",
-  "reason": "用户已支付但订单状态未同步"
+  "reason": "Payment succeeded, but the order status was not synchronized"
 }
 ```
 
-模型可能因为信息不足省略 `priority`，也可能认为 `confidence` 不影响回答。DTO 反序列化、规则引擎和数据库写入没有这样的判断空间：必填值缺失后，要么校验失败，要么把不完整的数据带入后续链路。
+The model may omit `priority` because the information is incomplete, or decide that `confidence` is irrelevant. DTO deserialization, rule engines, and database writes cannot make that judgment: a missing required value either fails validation or sends incomplete data downstream.
 
-### 类型错误
+### Type Errors
 
-结构化输出里最隐蔽的错误是类型错位：
+One of the most subtle structured-output errors is a type mismatch:
 
 ```json
 {
@@ -100,54 +100,54 @@ Prompt 里写一句“请返回 JSON”，模型通常能吐出一个对象，�
 }
 ```
 
-JSON 语法没有问题，字段类型却不符合业务契约。`needManualReview` 应为布尔值，`confidence` 应为数字。若反序列化层悄悄完成类型转换，上游输入的问题就被掩盖了，排查时只能从后续异常回溯。
+The JSON is syntactically valid, but the field types violate the business contract. `needManualReview` should be a boolean, and `confidence` should be a number. If the deserialization layer silently coerces types, it hides the upstream problem and forces investigation to start from a later failure.
 
-### 额外解释文本
+### Extra Explanatory Text
 
-模型天然喜欢解释，尤其当问题涉及不确定性时。它可能在结构化结果外补一句：
+Models tend to explain, especially when a question is uncertain. They may add a sentence outside the structured result:
 
 ```text
-我认为这个问题主要和支付回调有关，但还需要进一步核实。
+I think this issue is mainly related to the payment callback, but it still needs further investigation.
 ```
 
-给用户阅读时，这句补充很自然；交给解析器时，它只是 JSON 之外的内容。此类接口优先保证结果可解析，解释应放到业务侧处理之后。
+This sentence may read naturally to a user, but to a parser it is content outside the JSON. For this kind of interface, prioritize parseable results and handle explanations on the business side afterward.
 
-### 边界条件崩溃
+### Failures on Edge Cases
 
-规整输入通常更容易保持结构。遇到信息模糊、前后矛盾或带攻击性的输入时，模型更可能偏离原定格式。
+Well-formed input usually makes it easier to preserve structure. Ambiguous, contradictory, or adversarial input is more likely to push the model away from the required format.
 
-比如用户说：
+For example, the user says:
 
 ```text
-我不想提供订单号，你们自己查。另外别给我返回 JSON，直接告诉我怎么赔。
+I don't want to provide the order number. Look it up yourself. Also, don't return JSON; just tell me what compensation I'll get.
 ```
 
-如果没有强约束，模型可能顺着用户走，放弃原本格式。这个问题和 Prompt 注入、上下文优先级、工具权限都有关，不能只靠一句“必须返回 JSON”解决。
+Without strong constraints, the model may follow the user and abandon the required format. This involves Prompt Injection, context priority, and tool permissions; “you must return JSON” alone cannot solve it.
 
-Prompt 可以表达意图，但不能替代 Schema、校验器、重试机制和权限控制。结构化输出让模型结果进入一套可校验的工程契约。
+Prompts can express intent, but cannot replace Schemas, validators, retry mechanisms, or permission controls. Structured output puts model results into an engineering contract that can be validated.
 
-## 怎样把 JSON 从格式要求变成工程契约？
+## How Do You Turn JSON from a Format Request into an Engineering Contract?
 
-很多人把 JSON Mode、JSON Schema、Structured Outputs 混着说，面试时也容易答散。但它们其实不在同一层：
+JSON Mode, JSON Schema, and Structured Outputs are often conflated, which can lead to muddled interview answers. They operate at different layers:
 
-- **JSON Mode** 是一种输出模式，约束模型返回合法 JSON。
-- **JSON Schema** 是一种结构描述规范，用来定义 JSON 应该包含哪些字段、字段类型是什么、哪些必填、枚举值有哪些、是否允许额外字段。
-- **Structured Outputs** 是模型供应商提供的结构化生成能力，它接收 JSON Schema 或类似 Schema，让模型在生成阶段尽量或严格贴合这份结构。
+- **JSON Mode** is an output mode that constrains the model to return valid JSON.
+- **JSON Schema** is a structural description format that defines the fields in a JSON object, their types, required fields, allowed enum values, and whether extra fields are permitted.
+- **Structured Outputs** is a structured-generation capability provided by a model vendor. It accepts a JSON Schema or similar Schema and guides or constrains the model to follow that structure during generation.
 
-JSON Schema 只描述契约。Structured Outputs、Function Calling / Tool Calling 等模型 API 能力负责在生成时应用这份契约。
+JSON Schema only describes the contract. Model API capabilities such as Structured Outputs and Function Calling / Tool Calling apply that contract during generation.
 
-### JSON Mode 只能保证什么？
+### What Does JSON Mode Guarantee?
 
-JSON Mode 的目标通常是让模型输出合法 JSON。
+JSON Mode generally aims to make the model output valid JSON.
 
-所以 JSON Mode 能解决这类问题：
+JSON Mode can address cases like this:
 
 ```text
-好的，以下是结果：
+Sure, here is the result:
 { ... }
 ```
 
-但不能稳定解决这类问题：
+But it cannot reliably address cases like this:
 
 ```json
 {
@@ -157,13 +157,13 @@ JSON Mode 的目标通常是让模型输出合法 JSON。
 }
 ```
 
-它是合法 JSON，但不是合法业务数据。
+This is valid JSON, but invalid business data.
 
-### JSON Schema 负责定义什么？
+### What Does JSON Schema Define?
 
-JSON Schema 是一种描述 JSON 文档结构的规范。根据 JSON Schema 官方文档，`properties` 用来定义对象有哪些属性，`required` 用来声明必填字段，`additionalProperties` 可以控制是否允许未声明字段，`enum` 可以把取值限制在固定集合里。
+JSON Schema is a specification for describing the structure of JSON documents. In the official JSON Schema documentation, `properties` defines an object's properties, `required` declares mandatory fields, `additionalProperties` controls whether undeclared fields are allowed, and `enum` restricts values to a fixed set.
 
-一个工单分类 Schema 可以这样写：
+A ticket-classification Schema might look like this:
 
 ```json
 {
@@ -178,22 +178,22 @@ JSON Schema 是一种描述 JSON 文档结构的规范。根据 JSON Schema 官�
         "ACCOUNT",
         "NEED_MORE_INFO"
       ],
-      "description": "工单分类。信息不足时选择 NEED_MORE_INFO。"
+      "description": "Ticket category. Choose NEED_MORE_INFO when information is insufficient."
     },
     "priority": {
       "type": "string",
       "enum": ["LOW", "MEDIUM", "HIGH"],
-      "description": "处理优先级。涉及资金损失、无法下单、批量影响时优先级更高。"
+      "description": "Handling priority. Use a higher priority for financial loss, inability to place orders, or broad impact."
     },
     "confidence": {
       "type": "number",
       "minimum": 0,
       "maximum": 1,
-      "description": "分类置信度，范围为 0 到 1。"
+      "description": "Classification confidence, from 0 to 1."
     },
     "reason": {
       "type": "string",
-      "description": "分类依据，控制在 80 个中文字符以内。"
+      "description": "Reason for classification, limited to 160 characters."
     }
   },
   "required": ["category", "priority", "confidence", "reason"],
@@ -201,34 +201,34 @@ JSON Schema 是一种描述 JSON 文档结构的规范。根据 JSON Schema 官�
 }
 ```
 
-Schema 把后端可接受的数据形状写清了。调用支持结构化输出的 API 时，需要把它随请求传入；服务端也要用同一份规则或等价校验器检查模型输出。
+The Schema specifies the data shape accepted by the backend. Pass it with requests to APIs that support structured output, and validate model output on the server with the same rules or an equivalent validator.
 
-### Structured Outputs 能前移哪些约束？
+### Which Constraints Can Structured Outputs Enforce Earlier?
 
-Structured Outputs 通常指供应商提供的结构化输出能力。它会把 JSON Schema 或类似 Schema 传入模型调用，在生成阶段约束输出结构。
+Structured Outputs usually refers to a vendor-provided structured-generation capability. It passes a JSON Schema or similar Schema to the model call and constrains output structure during generation.
 
-OpenAI、Anthropic 和 Gemini 都已经提供原生结构化输出能力，不应再概括成“只有 OpenAI 严格约束，其他厂商主要靠 Prompt”。三家的模型覆盖范围、拒答和截断语义、Schema 子集以及首次编译延迟不同。模型返回拒答、达到 Token 上限或工具执行失败时，也不能把“支持 Structured Outputs”理解成业务请求一定成功。
+OpenAI, Anthropic, and Gemini all provide native structured-output capabilities, so it is no longer accurate to summarize them as “only OpenAI enforces structure strictly while the others rely mainly on Prompts.” Their model coverage, refusal and truncation semantics, supported Schema subsets, and initial compilation latency differ. A model refusal, Token limit, or failed tool execution can still cause a business request to fail even when Structured Outputs is supported.
 
-这里要注意一个工程细节：**不同供应商支持的 JSON Schema 子集并不完全一致**。比如某些关键字（`pattern`、`format`）、递归 `$ref`、组合关键字（`allOf` / `oneOf` / `anyOf`）在不同 API 中支持程度不同。真正落地时，不要照搬完整 JSON Schema 规范的所有能力，先读对应供应商的"supported schemas"或工具定义文档。
+One engineering detail matters: **vendors do not support exactly the same subset of JSON Schema**. Support for keywords such as `pattern` and `format`, recursive `$ref`, and composition keywords such as `allOf`, `oneOf`, and `anyOf` varies across APIs. In production, do not assume every feature in the full JSON Schema specification is supported; first read the vendor's “supported schemas” or tool-definition documentation.
 
-### 生成阶段的三层约束对比
+### Comparing the Three Layers of Generation Constraints
 
-| 对比维度             | JSON Mode      | JSON Schema                        | Structured Outputs                       |
-| -------------------- | -------------- | ---------------------------------- | ---------------------------------------- |
-| 角色                 | 输出格式开关   | 数据结构描述规范                   | 模型 API 的结构化生成能力                |
-| 主要约束             | JSON 语法合法  | 字段、类型、枚举、必填、额外属性等 | 输出尽量或严格匹配 Schema                |
-| 是否保证业务字段完整 | 不保证         | 只描述，不执行生成                 | 取决于供应商能力和 Schema 支持范围       |
-| 是否负责工具执行     | 不负责         | 不负责                             | 不负责，只产出结构化结果                 |
-| 典型用途             | 简单 JSON 输出 | 定义数据契约和校验规则             | 分类、抽取、函数参数生成、Agent 中间结果 |
-| 仍需服务端校验       | 需要           | 需要                               | 仍然需要                                 |
+| Comparison                           | JSON Mode            | JSON Schema                                                       | Structured Outputs                                                          |
+| ------------------------------------ | -------------------- | ----------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Role                                 | Output-format switch | Data-structure specification                                      | Structured-generation capability in a model API                             |
+| Main constraints                     | Valid JSON syntax    | Fields, types, enums, required fields, extra properties, and more | Output follows the Schema loosely or strictly                               |
+| Guarantees complete business fields? | No                   | Describes the contract; does not generate output                  | Depends on vendor capability and supported Schema subset                    |
+| Executes tools?                      | No                   | No                                                                | No; it only produces structured output                                      |
+| Typical use                          | Simple JSON output   | Define data contracts and validation rules                        | Classification, extraction, function parameters, Agent intermediate results |
+| Server-side validation still needed? | Yes                  | Yes                                                               | Yes                                                                         |
 
-![生成阶段三层约束：JSON Mode 管语法，JSON Schema 管契约，Structured Outputs 把契约前移到模型生成阶段](../images/shared/structured-output-function-calling-three-layer-constraint.png)
+![Three layers of generation constraints: JSON Mode handles syntax, JSON Schema defines the contract, and Structured Outputs applies the contract during model generation](../images/shared/structured-output-function-calling-three-layer-constraint.png)
 
-JSON Mode 约束语法，JSON Schema 描述契约，Structured Outputs 在生成阶段应用契约。服务端仍要校验拒答、截断、权限和业务状态。
+JSON Mode constrains syntax, JSON Schema describes the contract, and Structured Outputs applies the contract during generation. The server must still validate refusals, truncation, permissions, and business state.
 
 ```mermaid
 flowchart LR
-    %% ========== 配色声明 ==========
+    %% ========== Color definitions ==========
     classDef layer1 fill:#607D8B,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef layer2 fill:#3498DB,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef layer3 fill:#E99151,color:#FFFFFF,stroke:none,rx:10,ry:10
@@ -236,28 +236,28 @@ flowchart LR
     classDef limitation fill:#C44545,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef client fill:#00838F,color:#FFFFFF,stroke:none,rx:10,ry:10
 
-    %% ========== 层次标签（左侧）==========
-    subgraph generation["生成阶段"]
+    %% ========== Layer labels (left) ==========
+    subgraph generation["Generation stage"]
         direction TB
-        L1[JSON Mode<br/>语法层]:::layer1
-        L2[JSON Schema<br/>契约层]:::layer2
-        L3[Structured Outputs<br/>生成约束层]:::layer3
+        L1[JSON Mode<br/>Syntax layer]:::layer1
+        L2[JSON Schema<br/>Contract layer]:::layer2
+        L3[Structured Outputs<br/>Generation constraint layer]:::layer3
     end
 
-    %% ========== 能力列（中间）==========
-    C1["✓ 合法 JSON 格式"]:::capability
-    C2["✓ 字段 / 类型 / 枚举 / 必填"]:::capability
-    C3["✓ 输出贴合 Schema"]:::capability
+    %% ========== Capabilities (middle) ==========
+    C1["✓ Valid JSON format"]:::capability
+    C2["✓ Fields / types / enums / required fields"]:::capability
+    C3["✓ Output follows the Schema"]:::capability
 
-    %% ========== 限制列（右侧）==========
-    X1["✗ 不保证字段完整"]:::limitation
-    X2["✗ 只描述，不执行生成"]:::limitation
-    X3["✗ 部分 Schema 关键字可能不支持"]:::limitation
+    %% ========== Limitations (right) ==========
+    X1["✗ Does not guarantee complete fields"]:::limitation
+    X2["✗ Describes but does not generate"]:::limitation
+    X3["✗ Some Schema keywords may not be supported"]:::limitation
 
-    %% ========== 用户输入节点 ==========
-    Input([用户输入]):::client
+    %% ========== User input node ==========
+    Input([User input]):::client
 
-    %% ========== 连线：层次纵向推进 + 能力限制横向展开 ==========
+    %% ========== Connections: layers progress vertically; capabilities and limits expand horizontally ==========
     Input --> L1
     L1 --> C1
     L1 --> X1
@@ -269,53 +269,53 @@ flowchart LR
     L1 --> L2
     L2 --> L3
 
-    %% ========== 样式 ==========
+    %% ========== Styles ==========
     linkStyle default stroke-width:2px,stroke:#333333,opacity:0.8
     style generation fill:#F5F7FA,color:#333333,stroke:#005D7B,stroke-width:2px,rx:10,ry:10
 ```
 
-结构化输出在工程中有两类常见落点：
+Structured output commonly appears in two places in an engineering workflow:
 
-1. **响应结构化输出**：模型的最终回答就是一份符合 Schema 的 JSON，比如工单分类、信息抽取、情感打分。后端直接反序列化消费。
-2. **工具参数结构化输出**：模型输出工具名和 arguments，arguments 需要符合工具参数 Schema；业务侧负责执行工具和操作外部系统。
+1. **Structured response output**: The model's final answer is Schema-compliant JSON, such as ticket classification, information extraction, or sentiment scoring. The backend deserializes and consumes it.
+2. **Structured tool parameters**: The model outputs a tool name and arguments, which must match the tool-parameter Schema. The business layer executes the tool and operates external systems.
 
-后面要讲的 Function Calling，就属于第二类。
+Function Calling, discussed next, belongs to the second category.
 
-## Function Calling 到底调用了什么？
+## What Does Function Calling Actually Call?
 
-Function Calling 这个名字很容易误导新人。很多人以为“模型调用函数”，好像模型真的执行了你的 Java 方法。
+The name Function Calling can mislead newcomers. It may sound as if the model itself executes your Java method.
 
-模型根据用户问题和工具描述生成结构化调用意图。你的业务服务、Agent Runtime、MCP Host 或供应商托管环境再执行工具。
+The model generates a structured call intent based on the user's question and the tool description. Your business service, Agent Runtime, MCP Host, or a vendor-hosted environment then executes the tool.
 
-### 模型生成的是调用意图
+### The Model Generates a Call Intent
 
-一个典型工具调用链路如下：
+A typical tool-call flow looks like this:
 
-![Function Calling 完整调用链路：模型只生成调用意图，真正执行工具的是业务侧](../images/shared/structured-output-function-calling-function-calling-pipeline.png)
+![Function Calling flow: the model generates a call intent, while the business layer executes the tool](../images/shared/structured-output-function-calling-function-calling-pipeline.png)
 
-拆成工程步骤就是：
+The engineering steps are:
 
-1. **服务端注册工具定义**：包括工具名、用途描述、参数 Schema。
-2. **用户发起请求**：比如“帮我查一下订单 1029384756 到哪了”。
-3. **模型选择工具**：模型判断需要调用 `query_order`，并生成参数 `{"orderId": "1029384756"}`。
-4. **业务侧校验参数**：校验类型、必填、权限、订单归属、幂等键等。
-5. **业务侧执行工具**：调用订单系统、数据库或 HTTP API。
-6. **工具结果回填模型**：把查询结果连同 `tool_use_id` 原样发回模型。Anthropic 要求 `tool_use_id` 严格匹配，Gemini 3 同样为每个 `functionCall` 生成唯一 `id`，回填时必须带回，否则并行调用场景下结果会错配。
-7. **模型生成最终回答**：模型把结构化结果转成人类能理解的回复。
+1. **Register the tool definition on the server**: Include the tool name, purpose, and parameter Schema.
+2. **The user submits a request**: For example, “Check the status of order 1029384756.”
+3. **The model selects a tool**: It decides to call `query_order` and generates `{"orderId": "1029384756"}`.
+4. **The business layer validates the parameters**: Check types, required fields, permissions, order ownership, idempotency keys, and more.
+5. **The business layer executes the tool**: Call the order system, database, or HTTP API.
+6. **Return the tool result to the model**: Send the query result back with the original `tool_use_id`. Anthropic requires an exact `tool_use_id` match. Gemini 3 also generates a unique `id` for each `functionCall`, which must be returned to avoid mismatching results during parallel calls.
+7. **The model generates a final answer**: It turns the structured result into a user-readable response.
 
-Anthropic 的工具调用流程中，Claude 根据用户请求和工具描述返回结构化调用，客户端工具由应用执行，结果再通过 `tool_result` 回传。Gemini 的 Function Calling 也把“选择函数和填充参数”交给模型，把实际调用留在应用侧。两者都把模型输出与工具执行分开。
+In Anthropic's tool-call flow, Claude returns a structured call based on the user's request and tool description. The application executes the client-side tool and sends the result back through `tool_result`. Gemini Function Calling likewise lets the model select a function and fill its parameters while leaving execution to the application. Both separate model output from tool execution.
 
-### 为什么需要工具调用意图？
+### Why Use a Tool-Call Intent?
 
-因为自然语言输入和后端 API 之间隔着一层语义鸿沟。
+Because natural-language input and backend APIs have a semantic gap.
 
-用户会说：
+The user might say:
 
 ```text
-我昨天买的那台咖啡机还没发货，帮我查下。
+The coffee machine I bought yesterday hasn't shipped yet. Can you check it?
 ```
 
-后端 API 需要的是：
+The backend API needs:
 
 ```json
 {
@@ -325,33 +325,33 @@ Anthropic 的工具调用流程中，Claude 根据用户请求和工具描述返
 }
 ```
 
-Function Calling 的价值，就是让模型完成“自然语言意图 → 结构化参数”的映射。但它只负责映射，不负责替你绕过权限、查数据库、扣库存、发短信。
+Function Calling maps natural-language intent to structured parameters. It only performs this mapping; it does not bypass permissions, query databases, deduct inventory, or send messages on your behalf.
 
-工具调用只完成意图与参数映射。权限、资源归属、业务状态和副作用仍由执行层判断。
+Tool calling only maps intent and parameters. The execution layer remains responsible for permissions, resource ownership, business state, and side effects.
 
-## Function Calling、MCP Tool、HTTP API、Agent Skill 是什么关系？
+## How Do Function Calling, MCP Tools, HTTP APIs, and Agent Skills Relate?
 
-这些概念没有固定的 Skill → MCP → Function Calling → HTTP API 层级。它们解决不同问题，实际系统可以按需组合。
+These concepts do not form a fixed Skill → MCP → Function Calling → HTTP API hierarchy. They solve different problems and can be combined as needed.
 
-| 能力                            | 定位                         | 解决的问题                         | 谁来执行                   | 典型边界             |
-| ------------------------------- | ---------------------------- | ---------------------------------- | -------------------------- | -------------------- |
-| JSON Mode                       | 输出格式开关                 | 让模型输出合法 JSON                | 模型侧生成                 | 不保证字段和业务语义 |
-| JSON Schema                     | 结构描述规范                 | 定义字段、类型、枚举、必填等契约   | 本身不参与生成，只描述结构 | 不负责生成和外部调用 |
-| Structured Outputs              | 模型 API 结构化生成能力      | 把 Schema 接入生成，让输出贴合结构 | 模型侧生成 + 服务端校验    | 不负责外部系统调用   |
-| Function Calling / Tool Calling | 模型到工具的调用意图生成机制 | 自然语言转工具名和参数             | 通常由业务侧或供应商执行   | 不等于 API 本身      |
-| MCP                             | 工具和上下文接入协议         | 标准化工具发现、调用、资源访问     | MCP Client / Server 协作   | 不替代模型推理能力   |
-| 普通 HTTP API                   | 业务服务接口                 | 确定性业务读写                     | 后端服务                   | 不理解自然语言       |
-| Agent Skill                     | 可复用任务说明和执行 SOP     | 复杂任务的流程编排和上下文注入     | Agent 按说明执行           | 不一定包含工具调用   |
+| Capability                      | Role                                                | Problem addressed                                                     | Who executes it                                    | Typical boundary                                  |
+| ------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------- |
+| JSON Mode                       | Output-format switch                                | Make the model return valid JSON                                      | Generated by the model                             | Does not guarantee fields or business semantics   |
+| JSON Schema                     | Structural specification                            | Define a contract for fields, types, enums, required values, and more | Does not generate output; only describes structure | Does not generate output or call external systems |
+| Structured Outputs              | Structured-generation capability in a model API     | Apply a Schema during generation so output follows its structure      | Model generation plus server validation            | Does not call external systems                    |
+| Function Calling / Tool Calling | Mechanism for generating model-to-tool call intents | Map natural language to tool names and parameters                     | Usually executed by the business layer or vendor   | Not the API itself                                |
+| MCP                             | Protocol for connecting tools and context           | Standardize tool discovery, calls, and resource access                | MCP Client and Server collaborate                  | Does not replace model reasoning                  |
+| HTTP API                        | Business-service interface                          | Deterministic business reads and writes                               | Backend service                                    | Does not understand natural language              |
+| Agent Skill                     | Reusable task instructions and execution SOP        | Orchestrate complex tasks and inject context                          | Agent follows the instructions                     | May not include tool calls                        |
 
-### Function Calling 如何映射到 HTTP API？
+### How Does Function Calling Map to an HTTP API?
 
-普通 HTTP API 是后端系统的确定性接口。例如：
+A conventional HTTP API is a deterministic interface to a backend system. For example:
 
 ```http
 GET /api/orders/O202605070001
 ```
 
-Function Calling 是模型输出的调用意图。例如：
+Function Calling is a call intent generated by the model. For example:
 
 ```json
 {
@@ -363,123 +363,123 @@ Function Calling 是模型输出的调用意图。例如：
 }
 ```
 
-两者之间通常需要一个工具执行层做映射：
+A tool-execution layer usually maps between the two:
 
 ```text
-模型工具调用 query_order → 服务端校验参数 → 调用 GET /api/orders/{orderId}
+Model tool call `query_order` → server validates parameters → calls `GET /api/orders/{orderId}`
 ```
 
-所以，Function Calling 可以包一层 HTTP API，但 HTTP API 本身不是 Function Calling。
+Function Calling can wrap an HTTP API, but the HTTP API itself is not Function Calling.
 
-### MCP Tool 解决的是哪一层标准化？
+### Which Layer Does an MCP Tool Standardize?
 
-Function Calling 是模型供应商侧的工具调用机制，各家的请求和响应格式会有差异。
+Function Calling is a tool-calling mechanism provided by model vendors, whose request and response formats may differ.
 
-MCP Tool 是 MCP 协议里的工具能力。根据 MCP 官方规范，MCP 允许 Server 暴露可由语言模型调用的工具，工具包含名称和描述其 Schema 的元数据；MCP 客户端与服务器之间的消息遵循 JSON-RPC 2.0。
+An MCP Tool is a tool capability defined by the MCP protocol. According to the official MCP specification, a Server can expose tools for language models to call. Each tool has a name and metadata describing its Schema, and messages between MCP Clients and Servers follow JSON-RPC 2.0.
 
-Function Calling 负责让模型表达“调用哪个工具、参数是什么”；MCP 负责 Client 与 Server 之间的工具发现、调用和结果返回。
+Function Calling lets the model express which tool to call and with what parameters; MCP handles tool discovery, calls, and results between Clients and Servers.
 
-一个支持 MCP 的 Agent Runtime，可以先通过 MCP 发现工具，再把这些工具定义转换成某个模型供应商的 Function Calling 格式传给模型。模型选择工具后，Runtime 再把调用转成 MCP 的 `tools/call` 请求。
+An MCP-enabled Agent Runtime can discover tools through MCP, convert their definitions into a model vendor's Function Calling format, and pass them to the model. Once the model selects a tool, the Runtime converts the call into an MCP `tools/call` request.
 
-这只是常见适配方式，不是 MCP 的协议前提。MCP Client 也可以由规则引擎、用户界面或其他程序直接发起 `tools/call`；MCP Server 的实现可以访问 HTTP API、数据库、本地文件或进程，不要求底层再经过 Function Calling。
+This is a common integration pattern, not an MCP protocol requirement. A rules engine, user interface, or another program can also issue `tools/call` directly through an MCP Client. An MCP Server can access HTTP APIs, databases, local files, or processes without using Function Calling underneath.
 
-### Agent Skill 为什么不是 Function Calling 的语法糖？
+### Why Isn't an Agent Skill Syntactic Sugar for Function Calling?
 
-Skill 记录任务需要的上下文、执行步骤和处理规则，可以理解为一份可复用的“任务说明书”。
+A Skill records the context, steps, and rules required for a task. Think of it as reusable task instructions.
 
-比如一个“线上事故复盘 Skill”可能写着：
+For example, an “Incident Review Skill” might say:
 
-1. 先读取事故时间线。
-2. 再查询监控截图。
-3. 再拉取发布记录。
-4. 最后按“现象、影响、根因、改进项”输出。
+1. Read the incident timeline.
+2. Retrieve monitoring screenshots.
+3. Fetch deployment records.
+4. Produce a report covering symptoms, impact, root cause, and action items.
 
-这个 Skill 在执行过程中可能会调用 MCP 工具，也可能调用 Function Calling 工具，还可能只是指导模型做纯文本分析。它不是 Function Calling 的语法糖。
+During execution, this Skill may call MCP tools or Function Calling tools, or simply guide the model through text analysis. It is not syntactic sugar for Function Calling.
 
-一种常见实现是由 Skill 约束 Agent 的流程，Runtime 将 MCP 工具定义转换为供应商的 Tool Calling 格式，再由工具执行器把参数映射到 HTTP API。也可以让 MCP Server 直接访问数据库或本地文件，Client 不经过模型就发起 `tools/call`。组件间的组合取决于运行时，不存在必须经过的固定链路。
+A common implementation uses a Skill to constrain the Agent workflow, converts MCP tool definitions into a vendor's Tool Calling format in the Runtime, then maps parameters to an HTTP API in the tool executor. Alternatively, an MCP Server can access a database or local files directly, with the Client issuing `tools/call` without involving a model. Components can be combined according to the Runtime; no fixed call path is required.
 
-## 什么时候该用 Structured Outputs，什么时候该上工具？
+## When Should You Use Structured Outputs, and When Should You Use Tools?
 
-上面已经拆过层次，这里换成工程选型视角：你到底应该只要结构化结果，还是应该让模型选择工具并触发外部系统？
+Now consider the choice from an engineering perspective: do you only need structured results, or should the model select tools that trigger external systems?
 
-| 维度             | JSON Mode             | JSON Schema              | Structured Outputs        | Function Calling / Tool Calling    | MCP                                                          |
-| ---------------- | --------------------- | ------------------------ | ------------------------- | ---------------------------------- | ------------------------------------------------------------ |
-| 所在层次         | 模型输出格式层        | 结构描述规范层           | 模型结构化生成层          | 模型工具意图层                     | 应用协议层                                                   |
-| 输入给模型的内容 | “输出 JSON”的模式开关 | 不直接参与生成           | Schema 或响应格式定义     | 工具名、工具描述、参数 Schema      | 通常由 Host 转换后给模型，协议本身在 Client 和 Server 间通信 |
-| 模型输出         | JSON 文本             | —                        | 符合 Schema 的结构化对象  | 工具名 + 参数，或最终回答          | 不直接规定模型输出，规定 MCP 消息                            |
-| 是否调用外部系统 | 否                    | 否                       | 否                        | 生成调用意图，执行在外部           | 是，MCP Client 调 MCP Server                                 |
-| 是否跨模型标准化 | 各厂商实现不同        | 规范通用，可跨模型复用   | Schema 支持子集各厂商不同 | 各厂商格式不同                     | 目标是标准化工具和上下文接入                                 |
-| 适合场景         | 简单结构化文本        | 定义数据契约和校验规则   | 数据抽取、分类、参数生成  | 订单查询、发邮件、查库存等工具任务 | 多工具、多客户端、团队共享工具生态                           |
-| 主要风险         | 合法 JSON 但字段不对  | 只描述不执行，容易被高估 | Schema 太复杂或支持不一致 | 工具误调用、参数越权               | Server 权限、安全边界、协议兼容                              |
+| Dimension                   | JSON Mode                        | JSON Schema                                          | Structured Outputs                                    | Function Calling / Tool Calling                                          | MCP                                                                                         |
+| --------------------------- | -------------------------------- | ---------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| Layer                       | Model output-format layer        | Structural-specification layer                       | Structured-generation layer                           | Model tool-intent layer                                                  | Application protocol layer                                                                  |
+| Input to model              | “Output JSON” mode switch        | Not directly involved in generation                  | Schema or response-format definition                  | Tool name, description, and parameter Schema                             | Usually converted by the Host for the model; the protocol itself connects Client and Server |
+| Model output                | JSON text                        | —                                                    | Schema-conforming structured object                   | Tool name and parameters, or final answer                                | Does not specify model output; specifies MCP messages                                       |
+| Calls external systems?     | No                               | No                                                   | No                                                    | Generates a call intent; execution happens externally                    | Yes; MCP Client calls MCP Server                                                            |
+| Standardized across models? | Vendor implementations differ    | General specification, reusable across models        | Supported Schema subsets differ by vendor             | Vendor formats differ                                                    | Aims to standardize tool and context integration                                            |
+| Suitable for                | Simple structured text           | Defining data contracts and validation rules         | Data extraction, classification, parameter generation | Tool tasks such as querying orders, sending email, or checking inventory | Shared tool ecosystems across multiple tools and clients                                    |
+| Main risk                   | Valid JSON with incorrect fields | Describes but does not execute; easy to overestimate | Schema is too complex or inconsistently supported     | Incorrect tool calls or unauthorized parameters                          | Server permissions, security boundaries, and protocol compatibility                         |
 
-选型时先看结果会不会触发外部动作，再看工具需要在多少个客户端复用：
+Choose based first on whether the result triggers an external action, then on how many clients need to reuse the tool:
 
-- 只做轻量数据抽取，可以先用 Structured Outputs。
-- 需要读写业务系统，优先考虑 Function Calling / Tool Calling。
-- 工具很多、客户端很多、希望跨 IDE 或跨 Agent 复用，考虑 MCP。
-- 复杂任务有一套固定 SOP，考虑 Skill，把工具组合和决策过程沉淀下来。
+- For lightweight data extraction, start with Structured Outputs.
+- For reading or writing business systems, consider Function Calling / Tool Calling.
+- For many tools and clients, or reuse across IDEs and Agents, consider MCP.
+- For complex tasks with a fixed SOP, use a Skill to capture tool combinations and decision processes.
 
-## 结构化输出怎么工程化落地？
+## How Do You Put Structured Output into Production?
 
-结构化输出不是“加一个 Schema 参数”就完事了。生产环境要考虑 Schema 设计、版本兼容、失败处理、日志和降级。
+Structured output is more than “adding a Schema parameter.” Production use also requires Schema design, version compatibility, failure handling, logging, and fallback behavior.
 
-### 1. Schema 设计：一个字段只表达一件事
+### 1. Schema Design: One Field, One Meaning
 
-坏设计：
+Poor design:
 
 ```json
 {
-  "result": "支付问题，高优先级，需要人工处理"
+  "result": "Payment issue, high priority, manual handling required"
 }
 ```
 
-好设计：
+Better design:
 
 ```json
 {
   "category": "PAYMENT",
   "priority": "HIGH",
   "needManualReview": true,
-  "reason": "用户已支付但订单状态未同步"
+  "reason": "Payment succeeded, but the order status was not synchronized"
 }
 ```
 
-字段越原子，后端越容易校验、统计、路由和灰度。
+The more atomic the fields, the easier they are for the backend to validate, measure, route, and roll out gradually.
 
-### 2. 字段说明要写“何时用”和“何时不用”
+### 2. Describe When to Use a Field and When Not to Use It
 
-很多工具误调用，根源并不在模型推理能力，而在字段描述太模糊。
+Many incorrect tool calls result from vague field descriptions, not from the model's reasoning ability.
 
-比如：
+For example:
 
 ```json
 {
   "category": {
     "type": "string",
-    "description": "工单分类"
+    "description": "Ticket category"
   }
 }
 ```
 
-这几乎没用。更好的写法是：
+This is barely useful. A better description is:
 
 ```json
 {
   "category": {
     "type": "string",
     "enum": ["PAYMENT", "LOGISTICS", "AFTER_SALE", "ACCOUNT", "NEED_MORE_INFO"],
-    "description": "工单分类。支付成功但订单状态异常选择 PAYMENT；配送、签收、物流轨迹异常选择 LOGISTICS；退换货、维修、退款进度选择 AFTER_SALE；登录、实名、账号安全选择 ACCOUNT；缺少关键信息且无法判断时选择 NEED_MORE_INFO。"
+    "description": "Ticket category. Choose PAYMENT for successful payment with an incorrect order status; LOGISTICS for delivery, receipt, or tracking issues; AFTER_SALE for returns, repairs, or refund status; ACCOUNT for login, identity verification, or account security; and NEED_MORE_INFO when key details are missing and the issue cannot be classified."
   }
 }
 ```
 
-工具描述要写清适用条件、排除条件和可选值，篇幅长短反而是次要的。
+Tool descriptions should clearly state applicable conditions, exclusions, and allowed values. Length is secondary.
 
-### 3. 枚举优先于自由文本
+### 3. Prefer Enums to Free Text
 
-分类、状态、动作类型、风险等级，能用 `enum` 就不要用自由文本。
+For categories, statuses, action types, and risk levels, use `enum` instead of free text whenever possible.
 
-自由文本的问题是不可控：
+Free text is difficult to control:
 
 ```json
 {
@@ -487,24 +487,24 @@ Skill 记录任务需要的上下文、执行步骤和处理规则，可以理�
 }
 ```
 
-后端到底把 `urgent` 当成 `HIGH`，还是当成非法值？如果你在服务端做模糊映射，就相当于把模型的不确定性扩散到了业务规则里。
+Should the backend interpret `urgent` as `HIGH` or reject it as invalid? Fuzzy server-side mapping spreads model uncertainty into business rules.
 
-### 4. 必填字段要谨慎，但不要偷懒
+### 4. Choose Required Fields Carefully, but Do Not Skip Validation
 
-以 OpenAI Structured Outputs 严格模式为例，常见约束包括：`additionalProperties: false`、所有声明的属性都必须出现在 `required` 中、对象必须显式声明 `type`，并且只接受 JSON Schema 的一部分关键字。`pattern`、`format`、`minLength`、`oneOf` 等关键字在不同模型版本和供应商中的支持度不同，落地前应核对目标模型的 supported schemas 文档。真正需要先确定的是字段缺失时的业务语义：业务允许未知，就不能让模型靠编造值填满 Schema。
+For example, OpenAI Structured Outputs strict mode commonly requires `additionalProperties: false`, every declared property to appear in `required`, and an explicit object `type`; it also supports only a subset of JSON Schema keywords. Support for `pattern`, `format`, `minLength`, and `oneOf` varies by model version and vendor, so check the target model's supported-schema documentation before implementation. First determine the business meaning of a missing field: if the business allows an unknown value, do not force the model to invent one to fill the Schema.
 
-常见做法有两种：
+Two common approaches are:
 
-- 用 `null` 明确表达未知，例如 `"refundId": null`。
-- 用状态字段表达缺信息，例如 `"status": "NEED_MORE_INFO"`。
+- Represent an unknown value explicitly with `null`, for example, `"refundId": null`.
+- Use a status field to indicate missing information, for example, `"status": "NEED_MORE_INFO"`.
 
-字段不存在应表示协议异常，而不是“未知”。未知值要在 Schema 内用 `null` 或状态字段表达，后端才能据此走不同分支。
+An absent field should indicate a protocol error, not “unknown.” Represent unknown values in the Schema with `null` or a status field so the backend can choose the appropriate branch.
 
-### 5. 版本兼容：Schema 也要有版本号
+### 5. Version Compatibility: Version Your Schema Too
 
-当多个服务开始消费同一份结构化输出时，字段变更会直接影响下游，这时就要按接口管理版本。
+When multiple services consume the same structured output, field changes directly affect downstream consumers. Manage Schema versions as you would API versions.
 
-建议在 Schema 中增加版本字段：
+Consider adding a version field to the Schema:
 
 ```json
 {
@@ -512,46 +512,46 @@ Skill 记录任务需要的上下文、执行步骤和处理规则，可以理�
   "category": "PAYMENT",
   "priority": "HIGH",
   "confidence": 0.91,
-  "reason": "用户已支付但订单状态未同步"
+  "reason": "Payment succeeded, but the order status was not synchronized"
 }
 ```
 
-新增字段尽量作为可选扩展；删除字段前先灰度，确认下游没有依赖；新增枚举也要确认旧消费者能否识别。Prompt、Schema、解析代码和看板指标应使用同一版本边界，因为下游真正消费的是它们共同形成的接口。
+Prefer adding fields as optional extensions. Before removing a field, roll out gradually and confirm that no downstream consumer depends on it. Check that older consumers can recognize new enum values. Prompts, Schemas, parsing code, and dashboard metrics should share a version boundary because downstream systems consume the interface they form together.
 
-### 6. 校验失败重试：让模型修正具体错误
+### 6. Retry Validation Failures with Specific Feedback
 
-不要一失败就把原始问题重跑一遍。更好的做法是把校验错误反馈给模型，让它只修结构。
+Do not rerun the original request whenever validation fails. Instead, send the validation errors back to the model and ask it to fix only the structure.
 
-例如服务端发现：
+For example, the server finds:
 
 ```text
 $.priority: must be one of LOW, MEDIUM, HIGH
 $.confidence: must be number
 ```
 
-下一轮可以给模型：
+In the next turn, send the model:
 
 ```text
-上一次输出没有通过 JSON Schema 校验，请只返回修正后的 JSON，不要添加解释。
+The previous output failed JSON Schema validation. Return only corrected JSON; do not add an explanation.
 
-校验错误：
-1. priority 必须是 LOW、MEDIUM、HIGH 之一。
-2. confidence 必须是 number。
+Validation errors:
+1. priority must be one of LOW, MEDIUM, or HIGH.
+2. confidence must be a number.
 
-原始输出：
+Original output:
 {...}
 ```
 
-重试策略建议：
+Recommended retry policy:
 
-- 最多重试 1 到 2 次。
-- 每次重试都带上明确的校验错误。
-- 重试仍失败时进入降级逻辑。
-- 所有失败样本写入日志，后续用于优化 Schema 和 Prompt。
+- Retry at most once or twice.
+- Include the specific validation errors with each retry.
+- If retries still fail, use the fallback path.
+- Log every failed sample for later Schema and Prompt improvements.
 
 ```mermaid
 flowchart TB
-    %% ========== 配色声明 ==========
+    %% ========== Color definitions ==========
     classDef input fill:#00838F,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef process fill:#E99151,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef check fill:#F39C12,color:#FFFFFF,stroke:none,rx:10,ry:10
@@ -560,86 +560,86 @@ flowchart TB
     classDef degrade fill:#C44545,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef measure fill:#607D8B,color:#FFFFFF,stroke:none,rx:10,ry:10
 
-    %% ========== 节点 ==========
-    Start([模型输出]):::input
-    Validate[Schema 校验]:::process
-    Check{校验<br/>通过？}:::check
-    Business[执行业务逻辑]:::success
-    Extract["提取具体错误<br/>$.field: message"]:::measure
-    RetryCheck{重试<br/>次数 < 2？}:::check
-    RetryPrompt["带上错误让模型修正"]:::retry
-    Degrade([降级处理<br/>人工 / 规则 / 追问]):::degrade
+    %% ========== Nodes ==========
+    Start([Model output]):::input
+    Validate[Schema validation]:::process
+    Check{Validation<br/>passed?}:::check
+    Business[Run business logic]:::success
+    Extract["Extract specific errors<br/>$.field: message"]:::measure
+    RetryCheck{Retry<br/>count < 2?}:::check
+    RetryPrompt["Send errors for model correction"]:::retry
+    Degrade([Fallback<br/>human / rules / ask user]):::degrade
 
     Start --> Validate --> Check
-    Check -->|通过| Business
-    Check -.->|失败| Extract
+    Check -->|Pass| Business
+    Check -.->|Fail| Extract
 
     Extract --> RetryCheck
-    RetryCheck -->|是| RetryPrompt
-    RetryPrompt -.->|下一轮| Validate
-    RetryCheck -->|否| Degrade
+    RetryCheck -->|Yes| RetryPrompt
+    RetryPrompt -.->|Next turn| Validate
+    RetryCheck -->|No| Degrade
 
-    %% ========== 样式 ==========
+    %% ========== Styles ==========
     linkStyle default stroke-width:2px,stroke:#333333,opacity:0.8
     linkStyle 3 stroke:#C44545,stroke-width:2px,stroke-dasharray:5 5
     linkStyle 5 stroke:#9B59B6,stroke-width:2px,stroke-dasharray:5 5
 ```
 
-### 7. 降级策略：别让一个 JSON 拖垮主流程
+### 7. Fallback Strategy: Do Not Let Invalid JSON Break the Main Flow
 
-结构化结果拿不到时，主业务如何继续应在接入前定下来。工单分类、订单查询、风险评分和工具调用的故障，不能共用同一种回退方式：
+Decide how the business flow should continue before integration, in case structured results are unavailable. Ticket classification, order queries, risk scoring, and tool-call failures need different fallback strategies:
 
-| 场景             | 降级策略                             |
-| ---------------- | ------------------------------------ |
-| 工单分类失败     | 进入人工队列，标记 `AI_PARSE_FAILED` |
-| 订单查询参数缺失 | 追问用户补充订单号                   |
-| 风险评分失败     | 使用规则引擎兜底评分                 |
-| 工具调用超时     | 返回“系统繁忙”，不继续让模型猜       |
-| 非关键字段缺失   | 使用默认值，但记录告警               |
+| Scenario                           | Fallback strategy                                |
+| ---------------------------------- | ------------------------------------------------ |
+| Ticket classification fails        | Send to a human queue and mark `AI_PARSE_FAILED` |
+| Order query is missing a parameter | Ask the user for the order number                |
+| Risk scoring fails                 | Use a rules engine as a fallback                 |
+| Tool call times out                | Return “System busy”; do not let the model guess |
+| A non-critical field is missing    | Use a default value and log a warning            |
 
 ```mermaid
 flowchart TB
-    %% ========== 配色声明 ==========
+    %% ========== Color definitions ==========
     classDef scenario fill:#00838F,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef strategy fill:#E99151,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef warning fill:#F39C12,color:#FFFFFF,stroke:none,rx:10,ry:10
     classDef note fill:#607D8B,color:#FFFFFF,stroke:none,rx:10,ry:10
 
-    %% ========== 核心原则 ==========
-    Core[“核心原则：可降级，但禁止模型编造事实”]:::warning
+    %% ========== Core principle ==========
+    Core["Core principle: allow fallback, but never let the model invent facts"]:::warning
 
-    %% ========== 场景-策略矩阵 ==========
-    subgraph matrix[“降级策略矩阵”]
+    %% ========== Scenario-strategy matrix ==========
+    subgraph matrix["Fallback strategy matrix"]
         direction TB
-        S1[工单分类失败]:::scenario --> A1[“进入人工队列<br/>标记 AI_PARSE_FAILED”]:::strategy
-        S2[订单查询参数缺失]:::scenario --> A2[“追问用户补充订单号”]:::strategy
-        S3[风险评分失败]:::scenario --> A3[“使用规则引擎兜底评分”]:::strategy
-        S4[工具调用超时]:::scenario --> A4[“返回「系统繁忙」<br/>不让模型猜测结果”]:::strategy
-        S5[非关键字段缺失]:::scenario --> A5[“使用默认值<br/>记录告警”]:::strategy
+        S1[Ticket classification fails]:::scenario --> A1["Send to human queue<br/>mark AI_PARSE_FAILED"]:::strategy
+        S2[Order query missing a parameter]:::scenario --> A2["Ask user for order number"]:::strategy
+        S3[Risk scoring fails]:::scenario --> A3["Use rules-engine fallback"]:::strategy
+        S4[Tool call times out]:::scenario --> A4["Return ‘System busy’<br/>do not let model guess"]:::strategy
+        S5[Non-critical field is missing]:::scenario --> A5["Use default value<br/>log a warning"]:::strategy
     end
 
     Core --> matrix
 
-    %% ========== 样式 ==========
+    %% ========== Styles ==========
     linkStyle default stroke-width:2px,stroke:#333333,opacity:0.8
     style matrix fill:#F5F7FA,color:#333333,stroke:#005D7B,stroke-width:2px,rx:10,ry:10
 ```
 
-关键原则：**可以降级，但不能让模型编造业务事实**。
+Core principle: **allow fallback, but never let the model invent business facts**.
 
-## 工具调用安全怎么保证？
+## How Do You Secure Tool Calls?
 
-Function Calling 里最危险的部分，往往发生在你拿着模型生成的 JSON 去操作真实系统时。
+The greatest risks in Function Calling often arise when model-generated JSON is used to operate real systems.
 
-查询订单通常只读取一条受权限约束的数据；退款、删数据、发短信或执行 SQL 会改变系统状态，必须使用更严的执行条件。
+Querying an order usually reads a single permission-protected record. Refunds, data deletion, sending messages, and executing SQL change system state and require stricter execution controls.
 
-本节重点介绍工具参数和执行约束。如果需要把间接 Prompt Injection、MCP 授权、敏感数据、网络出口、代码隔离与安全评测串起来，可以继续看 [LLM/Agent 安全实战](../system-design/llm-security.md)。
+This section focuses on tool parameters and execution controls. For a broader treatment of indirect Prompt Injection, MCP authorization, sensitive data, network egress, code isolation, and security evaluation, see [LLM and Agent Security](../system-design/llm-security.md).
 
-### 1. 参数校验：Schema 校验只是第一层
+### 1. Parameter Validation: Schema Validation Is Only the First Layer
 
-Schema 能检查类型和结构，但检查不了业务权限。
+Schema can check types and structure, but it cannot validate business permissions.
 
-比如：
+For example:
 
 ```json
 {
@@ -647,72 +647,72 @@ Schema 能检查类型和结构，但检查不了业务权限。
 }
 ```
 
-Schema 只能知道这是一个字符串。它不知道这个订单是不是当前用户的，也不知道订单是否已经退款，更不知道这个用户是否有客服权限。
+The Schema only knows that this is a string. It cannot tell whether the order belongs to the current user, has already been refunded, or requires customer-service permissions.
 
-服务端至少要做三层校验：
+The server must perform at least three layers of validation:
 
-- **结构校验**：类型、必填、枚举、长度、格式。
-- **业务校验**：订单归属、状态流转、库存、金额范围。
-- **权限校验**：用户身份、角色、租户、数据范围。
+- **Structural validation**: Types, required fields, enums, length, and format.
+- **Business validation**: Order ownership, state transitions, inventory, and amount limits.
+- **Authorization**: User identity, role, tenant, and data scope.
 
-### 2. 权限控制：工具不是谁都能调
+### 2. Access Control: Tools Are Not Available to Everyone
 
-不要把内部管理工具直接暴露给所有用户场景。
+Do not expose internal administrative tools to every user scenario.
 
-建议按风险等级分层：
+Classify tools by risk level:
 
-| 风险等级 | 工具类型                     | 控制策略                       |
-| -------- | ---------------------------- | ------------------------------ |
-| 低风险   | 查询天气、读取公开文档       | 基础限流和日志                 |
-| 中风险   | 查询订单、查询用户资料       | 身份校验、数据范围校验         |
-| 高风险   | 退款、发券、改地址、发短信   | 权限校验、二次确认、审计       |
-| 极高风险 | 删除数据、执行 SQL、批量操作 | 默认禁止，走人工审批或专用后台 |
+| Risk level | Tool type                                                 | Controls                                                                   |
+| ---------- | --------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Low        | Check the weather, read public documents                  | Basic rate limiting and logging                                            |
+| Medium     | Query orders or user profiles                             | Identity and data-scope checks                                             |
+| High       | Issue refunds or coupons, change addresses, send messages | Authorization, confirmation, and auditing                                  |
+| Critical   | Delete data, execute SQL, perform bulk operations         | Prohibit by default; require human approval or a dedicated admin interface |
 
-![工具调用安全风险分层：按风险等级匹配不同的控制策略](../images/shared/structured-output-function-calling-tool-call-security.png)
+![Tool-call security tiers: match controls to the risk level](../images/shared/structured-output-function-calling-tool-call-security.png)
 
-### 3. 敏感操作二次确认
+### 3. Require Confirmation for Sensitive Actions
 
-模型可以建议退款，但不应该直接替用户退款，除非业务明确允许。
+The model can propose a refund, but should not issue one directly on the user's behalf unless the business explicitly allows it.
 
-高风险工具可以拆成两步：
+Split high-risk tools into two steps:
 
-1. `prepare_refund`：生成退款预案，返回金额、原因、影响。
-2. `confirm_refund`：用户或客服确认后执行。
+1. `prepare_refund`: Create a refund proposal and return its amount, reason, and impact.
+2. `confirm_refund`: Execute after confirmation from the user or customer-service representative.
 
-这样做的好处是：模型负责整理信息和建议动作，人类或业务规则负责最后确认。
+This lets the model organize information and propose an action, while a person or business rule makes the final decision.
 
-### 4. 幂等：别让重试变成重复扣款
+### 4. Idempotency: Prevent Retries from Charging Twice
 
-工具调用链路里会有重试：模型重试、网络重试、队列重试、业务服务重试。
+Retries can occur at multiple points in a tool-call flow: the model, network, queue, or business service.
 
-例如退款工具可以由可信执行层根据业务请求 ID、动作和资源生成 `idempotencyKey`，而不是接收模型提供的键。数据库用唯一约束兜底，外部支付或退款接口携带相同的幂等号；同一请求再次到达时返回已有结果，不再重复执行。
+For example, a trusted execution layer can generate an `idempotencyKey` from the business request ID, action, and resource instead of accepting one from the model. Back it with a database uniqueness constraint and send the same key to the external payment or refund API. If the same request arrives again, return the existing result without executing it twice.
 
-如果一个工具不能安全重试，它就不应该被 Agent 随意调用。
+If a tool cannot be retried safely, an Agent should not be allowed to call it freely.
 
-### 5. 审计日志：记录模型意图和执行结果
+### 5. Audit Logs: Record Model Intent and Execution Results
 
-审计日志要回答模型提出了什么动作、服务端允许了什么、业务系统实际执行了什么，但不等于保存完整明文 Payload。
+Audit logs should show what the model proposed, what the server allowed, and what the business system executed. This does not mean storing the full plaintext Payload.
 
-先定义字段白名单。工具名、校验结论、结果码、耗时、模型版本、Schema 版本和 traceId 通常可以直接记录；订单号、userId 等标识符按排障需求做掩码、哈希或令牌化；密码、令牌、支付数据、私钥和原始文档正文禁止进入普通日志。确实需要保留敏感原文时，应写入单独的受控审计存储，配置访问审批、加密、保留期和删除流程。
+Define an allowlist of fields first. Tool names, validation decisions, result codes, duration, model and Schema versions, and `traceId` can usually be recorded directly. Mask, hash, or tokenize identifiers such as order numbers and `userId` as needed for troubleshooting. Never put passwords, tokens, payment data, private keys, or raw document bodies in regular logs. If sensitive raw content must be retained, put it in separate, controlled audit storage with access approval, encryption, a retention period, and a deletion process.
 
-日志内容本身也属于不可信输入。展示和导出时要防日志注入，并限制谁能按 `traceId` 反查用户请求。可参考 [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html)。
+Log content is also untrusted input. Prevent log injection when displaying or exporting it, and restrict who can use a `traceId` to retrieve a user request. See the [OWASP Logging Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html).
 
-### 6. 超时和重试：工具失败要短路
+### 6. Timeouts and Retries: Stop When a Tool Fails
 
-工具超时后，不要让模型继续基于空结果编回答。
+After a tool times out, do not let the model make up an answer based on an empty result.
 
-建议：
+Recommendations:
 
-- 查询类工具设置较短超时。
-- 写操作谨慎重试，必须配幂等。
-- 外部依赖失败时返回明确错误码。
-- 模型拿到工具错误后，只能解释“当前无法完成”，不能猜测结果。
+- Use short timeouts for query tools.
+- Retry writes cautiously and require idempotency.
+- Return explicit error codes when external dependencies fail.
+- When a tool returns an error, the model may explain that it cannot complete the task, but must not guess the result.
 
-## Java 后端示例：把订单查询做成可校验工具
+## Java Backend Example: Build a Validated Order-Query Tool
 
-以订单查询为例：用户用自然语言询问订单状态，模型通过 Function Calling 生成 `query_order` 工具调用，Java 服务端校验参数后再分发到订单服务。
+For an order query, the user asks about an order in natural language. The model generates a `query_order` call through Function Calling, and the Java server validates its parameters before dispatching it to the order service.
 
-### 工具参数 JSON Schema
+### Tool-Parameter JSON Schema
 
 ```json
 {
@@ -722,16 +722,16 @@ Schema 只能知道这是一个字符串。它不知道这个订单是不是当�
     "schemaVersion": {
       "type": "string",
       "const": "query_order_v1",
-      "description": "工具参数版本，当前固定为 query_order_v1。"
+      "description": "Tool-parameter version, currently fixed at query_order_v1."
     },
     "orderId": {
       "type": "string",
       "pattern": "^O[0-9]{12,20}$",
-      "description": "订单号，以大写字母 O 开头，后面跟 12 到 20 位数字。"
+      "description": "Order ID: uppercase O followed by 12 to 20 digits."
     },
     "includeLogistics": {
       "type": "boolean",
-      "description": "是否需要返回物流信息。用户询问发货、配送、签收、快递时为 true。"
+      "description": "Whether to include shipping information. Set to true when the user asks about shipment, delivery, receipt, or a courier."
     }
   },
   "required": ["schemaVersion", "orderId", "includeLogistics"],
@@ -739,13 +739,13 @@ Schema 只能知道这是一个字符串。它不知道这个订单是不是当�
 }
 ```
 
-这里的字段各有明确用途。`schemaVersion` 固定为当前版本号（如 `query_order_v1`），后续升级才能判断兼容范围；`orderId` 用 `pattern` 限制格式，`includeLogistics` 用布尔值排除 `"yes"`、`"需要"` 等自由文本。
+Each field here has a clear purpose. Fix `schemaVersion` to the current version, such as `query_order_v1`, so later upgrades can determine compatibility. Use `pattern` to constrain the `orderId` format, and a boolean for `includeLogistics` to rule out free-text values such as `"yes"` or `"needed"`.
 
-该工具只读，因此参数 Schema 不接收幂等键。退款、扣库存等写操作则由服务端或 Agent Runtime 在完成权限校验后生成幂等键，再用 Redis `SET NX`、条件写入或数据库唯一索引去重。`additionalProperties: false` 也将未声明字段挡在执行层之外。
+This is a read-only tool, so its parameter Schema does not accept an idempotency key. For writes such as refunds or inventory deductions, the server or Agent Runtime should generate the key after authorization, then deduplicate with Redis `SET NX`, conditional writes, or a database unique index. `additionalProperties: false` also keeps undeclared fields out of the execution layer.
 
-### Java 服务端校验与分发
+### Java Server-Side Validation and Dispatch
 
-Java 服务端使用 Jackson 解析 JSON，再用 JSON Schema Validator 做结构校验。真实项目中的依赖版本应跟随项目 BOM 或安全扫描结果统一管理。
+The Java server uses Jackson to parse JSON and a JSON Schema Validator to check its structure. In a real project, manage dependency versions through the project BOM or a unified process based on security-scan results.
 
 ```java
 package cn.javaguide.ai.tool;
@@ -815,7 +815,7 @@ public class ToolCallDispatcher {
         try {
             ToolResult result = switch (toolCall.name()) {
                 case "query_order" -> handleQueryOrder(toolCall.argumentsJson(), userContext);
-                default -> ToolResult.failed("UNSUPPORTED_TOOL", "不支持的工具：" + toolCall.name());
+                default -> ToolResult.failed("UNSUPPORTED_TOOL", "Unsupported tool: " + toolCall.name());
             };
 
             auditLogService.record(new AuditEvent(
@@ -836,7 +836,7 @@ public class ToolCallDispatcher {
                     false,
                     startedAt
             ));
-            return ToolResult.failed("TOOL_EXECUTION_FAILED", "工具执行失败，请稍后重试。");
+            return ToolResult.failed("TOOL_EXECUTION_FAILED", "Tool execution failed. Please try again later.");
         }
     }
 
@@ -851,12 +851,12 @@ public class ToolCallDispatcher {
         QueryOrderArgs args = OBJECT_MAPPER.treeToValue(arguments, QueryOrderArgs.class);
 
         if (!permissionService.canReadOrder(userContext.userId(), args.orderId())) {
-            return ToolResult.failed("FORBIDDEN", "当前用户无权查询该订单。");
+            return ToolResult.failed("FORBIDDEN", "The current user is not allowed to query this order.");
         }
 
         OrderView order = orderService.queryOrder(args.orderId(), args.includeLogistics());
         if (order == null) {
-            return ToolResult.failed("ORDER_NOT_FOUND", "未查询到该订单。");
+            return ToolResult.failed("ORDER_NOT_FOUND", "Order not found.");
         }
 
         Map<String, Object> payload = new LinkedHashMap<>();
@@ -877,10 +877,10 @@ public class ToolCallDispatcher {
                 .map(ValidationMessage::getMessage)
                 .sorted()
                 .reduce((left, right) -> left + "；" + right)
-                .orElse("参数不符合 Schema。");
+                .orElse("Parameters do not match the Schema.");
     }
 
-    // callId 用于回填模型：Anthropic 的 tool_use_id / Gemini 的 functionCall.id 必须原样带回
+    // Return callId to the model unchanged: Anthropic tool_use_id / Gemini functionCall.id
     public record ToolCall(String callId, String name, String argumentsJson) {
     }
 
@@ -942,119 +942,119 @@ public class ToolCallDispatcher {
 }
 ```
 
-这段代码串起了后端工具执行层的几个必要步骤：
+This code demonstrates several essential steps in the backend tool-execution layer:
 
-1. **先按工具名分发**，未知工具直接拒绝。
-2. **先做 JSON Schema 校验**，再反序列化成业务参数。
-3. **再做权限校验**，确认当前用户能访问该订单。
-4. **工具返回结构化结果**，让模型基于事实生成回答。
-5. **全链路审计**，记录经过白名单和脱敏处理的参数、校验结论与执行结果。
+1. **Dispatch by tool name first**; reject unknown tools.
+2. **Validate against the JSON Schema first**, then deserialize into business parameters.
+3. **Check permissions** to confirm that the current user can access the order.
+4. **Return a structured result** for the model to use as the basis for its answer.
+5. **Audit the full flow**, recording allowlisted and redacted parameters, validation decisions, and execution results.
 
-如果你把模型输出的参数直接传给订单服务，等于把业务系统的入口暴露给一个概率模型。
+Passing model-generated parameters directly to the order service exposes the business system's entry point to a probabilistic model.
 
-## 上线前应该检查哪些工程细节？
+## What Should You Check Before Release?
 
-上线前先沿着结果生成、业务执行和失败回退这条链路检查，避免只验证 Schema 能否通过。
+Before release, review the entire flow from result generation through business execution and fallback. Do not stop after checking whether the Schema validates.
 
-### Schema 层
+### Schema Layer
 
-- 一个字段是否只承载一个业务含义？
-- “信息不足”“无需操作”等状态是否有明确枚举？
-- `required`、`additionalProperties` 和字段说明是否把输入边界写清？
-- 多个消费者共用时，是否通过 `schemaVersion` 区分版本？
+- Does each field represent only one business concept?
+- Are states such as “insufficient information” and “no action needed” explicit enum values?
+- Do `required`, `additionalProperties`, and field descriptions define input boundaries clearly?
+- If multiple consumers share the Schema, are versions distinguished with `schemaVersion`?
 
-### 模型调用层
+### Model Call Layer
 
-- 是否使用供应商原生 Structured Outputs 或严格工具调用能力？
-- 是否控制输出长度，避免 JSON 被截断？
-- 是否避免在结构化输出任务里使用过高的采样随机性？
-- 是否为校验失败设计重试 Prompt？
+- Does the integration use the vendor's native Structured Outputs or strict tool-calling capability?
+- Is output length limited to avoid truncated JSON?
+- Is sampling randomness kept low enough for structured-output tasks?
+- Is there a retry Prompt for validation failures?
 
-### 服务端执行层
+### Server Execution Layer
 
-- 是否做 Schema 校验？
-- 是否做业务校验和权限校验？
-- 写操作是否幂等？
-- 高风险操作是否二次确认？
-- 工具超时后是否短路？
-- 是否有审计日志和 traceId？
+- Is Schema validation performed?
+- Are business rules and permissions checked?
+- Are write operations idempotent?
+- Do high-risk actions require confirmation?
+- Does a tool timeout stop the flow?
+- Are audit logs and `traceId`s available?
 
-### 降级层
+### Fallback Layer
 
-- 解析失败是否进入人工队列或规则兜底？
-- 工具失败时是否禁止模型编造结果？
-- 是否统计失败率、错误类型和高频非法枚举？
-- 是否能根据失败样本反推 Schema 和 Prompt 的改进点？
+- Do parsing failures enter a human queue or use a rules-based fallback?
+- Is the model prevented from inventing results when a tool fails?
+- Are failure rates, error types, and frequent invalid enum values tracked?
+- Can failure samples help improve the Schema and Prompt?
 
-## 常见误区
+## Common Misconceptions
 
-### 误区 1：Temperature 设为 0 就一定稳定
+### Misconception 1: Setting Temperature to 0 Guarantees Stability
 
-低 Temperature 在 OpenAI、Claude 系列上是常见做法，但不能替代 Schema。上下文过长、指令冲突、输出截断、工具描述模糊时，结构化输出仍然会失败。另外要注意，不同模型对 Temperature 的建议不同——例如 Gemini 3 系列官方建议保持默认 `temperature=1.0`，下调反而可能导致循环或推理退化。跨厂商使用时按目标模型文档调整。
+Low Temperature is common with OpenAI and Claude models, but it does not replace a Schema. Structured output can still fail because of long contexts, conflicting instructions, truncated output, or vague tool descriptions. Model recommendations for Temperature also differ. For example, the official Gemini 3 guidance recommends keeping the default `temperature=1.0`; lowering it may cause looping or degraded reasoning. Follow the target model's documentation when using multiple vendors.
 
-### 误区 2：用了 Structured Outputs 就不用校验
+### Misconception 2: Structured Outputs Removes the Need for Validation
 
-不行。供应商能力降低的是生成阶段出错概率，不代表服务端可以放弃边界。你仍然需要防御非法参数、越权访问、重放请求和业务状态冲突。
+No. Vendor capabilities reduce the chance of generation errors; they do not let the server drop its safeguards. You must still defend against invalid parameters, unauthorized access, replayed requests, and conflicting business states.
 
-### 误区 3：Schema 越复杂越好
+### Misconception 3: A More Complex Schema Is Always Better
 
-复杂 Schema 会增加模型理解和供应商兼容成本。可以先固定业务真正依赖的字段、枚举、必填项和额外字段限制，复杂组合关键字等目标供应商确认支持后再加入。
+Complex Schemas increase the cost of model interpretation and vendor compatibility. Start with the fields, enums, required values, and extra-field restrictions the business actually needs. Add complex composition keywords only after confirming that the target vendor supports them.
 
-### 误区 4：工具越多 Agent 越强
+### Misconception 4: More Tools Make an Agent More Capable
 
-工具越多，模型选择空间越大，误调用概率也会上升。工具设计要小而清晰，大而全的工具最容易让 Agent 犯迷糊。
+More tools give the model more options and increase the chance of an incorrect call. Keep tools focused and clear; broad, all-purpose tools are the easiest for an Agent to misuse.
 
-### 误区 5：Function Calling 可以绕过业务权限
+### Misconception 5: Function Calling Can Bypass Business Permissions
 
-Function Calling 只是参数生成机制。权限控制必须在服务端，不能藏在 Prompt 里。Prompt 里的“不要越权查询”只能算提醒，不能算安全边界。
+Function Calling only generates parameters. Enforce permissions on the server, not in the Prompt. “Do not query without authorization” in a Prompt is a reminder, not a security boundary.
 
-## 面试问题
+## Interview Questions
 
-### 1. 为什么只写“请返回 JSON”不可靠
+### 1. Why Is “Return JSON” Alone Unreliable?
 
-因为这只是自然语言约束，不是工程契约。模型可能输出额外解释文本、漏字段、类型错误、生成未知枚举，或者在复杂上下文里忘记格式要求。生产环境要结合 JSON Schema、原生 Structured Outputs、服务端校验、失败重试和降级策略。
+Because it is a natural-language instruction, not an engineering contract. The model may add explanations, omit fields, use the wrong types, invent enum values, or forget the format in a complex context. Production systems should combine JSON Schema, native Structured Outputs, server-side validation, retries, and fallback strategies.
 
-### 2. JSON Mode 和 Structured Outputs 有什么区别
+### 2. How Do JSON Mode and Structured Outputs Differ?
 
-JSON Mode 解决的是响应能否被当作 JSON 解析，`priority` 取值是否属于业务枚举仍无从判断。Structured Outputs 在生成时应用 Schema，使字段、类型、枚举和必填项尽量落在供应商支持的范围内；响应进入服务端后，权限和业务状态仍需单独校验。
+JSON Mode addresses whether a response can be parsed as JSON; it does not determine whether `priority` is a valid business enum. Structured Outputs applies a Schema during generation to constrain fields, types, enums, and required values within the vendor's supported subset. The server must still validate permissions and business state.
 
-### 3. JSON Schema 在大模型应用里解决什么问题
+### 3. What Problem Does JSON Schema Solve in LLM Applications?
 
-它把“输出应该长什么样”变成可校验的数据契约。常用能力包括 `properties`、`required`、`enum`、`additionalProperties`、`pattern`、`minimum`、`maximum` 等。它既能给模型提供结构化约束，也能给服务端做兜底校验。
+It turns “what the output should look like” into a data contract that can be validated. Common features include `properties`, `required`, `enum`, `additionalProperties`, `pattern`, `minimum`, and `maximum`. It can constrain model output and provide a fallback validation layer on the server.
 
-### 4. Function Calling 的完整链路是什么
+### 4. What Is the Full Function Calling Flow?
 
-服务端先注册工具定义，模型根据用户请求生成工具名和参数，业务侧校验参数并执行真实工具，再把工具结果回填给模型，模型基于结果生成最终回答。模型不直接执行函数，执行权在业务侧或供应商托管工具侧。
+The server registers a tool definition. The model generates a tool name and parameters based on the user's request. The business layer validates the parameters and executes the tool, then returns the result to the model, which generates a final answer. The model does not execute the function; execution belongs to the business layer or a vendor-hosted tool environment.
 
-### 5. Function Calling 和 MCP 有什么区别
+### 5. How Do Function Calling and MCP Differ?
 
-Function Calling 是模型侧的工具调用意图生成机制，重点是“自然语言如何变成工具名和参数”。MCP 是应用层协议，重点是“工具如何被标准化发现、描述、调用和返回结果”。MCP 可以承载工具生态，Function Calling 可以作为模型选择 MCP 工具时的底层能力之一。
+Function Calling generates tool-call intents on the model side, focusing on how natural language becomes a tool name and parameters. MCP is an application-layer protocol for standardized tool discovery, description, invocation, and results. MCP can provide a tool ecosystem, and Function Calling can be one mechanism the model uses to select MCP tools.
 
-### 6. MCP Tool 和普通 HTTP API 有什么关系
+### 6. How Does an MCP Tool Relate to a Regular HTTP API?
 
-HTTP API 是业务服务接口，通常面向程序调用；MCP Tool 是暴露给 AI Host 的标准化工具能力，可以在内部再调用 HTTP API、数据库或本地脚本。MCP 解决接入标准化，HTTP API 解决具体业务能力。
+An HTTP API is a business-service interface, usually intended for programmatic calls. An MCP Tool is a standardized capability exposed to an AI Host; internally, it may call an HTTP API, database, or local script. MCP standardizes integration, while the HTTP API provides the specific business capability.
 
-### 7. Agent Skill 和 Function Calling 是一回事吗
+### 7. Are Agent Skills and Function Calling the Same Thing?
 
-两者负责的事情不同。Skill 保存可复用的任务说明和执行 SOP，用于注入上下文、约束步骤和编排流程；Function Calling 负责生成工具名和参数。一个 Skill 可以指导 Agent 调用多个 Function Calling 工具或 MCP 工具，也可以完全不调用工具。
+They serve different purposes. A Skill stores reusable task instructions and an execution SOP to provide context, constrain steps, and orchestrate a workflow. Function Calling generates tool names and parameters. A Skill may guide an Agent to call multiple Function Calling or MCP tools, or may not call any tools at all.
 
-### 8. 结构化输出失败后怎么处理
+### 8. What Should You Do When Structured Output Fails?
 
-先用服务端校验器拿到具体错误，再把错误反馈给模型做有限重试。重试仍失败时进入降级：人工队列、规则引擎兜底、追问用户补信息或返回明确失败。不要让模型在没有事实依据时继续编答案。
+Use a server-side validator to identify specific errors, then send them to the model for a limited number of retries. If retries still fail, use a fallback: a human queue, rules engine, follow-up question, or explicit failure response. Do not let the model invent an answer without evidence.
 
-### 9. 工具调用为什么必须做安全治理
+### 9. Why Must Tool Calls Be Governed for Security?
 
-模型给出的工具参数属于不可信输入。即使 `orderId` 的格式通过校验，也不能证明当前用户有权读取它。所有工具都要做参数和权限校验；会产生副作用的调用再增加二次确认与幂等控制。日志字段、超时和重试策略也要随风险等级调整。
+Model-generated tool parameters are untrusted input. A valid `orderId` format does not prove that the current user may read that order. Validate parameters and permissions for every tool; require confirmation and idempotency controls for calls with side effects. Adjust logging, timeouts, and retries according to risk.
 
-## 参考
+## References
 
-- [OpenAI Structured Outputs 官方文档](https://platform.openai.com/docs/guides/structured-outputs)
-- [OpenAI Function Calling 官方文档](https://platform.openai.com/docs/guides/function-calling)
-- [Anthropic Structured Outputs 官方文档](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
-- [Anthropic Tool Use 官方文档](https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview)
-- [Gemini Structured Outputs 官方文档](https://ai.google.dev/gemini-api/docs/structured-output)
-- [Gemini Function Calling 官方文档](https://ai.google.dev/gemini-api/docs/function-calling)
-- [MCP Basic Protocol 官方规范](https://modelcontextprotocol.io/specification/2025-11-25/basic)
-- [MCP Tools 官方规范](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)
-- [JSON Schema Object 参考](https://json-schema.org/understanding-json-schema/reference/object)
-- [JSON Schema Enum 参考](https://json-schema.org/understanding-json-schema/reference/enum)
+- [OpenAI Structured Outputs documentation](https://platform.openai.com/docs/guides/structured-outputs)
+- [OpenAI Function Calling documentation](https://platform.openai.com/docs/guides/function-calling)
+- [Anthropic Structured Outputs documentation](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
+- [Anthropic Tool Use documentation](https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview)
+- [Gemini Structured Outputs documentation](https://ai.google.dev/gemini-api/docs/structured-output)
+- [Gemini Function Calling documentation](https://ai.google.dev/gemini-api/docs/function-calling)
+- [MCP Basic Protocol specification](https://modelcontextprotocol.io/specification/2025-11-25/basic)
+- [MCP Tools specification](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)
+- [JSON Schema Object reference](https://json-schema.org/understanding-json-schema/reference/object)
+- [JSON Schema Enum reference](https://json-schema.org/understanding-json-schema/reference/enum)

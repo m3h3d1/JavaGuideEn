@@ -17,7 +17,7 @@ head:
       content: AI application development,AI application development interviews,AI engineering interviews,large language models,LLM interviews,LLM,Agent,Agent interviews,RAG,RAG interviews,MCP,prompt engineering,vector databases,AI system design,AI coding interviews
   - - meta
     - property: og:title
-      content: AI Application Development: LLMs, Agents, RAG, MCP, Prompt Engineering, and System Design
+      content: "AI Application Development: LLMs, Agents, RAG, MCP, Prompt Engineering, and System Design"
   - - meta
     - property: og:description
       content: Key knowledge backend developers need for AI application development, from LLM calls, agents, RAG, MCP, and prompt engineering to evaluation and system design.

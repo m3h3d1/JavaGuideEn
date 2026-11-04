@@ -1,32 +1,32 @@
 ---
-title: Java 优质开源大数据项目
-description: Java优质开源大数据项目推荐，涵盖Hadoop、Spark、Flink、Beam、SeaTunnel、Iceberg、Hudi、Paimon等计算、存储、集成和湖仓项目。
-category: 开源项目
+title: Recommended Open-Source Big Data Projects
+description: Recommended open-source big data projects for computing, storage, data integration, and lakehouse architectures, including Hadoop, Spark, Flink, Beam, SeaTunnel, Iceberg, Hudi, and Paimon.
+category: Open-Source Projects
 icon: "mdi:database-search-outline"
 ---
 
-大数据项目横跨计算、存储、数据集成和湖仓，不能只按“谁更热门”横向比较。先确定要解决的问题，再选择对应层次的项目。
+Big data projects cover computing, storage, data integration, and lakehouse architectures, so they should not be compared only by popularity. First identify the problem you need to solve, then choose a project at the appropriate layer.
 
-## 分布式计算
+## Distributed Computing
 
-- [Apache Hadoop](https://github.com/apache/hadoop)：分布式存储和批处理生态的基础项目，包含 HDFS、MapReduce 和 YARN 等核心模块。
-- [Apache Spark](https://github.com/apache/spark)：用于大规模数据处理的统一分析引擎，覆盖批处理、流处理、SQL 和机器学习等场景。
-- [Apache Flink](https://github.com/apache/flink)：面向有界和无界数据流的有状态计算框架，常用于实时数据处理和流批一体任务。
-- [Apache Beam](https://github.com/apache/beam)：统一描述批处理与流处理任务的编程模型，可通过不同 Runner 把同一套 Pipeline 运行在 Flink、Spark 等引擎上。
-- [Apache Storm](https://github.com/apache/storm)：分布式实时计算系统，适合了解早期流处理架构。新项目选型时建议同时对比 Flink 和 Spark Structured Streaming。
+- [Apache Hadoop](https://github.com/apache/hadoop): A foundational distributed storage and batch-processing ecosystem with core modules such as HDFS, MapReduce, and YARN.
+- [Apache Spark](https://github.com/apache/spark): A unified analytics engine for large-scale data processing, covering batch processing, stream processing, SQL, and machine learning.
+- [Apache Flink](https://github.com/apache/flink): A stateful computing framework for bounded and unbounded data streams, commonly used for real-time processing and unified stream and batch workloads.
+- [Apache Beam](https://github.com/apache/beam): A programming model for describing batch and stream processing jobs. Different runners can execute the same pipeline on engines such as Flink and Spark.
+- [Apache Storm](https://github.com/apache/storm): A distributed real-time computing system useful for learning about early stream-processing architectures. For new projects, also compare Flink and Spark Structured Streaming.
 
-## 分布式存储
+## Distributed Storage
 
-- [Apache HBase](https://github.com/apache/hbase)：构建在 Hadoop 生态上的分布式列式存储，适合需要大规模随机读写的场景。
+- [Apache HBase](https://github.com/apache/hbase): Distributed column-family storage built on the Hadoop ecosystem, suited to workloads that require large-scale random reads and writes.
 
-## 数据集成
+## Data Integration
 
-- [Apache SeaTunnel](https://github.com/apache/seatunnel)：分布式海量数据集成工具，提供多种数据源连接器，可用于离线同步和实时同步。
-- [Flink CDC](https://github.com/apache/flink-cdc)：基于 Flink 的流式数据集成工具，适合捕获数据库变更并构建实时数据管道。
-- [Apache Flume](https://github.com/apache/flume)：用于采集、聚合和传输日志数据的分布式系统。维护仍在继续，但主要面向传统日志采集场景，新项目选型时应和 Kafka Connect、SeaTunnel 等方案一起评估。
+- [Apache SeaTunnel](https://github.com/apache/seatunnel): A distributed data integration tool with connectors for many sources, supporting both batch and real-time synchronization.
+- [Flink CDC](https://github.com/apache/flink-cdc): A Flink-based streaming data integration tool for capturing database changes and building real-time data pipelines.
+- [Apache Flume](https://github.com/apache/flume): A distributed system for collecting, aggregating, and transferring log data. It is still maintained, but focuses mainly on traditional log collection. Evaluate it alongside Kafka Connect, SeaTunnel, and similar tools for new projects.
 
-## 湖仓表格式
+## Lakehouse Table Formats
 
-- [Apache Iceberg](https://github.com/apache/iceberg)：面向大规模分析数据集的开放表格式，支持 Schema 演进、分区演进和快照等能力。
-- [Apache Hudi](https://github.com/apache/hudi)：面向数据湖的增量处理平台，强调更新、删除、变更流和增量查询。
-- [Apache Paimon](https://github.com/apache/paimon)：面向实时湖仓的表格式，支持 Flink 和 Spark 的流批读写，适合关注实时更新能力的场景。
+- [Apache Iceberg](https://github.com/apache/iceberg): An open table format for large analytic datasets, with schema evolution, partition evolution, snapshots, and more.
+- [Apache Hudi](https://github.com/apache/hudi): An incremental processing platform for data lakes, focused on updates, deletes, change streams, and incremental queries.
+- [Apache Paimon](https://github.com/apache/paimon): A table format for real-time lakehouses, supporting both streaming and batch reads and writes with Flink and Spark. Suitable for workloads that need real-time updates.

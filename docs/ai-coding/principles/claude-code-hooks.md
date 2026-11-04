@@ -1,101 +1,101 @@
 ---
-title: Claude Code Hooks 详解：生命周期钩子与自动化工作流
-description: 从 Claude Code 生命周期出发，讲清 Hooks 的触发时机、handler 类型、输入输出、安全拦截、自动格式化和通知提醒，帮助你用 Hooks 把提示词里的软约束变成可审计、可复用的自动化动作。
-category: AI 编程原理
+title: "Claude Code Hooks: Lifecycle Events and Automated Workflows"
+description: A practical guide to hook events, handler types, input and output, security checks, formatting, and notifications in Claude Code.
+category: AI Coding Principles
 tag:
   - Claude Code
   - Hooks
   - AI Agent
-  - AI 编程
+  - AI Coding
 head:
   - - meta
     - name: keywords
-      content: Claude Code,Hooks,生命周期钩子,AI编程,自动化工作流,PreToolUse,PostToolUse,UserPromptSubmit,SessionStart,权限控制
+      content: Claude Code,Hooks,lifecycle hooks,AI coding,automated workflows,PreToolUse,PostToolUse,UserPromptSubmit,SessionStart,permissions
 ---
 
-用 Claude Code/ Codex 写代码到一定阶段之后，很多人会遇到同一个问题。
+After using Claude Code or Codex to write code for a while, many people run into the same problem.
 
-问题通常不在模型能力上。
+The problem is usually not the model's capability.
 
-恰恰相反，是它太能干了。它能改文件、跑命令、查项目结构、生成脚本，也能一口气处理一串很长的任务。于是你会很自然地开始把更多动作交给它。
+If anything, it can do too much. It can edit files, run commands, inspect project structure, generate scripts, and handle long sequences of tasks. Naturally, you start delegating more actions to it.
 
-然后问题就来了：改完文件，它这次会不会忘了格式化？准备跑 Bash 命令时，它会不会不小心带上 `rm -rf`？它会不会顺手改到 `.env`、`.git/` 或生产配置？它卡在权限弹窗时，我能不能不用一直盯着终端？......
+Then the questions start: Will it remember to format a file after editing it? Could it accidentally include `rm -rf` in a Bash command? Might it change `.env`, `.git/`, or production configuration? Can I avoid watching the terminal when it gets stuck on a permission prompt?
 
-它们都不适合只靠提示词解决，因为提示词约束不够，无法完全保证。
+Prompts alone are not enough to solve these problems because they cannot guarantee that an instruction will always be followed.
 
-这个时候就需要用到了 Hooks 了，它解决的就是这些问题，自动触发执行。
+Hooks help by automatically running actions at specific points in the workflow.
 
-这两者的差别，可以先用一张图概括：
+The diagram summarizes the difference:
 
-![Prompt 提醒依赖上下文和模型记忆，Hooks 卡点通过自动触发、脚本审计和风险阻断保证动作发生](../images/shared/hooks-vs-prompts-guarantee.webp)
+![Prompts rely on context and model recall; Hooks run automatically, can be audited, and can block risky actions](../images/shared/hooks-vs-prompts-guarantee.webp)
 
-我更愿意把 Hooks 理解成 Claude Code 工作流里的固定卡点。会话开始、用户提交 Prompt、工具调用前后、上下文压缩前后，都可以挂上对应的处理动作。
+Think of Hooks as checkpoints in a Claude Code workflow. You can attach actions to session start, user prompt submission, before or after tool calls, and before or after context compaction.
 
-## Hooks 到底是什么
+## What Are Hooks?
 
-Hook 配置主要看事件和 handler。事件决定什么时候触发，handler 接收当时的输入并完成具体动作。
+Hook configuration consists mainly of an event and a handler. The event determines when a hook runs; the handler receives the event input and performs an action.
 
-比如把一个 `command` handler 挂到 `PostToolUse`：Claude 成功修改文件后，Claude Code 会把这次工具调用的 JSON 交给脚本，脚本再决定是否运行 formatter。整个过程不需要 Claude 回头读提示词，也可以把脚本拿出来单独测试。
+For example, attach a `command` handler to `PostToolUse`. After Claude successfully edits a file, Claude Code passes the tool-call JSON to a script, which can decide whether to run a formatter. Claude does not need to reread a prompt, and the script can be tested independently.
 
-handler 也不限于 shell command，官方还支持 HTTP endpoint、MCP 工具和 LLM prompt 等形式（见官方文档 [Hooks reference](https://code.claude.com/docs/en/hooks) 中 "Hook handler fields" 一节）。
+Handlers are not limited to shell commands. Officially supported types also include HTTP endpoints, MCP tools, and LLM prompts. See the "Hook handler fields" section in the official [Hooks reference](https://code.claude.com/docs/en/hooks).
 
-![Claude Code 官方文档 Hooks reference 页面列出的五类 handler：command、http、mcp_tool、prompt 和 agent](../images/shared/hooks-handler-types-official-docs.png)
+![Five handler types listed in the Claude Code Hooks reference: command, http, mcp_tool, prompt, and agent](../images/shared/hooks-handler-types-official-docs.png)
 
-下图标出了常用触发点：
+The diagram shows common trigger points:
 
-![Claude Code Hooks 围绕 SessionStart、UserPromptSubmit、PreToolUse、PostToolUse、PermissionRequest 和 PreCompact 等生命周期节点自动执行](../images/shared/claude-code-hooks-lifecycle-map.webp)
+![Claude Code Hooks run at lifecycle events such as SessionStart, UserPromptSubmit, PreToolUse, PostToolUse, PermissionRequest, and PreCompact](../images/shared/claude-code-hooks-lifecycle-map.webp)
 
-Hook handler 主要有五类：
+There are five main hook handler types:
 
-| 类型       | 做什么                               | 适合场景                               |
-| ---------- | ------------------------------------ | -------------------------------------- |
-| `command`  | 执行 shell command                   | 格式化、日志、安全拦截、通知           |
-| `http`     | 把事件 JSON POST 到一个 URL          | 团队审计服务、远程通知、集中化策略     |
-| `mcp_tool` | 调用已连接 MCP server 上的工具       | 复用现有 MCP 能力                      |
-| `prompt`   | 用一次模型判断返回 yes/no 风格 JSON  | 轻量判断，比如 Stop 前检查任务是否完成 |
-| `agent`    | 启动带工具访问能力的 subagent 做验证 | 需要读文件、搜代码、跑命令的验证       |
+| Type       | Action                                              | Suitable use                                                           |
+| ---------- | --------------------------------------------------- | ---------------------------------------------------------------------- |
+| `command`  | Runs a shell command                                | Formatting, logging, security checks, notifications                    |
+| `http`     | Sends event JSON to a URL with POST                 | Team audit service, remote notifications, centralized policies         |
+| `mcp_tool` | Calls a tool on a connected MCP server              | Reuse existing MCP capabilities                                        |
+| `prompt`   | Uses a model to return a yes/no-style JSON decision | Lightweight checks, such as verifying task completion before Stop      |
+| `agent`    | Starts a subagent with tool access for verification | Checks that require reading files, searching code, or running commands |
 
-不过，这五类 handler 不是每个事件都能用：
+However, not every event supports all five handler types:
 
-- `PreToolUse`、`PostToolUse`、`PermissionRequest`、`Stop` 等事件支持全部五种类型；
-- `Notification`、`PreCompact`、`ConfigChange` 等事件不支持 `prompt` 和 `agent`；
-- `SessionStart`、`Setup` 只支持 `command` 和 `mcp_tool`。
+- Events such as `PreToolUse`, `PostToolUse`, `PermissionRequest`, and `Stop` support all five types.
+- Events such as `Notification`, `PreCompact`, and `ConfigChange` do not support `prompt` or `agent`.
+- `SessionStart` and `Setup` support only `command` and `mcp_tool`.
 
-准备使用非 command handler 时，最好先查一下对应事件的兼容范围。
+Before using a non-command handler, check which handler types the event supports.
 
-这一步直接交给 AI 去做就好，你只需要提供我写的这篇文章给你使用的 Coding Agent 或者直接发一下官方的文档链接给它。
+You can ask your coding agent to check this against the official documentation by sharing this article or the documentation link.
 
-能确定性地写成脚本的规则，优先交给 `command`。脚本可以脱离 Claude Code 单独运行，失败原因也更容易复现。
+Use `command` for rules that can be implemented deterministically in a script. Scripts can run outside Claude Code, and failures are easier to reproduce.
 
-只有验证过程需要读代码、运行测试并综合判断时，才需要考虑 `prompt` 或 `agent`。其中 `agent` hooks 在官方文档里仍标注为 experimental，接入前要把额外的调试成本算进去。
+Consider `prompt` or `agent` only when verification requires reading code, running tests, and making a judgment. The official documentation still marks `agent` hooks as experimental, so account for the added debugging cost before adopting them.
 
-五类 handler 的关系如下：
+The five handler types are summarized below:
 
-![Hook handler 包括 command、http、mcp_tool、prompt 和 agent，优先使用稳定可审计的 command 脚本](../images/shared/hook-handler-types.webp)
+![Hook handlers include command, http, mcp_tool, prompt, and agent; prefer stable, auditable command scripts](../images/shared/hook-handler-types.webp)
 
-## Hooks 到底解决了什么问题
+## What Problems Do Hooks Solve?
 
-假设 `CLAUDE.md` 里写着“改完代码请运行 Prettier”。这条说明会进入上下文，Claude 通常会照做；任务变长、期间插入新要求后，它也可能漏掉。项目规则还没整理清楚时，可以先看 [CLAUDE.md 最佳实践](https://javaguide.cn/ai-coding/practices/claude-md-best-practices.html)。
+Suppose `CLAUDE.md` says, "Run Prettier after changing code." Claude will usually follow this instruction because it is in context, but may miss it when the task grows or new requirements appear. If your project rules need work, see [CLAUDE.md Best Practices](https://javaguide.cn/ai-coding/practices/claude-md-best-practices.html).
 
-“不要修改 `.env`”也有相同问题。自然语言可以说明意图，却无法在每次文件写入前强制检查路径。把规则接到 `PreToolUse` 后，脚本可以读取目标文件并在命中敏感路径时直接阻断；格式化则可以放在 `PostToolUse`，只处理刚修改的文件。
+"Do not modify `.env`" has the same limitation. Natural language can express intent, but cannot enforce a path check before every file write. With the rule attached to `PreToolUse`, a script can inspect the target path and block sensitive files. Formatting can run at `PostToolUse` and process only the file that was just changed.
 
-这类机制和 pre-commit、CI、lint-staged、CODEOWNERS、branch protection 的作用相近：把格式化、危险命令检查、权限通知等固定动作写进流程，留下可检查的执行结果。Hooks 补上的正是 Claude Code 生命周期中的这一段。
+These mechanisms serve a role similar to pre-commit, CI, lint-staged, CODEOWNERS, and branch protection: they put fixed actions such as formatting, dangerous-command checks, and permission notifications into the workflow and leave auditable results. Hooks provide this layer in the Claude Code lifecycle.
 
-## Hooks 最小配置
+## Minimal Hook Configuration
 
-Hook 配在 Claude Code 的 settings 文件里。常用位置有三个：
+Hooks are configured in Claude Code settings files. The three common locations are:
 
-| 位置                          | 作用范围             | 适合放什么                   |
-| ----------------------------- | -------------------- | ---------------------------- |
-| `~/.claude/settings.json`     | 当前用户所有项目     | 个人通知、个人习惯           |
-| `.claude/settings.json`       | 当前项目，可提交仓库 | 团队共享规则、项目级安全限制 |
-| `.claude/settings.local.json` | 当前项目本机私有     | 不适合提交的个人配置         |
+| Location                      | Scope                             | Suitable for                                        |
+| ----------------------------- | --------------------------------- | --------------------------------------------------- |
+| `~/.claude/settings.json`     | All projects for the current user | Personal notifications and preferences              |
+| `.claude/settings.json`       | Current project; can be committed | Shared team rules and project security restrictions |
+| `.claude/settings.local.json` | Local to the current project      | Personal settings that should not be committed      |
 
-官方还支持 managed policy、插件的 `hooks/hooks.json`，以及 skill 或 agent frontmatter 里的 hooks。
+Other supported locations include managed policies, plugin `hooks/hooks.json` files, and hooks in Skill or Agent frontmatter.
 
-日常写项目，先记住上面三个就够了。
+For everyday project work, start with these three locations.
 
-一个最小配置长这样：
+A minimal configuration looks like this:
 
 ```json
 {
@@ -115,13 +115,13 @@ Hook 配在 Claude Code 的 settings 文件里。常用位置有三个：
 }
 ```
 
-拆开看，其实就是三层：
+This configuration has three parts:
 
-- `PostToolUse` 是事件名，表示工具调用成功之后触发。
-- `matcher` 是过滤条件。这里写 `Edit|Write`，只在 Claude Code 使用 `Edit` 或 `Write` 改文件之后触发。工具名 matcher 可以用 `|` 分隔；从 Claude Code v2.1.191 开始，也可以用 `,` 分隔并在两侧留空格。带连字符的精确 matcher 则需要 v2.1.195 或更高版本，旧版本可以用 `^...$` 限定完整匹配。
-- `hooks` 数组里是真正执行的 handler。这里是一个 `command`，会从 stdin 的 JSON 里取出刚编辑的文件路径，再交给 Prettier。
+- `PostToolUse` is the event name; it runs after a successful tool call.
+- `matcher` is a filter. `Edit|Write` runs this hook only after Claude Code uses `Edit` or `Write` to change a file. Separate tool-name matchers with `|`. Starting with Claude Code v2.1.191, you can also use `,` with spaces around it. Exact matchers containing hyphens require v2.1.195 or later; on older versions, use `^...$` to match the full name.
+- The `hooks` array contains the handler that runs. Here, a `command` reads the edited file path from the JSON on stdin and passes it to Prettier.
 
-示例为了短，把命令直接写进了 JSON。实际项目里，只要命令开始变长，或者要引用项目里的脚本，我更建议写成独立文件，再用 `${CLAUDE_PROJECT_DIR}` 指过去：
+To keep the example short, the command is embedded in the JSON. In a real project, put longer commands or project scripts in a separate file and reference it with `${CLAUDE_PROJECT_DIR}`:
 
 ```json
 {
@@ -131,32 +131,32 @@ Hook 配在 Claude Code 的 settings 文件里。常用位置有三个：
 }
 ```
 
-官方文档建议，引用项目路径、插件路径这类占位符时优先用 exec form。每个 `args` 元素都会作为一个独立参数传给脚本，不再经过 shell 分词，因此路径中的空格、括号或特殊字符不会被二次拆分。
+The official documentation recommends exec form when using placeholders for project or plugin paths. Each `args` element is passed to the script as a separate argument instead of being split by the shell, so spaces, parentheses, and special characters in paths are not split again.
 
-省略 `matcher`、填写空字符串或使用 `.*`，都会让这个 hook group 匹配对应事件的每一次触发。对格式化任务来说，这可能意味着每次工具调用后都启动 formatter；放在权限事件上，则可能把所有授权弹窗交给同一套自动处理逻辑。
+Omitting `matcher`, setting it to an empty string, or using `.*` makes the hook group match every occurrence of that event. For formatting, this can start a formatter after every tool call. For permission events, it could send every permission prompt through the same automatic handler.
 
-matcher 应该贴着实际输入写。格式化文件就匹配 `Edit|Write`，检查 shell 风险就匹配 `Bash`，减少无关调用，也便于从日志里定位是哪条规则产生了结果。
+Match the actual inputs as closely as possible. Use `Edit|Write` for formatting files and `Bash` for shell-risk checks. Narrow matchers reduce unnecessary calls and make it easier to identify which rule produced a result in logs.
 
-## Hook 输入输出怎么工作
+## How Hook Input and Output Work
 
-Hook 触发时，Claude Code 会把事件上下文作为 JSON 传给 handler：
+When a hook runs, Claude Code passes the event context to the handler as JSON:
 
-- 如果是 `command` hook，这段 JSON 走 stdin。
-- 如果是 `http` hook，这段 JSON 会作为 POST body 发给服务端。
+- For a `command` hook, the JSON is sent over stdin.
+- For an `http` hook, the JSON is sent to the server as the POST body.
 
-所有事件都会有一些公共字段，比如：
+All events include common fields such as:
 
-| 字段              | 含义                       |
-| ----------------- | -------------------------- |
-| `session_id`      | 当前会话 ID                |
-| `transcript_path` | 会话 JSONL 文件路径        |
-| `cwd`             | 触发 hook 时的工作目录     |
-| `permission_mode` | 当前权限模式，部分事件才有 |
-| `hook_event_name` | 触发的事件名               |
+| Field             | Meaning                                               |
+| ----------------- | ----------------------------------------------------- |
+| `session_id`      | Current session ID                                    |
+| `transcript_path` | Path to the session JSONL file                        |
+| `cwd`             | Working directory when the hook ran                   |
+| `permission_mode` | Current permission mode; present only for some events |
+| `hook_event_name` | Name of the event that triggered the hook             |
 
-工具相关事件还会带 `tool_name` 和 `tool_input`。
+Tool-related events also include `tool_name` and `tool_input`.
 
-比如 Claude Code 准备执行 `npm test` 时，`PreToolUse` 可能收到这样的输入：
+For example, when Claude Code is about to run `npm test`, `PreToolUse` may receive:
 
 ```json
 {
@@ -170,7 +170,7 @@ Hook 触发时，Claude Code 会把事件上下文作为 JSON 传给 handler：
 }
 ```
 
-所以 Hook 脚本里很常见的一段就是：
+A common pattern in hook scripts is:
 
 ```bash
 INPUT="$(cat)"
@@ -178,21 +178,21 @@ TOOL_NAME="$(echo "$INPUT" | jq -r '.tool_name // empty')"
 COMMAND="$(echo "$INPUT" | jq -r '.tool_input.command // empty')"
 ```
 
-这里建议用 `jq` 解析 JSON，不要自己用 grep 拼字段。
+Use `jq` to parse JSON instead of trying to extract fields with `grep`.
 
-这里别按普通脚本的习惯乱写。
+Do not assume hooks handle exit codes like ordinary scripts.
 
-Claude Code 会在每个退出码下检查 stdout。如果去掉开头空白后第一个字符是 `{`，就会尝试按 JSON 解析。准备返回结构化决策时，推荐使用 `exit 0`，并且不要往 stdout 里塞调试日志。错误原因和调试信息写 `stderr`。想阻断，大多数事件用 `exit 2`；普通非 0 错误很多时候只是 hook 报错，流程还会继续。
+Claude Code checks stdout for every exit code. If the first non-whitespace character is `{`, it tries to parse the output as JSON. To return a structured decision, use `exit 0` and keep debug logs off stdout. Write errors and debug information to `stderr`. For most events, use `exit 2` to block; other non-zero exit codes often report a hook error while the workflow continues.
 
-最容易踩的坑是 `exit 1`。
+`exit 1` is an easy trap.
 
-在普通 shell 脚本里，`exit 1` 经常表示失败。但在 Claude Code Hooks 里，如果 stdout 为空、是普通文本，或者 JSON 没通过校验，`exit 1` 对多数 hook event 只是非阻断错误，流程会继续。如果 stdout 是符合事件 schema 的 JSON，采用标准决策模型的事件会忽略这个退出码，按 JSON 里的字段处理结果。
+In ordinary shell scripts, `exit 1` usually means failure. In Claude Code Hooks, if stdout is empty, plain text, or invalid JSON, `exit 1` is a non-blocking error for most events and the workflow continues. If stdout contains JSON matching the event schema, events that use the standard decision model ignore the exit code and apply the fields in the JSON.
 
-再说 JSON 输出。
+Now consider JSON output.
 
-如果你想更精细地控制，比如 `PreToolUse` 里返回 `allow`、`deny`、`ask`、`defer`，推荐 `exit 0`，然后 stdout 只输出一个 JSON 对象。
+For more precise control, such as returning `allow`, `deny`, `ask`, or `defer` from `PreToolUse`, use `exit 0` and write only one JSON object to stdout.
 
-例如拒绝一次工具调用：
+For example, to deny a tool call:
 
 ```json
 {
@@ -204,7 +204,7 @@ Claude Code 会在每个退出码下检查 stdout。如果去掉开头空白后�
 }
 ```
 
-如果是 `PermissionRequest`，结构又不一样，重点在 `decision.behavior`：
+For `PermissionRequest`, the structure differs; the decision is in `decision.behavior`:
 
 ```json
 {
@@ -217,74 +217,74 @@ Claude Code 会在每个退出码下检查 stdout。如果去掉开头空白后�
 }
 ```
 
-别把 stdout 当日志打。
+Do not use stdout for logs.
 
-如果你要输出 JSON，stdout 就只放 JSON。调试信息写 stderr，或者写到日志文件。否则很容易遇到 `JSON validation failed`，然后盯着配置怀疑人生。
+If the hook returns JSON, stdout must contain only JSON. Write debug information to stderr or a log file. Otherwise, `JSON validation failed` can make it look as if the configuration is at fault.
 
-如果脚本 `exit 2`，Claude Code 仍然会读取 stdout 里符合 schema 的 JSON。对支持阻断的事件来说，`exit 2` 的阻断结果不能被 JSON 覆盖；没有有效的 JSON 阻断原因时，Claude Code 才会使用 stderr。`PermissionRequest` 是个例外，它不接受 `exit 2` 阻断，批准或拒绝都要通过 `decision` 对象返回。
+If a script exits with `2`, Claude Code still reads valid JSON from stdout. For events that support blocking, the `exit 2` block cannot be overridden by JSON. Claude Code uses stderr as the block reason only when the JSON does not provide a valid reason. `PermissionRequest` is an exception: it cannot be blocked with `exit 2`; return approval or denial through the `decision` object.
 
-同一个事件下，如果有多个 Hook 同时命中，Claude Code 会让它们都跑完再合并结果。一个 Hook 返回 deny，不会阻止旁边那个 Hook 写日志、发 HTTP 请求或改文件；`PreToolUse` 里多个决策合并时，会采用更严格的结果。
+If multiple hooks match the same event, Claude Code runs them all and then merges their results. One hook returning `deny` does not stop another from writing logs, sending an HTTP request, or changing a file. When `PreToolUse` decisions are merged, the stricter result wins.
 
-所以，只要 Hook 会写日志、发请求、改文件，就应该自己判断要不要执行。不要假设另一个安全 Hook 会先跑、会先拦住风险。
+Therefore, any hook that writes logs, sends requests, or changes files should check independently whether it should run. Do not assume another security hook will run first and block the risk.
 
-改工具输入也一样要克制。官方文档特别提醒过，**如果多个 Hook 都尝试改同一个工具输入，最后生效的是最后完成的那个；但 Hook 是并行执行的，谁最后完成并不稳定。**
+Be cautious when modifying tool input. The official documentation warns that **if multiple hooks modify the same input, the last one to finish takes effect; hooks run in parallel, so which one finishes last is unpredictable.**
 
-另外，`command` Hook 会直接以当前用户的权限运行 shell 命令。它能访问、修改甚至删除当前用户有权限操作的文件，所以接入第三方脚本前，一定要先看懂并单独测试。
+Also, a `command` hook runs a shell command with the current user's permissions. It can access, modify, or delete any files that user can access. Understand and test third-party scripts separately before adding them.
 
-![Claude Code 官方文档提醒 command Hook 会以当前用户权限执行 shell 命令，可能访问、修改或删除文件](../images/shared/hooks-security-warning-official-docs.png)
+![Claude Code documentation warns that command hooks run with the current user's permissions and may access, modify, or delete files](../images/shared/hooks-security-warning-official-docs.png)
 
-## 常用生命周期事件怎么理解
+## Common Lifecycle Events
 
-官方文档里列出的事件不少，从会话、工具、权限、子 agent、任务、配置变化、工作树，到 MCP elicitation 都有。
+The official documentation lists many events covering sessions, tools, permissions, subagents, tasks, configuration changes, worktrees, and MCP elicitation.
 
-事件名很多，但刚开始真正常用的就几类：会话开始、用户提交 Prompt、工具执行前、工具执行后、权限决定、停止响应、上下文压缩。
+There are many event names, but a few are most useful when getting started: session start, user prompt submission, before and after tool execution, permission decisions, response completion, and context compaction.
 
-| 事件                | 触发时机                          | 适合做什么                             |
-| ------------------- | --------------------------------- | -------------------------------------- |
-| `SessionStart`      | 会话开始或恢复时                  | 注入动态上下文、加载环境、压缩后补规则 |
-| `UserPromptSubmit`  | 用户提交 Prompt 后，Claude 处理前 | Prompt 审计、轻量拦截、补动态上下文    |
-| `PreToolUse`        | 工具调用执行前                    | 拦危险命令、保护敏感文件、修改工具输入 |
-| `PermissionRequest` | 工具调用需要权限决定时            | 审计权限，或非常窄地自动批准           |
-| `PostToolUse`       | 工具调用成功后                    | 格式化、记录日志、lint、补充上下文     |
-| `Notification`      | Claude Code 发送通知时            | 桌面通知、手机推送                     |
-| `Stop`              | Claude 完成一轮响应时             | 完成通知、质量门禁、提醒继续处理       |
-| `PreCompact`        | 上下文压缩前                      | 备份状态、阻止不合适的压缩             |
-| `PostCompact`       | 上下文压缩后                      | 记录摘要、同步外部状态                 |
+| Event               | Trigger                                                      | Suitable use                                                                    |
+| ------------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `SessionStart`      | When a session starts or resumes                             | Inject dynamic context, load the environment, or restore rules after compaction |
+| `UserPromptSubmit`  | After a user submits a prompt and before Claude processes it | Audit prompts, apply lightweight checks, or add dynamic context                 |
+| `PreToolUse`        | Before a tool call runs                                      | Block dangerous commands, protect sensitive files, or modify tool input         |
+| `PermissionRequest` | When a tool call needs a permission decision                 | Audit permissions or apply narrowly scoped automatic approval                   |
+| `PostToolUse`       | After a tool call succeeds                                   | Format files, log activity, run lint, or add context                            |
+| `Notification`      | When Claude Code sends a notification                        | Desktop notifications or mobile push alerts                                     |
+| `Stop`              | When Claude finishes a response turn                         | Completion notifications, quality gates, or reminders to continue               |
+| `PreCompact`        | Before context compaction                                    | Back up state or block unsuitable compaction                                    |
+| `PostCompact`       | After context compaction                                     | Record the summary or sync external state                                       |
 
-再往下，是一批进阶事件。知道有它们就行，用到时查官方 Reference或者直接问 AI。
+There are also advanced events. Be aware of them and check the official reference or ask an AI assistant when you need one.
 
-| 类别              | 事件                                                                                                       |
-| ----------------- | ---------------------------------------------------------------------------------------------------------- |
-| 会话和配置        | `Setup`、`InstructionsLoaded`、`ConfigChange`、`CwdChanged`、`DirectoryAdded`、`FileChanged`、`SessionEnd` |
-| 提示词和展示      | `UserPromptExpansion`、`MessageDisplay`、`TeammateIdle`                                                    |
-| 工具和权限        | `PermissionDenied`、`PostToolUseFailure`、`PostToolBatch`                                                  |
-| 子 agent 和任务   | `SubagentStart`、`SubagentStop`、`TaskCreated`、`TaskCompleted`                                            |
-| 工作树和 MCP 表单 | `WorktreeCreate`、`WorktreeRemove`、`Elicitation`、`ElicitationResult`                                     |
-| 停止补充          | `StopFailure`                                                                                              |
+| Category                  | Events                                                                                                     |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Session and configuration | `Setup`, `InstructionsLoaded`, `ConfigChange`, `CwdChanged`, `DirectoryAdded`, `FileChanged`, `SessionEnd` |
+| Prompts and display       | `UserPromptExpansion`, `MessageDisplay`, `TeammateIdle`                                                    |
+| Tools and permissions     | `PermissionDenied`, `PostToolUseFailure`, `PostToolBatch`                                                  |
+| Subagents and tasks       | `SubagentStart`, `SubagentStop`, `TaskCreated`, `TaskCompleted`                                            |
+| Worktrees and MCP forms   | `WorktreeCreate`, `WorktreeRemove`, `Elicitation`, `ElicitationResult`                                     |
+| Stop follow-up            | `StopFailure`                                                                                              |
 
-几个容易混淆的事件，需要按实际触发顺序区分。
+Several easily confused events should be distinguished by when they run.
 
-`PreToolUse` 发生在工具执行之前。Bash 命令检查、`.env` 保护和生产配置写入限制都应该放在这个阶段，脚本才有机会在副作用出现前返回拒绝结果。
+`PreToolUse` runs before a tool executes. Put Bash command checks, `.env` protection, and restrictions on production configuration writes here so a script can deny the call before side effects occur.
 
-`PostToolUse` 发生在工具成功之后，所以它适合收尾，不适合做第一道安全门。比如格式化可以放这里，但敏感文件保护不能只靠它，因为文件已经被改了。它仍然可以用 JSON 给 Claude 提供反馈，或者替换工具输出，只是无法撤销刚刚发生的工具调用。
+`PostToolUse` runs after a tool succeeds, so it is suitable for cleanup, not as the first security gate. Formatting can go here, but sensitive-file protection cannot rely on it because the file has already changed. It can still provide feedback to Claude through JSON or replace tool output, but it cannot undo the tool call.
 
-`PermissionRequest` 在工具调用需要权限决定、Claude Code 准备请求权限时触发，可以批准或拒绝这次请求。交互模式下通常会显示权限确认框；无法显示确认框的后台非交互 subagent 仍会运行这个 Hook，如果没有 Hook 返回决定，工具调用会被拒绝。在 `-p` 非交互模式中，只有 Agent SDK 的 `canUseTool` 回调会提供这套权限请求流程；普通 `claude -p` 应该使用 `PreToolUse` 做自动权限决策。必须稳定执行的风险检查仍然要放在 `PreToolUse`，自动批准也要同时收窄 matcher 和输入条件，避免全局放行。
+`PermissionRequest` runs when a tool call needs a permission decision and Claude Code is about to request one. It can approve or deny the request. Interactive sessions usually show a permission prompt; background non-interactive subagents still run this hook even though they cannot display a prompt. If no hook returns a decision, the tool call is denied. In `-p` non-interactive mode, only the Agent SDK's `canUseTool` callback provides this permission-request flow; for ordinary `claude -p`, use `PreToolUse` for automatic permission decisions. Put required risk checks in `PreToolUse`. Narrow both the matcher and input conditions for automatic approval to avoid allowing everything.
 
-`Stop` 不等于“任务完成”，它只是 Claude 准备结束本轮响应时触发。如果你用 Stop hook 做质量门禁，要防止循环。官方提供了 `stop_hook_active` 字段帮助判断当前是否已经由 Stop hook 继续过；连续阻断达到 8 次后，Claude Code 会忽略 Hook 的阻断并结束本轮响应。
+`Stop` does not mean "the task is complete"; it runs when Claude is about to finish a response turn. If you use a Stop hook as a quality gate, prevent loops. The `stop_hook_active` field indicates whether a Stop hook has already continued the response. After eight consecutive blocks, Claude Code ignores the hook's block and ends the turn.
 
-`PreCompact` 可以阻止压缩，`PostCompact` 不能改变已经完成的压缩结果。压缩后重新注入规则，更常见的做法是用 `SessionStart` 搭配 `compact` matcher。上下文压缩和规则补回属于 Context Engineering 的一部分，想继续展开可以看 [上下文工程实战指南](https://javaguide.cn/ai/agent/context-engineering.html)。
+`PreCompact` can block compaction; `PostCompact` cannot change a compaction that has already finished. To restore rules after compaction, a more common approach is to use `SessionStart` with the `compact` matcher. Context compaction and rule restoration are part of Context Engineering; see the [Context Engineering in Practice](https://javaguide.cn/ai/agent/context-engineering.html) guide for more.
 
-## 三个最小可用示例
+## Three Minimal Examples
 
-真要上手，我建议大家从三个例子开始：一个只负责通知，一个负责改完文件后的收尾，一个放在工具执行前做拦截。
+To get started, try three examples: one for notifications, one for post-edit cleanup, and one to block a tool call before it runs.
 
-它们刚好覆盖低风险、自动化收益和安全底线三种场景。
+Together, they cover low-risk setup, useful automation, and basic safety.
 
-### Notification，Claude 需要你时弹个通知
+### Notification: Alert When Claude Needs You
 
-这个适合第一个配，因为它几乎不碰代码，风险最低。
+This is a good first hook because it does not modify code and has minimal risk.
 
-macOS 上可以写到 `~/.claude/settings.json`：
+On macOS, add it to `~/.claude/settings.json`:
 
 ```json
 {
@@ -304,19 +304,19 @@ macOS 上可以写到 `~/.claude/settings.json`：
 }
 ```
 
-这里 `matcher` 写 `permission_prompt`，表示只有 Claude 需要你批准工具调用时才通知。这个通知通常要等权限请求停留大约 6 秒后才触发，不是确认流程一开始就立即发送。如果想所有通知都触发，可以省略 matcher 或写空字符串。官方列出的 Notification matcher 还包括 `idle_prompt`、`auth_success`、`elicitation_dialog` 等。
+The `permission_prompt` matcher sends a notification only when Claude needs approval for a tool call. This notification usually fires after the permission request has been pending for about six seconds; it does not fire as soon as the confirmation flow starts. To handle all notifications, omit the matcher or set it to an empty string. Other official Notification matchers include `idle_prompt`, `auth_success`, and `elicitation_dialog`.
 
-如果 macOS 没弹通知，先在终端手动跑：
+If macOS does not show a notification, run this command in the terminal first:
 
 ```bash
 osascript -e 'display notification "test"'
 ```
 
-然后去系统设置里给 Script Editor 打开通知权限。这个坑很常见，Hook 可能已经触发，只是系统没让通知显示。
+Then enable notifications for Script Editor in system settings. This is a common issue: the hook may have run, but the operating system may have suppressed the notification.
 
-### PostToolUse，改完文件自动格式化
+### PostToolUse: Format Files After Editing
 
-前端项目里，最常见的是改完 `Edit` 或 `Write` 后跑 Prettier：
+In a frontend project, a common use is to run Prettier after `Edit` or `Write` changes a file:
 
 ```json
 {
@@ -336,15 +336,15 @@ osascript -e 'display notification "test"'
 }
 ```
 
-这段配置有三个关键信息。
+This configuration has three key details.
 
-`matcher` 只匹配 `Edit|Write`，所以读文件、跑 Bash、调用 MCP 工具都不会触发格式化。
+The `matcher` accepts only `Edit|Write`, so reading a file, running Bash, or calling an MCP tool will not trigger formatting.
 
-`command` 从 stdin JSON 里拿 `.tool_input.file_path`，再交给 `npx prettier --write`。
+The `command` reads `.tool_input.file_path` from the JSON on stdin and passes it to `npx prettier --write`.
 
-这个 Hook 在 `PostToolUse` 上，所以它是“工具执行后收尾”。formatter 失败时，你可以让错误暴露出来，也可以改成脚本，按文件后缀选择不同 formatter。
+This hook runs at `PostToolUse`, so it performs cleanup after the tool call. If the formatter fails, you can expose the error or use a script to select a formatter based on the file extension.
 
-比如更稳一点的脚本：
+For example, a more robust script could be:
 
 ```bash
 #!/usr/bin/env bash
@@ -359,13 +359,13 @@ case "$file" in
 esac
 ```
 
-Hook 没有魔法。如果你是 Java 项目，应该换成 `spotlessApply`、`google-java-format` 或项目里已有的格式化命令。如果你是 Python 项目，可能是 `ruff format`。先贴着项目现有工具走，不要为了写 Hook 新造一套格式化体系。
+Hooks are not magic. For a Java project, use `spotlessApply`, `google-java-format`, or an existing project formatter. For Python, that might be `ruff format`. Use the tools already in the project instead of introducing a new formatting setup just for a hook.
 
-### PreToolUse，阻止危险命令和敏感文件
+### PreToolUse: Block Dangerous Commands and Sensitive Files
 
-`PreToolUse` 会在工具执行前提供 `tool_name` 和 `tool_input`。脚本可以先检查命令和文件路径，命中风险时直接拒绝这次调用。
+`PreToolUse` provides `tool_name` and `tool_input` before a tool runs. A script can inspect the command and file path, then deny the call if it finds a risk.
 
-先写一个脚本，比如 `.claude/hooks/guard.sh`：
+First, create a script such as `.claude/hooks/guard.sh`:
 
 ```bash
 #!/usr/bin/env bash
@@ -393,13 +393,13 @@ fi
 exit 0
 ```
 
-给它执行权限：
+Make it executable:
 
 ```bash
 chmod +x .claude/hooks/guard.sh
 ```
 
-再挂到项目级 `.claude/settings.json`：
+Then add it to the project-level `.claude/settings.json`:
 
 ```json
 {
@@ -419,152 +419,152 @@ chmod +x .claude/hooks/guard.sh
 }
 ```
 
-这段脚本放在工具执行前，并通过返回值表达处理结果。命中风险后，它把原因写到 stderr 并执行 `exit 2`；Claude Code 会阻止这次工具调用，同时把原因反馈给 Claude。
+This script runs before the tool and communicates its decision through the exit code. When it detects a risk, it writes the reason to stderr and exits with `2`. Claude Code blocks the tool call and passes the reason back to Claude.
 
-实际项目里，敏感清单要按自己的情况改。生产配置、凭证文件、迁移脚本、锁文件、CI 配置，都可以逐步加进去。
+Adjust the sensitive-file list for your project. You can add production configuration, credential files, migration scripts, lockfiles, and CI configuration as needed.
 
-这里别只靠一条命令黑名单兜底。比如只拦 `rm *`，不代表能拦住 `/bin/rm`、`find -delete` 这类变体。高风险操作最好同时结合路径限制、权限配置、Hooks、Sandbox、CI 和人工 Review。
+Do not rely on a command blacklist alone. Blocking only `rm *`, for example, does not block variants such as `/bin/rm` or `find -delete`. Use path restrictions, permission settings, hooks, a sandbox, CI, and human review together for high-risk operations.
 
-## 非 command Hook 怎么选
+## Choosing a Non-Command Hook
 
-`command` 适合本机就能完成的确定性任务，前面的格式化、通知和命令拦截都属于这一类。脚本可以独立调试，也容易纳入代码审查。
+Use `command` for deterministic tasks that can run locally, such as the formatting, notification, and command-blocking examples above. Scripts are easy to debug independently and review as code.
 
-团队需要集中收集审计记录或执行远程策略时，可以用 `http`。服务端返回的 JSON body 会按 command hook 的 JSON 输出格式处理。HTTP 状态码本身不负责阻断工具调用；服务端需要返回 2xx，并在 response body 中提供符合 schema 的决策字段。
+Use `http` when a team needs centralized audit records or remote policy enforcement. The server's JSON body is processed like JSON output from a command hook. The HTTP status code does not block a tool call; the server must return 2xx and include decision fields that match the schema in the response body.
 
-`mcp_tool` 用于调用已经连接的 MCP server。它不会触发 OAuth，也不会替你建立连接。`SessionStart`、`Setup` 等事件发生得较早，如果 MCP server 此时尚未就绪，调用会直接失败。
+Use `mcp_tool` to call an MCP server that is already connected. It does not trigger OAuth or establish a connection for you. Early events such as `SessionStart` and `Setup` may run before an MCP server is ready, in which case the call fails.
 
-`prompt` 根据 Hook 输入做一次模型判断，例如在 Stop 前检查任务是否完成。验证还需要读文件、搜索代码或运行命令时，可以使用 `agent`，但它目前仍是 experimental 功能。
+Use `prompt` for a model-based decision from hook input, such as checking whether a task is complete before Stop. Use `agent` when verification also requires reading files, searching code, or running commands, but note that it is still experimental.
 
-选择时先看判断依据放在哪里：规则完全由输入字段和脚本决定，用 `command`；结果需要进入团队服务，用 `http`；已经有可用的 MCP 工具，再选 `mcp_tool`；只有语义判断无法写成确定规则时，才引入 `prompt` 或 `agent`。
+Choose based on where the decision comes from. Use `command` when it can be determined from input fields and script logic; use `http` when a team service must process the result; use `mcp_tool` when an MCP tool is already available. Introduce `prompt` or `agent` only when semantic judgment cannot be expressed as a deterministic rule.
 
-## Hooks 和 Skills 到底怎么分
+## Hooks vs. Skills
 
-这俩概念也特别容易混。
+These two concepts are easy to confuse.
 
-Skills 通过 `SKILL.md` 扩展 Coding Agent 的能力。Coding Agent 在执行任务时，会主动决定是否使用相关 skill，你也可以用 `/skill-name` 显式调用。
+Skills extend a coding agent's capabilities through `SKILL.md`. During a task, the coding agent decides whether to use a relevant Skill; you can also invoke it explicitly with `/skill-name`.
 
-Skill 的正文只有在使用时才加载进上下文（渐进式加载），所以很适合沉淀长流程、检查清单、项目知识、脚本和参考资料。
+The Skill body loads into context only when used (progressive disclosure), making Skills suitable for long workflows, checklists, project knowledge, scripts, and reference materials.
 
-![Skill 渐进式披露](../../ai/images/shared/agent-skills-progressive-disclosure.webp)
+![Progressive disclosure for Skills](../../ai/images/shared/agent-skills-progressive-disclosure.webp)
 
-如果想系统理解 Skills 和 Prompt、MCP、Function Calling 的分工，可以看 [Agent Skills 是什么？和 Prompt、MCP 到底差在哪？](https://javaguide.cn/ai/agent/skills.html)。
+For a detailed comparison of Skills, prompts, MCP, and Function Calling, see [What Are Agent Skills, and How Do They Differ from Prompts and MCP?](https://javaguide.cn/ai/agent/skills.html).
 
-![Agent 执行链路](../../ai/images/shared/skill-agent-execution-link.webp)
+![Agent execution flow](../../ai/images/shared/skill-agent-execution-link.webp)
 
-Hooks 在生命周期节点上自动执行动作，Skills 则把完成某类任务所需的说明、脚本和参考资料交给 Claude。两者可以按下表区分：
+Hooks run actions automatically at lifecycle events. Skills provide Claude with instructions, scripts, and references for completing a type of task. The table compares them:
 
-![Hooks 适合自动触发、固定动作和安全阻断，Skills 适合按需加载、上下文判断和复杂流程](../images/shared/hooks-vs-skills-responsibilities.webp)
+![Hooks suit automatic triggers, fixed actions, and security blocks; Skills suit on-demand loading, context-dependent decisions, and complex workflows](../images/shared/hooks-vs-skills-responsibilities.webp)
 
-| 维度             | Hooks                                                        | Skills                                                   |
-| ---------------- | ------------------------------------------------------------ | -------------------------------------------------------- |
-| 触发方式         | Claude Code 生命周期事件自动触发                             | Claude 判断相关时加载，或用户手动 `/skill-name`          |
-| 核心价值         | 让固定动作稳定发生                                           | 给 Claude 增加某类能力或流程知识                         |
-| 适合场景         | 格式化、危险命令拦截、权限审计、通知、日志、质量门禁         | 代码审查流程、部署 SOP、故障排查、资料检索、复杂任务处理 |
-| 对模型判断的依赖 | 低，尤其是 `command` hook                                    | 更高，Claude 需要理解并执行 skill 指令                   |
-| 是否适合阻断     | 适合，尤其是 `PreToolUse`、`UserPromptSubmit`、`Stop` 等事件 | 不适合作为硬拦截机制                                     |
-| 常见风险         | matcher 写太宽、脚本慢、自动批准过度                         | 描述不清、触发不准、流程太长                             |
+| Dimension                  | Hooks                                                                                            | Skills                                                                 |
+| -------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Trigger                    | Runs automatically on Claude Code lifecycle events                                               | Loaded when Claude deems it relevant, or invoked with `/skill-name`    |
+| Core value                 | Reliably runs fixed actions                                                                      | Gives Claude capabilities or workflow knowledge                        |
+| Suitable use               | Formatting, dangerous-command blocking, permission audits, notifications, logging, quality gates | Code review, deployment SOPs, troubleshooting, research, complex tasks |
+| Reliance on model judgment | Low, especially for `command` hooks                                                              | Higher; Claude must understand and follow the Skill instructions       |
+| Suitable for blocking      | Yes, especially with events such as `PreToolUse`, `UserPromptSubmit`, and `Stop`                 | Not as a hard blocking mechanism                                       |
+| Common risks               | Overly broad matchers, slow scripts, excessive auto-approval                                     | Unclear descriptions, unreliable activation, overly long workflows     |
 
-放到实际任务里就好理解了。文件刚被 `Edit` 或 `Write` 修改，可以直接把路径交给 Prettier；工具准备写入 `.env`，也可以在执行前检查路径并拒绝。这些信息都能从事件输入里拿到，脚本不需要猜。
+Consider a real task. After `Edit` or `Write` changes a file, a hook can pass its path to Prettier. Before a tool writes to `.env`, another hook can inspect the path and deny the call. The event input provides this information, so the script does not have to guess.
 
-代码审查和接口超时排查就没这么固定了。Claude 要先读代码、日志和任务要求，再决定检查哪些文件、运行哪些命令，这类流程放进 Skill 更合适。
+Code reviews and API-timeout investigations are less predictable. Claude must first read the code, logs, and task requirements, then decide which files to inspect and commands to run. A Skill is a better fit for this workflow.
 
-两者也可以接在同一条工作流上：**Skill 规定代码审查要检查什么，Hook 负责在文件修改后运行 formatter、在危险命令执行前拦截，以及在响应结束前检查是否留下测试结果。**
+They can also work together: **a Skill defines what to check during code review, while Hooks run a formatter after file changes, block dangerous commands before execution, and check for test results before a response ends.**
 
-## 实际落地：先把三个 Hook 跑稳
+## Rollout: Start with Three Hooks
 
-第一版不用急着覆盖所有生命周期事件，按 `Notification`、`PostToolUse`、`PreToolUse` 的顺序接入就够了。
+The first version does not need to cover every lifecycle event. Add `Notification`, `PostToolUse`, and `PreToolUse` in that order.
 
-![Claude Code Hooks 建议按 Notification、PostToolUse、PreToolUse 的顺序渐进接入](../images/shared/hooks-progressive-rollout.webp)
+![A phased Claude Code Hooks rollout: Notification, then PostToolUse, then PreToolUse](../images/shared/hooks-progressive-rollout.webp)
 
-Hook 配得越多，出问题时越难定位。比如 Claude 突然不再响应，你得逐个确认：`PreToolUse` 有没有返回 deny，`PermissionRequest` 有没有给出权限决定，`Stop` 是否反复触发，某个 `PostToolUse` 脚本是不是跑超时了。这几种问题表面上很像，排查方式却完全不同。
+The more hooks you configure, the harder it is to locate a problem. If Claude suddenly stops responding, check whether `PreToolUse` returned `deny`, whether `PermissionRequest` returned a permission decision, whether `Stop` is firing repeatedly, or whether a `PostToolUse` script timed out. These problems can look similar but require different troubleshooting steps.
 
-先接 `Notification`。前面的示例只在等待授权时发通知，不会修改项目文件。收到通知，至少能确认配置已经加载，事件和 matcher 也成功命中。即使写错了，影响通常也比较小。
+Start with `Notification`. The earlier example sends a notification only while waiting for permission and does not change project files. Receiving one confirms that the configuration loaded and that the event and matcher worked. Even if configured incorrectly, the impact is usually small.
 
-通知正常后，再把 `PostToolUse` 接到项目已有的格式化工具上。前端项目用 Prettier，Python 项目用 Ruff，Java 项目继续沿用原来的格式化命令。matcher 负责限制工具名，脚本再按文件类型筛选，别让一次无关的 Bash 命令或读取操作也启动 formatter。
+Once notifications work, connect `PostToolUse` to the project's existing formatter. Use Prettier for frontend projects, Ruff for Python, and the existing formatting command for Java. Let the matcher restrict tool names and the script filter by file type; do not run a formatter after an unrelated Bash command or file read.
 
-最后再测 `PreToolUse`，因为它会直接阻断工具调用。刚开始只拦几类明确的高风险操作，例如删除命令、递归提权，以及对 `.env`、`.git/`、私钥和生产配置的访问。先从日志里观察拦截结果，再根据误拦记录调整规则。
+Test `PreToolUse` last because it can directly block tool calls. Start by blocking a few clearly high-risk actions, such as deletion commands, recursive permission changes, and access to `.env`, `.git/`, private keys, and production configuration. Review the logs, then adjust the rules based on false positives.
 
-命令黑名单只能识别已经写进去的命令形式，换一种写法就可能绕过去。路径限制、权限配置、沙箱和人工 Review 仍然要保留，不能因为加了 `PreToolUse` 就删掉。
+Command blacklists recognize only the command forms they contain; another form may bypass them. Keep path restrictions, permission settings, the sandbox, and human review in place. Adding `PreToolUse` is not a reason to remove them.
 
-这三个 Hook 跑稳后，再根据项目里实际发生的问题补事件。上下文压缩后经常丢规则，可以用 `SessionStart` 的 `compact` matcher 重新注入，必要时再通过 `PreCompact` 保存当前状态。需要追踪配置变化时接 `ConfigChange`；工作目录或文件变化会影响环境时，再考虑用 `CwdChanged`、`FileChanged` 配合 `CLAUDE_ENV_FILE`。
+Once these three hooks work reliably, add events to address issues that actually occur in the project. If rules are often lost after compaction, use the `compact` matcher for `SessionStart` to inject them again, and use `PreCompact` to save the current state if needed. Add `ConfigChange` to track configuration changes. If changes to the working directory or files affect the environment, consider using `CwdChanged` or `FileChanged` with `CLAUDE_ENV_FILE`.
 
-如果用 `Stop` 做完成检查，脚本里必须同时写好退出条件。否则 Hook 让 Claude 继续处理后，下一轮结束时又会命中同一条规则，来回重复。Claude Code 连续阻断 8 次后会强制结束本轮，但前面的重复处理照样会浪费时间和 token。
+If you use `Stop` to check for completion, define an exit condition in the script. Otherwise, after a hook tells Claude to continue, the same rule may fire again at the end of the next turn, creating a loop. Claude Code force-ends the turn after eight consecutive blocks, but the repeated work still wastes time and tokens.
 
-`PermissionRequest` 也很容易用错。它在工具调用进入权限决策流程时触发，不代表确认框已经显示出来；无法显示确认框的后台非交互 subagent，同样可能运行这个 Hook。
+`PermissionRequest` is also easy to misuse. It runs when a tool call enters the permission-decision flow; that does not mean a prompt has appeared. A background, non-interactive subagent that cannot display a prompt may still run this hook.
 
-普通 `claude -p` 没有这套权限请求流程，需要自动决定权限时，应把规则放到 `PreToolUse`。官方示例只自动批准 `ExitPlanMode`。照搬示例时，matcher 和事件输入也要一起保留，别用一条宽泛的 allow 规则接管所有权限请求。删除文件、操作生产环境、读取凭证或调用外部 API 写数据，继续交给人确认更稳妥。
+Ordinary `claude -p` does not use this permission-request flow. Put rules in `PreToolUse` when you need automatic permission decisions. The official example automatically approves only `ExitPlanMode`. If you adapt it, keep the matcher and event input checks; do not replace them with a broad allow rule that takes over every permission request. Keep human approval for deleting files, changing production systems, reading credentials, or writing data through external APIs.
 
-## Hook 没按预期工作，怎么排查
+## Troubleshooting Hooks
 
-配置写进去了，Claude Code 却毫无反应；或者 Hook 明明运行了，危险命令还是继续执行。像事件有哪些字段、某个 `handler` 支持哪些事件、`stdout` 会不会进入上下文，这类细节跟版本有关，用到时让 AI 对照当前官方文档查就行。
+You may have added the configuration but Claude Code does nothing, or the hook runs but a dangerous command still executes. Details such as event fields, supported handlers, and whether `stdout` enters context can change by version. When needed, ask an AI assistant to check the current official documentation.
 
-真遇到问题，我更建议按下面的顺序排查：
+When troubleshooting, I recommend this order:
 
-![Claude Code Hook 没生效时，从配置加载、脚本单独运行到 matcher 逐层排查](../images/shared/hooks-troubleshooting-flow.webp)
+![Troubleshoot a Claude Code hook step by step: configuration loading, standalone script execution, and matcher checks](../images/shared/hooks-troubleshooting-flow.webp)
 
-1. 先运行 `/hooks`，确认配置已经加载，并且挂在预期的事件上。如果这里看不到，先检查 settings 文件的位置和 JSON 格式，暂时不用管脚本逻辑。
+1. Run `/hooks` to confirm that the configuration loaded and is attached to the expected event. If it is not listed, check the settings file location and JSON syntax before investigating the script.
 
-   ![Claude Code 官方文档说明 /hooks 菜单可以查看事件、matcher、handler 详情和配置来源](../images/shared/hooks-menu-official-docs.png)
+   ![The Claude Code /hooks menu shows events, matchers, handler details, and configuration sources](../images/shared/hooks-menu-official-docs.png)
 
-2. 把脚本从 Claude Code 里拿出来单独运行。Hook 脚本会从 `stdin` 读取 JSON，先确认它能读到字段、给出预期的退出码，再接回配置。
+2. Run the script outside Claude Code. Hook scripts read JSON from `stdin`; confirm that the script can read the fields and return the expected exit code before reconnecting it to the configuration.
 
    ```bash
    printf '%s\n' '{"tool_name":"Bash","tool_input":{"command":"rm -rf /tmp/demo"}}' \
      | .claude/hooks/guard.sh
 
    echo $?
-   # 预期输出 2
+   # Expected output: 2
    ```
 
-3. 脚本单独运行正常，再记录 Claude Code 实际传进来的事件数据。调试信息写到 `stderr` 或临时日志，不要混进准备返回 JSON 的 `stdout`。
+3. Once the standalone script works, log the event data that Claude Code actually passes in. Write debug information to `stderr` or a temporary log, not to `stdout` if it is expected to return JSON.
 
    ```bash
    input="$(cat)"
    printf '%s\n' "$input" >> /tmp/claude-hook-debug.log
    ```
 
-   日志里可能包含文件路径、命令和 Prompt 内容，排查结束后记得删掉，不要提交进仓库。
+   Logs may contain file paths, commands, or prompt contents. Delete them after troubleshooting and do not commit them to the repository.
 
-4. 一次只启用一个 Hook。多个 Hook 同时命中时会并行运行，只看最终表现很难判断是哪一条出了问题。单个脚本跑通后，再逐个恢复其他规则。
+4. Enable one hook at a time. Multiple matching hooks run in parallel, so the final behavior alone may not reveal which one caused the problem. Once a script works, restore the other rules one by one.
 
-如果已经出现明确症状，可以先查对应这一项：
+If you see a specific symptom, start with the corresponding check:
 
-| 现象                           | 优先检查                                                      |
-| ------------------------------ | ------------------------------------------------------------- |
-| `/hooks` 里看不到配置          | settings 文件位置、JSON 格式                                  |
-| 已注册，但一直没有触发         | 事件是否选对、matcher 是否匹配实际输入                        |
-| 脚本报错了，工具调用仍在继续   | 是否误用了 `exit 1`；安全拦截是否放在 `PreToolUse`            |
-| Claude 不停继续处理，无法结束  | `Stop` Hook 是否缺少退出条件                                  |
-| 每次操作都运行 formatter       | matcher 是否省略或写得太宽                                    |
-| 通知脚本执行了，但没有弹窗     | 先手动运行通知命令，再检查操作系统的通知权限                  |
-| 交互模式正常，`claude -p` 异常 | 不要依赖 `PermissionRequest`，需要自动决策时改用 `PreToolUse` |
+| Symptom                                             | Check first                                                                   |
+| --------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Configuration is missing from `/hooks`              | Settings file location and JSON syntax                                        |
+| Hook is registered but never runs                   | Correct event and whether the matcher matches the actual input                |
+| Script reports an error but the tool call continues | Accidental use of `exit 1`; whether security checks run at `PreToolUse`       |
+| Claude keeps continuing and will not stop           | Whether the `Stop` hook lacks an exit condition                               |
+| Formatter runs after every action                   | Whether the matcher is missing or too broad                                   |
+| Notification command runs but no alert appears      | Run the notification command manually, then check OS notification permissions |
+| Interactive mode works but `claude -p` does not     | Do not rely on `PermissionRequest`; use `PreToolUse` for automatic decisions  |
 
-还定位不出来，可以把 `claude --version` 的输出、Hook 配置、脚本和实际现象一起交给 AI，让它对照当前官方文档检查。粘贴之前，记得删掉密钥、Token 和业务敏感信息。提示词不用写得很复杂：
+If the cause is still unclear, give an AI assistant the output of `claude --version`, the hook configuration and script, and the observed behavior. Ask it to check these against the current official documentation. Remove secrets, tokens, and sensitive business information before sharing. The prompt can be simple:
 
 ```text
-我在 Claude Code <版本号> 中配置了下面这个 Hook。
+I configured the following hook in Claude Code <version>.
 
-预期行为：<希望它做什么>
-实际行为：<现在发生了什么>
+Expected behavior: <what it should do>
+Actual behavior: <what happens instead>
 
-Hook 配置：
-<粘贴配置>
+Hook configuration:
+<paste configuration>
 
-脚本：
-<粘贴脚本>
+Script:
+<paste script>
 
-请先查阅 Claude Code 当前版本的官方文档，再依次检查事件、matcher、输入字段、退出码和 JSON 输出格式。
-只指出会导致当前问题的地方，不要扩展其他配置。
+Check the official documentation for my Claude Code version first. Then review the event, matcher, input fields, exit code, and JSON output format.
+Point out only issues that could cause this problem. Do not suggest unrelated configuration changes.
 ```
 
-## 总结
+## Summary
 
-聊到这里，你应该已经能抓住 Hooks 的重点了：它会在 Claude Code 的关键节点自动执行固定动作，例如格式化、危险命令检查、权限通知。
+The key idea is that Hooks run fixed actions automatically at important points in Claude Code, such as formatting, dangerous-command checks, and permission notifications.
 
-自动格式化放在 `PostToolUse`，危险命令和敏感文件拦截放在 `PreToolUse`，离开电脑时想及时收到提醒，就用 `Notification`。
+Put automatic formatting in `PostToolUse`, dangerous-command and sensitive-file checks in `PreToolUse`, and use `Notification` to receive alerts when you are away from the computer.
 
-就我个人使用经验来说，不建议大家刚开始就配太多，没太大意义，还容易乱。
+In my experience, do not configure too many hooks at the start. It adds little value and makes the setup harder to manage.
 
-先把这三个 Hook 跑稳。尤其是安全和权限规则，宁可收紧范围、慢慢补，也别一上来就自动批准所有操作。Hooks 能帮你守住固定流程，但沙箱、权限配置、CI 和人工 Review 还是要保留。
+Get these three hooks working reliably first. For security and permission rules, start with a narrow scope and expand gradually; do not automatically approve every action. Hooks can enforce fixed workflows, but keep the sandbox, permission settings, CI, and human review in place.
 
-还有一个容易混淆的地方：能写成确定脚本的规则交给 Hook；代码审查、故障排查这类需要结合上下文判断的任务，继续放在 Skill 里。按这个思路分工，配置会简单不少，后面排错也更轻松。
+One final distinction: put deterministic rules in Hooks. Keep context-dependent tasks such as code review and troubleshooting in Skills. This division keeps the configuration simpler and makes later debugging easier.

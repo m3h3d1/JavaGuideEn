@@ -1,107 +1,103 @@
 ---
-title: 数据库必读经典书籍
-description: 数据库书籍推荐，MySQL、PostgreSQL、Redis等数据库经典书籍，涵盖入门教程、原理剖析、性能优化等内容。
-category: 计算机书籍
+title: Recommended Books on Databases
+description: Recommended books on MySQL, PostgreSQL, Redis, database fundamentals, implementation, and performance.
+category: Computer Science Books
 icon: "mdi:database-outline"
 head:
   - - meta
     - name: keywords
-      content: 数据库书籍精选
+      content: database books
 ---
 
-## 数据库基础
+## Database Fundamentals
 
-数据库基础这块，如果你觉得书籍比较枯燥，自己坚持不下来的话，我推荐你可以先看看一些不错的视频，北京师范大学的[《数据库系统原理》](https://www.icourse163.org/course/BNU-1002842007)、哈尔滨工业大学的[《数据库系统（下）：管理与技术》](https://www.icourse163.org/course/HIT-1001578001)就很不错。
+If database textbooks feel too dry, start with a video course. The courses [Database System Principles](https://www.icourse163.org/course/BNU-1002842007) from Beijing Normal University and [Database Systems (Part 2): Management and Technology](https://www.icourse163.org/course/HIT-1001578001) from Harbin Institute of Technology are good options.
 
-[《数据库系统原理》](https://www.icourse163.org/course/BNU-1002842007)这个课程的老师讲的非常详细，而且每一小节的作业设计的也与所讲知识很贴合，后面还有很多配套实验。
+The instructor for [Database System Principles](https://www.icourse163.org/course/BNU-1002842007) explains the material in detail. The exercises closely match each lesson, and the course includes many labs.
 
 ![](../roadmap/images/shared/up-e113c726a41874ef5fb19f7ac14e38e16ce.png)
 
-如果你比较喜欢动手，对于理论知识比较抵触的话，推荐你看看[《如何开发一个简单的数据库》](https://cstack.github.io/db_tutorial/) ，这个 project 会手把手教你编写一个简单的数据库。
+If you prefer hands-on learning, try [How to Build a Simple Database](https://cstack.github.io/db_tutorial/). This project walks you through implementing a simple database.
 
 ![](../roadmap/images/shared/up-11de8cb239aa7201cc8d78fa28928b9ec7d.png)
 
-GitHub 上也已经有大佬用 Java 实现过一个简易的数据库，介绍的挺详细的，感兴趣的朋友可以去看看。地址：[https://github.com/alchemystar/Freedom](https://github.com/alchemystar/Freedom) 。
+Developers have also built a small database in Java. See the detailed [Freedom project](https://github.com/alchemystar/Freedom). Another option is [db_tutorial](https://github.com/cstack/db_tutorial), a small database implemented in C.
 
-除了这个用 Java 写的之外，**[db_tutorial](https://github.com/cstack/db_tutorial)** 这个项目是国外的一个大佬用 C 语言写的，朋友们也可以去瞅瞅。
-
-**只要利用好搜索引擎，你可以找到各种语言实现的数据库玩具。**
+Search GitHub for toy databases implemented in other languages.
 
 ![](https://oss.javaguide.cn/github/javaguide/books/up-d32d853f847633ac7ed0efdecf56be1f1d2.png)
 
-**纸上学来终觉浅 绝知此事要躬行！强烈推荐 CS 专业的小伙伴一定要多多实践！！！**
+**Reading about databases is not enough; build and experiment with one.**
 
-### 《数据库系统概念》
+### Database System Concepts
 
-[《数据库系统概念》](https://book.douban.com/subject/10548379/)这本书涵盖了数据库系统的全套概念，知识体系清晰，是学习数据库系统非常经典的教材！不是参考书！
+[Database System Concepts](https://book.douban.com/subject/10548379/) is a classic textbook with a clear structure that covers the full range of database concepts. It is a textbook, not just a reference.
 
 ![](../roadmap/images/shared/booksimage-20220409150441742.png)
 
-### 《数据库系统实现》
+### Database System Implementation
 
-如果你也想要研究 MySQL 底层原理的话，我推荐你可以先阅读一下[《数据库系统实现》](https://book.douban.com/subject/4838430/)。
+If you want to study the internals of MySQL, start with [Database System Implementation](https://book.douban.com/subject/4838430/).
 
 ![](https://oss.javaguide.cn/github/javaguide/books/database-system-implementation.png)
 
-不管是 MySQL 还是 Oracle ，它们总体的架子是差不多的，不同的是其内部的实现比如数据库索引的数据结构、存储引擎的实现方式等等。
+MySQL and Oracle share many high-level design ideas. Their implementations differ in areas such as index data structures and storage engines.
 
-这本书有些地方还是翻译的比较蹩脚，有能力看英文版的还是建议上手英文版。
+Some parts of this book's translation are awkward. If you can, use the English edition.
 
-《数据库系统实现》 这本书是斯坦福的教材，另外还有一本[《数据库系统基础教程》](https://book.douban.com/subject/3923575/)是前置课程，可以带你入门数据库。
+_Database System Implementation_ is a Stanford textbook. [Fundamentals of Database Systems](https://book.douban.com/subject/3923575/) is a prerequisite that can introduce you to the subject.
 
 ## MySQL
 
-我们网站或者 APP 的数据都是需要使用数据库来存储数据的。
+Websites and applications typically use a database to store their data. MySQL is common in enterprise applications. If you want to learn MySQL, consider these three books:
 
-一般企业项目开发中，使用 MySQL 比较多。如果你要学习 MySQL 的话，可以看下面这 3 本书籍：
-
-- **[《MySQL 必知必会》](https://book.douban.com/subject/3354490/)**：非常薄！非常适合 MySQL 新手阅读，很棒的入门教材。
-- **[《高性能 MySQL》](https://book.douban.com/subject/23008813/)**：MySQL 领域的经典之作！学习 MySQL 必看！属于进阶内容，主要教你如何更好地使用 MySQL 。既有有理论，又有实践！如果你没时间都看一遍的话，我建议第 5 章（创建高性能的索引）、第 6 章（查询性能优化） 你一定要认真看一下。
-- **[《MySQL 技术内幕》](https://book.douban.com/subject/24708143/)**：你想深入了解 MySQL 存储引擎的话，看这本书准没错！
+- **[MySQL Crash Course](https://book.douban.com/subject/3354490/)**: A short, approachable introduction for beginners.
+- **[High Performance MySQL](https://book.douban.com/subject/23008813/)**: A classic guide to using MySQL effectively, with both theory and practice. If you cannot read the whole book, focus on Chapter 5, “High-Performance Indexes,” and Chapter 6, “Query Performance Optimization.”
+- **[MySQL Internals](https://book.douban.com/subject/24708143/)**: A good choice if you want to understand MySQL storage engines in depth.
 
 ![](../roadmap/images/shared/up-3d31e762933f9e50cc7170b2ebd8433917b.png)
 
-视频的话，你可以看看动力节点的 [《MySQL 数据库教程视频》](https://www.bilibili.com/video/BV1fx411X7BD)。这个视频基本上把 MySQL 的相关一些入门知识给介绍完了。
+For a video course, see [MySQL Database Tutorial](https://www.bilibili.com/video/BV1fx411X7BD) from Power Node.
 
-另外，强推一波 **[《MySQL 是怎样运行的》](https://book.douban.com/subject/35231266/)** 这本书，内容很适合拿来准备面试。讲的很细节，但又不枯燥，内容非常良心！
+I also recommend **[How MySQL Works](https://book.douban.com/subject/35231266/)**. Its detailed explanations make it useful for interview preparation without being tedious.
 
 ![](../roadmap/images/shared/20210703120643370.png)
 
 ## PostgreSQL
 
-和 MySQL 一样，PostgreSQL 也是开源免费且功能强大的关系型数据库。PostgreSQL 的 Slogan 是“**世界上最先进的开源关系型数据库**” 。
+Like MySQL, PostgreSQL is a powerful, free, open-source relational database. Its slogan is “the world's most advanced open-source relational database.”
 
 ![](../roadmap/images/shared/image-20220702144954370.png)
 
-最近几年，由于 PostgreSQL 的各种新特性过于优秀，使用 PostgreSQL 代替 MySQL 的项目越来越多了。
+PostgreSQL's newer features have led more projects to choose it over MySQL in recent years.
 
-如果你还在纠结是否尝试一下 PostgreSQL 的话，建议你看看这个知乎话题：[PostgreSQL 与 MySQL 相比，优势何在？ - 知乎](https://www.zhihu.com/question/20010554) 。
+If you are deciding whether to try PostgreSQL, see this [Zhihu discussion comparing PostgreSQL and MySQL](https://www.zhihu.com/question/20010554).
 
-### 《PostgreSQL 指南：内幕探索》
+### PostgreSQL Guide: Exploring the Internals
 
-[《PostgreSQL 指南：内幕探索》](https://book.douban.com/subject/33477094/)这本书主要介绍了 PostgreSQL 内部的工作原理，包括数据库对象的逻辑组织与物理实现，进程与内存的架构。
+[PostgreSQL Guide: Exploring the Internals](https://book.douban.com/subject/33477094/) explains how PostgreSQL works, including the logical organization and physical implementation of database objects and its process and memory architecture.
 
-刚工作那会需要用到 PostgreSQL ，看了大概 1/3 的内容，感觉还不错。
+I read about a third of it when I first needed PostgreSQL at work and found it useful.
 
 ![](https://oss.javaguide.cn/github/javaguide/books/PostgreSQL-Guide.png)
 
-### 《PostgreSQL 技术内幕：查询优化深度探索》
+### PostgreSQL Internals: Query Optimization in Depth
 
-[《PostgreSQL 技术内幕：查询优化深度探索》](https://book.douban.com/subject/30256561/)这本书主要讲了 PostgreSQL 在查询优化上的一些技术实现细节，可以让你对 PostgreSQL 的查询优化器有深层次的了解。
+[PostgreSQL Internals: Query Optimization in Depth](https://book.douban.com/subject/30256561/) examines implementation details of PostgreSQL query optimization and helps explain how its query optimizer works.
 
-![《PostgreSQL 技术内幕：查询优化深度探索》](https://oss.javaguide.cn/github/javaguide/books/PostgreSQL-TechnologyInsider.png)
+![PostgreSQL Internals: Query Optimization in Depth](https://oss.javaguide.cn/github/javaguide/books/PostgreSQL-TechnologyInsider.png)
 
 ## Redis
 
-**Redis 就是一个使用 C 语言开发的数据库**，不过与传统数据库不同的是 **Redis 的数据是存在内存中的** ，也就是它是内存数据库，所以读写速度非常快，因此 Redis 被广泛应用于缓存方向。
+**Redis is a database written in C. Unlike traditional databases, it stores data in memory, which makes reads and writes fast. It is widely used for caching.**
 
-如果你要学习 Redis 的话，强烈推荐下面这两本书：
+If you want to learn Redis, these two books are good starting points:
 
-- [《Redis 设计与实现》](https://book.douban.com/subject/25900156/) ：主要是 Redis 理论知识相关的内容，比较全面。我之前写过一篇文章 [《7 年前，24 岁，出版了一本 Redis 神书》](https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247507030&idx=1&sn=0a5fd669413991b30163ab6f5834a4ad&chksm=cea1939df9d61a8b93925fae92f4cee0838c449534e60731cfaf533369831192e296780b32a6&token=709354671&lang=zh_CN&scene=21#wechat_redirect) 来介绍这本书。
-- [《Redis 核心原理与实践》](https://book.douban.com/subject/26612779/)：主要是结合源码来分析 Redis 的重要知识点比如各种数据结构和高级特性。
+- [Redis Design and Implementation](https://book.douban.com/subject/25900156/): A broad introduction to Redis concepts. I also discussed it in [A Redis Classic Published When Its Author Was 24](https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247507030&idx=1&sn=0a5fd669413991b30163ab6f5834a4ad&chksm=cea1939df9d61a8b93925fae92f4cee0838c449534e60731cfaf533369831192e296780b32a6&token=709354671&lang=zh_CN&scene=21#wechat_redirect).
+- [Redis: Core Principles and Practice](https://book.douban.com/subject/26612779/): Uses source code to explain important Redis topics, including data structures and advanced features.
 
-![《Redis 设计与实现》和《Redis 设计与实现》](../roadmap/images/shared/redis-books.png)
+![Redis Design and Implementation](../roadmap/images/shared/redis-books.png)
 
-另外，[《Redis 开发与运维》](https://book.douban.com/subject/26971561/) 这本书也非常不错，既有基础介绍，又有一线开发运维经验分享。
+[Redis Development and Operations](https://book.douban.com/subject/26971561/) is another useful book. It covers fundamentals and shares practical development and operations experience.
 
-![《Redis 开发与运维》](https://oss.javaguide.cn/github/javaguide/books/redis-kaifa-yu-yunwei.png)
+![Redis Development and Operations](https://oss.javaguide.cn/github/javaguide/books/redis-kaifa-yu-yunwei.png)

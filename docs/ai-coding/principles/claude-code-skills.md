@@ -1,5 +1,5 @@
 ---
-title: How Claude Code Skills Work: Implementation and Runtime
+title: "How Claude Code Skills Work: Implementation and Runtime"
 description: Learn how Claude Code Skills turn reusable workflows into on-demand agent capabilities through file structure, discovery, frontmatter, dynamic context, security restrictions, and subagents.
 category: AI Coding Principles
 tag:

@@ -1,65 +1,65 @@
 ---
-title: Java 开源项目精选：学习、实战与工具选型
-description: Java 开源项目推荐与实战学习路线，精选 GitHub 和 Gitee 上持续维护的技术教程、实战项目、框架、工具类库、AI 和大数据项目。
-category: 开源项目
+title: "Curated Java Open-Source Projects: Learning, Practice, and Tool Selection"
+description: A practical guide to learning from and choosing Java open-source projects, featuring maintained tutorials, applications, frameworks, libraries, AI, and big data projects on GitHub and Gitee.
+category: Open-Source Projects
 sitemap:
   changefreq: weekly
   priority: 0.9
 head:
   - - meta
     - name: keywords
-      content: Java开源项目,Java实战项目,Java项目推荐,Java技术教程,Java系统设计项目,Java工具库,开源项目推荐,后端项目,简历项目
+      content: Java open-source projects,Java practice projects,Java project recommendations,Java tutorials,Java system design projects,Java libraries,open-source project recommendations,backend projects,resume projects
 ---
 
 <!-- @include: @small-advertisement.snippet.md -->
 
-这份 **Java 开源项目精选** 面向 Java 后端学习、项目实战和工具选型，整理 GitHub 和 Gitee 上仍在维护的 Java/JVM 项目。
+This **curated list of Java open-source projects** is for learning Java backend development, building projects, and choosing tools. It features maintained Java/JVM projects on GitHub and Gitee.
 
-项目数量不是越多越好。这里更看重代码活跃度、文档质量和可运行性，也会尽量说明项目适合解决什么问题。欢迎在 [JavaGuide Issues 区](https://github.com/Snailclimb/JavaGuide/issues) 推荐你认可的项目。
+More projects do not necessarily make a better list. We prioritize active development, good documentation, and whether a project can run. We also explain what problems each project can solve. Recommend projects you trust in [JavaGuide's Issues](https://github.com/Snailclimb/JavaGuide/issues).
 
-## 目录导航
+## Contents
 
-| 目录                                 | 收录范围                                 | 适合用来做什么               |
-| ------------------------------------ | ---------------------------------------- | ---------------------------- |
-| [技术教程](./tutorial.md)            | 知识库、课程、开源书籍和代码示例         | 补基础、查缺补漏             |
-| [实战项目](./practical-project.md)   | 具备完整业务功能的 Java/JVM 应用         | 练手、二次开发、准备项目经历 |
-| [AI 项目](./machine-learning.md)     | Java AI 框架、模型推理工具和 AI 应用     | 开发 RAG、Agent 和模型服务   |
-| [框架与基础设施](./system-design.md) | Web 框架、数据库、中间件、可观测性等组件 | 技术选型、源码学习、系统设计 |
-| [工具类库](./tool-library.md)        | 通过 Maven/Gradle 引入项目的 Java 库     | 解决编码中的具体问题         |
-| [开发工具](./tools.md)               | 独立运行的 GUI、CLI、检查平台和运维工具  | 完善本地开发与排障工具链     |
-| [大数据项目](./big-data.md)          | 计算、存储、数据集成和湖仓项目           | 学习或搭建大数据平台         |
+| Category                                            | What it includes                                                     | Useful for                                                  |
+| --------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------- |
+| [Tutorials](./tutorial.md)                          | Knowledge bases, courses, open-source books, and code examples       | Build fundamentals and fill knowledge gaps                  |
+| [Practical Projects](./practical-project.md)        | Java/JVM applications with complete business functionality           | Practice, extend projects, and prepare project experience   |
+| [AI Projects](./machine-learning.md)                | Java AI frameworks, model inference tools, and AI applications       | Build RAG, agents, and model services                       |
+| [Frameworks and Infrastructure](./system-design.md) | Web frameworks, databases, middleware, observability, and more       | Choose technologies, study source code, and design systems  |
+| [Utility Libraries](./tool-library.md)              | Java libraries included through Maven or Gradle                      | Solve specific coding problems                              |
+| [Development Tools](./tools.md)                     | Standalone GUIs, CLIs, code-checking platforms, and operations tools | Improve the local development and troubleshooting toolchain |
+| [Big Data Projects](./big-data.md)                  | Compute, storage, data integration, and lakehouse projects           | Learn about or build big data platforms                     |
 
-## 收录与维护规则
+## Inclusion and Maintenance Criteria
 
-- 本轮核验日期为 **2026 年 8 月 11 日**，最近一次更新早于 **2026 年 5 月 11 日** 的项目不予收录。
-- GitHub 项目以默认分支最近一次提交为准；Gitee 项目参考仓库的最近推送时间。
-- 仓库迁移、归档或停止维护时，会更新链接或移出清单。一次性的版本号、README 修改不能完全代表项目质量，后续还会结合发布记录和 Issue 处理情况复核。
-- Star 只作为参考。缺少文档、无法构建、许可证不清晰，或者技术栈明显过时的项目，即使热度较高也可能不收录。
+- The projects were last reviewed on **August 11, 2026**. Projects not updated since **May 11, 2026** are excluded.
+- For GitHub projects, we use the latest commit on the default branch. For Gitee projects, we refer to the repository's latest push time.
+- If a repository moves, is archived, or becomes unmaintained, we update its link or remove it from the list. A version bump or README edit alone does not establish project quality, so we also review releases and issue handling.
+- Star counts are only one factor. A popular project may still be excluded if it lacks documentation, cannot be built, has an unclear license, or uses an outdated technology stack.
 
-## 怎么使用这份清单
+## How to Use This List
 
-- 初学阶段先看技术教程，再从 Spring Petclinic 这类边界清楚的项目开始，不要一上来就啃大型微服务系统。
-- 准备项目经历时，优先选择能在本地跑起来、业务流程完整、自己确实能改造的实战项目。克隆和部署不等于项目经验。
-- 做技术选型时，先确定需要的是代码依赖、独立工具还是基础设施，再进入对应目录，避免拿不同层次的项目直接比较。
-- 阅读源码前先看项目文档、模块划分和测试，再带着一个具体问题追调用链，效率通常比从入口逐行阅读高。
+- If you are new to the field, start with tutorials, then explore a clearly scoped project such as Spring Petclinic. Do not begin with a large microservices system.
+- When building project experience, choose an application that runs locally, has a complete business flow, and that you can meaningfully modify. Cloning and deploying a project do not count as project experience by themselves.
+- When selecting technology, first decide whether you need a code dependency, a standalone tool, or infrastructure. Then browse the relevant category rather than comparing projects at different levels.
+- Before reading source code, review the project's documentation, module structure, and tests. Then follow a call path with a specific question in mind; this is usually more efficient than reading line by line from the entry point.
 
-## 高频问题
+## Common Questions
 
-- 找 Java 练手项目时，应该优先看业务项目还是基础设施项目？
-- 如何判断一个开源项目是否适合写进简历？
-- Star 数高的项目一定值得学习吗？
-- 克隆项目跑起来之后，应该从哪些地方开始改造？
-- 面试官问项目难点时，如何避免只说 CRUD？
-- 工具库应该如何选型？什么时候不应该引入新依赖？
-- 想提升源码阅读能力，应该从哪些开源项目开始？
+- When looking for a Java practice project, should I start with a business application or infrastructure?
+- How can I tell whether an open-source project is worth including on my resume?
+- Is a highly starred project always worth studying?
+- After cloning and running a project, where should I start making changes?
+- When asked about project challenges in an interview, how can I avoid talking only about CRUD?
+- How should I choose a utility library? When should I avoid adding a dependency?
+- Which open-source projects are good for improving my source code reading skills?
 
-## 相关专题
+## Related Topics
 
-- [Java 知识体系](../java/)
-- [系统设计](../system-design/)
-- [分布式系统知识体系](../distributed-system/)
-- [高性能系统知识体系](../high-performance/)
-- [技术书籍精选](../books/)
-- [星球专属优质专栏](../zhuanlan/)
+- [Java Knowledge Map](../java/)
+- [System Design](../system-design/)
+- [Distributed Systems Knowledge Map](../distributed-system/)
+- [High-Performance Systems Knowledge Map](../high-performance/)
+- [Curated Technical Books](../books/)
+- [Exclusive Knowledge Planet Series](../zhuanlan/)
 
 <!-- @include: @article-footer.snippet.md -->

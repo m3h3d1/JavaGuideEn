@@ -1,204 +1,204 @@
 ---
-title: 大模型网关详解：多模型路由、Fallback、限流与成本控制
-description: 介绍 LLM Gateway 的边界、模型路由、Fallback、限流配额、Token 预算、成本统计、观测审计、缓存策略、Java 后端落地方案和主流方案选型。
-category: AI 应用开发
+title: "LLM Gateway Explained: Model Routing, Fallback, Rate Limiting, and Cost Control"
+description: An overview of LLM Gateway responsibilities, model routing, fallback, quotas, token budgets, cost tracking, observability, auditing, caching, Java implementation, and solution selection.
+category: AI Application Development
 head:
   - - meta
     - name: keywords
-      content: LLM Gateway,大模型网关,LLM Router,模型路由,多模型路由,fallback,限流,Token 预算,AI Gateway,LiteLLM,Cloudflare AI Gateway,Kong AI Gateway
+      content: LLM Gateway,LLM Router,model routing,multi-model routing,fallback,rate limiting,token budget,AI Gateway,LiteLLM,Cloudflare AI Gateway,Kong AI Gateway
 ---
 
-前段时间有读者朋友想让我聊聊 LLM 网关：它到底解决什么问题，什么时候值得单独部署，又该怎么选型。
+Recently, a reader asked me to explain LLM Gateways: what problems they solve, when they are worth deploying as a separate service, and how to choose one.
 
-于是，我把自己做项目时的实践和思考整理成了这篇详细介绍，内容有点干，算上极少的代码的话，有 3w+ 字了。
+This article collects lessons from my project work. It is a detailed guide, with more than 30,000 Chinese characters including a small amount of code.
 
-先说结论：对大多数单体或单团队项目来说，自己在应用内写一个轻量 LLM 网关就够了。先把分散在各个业务模块中的模型调用集中到一个统一入口，再按需补上超时、重试、日志和简单路由。通常没必要专门引入 LiteLLM、Kong AI Gateway 这类额外组件，更没必要一开始就搭一套独立的网关平台。
+For most monoliths and single-team projects, a lightweight LLM Gateway inside the application is enough. First centralize model calls from different modules behind one entry point, then add timeouts, retries, logging, and simple routing as needed. You usually do not need to introduce a separate component such as LiteLLM or Kong AI Gateway, let alone build a standalone gateway platform from the start.
 
-意图分类、标题生成、JSON 修复和复杂报告生成如果全部调用同一个旗舰模型，早期开发确实省事。流量上来后，成本、延迟和供应商限流会一起暴露：轻量任务占用昂贵模型的配额，关键任务失败时又没有备用链路，月底账单还无法归因到具体租户和功能。
+Using the same flagship model for intent classification, title generation, JSON repair, and complex report generation can simplify early development. As traffic grows, however, cost, latency, and provider rate limits become problems: lightweight tasks consume an expensive model's quota, critical tasks have no fallback when they fail, and monthly bills cannot be attributed to a tenant or feature.
 
-这类问题不适合让各个业务模块各自解决，否则模型选择、重试、限流和调用记录等逻辑很快就会散落在业务代码里。LLM Gateway 的作用，就是在应用层和模型供应商之间提供一个统一的调用入口，集中管理这些共性逻辑。
+These problems should not be solved independently by each business module; otherwise, model selection, retries, rate limiting, and call records quickly spread across the application code. An LLM Gateway provides a single entry point between the application and model providers, centralizing this shared logic.
 
-## 大模型网关基础
+## LLM Gateway Fundamentals
 
-### LLM Gateway 到底是什么？
+### What Is an LLM Gateway?
 
-LLM Gateway 更像是：**API 网关能力 + 模型调用控制面**。
+An LLM Gateway is best understood as **API gateway capabilities plus a control plane for model calls**.
 
-传统 API 网关是位于客户端与后端服务之间的**统一入口**，所有客户端请求先经过网关，再由网关路由到具体的目标服务，主要管 HTTP 流量：鉴权、限流、转发、日志、熔断。
+A traditional API Gateway is a **single entry point** between clients and backend services. Client requests pass through it and are routed to the appropriate service. It primarily manages HTTP traffic: authentication, rate limiting, forwarding, logging, and circuit breaking.
 
-![传统 API 网关示意图](../images/shared/api-gateway-overview.png)
+![Traditional API Gateway overview](../images/shared/api-gateway-overview.png)
 
-LLM Gateway 则面对的是大模型调用，它除了处理普通 API 问题，还要处理模型特有的问题：模型选择、Token 预算、上下文长度、供应商差异、流式输出、工具调用、结构化响应、成本统计、Prompt 版本和输出质量。
+An LLM Gateway handles model calls. In addition to common API concerns, it manages model-specific concerns such as model selection, token budgets, context length, provider differences, streaming, tool calls, structured responses, cost tracking, Prompt versions, and output quality.
 
-更准确地说，**LLM Gateway 是应用层和模型供应商之间的一层治理入口**。它不一定替代企业已有的 API 网关，但会把模型调用相关的路由、预算、审计和适配逻辑收口。
+More precisely, **an LLM Gateway is a governance layer between the application and model providers**. It does not necessarily replace an organization's existing API Gateway; it centralizes model-call routing, budgets, auditing, and provider adaptation.
 
-![LLM 网关示意图](../images/shared/llm-gateway-overview.png)
+![LLM Gateway overview](../images/shared/llm-gateway-overview.png)
 
-业务代码不直接关心 OpenAI、Anthropic、Gemini、Qwen、DeepSeek、私有化模型分别怎么调，而是统一向 Gateway 发一个标准请求。Gateway 根据场景、预算、延迟、模型可用性和业务策略，决定调用哪个模型、走哪个供应商、是否需要重试、是否需要降级、怎么记录日志。
+Business code does not need to know how to call OpenAI, Anthropic, Gemini, Qwen, DeepSeek, or a self-hosted model. It sends a standard request to the Gateway, which chooses the model and provider based on the use case, budget, latency, availability, and business policy. It also decides whether to retry or fall back and what to log.
 
-第一版 Gateway 可以很轻，只做统一封装、超时、重试和日志。到生产阶段，它通常还会管理模型路由、Token 预算、限流、成本归因、缓存、审计和安全策略。
+The first version of a Gateway can be lightweight, providing a common interface, timeouts, retries, and logging. In production, it may also manage model routing, token budgets, rate limits, cost attribution, caching, auditing, and security policies.
 
-如果只做“把请求转发一下”，它只是一个代理；开始记录为什么选这个模型、怎么扣预算、失败后怎么兜底，才进入 Gateway 的范围。
+If it only forwards requests, it is a proxy. It becomes a Gateway when it also records why a model was selected, how the budget was consumed, and what fallback was used after a failure.
 
-### 为什么需要 LLM Gateway？
+### Why Do You Need an LLM Gateway?
 
-很多团队第一次做 AI 应用时，会直接在业务服务里写模型调用：
+Many teams start building AI applications by calling the model directly from a business service:
 
 ```text
-Controller -> Service -> OpenAI SDK -> 返回答案
+Controller -> Service -> OpenAI SDK -> Return answer
 ```
 
-这条链路很短，开发体验也好。但只要线上规模稍微起来，问题会集中暴露。
+This call path is short and easy to develop. Once production usage grows, however, several problems emerge.
 
-| 直连模型的典型问题 | 线上表现                                            | Gateway 对应能力                 |
-| ------------------ | --------------------------------------------------- | -------------------------------- |
-| 模型名写死         | 模型升级、下线、切换供应商时到处改代码              | 模型注册表 + 配置化路由          |
-| API Key 分散       | 多个服务各自保存密钥，轮换困难                      | 统一密钥管理                     |
-| 供应商限流         | 429 后业务服务疯狂重试，越重试越糟                  | 限流、排队、Fallback、熔断       |
-| 成本不可见         | 月底只知道总账单，不知道哪个租户、功能、Prompt 花钱 | usage 记录 + 成本归因            |
-| 所有请求走同一模型 | 简单任务浪费钱，复杂任务效果差                      | 按任务类型做模型路由             |
-| 日志缺失           | 用户投诉“刚才 AI 胡说”，排查时找不到模型输入输出    | Trace、Prompt 版本、模型调用日志 |
-| 供应商 SDK 分散    | 每个业务都处理流式、错误码、重试和结构化解析        | Provider Adapter 统一封装        |
+| Common issue                | Production symptom                                                                     | Gateway capability                                     |
+| --------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Hard-coded model names      | Model upgrades, retirements, or provider changes require edits throughout the codebase | Model registry and configurable routing                |
+| Scattered API keys          | Each service stores its own keys, making rotation difficult                            | Centralized secret management                          |
+| Provider rate limits        | Services retry aggressively after 429 responses, making the problem worse              | Rate limiting, queuing, fallback, and circuit breaking |
+| Invisible costs             | The monthly bill shows a total but not the tenants, features, or Prompts responsible   | Usage records and cost attribution                     |
+| One model for every request | Simple tasks waste money while complex tasks get poor results                          | Routing by task type                                   |
+| Missing logs                | A user reports a bad answer, but the model input and output cannot be found            | Traces, Prompt versions, and model-call logs           |
+| Scattered provider SDKs     | Each feature handles streaming, error codes, retries, and structured parsing           | A shared Provider Adapter                              |
 
-除了访问控制，还要单独设计成本归因和问题回放。
+Cost attribution and incident replay also need explicit design, in addition to access control.
 
-这里简单解释一下：
+These terms mean:
 
-- 成本归因指的是“一笔模型费用花在了谁、什么功能和哪次调用上”：例如按租户、用户、业务场景、Prompt 版本、模型和供应商拆分 Token 与金额。
-- 问题回放则是在用户反馈“刚才的回答不对”时，能够通过 `request_id` 找回当时使用的 Prompt 版本、检索上下文、路由结果、模型版本、工具调用和错误信息，判断问题出在输入、路由、模型输出，还是下游解析。
+- **Cost attribution** identifies who or what feature incurred a model charge and which call caused it. Token usage and cost can be broken down by tenant, user, business scenario, Prompt version, model, and provider.
+- **Incident replay** lets you retrieve the Prompt version, retrieved context, routing result, model version, tool calls, and errors for a `request_id` after a user reports a bad answer. This helps determine whether the problem came from the input, routing, model output, or downstream parsing.
 
-传统 API 调用失败，通常能从状态码、请求参数、数据库状态里定位。LLM 调用失败就麻烦得多：可能是 Prompt 版本变了，可能是模型升级了，可能是检索上下文噪声太多，可能是输出被截断，可能是路由去了一个便宜但能力不够的模型。
+Traditional API failures can often be diagnosed from the status code, request parameters, and database state. LLM failures are harder to trace: the Prompt may have changed, the model may have been upgraded, retrieved context may contain too much noise, the output may have been truncated, or routing may have selected an inexpensive but underpowered model.
 
-没有 Gateway，所有这些线索都散在业务系统里。
+Without a Gateway, all of these clues are scattered across the application.
 
-散了就很难管。
+That makes them difficult to manage.
 
-### LLM Gateway 和 LLM Router 有什么区别？
+### What Is the Difference Between an LLM Gateway and an LLM Router?
 
-Router 管的事情比较窄：这个请求该选哪个模型。输入是用户问题、任务类型、预算、上下文长度这些，输出就是一个模型名或者一组候选。
+A Router has a narrower responsibility: choosing a model for a request. Its inputs may include the user's question, task type, budget, and context length; its output is a model name or a set of candidates.
 
-Gateway 的范围大得多。从请求进来到结果返回，中间经过的鉴权、限流、路由、fallback、日志、成本记录，都归它管。Router 只是 Gateway 里的一个环节。
+A Gateway has a broader scope. It manages the full request lifecycle, including authentication, rate limiting, routing, fallback, logging, and cost records. A Router is one part of a Gateway.
 
-| 维度     | LLM Router                           | LLM Gateway                                          |
-| -------- | ------------------------------------ | ---------------------------------------------------- |
-| 主要职责 | 模型选择                             | 统一接入、路由、限流、Fallback、观测、成本治理       |
-| 决策粒度 | 单次请求选模型                       | 请求全生命周期治理                                   |
-| 典型输入 | 用户问题、任务类型、预算、上下文长度 | 请求、用户、租户、场景、Prompt、模型、供应商、策略   |
-| 典型输出 | 目标模型或模型集合                   | 完整调用结果、usage、日志、错误、成本、Fallback 轨迹 |
-| 适合阶段 | 多模型调用开始变复杂                 | AI 应用进入生产                                      |
+| Dimension           | LLM Router                                       | LLM Gateway                                                                          |
+| ------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| Main responsibility | Model selection                                  | Unified access, routing, rate limiting, fallback, observability, and cost governance |
+| Decision scope      | Select a model for one request                   | Govern the full request lifecycle                                                    |
+| Typical inputs      | User question, task type, budget, context length | Request, user, tenant, scenario, Prompt, model, provider, and policy                 |
+| Typical outputs     | Target model or model set                        | Full result, usage, logs, errors, cost, and fallback history                         |
+| Best suited for     | Multi-model calls becoming more complex          | AI applications entering production                                                  |
 
-可以这么理解：**Router 负责选模型，Gateway 负责把整次模型调用管起来**。
+In short, **the Router selects a model; the Gateway manages the entire model call**.
 
-你可以只有 Router，没有 Gateway，就做简单的模型路由功能。例如写一个函数，根据任务类型返回对应的模型。
+You can use a Router without a Gateway for simple model routing, such as a function that returns a model based on the task type.
 
-这能解决一部分成本问题，但解决不了密钥管理、限流、日志、审计、统一错误处理和供应商切换。
+This can help with cost, but does not solve secret management, rate limiting, logging, auditing, consistent error handling, or provider switching.
 
-反过来，一个早期 Gateway 也可以先没有复杂 Router。第一版只做统一接入、日志和 Fallback，就已经能减少很多生产事故。
+Conversely, an early Gateway does not need a complex Router. A first version that provides unified access, logging, and fallback can already prevent many production incidents.
 
-路由策略不要绑死在某个具体模型名上，应尽量绑定到模型层级、成本区间、上下文能力和风险等级等相对稳定的属性。模型会升级，名字会变，但这些决策维度不会消失。
+Avoid tying routing policies to specific model names. Prefer relatively stable attributes such as capability tier, cost range, context support, and risk level. Models and names change, but these decision criteria remain useful.
 
-### LLM Gateway 和 RAG、Agent、MCP 是什么关系？
+### How Does an LLM Gateway Relate to RAG, Agents, and MCP?
 
-这几个概念经常一起出现，但边界不一样。
+These concepts often appear together, but they have different responsibilities.
 
-| 概念  | 主要解决什么问题                                | 和 Gateway 的关系                                                                        |
-| ----- | ----------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| RAG   | 检索外部知识，把相关上下文塞进模型请求          | Gateway 可以限制 Token、记录 Prompt 版本、缓存检索后结果，但不负责检索质量本身           |
-| Agent | 拆任务、调用工具、多轮执行                      | Gateway 可以管理每一步模型调用的预算、路由和 Fallback，不决定 Agent 的任务规划逻辑       |
-| MCP   | 让模型或 Agent 以统一协议访问工具、资源和上下文 | Gateway 可以审计和治理模型请求，也可以配合工具调用日志，但不替代 MCP Server 或工具注册表 |
+| Concept | Main purpose                                                                          | Relationship to the Gateway                                                                                                |
+| ------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| RAG     | Retrieve external knowledge and add relevant context to a model request               | The Gateway can limit tokens, record Prompt versions, and cache post-retrieval results, but does not own retrieval quality |
+| Agent   | Decompose tasks, call tools, and execute across turns                                 | The Gateway can manage the budget, routing, and fallback for each model call, but does not plan the agent's tasks          |
+| MCP     | Give models or agents a standard protocol for accessing tools, resources, and context | The Gateway can audit model requests and tool-call logs, but does not replace an MCP Server or tool registry               |
 
-所以，Gateway 更靠近“模型调用治理”；RAG、Agent、MCP 更靠近“应用能力组织”。
+The Gateway focuses on model-call governance; RAG, agents, and MCP focus on organizing application capabilities.
 
-一个复杂 Agent 可以在多个步骤里调用 Gateway，Gateway 也可以对每个步骤分别记录 `scene`、`route_reason`、Token 使用量和成本。
+A complex agent can call the Gateway at several steps. The Gateway can record the `scene`, `route_reason`, token usage, and cost for each step.
 
-### LLM Gateway 会不会增加延迟？
+### Does an LLM Gateway Add Latency?
 
-会增加一点，但这部分通常不是用户等待的主要来源。
+It adds some latency, but this is usually not the main source of user-perceived wait time.
 
-Gateway 在同机房完成路由、Token 估算和日志写入，耗时相对有限；模型排队、长上下文推理、跨区域网络、输出 Token、工具调用和重试，才更容易把端到端延迟拉长。
+Routing, token estimation, and logging within the same data center add relatively little time. Model queueing, long-context inference, cross-region networking, output tokens, tool calls, and retries are more likely to increase end-to-end latency.
 
-网关能介入的也正是这些地方。意图分类直接走低延迟模型，重复 FAQ 返回缓存结果，长上下文在发送前压缩；语音交互和在线客服则需要把 TTFT 纳入候选模型的健康指标。供应商出现抖动时，按策略切换候选或排队，比让业务接口一直等到超时更容易控制。
+The Gateway can help with these bottlenecks. Route intent classification to a low-latency model, return cached results for repeated FAQs, and compress long contexts before sending them. For voice interactions and online support, include TTFT in candidate model health metrics. When a provider becomes unstable, switching candidates or queueing requests according to policy is easier to control than waiting for each application request to time out.
 
-路由本身也有成本。每次请求都先调用强模型“判断该用什么模型”，很可能把节省下来的 Token 和时间又花回去。没有足够的请求量、评测集和质量反馈时，按场景配置规则或使用轻量分类器就够了。
+Routing also has a cost. Calling a powerful model for every request just to decide which model to use can consume the tokens and time you hoped to save. Without enough request volume, evaluation data, and quality feedback, rules by scenario or a lightweight classifier are often enough.
 
-### 你真的需要 LLM Gateway 吗？
+### Do You Really Need an LLM Gateway?
 
-先看模型调用在系统里处于什么位置。一个内部工具只调用一家模型、每天只有少量请求时，单独部署 Gateway 通常没有必要；在业务服务外封装一个 `LLMClient`，统一处理超时、重试、基础日志和错误转换就够了。
+First consider how model calls fit into the system. If an internal tool calls one provider and handles only a few requests a day, a separately deployed Gateway is usually unnecessary. A shared `LLMClient` around the business service can handle timeouts, retries, basic logging, and error conversion.
 
-调用开始被多个服务、团队或租户复用后，事情就变了。模型配置分散在各处时，换供应商要逐个服务改代码；某个场景成本突然升高时，账单又无法按租户、功能和 Prompt 版本拆开。多供应商切换、配额、Fallback、审计和质量回放也会反复出现在每个调用点。
+The situation changes when multiple services, teams, or tenants reuse model calls. If model configuration is scattered, switching providers requires changing each service. If a scenario's costs rise, the bill may not be broken down by tenant, feature, or Prompt version. Provider switching, quotas, fallback, auditing, and quality replay will also be duplicated across call sites.
 
-这时需要的未必是一个很重的平台，但模型调用应该有唯一入口。可以先让统一模块维护模型名、密钥、调用日志和错误处理，再逐步接入路由、预算和限流；当多个业务线共用模型、需要按租户计费，或需要管理 Prompt 留存和敏感内容时，再把它演进为完整的 LLM Gateway。
+A heavy platform is not necessarily required, but model calls should have one entry point. Start with a shared module that manages model names, keys, call logs, and error handling, then add routing, budgets, and rate limits. Evolve it into a full LLM Gateway when multiple business lines share models, costs must be billed by tenant, or Prompt retention and sensitive content need centralized management.
 
-我的 [AI 面试平台](https://javaguide.cn/zhuanlan/interview-guide.html)走的就是这条路。项目没有单独部署网关，也没有引入专门的 LLM Gateway 组件，而是在应用内通过 `LlmProviderRegistry` 统一管理不同 Provider 的配置、默认模型、API Key、`ChatClient` 和 Embedding 模型，再用 `StructuredOutputInvoker` 收口结构化输出的校验、修复、重试和指标。这已经具备了轻量 LLM 网关的核心形态，能够满足当前项目的需求。
+My [AI interview platform](https://javaguide.cn/zhuanlan/interview-guide.html) follows this approach. It does not deploy a separate Gateway or add a dedicated LLM Gateway component. Instead, `LlmProviderRegistry` manages provider configuration, default models, API keys, `ChatClient`, and embedding models within the application. `StructuredOutputInvoker` centralizes structured-output validation, repair, retries, and metrics. This provides the core of a lightweight LLM Gateway and meets the project's current needs.
 
-不过，它还不是本文后面所说的完整生产级网关：跨 Provider 自动 Fallback、Token 预算、按调用成本归因、网关级多维限流和智能路由等能力，仍要等业务确实需要时再补。这个边界也说明了一件事：LLM Gateway 首先是一组需要集中治理的职责，不一定非要对应一个独立服务或第三方组件。
+However, it is not the full production-grade Gateway described later in this article. Cross-provider fallback, token budgets, per-call cost attribution, gateway-level multi-dimensional rate limiting, and intelligent routing can be added when the application needs them. This illustrates that an LLM Gateway is first a set of responsibilities to manage centrally; it does not have to be a separate service or third-party component.
 
-![LLM Gateway 演进路径](../images/shared/llm-gateway-evolution-path.webp)
+![LLM Gateway evolution path](../images/shared/llm-gateway-evolution-path.webp)
 
-是否收口要看一次模型策略修改会影响多少服务，以及一次故障需要排查多少调用链。调用集中在一个模块时，后续增加模型、切换供应商或补审计都只改这一处；调用散进各个业务服务后，即使流量不大，也应先建立统一入口。
+Decide whether to centralize calls by considering how many services a model-policy change affects and how many call paths an incident requires you to investigate. If calls are already in one module, adding models, switching providers, or adding auditing requires changes in one place. If calls are scattered across services, establish a shared entry point even if traffic is low.
 
-## 为什么不能所有请求都用最强模型？
+## Why Not Use the Most Capable Model for Every Request?
 
-### 最贵的模型不一定是最适合的模型
+### The Most Expensive Model Is Not Always the Best Fit
 
-把最强模型设为默认值，确实能少做一些前期选择，但它无法替代任务分级。意图分类、标题生成、JSON 修复和轻量摘要更看重响应速度、结构化输出和失败兜底；它们长期占用强模型，只会放大成本和排队时间。复杂任务也不是模型越贵结果就越好，检索上下文、工具返回值和输出约束同样决定最终质量。
+Setting the most capable model as the default avoids some early decisions, but does not replace task classification. Intent classification, title generation, JSON repair, and short summaries prioritize response speed, structured output, and fallback behavior. Keeping them on a powerful model increases cost and queueing time. A more expensive model does not automatically produce better results for complex tasks either; retrieved context, tool results, and output constraints also determine quality.
 
-`tier-fast`、`tier-pro` 这类名称只表示能力层级，具体映射到哪个供应商、模型版本、上下文窗口和价格，应由模型注册表维护。供应商替换模型或调整价格时，角色规则不需要跟着改。
+Names such as `tier-fast` and `tier-pro` represent capability tiers. A model registry should map them to the provider, model version, context window, and price currently in use. When a provider changes its model or pricing, routing rules do not need to change.
 
-因此，路由记录不能只留下最终模型名，还要保留场景、模型层级、候选、路由原因和实际 usage。这样才能回看某次调用为什么选择快速模型、何时换了备用模型，以及这个决定对延迟和成本产生了什么影响。
+Routing records should include more than the final model name. Keep the scenario, model tier, candidates, routing reason, and actual usage so you can determine why a call used a fast model, when it switched to a fallback, and how that decision affected latency and cost.
 
-### 什么任务适合小模型？什么任务必须上强模型？
+### Which Tasks Suit Smaller Models, and Which Need a More Capable Model?
 
-模型选择可以先从任务本身开始，而不是先比较模型排行榜。固定规则过滤、关键词判断、权限校验和模板填充应交给代码处理；让模型判断“输入是否为空”或“文件后缀是否为 PDF”，既增加费用，也引入不必要的不确定性。
+Start model selection with the task instead of comparing model leaderboards. Handle fixed-rule filtering, keyword checks, authorization, and template filling in code. Asking a model whether input is empty or a file has a PDF extension adds cost and unnecessary uncertainty.
 
-意图分类、标题生成、轻量摘要、简单改写和低风险信息抽取，通常适合低成本模型。这里更需要的是枚举约束、结构化输出校验和明确的失败路径，而不是最大的参数规模。解析失败或置信度不足时，再按场景升级模型即可。
+Intent classification, title generation, short summaries, simple rewrites, and low-risk information extraction often suit lower-cost models. Enum constraints, structured-output validation, and clear failure handling matter more here than parameter count. Upgrade the model for a scenario when parsing fails or confidence is too low.
 
-多文档归纳、代码架构设计、复杂 Agent 规划和强事实核验更需要推理能力；金融、法务、医疗等错误代价高的场景，还要叠加人工审核或业务规则。强模型应留给这些请求，而不是成为所有请求的默认通道。
+Multi-document synthesis, software architecture design, complex agent planning, and rigorous fact-checking need stronger reasoning. High-impact areas such as finance, law, and medicine also need human review or business rules. Reserve more capable models for these requests instead of making them the default for everything.
 
-拿我的多智能体股票分析项目来说：技术指标整理和新闻初筛可以优先低延迟模型；研究资料归纳、多个角色结论冲突后的汇总，则需要更强的推理能力。
+For example, in my multi-agent stock analysis project, a low-latency model can organize technical indicators and screen news. Synthesizing research materials and reconciling conflicting conclusions from multiple roles require stronger reasoning.
 
-### LLM Router 如何选择模型？
+### How Does an LLM Router Choose a Model?
 
-LLM Router 的任务，是给每个请求选一个合适模型。
+An LLM Router selects an appropriate model for each request.
 
-这里的合适不只看回答质量，还要看成本、延迟、上下文长度、供应商可用性和风险策略。
+The choice depends on more than answer quality. Consider cost, latency, context length, provider availability, and risk policy.
 
-[LLMRouter](https://github.com/ulab-uiuc/LLMRouter) 这类智能路由项目，思路是为每个查询动态选择更合适的模型，从而在质量、成本和延迟之间做取舍。它覆盖了单轮路由、多轮路由、个性化路由、Agentic 路由等方向，也提供 KNN、SVM、MLP、Matrix Factorization、Elo Rating、Graph-based routing 等策略。
+Projects such as [LLMRouter](https://github.com/ulab-uiuc/LLMRouter) dynamically select a model for each query to balance quality, cost, and latency. They explore single-turn, multi-turn, personalized, and agentic routing, with strategies such as KNN, SVM, MLP, matrix factorization, Elo rating, and graph-based routing.
 
-这些策略适合学习和实验，但生产里要先解决可解释性和回放能力。更稳的路线是：**模型路由从简单规则出发，然后根据实际场景慢慢演进成可训练、可评估、可迭代的系统**。
+These strategies are useful for learning and experimentation, but production systems first need explainability and replay. A steadier path is to **start with simple routing rules, then evolve them into a trainable, measurable, and iterative system as real needs emerge**.
 
-常见路由策略有这几类：
+Common routing strategies include:
 
-| **路由策略**        | **怎么做**                                | **适合场景**                     | **风险**                 |
-| ------------------- | ----------------------------------------- | -------------------------------- | ------------------------ |
-| 固定规则路由        | 按业务场景、接口、租户套餐选择模型        | 第一版 Gateway，大多数业务足够用 | 规则维护靠人，容易滞后   |
-| 成本优先 / 级联路由 | 默认走便宜模型，失败或低置信度再升级      | 分类、摘要、客服 FAQ             | 低成本模型误判会传导     |
-| 语义 / 分类路由     | 根据 Query 语义、复杂度、风险等级选择模型 | 问题类型稳定、流量较大           | 阈值和分类器需要持续调优 |
-| 学习型路由          | 基于历史质量、成本、延迟训练 Router       | 多模型、多任务、大流量           | 依赖评测数据和反馈闭环   |
-| 个性化路由          | 结合用户偏好、历史交互选择模型            | C 端助手、教育、内容平台         | 隐私和一致性成本更高     |
-| Agentic 路由        | 多轮任务里动态切换模型和工具              | 复杂 Agent、长链路任务           | 调试和成本控制难度高     |
+| **Strategy**                  | **How it works**                                                    | **Suitable scenarios**                                  | **Risk**                                              |
+| ----------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------- |
+| Fixed-rule routing            | Select a model by scenario, endpoint, or tenant plan                | First Gateway version; sufficient for many applications | Rules require manual maintenance and may become stale |
+| Cost-first / cascade routing  | Start with a cheaper model and upgrade on failure or low confidence | Classification, summaries, support FAQs                 | Errors from the cheaper model can propagate           |
+| Semantic / classifier routing | Select based on query meaning, complexity, and risk                 | Stable query types and higher traffic                   | Thresholds and classifiers need ongoing tuning        |
+| Learned routing               | Train a Router on historical quality, cost, and latency             | Many models, tasks, and requests                        | Depends on evaluation data and a feedback loop        |
+| Personalized routing          | Select based on user preferences and interaction history            | Consumer assistants, education, content platforms       | Higher privacy and consistency costs                  |
+| Agentic routing               | Switch models and tools dynamically across turns                    | Complex agents and long workflows                       | Harder to debug and control costs                     |
 
-第一版通常从固定规则开始。翻译、代码生成、默认对话分别绑定模型层级；不同套餐或风险等级再覆盖默认规则。规则会随着业务增长变多，但它可以被配置、被审计，也能随时回退，适合先把模型调用收口。
+The first version usually starts with fixed rules. Map translation, code generation, and default chat to model tiers, then override those defaults for different plans or risk levels. The rules may grow with the application, but they can be configured, audited, and rolled back. This is a practical way to centralize model calls.
 
-级联路由把低成本模型放在前面，只有结构化输出解析失败、置信度不足或业务校验不通过时才升级。它会增加一次推理或评估，适用于摘要、分类、客服 FAQ 等可以容忍额外等待的场景；实时语音和在线协作编辑通常不宜把它放在主链路。
+Cascade routing starts with a lower-cost model and upgrades only when structured output cannot be parsed, confidence is too low, or business validation fails. It adds another inference or evaluation step, so it suits summaries, classification, and support FAQs that can tolerate extra latency. It is usually a poor fit for real-time voice or collaborative editing on the main request path.
 
-语义/分类路由会用 embedding 与任务原型、模型 profile 的相似度，或轻量分类器给请求标记复杂度和风险等级。模型能力、用户表达和请求分布都会变化，因此阈值、误路由率和评测样本需要持续检查。学习型、个性化和 Agentic 路由更依赖这些数据：前两者还要处理隐私与可解释性，后者则要处理多轮步骤的成本上限和调试问题。
+Semantic or classifier-based routing can compare embeddings with task prototypes or model profiles, or use a lightweight classifier to label request complexity and risk. Model capabilities, user phrasing, and request distributions change, so monitor thresholds, misrouting rates, and evaluation examples. Learned and personalized routing depend even more on this data and must address privacy and explainability. Agentic routing must also control costs across multiple steps and remain debuggable.
 
-多智能体场景还多了一层角色选择。可以先查角色配置，再继承整套策略的默认模型，最后才使用系统默认值；技术分析、舆情整理和最终报告由不同角色承担时，这比仅按接口名路由更稳定。配置的 Provider 健康时直接使用，只有它未注册或健康检查不通过时，才从可用候选中按能力、延迟、成本和成功率选择。
+Multi-agent systems add role selection. Check the role configuration first, then inherit the policy's default model, and use the system default only as a last resort. This is more stable than routing by endpoint alone when different roles handle technical analysis, public-opinion research, and final reports. Use the configured provider when it is healthy; only if it is unavailable or fails a health check should the system select from other candidates based on capability, latency, cost, and success rate.
 
-一次 Agent 调用开始前，应把选中的模型、Provider、模型名和是否发生调用前兜底固定为同一份路由结果。流式生成期间健康状态变化，不能在结束后重新路由再记 usage，否则实际由 A 产生的费用可能记到 B。这里的调用前兜底也不等于失败后的跨 Provider 重放：后者还要定义哪些异常可重放、ReAct 工具结果是否复用，以及已经输出的流式文本如何处理。
+Before an agent call begins, freeze the selected model, provider, model name, and any pre-call fallback decision in one routing result. If health status changes during streaming, do not reroute after completion and then record usage; that could attribute model A's cost to model B. Pre-call fallback is also different from replaying a failed request through another provider. For cross-provider replay, define which errors are retryable, whether ReAct tool results are reused, and what to do with text already sent to the user.
 
-## LLM Gateway 需要具备哪些能力？
+## What Capabilities Does an LLM Gateway Need?
 
-![LLM 网关示意图](../images/shared/llm-gateway-overview.png)
+![LLM Gateway overview](../images/shared/llm-gateway-overview.png)
 
-### 多模型统一接入
+### Unified Access to Multiple Models
 
-业务代码里最不该到处散落的，就是供应商 SDK 调用。
+Provider SDK calls are one of the first things to centralize in application code.
 
-今天一个服务调 OpenAI，明天另一个服务调 DeepSeek，后天一个定时任务又接了 Gemini。短期看都能跑，时间一长就会变成一堆重复逻辑：API Key、超时、重试、流式解析、错误码、usage、日志格式、模型名映射，每个地方都处理一遍。
+One service may call OpenAI, another DeepSeek, and a scheduled job Gemini. Each may work initially, but over time the same logic gets duplicated: API keys, timeouts, retries, stream parsing, error codes, usage, log formats, and model-name mappings.
 
-更稳的做法，是先定义统一请求和响应。
+A more reliable approach is to define a common request and response first.
 
 ```java
 public record LLMRequest(
@@ -241,41 +241,41 @@ public interface LLMGateway {
 }
 ```
 
-这几个接口解决几个实际问题：
+These interfaces address several practical problems:
 
-- 业务侧只依赖 `LLMGateway`，不依赖某个供应商 SDK。
-- 模型名、供应商、fallback 策略都能配置化。
-- usage、成本、错误、延迟可以统一记录。
-- 后续接入新模型，只需要增加 Provider Adapter。
+- Business code depends on `LLMGateway`, not on a provider SDK.
+- Model names, providers, and fallback policies can be configured.
+- Usage, cost, errors, and latency can be recorded consistently.
+- Adding a model later requires only a new Provider Adapter.
 
-统一请求的入口形状，工程上常见的是 OpenAI Chat Completions 兼容风格。LiteLLM、DeepSeek、Qwen 等方案都提供了类似入口，Kong AI Gateway 这类网关也会用 OpenAI 兼容格式作为 AI 插件的通用入口之一。
+A common engineering choice for the request interface is compatibility with OpenAI Chat Completions. LiteLLM, DeepSeek, and Qwen provide similar interfaces, and gateways such as Kong AI Gateway use OpenAI-compatible formats as one common entry point for AI plugins.
 
-对外暴露 OpenAI 兼容接口的好处很直接：业务方通常不用大改 SDK，改 `base_url` 或网关地址就能从直连供应商切到统一入口。
+Exposing an OpenAI-compatible interface has a clear benefit: clients often need only to change `base_url` or the Gateway address to switch from a direct provider call to the shared entry point.
 
-但这只是入口形状统一，不代表出口也统一。
+This standardizes the entry point, but not the provider-specific requests sent downstream.
 
-Cloudflare AI Gateway 这类托管网关还要按它当前文档支持的 Provider Native、REST 或 Binding 集成方式接入，不能默认所有供应商都能被当成同一个 OpenAI 协议透传。OpenAI 协议也表达不了一些供应商的专属能力，比如 Anthropic 的 extended thinking、Gemini 的 grounding 元数据。这类能力通常要放进 `extra_body`、`metadata` 或内部扩展字段里，再由 Provider Adapter 转成目标供应商自己的请求格式。
+Hosted gateways such as Cloudflare AI Gateway may require a supported Provider Native, REST, or Binding integration. Do not assume every provider can be passed through as if it used the OpenAI protocol. That protocol also cannot express some provider-specific features, such as Anthropic extended thinking or Gemini grounding metadata. Such options may need to go in `extra_body`, `metadata`, or internal extension fields, then be translated by a Provider Adapter into the target provider's request format.
 
-Provider Adapter 的工作不止 endpoint 和鉴权头，工具调用、流式事件、系统提示、结构化输出、usage 和错误码也要正确转换。
+A Provider Adapter must translate more than endpoints and authentication headers. It also needs to handle tool calls, streaming events, system instructions, structured output, usage, and error codes correctly.
 
-| 维度         | OpenAI Chat Completions          | Anthropic Messages API                    | Gemini generateContent      |
-| ------------ | -------------------------------- | ----------------------------------------- | --------------------------- |
-| 工具调用字段 | `tool_calls`                     | `tool_use` content block                  | `functionCall` part         |
-| 工具结果回传 | `role=tool` 消息                 | `role=user` + `tool_result` content block | `functionResponse` part     |
-| 工具 Schema  | JSON Schema                      | JSON Schema 子集                          | OpenAPI 子集                |
-| 系统提示位置 | `messages` 中的 system/developer | 顶层 `system` 字段                        | `systemInstruction`         |
-| 多工具调用   | 原生支持                         | 原生支持                                  | 结合模型和 SDK 行为单独验证 |
-| 专属能力扩展 | `metadata` / 扩展参数            | thinking、cache_control 等                | grounding、cachedContent 等 |
+| Dimension                 | OpenAI Chat Completions            | Anthropic Messages API                    | Gemini generateContent                 |
+| ------------------------- | ---------------------------------- | ----------------------------------------- | -------------------------------------- |
+| Tool-call field           | `tool_calls`                       | `tool_use` content block                  | `functionCall` part                    |
+| Tool result               | `role=tool` message                | `role=user` + `tool_result` content block | `functionResponse` part                |
+| Tool Schema               | JSON Schema                        | Subset of JSON Schema                     | Subset of OpenAPI                      |
+| System instruction        | `system`/`developer` in `messages` | Top-level `system` field                  | `systemInstruction`                    |
+| Multiple tool calls       | Native support                     | Native support                            | Verify behavior for each model and SDK |
+| Provider-specific options | `metadata` / extension parameters  | thinking, `cache_control`, etc.           | grounding, `cachedContent`, etc.       |
 
-OpenAI 兼容接口解决的是业务侧的接入方式，不能消除供应商协议差异。是否支持 Claude、Gemini 或私有模型，主要取决于 Provider Adapter 能否正确转换请求和事件；产品文档中的“支持某类 Provider”也不代表每项专属能力都可以无损映射。
+An OpenAI-compatible interface simplifies client integration but does not remove provider protocol differences. Support for Claude, Gemini, or self-hosted models depends on whether the Provider Adapter correctly translates requests and events. A product's claim to support a provider does not mean every provider-specific feature maps without loss.
 
-先收口模型调用，再逐步补齐路由、限流和审计，通常比一开始覆盖所有专属能力更容易验证。
+Centralize model calls first, then add routing, rate limiting, and auditing incrementally. This is usually easier to verify than implementing every provider-specific feature at the start.
 
-### 模型路由
+### Model Routing
 
-模型路由很容易看到收益，尤其是有明显任务分层的系统。
+Model routing can provide clear benefits, especially when a system has distinct task tiers.
 
-第一版可以配置化，不需要训练模型。
+The first version can use configuration; there is no need to train a model.
 
 ```yaml
 routes:
@@ -308,21 +308,21 @@ default:
     - tier-fast
 ```
 
-这里的 `tier-*` 是网关内部的模型层级名，不是供应商真实模型 ID。生产里通常会由 `Model Registry` 把 `tier-fast`、`tier-balanced`、`tier-flagship` 映射到当前可用的具体模型，并且在日志里同时记录“模型层级”和“真实模型名”。这样模型升级时只改注册表和灰度配置，不用改业务路由规则。
+Here, `tier-*` names are internal capability tiers, not actual provider model IDs. In production, a `Model Registry` maps `tier-fast`, `tier-balanced`, and `tier-flagship` to currently available models and records both the tier and actual model name in logs. Model upgrades then require changes only to the registry and rollout configuration, not to business routing rules.
 
-路由决策时，Gateway 至少要看这些因素：
+The Gateway should consider at least these factors when routing:
 
-| 因素         | 作用                                 |
-| ------------ | ------------------------------------ |
-| `scene`      | 业务场景，决定默认模型和风险等级     |
-| 输入 Token   | 判断是否超过模型上下文窗口或预算     |
-| 输出长度     | 控制成本和延迟                       |
-| 用户套餐     | 免费用户和企业用户可以走不同模型     |
-| 风险等级     | 高风险任务强制走合规模型或人工审核   |
-| 当前模型状态 | 供应商异常、429、P95 延迟升高时切走  |
-| 历史质量     | 某模型在某类任务上持续失败时降低权重 |
+| Factor               | Purpose                                                                           |
+| -------------------- | --------------------------------------------------------------------------------- |
+| `scene`              | Selects the default model and risk level for the scenario                         |
+| Input tokens         | Checks the model context window and token budget                                  |
+| Output length        | Controls cost and latency                                                         |
+| User plan            | Allows different models for free and enterprise users                             |
+| Risk level           | Requires a compliant model or human review for high-risk tasks                    |
+| Current model health | Switches away when a provider is unhealthy, returns 429s, or has high P95 latency |
+| Historical quality   | Reduces a model's weight when it repeatedly fails a task type                     |
 
-一个简单路由器可以先这样写：
+A simple router could start like this:
 
 ```java
 public class RuleBasedModelRouter {
@@ -349,73 +349,73 @@ public class RuleBasedModelRouter {
 }
 ```
 
-这段代码不复杂，重点在职责边界：路由器只负责选模型，不负责调模型；健康检查只提供状态，不掺业务逻辑；预算判断单独放出来，后续替换估算方式也方便。
+The code is straightforward; the important part is the separation of responsibilities. The router selects a model but does not call it. Health checks provide status without business logic. Budget checks are separate, so the estimation method can be replaced later.
 
-![LLM Gateway 模型路由决策图](../images/shared/llm-gateway-routing-decision.webp)
+![LLM Gateway model routing decision flow](../images/shared/llm-gateway-routing-decision.webp)
 
-### 优雅降级
+### Graceful Fallback
 
-Fallback 不是失败就换一个模型再试这么简单。
+Fallback is more than switching to another model whenever a request fails.
 
-需要先区分错误类型。
+First distinguish between error types.
 
-| 错误类型       | 是否适合 Fallback | 处理方式                                 |
-| -------------- | ----------------- | ---------------------------------------- |
-| 网络瞬断       | 适合              | 短重试后切备用模型                       |
-| 供应商 5xx     | 适合              | 重试 + 熔断 + 切供应商                   |
-| 429 限流       | 适合但要谨慎      | 读 `Retry-After`，必要时排队或切模型     |
-| 上下文超限     | 不适合直接重试    | 压缩上下文、减少检索片段或换长上下文模型 |
-| 参数错误       | 不适合            | 修请求，不要重复打供应商                 |
-| 安全拒答       | 通常不适合        | 进入业务拒答或人工流程                   |
-| 结构化解析失败 | 可有限修复        | 在同一 Schema 下重试、修复格式或明确失败 |
+| Error type                 | Fallback suitability  | Handling                                                                                 |
+| -------------------------- | --------------------- | ---------------------------------------------------------------------------------------- |
+| Transient network failure  | Suitable              | Retry briefly, then switch to a backup model                                             |
+| Provider 5xx               | Suitable              | Retry, use a circuit breaker, then switch providers                                      |
+| 429 rate limit             | Suitable with care    | Read `Retry-After`; queue or switch models if needed                                     |
+| Context limit exceeded     | Do not retry directly | Compress context, reduce retrieved passages, or use a model with a larger context window |
+| Invalid parameters         | Unsuitable            | Fix the request instead of sending it again                                              |
+| Safety refusal             | Usually unsuitable    | Follow the application's refusal or human-review flow                                    |
+| Structured parsing failure | Limited recovery      | Retry with the same Schema, repair the format, or return an explicit failure             |
 
-表中“切备用模型”表示由 Gateway 创建新的调用 attempt，不是让通用重试回调在异常后随意换一个客户端。一次请求已经执行过写操作、工具调用或扣费时，要先确认该步骤是否可重放；流式输出已经发给用户时，也不能把两个模型的片段直接拼成一段结果。
+“Switch to a backup model” means the Gateway creates a new call attempt. It does not mean a generic retry callback should choose an arbitrary client after an exception. If a request has already performed a write, called a tool, or incurred a charge, first determine whether that step can be replayed. If streamed output has already reached the user, do not concatenate fragments from two models into one result.
 
-流式调用还要单独处理用户取消、TTFT 超时、连接断开和客户端重连。Gateway 需要保存流式响应的状态、序号和终止原因，避免把断流请求记成成功，也不能在重连后重复返回已经发送的片段。
+Streaming calls also need explicit handling for user cancellation, TTFT timeouts, dropped connections, and client reconnections. The Gateway should track stream state, sequence numbers, and termination reasons so it does not mark a disconnected request as successful or resend chunks after reconnection.
 
-![流式调用异常处理](../images/shared/llm-api-engineering-streaming-exceptions.webp)
+![Handling errors in streaming calls](../images/shared/llm-api-engineering-streaming-exceptions.webp)
 
-一个 Fallback 链可以写成这样：
+A fallback chain might look like this:
 
 ```text
-优先模型可用 -> 正常调用
-优先模型 429 -> 读取限流信息 -> 切备用同级模型
-备用模型也不可用 -> 切轻量模型并缩短输出
-仍不可用 -> 排队、返回降级提示或转人工
+Primary model available -> Call it
+Primary model returns 429 -> Read rate-limit details -> Switch to a backup model in the same tier
+Backup model unavailable -> Switch to a lightweight model and shorten the output
+Still unavailable -> Queue the request, return a fallback message, or escalate to a person
 ```
 
-报告落库、工具执行和扣费这类带副作用的请求，Fallback 要和幂等机制一起设计。纯文本生成虽然不改变业务状态，重复调用仍会产生额外费用和不同版本的内容，因此每次 attempt 都应留下记录，并按场景决定是否复用结果。
+For requests with side effects, such as saving a report, executing a tool, or charging a user, design fallback together with idempotency. Plain text generation does not change business state, but duplicate calls still incur cost and may produce different content. Record every attempt and decide whether to reuse results based on the scenario.
 
-降级后的语义也要可见。法务审核等高风险任务从强模型换到低成本模型，必须标记并纳入审核；没有满足质量约束的候选时，返回“当前系统繁忙，稍后重试”比悄悄返回低质量结论更合适。
+Make fallback visible in the result. If a high-risk task such as legal review switches from a capable model to a lower-cost one, mark the change and send the result for review. If no candidate meets the quality requirements, return “The system is busy. Please try again later” instead of silently returning a low-quality result.
 
-幂等记录不能只存一个“已处理”标记。对于需要复用结果的场景，可以保存最终 `LLMResponse`，但键和值都要绑定请求语义，例如 `tenant_id + scene + idempotency_key + request_fingerprint`，同时记录 Prompt/路由策略版本和过期时间。相同幂等键对应的请求指纹不一致时应拒绝复用，避免把另一条请求的历史结果返回给用户。
+An idempotency record should store more than a “processed” flag. When results need to be reused, store the final `LLMResponse` and bind the key and value to the request semantics, for example `tenant_id + scene + idempotency_key + request_fingerprint`. Also record the Prompt and routing-policy versions and an expiration time. Reject reuse when the same idempotency key has a different request fingerprint, so a previous result is not returned for another request.
 
-并发请求还需要原子占用。可以使用数据库唯一约束、条件更新或 Redis `SET NX` 创建 `running` 记录，只有抢到 claim 的请求可以调用模型；其他请求等待、返回冲突或复用 `completed` 结果。`failed`、超时 `running` 和租约接管也要定义清楚，不能用“先查、再写”实现幂等。日志与缓存还要遵守租户隔离、敏感数据和留存策略。
+Concurrent requests need an atomic claim. Create a `running` record with a database unique constraint, conditional update, or Redis `SET NX`; only the request that acquires the claim may call the model. Other requests can wait, return a conflict, or reuse a `completed` result. Define behavior for `failed`, timed-out `running` records, and lease takeover. A “check, then write” sequence does not provide idempotency. Logs and caches must also follow tenant isolation, sensitive-data, and retention policies.
 
-![模型调用重试与幂等处理流程](../images/shared/llm-api-engineering-retry-idempotency.webp)
+![Model call retries and idempotency](../images/shared/llm-api-engineering-retry-idempotency.webp)
 
-### 限流与配额
+### Rate Limits and Quotas
 
-LLM API 仍然可以按 QPS、RPM 和并发数限流，但只看请求数不够。
+LLM APIs can still be rate-limited by QPS, RPM, and concurrency, but request count alone is not enough.
 
-两个请求都是 1 次调用，但成本可能差几十倍：
+Two requests each make one call, but their costs may differ by dozens of times:
 
-- 请求 A：输入 500 Token，输出 100 Token。
-- 请求 B：输入 80K Token，输出 8K Token。
+- Request A: 500 input tokens and 100 output tokens.
+- Request B: 80K input tokens and 8K output tokens.
 
-如果只看请求数，B 和 A 一样。但对供应商配额、账单和延迟来说，它们完全不是一个量级。
+By request count, B and A are equal. In provider quota, billing, and latency, they are very different.
 
-LLM Gateway 通常要看这几层限流。
+An LLM Gateway usually needs rate limits at several levels.
 
-| 限流维度 | 控制对象                         | 解决问题             |
-| -------- | -------------------------------- | -------------------- |
-| 用户级   | 单用户请求                       | 防滥用、防脚本刷接口 |
-| 租户级   | 团队预算                         | 控成本、做套餐隔离   |
-| 模型级   | 某个模型                         | 防热门模型被打满     |
-| 供应商级 | OpenAI / Anthropic / DeepSeek 等 | 防外部依赖拖垮系统   |
-| Token 级 | 输入输出 Token                   | 控真实成本和配额压力 |
+| Limit scope | Controls                          | Purpose                                                     |
+| ----------- | --------------------------------- | ----------------------------------------------------------- |
+| User        | Requests from one user            | Prevent abuse and scripted traffic                          |
+| Tenant      | Team budget                       | Control cost and separate plans                             |
+| Model       | Requests to one model             | Keep a popular model from being saturated                   |
+| Provider    | OpenAI, Anthropic, DeepSeek, etc. | Prevent an external dependency from overwhelming the system |
+| Token       | Input and output tokens           | Control actual cost and quota pressure                      |
 
-更稳的做法是：请求发给供应商之前，先扣预算。
+A safer approach is to reserve budget before sending a request to a provider.
 
 ```java
 public record TokenBudget(
@@ -435,58 +435,58 @@ public interface LLMRateLimiter {
 }
 ```
 
-进入 Gateway 后，先估算 `input_tokens + reserved_output_tokens`。用户桶、租户桶、模型桶、供应商桶都扣得动，再发请求。扣不动就排队、降级或拒绝。
+When a request reaches the Gateway, estimate `input_tokens + reserved_output_tokens`. Send it only if the user, tenant, model, and provider buckets all have capacity. Otherwise, queue it, fall back, or reject it.
 
-预算要按 attempt 预留和结算。主模型超时或断流时可能已经产生 Token，不能直接释放全部额度；切换备用模型时，还要按备用供应商和价格层级重新 reserve。供应商返回 usage 后调用 `reconcile`，暂时拿不到 usage 时按保守值挂账，再通过账单或异步对账修正。
+Reserve and settle budget per attempt. A primary model may have already consumed tokens when it times out or the stream disconnects, so do not release the entire reservation. When switching to a backup model, reserve again using that provider and price tier. Call `reconcile` when the provider returns usage. If usage is temporarily unavailable, record a conservative estimate and correct it later using billing data or asynchronous reconciliation.
 
-Token 估算不可能完全准，但粗估也比不估强。尤其是 RAG、长上下文、Agent 工具调用这类场景，不做预算很容易失控。
+Token estimates will not be exact, but a rough estimate is better than none. Budgets are especially important for RAG, long contexts, and agent tool calls, where usage can otherwise grow quickly.
 
-这里更推荐按四步走：**estimate → reserve → 真实 usage → reconcile**。先用估算值占住预算，调用结束后再用供应商返回的真实 `usage` 对账修正。不同供应商、不同模型的 tokenizer 和 usage 字段并不完全一致，生产里通常会先用统一近似器扣预算，再用真实 `input_tokens`、`output_tokens` 修正。如果直接按估算落库，长时间跑下来，成本和配额统计很容易积累出偏差。
+Use this four-step flow: **estimate → reserve → actual usage → reconcile**. Reserve using an estimate, then correct it with the provider's actual `usage` when the call completes. Tokenizers and usage fields differ across providers and models. Production systems often reserve with a common approximation, then reconcile against actual `input_tokens` and `output_tokens`. Persisting estimates as final usage causes cost and quota statistics to drift over time.
 
-![Token 预算预留与对账闭环](../images/shared/llm-gateway-token-budget-lifecycle.webp)
+![Token budget reservation and reconciliation lifecycle](../images/shared/llm-gateway-token-budget-lifecycle.webp)
 
-### 成本统计
+### Cost Tracking
 
-很多团队说要“降低大模型成本”，但连钱花在哪都不知道。
+Many teams say they want to “reduce LLM costs” without knowing where the money goes.
 
-这不是优化，这是猜。
+That is guesswork, not optimization.
 
-LLM Gateway 要记录每次调用的成本归因字段。
+An LLM Gateway should record cost-attribution fields for every call.
 
-| 字段             | 说明                                        |
-| ---------------- | ------------------------------------------- |
-| `request_id`     | 一次业务请求的唯一 ID                       |
-| `attempt_id`     | 一次模型调用尝试，fallback 或重试会产生多个 |
-| `tenant_id`      | 租户或团队                                  |
-| `user_id`        | 用户                                        |
-| `scene`          | 业务场景，比如客服、摘要、代码生成          |
-| `prompt_version` | Prompt 版本                                 |
-| `provider`       | 供应商                                      |
-| `model_tier`     | 路由选中的内部模型层级                      |
-| `model`          | 实际调用模型                                |
-| `input_tokens`   | 输入 Token                                  |
-| `output_tokens`  | 输出 Token                                  |
-| `cached_tokens`  | 命中 Prompt cache 或供应商缓存的 Token      |
-| `cost`           | 按价格快照计算的成本                        |
-| `price_version`  | 成本计算使用的价格版本或生效时间            |
-| `latency_ms`     | 总延迟                                      |
-| `ttft_ms`        | 首 Token 延迟                               |
-| `fallback_used`  | 是否发生 fallback                           |
-| `error_code`     | 错误类型                                    |
+| Field            | Description                                                       |
+| ---------------- | ----------------------------------------------------------------- |
+| `request_id`     | Unique ID for a business request                                  |
+| `attempt_id`     | One model-call attempt; retries and fallback create more than one |
+| `tenant_id`      | Tenant or team                                                    |
+| `user_id`        | User                                                              |
+| `scene`          | Business scenario, such as support, summary, or code generation   |
+| `prompt_version` | Prompt version                                                    |
+| `provider`       | Provider                                                          |
+| `model_tier`     | Internal model tier selected by routing                           |
+| `model`          | Model actually called                                             |
+| `input_tokens`   | Input tokens                                                      |
+| `output_tokens`  | Output tokens                                                     |
+| `cached_tokens`  | Tokens served from a Prompt or provider cache                     |
+| `cost`           | Cost calculated from a price snapshot                             |
+| `price_version`  | Price version or effective time used to calculate cost            |
+| `latency_ms`     | Total latency                                                     |
+| `ttft_ms`        | Time to first token                                               |
+| `fallback_used`  | Whether fallback occurred                                         |
+| `error_code`     | Error type                                                        |
 
-成本通常按价格快照计算：`input_tokens × 输入单价 + output_tokens × 输出单价`，再叠加缓存写入、缓存读取或供应商额外计费项。`cached_tokens` 因而不能只当作普通输入 Token；它需要和模型、价格版本一起解释，才能还原一次调用的金额。
+Calculate cost from a price snapshot, usually as `input_tokens × input price + output_tokens × output price`, plus any charges for cache writes, cache reads, or provider-specific fees. Do not treat `cached_tokens` as ordinary input tokens; interpret it together with the model and price version to reconstruct the call cost.
 
-这些字段可以把账单落回具体决策：租户或功能成本突然增加时，先看 Token、Prompt 版本和模型层级；某次 Fallback 集中发生时，查看当时的供应商、候选和错误码；模型升级后，再用同一场景的质量、延迟和成本做对比。
+These fields tie costs to specific decisions. When a tenant's or feature's cost rises, check token usage, Prompt version, and model tier. When fallback becomes frequent, inspect the provider, candidates, and error codes. After a model upgrade, compare quality, latency, and cost for the same scenario.
 
-价格表、缓存折扣和供应商计费项会变化，成本记录不能只保存 `cost`。`usage` 明细、价格版本和计算时间要与每次调用一起留存，账单出现差异时才知道该按哪份规则复算。后续调整路由，也应以这些调用记录和失败样本为依据。
+Pricing, cache discounts, and provider charges change, so storing only `cost` is insufficient. Retain the `usage` details, price version, and calculation time with each call so you can recalculate when a bill differs. Use these call records and failure examples to guide later routing changes.
 
-### 观测与审计
+### Observability and Auditing
 
-传统系统出问题，看日志、Trace、指标。AI 系统也一样，只是要多记录一些模型相关字段。
+When a traditional system has a problem, engineers inspect logs, traces, and metrics. The same applies to AI systems, with additional model-related fields to record.
 
-Cloudflare AI Gateway、LiteLLM、Kong AI Gateway 这类产品都把日志、Token、成本、错误、延迟、缓存、限流放在很显眼的位置。AI 应用出问题时，如果只记录最终答案，基本没法复盘。
+Products such as Cloudflare AI Gateway, LiteLLM, and Kong AI Gateway prominently expose logs, tokens, cost, errors, latency, caching, and rate limits. If an AI application records only the final answer, incidents are difficult to investigate.
 
-一次模型调用的 Trace 至少应该长这样：
+A model-call trace should include at least:
 
 ```json
 {
@@ -510,103 +510,103 @@ Cloudflare AI Gateway、LiteLLM、Kong AI Gateway 这类产品都把日志、Tok
 }
 ```
 
-`request_id`、模型、路由原因和 usage 足以支撑大部分聚合排障；完整 Prompt 和回答则可能包含个人信息、企业文档、内部代码或合同条款。日志是否保留原文，不能默认采用全量长期留存，应由数据分类、处理目的、合同、适用法规和排障需求共同决定。Cloudflare AI Gateway 等产品已经把请求/响应正文采集做成可配置项，自研系统也应把它放进策略而不是写死在日志代码里。
+`request_id`, model, routing reason, and usage support most aggregated troubleshooting. Full Prompts and responses may contain personal information, company documents, internal code, or contract terms. Do not assume that logs should retain all raw text indefinitely. Decide based on data classification, processing purpose, contracts, applicable laws, and debugging needs. Products such as Cloudflare AI Gateway make request and response body collection configurable; custom systems should do the same through policy rather than hard-coding it into logging.
 
-元数据同样要有明确期限，`usage`、模型、延迟、成本、`route_reason` 和错误码也可能关联到个人或租户。需要抽样保存 Prompt 或响应时，按数据级别、租户授权和最短必要期限控制比例与时长；手机号、身份证、银行卡、邮箱、地址等信息应在入口脱敏后再进入日志链路。留存开关之外，还要有访问控制、加密、导出、删除和法律保留机制，并记录每类数据的处理目的和删除结果。
+Metadata also needs a defined retention period. `usage`, model, latency, cost, `route_reason`, and error codes may be associated with a person or tenant. If Prompts or responses must be retained for sampling, control the sample rate and duration based on data classification, tenant authorization, and the shortest necessary period. Redact phone numbers, national IDs, bank cards, email addresses, and street addresses before they enter the logging pipeline. In addition to retention controls, provide access control, encryption, export, deletion, and legal-hold mechanisms, and record the purpose and deletion result for each data type.
 
-### 缓存与语义缓存
+### Caching and Semantic Caching
 
-缓存只在答案可复用时节省成本。请求里一旦带有权限、实时状态、私密上下文或需要专业判断的内容，缓存必须绕过或使用严格隔离的键。
+Caching saves cost only when an answer can be reused. If a request depends on permissions, real-time state, private context, or expert judgment, bypass the cache or use a strictly isolated key.
 
-| 缓存类型                 | 做法                                 | 适合场景                       | 风险                                       |
-| ------------------------ | ------------------------------------ | ------------------------------ | ------------------------------------------ |
-| 精确缓存                 | 请求完全一致时返回旧结果             | FAQ、固定说明、重复测试        | 个性化和权限场景容易错                     |
-| OpenAI Prompt Caching    | 稳定长前缀自动命中缓存               | 长系统提示、稳定工具 Schema    | 支持模型、阈值和折扣以官方文档和价格表为准 |
-| Anthropic Prompt Caching | 用 `cache_control` 标记可缓存块      | 长系统提示、大文档、多轮 Agent | 写入和读取的计费规则要按当前价格表核对     |
-| Gemini Context Caching   | 通过 cached content 机制复用长上下文 | 长文档、视频、代码库、多轮问答 | 要管理缓存对象、TTL、存储成本和失效        |
-| 语义缓存                 | 语义相似的问题复用旧答案             | 客服 FAQ、产品说明、低风险问答 | 相似不等于相同，容易答偏                   |
-| 结果片段缓存             | 缓存中间摘要、检索结果、工具结果     | 长文档摘要、批处理             | 缓存失效和版本管理复杂                     |
+| Cache type               | How it works                                                     | Suitable scenarios                                      | Risk                                                                                   |
+| ------------------------ | ---------------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Exact cache              | Return a previous result for an identical request                | FAQs, fixed instructions, repeated tests                | Can be incorrect for personalized or permission-sensitive requests                     |
+| OpenAI Prompt Caching    | Automatically caches a stable long prefix                        | Long system prompts, stable tool Schemas                | Check supported models, thresholds, and discounts in current documentation and pricing |
+| Anthropic Prompt Caching | Mark cacheable blocks with `cache_control`                       | Long system prompts, large documents, multi-turn agents | Verify current pricing for writes and reads                                            |
+| Gemini Context Caching   | Reuse long contexts through cached content                       | Long documents, video, codebases, multi-turn Q&A        | Manage cached objects, TTL, storage cost, and invalidation                             |
+| Semantic cache           | Reuse an answer for a semantically similar question              | Support FAQs, product information, low-risk Q&A         | Similar questions may need different answers                                           |
+| Result-fragment cache    | Cache intermediate summaries, retrieval results, or tool results | Long-document summaries, batch processing               | Invalidation and version management are complex                                        |
 
-客服 FAQ 这类问题很适合缓存：“怎么修改密码”“发票在哪里下载”“会员怎么退款”。这些答案稳定，个性化少，缓存收益明显。
+Support FAQs are good candidates for caching: “How do I change my password?”, “Where can I download an invoice?”, and “How do I request a membership refund?” These answers are stable and rarely personalized, so caching can help.
 
-带用户权限、实时状态、金融医疗法务建议、私密多轮对话，以及依赖当前时间、订单或库存状态的问题，都不适合直接复用通用答案。
+Do not directly reuse generic answers for requests involving user permissions, real-time state, financial, medical, or legal advice, private multi-turn conversations, or current time, order, or inventory status.
 
-语义缓存的键至少要隔离租户、权限范围、数据版本、场景和 Prompt 版本；向量相似度只能作为候选命中条件，不能替代这些边界。“我的订单为什么没发货”和“我的订单能不能退款”在向量空间里可能接近，但一个需要解释物流状态，另一个涉及售后规则；误命中会把用户带到错误流程。命中率应和业务校验、投诉率或转人工率一起看。
+Semantic cache keys should at least isolate tenant, permission scope, data version, scenario, and Prompt version. Vector similarity can identify cache candidates, but cannot replace these boundaries. “Why hasn't my order shipped?” and “Can I get a refund for my order?” may be close in vector space, but one asks about delivery status and the other about return policy. A false match can send users down the wrong path. Evaluate hit rate alongside business validation, complaint rate, and escalation rate.
 
-Prompt cache 也不是开了就赚。显式缓存通常要区分写入和读取；自动缓存也会受支持模型、最小前缀长度、价格表变化影响。如果你的 system prompt、工具 Schema 或上下文每次都夹带时间戳、随机 ID、用户临时状态，前缀一直变，缓存命中率上不去，成本收益就会很差。稳定内容放前面、动态内容放后面，是使用供应商缓存时最重要的 Prompt 结构原则。
+Prompt caching does not automatically save money. Explicit caching usually charges differently for writes and reads. Automatic caching depends on supported models, minimum prefix length, and current pricing. If the System Prompt, tool Schema, or context includes a timestamp, random ID, or temporary user state on every request, the prefix keeps changing and the hit rate stays low. Put stable content first and dynamic content later when using provider caching.
 
-## 如何让你设计一个 LLM Gateway，你会怎么做？
+## How Would You Design an LLM Gateway?
 
-### 一个生产级 LLM Gateway 长什么样？
+### What Does a Production-Grade LLM Gateway Look Like?
 
-设计 LLM Gateway 时，可以先拆成这些组件：
+You can start by dividing an LLM Gateway into these components:
 
-| 组件                   | 职责                                                                                     |
-| ---------------------- | ---------------------------------------------------------------------------------------- |
-| API Adapter            | 对外暴露统一 API，兼容 OpenAI 风格请求或内部标准请求                                     |
-| Auth / Tenant          | 鉴权、租户识别、套餐和权限校验                                                           |
-| Prompt Renderer        | 渲染 Prompt 模板，记录 Prompt 版本                                                       |
-| Token Budget Estimator | 估算输入输出 Token，判断是否超预算                                                       |
-| Model Registry         | 维护模型能力、价格、上下文、供应商、状态                                                 |
-| Router                 | 根据场景、预算、延迟、风险选择模型                                                       |
-| Provider Adapter       | 通过统一的 `ProviderClient` 接口适配各家协议差异，包括工具调用、流式事件、usage 和错误码 |
-| Retry / Fallback       | 按错误类型做重试、降级和熔断                                                             |
-| Rate Limiter           | 用户、租户、模型、供应商、Token 多维限流                                                 |
-| Cost Tracker           | 记录 usage，计算成本，按租户和场景归因                                                   |
-| Observability          | 输出指标、日志、Trace、告警                                                              |
-| Audit Log              | 审计关键请求，支持脱敏、留存和回放                                                       |
+| Component              | Responsibility                                                                                                          |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| API Adapter            | Expose a unified API compatible with OpenAI-style requests or an internal standard request                              |
+| Auth / Tenant          | Authenticate requests, identify tenants, and check plans and permissions                                                |
+| Prompt Renderer        | Render Prompt templates and record Prompt versions                                                                      |
+| Token Budget Estimator | Estimate input and output tokens and check the budget                                                                   |
+| Model Registry         | Track model capabilities, prices, context windows, providers, and status                                                |
+| Router                 | Select a model based on scenario, budget, latency, and risk                                                             |
+| Provider Adapter       | Adapt provider protocols through a shared `ProviderClient`, including tool calls, stream events, usage, and error codes |
+| Retry / Fallback       | Retry, fall back, and apply circuit breaking by error type                                                              |
+| Rate Limiter           | Limit by user, tenant, model, provider, and tokens                                                                      |
+| Cost Tracker           | Record usage, calculate cost, and attribute it by tenant and scenario                                                   |
+| Observability          | Provide metrics, logs, traces, and alerts                                                                               |
+| Audit Log              | Audit key requests, with redaction, retention, and replay support                                                       |
 
-第一版先完成统一 API、Provider Adapter 以及 usage、成本、错误和延迟日志。调用记录足够稳定后，再接规则路由、Fallback、Token 预算和租户配额；质量回放、审计和分类路由需要建立在这些数据之上。这样可以先验证模型调用是否被正确收口，再判断新增的路由复杂度是否值得维护。
+The first version should provide a unified API, Provider Adapters, and logs for usage, cost, errors, and latency. Once call records are stable, add rule-based routing, fallback, token budgets, and tenant quotas. Quality replay, auditing, and classifier-based routing depend on this data. This sequence lets you verify that model calls are centralized before deciding whether more complex routing is worth maintaining.
 
-### 请求进来后，Gateway 内部怎么跑？
+### What Happens Inside the Gateway After a Request Arrives?
 
-请求进入 Gateway 后，先完成鉴权和租户识别，得到能够使用的功能、套餐和预算边界；再由接口参数或轻量分类器确定 `scene`，渲染对应版本的 Prompt、上下文和工具 Schema。
+When a request reaches the Gateway, it first authenticates the request and identifies the tenant, available features, plan, and budget limits. The Gateway then determines the `scene` from request parameters or a lightweight classifier and renders the corresponding Prompt, context, and tool Schema.
 
-Token 估算和路由紧接着发生。网关为候选模型预留输入与最大输出 Token，并在用户、租户、模型和供应商几个维度申请限额；路由结果固定后，由 Provider Adapter 进行同步或流式调用。响应中的文本、结构化 JSON、tool call、usage 和 finish reason 都要归到这一次 attempt。
+Token estimation and routing follow. The Gateway reserves input and maximum output tokens for candidate models and requests quota at the user, tenant, model, and provider levels. Once the route is fixed, the Provider Adapter makes a synchronous or streaming call. The response text, structured JSON, tool calls, usage, and finish reason all belong to that attempt.
 
-发生网络错误、429 或解析失败时，错误分类决定重试、切候选、排队还是直接失败。每次新 attempt 都重新预留预算；调用结束后再按真实 usage 结算，写入模型、供应商、Prompt 版本、路由原因、延迟和错误信息，最后才把统一结果交回业务服务。
+For network errors, 429 responses, or parsing failures, error classification determines whether to retry, switch candidates, queue the request, or fail immediately. Reserve budget for each new attempt. When the call finishes, settle against actual usage and record the model, provider, Prompt version, routing reason, latency, and errors before returning a normalized result to the business service.
 
-![LLM Gateway 请求生命周期](../images/shared/llm-gateway-request-lifecycle.webp)
+![LLM Gateway request lifecycle](../images/shared/llm-gateway-request-lifecycle.webp)
 
-### 路由策略怎么从简单演进到智能？
+### How Should Routing Evolve from Simple to Intelligent?
 
-路由策略不要一步到位。前面提到的固定规则、级联路由、语义 / 分类路由、学习型路由、个性化路由和 Agentic 路由，其实对应的是一条演进路线，而不是一份“第一版全都要做”的清单。
+Do not implement every routing strategy at once. Fixed rules, cascade routing, semantic or classifier-based routing, learned routing, personalized routing, and agentic routing form an evolution path, not a checklist for the first version.
 
-更稳妥的节奏是：先让系统可控，再让系统省钱，最后才让系统变聪明。
+A safer progression is to make the system controllable first, cost-efficient next, and intelligent last.
 
-| 阶段   | 对应策略                  | 重点能力                          | 进入下一阶段的信号                       |
-| ------ | ------------------------- | --------------------------------- | ---------------------------------------- |
-| 阶段一 | 固定模型 + 手动配置       | 把模型调用收口，避免 SDK 到处散落 | 多个场景开始共用模型，成本和延迟差异明显 |
-| 阶段二 | 固定规则路由              | 按场景、租户、风险等级选模型      | 规则越来越多，人工维护开始吃力           |
-| 阶段三 | 成本优先 / 级联路由       | 小模型先试，失败或低置信度再升级  | 有稳定的质量校验和可接受的额外延迟       |
-| 阶段四 | 语义 / 分类路由           | 根据 Query 类型、复杂度、风险路由 | 有足够请求样本，可以评估分类器漂移       |
-| 阶段五 | 质量反馈 + 成本回归       | 用 trace 回放模型质量和成本收益   | 有评测集、人工抽样或业务反馈闭环         |
-| 阶段六 | 学习型 / 个性化 / Agentic | 动态选择模型，甚至按步骤切模型    | 大流量、多任务、多模型，且有持续评测体系 |
+| Stage | Strategy                                 | Main capability                                                 | Signal to move to the next stage                                                |
+| ----- | ---------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| One   | Fixed model and manual configuration     | Centralize calls and avoid scattering SDKs                      | Multiple scenarios share models and show clear cost or latency differences      |
+| Two   | Fixed-rule routing                       | Choose models by scenario, tenant, and risk level               | Rules are growing and becoming difficult to maintain manually                   |
+| Three | Cost-first / cascade routing             | Try a smaller model first; upgrade on failure or low confidence | Stable quality checks and acceptable additional latency are available           |
+| Four  | Semantic / classifier routing            | Route by query type, complexity, and risk                       | Enough request examples exist to evaluate classifier drift                      |
+| Five  | Quality feedback and cost regression     | Replay traces to measure model quality and cost                 | An evaluation set, human sampling, or a business feedback loop exists           |
+| Six   | Learned / personalized / agentic routing | Select models dynamically, including per step                   | High traffic, multiple tasks and models, and continuous evaluation are in place |
 
-进入下一阶段以前，要用表中信号验证新增复杂度确有收益，并保留固定规则作为回滚路径。分类路由需要监控误路由和阈值漂移；学习型或 Agentic 路由还需要稳定评测集、线上 Trace、成本上限和隐私控制。
+Before moving to the next stage, verify that the added complexity provides value and keep fixed rules as a rollback path. Classifier-based routing needs monitoring for misroutes and threshold drift. Learned and agentic routing also require a stable evaluation set, production traces, cost limits, and privacy controls.
 
-### 路由错了怎么办？
+### What If Routing Makes the Wrong Choice?
 
-路由一定会错。
+Routing will make mistakes.
 
-任何路由策略都会出现误判，生产系统要为误判留下发现、兜底和回放的入口。
+Every routing strategy can misclassify a request. Production systems need ways to detect, handle, and replay those mistakes.
 
-常见兜底方式有这些：
+Common fallback strategies include:
 
-| 问题                         | 兜底方式                                            |
-| ---------------------------- | --------------------------------------------------- |
-| 分类器置信度低               | 走默认中强模型，或要求用户澄清                      |
-| 小模型输出低质量             | 自动升级强模型重试                                  |
-| 高风险任务被路由到低风险链路 | 风险规则优先级高于成本规则                          |
-| 新模型上线后效果漂移         | 灰度、A/B、固定评测集回归                           |
-| 用户投诉答案错误             | 通过 request_id 回放 Prompt、模型、上下文和路由原因 |
-| 某模型 P95 延迟升高          | 健康检查降低权重或临时熔断                          |
+| Problem                                  | Fallback strategy                                                                |
+| ---------------------------------------- | -------------------------------------------------------------------------------- |
+| Low classifier confidence                | Use a default mid-to-high capability model or ask the user to clarify            |
+| Low-quality output from a small model    | Upgrade and retry with a more capable model                                      |
+| High-risk task routed to a low-risk path | Give risk rules priority over cost rules                                         |
+| Quality drift after a new model launch   | Use a staged rollout, A/B testing, and regression against a fixed evaluation set |
+| User reports an incorrect answer         | Replay the Prompt, model, context, and routing reason using `request_id`         |
+| Model P95 latency increases              | Lower its weight through health checks or temporarily open the circuit           |
 
-“自动升级强模型重试”只适合无副作用、可重放的请求。带工具调用的 Agent 需要先持久化本轮工具结果或明确放弃本次执行；否则升级后的模型可能重复调用工具，导致状态和费用都不一致。
+“Upgrade and retry with a more capable model” is suitable only for requests without side effects that can be replayed. For agents that call tools, first persist this turn's tool results or explicitly abandon the current execution. Otherwise, the upgraded model may call a tool again, causing inconsistent state and cost.
 
-路由日志除模型名外还要记录 `route_reason`，否则无法还原这次选择依据。
+Routing logs should include `route_reason` as well as the model name so the reason for a selection can be reconstructed.
 
-例如：
+For example:
 
 ```json
 {
@@ -619,93 +619,93 @@ Token 估算和路由紧接着发生。网关为候选模型预留输入与最�
 }
 ```
 
-没有 `route_reason`，路由系统后期会很难调。
+Without `route_reason`, the routing system will be difficult to tune later.
 
-## 主流方案怎么选？
+## How Should You Choose Among Available Solutions?
 
-### 自研、LiteLLM、Cloudflare AI Gateway、Kong AI Gateway、Inworld Router 怎么选？
+### How Do You Choose Between a Custom Gateway, LiteLLM, Cloudflare, Kong, and Inworld Router?
 
-现在 LLM Gateway / Router 方案很多，别只看“支持多少模型”。选型时先看几个问题：团队技术栈是什么，合规要求有多强，流量规模多大，是否要自托管，是否已经有 API 网关，是否需要深度观测。
+There are many LLM Gateway and Router options. Do not choose based only on the number of supported models. Consider the team's technology stack, compliance requirements, traffic volume, self-hosting needs, existing API Gateway, and observability requirements.
 
-| 方案                            | 主要优势                                                                | 适合场景                                                  | 不适合场景                                                               |
-| ------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------ |
-| 自研轻量网关                    | 可控、贴合业务，能和内部权限、计费、审计深度结合                        | 有后端能力，需求明确，想从规则路由逐步演进                | 想快速接入大量供应商，或缺少网关维护能力                                 |
-| LiteLLM                         | 多供应商接入、OpenAI 兼容格式、Proxy / SDK 生态成熟                     | 平台团队、快速集成、多模型实验、统一入口                  | 强合规或深度企业治理场景需要额外改造；生产使用要注意版本锁定和供应链安全 |
-| Cloudflare AI Gateway           | 托管入口、日志分析、缓存、限流、重试、动态路由、DLP、BYOK 等能力        | 已在 Cloudflare 平台上，想快速获得观测、缓存和统一入口    | 强自托管、私有化部署、复杂企业治理                                       |
-| Kong AI Gateway                 | 企业 API 治理能力强，插件体系成熟，能结合鉴权、限流、PII 脱敏、成本治理 | 已有 Kong 基础设施，或需要把 AI 请求纳入企业 API 网关体系 | 小团队早期项目，或不想引入完整 API 网关体系                              |
-| Inworld Router                  | 条件路由、流量切分、实验和 sticky user assignment                       | 实时语音、对话式 AI、AI 编程工具、用户分层和 A/B 测试     | 需要开源审计源码、私有化部署或明确企业 SLA 的场景需单独确认              |
-| LLMRouter / RouteLLM 类研究项目 | 路由算法丰富，适合验证复杂度路由、成本质量权衡                          | 研究、实验、离线评估、验证路由策略                        | 直接作为生产 Gateway，需要补齐鉴权、计费、审计、限流、观测和高可用       |
+| Option                                         | Main advantages                                                                                                           | Suitable scenarios                                                                        | Less suitable scenarios                                                                                                                   |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Lightweight custom Gateway                     | Controllable, tailored to the application, and closely integrated with internal permissions, billing, and auditing        | A team has backend expertise and clear needs, and wants to evolve from rule-based routing | A team needs many providers quickly or lacks capacity to maintain a Gateway                                                               |
+| LiteLLM                                        | Multi-provider access, OpenAI-compatible format, and a mature Proxy / SDK ecosystem                                       | Platform teams, fast integration, multi-model experiments, and a unified entry point      | Strict compliance or deep enterprise governance may need customization; production use requires version pinning and supply-chain security |
+| Cloudflare AI Gateway                          | Managed entry point, log analysis, caching, rate limits, retries, dynamic routing, DLP, BYOK, and more                    | Teams already on Cloudflare that want observability, caching, and unified access quickly  | Strong self-hosting requirements, private deployment, or complex enterprise governance                                                    |
+| Kong AI Gateway                                | Strong enterprise API governance and mature plugins for authentication, rate limiting, PII redaction, and cost governance | Teams already using Kong or bringing AI requests into an enterprise API Gateway           | Early-stage small teams or teams that do not want a full API Gateway stack                                                                |
+| Inworld Router                                 | Conditional routing, traffic splitting, experiments, and sticky user assignment                                           | Real-time voice, conversational AI, AI coding tools, user segmentation, and A/B tests     | Confirm separately when open-source auditing, private deployment, or a defined enterprise SLA is required                                 |
+| Research projects such as LLMRouter / RouteLLM | Rich routing algorithms for evaluating complexity routing and quality-cost tradeoffs                                      | Research, experimentation, offline evaluation, and routing strategy validation            | A production Gateway requires additional authentication, billing, auditing, rate limiting, observability, and high availability           |
 
-LiteLLM 主要解决多家模型 SDK 重复接入的问题。业务统一使用 OpenAI 兼容接口，Proxy 负责对接不同供应商，还能集中管理 Key、预算、权限、日志和路由。它适合想快速接入多个模型供应商，又不想自己开发适配层的团队。
+LiteLLM primarily avoids duplicating integrations for multiple model SDKs. Applications use a shared OpenAI-compatible interface, while the Proxy connects to different providers and can centralize keys, budgets, permissions, logs, and routing. It suits teams that need to connect to several providers quickly without building their own adapter layer.
 
-需要注意的是，Proxy 会保存供应商密钥，所有模型请求也会经过它。生产环境要固定依赖和镜像版本，做好升级测试、漏洞扫描和密钥轮换，别长期使用 `latest` 镜像。
+Keep in mind that the Proxy stores provider keys and receives all model requests. In production, pin dependency and image versions, test upgrades, scan for vulnerabilities, and rotate keys. Do not use the `latest` image indefinitely.
 
-Cloudflare AI Gateway 更适合已经使用 Cloudflare 的团队。请求链路不用大改，就能加上日志、缓存、限流、重试和 Fallback，也支持动态路由、BYOK 和 DLP 扫描。
+Cloudflare AI Gateway suits teams already using Cloudflare. It can add logging, caching, rate limits, retries, and fallback with few changes to the request path. It also supports dynamic routing, BYOK, and DLP scanning.
 
-具体怎么选择模型，仍然要由业务自己决定。如果数据、网络和审计都必须完全自控，接入前要先确认 Cloudflare 的托管方式是否合适。
+The application still needs to decide which model to use. If data, networking, and auditing must remain fully under your control, first confirm that Cloudflare's managed deployment model is suitable.
 
-Kong AI Gateway 适合已经使用 Kong，或者准备统一建设 API 网关的团队。原有的认证、限流、审计、安全和监控能力可以直接复用，再通过 AI 插件实现模型转换、路由和负载均衡。
+Kong AI Gateway suits teams already using Kong or planning to standardize on an API Gateway. Existing authentication, rate limiting, auditing, security, and monitoring can be reused, with AI plugins providing model transformation, routing, and load balancing.
 
-对小团队来说，Kong 可能有些重。部分高级 AI 插件还需要企业授权，选型时要把授权、部署和运维成本一起考虑。
+Kong may be too heavy for a small team. Some advanced AI plugins also require an enterprise license, so include licensing, deployment, and operational costs in the evaluation.
 
-Inworld Router 更偏向实时路由和 A/B 实验。它可以按照价格、速度、模型能力或用户类型选择模型，并对比不同模型和 Prompt 的质量、留存和成本。
+Inworld Router focuses on real-time routing and A/B experiments. It can select models by price, speed, capability, or user type, then compare model and Prompt quality, retention, and cost.
 
-它比较适合实时对话、语音交互和 AI 编程工具。不过，它属于托管服务。如果涉及私有化、数据限制、SLA 或采购预算，要以最新的官方说明和商务条款为准。
+It suits real-time conversation, voice interactions, and AI coding tools. It is a managed service, however. For private deployment, data restrictions, SLAs, and procurement budgets, consult the latest official documentation and commercial terms.
 
-LLMRouter 更适合研究和评测路由算法，支持 KNN、SVM、MLP、Elo、Graph、个性化、多轮和 Agentic Router 等方法。
+LLMRouter is better suited to research and evaluation of routing algorithms. It supports methods such as KNN, SVM, MLP, Elo, graph-based, personalized, multi-turn, and agentic routing.
 
-它不能直接当作生产网关使用。权限、配额、计费、审计、限流和运维都要自己补齐。如果没有稳定的评测集和线上 Trace，复杂算法也很难证明比规则路由更好。
+It is not a production Gateway by itself. You must add permissions, quotas, billing, auditing, rate limits, and operations. Without a stable evaluation set and production traces, it is difficult to show that complex algorithms outperform rule-based routing.
 
-### 选型建议
+### Recommendations
 
-如果业务刚起步，先做轻量自研 Gateway。不要一上来买很重的平台，先把模型调用收口，至少做到日志、usage、Token 预算和 Fallback。
+For a new application, start with a lightweight custom Gateway. Do not buy a heavy platform immediately. Centralize model calls and add at least logging, usage tracking, token budgets, and fallback.
 
-如果你要快速接入很多模型和供应商，优先看 LiteLLM 这类成熟统一接口。它能让团队很快从“到处写 SDK”切到“统一入口”。
+If you need to connect to many models and providers quickly, consider a mature unified interface such as LiteLLM. It can move a team from scattered SDK calls to one entry point quickly.
 
-如果企业已经在用 Kong，可以考虑 Kong AI Gateway。它的价值在于把 AI 流量放进已有 API 治理体系里。
+If the organization already uses Kong, consider Kong AI Gateway. Its value is bringing AI traffic into the existing API governance system.
 
-如果已经重度使用 Cloudflare，可以用 Cloudflare AI Gateway 先把观测、缓存、限流和统一入口补上。
+If the organization relies heavily on Cloudflare, Cloudflare AI Gateway can provide observability, caching, rate limiting, and a unified entry point.
 
-如果要做智能路由，先准备评测集和线上 trace，再谈 LLMRouter 这类学习型策略。没有数据，路由算法越复杂，越难解释。
+If you want intelligent routing, prepare evaluation data and production traces before considering learned strategies such as LLMRouter. Without data, more complex routing is harder to explain.
 
-这里的顺序不要反：**先解决工程治理，再追求智能路由**。
+Keep the order: **establish operational controls before pursuing intelligent routing**.
 
-## 怎么衡量 LLM Gateway 做得好不好？
+## How Do You Measure an LLM Gateway?
 
-LLM Gateway 做得好不好，不能只看“接了多少模型”。模型接得多，只能说明适配层写得多，不能说明线上链路稳定。
+Do not measure an LLM Gateway by the number of models it supports. A large number may only mean that many adapters were written; it does not prove the production call path is reliable.
 
-路由命中率、质量通过率、Fallback 率、成本和延迟等指标，需要按场景、模型层级和供应商分别统计。
+Track routing accuracy, quality pass rate, fallback rate, cost, and latency separately by scenario, model tier, and provider.
 
-| 指标             | 含义                                     |
-| ---------------- | ---------------------------------------- |
-| 路由命中率       | 请求是否进入预期模型或预期模型层级       |
-| 质量通过率       | 输出是否通过评测、人工抽样或业务校验     |
-| Fallback 率      | 主链路是否稳定，备用链路是否频繁触发     |
-| 平均成本         | 单次请求或单业务场景成本                 |
-| P95 延迟         | 用户体验，尤其是在线交互和语音场景       |
-| TTFT             | 首 Token 延迟，影响流式体验              |
-| 429 率           | 供应商限流压力                           |
-| 缓存命中率       | 缓存节省的请求和 Token                   |
-| 结构化解析失败率 | Schema、Prompt、模型适配是否稳定         |
-| 路由漂移         | 模型升级或流量变化后，原路由策略是否失效 |
+| Metric                          | Meaning                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------ |
+| Routing accuracy                | Whether requests reach the intended model or model tier                  |
+| Quality pass rate               | Whether output passes evaluation, human sampling, or business validation |
+| Fallback rate                   | Whether the primary path is stable or the backup is frequently triggered |
+| Average cost                    | Cost per request or business scenario                                    |
+| P95 latency                     | User experience, especially for interactive and voice scenarios          |
+| TTFT                            | Time to first token, which affects streaming experience                  |
+| 429 rate                        | Provider rate-limit pressure                                             |
+| Cache hit rate                  | Requests and tokens saved by caching                                     |
+| Structured parsing failure rate | Stability of Schemas, Prompts, and model adapters                        |
+| Routing drift                   | Whether the routing policy stops working after model or traffic changes  |
 
-这里面最容易被忽略的是“路由漂移”。
+“Routing drift” is one of the easiest metrics to overlook.
 
-模型能力不是静态的。一个便宜模型今天不适合复杂摘要，三个月后升级了，可能已经够用。反过来，一个原本稳定的模型升级后，也可能在某类格式化任务上变差。
+Model capabilities are not static. An inexpensive model that cannot handle complex summaries today may become good enough after an upgrade. Conversely, an upgrade can make a previously reliable model worse at a particular formatting task.
 
-所以路由规则不能写完就不管。它要像 Prompt 一样有版本，像代码一样做回归测试。
+Routing rules need ongoing maintenance. Version them like Prompts and run regression tests as you would for code.
 
-## 总结
+## Summary
 
-LLM Gateway 让业务服务从供应商协议、模型路由、限流、缓存、Token 预算和审计细节中退出，只保留一次统一的模型调用入口。
+An LLM Gateway keeps provider protocols, model routing, rate limits, caching, token budgets, and auditing out of business services, leaving them with one unified model-call interface.
 
-但对大多数项目来说，这个入口完全可以是应用内自己写的一个轻量模块，不需要为了“用了 LLM Gateway”而专门引入额外组件。我的 [AI 面试平台](https://javaguide.cn/zhuanlan/interview-guide.html)目前就是这么做的：先用统一的 Provider 注册表和调用封装解决眼前问题，后续再由真实流量和治理需求决定是否补齐路由、预算、Fallback 和成本统计，或者演进为独立网关。
+For most projects, this entry point can be a lightweight module in the application; there is no need to add a separate component just to claim to “use an LLM Gateway.” My [AI interview platform](https://javaguide.cn/zhuanlan/interview-guide.html) takes this approach: a shared provider registry and call wrapper solve current needs, while actual traffic and governance requirements will determine whether to add routing, budgets, fallback, cost tracking, or a separate Gateway later.
 
-第一版先验证三件事：请求是否被正确适配、每次调用是否可以按真实模型和 usage 回放、故障是否按预期兜底。配额、成本治理和缓存应由实际流量推动；分类或学习型路由则要等稳定评测集、线上 Trace 和回滚机制具备后再引入。
+The first version should verify three things: requests are adapted correctly, each call can be replayed using its actual model and usage, and failures trigger the intended fallback. Add quotas, cost governance, and caching in response to real traffic. Introduce classifier-based or learned routing only after stable evaluation sets, production traces, and rollback mechanisms are in place.
 
-模型版本和价格变化后，同一套路由规则也要重新评估质量、延迟与成本。
+Reevaluate quality, latency, and cost under the same routing rules whenever model versions or prices change.
 
-## 参考资料
+## References
 
 - [LiteLLM Docs](https://docs.litellm.ai/docs/)
 - [LiteLLM Security Update: Suspected Supply Chain Incident](https://docs.litellm.ai/blog/security-update-march-2026)

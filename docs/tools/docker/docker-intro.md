@@ -1,170 +1,168 @@
 ---
-title: Docker 核心概念总结
-description: 梳理 Docker 的核心概念与容器/虚拟机差异，掌握镜像、容器与仓库的关系及在交付部署中的实际价值。
-category: 开发工具
+title: Docker Fundamentals
+description: An introduction to Docker's core concepts, including containers, images, registries, and how containers differ from virtual machines.
+category: Developer Tools
 tag:
   - Docker
 head:
   - - meta
     - name: keywords
-      content: Docker,容器,镜像,仓库,引擎,隔离,虚拟机对比,部署
+      content: Docker,containers,images,registries,engine,isolation,containers vs virtual machines,deployment
 ---
 
-本文主要讲 Docker 的核心概念、运行模型和常见使用场景，不展开安装过程。安装、命令练习和本地服务启动可以看后面的 [Docker 实战](./docker-in-action.md)。
+This article covers Docker's core concepts, runtime model, and common use cases. It does not cover installation. For installation, command practice, and running local services, see [Docker in Practice](./docker-in-action.md).
 
-## 容器介绍
+## Introduction to Containers
 
-Docker 是常见的软件容器平台。想要搞懂 Docker，先要理解容器解决的到底是什么问题。
+Docker is a widely used containerization platform. To understand Docker, first understand the problems containers solve.
 
-### 什么是容器？
+### What Is a Container?
 
-#### 先来看看容器较为官方的解释
+#### A Formal Definition
 
-**一句话概括容器：容器就是将软件打包成标准化单元，以用于开发、交付和部署。**
+**In short, a container packages software into a standardized unit for development, delivery, and deployment.**
 
-- **容器镜像是轻量的、可执行的独立软件包** ，包含软件运行所需的所有内容：代码、运行时环境、系统工具、系统库和设置。
-- **容器化软件适用于基于 Linux 和 Windows 的应用，在任何环境中都能够始终如一地运行。**
-- **容器赋予了软件独立性**，使其免受外在环境差异（例如，开发和预演环境的差异）的影响，从而有助于减少团队间在相同基础设施上运行不同软件时的冲突。
+- **A container image is a lightweight, standalone executable package** containing everything software needs to run: code, runtime, system tools, libraries, and settings.
+- **Containerized software can run consistently in any environment** for Linux- and Windows-based applications.
+- **Containers isolate software** from differences in its environment, such as development and staging, helping reduce conflicts when teams run different software on the same infrastructure.
 
-#### 再来看看容器较为通俗的解释
+#### A Simple Analogy
 
-如果需要通俗地描述容器的话，我觉得容器就是一个存放东西的地方，就像书包可以装各种文具、衣柜可以放各种衣服、鞋架可以放各种鞋子一样。我们现在所说的容器存放的东西可能更偏向于应用比如网站、程序甚至是系统环境。
+In simple terms, a container is a place to put things, like a backpack for stationery, a closet for clothes, or a shoe rack for shoes. In software, a container holds an application such as a website or program, along with its runtime environment.
 
-![认识容器](https://oss.javaguide.cn/github/javaguide/tools/docker/container.png)
+![Understanding containers](https://oss.javaguide.cn/github/javaguide/tools/docker/container.png)
 
-### 图解物理机、虚拟机与容器
+### Physical Machines, Virtual Machines, and Containers
 
-关于虚拟机与容器的对比在后面会详细介绍到，这里只是通过网上的图片加深大家对于物理机、虚拟机与容器这三者的理解(下面的图片来源于网络)。
+The comparison between virtual machines and containers is covered in more detail below. These images from the web provide a quick visual comparison of physical machines, virtual machines, and containers.
 
-**物理机：**
+**Physical machine:**
 
-![物理机](https://oss.javaguide.cn/github/javaguide/tools/docker/%E7%89%A9%E7%90%86%E6%9C%BA%E5%9B%BE%E8%A7%A3.jpeg)
+![Physical machine](https://oss.javaguide.cn/github/javaguide/tools/docker/%E7%89%A9%E7%90%86%E6%9C%BA%E5%9B%BE%E8%A7%A3.jpeg)
 
-**虚拟机：**
+**Virtual machine:**
 
-![虚拟机](https://oss.javaguide.cn/github/javaguide/tools/docker/%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%9B%BE%E8%A7%A3.jpeg)
+![Virtual machine](https://oss.javaguide.cn/github/javaguide/tools/docker/%E8%99%9A%E6%8B%9F%E6%9C%BA%E5%9B%BE%E8%A7%A3.jpeg)
 
-**容器：**
+**Container:**
 
 ![](https://oss.javaguide.cn/javaguide/image-20211110104003678.png)
 
-通过上面这三张抽象图，我们可以大概通过类比概括出：**容器虚拟化的是操作系统而不是硬件，容器之间是共享同一套操作系统资源的。虚拟机技术是虚拟出一套硬件后，在其上运行一个完整操作系统。因此容器的隔离级别会稍低一些。**
+These diagrams suggest that **containers virtualize the operating system, not the hardware, and share the host operating system's resources. A virtual machine virtualizes hardware and runs a complete operating system on it, so containers provide a somewhat lower level of isolation.**
 
-### 容器 VS 虚拟机
+### Containers vs. Virtual Machines
 
-每当说起容器，我们不得不将其与虚拟机做一个比较。就我而言，对于两者无所谓谁会取代谁，而是两者可以和谐共存。
+Containers are often compared with virtual machines. In my view, neither needs to replace the other; they can coexist.
 
-简单来说：**容器和虚拟机具有相似的资源隔离和分配优势，但功能有所不同，因为容器虚拟化的是操作系统，而不是硬件，因此容器更容易移植，效率也更高。**
+In short, **containers and virtual machines both provide resource isolation and allocation, but they serve different purposes. Containers virtualize the operating system rather than hardware, so they are more portable and efficient.**
 
-传统虚拟机技术是虚拟出一套硬件后，在其上运行一个完整操作系统，在该系统上再运行所需应用进程；而容器内的应用进程直接运行于宿主的内核，容器内没有自己的内核，而且也没有进行硬件虚拟。因此容器要比传统虚拟机更为轻便。
+Traditional virtual machines emulate hardware, run a complete operating system on it, and then run applications. A container's application processes run directly on the host kernel. Containers have no separate kernel and do not virtualize hardware, which makes them lighter than traditional virtual machines.
 
 ![](https://oss.javaguide.cn/javaguide/2e2b95eebf60b6d03f6c1476f4d7c697.png)
 
-**容器和虚拟机的对比**：
+**Containers and virtual machines:**
 
 ![](https://oss.javaguide.cn/javaguide/4ef8691d67eb1eb53217099d0a691eb5.png)
 
-- 容器是一个应用层抽象，用于将代码和依赖资源打包在一起。 多个容器可以在同一台机器上运行，共享操作系统内核，但各自作为独立的进程在用户空间中运行 。与虚拟机相比， **容器占用的空间较少**（容器镜像大小通常只有几十兆），**瞬间就能完成启动** 。
+- A container is an application-layer abstraction that packages code and dependencies. Multiple containers can run on one machine, sharing the operating-system kernel while running as isolated processes in user space. Compared with virtual machines, **containers use less disk space** (images are often only tens of megabytes) and **start almost instantly**.
 
-- 虚拟机 (VM) 是一个物理硬件层抽象，用于将一台服务器变成多台服务器。管理程序允许多个 VM 在一台机器上运行。每个 VM 都包含一整套操作系统、一个或多个应用、必要的二进制文件和库资源，因此 **占用大量空间** 。而且 VM **启动也十分缓慢** 。
+- A virtual machine (VM) is a hardware-layer abstraction that lets one physical server act like several. A hypervisor runs multiple VMs on one machine. Each VM includes a complete operating system, one or more applications, binaries, and libraries, so it **uses much more disk space** and **starts more slowly**.
 
-通过 Docker 官网，我们知道了这么多 Docker 的优势，但是大家也没有必要完全否定虚拟机技术，因为两者有不同的使用场景。**虚拟机更擅长于彻底隔离整个运行环境**。例如，云服务提供商通常采用虚拟机技术隔离不同的用户。而 **Docker 通常用于隔离不同的应用** ，例如前端，后端以及数据库。
+Docker has many advantages, but virtual machines still have their place. **Virtual machines are better at completely isolating runtime environments.** Cloud providers, for example, often use them to isolate customers. **Docker is commonly used to isolate applications**, such as frontend, backend, and database services.
 
-就我而言，对于两者无所谓谁会取代谁，而是两者可以和谐共存。
+In my view, neither needs to replace the other; they can coexist.
 
 ![](https://oss.javaguide.cn/javaguide/056c87751b9dd7b56f4264240fe96d00.png)
 
-## Docker 介绍
+## Introduction to Docker
 
-### 什么是 Docker？
+### What Is Docker?
 
-可以从下面几个角度理解 Docker：
+Docker can be understood in several ways:
 
-- **Docker 是一个软件容器平台。**
-- **Docker** 使用 Go 语言开发，基于 Linux 内核提供的 cgroups、namespaces，以及 UnionFS 等能力对进程进行封装隔离，属于操作系统层面的虚拟化技术。
-- Docker 能够把应用和运行依赖打包到镜像中，减少开发、测试、部署环境不一致带来的问题。
-- 用户可以方便地创建和使用容器，把自己的应用放入容器。容器还可以进行版本管理、复制、分享、修改，就像管理普通的代码一样。
+- **Docker is a software containerization platform.**
+- **Docker** is written in Go and uses Linux kernel features such as cgroups, namespaces, and UnionFS to isolate processes. It is an operating-system-level virtualization technology.
+- Docker packages applications and their runtime dependencies into images, reducing inconsistencies between development, testing, and deployment environments.
+- Users can create containers and run applications in them. Containers can also be versioned, copied, shared, and modified like code.
 
-**Docker 思想**：
+**The ideas behind Docker:**
 
-- **集装箱**：就像海运中的集装箱一样，Docker 容器包含了应用程序及其所有依赖项，确保在任何环境中都能以相同的方式运行。
-- **标准化**：运输方式、存储方式、API 接口。
-- **隔离**：每个 Docker 容器都在自己的隔离环境中运行，与宿主机和其他容器隔离。
+- **Shipping containers:** Like shipping containers, Docker containers package applications with all their dependencies so they run consistently in different environments.
+- **Standardization:** Standardize how containers are transported, stored, and accessed through APIs.
+- **Isolation:** Each Docker container runs in its own isolated environment, separate from the host and other containers.
 
-### Docker 容器的特点
+### Characteristics of Docker Containers
 
-- **轻量** : 在一台机器上运行的多个 Docker 容器可以共享这台机器的操作系统内核；它们能够迅速启动，只需占用很少的计算和内存资源。镜像是通过文件系统层进行构造的，并共享一些公共文件。这样就能尽量降低磁盘用量，并能更快地下载镜像。
-- **标准** : Docker 容器基于开放式标准，能够在所有主流 Linux 版本、Microsoft Windows 以及包括 VM、裸机服务器和云在内的任何基础设施上运行。
-- **安全** : Docker 赋予应用的隔离性不仅限于彼此隔离，还独立于底层的基础设施。Docker 默认提供最强的隔离，因此应用出现问题，也只是单个容器的问题，而不会波及到整台机器。
+- **Lightweight:** Multiple containers on one machine share its operating-system kernel, start quickly, and use relatively few CPU and memory resources. Images are built in filesystem layers and can share common files, reducing disk usage and download times.
+- **Standardized:** Docker containers follow open standards and can run on major Linux distributions, Microsoft Windows, and infrastructure ranging from VMs and bare-metal servers to cloud platforms.
+- **Isolation:** Docker isolates applications from one another and from the underlying infrastructure. Problems in an application are generally contained within its container rather than affecting the whole machine.
 
-### 为什么要用 Docker ?
+### Why Use Docker?
 
-- Docker 的镜像提供了除内核外完整的运行时环境，确保了应用运行环境一致性，从而不会再出现 “这段代码在我机器上没问题啊” 这类问题；——一致的运行环境
-- 可以做到秒级、甚至毫秒级的启动时间。大大的节约了开发、测试、部署的时间。——更快速的启动时间
-- 避免公用的服务器，资源会容易受到其他用户的影响。——隔离性
-- 善于处理集中爆发的服务器使用压力；——弹性伸缩，快速扩展
-- 可以很轻易的将在一个平台上运行的应用，迁移到另一个平台上，而不用担心运行环境的变化导致应用无法正常运行的情况。——迁移方便
-- 使用 Docker 可以通过定制应用镜像来实现持续集成、持续交付、部署。——持续交付和部署
+- Docker images provide a consistent runtime environment, excluding the kernel, and help avoid “it works on my machine” problems.
+- Containers can start in seconds or even milliseconds, saving time during development, testing, and deployment.
+- Isolation prevents applications from interfering with one another on a shared server.
+- Docker supports elasticity and rapid scaling during traffic spikes.
+- Applications can be moved between platforms without worrying as much about environment differences.
+- Custom images support continuous integration, continuous delivery, and deployment.
 
 ---
 
-## Docker 基本概念
+## Docker Core Concepts
 
-Docker 中有非常重要的三个基本概念：镜像（Image）、容器（Container）和仓库（Repository）。
-
-理解了这三个概念，就理解了 Docker 的整个生命周期。
+Docker has three core concepts: images, containers, and repositories. Understanding them makes Docker's lifecycle easier to follow.
 
 ![](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-build-run.jpeg)
 
-### 镜像（Image）：一个特殊的文件系统
+### Image: A Special Filesystem
 
-**操作系统分为内核和用户空间**。对于 Linux 而言，内核启动后，会挂载 root 文件系统为其提供用户空间支持。而 Docker 镜像（Image），就相当于是一个 root 文件系统。
+**An operating system consists of a kernel and user space.** On Linux, after the kernel starts, it mounts a root filesystem that provides user space. A Docker image serves a similar role to a root filesystem.
 
-**Docker 镜像是一个特殊的文件系统，除了提供容器运行时所需的程序、库、资源、配置等文件外，还包含了一些为运行时准备的一些配置参数（如匿名卷、环境变量、用户等）。** 镜像不包含任何动态数据，其内容在构建之后也不会被改变。
+**A Docker image is a special filesystem containing the programs, libraries, resources, and configuration needed to run a container. It can also include runtime settings such as anonymous volumes, environment variables, and users.** Images contain no dynamic data, and their contents do not change after they are built.
 
-Docker 设计时，就充分利用 **Union FS** 的技术，将其设计为**分层存储的架构** 。镜像实际是由多层文件系统联合组成。
+Docker uses **UnionFS** to implement **layered storage**. An image is made up of multiple filesystem layers.
 
-**镜像构建时，会一层层构建，前一层是后一层的基础。每一层构建完就不会再发生改变，后一层上的任何改变只发生在自己这一层。** 比如，删除前一层文件的操作，实际不是真的删除前一层的文件，而是仅在当前层标记为该文件已删除。在最终容器运行的时候，虽然不会看到这个文件，但是实际上该文件会一直跟随镜像。因此，在构建镜像的时候，需要额外小心，每一层尽量只包含该层需要添加的东西，任何额外的东西应该在该层构建结束前清理掉。
+**Image layers are built one at a time, with each layer based on the one before it. Once built, a layer does not change; subsequent changes are stored in later layers.** For example, deleting a file from an earlier layer does not actually remove it. The current layer marks it as deleted. The file is hidden when the container runs, but remains in the image. Keep each layer focused on the files it needs, and remove temporary files before the layer is built to avoid carrying unnecessary data into the image.
 
-分层存储的特征还使得镜像的复用、定制变的更为容易。甚至可以用之前构建好的镜像作为基础层，然后进一步添加新的层，以定制自己所需的内容，构建新的镜像。
+Layered storage also makes images easier to reuse and customize. You can use an existing image as a base, add layers, and build a new image with the content you need.
 
-### 容器（Container）：镜像运行时的实体
+### Container: A Running Image
 
-镜像（Image）和容器（Container）的关系，就像是面向对象程序设计中的 类 和 实例 一样，镜像是静态的定义，**容器是镜像运行时的实体。容器可以被创建、启动、停止、删除、暂停等** 。
+The relationship between an image and a container is similar to the relationship between a class and an instance in object-oriented programming. An image is a static definition; **a container is a running instance of an image. Containers can be created, started, stopped, removed, and paused.**
 
-**容器的实质是进程，但与直接在宿主执行的进程不同，容器进程运行于属于自己的独立的 命名空间。前面讲过镜像使用的是分层存储，容器也是如此。**
+**A container is a process, but unlike a process running directly on the host, it runs in its own namespaces. Like images, containers also use layered storage.**
 
-**容器存储层的生存周期和容器一样，容器消亡时，容器存储层也随之消亡。因此，任何保存于容器存储层的信息都会随容器删除而丢失。**
+**A container's writable layer has the same lifecycle as the container. When the container is removed, that layer is removed too, and any data stored there is lost.**
 
-按照 Docker 最佳实践的要求，**容器不应该向其存储层内写入业务数据**，容器存储层要尽量保持无状态。**需要持久化的文件写入，应该使用数据卷（Volume）或者绑定宿主目录**，这类读写会绕过容器存储层，直接落到宿主机或网络存储上，性能和稳定性更好。数据卷的生命周期独立于容器，容器删除后，数据卷不会自动删除。
+Docker best practices recommend that **containers not store application data in their writable layer**. Keep that layer as stateless as possible. **Use a volume or bind mount for files that must persist.** These bypass the container's writable layer and store data on the host or network storage. Volumes have their own lifecycle and are not automatically removed with a container.
 
-### 仓库（Repository）：集中存放镜像文件的地方
+### Repository: A Place to Store Images
 
-镜像构建完成后，可以很容易的在当前宿主上运行，但是， **如果需要在其它服务器上使用这个镜像，我们就需要一个集中的存储、分发镜像的服务，Docker Registry 就是这样的服务。**
+After building an image, you can run it on the current host. **To use it on other servers, you need a centralized service for storing and distributing images. A Docker Registry provides this service.**
 
-一个 Docker Registry 中可以包含多个仓库（Repository）；每个仓库可以包含多个标签（Tag）；每个标签对应一个镜像。所以说：**镜像仓库是 Docker 用来集中存放镜像文件的地方类似于我们之前常用的代码仓库。**
+A Docker Registry can contain multiple repositories. Each repository can contain multiple tags, and each tag identifies an image. **A repository is a place to store related images, much like a code repository stores related source code.**
 
-通常，**一个仓库会包含同一个软件不同版本的镜像**，而**标签就常用于对应这个软件的各个版本**。我们可以通过 `<仓库名>:<标签>` 的格式指定具体镜像。如果不给出标签，将以 `latest` 作为默认标签。不过在生产环境中不建议依赖 `latest`，最好明确指定版本标签，便于回滚和排查问题。
+Typically, **a repository contains images for different versions of the same software**, and **tags identify those versions**. Specify an image as `<repository>:<tag>`. If no tag is given, Docker uses `latest`. In production, avoid relying on `latest`; specify a version tag so you can roll back and troubleshoot reliably.
 
-**这里补充一下 Docker Registry 公开服务和私有 Docker Registry 的概念：**
+**Docker registries can be public or private.**
 
-**Docker Registry 公开服务** 是开放给用户使用、允许用户管理镜像的 Registry 服务。一般这类公开服务允许用户免费上传、下载公开的镜像，并可能提供收费服务供用户管理私有镜像。
+A **public Docker Registry** is available for users to manage images. Public images can generally be uploaded and downloaded for free, while some services charge for private image hosting.
 
-最常使用的 Registry 公开服务是官方的 **Docker Hub** ，这也是默认的 Registry，并拥有大量的高质量的官方镜像，网址为：[https://hub.docker.com/](https://hub.docker.com/ "https://hub.docker.com/") 。官方是这样介绍 Docker Hub 的：
+The most widely used public registry is **Docker Hub**, Docker's default registry. It hosts many high-quality official images: [https://hub.docker.com/](https://hub.docker.com/ "https://hub.docker.com/"). Docker describes it as:
 
-> Docker Hub 是 Docker 官方提供的一项服务，用于与您的团队查找和共享容器镜像。
+> A service for finding and sharing container images with your team.
 
-比如我们想要搜索自己想要的镜像：
+For example, you can search Docker Hub for an image:
 
-![利用 Docker Hub 搜索镜像](https://oss.javaguide.cn/github/javaguide/tools/docker/Screen%20Shot%202019-11-04%20at%208.21.39%20PM.png)
+![Search for images on Docker Hub](https://oss.javaguide.cn/github/javaguide/tools/docker/Screen%20Shot%202019-11-04%20at%208.21.39%20PM.png)
 
-在 Docker Hub 的搜索结果中，有几项关键的信息有助于我们选择合适的镜像：
+Docker Hub search results include several details that can help you choose an image:
 
-- **OFFICIAL Image**：代表镜像为 Docker 官方提供和维护，相对来说稳定性和安全性较高。
-- **Stars**：和点赞差不多的意思，类似 GitHub 的 Star。
-- **Downloads**：代表镜像被拉取的次数，基本上能够表示镜像被使用的频度。
+- **OFFICIAL Image:** Provided and maintained by Docker, and generally more reliable and secure.
+- **Stars:** Similar to stars on GitHub.
+- **Downloads:** The number of times an image has been pulled, which gives a rough indication of how often it is used.
 
-当然，除了直接通过 Docker Hub 网站搜索镜像这种方式外，我们还可以通过 `docker search` 这个命令搜索 Docker Hub 中的镜像，搜索的结果是一致的。
+You can also search Docker Hub images from the command line with `docker search`:
 
 ```bash
 ➜  ~ docker search mysql
@@ -174,75 +172,75 @@ mariadb                           MariaDB is a community-developed fork of MyS�
 mysql/mysql-server                Optimized MySQL Server Docker images. Create…   650                                     [OK]
 ```
 
-在国内访问 **Docker Hub** 可能会比较慢，企业项目通常会结合公司内部镜像仓库或云厂商镜像仓库来做镜像缓存和分发。
+Access to **Docker Hub** may be slow in some regions. Enterprise projects often use an internal registry or a cloud provider's registry to cache and distribute images.
 
-除了使用公开服务外，用户还可以在 **本地搭建私有 Docker Registry** 。Docker 官方提供了 Docker Registry 镜像，可以直接使用做为私有 Registry 服务。开源的 Docker Registry 镜像只提供了 Docker Registry API 的服务端实现，足以支持 Docker 命令，不影响使用。但不包含图形界面，以及镜像维护、用户管理、访问控制等高级功能。
+You can also **run a private Docker Registry**. Docker provides a Registry image that can be used as a private registry. The open-source Registry image implements the Docker Registry API and supports Docker commands, but does not include a graphical interface or advanced features such as image maintenance, user management, and access control.
 
-### Image、Container 和 Repository 的关系
+### How Images, Containers, Repositories, and Registries Relate
 
-下面这一张图很形象地展示了 Image、Container、Repository 和 Registry/Hub 这四者的关系：
+The diagram below shows how images, containers, repositories, and registries or hubs relate:
 
-![Docker 架构](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-regitstry.png)
+![Docker architecture](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-regitstry.png)
 
-- Dockerfile 是一个文本文件，包含了一系列的指令和参数，用于定义如何构建一个 Docker 镜像。运行 `docker build`命令并指定一个 Dockerfile 时，Docker 会读取 Dockerfile 中的指令，逐步构建一个新的镜像，并将其保存在本地。
-- `docker pull` 命令可以从指定的 Registry/Hub 下载一个镜像到本地，默认使用 Docker Hub。
-- `docker run` 命令可以从本地镜像创建一个新的容器并启动它。如果本地没有镜像，Docker 会先尝试从 Registry/Hub 拉取镜像。
-- `docker push` 命令可以将本地的 Docker 镜像上传到指定的 Registry/Hub。
+- A Dockerfile is a text file containing instructions and parameters that define how to build an image. When you run `docker build` with a Dockerfile, Docker reads its instructions, builds the image, and saves it locally.
+- `docker pull` downloads an image from a specified registry or hub. It uses Docker Hub by default.
+- `docker run` creates and starts a container from a local image. If the image is not available locally, Docker tries to pull it from a registry or hub first.
+- `docker push` uploads a local image to a specified registry or hub.
 
-上面涉及到了一些 Docker 基本命令，后面的实战文章会详细介绍。
+The hands-on guide covers these and other Docker commands in more detail.
 
-### Build Ship and Run
+### Build, Ship, and Run
 
-Docker 的概念基本上已经讲完，我们再来谈谈：Build, Ship, and Run。
+Now that we have covered the basic Docker concepts, let's look at the phrase “Build, Ship, and Run.”
 
-如果你搜索 Docker 官网，会发现如下的字样：**“Docker - Build, Ship, and Run Any App, Anywhere”**。那么 Build, Ship, and Run 到底是在干什么呢？
+The Docker website describes Docker as **“Build, Ship, and Run Any App, Anywhere.”** What does that mean?
 
 ![](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-build-ship-run.jpg)
 
-- **Build（构建镜像）**：镜像就像是集装箱包括文件以及运行环境等等资源。
-- **Ship（运输镜像）**：主机和仓库间运输，这里的仓库就像是超级码头一样。
-- **Run （运行镜像）**：运行的镜像就是一个容器，容器就是运行程序的地方。
+- **Build:** Create an image containing the application's files and runtime environment, much like packing goods into a shipping container.
+- **Ship:** Transfer the image between a host and a registry, which acts like a shipping hub.
+- **Run:** Start a container from the image. The container is where the application runs.
 
-Docker 运行过程也就是去仓库把镜像拉到本地，然后用一条命令把镜像运行起来变成容器。所以，我们也常常将 Docker 称为码头工人或码头装卸工，这和 Docker 的中文翻译搬运工人如出一辙。
+In a typical Docker workflow, you pull an image from a registry and start it as a container with a command. The name Docker also refers to a dock worker who handles shipping containers.
 
-## Docker 常见命令
+## Common Docker Commands
 
-### 基本命令
+### Basic Commands
 
 ```bash
-docker version # 查看 Docker 版本
-docker images # 查看所有已下载镜像，等价于：docker image ls 命令
-docker container ls # 查看所有容器
-docker ps # 查看正在运行的容器
-docker image prune # 清理没有被使用的镜像文件。-a/--all 会删除所有未被容器使用的镜像
+docker version # Show the Docker version
+docker images # List downloaded images; equivalent to docker image ls
+docker container ls # List containers
+docker ps # List running containers
+docker image prune # Remove unused images; -a/--all removes all images not used by containers
 ```
 
-### 拉取镜像
+### Pull an Image
 
-`docker pull` 命令默认使用的 Registry 是 Docker Hub。当你执行 `docker pull` 命令而没有指定任何 Registry 地址时，Docker 会从 Docker Hub 拉取镜像。
+`docker pull` uses Docker Hub by default. If you do not specify a registry address, Docker pulls the image from Docker Hub.
 
 ```bash
-docker search mysql # 查看 MySQL 相关镜像
-docker pull mysql:8.4 # 拉取 MySQL 镜像
-docker image ls # 查看所有已下载镜像
+docker search mysql # Search for MySQL images
+docker pull mysql:8.4 # Pull the MySQL image
+docker image ls # List downloaded images
 ```
 
-### 构建镜像
+### Build an Image
 
-运行 `docker build`命令并指定一个 Dockerfile 时，Docker 会读取 Dockerfile 中的指令，逐步构建一个新的镜像，并将其保存在本地。
+When you run `docker build` with a Dockerfile, Docker reads its instructions, builds a new image, and saves it locally.
 
 ```bash
-# image-name 是镜像名称，1.0.0 是镜像版本号或标签
+# image-name is the image name; 1.0.0 is its version or tag
 docker build -t image-name:1.0.0 .
 ```
 
-需要注意：Dockerfile 的文件名不必须为 Dockerfile，也不一定要放在构建上下文的根目录中。使用 `-f` 或 `--file` 选项，可以指定任何位置的任何文件作为 Dockerfile。当然，一般大家习惯性的会使用默认的文件名 `Dockerfile`，以及会将其置于镜像构建上下文目录中。
+The Dockerfile does not have to be named `Dockerfile` or placed at the root of the build context. Use `-f` or `--file` to specify a Dockerfile at any path. By convention, however, it is usually named `Dockerfile` and placed in the build context directory.
 
-### 删除镜像
+### Remove an Image
 
-比如我们要删除已经下载的 MySQL 镜像。
+For example, suppose you want to remove a downloaded MySQL image.
 
-通过 `docker rmi [image]`（等价于 `docker image rm [image]`）删除镜像之前，首先要确保这个镜像没有被容器引用。可以通过标签名称或者镜像 ID 删除，也可以通过前面讲的 `docker ps` 命令查看是否有容器正在使用它。
+Before removing an image with `docker rmi [image]` (equivalent to `docker image rm [image]`), make sure no container is using it. You can remove an image by its tag or ID. Use `docker ps` to check whether a container is using it.
 
 ```shell
 ➜  ~ docker ps
@@ -250,9 +248,9 @@ CONTAINER ID        IMAGE               COMMAND                  CREATED        
 c4cd691d9f80        mysql:5.7           "docker-entrypoint.s…"   7 weeks ago         Up 12 days          0.0.0.0:3306->3306/tcp, 33060/tcp   mysql
 ```
 
-可以看到 `mysql:5.7` 正在被 ID 为 `c4cd691d9f80` 的容器引用，需要先通过 `docker stop c4cd691d9f80` 或者 `docker stop mysql` 暂停这个容器。
+Here, the container with ID `c4cd691d9f80` is using `mysql:5.7`. Stop it first with `docker stop c4cd691d9f80` or `docker stop mysql`.
 
-然后查看 MySQL 镜像的 ID：
+Then find the MySQL image ID:
 
 ```shell
 ➜  ~ docker images
@@ -260,88 +258,88 @@ REPOSITORY              TAG                 IMAGE ID            CREATED         
 mysql                   5.7                 f6509bac4980        3 months ago        373MB
 ```
 
-通过 `IMAGE ID` 或者 `REPOSITORY:TAG` 即可删除：
+Remove the image by its `IMAGE ID` or `REPOSITORY:TAG`:
 
 ```shell
-docker rmi f6509bac4980 # 或者 docker rmi mysql:5.7
+docker rmi f6509bac4980 # or docker rmi mysql:5.7
 ```
 
-### 镜像推送
+### Push an Image
 
-`docker push` 命令用于将本地的 Docker 镜像上传到指定的 Registry/Hub。
+Use `docker push` to upload a local Docker image to a specified registry or hub.
 
 ```bash
-# 将镜像推送到私有镜像仓库 Harbor
-# harbor.example.com 是私有镜像仓库的地址，ubuntu 是镜像名称，18.04 是镜像版本标签
+# Push the image to the private Harbor registry
+# harbor.example.com is the registry address; ubuntu is the image name; 18.04 is the tag
 docker push harbor.example.com/ubuntu:18.04
 ```
 
-镜像推送之前，要确保本地已经构建好需要推送的 Docker 镜像。另外，务必先登录到对应的镜像仓库。
+Before pushing, make sure the image exists locally and that you are logged in to the target registry.
 
-## Docker 数据管理
+## Docker Data Management
 
-在容器中管理数据主要有两种方式：
+There are two main ways to manage data in containers:
 
-1. 数据卷（Volumes）
-2. 挂载主机目录 (Bind mounts)
+1. Volumes
+2. Bind mounts
 
-![Docker 数据管理](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-data-management.png)
+![Docker data management](https://oss.javaguide.cn/github/javaguide/tools/docker/docker-data-management.png)
 
-数据卷是由 Docker 管理的数据存储区域，有如下这些特点：
+Volumes are storage areas managed by Docker. They have the following characteristics:
 
-- 可以在容器之间共享和重用。
-- 即使容器被删除，数据卷中的数据也不会被自动删除，从而确保数据的持久性。
-- 对数据卷的修改会立马生效。
-- 对数据卷的更新，不会影响镜像。
+- They can be shared and reused across containers.
+- Their data is not automatically removed when a container is removed, so it persists.
+- Changes to a volume take effect immediately.
+- Updating a volume does not change the image.
 
 ```bash
-# 创建一个数据卷
+# Create a volume
 docker volume create my-vol
-# 查看所有的数据卷
+# List all volumes
 docker volume ls
-# 查看数据卷的具体信息
+# Show details for a volume
 docker volume inspect my-vol
-# 删除指定的数据卷
+# Remove a volume
 docker volume rm my-vol
 ```
 
-在用 `docker run` 命令的时候，使用 `--mount` 标记来将一个或多个数据卷挂载到容器里。
+Use the `--mount` flag with `docker run` to mount one or more volumes in a container.
 
-还可以通过 `--mount` 标记将宿主机上的文件或目录挂载到容器中，这使得容器可以直接访问宿主机的文件系统。Docker 挂载主机目录的默认权限是读写，用户也可以通过增加 `readonly` 指定为只读。
+You can also use `--mount` to mount a host file or directory in a container, giving the container direct access to it. Host directory mounts are read-write by default; add `readonly` to make one read-only.
 
 ## Docker Compose
 
-### 什么是 Docker Compose？有什么用？
+### What Is Docker Compose?
 
-Docker Compose 是 Docker 官方提供的多容器应用定义和运行工具。通过 Compose，开发者可以使用一个 YAML 文件描述应用依赖的多个服务、网络、端口和数据卷，然后用一条命令启动或停止整组服务。
+Docker Compose is Docker's tool for defining and running multi-container applications. A YAML file describes the application's services, networks, ports, and volumes. You can then start or stop the whole set of services with one command.
 
-Docker Compose 是开源项目，地址：<https://github.com/docker/compose>。
+Docker Compose is an open-source project: <https://github.com/docker/compose>.
 
-Docker Compose 的核心功能：
+Its core features include:
 
-- **多容器管理**：允许用户在一个 YAML 文件中定义和管理多个容器。
-- **服务编排**：配置容器间的网络和依赖关系。
-- **一键启动与停止**：通过 `docker compose up` 和 `docker compose down` 等命令，可以轻松启动和停止整个应用。
+- **Multi-container management:** Define and manage multiple containers in one YAML file.
+- **Service orchestration:** Configure networking and dependencies between containers.
+- **Start and stop as a group:** Use commands such as `docker compose up` and `docker compose down` to start and stop the application.
 
-Docker Compose 简化了多容器应用程序的开发、测试和部署过程，提高了开发团队的生产力，同时降低了应用程序的部署复杂度和管理成本。
+Docker Compose simplifies the development, testing, and deployment of multi-container applications, while reducing deployment and management effort.
 
-### Docker Compose 文件基本结构
+### Compose File Structure
 
-Docker Compose 文件是 Docker Compose 工具的核心，用于定义和配置多容器 Docker 应用。这个文件通常命名为 `compose.yaml` 或 `docker-compose.yml`，采用 YAML（YAML Ain't Markup Language）格式编写。
+The Compose file defines and configures a multi-container Docker application. It is usually named `compose.yaml` or `docker-compose.yml` and uses YAML (YAML Ain't Markup Language) format.
 
-Docker Compose 文件基本结构如下：
+The main elements are:
 
-- **服务（services）：** 定义了应用中的每个容器（服务）。每个服务可以使用不同的镜像、环境设置和依赖关系。
-  - **镜像（image）：** 从指定的镜像中启动容器，可以是存储仓库、标签以及镜像 ID。
-  - **命令（command）：** 可选，覆盖容器启动后默认执行的命令。在启动服务时运行特定的命令或脚本，常用于启动应用程序、执行初始化脚本等。
-  - **端口（ports）：** 可选，映射容器和宿主机的端口。
-  - **依赖（depends_on）：** 配置服务之间的启动依赖关系。例如后端服务依赖数据库服务时，可以先启动数据库，再启动后端服务。
-  - **环境变量（environment）：** 可选，设置服务运行所需的环境变量。
-  - **重启（restart）:** 可选，控制容器的重启策略。在容器退出时，根据指定的策略自动重启容器。
-  - **服务卷（volumes）:** 可选，定义服务使用的卷，用于数据持久化或在容器之间共享数据。
-  - **构建（build）：** 指定构建镜像的 Dockerfile 上下文路径，或者使用详细配置对象。
-- **网络（networks）：** 定义了容器间的网络连接。
-- **卷（volumes）：** 用于数据持久化和共享的数据卷定义。常用于数据库存储、配置文件、日志等数据的持久化。
+- **Services (`services`):** Define the application's containers. Each service can have its own image, environment, and dependencies.
+  - **Image (`image`):** The image used to start the container, specified by repository, tag, or image ID.
+  - **Command (`command`):** Optional. Overrides the default command, for example to start the application or run an initialization script.
+  - **Ports (`ports`):** Optional. Map container ports to host ports.
+  - **Dependencies (`depends_on`):** Set service startup dependencies. For example, a backend can depend on a database.
+  - **Environment (`environment`):** Optional. Set environment variables required by the service.
+  - **Restart (`restart`):** Optional. Set the policy for restarting a container after it exits.
+  - **Volumes (`volumes`):** Optional. Define volumes for persistent or shared data.
+  - **Build (`build`):** Specify the Dockerfile build context or a detailed build configuration.
+- **Networks (`networks`):** Define network connections between containers.
+- **Volumes (`volumes`):** Define volumes for persistent or shared data, such as database files, configuration, and logs.
 
 ```yaml
 services:
@@ -371,123 +369,123 @@ networks:
   app_net:
 ```
 
-### Docker Compose 常见命令
+### Common Docker Compose Commands
 
-#### 启动
+#### Start Services
 
-`docker compose up` 会根据 Compose 文件中定义的服务创建并启动容器，并将它们连接到 Compose 创建的网络中。如果文件没有声明自定义网络，Compose 会自动创建默认网络。
+`docker compose up` creates and starts the services defined in the Compose file and connects them to a Compose network. If no custom network is declared, Compose creates a default one.
 
 ```bash
-# 在当前目录下寻找 compose.yaml 或 docker-compose.yml 文件，并根据其中定义的服务启动应用
+# Find compose.yaml or docker-compose.yml in the current directory and start its services
 docker compose up
-# 后台启动
+# Start in the background
 docker compose up -d
-# 强制重新创建所有容器，即使它们已经存在
+# Recreate all containers, even if they already exist
 docker compose up --force-recreate
-# 重新构建镜像
+# Rebuild images
 docker compose up --build
-# 指定要启动的服务名称，而不是启动所有服务
-# 可以同时指定多个服务，用空格分隔。
+# Start specific services instead of all services
+# Separate multiple service names with spaces.
 docker compose up service-name
 ```
 
-另外，如果 Compose 文件名称不是 `compose.yaml` 或 `docker-compose.yml`，可以通过 `-f` 参数指定。
+If the Compose file has a different name, specify it with `-f`.
 
 ```bash
 docker compose -f compose.prod.yaml up
 ```
 
-#### 暂停
+#### Stop Services
 
-`docker compose down` 用于停止并移除通过 `docker compose up` 启动的容器和网络。
+`docker compose down` stops and removes the containers and networks created by `docker compose up`.
 
 ```bash
-# 在当前目录下寻找 Compose 文件
-# 根据其中定义移除启动的容器和网络
+# Find the Compose file in the current directory
+# Remove the containers and networks defined in it
 docker compose down
-# 停止容器但不移除
+# Stop containers without removing them
 docker compose stop
-# 停止指定服务
+# Stop a specific service
 docker compose stop service-name
 ```
 
-同样地，如果 Compose 文件名称不是 `compose.yaml` 或 `docker-compose.yml`，可以通过 `-f` 参数指定。
+As above, use `-f` to specify a Compose file with a different name.
 
 ```bash
 docker compose -f compose.prod.yaml down
 ```
 
-#### 查看
+#### Inspect Services
 
-`docker compose ps` 用于查看通过 `docker compose up` 启动的所有容器的状态信息。
+Use `docker compose ps` to view the status of containers started by `docker compose up`.
 
 ```bash
-# 查看所有容器的状态信息
+# Show the status of all containers
 docker compose ps
-# 只显示服务名称
+# Show service names only
 docker compose ps --services
-# 查看指定服务的容器
+# Show containers for a specific service
 docker compose ps service-name
 ```
 
-#### 其他
+#### Other Commands
 
-| 命令                     | 介绍                   |
-| ------------------------ | ---------------------- |
-| `docker compose version` | 查看版本               |
-| `docker compose images`  | 列出所有容器使用的镜像 |
-| `docker compose kill`    | 强制停止服务的容器     |
-| `docker compose exec`    | 在容器中执行命令       |
-| `docker compose logs`    | 查看日志               |
-| `docker compose pause`   | 暂停服务               |
-| `docker compose unpause` | 恢复服务               |
-| `docker compose push`    | 推送服务镜像           |
-| `docker compose start`   | 启动当前停止的服务     |
-| `docker compose stop`    | 停止当前运行的服务     |
-| `docker compose rm`      | 删除已停止的服务容器   |
-| `docker compose top`     | 查看进程               |
+| Command                  | Description                    |
+| ------------------------ | ------------------------------ |
+| `docker compose version` | Show the version               |
+| `docker compose images`  | List images used by containers |
+| `docker compose kill`    | Force-stop service containers  |
+| `docker compose exec`    | Run a command in a container   |
+| `docker compose logs`    | Show logs                      |
+| `docker compose pause`   | Pause services                 |
+| `docker compose unpause` | Resume services                |
+| `docker compose push`    | Push service images            |
+| `docker compose start`   | Start stopped services         |
+| `docker compose stop`    | Stop running services          |
+| `docker compose rm`      | Remove stopped containers      |
+| `docker compose top`     | Show processes                 |
 
-## Docker 底层原理
+## How Docker Works
 
-首先，Docker 是基于轻量级虚拟化技术的软件，那什么是虚拟化技术呢？
+Docker is based on lightweight virtualization. What is virtualization?
 
-简单点来说，虚拟化技术可以这样定义：
+In simple terms, virtualization can be defined as follows:
 
-> 虚拟化技术是一种资源管理技术，是将计算机的各种[实体资源](https://zh.wikipedia.org/wiki/計算機科學)（[CPU](https://zh.wikipedia.org/wiki/CPU)、[内存](https://zh.wikipedia.org/wiki/内存)、[磁盘空间](https://zh.wikipedia.org/wiki/磁盘空间)、[网络适配器](https://zh.wikipedia.org/wiki/網路適配器)等），予以抽象、转换后呈现出来并可供分割、组合为一个或多个电脑配置环境。由此，打破实体结构间的不可切割的障碍，使用户可以比原本的配置更好的方式来应用这些电脑硬件资源。这些资源的新虚拟部分是不受现有资源的架设方式，地域或物理配置所限制。一般所指的虚拟化资源包括计算能力和数据存储。
+> Virtualization is a resource-management technique that abstracts and transforms physical computer resources—such as [CPU](https://en.wikipedia.org/wiki/Computer_science), [memory](https://en.wikipedia.org/wiki/Memory), [disk space](https://en.wikipedia.org/wiki/Disk_storage), and [network adapters](https://en.wikipedia.org/wiki/Network_interface_controller)—so they can be divided and combined into one or more computing environments. This breaks the constraints of physical hardware and lets users allocate resources more flexibly. Virtualized resources commonly include computing capacity and data storage.
 
-Docker 技术是基于 LXC（Linux container- Linux 容器）虚拟容器技术的。
+Docker was originally based on LXC (Linux Containers), a container virtualization technology.
 
-> LXC，其名称来自 Linux 软件容器（Linux Containers）的缩写，一种操作系统层虚拟化（Operating system–level virtualization）技术，为 Linux 内核容器功能的一个用户空间接口。它将应用软件系统打包成一个软件容器（Container），内含应用软件本身的代码，以及所需要的操作系统核心和库。通过统一的名字空间和共用 API 来分配不同软件容器的可用硬件资源，创造出应用程序的独立沙箱运行环境，使得 Linux 用户可以容易的创建和管理系统或应用容器。
+> LXC (Linux Containers) is an operating-system-level virtualization technology and a userspace interface to Linux kernel container features. It packages an application and its required libraries into a container. Shared APIs and namespaces allocate hardware resources to each container and create an isolated environment in which Linux users can manage system or application containers.
 
-LXC 技术主要是借助 Linux 内核中提供的 CGroup 功能和 namespace 来实现的，通过 LXC 可以为软件提供一个独立的操作系统运行环境。
+LXC relies mainly on Linux kernel cgroups and namespaces to provide software with an isolated runtime environment.
 
-**cgroup 和 namespace 介绍：**
+**Cgroups and namespaces:**
 
-- **namespace 是 Linux 内核用来隔离内核资源的方式。** 通过 namespace 可以让一些进程只能看到与自己相关的一部分资源，而另外一些进程也只能看到与它们自己相关的资源，这两拨进程根本就感觉不到对方的存在。具体的实现方式是把一个或多个进程的相关资源指定在同一个 namespace 中。Linux namespaces 是对全局系统资源的一种封装隔离，使得处于不同 namespace 的进程拥有独立的全局系统资源，改变一个 namespace 中的系统资源只会影响当前 namespace 里的进程，对其他 namespace 中的进程没有影响。
+- **Namespaces isolate kernel resources.** Processes in one namespace see only the resources assigned to it, so they are unaware of processes in other namespaces. Linux namespaces isolate global system resources so that processes in different namespaces have separate views; changes in one namespace do not affect processes in another.
 
-  （以上关于 namespace 介绍内容来自<https://www.cnblogs.com/sparkdev/p/9365405.html> ，更多关于 namespace 的内容可以查看这篇文章 ）。
+  (Based on [this introduction to namespaces](https://www.cnblogs.com/sparkdev/p/9365405.html).)
 
-- **CGroup 是 Control Groups 的缩写，是 Linux 内核提供的一种可以限制、记录、隔离进程组 (process groups) 所使用的物理资源 (如 cpu memory i/o 等等) 的机制。**
+- **Cgroups (control groups) are a Linux kernel mechanism for limiting, tracking, and isolating the physical resources used by process groups**, such as CPU, memory, and I/O.
 
-  （以上关于 CGroup 介绍内容来自 <https://www.ibm.com/developerworks/cn/linux/1506_cgroup/index.html> ，更多关于 CGroup 的内容可以查看这篇文章 ）。
+  (Based on [this introduction to cgroups](https://www.ibm.com/developerworks/cn/linux/1506_cgroup/index.html).)
 
-**cgroup 和 namespace 两者对比：**
+**Cgroups and namespaces serve different purposes:**
 
-两者都是将进程进行分组，但是两者的作用还是有本质区别。namespace 是为了隔离进程组之间的资源，而 cgroup 是为了对一组进程进行统一的资源监控和限制。
+Both group processes, but they serve different purposes. Namespaces isolate resources between process groups; cgroups monitor and limit the resources used by a group.
 
-## 总结
+## Summary
 
-本文主要把 Docker 中的一些常见概念和命令做了详细的阐述。从零到上手实战可以看[Docker 从入门到上手干事](https://javaguide.cn/tools/docker/docker-in-action.html)这篇文章，内容非常详细！
+This article covered common Docker concepts and commands. For a practical guide, see [Docker in Practice](https://javaguide.cn/tools/docker/docker-in-action.html).
 
-另外，再给大家推荐一本质量非常高的开源书籍[《Docker 从入门到实践》](https://yeasy.gitbook.io/docker_practice/introduction/why) ，这本书的内容非常新，毕竟书籍的内容是开源的，可以随时改进。
+Also see the high-quality open-source book [Docker — From Beginner to Practitioner](https://yeasy.gitbook.io/docker_practice/introduction/why), which can be updated continuously because its content is open source.
 
-![《Docker 从入门到实践》网站首页](../../roadmap/images/shared/docker-getting-started-practice-website-homepage.png)
+![Docker — From Beginner to Practitioner homepage](../../roadmap/images/shared/docker-getting-started-practice-website-homepage.png)
 
-## 参考
+## References
 
-- [Docker Compose：从零基础到实战应用的全面指南](https://juejin.cn/post/7306756690727747610)
-- [Linux Namespace 和 Cgroup](https://segmentfault.com/a/1190000009732550)
+- [Docker Compose: A Complete Guide from the Basics to Practical Use](https://juejin.cn/post/7306756690727747610)
+- [Linux Namespaces and Cgroups](https://segmentfault.com/a/1190000009732550)
 - [LXC vs Docker: Why Docker is Better](https://www.upguard.com/articles/docker-vs-lxc "LXC vs Docker: Why Docker is Better")
-- [CGroup 介绍、应用实例及原理描述](https://www.ibm.com/developerworks/cn/linux/1506_cgroup/index.html)
+- [Cgroups: Introduction, Examples, and How They Work](https://www.ibm.com/developerworks/cn/linux/1506_cgroup/index.html)
 
 <!-- @include: @article-footer.snippet.md -->

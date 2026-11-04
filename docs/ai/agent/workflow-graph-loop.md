@@ -1,5 +1,5 @@
 ---
-title: Workflow, Graph, and Loop in AI Systems: From Concepts to Implementation
+title: "Workflow, Graph, and Loop in AI Systems: From Concepts to Implementation"
 description: Explains Workflow, Graph, and Loop in AI systems, compares traditional and AI workflows, and demonstrates state updates, conditional edges, and loops with Spring AI Alibaba Graph.
 category: AI Application Development
 icon: "mdi:robot-outline"

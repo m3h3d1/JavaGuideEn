@@ -1,5 +1,5 @@
 ---
-title: Claude Code Memory: Markdown, Auto Memory, and Vector Search
+title: "Claude Code Memory: Markdown, Auto Memory, and Vector Search"
 description: An overview of Claude Code memory, including CLAUDE.md, .claude/rules, Auto Memory, Subagent Memory, Agent Teams, and third-party plugins, with guidance on what to keep and when to use Markdown, claude-mem, memsearch, or vector search.
 category: AI Coding Principles
 tag:

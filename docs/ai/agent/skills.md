@@ -1,73 +1,73 @@
 ---
-title: Agent Skills 是什么？和 Prompt、MCP 到底差在哪？
-description: 从工程视角聊 Agent Skills：它和 Prompt、Function Calling、MCP 的联系与边界，SKILL.md 怎么写才稳，延迟加载和渐进式披露怎么设计，以及写 Skill 最容易踩的坑。
-category: AI 应用开发
+title: "What Are Agent Skills, and How Do They Differ from Prompts and MCP?"
+description: An engineering guide to Agent Skills, their relationship to Prompts, Function Calling, and MCP, how to write a reliable SKILL.md, and how to design lazy loading and progressive disclosure.
+category: AI Application Development
 head:
   - - meta
     - name: keywords
-      content: Agent Skills,MCP,Function Calling,Prompt,AI Agent,智能体,延迟加载,上下文注入,SKILL.md
+      content: Agent Skills,MCP,Function Calling,Prompt,AI Agent,lazy loading,context injection,SKILL.md
 ---
 
-一次 Code Review 可能要看架构、安全、性能和项目约定。临时把这些规则放进 Prompt，换个会话后又要重新粘贴。
+A code review may need to consider architecture, security, performance, and project conventions. If these rules are added to a Prompt for one task, they must be pasted again in a new session.
 
-全局项目约定可以留在 `AGENTS.md`；Review 的检查顺序、检查项和参考资料应随 Review 任务加载。Skill 为这部分内容提供了独立入口。
+Keep global project conventions in `AGENTS.md`. Load review order, checklists, and references with the review task. A Skill provides a separate entry point for this task-specific material.
 
-## Agent Skills 是什么？
+## What Are Agent Skills?
 
-Skill 是可被 Agent 发现、按需读取的任务说明。接口返回格式、日志字段、慢 SQL 的排查路径、Review 的关注顺序，都可以写进 `SKILL.md`。
+A Skill is a task guide that an agent can discover and read when needed. It can document API response formats, log fields, slow SQL investigation steps, or code review priorities in `SKILL.md`.
 
-Skill 本身不提供工具能力。它解决的是“这类任务该按什么规则做”，由宿主在任务命中时把对应说明交给 Agent。
+A Skill does not provide tools. It describes how a type of task should be done, and the host gives the agent the relevant instructions when the task matches.
 
-## Skill 和 Prompt、MCP、Function Calling 有什么联系？
+## How Do Skills Relate to Prompts, MCP, and Function Calling?
 
-它们处在同一条执行链路的不同位置：Prompt 说明用户要做什么，Function Calling 发起动作，MCP 接入外部能力，Skill 规定完成任务时采用的流程和约束。
+They occupy different points in the same execution flow: a Prompt states what the user wants, Function Calling initiates an action, MCP connects external capabilities, and a Skill defines the procedure and constraints for completing a task.
 
-拿“帮我分析这份报表”这个请求来说，用户说的话是 **Prompt**。模型决定调用 `read_file` 并生成结构化参数时，用到的是 **Function Calling**；`read_file` 若由 MCP Server 提供，**MCP** 负责的是连接和协议。
+Consider the request “Analyze this report.” The user's instruction is the **Prompt**. When the model decides to call `read_file` and generates structured parameters, it uses **Function Calling**. If an MCP Server provides `read_file`, **MCP** handles the connection and protocol.
 
-“先确认字段含义，再找异常值，最后给业务结论，不要只堆统计指标”则属于 **Skill**。它描述处理顺序和约束，不替代前面的请求、调用方式或外部连接。
+“First confirm what the fields mean, then find anomalies, and finally give a business conclusion instead of listing statistics” belongs in a **Skill**. It describes the procedure and constraints; it does not replace the request, call mechanism, or external connection.
 
-![ Skill 和 Prompt、MCP、Function Calling 对比](../images/shared/skill-prompt-function-calling-mcp-comparison.webp)
+![Skills compared with Prompts, MCP, and Function Calling](../images/shared/skill-prompt-function-calling-mcp-comparison.webp)
 
-放在一个真实链路里，大概是这样：
+In a real execution flow, it looks like this:
 
-![Agent 执行链路](../images/shared/skill-agent-execution-link.webp)
+![Agent execution flow](../images/shared/skill-agent-execution-link.webp)
 
-1. 用户提出任务（Prompt）
-2. 宿主把可用 Skills 的简短描述放进上下文（Skill 元数据）
-3. 模型判断当前任务命中了某个 Skill（Skill 路由）
-4. 宿主再把完整 `SKILL.md` 加载进来（延迟加载）
-5. 模型按照 Skill 里的流程去调工具、读资料、写结果（执行）
+1. The user submits a task (Prompt).
+2. The host adds brief descriptions of available Skills to the context (Skill metadata).
+3. The model determines that a Skill matches the task (Skill routing).
+4. The host loads the full `SKILL.md` (lazy loading).
+5. The model follows the Skill's process to call tools, read material, and produce results (execution).
 
-工具并不是 Skill 的必备部分。[sanyuan-skills](https://github.com/sanyuan0704/sanyuan-skills) 里的 Code Review Expert 只规定从 SOLID、安全、性能等维度审查；[Superpowers](https://github.com/obra/superpowers) 的 TDD Skill 则要求 Agent 跑测试、读取输出，再决定下一步。
+Tools are not required for a Skill. The Code Review Expert in [sanyuan-skills](https://github.com/sanyuan0704/sanyuan-skills) only defines how to review SOLID principles, security, and performance. The TDD Skill in [Superpowers](https://github.com/obra/superpowers) tells the agent to run tests, read the output, and then decide what to do next.
 
-因此，Function Calling 是执行动作时可能用到的能力，Skill 更接近一次按需的**上下文注入**。`load_skill()` 也是这个意义上的概念，不是跨平台统一的 API 名称；Claude Code、Cursor、Codex、Copilot 的发现和加载方式各不相同。
+Function Calling may be used to execute an action; a Skill is closer to **on-demand context injection**. `load_skill()` is a conceptual example, not a cross-platform API. Claude Code, Cursor, Codex, and Copilot each discover and load Skills differently.
 
-## ⭐️SKILL.md 到底怎么写？
+## ⭐️How Should You Write a SKILL.md?
 
-### 基本结构
+### Basic Structure
 
-最小可用的 Skill 其实很简单，就是一个目录加一个 Markdown 文件 `SKILL.md`。
+A minimal Skill is simply a directory with a Markdown file named `SKILL.md`.
 
-`scripts/`、`references/`、`assets/` 这些都不是必需项，但复杂点的 Skill 经常会用到这些文件夹，例如 `scripts/` 中放一些 Skill 需要用到的脚本。
+Folders such as `scripts/`, `references/`, and `assets/` are optional, but more complex Skills often use them. For example, `scripts/` can contain scripts used by the Skill.
 
 ```text
 skill-name/
-├── SKILL.md          # 主文件，触发时加载
-├── scripts/          # 实用脚本（执行，不需要加载到上下文）
-├── references/       # 参考资料（按需加载）
-└── assets/           # 模板和静态文件（按需加载）
+├── SKILL.md          # Main file, loaded when triggered
+├── scripts/          # Utility scripts (executed, not loaded into context)
+├── references/       # Reference material (loaded as needed)
+└── assets/           # Templates and static files (loaded as needed)
 ```
 
-一个 `SKILL.md` 包含两部分：
+`SKILL.md` has two parts:
 
-1. 前面是 **YAML 前置元数据**，告诉宿主“我是谁、什么时候该用我”；
-2. 后面是**正文**，写具体流程、约束、示例和失败处理。
+1. **YAML frontmatter** at the top tells the host what the Skill is and when to use it.
+2. The **body** describes the process, constraints, examples, and failure handling.
 
-想要学 Skill 怎么写，我们直接看最顶级的开源 Skill 就好了。
+To learn how to write a Skill, it helps to examine well-maintained open-source examples.
 
-这里我们以 [Superpowers 的 TDD 技能](https://github.com/obra/superpowers/blob/main/skills/test-driven-development/SKILL.md)为例，
+This section uses the [Superpowers TDD Skill](https://github.com/obra/superpowers/blob/main/skills/test-driven-development/SKILL.md) as an example.
 
-它的元数据只有两行：
+Its metadata has only two fields:
 
 ```yaml
 ---
@@ -76,7 +76,7 @@ description: Use when implementing any feature or bugfix, before writing impleme
 ---
 ```
 
-TDD 会涉及到 Red-Green-Refactor 循环，但这个 TDD Skill 的 description 压根没提到，就一句话说清楚什么时候该用。正文才展开讲具体怎么做，简化版如下：
+TDD uses the Red-Green-Refactor cycle, but the Skill's description does not mention it. Instead, one sentence clearly states when to use the Skill. The body explains the procedure, as in this simplified version:
 
 ```markdown
 # TDD
@@ -114,106 +114,106 @@ If you did not watch the test fail, the test is not trusted.
 - [ ] Tests pass
 ```
 
-### 先看官方的 skill-creator
+### Start with the Official skill-creator
 
-[`skill-creator`](https://github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md) 是 Anthropic 官方 Skills 仓库提供的创建 Skill 的 Skill。它会先要求 Agent 确认任务、触发条件和边界，再决定哪些内容留在 `SKILL.md`，哪些拆到 `scripts/` 或 `references/`。
+[`skill-creator`](https://github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md) is a Skill for creating Skills in Anthropic's official Skills repository. It first asks the agent to confirm the task, trigger conditions, and boundaries, then decide what belongs in `SKILL.md` and what should go in `scripts/` or `references/`.
 
-它体现了两个实际取舍：`description` 要能让宿主识别适用任务；可由脚本稳定执行的步骤和只在特定场景需要的长资料，应拆出主文件。Claude 官方帮助文档也建议将这类额外内容按需访问。
+It illustrates two practical tradeoffs: the `description` should help the host identify matching tasks, and steps that scripts can execute reliably or long references needed only in specific cases should be moved out of the main file. Claude's documentation also recommends accessing such supporting content only when needed.
 
-### 元数据（Frontmatter）
+### Metadata (Frontmatter)
 
-元数据决定 Skill 能不能被正确发现和触发。一般来说，至少要写清楚两个字段：`name` 和 `description`。
+Metadata determines whether a Skill can be discovered and triggered correctly. At a minimum, define `name` and `description`.
 
-`name` 就是 Skill 的标识，主要给系统和人定位用；`description` 则更像路由说明，告诉 Agent 什么时候该把这个 Skill 加载进来，也就是什么时候用。
+`name` identifies the Skill for systems and people. `description` acts as a routing hint, telling the agent when to load and use the Skill.
 
-先看 `name`。它有几个硬性要求：
+The `name` field has several strict requirements:
 
-- 最多 64 个字符
-- 只能包含小写字母、数字和连字符
-- 不能包含 XML 标签
-- 不能包含保留字，比如 `anthropic`、`claude`
+- At most 64 characters.
+- Use only lowercase letters, numbers, and hyphens.
+- Do not include XML tags.
+- Do not use reserved words such as `anthropic` or `claude`.
 
-命名时可以优先用动名词形式，也就是“动词 + -ing”。这样一眼就能看出这个 Skill 提供的是什么能力。
+Prefer a gerund form—a verb followed by `-ing`—when naming a Skill. It makes the capability clear at a glance.
 
-| **好的命名**              | **不好的命名**                 |
-| ------------------------- | ------------------------------ |
-| `processing-pdfs`         | `helper`、`utils`，太模糊      |
-| `reviewing-code`          | `documents`，太通用            |
-| `test-driven-development` | `tools`，啥也没说              |
-| `analyzing-spreadsheets`  | `anthropic-helper`，包含保留字 |
+| **Good name**             | **Poor name**                                 |
+| ------------------------- | --------------------------------------------- |
+| `processing-pdfs`         | `helper`, `utils` — too vague                 |
+| `reviewing-code`          | `documents` — too broad                       |
+| `test-driven-development` | `tools` — says nothing about the task         |
+| `analyzing-spreadsheets`  | `anthropic-helper` — contains a reserved word |
 
-`description` 更关键。如果`description` 写的不好，那这个Skill 就没办法在该调用的时候被调用。毕竟 Agent 不会先把每个 Skill 的 `SKILL.md` 都读一遍，而是先看描述来判断该不该加载。
+The `description` is even more important. If it is unclear, the Skill may not be selected when needed. An agent does not read every `SKILL.md` first; it uses each description to decide whether to load the Skill.
 
-`description`的描述不能太简洁，也不要太多。一个好用的 `description`，建议说清楚两件事就足够了：
+A useful `description` should be neither too short nor too long. It should state two things:
 
-1. 这个 Skill 做什么
-2. 在什么场景下需要用它
+1. What the Skill does.
+2. When to use it.
 
-我们前面列举的 Superpowers 的 TDD 技能就是满足这个要求的。
+The Superpowers TDD Skill above follows this guidance.
 
-最好再带上一些用户可能会说出来的词。比如 PDF、表单、提取、提交消息、git diff 这类词。这样不管是规则匹配还是语义匹配，都更容易抓到。
+Include terms users are likely to mention, such as PDF, form, extract, commit message, and `git diff`. This helps both rule-based and semantic matching find the Skill.
 
 ```yaml
-# ✓ 好的：有能力、有场景、有触发词
-description: 从 PDF 文件中提取文本和表格、填充表单、合并文档。在处理 PDF 文件或用户提及 PDF、表单、文档提取时使用。
+# ✓ Good: states capability, scenario, and trigger terms
+description: Extract text and tables from PDF files, fill forms, and merge documents. Use when working with PDFs or when the user mentions PDFs, forms, or document extraction.
 
-# ✗ 避免：第一人称 + 触发条件不清楚
-description: 我可以帮助您处理 PDF 文件
+# ✗ Avoid: first-person phrasing and unclear triggers
+description: I can help you work with PDF files.
 
-# ✗ 避免：只写能力，不写什么时候用
-description: 处理 Excel 文件
+# ✗ Avoid: states a capability but not when to use it
+description: Process Excel files.
 ```
 
-看几个实际例子：
+Here are a few real examples:
 
 ```yaml
-# Superpowers 的 TDD
+# Superpowers TDD
 name: test-driven-development
 description: Use when implementing any feature or bugfix, before writing implementation code
 
-# sanyuan-skills 的 Code Review Expert
+# Code Review Expert from sanyuan-skills
 name: code-review-expert
 description: Expert code review of current git changes with a senior engineer lens. Detects SOLID violations, security risks, and proposes actionable improvements.
 
-# Git 提交助手
-description: 通过分析 git diff 生成描述性提交消息。当用户要求帮助编写提交消息或审查暂存更改时使用。
+# Git commit assistant
+description: Generate descriptive commit messages by analyzing `git diff`. Use when the user asks for a commit message or a review of staged changes.
 ```
 
-只写概念、范围过宽或缺少触发条件的 `description`，例如：
+Avoid descriptions that state only a concept, are too broad, or lack trigger conditions, for example:
 
 ```yaml
-# Superpowers 的 TDD 反例，只写概念，不写触发时机
+# Superpowers TDD counterexample: states the concept but not when to use it
 name: test-driven-development
 description: Helps with test-driven development and writing better tests.
 
-# Code Review Expert 反例，太泛
+# Code Review Expert counterexample: too broad
 name: code-review-expert
 description: Helps review code and improve quality.
 
-# Git 提交助手反例，只写功能名
-description: 生成提交消息。
+# Git commit assistant counterexample: only names the function
+description: Generate commit messages.
 ```
 
-### 正文
+### Body
 
-正文是 Agent 命中 Skill 后才会读取的操作说明。启动阶段通常只有 `name` 和 `description` 参与路由；正文加载后，会与系统提示、用户请求和已有资料共用上下文空间。
+The agent reads the body only after a Skill matches. At startup, routing usually uses only `name` and `description`. Once loaded, the body shares the context window with the System Prompt, user request, and other material.
 
-因此，正文只保留任务执行时需要的默认方案、项目约定、输入输出和失败处理。规则藏在大段科普里，Agent 需要时反而更难找到。
+Keep only the default procedure, project conventions, inputs and outputs, and failure handling needed to perform the task. If rules are buried in a long tutorial, the agent may have trouble finding them when needed.
 
-![上下文为什么会失效](../images/shared/why-does-the-following-content-fail.png)
+![Why context can fail](../images/shared/why-does-the-following-content-fail.png)
 
-筛正文时可以依次确认：
+When reviewing the body, ask:
 
-- Agent 真的需要这段解释吗？
-- 这是项目里的私有知识，还是通用常识？
-- 这段话值不值得占用上下文？
+- Does the agent really need this explanation?
+- Is this project-specific knowledge or general knowledge?
+- Is this information worth the context space it uses?
 
-处理 PDF 文本时，正文直接给默认库和调用方式：
+For PDF text extraction, state the default library and how to use it directly:
 
 ````markdown
-## 提取 PDF 文本
+## Extract PDF Text
 
-使用 pdfplumber 进行文本提取：
+Use pdfplumber to extract text:
 
 ```python
 import pdfplumber
@@ -222,237 +222,237 @@ with pdfplumber.open("file.pdf") as pdf:
 ```
 ````
 
-从 PDF 定义和工具罗列开始的正文，对 Agent 的下一步没有帮助：
+Starting with a PDF definition and a list of tools does not help the agent take the next step:
 
 ```markdown
-## 提取 PDF 文本
+## Extract PDF Text
 
-PDF（便携式文档格式）是一种常见文件格式，通常包含文本、图片和其他内容。
-如果要从 PDF 中提取文本，需要使用专门的 PDF 处理库。
-目前有很多库可以完成这类工作，例如 pypdf、pdfplumber、PyMuPDF 等。
-这里建议使用 pdfplumber，因为它比较容易上手，也能覆盖大多数普通 PDF 文本提取场景。
-首先，你需要使用 pip 安装它，然后再编写下面的代码……
+PDF (Portable Document Format) is a common file format that can contain text, images, and other content.
+Extracting text from a PDF requires a dedicated PDF processing library.
+Several libraries can do this, including pypdf, pdfplumber, and PyMuPDF.
+This example uses pdfplumber because it is easy to learn and works for most standard text-extraction tasks.
+First, install it with pip, then write the following code...
 ```
 
-Agent 需要的是默认使用什么、如何调用、输出如何处理，以及遇到特殊情况时怎么分支。项目里那些无法从通用知识推断出来的约束尤其要写清楚，例如：
+The agent needs to know which default to use, how to call it, how to handle the output, and what to do in special cases. Clearly state project-specific constraints that cannot be inferred from general knowledge, for example:
 
 ```markdown
-users 表使用软删除。所有正式查询都必须加 `WHERE deleted_at IS NULL`。
+The `users` table uses soft deletion. All production queries must include `WHERE deleted_at IS NULL`.
 ```
 
-这条约束会直接改变查询结果；软删除的通用定义无需放进 Skill：
+This rule directly affects query results. The general definition of soft deletion does not need to be in the Skill:
 
 ```markdown
-软删除是一种常见的数据删除方式，通常不会真正删除数据库记录，而是通过字段标记记录状态。
+Soft deletion is a common data-removal pattern. It usually keeps the database record and marks its state with a field.
 ```
 
-主文件过长时，把只在特定步骤才用到的内容拆到单独文件。Anthropic 建议将 `SKILL.md` 正文尽量控制在 500 行以内，通过渐进式披露按需读取细节。
+If the main file is too long, move material used only in specific steps to separate files. Anthropic recommends keeping the `SKILL.md` body under 500 lines where possible and using progressive disclosure to load details as needed.
 
-![SKILL.md 正文最好控制在 500 行以内](../images/shared/keep-skill-md-content-under-500-lines-for-best-performance.png)
+![Keep the SKILL.md body under 500 lines where possible](../images/shared/keep-skill-md-content-under-500-lines-for-best-performance.png)
 
-例如，Code Review Skill 的主文件只需指出何时读取 SOLID 检查项：
+For example, a Code Review Skill's main file only needs to say when to read the SOLID checklist:
 
 ```markdown
-需要做 SOLID 设计检查时，读取 `references/solid-checklist.md`。
+When checking SOLID design principles, read `references/solid-checklist.md`.
 ```
 
-`references/solid-checklist.md` 保存具体 checklist；任务不涉及设计检查时，Agent 不必读取它。
+`references/solid-checklist.md` contains the checklist. The agent does not need to read it when the task does not involve design review.
 
-这些开源 Skill 集合展示了主文件与参考资料的拆分方式：
+These open-source Skill collections show how to separate the main file from reference material:
 
-- [Superpowers](https://github.com/obra/superpowers)：包含 TDD、brainstorming、代码审查等 Skill，TDD 那个结构很清楚，适合看正文怎么组织。
-- [sanyuan-skills](https://github.com/sanyuan0704/sanyuan-skills)：Code Review Expert 把更细的检查项拆进 `references/`，主文件只保留触发和加载说明，适合作为渐进式披露的例子。
-- [Anthropic 官方 Skills 仓库](https://github.com/anthropics/skills)：目录结构和写法可以作为基准参考。
+- [Superpowers](https://github.com/obra/superpowers): Includes Skills for TDD, brainstorming, and code review. Its clearly structured TDD Skill is a useful example of organizing a body.
+- [sanyuan-skills](https://github.com/sanyuan0704/sanyuan-skills): The Code Review Expert moves detailed checks into `references/` and keeps only trigger and loading instructions in the main file, illustrating progressive disclosure.
+- [Anthropic's official Skills repository](https://github.com/anthropics/skills): A reference for directory structure and writing style.
 
-![查找自己需要和热门的 Skills](../images/shared/skillssh.png)
+![Finding useful and popular Skills](../images/shared/skillssh.png)
 
-![Superpowers 内置的 skills](../images/shared/superpowers-skills.png)
+![Skills included with Superpowers](../images/shared/superpowers-skills.png)
 
-在 Claude Code 这类工具中，可以用 `/skill-name` 主动调用，也可以让模型根据任务选择；触发后再读取流程、约束、脚本和参考文件。
+Tools such as Claude Code may allow explicit invocation with `/skill-name` or let the model select a Skill based on the task. After selection, the tool reads the procedure, constraints, scripts, and reference files.
 
-## 自由度怎么把控？
+## How Much Freedom Should a Skill Allow?
 
-数据库迁移和生产部署要在 Skill 中固定命令、参数、校验与回滚条件；这类操作出错后往往要恢复数据或服务状态。
+For database migrations and production deployments, specify commands, parameters, validation, and rollback conditions in the Skill. Errors in these operations may require restoring data or service state.
 
-代码审查和技术方案评估需要结合变更内容判断。Skill 固定安全、性能、可维护性和项目约定这些检查维度即可，无需为每个文件指定顺序。
+Code review and technical design evaluation depend on the change being reviewed. A Skill can define review dimensions such as security, performance, maintainability, and project conventions without prescribing an order for every file.
 
-下表按任务风险划分自由度：
+The table relates task risk to how much freedom to allow:
 
-| **自由度** | **适合场景**                 | **写法**               |
-| ---------- | ---------------------------- | ---------------------- |
-| 高         | 需要判断和取舍，答案不唯一   | 给检查方向，不写死步骤 |
-| 中         | 有固定模板，但允许按场景调整 | 给模板、参数和边界     |
-| 低         | 操作脆弱，出错代价高         | 给精确命令，明确不能改 |
+| **Freedom** | **Suitable scenario**                        | **How to write it**                                |
+| ----------- | -------------------------------------------- | -------------------------------------------------- |
+| High        | Requires judgment; there is no single answer | Give review directions without fixing every step   |
+| Medium      | Uses a template that can vary by scenario    | Provide a template, parameters, and boundaries     |
+| Low         | Fragile operation with high failure cost     | Give exact commands and state what must not change |
 
-Superpowers 的 TDD Skill 固定了流程顺序：
+The Superpowers TDD Skill fixes the order of its workflow:
 
 ```text
 NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
 ```
 
-Red、Green、Refactor 不能调换；实现前必须先看到预期的失败。该 Skill 还写明：
+Red, Green, and Refactor must stay in order. Before implementing, the test must fail for the expected reason. The Skill also states:
 
 ```text
 Write code before the test? Delete it. Start over.
 ```
 
-测试对象、名称和断言则由当前功能决定。Code Review 的检查框架也可以固定为 SOLID、安全风险、性能和可维护性，具体问题仍由 Agent 根据 diff 判断。
+The feature determines the test target, name, and assertions. A Code Review Skill can also fix its review dimensions—SOLID, security risks, performance, and maintainability—while the agent identifies concrete issues from the diff.
 
-低自由度的写法可以这样：
+A low-freedom instruction might look like this:
 
 ````markdown
-## 数据库迁移
+## Database Migration
 
-运行下面这条命令：
+Run this command:
 
 ```bash
 python scripts/migrate.py --verify --backup
 ```
 
-不要修改命令，不要添加额外参数。
+Do not modify the command or add parameters.
 
-如果命令失败，停止执行，并把错误输出返回给用户。
+If the command fails, stop and return the error output to the user.
 ````
 
-代码审查这类任务可以只给检查范围：
+For a task such as code review, provide only the review scope:
 
 ```markdown
-## 代码审查
+## Code Review
 
-重点检查：
+Focus on:
 
-1. 是否有明显 Bug 或边界情况遗漏
-2. 是否存在安全风险
-3. 是否影响性能或资源使用
-4. 是否违反项目已有约定
-5. 是否有更简单的实现方式
+1. Are there obvious bugs or missing edge cases?
+2. Are there security risks?
+3. Does the change affect performance or resource usage?
+4. Does it violate existing project conventions?
+5. Is there a simpler implementation?
 
-输出时优先写会影响正确性和线上稳定性的问题，不要只做格式建议。
+Prioritize issues that affect correctness or production reliability. Do not report only formatting suggestions.
 ```
 
-这里没有指定文件顺序，但限定了审查范围和输出重点。改数据、发请求、部署、迁移或删除文件时收紧自由度；分析、评审、总结和生成草稿保留判断空间。
+This does not specify a file order, but it defines the review scope and output priorities. Restrict freedom for data changes, requests, deployments, migrations, and file deletion. Allow judgment for analysis, review, summaries, and drafts.
 
-## ⭐️延迟加载与渐进式披露
+## ⭐️Lazy Loading and Progressive Disclosure
 
-![Skill 渐进式披露](../images/shared/agent-skills-progressive-disclosure.webp)
+![Progressive disclosure for Skills](../images/shared/agent-skills-progressive-disclosure.webp)
 
-### 为什么不能把所有 Skill 一次性全塞进去？
+### Why Not Load Every Skill at Once?
 
-Agent 的上下文窗口是有限的，至少现在还是这样。
+An agent's context window is limited, at least for now.
 
-而且，窗口大了只是能装下更多内容，不代表它能自动挑出重点。比如你给它分析一份长需求文档，真正关键的限制条件可能就三句话，但夹在各种背景和说明中，模型很容易忽略中间的那些关键句。
+Even a larger window only fits more content; it does not automatically identify what matters. In a long requirements document, for example, the key constraints may be only a few sentences among a lot of background. The model may overlook important details buried in the middle.
 
-这就是大家常说的 **Context Rot**，上下文腐化。**上下文越长，信息越杂，模型利用上下文的稳定性就越可能变差。**
+This is often called **Context Rot**. **As context gets longer and noisier, model performance in using it can become less reliable.**
 
-**Lost in the Middle** 指模型更容易忽略上下文中间的信息，具体解释见 [上下文为什么会失效](./context-engineering.md#上下文为什么会失效)。
+**Lost in the Middle** describes how models may overlook information in the middle of a context. See [Why Context Can Fail](./context-engineering.md#why-does-context-fail) for details.
 
-所以，Skill 不应该写成资料库。
+So a Skill should not be written as a reference library.
 
-更好的方式是渐进式披露：**先给模型一份轻量目录，真正用到哪块，再去加载哪块。**
+A better approach is progressive disclosure: **give the model a lightweight index first, then load only the material it needs.**
 
-![渐进式披露](../images/shared/skills-progressive-disclosure.svg)
+![Progressive disclosure](../images/shared/skills-progressive-disclosure.svg)
 
-就像查书一样。你不会先把整本书背下来，而是先看目录，确定章节，再翻到具体那一页。
+It is like looking something up in a book. You do not memorize the entire book first; you check the table of contents, find the relevant chapter, then read the specific page.
 
-一般可以分成三层：
+This can be divided into three layers:
 
-![渐进式披露（三层模型）](../images/shared/skills-progressive-disclosure-three-layer-model.png)
+![Three-layer model of progressive disclosure](../images/shared/skills-progressive-disclosure-three-layer-model.png)
 
-**1. 广告层：先让模型知道有这个 Skill**
+**1. Discovery layer: let the model know the Skill exists**
 
-启动时通常只加载 Skill 的元数据，比如 `name` 和 `description`。这部分很短，用来告诉模型：我是谁，我适合什么场景。
+At startup, load only Skill metadata such as `name` and `description`. Keep it short; it tells the model what the Skill does and when it applies.
 
-**2. 指令层：命中后再读正文**
+**2. Instruction layer: load the body after a match**
 
-当 Agent 判断当前任务确实相关时，才读取对应的 `SKILL.md` 正文。正文里放流程、规则、边界和关键示例。这里不要写太长，Anthropic 的建议是正文尽量控制在 500 行以内。
+Only when an agent determines that a Skill is relevant does it read the corresponding `SKILL.md` body. The body contains procedures, rules, boundaries, and key examples. Keep it concise; Anthropic recommends keeping it under 500 lines where possible.
 
-**3. 资源层：执行时再读细节**
+**3. Resource layer: load details during execution**
 
-如果正文里引用了 `references/`、`scripts/` 这类文件，Agent 再按需读取或执行。比如只是执行脚本，通常只需要把脚本输出放进上下文；如果要阅读或修改脚本，那源码才需要进上下文。
+If the body references files in `references/` or `scripts/`, the agent reads or executes them as needed. If it only runs a script, usually only the script output needs to enter the context. The source code needs to be loaded only when the agent must inspect or modify it.
 
-所以你会经常看到这种写法：
+This is why Skills often contain references such as:
 
 ```markdown
-## 高级功能
+## Advanced Features
 
-**表单填充**：完整指南请参阅 [FORMS.md](FORMS.md)
+**Form filling:** See [FORMS.md](FORMS.md) for the full guide.
 
-**API 参考**：所有方法请参阅 [REFERENCE.md](REFERENCE.md)
+**API reference:** See [REFERENCE.md](REFERENCE.md) for all methods.
 ```
 
-任务命中表单填充时，Agent 才读取 `FORMS.md`；普通文本提取无需加载该文件。
+The agent reads `FORMS.md` only when the task involves form filling; ordinary text extraction does not require it.
 
-### 实际项目中怎么组织文件？
+### How Should You Organize Files in a Real Project?
 
-以一个数据分析类 Skill 为例，可以这么拆：
+For example, a data-analysis Skill could be organized like this:
 
 ```text
 bigquery-analysis/
-├── SKILL.md              # 概述和导航，命中时加载
+├── SKILL.md              # Overview and navigation, loaded on a match
 └── reference/
-    ├── finance.md        # 收入、ARR、账单指标
-    ├── sales.md          # 机会、管道、账户
-    ├── product.md        # API 使用、功能采用
-    └── marketing.md      # 活动、归因、电子邮件
+    ├── finance.md        # Revenue, ARR, and billing metrics
+    ├── sales.md          # Opportunities, pipeline, and accounts
+    ├── product.md        # API usage and feature adoption
+    └── marketing.md      # Campaigns, attribution, and email
 ```
 
-主文件只列出可用数据集和对应资料，数据口径留在各自的参考文件中：
+The main file lists available datasets and their reference files. Definitions and metrics stay in the corresponding references:
 
 ```markdown
-# BigQuery 数据分析
+# BigQuery Data Analysis
 
-## 可用数据集
+## Available Datasets
 
-**财务**：收入、ARR、账单 → 参阅 [reference/finance.md](reference/finance.md)
+**Finance**: Revenue, ARR, billing → See [reference/finance.md](reference/finance.md).
 
-**销售**：机会、管道、账户 → 参阅 [reference/sales.md](reference/sales.md)
+**Sales**: Opportunities, pipeline, accounts → See [reference/sales.md](reference/sales.md).
 
-**产品**：API 使用、功能采用 → 参阅 [reference/product.md](reference/product.md)
+**Product**: API usage, feature adoption → See [reference/product.md](reference/product.md).
 
-**营销**：活动、归因、电子邮件 → 参阅 [reference/marketing.md](reference/marketing.md)
+**Marketing**: Campaigns, attribution, email → See [reference/marketing.md](reference/marketing.md).
 ```
 
-用户问“上个季度的销售管道怎么样”时，Agent 只需打开 `reference/sales.md`；财务、产品和营销资料无需加载。
+When a user asks about last quarter's sales pipeline, the agent only needs to open `reference/sales.md`; finance, product, and marketing references do not need to be loaded.
 
-必需规则经过多层引用后，Agent 很难直接定位：
+If required rules are hidden behind several layers of references, the agent may have trouble finding them:
 
 ```markdown
-SKILL.md → advanced.md → details.md → 最关键的规则藏在这里
+SKILL.md -> advanced.md -> details.md -> the most important rule is buried here
 ```
 
-把基本用法和下一层资料都列在主文件里：
+List basic usage and the next layer of references in the main file:
 
 ```markdown
 SKILL.md
-├── 直接包含基本用法
-├── 高级功能 → advanced.md
-└── API 参考 → reference.md
+├── Include basic usage directly
+├── Advanced features -> advanced.md
+└── API reference -> reference.md
 ```
 
-Agent 读取主文件后即可定位资料。参考文件较长时，在文件开头列出目录，方便先确认可用内容。
+The agent can locate the right material from the main file. If a reference is long, add a table of contents at the top so the agent can check what it contains first.
 
-## 工作流和反馈循环怎么设计？
+## How Should You Design Workflows and Feedback Loops?
 
-简单点的任务，写几条规则就够用了。但遇到复杂一些的场景，这样做就不太够了。
+For a simple task, a few rules may be enough. More complex scenarios need more structure.
 
-Agent 很可能会跳过一些步骤，例如检查输出质量、跑测试代码，然后直接说它已经做完了。
+An agent may skip steps such as checking output quality or running tests, then simply report that the task is complete.
 
-为了避免这种问题，需要写清楚这两个点：
+To prevent this, make two things explicit:
 
-1. 每一步按什么顺序走
-2. 哪些地方必须停下来验证
+1. The order of the steps.
+2. Where execution must stop for validation.
 
-![Skill 工作流设计](../images/shared/agent-skills-workflow-design.webp)
+![Designing a Skill workflow](../images/shared/agent-skills-workflow-design.webp)
 
-图示：复杂 Skill 要把任务分类、条件分支、验证节点和失败兜底写进流程里。
+Diagram: a complex Skill should define task classification, conditional branches, validation points, and failure handling.
 
-### 用清单把步骤串起来
+### Connect Steps with a Checklist
 
-Superpowers 的 TDD Skill 就是一个很好的例子。
+The Superpowers TDD Skill is a good example.
 
-它没有只写一句“先写测试，再写代码”。这种话太粗了，Agent 真执行时还是容易糊弄过去。
+It does not stop at “write tests before code.” That instruction is too vague, so an agent can easily bypass it in practice.
 
-它是直接把流程拆成了几个明确阶段，简化版本如下：
+Instead, it divides the process into explicit stages. A simplified version is:
 
 ```markdown
 ### RED - Write Failing Test
@@ -485,13 +485,13 @@ After green only:
 Keep tests green. Don't add behavior.
 ```
 
-**Verify RED** 规定：Agent 必须先看到预期的失败，再开始实现。
+**Verify RED** requires the agent to observe the expected failure before implementation begins.
 
-失败应由功能尚未实现引起，而非路径、语法或测试本身的错误。
+The test should fail because the feature has not been implemented, not because of a path, syntax, or test error.
 
-这一步如果不写清楚，Agent 很容易直接写实现，然后补一个“看起来能过”的测试。这就不是 TDD 了。
+Without this step, an agent may write the implementation first and then add a test that merely appears to pass. That is not TDD.
 
-完成前的验证条件也写成清单：
+Write the completion checks as a checklist too:
 
 ```markdown
 ## Verification Checklist
@@ -506,76 +506,76 @@ Before marking work complete:
 - [ ] Output has no errors or warnings
 ```
 
-清单中的每一项都应是可核验的动作，例如“所有测试通过”或“每个新方法都有测试”。“保证质量”“遵循测试最佳实践”这类要求没有判定标准，无法作为验证节点。
+Every checklist item should be verifiable, such as “all tests pass” or “each new method has a test.” Instructions such as “ensure quality” or “follow testing best practices” have no clear pass criteria and cannot serve as validation points.
 
-### 反馈循环
+### Feedback Loops
 
-复杂任务需要把中间验证节点写进流程：
+For complex tasks, include intermediate validation in the workflow:
 
 ```text
-运行 → 验证 → 修复 → 再验证
+Run -> Validate -> Fix -> Validate again
 ```
 
-例如，代码审查若只要求“全面审查”，Agent 容易先处理命名、格式和注释，遗漏架构问题。
+For example, if a code review only says “review thoroughly,” an agent may focus on names, formatting, and comments while missing architectural issues.
 
-可以把审查拆成两轮：
+Split the review into two passes:
 
 ```markdown
-## 代码审查流程
+## Code Review Workflow
 
-1. 获取变更文件列表和 diff
+1. Get the list of changed files and the diff.
 
-2. 第一轮：设计审查
+2. First pass: design review.
 
-   - 检查整体结构是否合理
-   - 检查是否违反 SOLID 原则
-   - 如果发现明显架构问题，先报告，不急着进入细节审查
+   - Check whether the overall structure is sound.
+   - Check for violations of SOLID principles.
+   - If there is a clear architectural problem, report it before moving to implementation details.
 
-3. 第二轮：实现审查
+3. Second pass: implementation review.
 
-   - 检查安全风险，比如 SQL 注入、XSS、越权
-   - 检查性能热点，比如循环里的 DB 调用、缺失索引
-   - 检查异常处理和边界条件
+   - Check for security risks such as SQL injection, XSS, and authorization bypass.
+   - Check performance hotspots such as database calls in loops and missing indexes.
+   - Check error handling and edge cases.
 
-4. 输出问题
-   - 标注严重等级：Critical / Warning / Suggestion
-   - 给出可以直接修改的建议
+4. Report findings.
+   - Label severity as Critical, Warning, or Suggestion.
+   - Provide actionable recommendations.
 ```
 
-这份流程先检查设计，再检查实现，最后输出修改建议。
+This workflow reviews design first, implementation second, and then reports recommendations.
 
-### 条件分支
+### Conditional Branches
 
-Skill 同时处理多种任务时，应列出判断条件和分支。创建文档与编辑已有文档的处理路径不同：
+If a Skill handles multiple task types, list the conditions and branches. Creating a document and editing an existing one require different workflows:
 
 ```markdown
-## 文档修改工作流
+## Document Editing Workflow
 
-1. 先判断任务类型
+1. Identify the task type.
 
-   **创建新文档？**
+   **Creating a new document?**
 
-   走创建工作流。
+   Use the creation workflow.
 
-   **编辑现有文档？**
+   **Editing an existing document?**
 
-   走编辑工作流。
+   Use the editing workflow.
 
-2. 创建工作流
+2. Creation workflow.
 
-   - 使用模板生成文档
-   - 导出为目标格式
-   - 验证文件可以正常打开
+   - Generate the document from a template.
+   - Export it to the target format.
+   - Verify that the file opens correctly.
 
-3. 编辑工作流
+3. Editing workflow.
 
-   - 解包现有文档
-   - 修改指定内容
-   - 每次修改后验证
-   - 完成后重新打包
+   - Unpack the existing document.
+   - Edit the specified content.
+   - Validate after each change.
+   - Repackage the document when finished.
 ```
 
-分支多起来后，主文件保留判断逻辑，具体流程拆到单独文件：
+As the number of branches grows, keep decision logic in the main file and move detailed procedures into separate files:
 
 ```text
 workflows/
@@ -584,148 +584,148 @@ workflows/
 └── export-document.md
 ```
 
-任务命中哪个分支，Agent 就读取对应文件。流程规定执行顺序，反馈节点规定检查时机；缺少其中一项时，执行容易跳步。
+The agent reads the file for the matching branch. The workflow defines step order, and feedback points define when to validate. Without either, execution may skip steps.
 
-## Skill 路由怎么做？
+## How Does Skill Routing Work?
 
-![Skill 路由流程](../images/shared/agent-skills-routing-flow.webp)
+![Skill routing flow](../images/shared/agent-skills-routing-flow.webp)
 
-用户提交“频繁 Full GC”时，路由器应选择 JVM 诊断 Skill，并排除数据库排查和文档处理 Skill。路由完成后，要得到可直接加载的 Skill 集合。
+When the user reports “frequent Full GC,” the router should select the JVM diagnostics Skill and exclude database troubleshooting and document-processing Skills. Routing should return a set of Skills that can be loaded directly.
 
-Skill 只有三五个时，模型读取 `description` 通常足以完成选择。数量增加到几十个后，按“召回候选 → 重新排序 → 作出决策”的流程处理更稳定：
+When there are only a few Skills, the model can usually select one from the `description` fields. With dozens of Skills, a “retrieve candidates -> rerank -> decide” pipeline is more reliable:
 
-| 阶段   | 输入与处理                                                                          | 输出                       |
-| ------ | ----------------------------------------------------------------------------------- | -------------------------- |
-| 粗召回 | 将请求与 Skill 的名称、`description`、典型 Query 样本向量化，按余弦相似度取 top-5。 | 少量候选 Skill             |
-| 精排   | 比较名称、描述、示例的命中情况；安全、数据库等高风险 Skill 使用更高阈值。           | 按相关性和风险排序的候选   |
-| 决策   | 最高分满足阈值则加载对应 Skill；分数整体偏低时不加载任何 Skill，走默认流程。        | 一个、多个或零个已选 Skill |
+| Stage             | Input and processing                                                                                                                      | Output                                  |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| Initial retrieval | Embed the request and Skill names, `description` fields, and example queries; select the top five by cosine similarity.                   | A small set of candidate Skills         |
+| Reranking         | Compare matches in names, descriptions, and examples. Use higher thresholds for high-risk Skills such as security or database operations. | Candidates ranked by relevance and risk |
+| Decision          | Load a Skill if its top score meets the threshold. If all scores are low, load none and use the default workflow.                         | One, multiple, or no selected Skills    |
 
-同一请求中包含互不依赖的任务时，先拆分任务再路由。例如“分析 GC 日志并改一份部署文档”至少涉及 JVM 诊断和文档编辑，不能用一个泛化 Skill 覆盖两条流程。
+If one request contains independent tasks, decompose it before routing. For example, “Analyze the GC log and edit a deployment document” requires at least JVM diagnostics and document editing; one generic Skill should not cover both workflows.
 
-对“频繁 Full GC”这类请求，粗召回可能得到 `jvm-metrics-analyzer`、链路追踪和 K8s 事件查看三个候选；精排检查“Full GC”“堆栈”等示例后，JVM 诊断 Skill 排在首位。若请求只写“帮我处理一下”，没有足够的语义线索，路由器应保留默认流程，而不是猜测用户要做数据库迁移或生产操作。
+For a request about “frequent Full GC,” initial retrieval might return `jvm-metrics-analyzer`, distributed tracing, and K8s event inspection. Reranking checks examples such as “Full GC” and “stack trace,” placing the JVM diagnostics Skill first. If the request only says “help me handle this” and has too little semantic detail, keep the default workflow instead of guessing that the user wants a database migration or production operation.
 
-![Skill 路由流程](../images/shared/skills-router.svg)
+![Skill routing](../images/shared/skills-router.svg)
 
-新 Skill 没有历史 Query 时，`description` 过于抽象会拉低召回质量。[Agent Skills 规范](https://agentskills.io/specification)没有规定通用的 `triggers` frontmatter 字段，各宿主也不保证读取自定义字段。自行维护调度器时，把典型 Query 放进独立的路由索引：
+When a new Skill has no historical queries, an abstract `description` can hurt retrieval quality. The [Agent Skills specification](https://agentskills.io/specification) does not define a standard `triggers` frontmatter field, and hosts are not required to read custom fields. If you maintain your own router, store representative queries in a separate routing index:
 
 ```yaml
 skill: jvm-runtime-diagnosis
 examples:
-  - "接口卡死了"
-  - "频繁 Full GC"
-  - "帮我看看这段 Java 堆栈"
-  - "服务 OOM 了怎么排查"
+  - "The endpoint is hanging"
+  - "Frequent Full GC"
+  - "Can you inspect this Java stack trace?"
+  - "How do I troubleshoot a service OOM?"
 ```
 
-自定义路由器将 `examples` 与 Skill 的 `name`、`description` 一起向量化。使用第三方宿主时，只使用它明确支持的字段；不要把这份路由索引写进所有 `SKILL.md`，更不要假设每个宿主都会读取它。
+A custom router embeds `examples` together with the Skill's `name` and `description`. When using a third-party host, use only fields it explicitly supports. Do not copy this routing index into every `SKILL.md` or assume every host reads it.
 
-几十个 Skill 用 NumPy 在内存中计算相似度即可，耗时通常来自外部 embedding API。先缓存 Query 向量；数量增长到数百或数千后，再评估 ANN 索引或向量数据库。
+For dozens of Skills, NumPy can calculate similarity in memory; most latency usually comes from the external embedding API. Cache query vectors first. Consider an ANN index or vector database only when the number of Skills reaches hundreds or thousands.
 
-通用调度器可拆成四个部分：
+A general router can be divided into four components:
 
-| 部分         | 职责                                         |
-| ------------ | -------------------------------------------- |
-| 注册中心     | 保存 Skill 元数据、路由索引和向量。          |
-| 路由引擎     | 召回候选、计算分数并应用阈值。               |
-| 加载器       | 按路由结果读取 `SKILL.md` 与必要的参考资料。 |
-| 上下文装配器 | 将已加载的内容放入对应任务的上下文。         |
+| Component       | Responsibility                                                    |
+| --------------- | ----------------------------------------------------------------- |
+| Registry        | Store Skill metadata, routing examples, and vectors.              |
+| Router          | Retrieve candidates, score them, and apply thresholds.            |
+| Loader          | Read `SKILL.md` and required references based on routing results. |
+| Context builder | Add loaded content to the context for the corresponding task.     |
 
-路由引擎不负责读取 Skill 正文，加载器也不参与打分。这样更新正文不会改变召回结果，更换向量存储也无需改动加载逻辑。
+The router does not read Skill bodies, and the loader does not score candidates. Updating a Skill body therefore does not change retrieval results, and changing the vector store does not require changes to loading logic.
 
-## 写 Skill 时容易踩的坑
+## Common Mistakes When Writing Skills
 
-### 把 Skill 当项目 README 写
+### Writing a Skill Like a Project README
 
-README 记录项目背景、安装和功能，读者可以自行判断下一步。Agent 执行任务时需要的是可操作的边界：何时使用、按什么顺序执行、哪些情况停止以及失败后如何处理。
+A README documents project background, installation, and features; readers can decide what to do next. An agent needs actionable boundaries: when to use the Skill, what order to follow, when to stop, and how to handle failures.
 
-![SKILL.md 正文最好控制在 500 行以内](../images/shared/keep-skill-md-content-under-500-lines-for-best-performance.png)
+![Keep the SKILL.md body under 500 lines where possible](../images/shared/keep-skill-md-content-under-500-lines-for-best-performance.png)
 
-### 想把一个 Skill 写得太全
+### Trying to Put Too Much in One Skill
 
-把 JVM、数据库、K8s、网关和消息队列都放进一个“系统故障排查器”后，用户贴 GC 日志时，Agent 仍要在容器资源、网关日志和 JVM 规则间选择。按问题边界拆分后，输入能直接落到对应资料：
+If one “system troubleshooting” Skill covers JVMs, databases, K8s, gateways, and message queues, an agent receiving a GC log still has to choose among container resources, gateway logs, and JVM rules. Split Skills by problem boundaries so each input maps directly to the relevant material:
 
-- `jvm-metrics-analyzer`：只看 JVM 指标、GC、线程栈
-- `distributed-trace-finder`：只根据 TraceId 追链路耗时
-- `k8s-pod-event-viewer`：只看 Pod 状态、重启原因和事件记录
+- `jvm-metrics-analyzer`: Handles JVM metrics, GC, and thread dumps.
+- `distributed-trace-finder`: Traces latency using a TraceId.
+- `k8s-pod-event-viewer`: Inspects Pod status, restart causes, and event records.
 
-GC 日志进入 JVM 指标 Skill，TraceId 进入链路追踪 Skill，Pod 重启进入 K8s 事件 Skill。每个 Skill 只维护一类问题所需的规则和资料。
+Route GC logs to the JVM metrics Skill, TraceIds to the distributed tracing Skill, and Pod restarts to the K8s events Skill. Each Skill then maintains only the rules and material needed for one type of problem.
 
-### 给 Agent 太多选择
+### Giving the Agent Too Many Choices
 
-只罗列 pypdf、pdfplumber、PyMuPDF、pdf2image，Agent 无法判断普通 PDF 与扫描版 PDF 分别该走哪条路径，可能在文本 PDF 上误用 OCR：
+If you only list pypdf, pdfplumber, PyMuPDF, and pdf2image, the agent may not know which path to use for a regular PDF versus a scanned one, and may run OCR on a text PDF:
 
 ```markdown
-# ✗ 不推荐：选择太多
+# ✗ Avoid: too many choices
 
-你可以使用 pypdf、pdfplumber、PyMuPDF 或 pdf2image 处理 PDF。
+You can use pypdf, pdfplumber, PyMuPDF, or pdf2image to process PDFs.
 ```
 
-默认路径与例外条件应一起写出：
+State the default path and exception together:
 
 ```markdown
-# ✓ 推荐：默认方案 + 兜底方案
+# ✓ Recommended: default and fallback
 
-默认使用 pdfplumber 提取文本。
-如果是扫描版 PDF，需要 OCR，再改用 pdf2image + pytesseract。
+Use pdfplumber for text extraction by default.
+For a scanned PDF, use OCR with pdf2image and pytesseract.
 ```
 
-Skill 应给出正常条件下的默认选择，并明确切换条件。
+A Skill should define the default for common cases and specify when to switch approaches.
 
-### 术语别来回换
+### Keep Terminology Consistent
 
-同一对象在一份 Skill 中应保持同一个名称。例如前文使用“API 端点”后，后文不再改写为 URL、API 路由或路径。判断条件引用术语时，名称不一致会制造歧义。
+Use one name for each concept throughout a Skill. For example, if you call something an “API endpoint” earlier, do not later rename it as a URL, API route, or path. Inconsistent terms can make conditions ambiguous.
 
-### 让 LLM 做确定性工作
+### Asking an LLM to Do Deterministic Work
 
-格式转换、精确计算、批量文件处理和改数据的操作交给脚本执行：
+Use scripts for format conversion, exact calculations, bulk file processing, and data changes:
 
-- LLM 更适合做判断：读懂任务、提取参数、决定下一步、解释结果。
-- 脚本更适合做执行：解析文件、转换格式、批量处理、校验输出。
+- LLMs are better at judgment: understanding a task, extracting parameters, choosing the next step, and explaining results.
+- Scripts are better at execution: parsing files, converting formats, processing batches, and validating output.
 
-读取必需输入文件时，脚本应返回明确错误，而不是创建空文件掩盖输入缺失：
+When reading a required input file, the script should return a clear error instead of creating an empty file that hides the missing input:
 
 ```python
-# ✓ 推荐：错误条件写清楚
+# ✓ Recommended: make the error condition explicit
 def process_file(path):
     try:
         with open(path, encoding="utf-8") as f:
             return f.read()
     except FileNotFoundError as exc:
         raise FileNotFoundError(
-            f"必需输入文件不存在：{path}。请检查路径或先生成该文件。"
+            f"Required input file does not exist: {path}. Check the path or generate the file first."
         ) from exc
 ```
 
-下列写法只保留底层异常，Agent 无法据此判断该检查路径还是生成缺失文件：
+The following example exposes only the low-level exception, so the agent cannot tell whether to check the path or generate the missing file:
 
 ```python
-# ✗ 不推荐：直接崩，Agent 只能猜原因
+# ✗ Avoid: the agent must guess what caused the failure
 def process_file(path):
     return open(path).read()
 ```
 
-配置参数应说明取值的约束：
+Document constraints for configuration values:
 
 ```markdown
-# ✓ 推荐：能看出为什么这样配
+# ✓ Recommended: explain the values
 
-REQUEST_TIMEOUT = 30 # HTTP 请求通常应在 30 秒内完成
-MAX_RETRIES = 3 # 三次重试在可靠性和耗时之间比较均衡
+REQUEST_TIMEOUT = 30 # HTTP requests should usually complete within 30 seconds
+MAX_RETRIES = 3 # Three retries balance reliability and latency
 ```
 
-## 总结
+## Summary
 
-回到开头的代码审查场景：Prompt 承载这次审查请求，Function Calling 发起工具调用，MCP 连接文件、数据库或 GitHub 等外部能力，Skill 保存审查的流程与约束。
+Returning to the code review example: the Prompt contains the current review request, Function Calling initiates tool calls, MCP connects to external capabilities such as files, databases, or GitHub, and the Skill stores the review procedure and constraints.
 
-`description` 要同时标出任务和触发场景，正文则放项目约定、执行步骤、失败处理和验证点。主文件保留主流程，细节拆到 `references/`、`scripts/`；迁移、部署、删文件等操作必须收紧步骤，审查和方案评估保留必要的判断空间。
+The `description` should state both the task and trigger scenario. The body contains project conventions, steps, failure handling, and validation points. Keep the main workflow in the primary file and move details into `references/` or `scripts/`. Use stricter steps for migrations, deployments, and file deletion; leave room for judgment in reviews and design evaluations.
 
-## 参考
+## References
 
-- Anthropic 官方 Skills 仓库：<https://github.com/anthropics/skills>
-- Anthropic 官方 skill-creator：<https://github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md>
+- Anthropic Skills repository: <https://github.com/anthropics/skills>
+- Anthropic skill-creator: <https://github.com/anthropics/skills/blob/main/skills/skill-creator/SKILL.md>
 - Superpowers：<https://github.com/obra/superpowers>
 - sanyuan-skills：<https://github.com/sanyuan0704/sanyuan-skills>
 - Everything Claude Code：<https://github.com/nicekid1/everything-claude-code>
-- skills.sh（查找现成 Skills 的平台）：<https://skills.sh/>
+- skills.sh (a directory for finding existing Skills): <https://skills.sh/>
 
 <!-- @include: @article-footer.snippet.md -->

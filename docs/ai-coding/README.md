@@ -1,5 +1,5 @@
 ---
-title: Practical AI Coding Guide: Claude Code, Cursor, Codex, Trae, and Interview Questions
+title: "Practical AI Coding Guide: Claude Code, Cursor, Codex, Trae, and Interview Questions"
 description: A practical guide to Claude Code, Cursor, OpenAI Codex, Trae, and oh-my-pi. Covers tool selection, context management, Claude Code internals, CLAUDE.md, Spec Coding, Skills, code review, and real project examples.
 category: AI Coding
 tag:
@@ -14,7 +14,7 @@ head:
       content: AI Coding,AI-Assisted Programming,AI Coding in Practice,AI Coding Tips,AI Coding Interview Questions,AI Coding Tools,Claude Code,Claude Code Guide,Claude Code Tips,Claude Code Internals,Claude Code Context Management,AutoCompact,CLAUDE.md,Claude Code Hooks,Auto Memory,Multi-Agent,Cursor,OpenAI Codex,Codex Best Practices,oh-my-pi,Trae,CLI vs IDE,Spec Coding,AI Skills,AI Code Review,drawio-chart,draw.io Technical Diagrams
   - - meta
     - property: og:title
-      content: Practical AI Coding Guide: Claude Code, Cursor, Codex, Trae, and Interview Questions
+      content: "Practical AI Coding Guide: Claude Code, Cursor, Codex, Trae, and Interview Questions"
   - - meta
     - property: og:description
       content: Practical experience with Claude Code, Cursor, OpenAI Codex, Trae, and oh-my-pi, including tool boundaries, context management, internal mechanisms, rule files, code review, and real project workflows.

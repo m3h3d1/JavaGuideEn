@@ -1,62 +1,62 @@
 ---
-title: Claude Code 核心命令详解：code-review、loop、goal、batch、run、verify
-description: 深入解析 Claude Code 核心命令，涵盖 /simplify、/code-review、/review、/loop、/goal、/batch、/run、/verify、/debug 等实用命令的使用方法与实战技巧。
-category: AI 编程技巧
+title: "Claude Code Commands: code-review, loop, goal, batch, run, and verify"
+description: A practical guide to Claude Code commands, including /simplify, /code-review, /review, /loop, /goal, /batch, /run, /verify, and /debug.
+category: AI Coding Techniques
 head:
   - - meta
     - name: keywords
-      content: Claude Code,命令,slash commands,/simplify,/code-review,/review,/loop,/goal,/batch,/run,/verify,/debug,AI编程,AI辅助开发
+      content: Claude Code,commands,slash commands,/simplify,/code-review,/review,/loop,/goal,/batch,/run,/verify,/debug,AI coding,AI-assisted development
 ---
 
-你好，我是小 G。Claude Code 里其实有不少好用的命令，例如代码审查、代码简化、定时任务，但我发现很多每天经常用的朋友并不知道，也不知道如何用。
+Hi, I'm Xiao G. Claude Code has several useful commands for code review, code cleanup, and scheduled tasks, but many regular users do not know they exist or how to use them.
 
-很多朋友认为用了 Cluade Code 直接对话就够了，不需要了解这些命令。但站在我用了这么久的角度来看，你了解一下肯定还是更好的。
+Some people think chatting with Claude Code is enough. After using it for a while, I have found that knowing these commands is still useful.
 
-当然了，了解不是说得死记硬背这些命令。你知道大概有这个东西就足够了！真需要用的时候，直接输入 `/`，再从命令列表里选即可。
+You do not need to memorize the commands. Just know they are available; when you need one, type `/` and select it from the list.
 
-> **版本说明**：本文按 Claude Code v2.1.218（2026-07-25）的官方文档和客户端行为整理。命令更新很快，最终以 `/help`、`/` 命令列表和官方 Commands 页面为准。
+> **Version note:** This article reflects the official documentation and client behavior for Claude Code v2.1.218 (2026-07-25). Commands change frequently; check `/help`, the `/` command list, and the official Commands page for the current behavior.
 
-## `/` 菜单里不只有内置命令
+## The `/` Menu Includes More Than Built-in Commands
 
-在 Claude Code 中输入 `/`，看到的是当前环境里所有可以直接调用的入口。除了 Claude Code 自带的内置命令，这里还会列出 Bundled Skills、用户自己编写的 Skills，以及插件和 MCP Server 提供的命令。具体能看到哪些条目，还会受版本、平台、套餐和当前环境影响。
+Typing `/` in Claude Code shows the available entry points in the current environment. Along with built-in commands, the menu lists Bundled Skills, user-created Skills, and commands provided by plugins and MCP servers. The entries vary by version, platform, plan, and environment.
 
-[官方 Commands 文档](https://code.claude.com/docs/en/commands)把大多数内置命令描述为“行为直接写在 CLI 中”的命令，例如 `/clear`、`/compact`、`/model`、`/diff`、`/context` 和 `/permissions`。[Bundled Skills](https://code.claude.com/docs/en/slash-commands#bundled-skills) 则基于 Prompt 工作：Claude 会加载对应指令，再调用工具或组织子代理完成任务。`/simplify`、`/batch`、`/debug`、`/loop`、`/run`、`/verify`、`/code-review` 和 `/claude-api` 都属于这一类。官方命令表会在这类条目后标注 `Skill`；少数会并行调度多个子代理并在后台运行的能力则标注为 `Workflow`。
+The [official Commands documentation](https://code.claude.com/docs/en/commands) describes most built-in commands as having behavior implemented directly in the CLI. Examples include `/clear`, `/compact`, `/model`, `/diff`, `/context`, and `/permissions`. [Bundled Skills](https://code.claude.com/docs/en/slash-commands#bundled-skills) work through Prompts: Claude loads the relevant instructions, then calls tools or coordinates subagents to complete the task. `/simplify`, `/batch`, `/debug`, `/loop`, `/run`, `/verify`, `/code-review`, and `/claude-api` belong to this category. The official command table labels these entries `Skill`; a few capabilities that schedule multiple subagents in parallel and run in the background are labeled `Workflow`.
 
-`/review` 是内置命令，用来对 GitHub Pull Request 做一次快速、只读的单轮审查；不带参数时会先列出可选的 Open PR。要检查当前 diff 的正确性问题和清理机会，使用 `/code-review`；要对 PR 做可调节强度的多 Agent 审查，可以执行 `/code-review <level> <PR 编号>`。需要云端深度审查时使用 `/code-review ultra`，`/ultrareview` 目前是它的别名。
+`/review` is a built-in command for a quick, read-only review of a GitHub Pull Request. Without arguments, it lists open PRs to choose from. Use `/code-review` to check the current diff for correctness issues and cleanup opportunities. To run a multi-Agent PR review at a chosen level, use `/code-review <level> <PR number>`. For an in-depth cloud review, use `/code-review ultra`; `/ultrareview` is currently an alias.
 
-## /simplify：代码简化与重构
+## `/simplify`: Code Cleanup and Refactoring
 
-一份改动已经能正常运行，但里面可能留着重复 helper、绕得过深的分支，或者放错层级的业务逻辑。这时再跑 `/simplify`。它会检查当前改动，并尝试应用清理类修复。
+Changes may work but still contain duplicate helpers, deeply nested branches, or business logic in the wrong layer. Run `/simplify` to review the changes and apply cleanup fixes.
 
-从 Claude Code v2.1.154 开始，官方把 `/simplify` 定位为 **cleanup-only review**。复用、简化、效率和抽象层级归它处理；逻辑 Bug 交给 `/code-review`。
+Since Claude Code v2.1.154, `/simplify` has been described as a **cleanup-only review**. Use it for reuse, simplification, efficiency, and abstraction level; use `/code-review` for logic bugs.
 
-### 它怎样处理一份改动
+### How It Reviews Changes
 
-不带参数时，`/simplify` 通常从 `git diff` 读取增量变更。工作区没有未提交修改时，它会转而检查最近一次 commit。也可以指定类名，例如 `/simplify MarketDataService`，让它把注意力放到整个文件。具体取值范围仍以当前版本的客户端行为为准。
+Without arguments, `/simplify` usually reads the incremental changes from `git diff`. If the working tree has no uncommitted changes, it checks the most recent commit instead. You can also specify a class, such as `/simplify MarketDataService`, to focus on a file. Check the current client behavior for the exact supported targets.
 
-拿到改动后，四个 Agent 会并行读取同一份 diff：
+Four Agents review the same diff in parallel:
 
 ```mermaid
 flowchart TB
-    Diff["git diff<br/>完整差异"] --> A1["Agent 1: Code Reuse<br/>看有没有重复造轮子"]
-    Diff --> A2["Agent 2: Simplification<br/>看能不能删复杂度"]
-    Diff --> A3["Agent 3: Efficiency<br/>看跑起来会不会卡"]
-    Diff --> A4["Agent 4: Abstraction Level<br/>看改动放的位置对不对"]
-    A1 --> Fix["Phase 3: 汇总发现<br/>应用清理类修复"]
+    Diff["git diff<br/>Full diff"] --> A1["Agent 1: Code Reuse<br/>Look for existing implementations"]
+    Diff --> A2["Agent 2: Simplification<br/>Look for unnecessary complexity"]
+    Diff --> A3["Agent 3: Efficiency<br/>Look for performance issues"]
+    Diff --> A4["Agent 4: Abstraction Level<br/>Check whether changes belong here"]
+    A1 --> Fix["Phase 3: Consolidate findings<br/>Apply cleanup fixes"]
     A2 --> Fix
     A3 --> Fix
     A4 --> Fix
 ```
 
-Code Reuse Agent 会先在项目里寻找现成实现。比如新写的 `requireNonBlank()` 与 `InputValidator.requireNonBlank()` 重复，它会建议复用后者。Simplification Agent 处理相似方法、冗余临时状态和过深分支；Efficiency Agent 会留意循环内重复创建对象、无必要的并发容器和重复计算。
+The Code Reuse Agent looks for existing implementations. For example, if a new `requireNonBlank()` duplicates `InputValidator.requireNonBlank()`, it may recommend reusing the existing method. The Simplification Agent looks for duplicate methods, unnecessary temporary state, and deeply nested branches. The Efficiency Agent checks for repeated object creation in loops, unnecessary concurrent collections, and repeated calculations.
 
-Abstraction Level Agent 关注代码放置位置。业务规则进入 Controller、通用校验散落在多个 Service、底层工具反向依赖业务对象，都属于这一类。四份结果返回后，Claude Code 会过滤误报并应用它判断为安全的清理。
+The Abstraction Level Agent checks where code belongs. Examples include business rules in a Controller, shared validation duplicated across Services, or low-level utilities depending on business objects. After receiving all four reports, Claude Code filters false positives and applies cleanup it considers safe.
 
-> **风险提示**：`/simplify` 会改代码，却不负责保证业务正确。事务、安全、并发和资金链路先跑 `/code-review` 或 `/security-review`，之后仍要检查 diff 并执行测试。
+> **Caution:** `/simplify` changes code but does not guarantee business correctness. For transactions, security, concurrency, or payment flows, run `/code-review` or `/security-review` first, then inspect the diff and run tests.
 
-### 指定关注方向
+### Specify a Focus
 
-参数里可以直接写关注方向：
+You can specify an area to focus on:
 
 ```bash
 /simplify duplicate helpers
@@ -65,48 +65,48 @@ Abstraction Level Agent 关注代码放置位置。业务规则进入 Controller
 /simplify MarketDataService
 ```
 
-已经知道问题大致落在哪个文件或哪类代码味道时，带参数比裸跑更容易得到有针对性的结果。
+If you already know the likely file or code smell, adding an argument can produce a more focused review.
 
-### 案例：Spring 事务失效
+### Example: A Spring Transaction That Does Not Roll Back
 
-这个案例来自早期 `/simplify` 行为，当时它会更积极地查 correctness bug。按现在的官方定位，这类问题更应该交给 `/code-review` 或 `/security-review`，再用 `/simplify` 做清理和重构。
+This example reflects earlier `/simplify` behavior, when it looked more actively for correctness bugs. Based on its current official description, this kind of issue should go to `/code-review` or `/security-review`, with `/simplify` used afterward for cleanup and refactoring.
 
-有一次我写了一个用户认证模块，自测通过就准备提交了。习惯性地先跑了一遍审查命令，它直接帮我找到了 6 个潜在问题，经过确认，确实都是实际存在的问题。
+I once finished a user authentication module and was ready to submit it after testing it myself. Out of habit, I ran a review command first. It found six potential issues, all of which turned out to be real.
 
-![直接运行 /simplify 命令](../images/shared/simplify-command-run.png)
+![Running the /simplify command](../images/shared/simplify-command-run.png)
 
-![扫描到的问题](../images/shared/simplify-issues-found.png)
+![Issues found by the scan](../images/shared/simplify-issues-found.png)
 
-其中一个问题落在 **Spring 事务失效** 上，多个审查视角都指向了同一处代码。
+One issue involved a **Spring transaction that did not roll back**, and multiple review perspectives pointed to the same code.
 
-`WatchlistService` 的外层方法先获取 Redis 分布式锁并做 double-check，再调用一个 `protected` 方法写数据库：
+The outer method in `WatchlistService` first acquires a Redis distributed lock and performs a double-check, then calls a `protected` method to write to the database:
 
 ```java
 public void initializeDefaultWatchlist(Long userId) {
-    // Redis 分布式锁 + double-check（幂等）
+    // Redis distributed lock + double-check (idempotency)
     // ...
-    doInitializeDefaultWatchlist(userId);  // 同一类内部调用
+    doInitializeDefaultWatchlist(userId);  // Internal call within the same class
     // ...
 }
 
 @Transactional(rollbackFor = Exception.class)
 protected void doInitializeDefaultWatchlist(Long userId) {
-    groupService.save(defaultGroup);        // INSERT 分组
-    stockService.saveBatch(initialStocks);  // INSERT 5 只股票
+    groupService.save(defaultGroup);        // Insert group
+    stockService.saveBatch(initialStocks);  // Insert five stocks
 }
 ```
 
-`@Transactional` 放在这个方法上没有解决事务问题。Spring 默认采用代理式 AOP，同一个类内部直接调用 `doInitializeDefaultWatchlist()` 会绕过代理，事务拦截器收不到这次调用。
+Adding `@Transactional` to this method does not solve the problem. Spring uses proxy-based AOP by default, and a direct call to `doInitializeDefaultWatchlist()` from within the same class bypasses the proxy. The transaction interceptor never receives the call.
 
-如果 `saveBatch` 中途抛出异常，`save` 已经写入的分组记录不会回滚，数据库里会留下一个没有股票的分组。
+If `saveBatch` throws an exception partway through, the group record already written by `save` is not rolled back, leaving a group with no stocks in the database.
 
-> **前提条件**：在 Spring 默认代理式 AOP 下，同类内部直接调用会绕过代理，`@Transactional` 不会生效；如果使用 AspectJ weaving 或通过代理对象调用，结论不同。
+> **Assumption:** With Spring's default proxy-based AOP, an internal call within the same class bypasses the proxy, so `@Transactional` does not take effect. The result differs with AspectJ weaving or a call through the proxy object.
 
-- **Quality / correctness 视角** 标记了自调用导致 `@Transactional` 失效，评为高严重性。
-- **Efficiency Agent** 排除了锁 TTL 不足的可能，把问题收敛到事务失效。
-- **Code Reuse Agent** 确认手写的分布式锁没有可复用替代，实现合理。
+- **Quality / correctness perspective** identified the self-invocation that bypassed `@Transactional` and rated it high severity.
+- The **Efficiency Agent** ruled out an insufficient lock TTL and narrowed the issue to the transaction.
+- The **Code Reuse Agent** confirmed that the custom distributed lock had no reusable alternative and was reasonable.
 
-当时给出的修复方案是把声明式事务换成**编程式事务**，用 `TransactionTemplate` 直接控制事务边界。其他修复方式包括：把事务方法移动到另一个 Spring Bean、通过代理对象调用、调整事务边界到外层 public 方法。
+The suggested fix was to replace the declarative transaction with a **programmatic transaction** using `TransactionTemplate` to control the transaction boundary. Other options include moving the transactional method to another Spring Bean, calling it through the proxy, or moving the transaction boundary to the outer public method.
 
 ```java
 @RequiredArgsConstructor
@@ -123,420 +123,420 @@ public class WatchlistService {
 }
 ```
 
-![开启优化](../images/shared/simplify-optimization-start.png)
+![Starting the optimization](../images/shared/simplify-optimization-start.png)
 
-![所有修改完成](../images/shared/simplify-all-fixes-done.png)
+![All changes completed](../images/shared/simplify-all-fixes-done.png)
 
-这次扫描还发现了另外 5 个问题，涵盖代码复用、安全性和效率：
+The scan found five more issues involving code reuse, security, and efficiency:
 
-| 发现                                                                                       | Agent                | 修复方式                                              |
-| ------------------------------------------------------------------------------------------ | -------------------- | ----------------------------------------------------- |
-| 两个 Controller 各自定义了 `requireNonBlank()`，和已有的 `InputValidator` 重复             | Reuse                | 删除私有方法，改用 `InputValidator.requireNonBlank()` |
-| 异常处理器的 regex 每次 `replaceAll` 都重新编译，且字符类不含 `+/=`，base64 token 会漏脱敏 | Quality + Efficiency | 提取为 `static final Pattern`，扩展字符类覆盖 base64  |
-| 用 `ConcurrentHashMap` + `@Scheduled` 手动清理 30 秒过期的 Ticket                          | Efficiency           | 替换为项目已有的 Caffeine 缓存（自带 TTL 淘汰）       |
-| `@Bean` 方法里的局部 `Map` 用了 `ConcurrentHashMap`                                        | Efficiency           | 改为 `HashMap`（单线程填充，不需要并发安全）          |
-| 注释笔误：“兖底” 应为 “兜底”                                                               | Quality              | 修正                                                  |
+| Finding                                                                                                                                     | Agent                | Fix                                                                               |
+| ------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | --------------------------------------------------------------------------------- |
+| Two Controllers each defined `requireNonBlank()`, duplicating the existing `InputValidator`                                                 | Reuse                | Remove the private methods and use `InputValidator.requireNonBlank()`             |
+| The exception handler recompiled a regex on every `replaceAll`; its character class omitted `+/=`, so Base64 tokens were not fully redacted | Quality + Efficiency | Extract a `static final Pattern` and include Base64 characters                    |
+| `ConcurrentHashMap` and `@Scheduled` manually cleaned up Tickets after 30 seconds                                                           | Efficiency           | Use the project's existing Caffeine cache with TTL expiration                     |
+| A local `Map` in a `@Bean` method used `ConcurrentHashMap`                                                                                  | Efficiency           | Use `HashMap`; a single thread populates it, so concurrency safety is unnecessary |
+| A comment misspelled the Chinese term for “fallback”                                                                                        | Quality              | Correct the spelling                                                              |
 
-最终结果：5 个文件修改，净减少 38 行代码，修复 6 个问题，编译一次通过。
+The final result: five files changed, 38 net lines removed, six issues fixed, and the project compiled successfully on the first attempt.
 
-### 案例：指定模块审查
+### Example: Review a Specific Module
 
-`/simplify` 还可以指定具体的类或模块做审查：
+You can also use `/simplify` to review a specific class or module:
 
-![直接审查具体的类](../images/shared/simplify-class-review.png)
+![Reviewing a specific class](../images/shared/simplify-class-review.png)
 
 ```bash
 /simplify MarketDataService
 ```
 
-我之前对项目的行情数据服务 `MarketDataService`（约 570 行）跑过一次专项审查。这个类聚合多个数据源，提供 Caffeine 本地缓存 + Redis 分布式缓存 + 熔断降级。当时的审查找到了 8 个问题，其中有两个高严重性的 correctness bug。按现在的命令定位，这类问题应该优先交给 `/code-review`。
+I once ran a focused review of `MarketDataService`, a roughly 570-line market-data service. It combines multiple data sources and provides a Caffeine local cache, Redis distributed cache, and circuit breaking with fallback. The review found eight issues, including two high-severity correctness bugs. Based on the current command descriptions, `/code-review` should handle this kind of issue first.
 
-**Bug：`year` 周期被静默降级为 `month`。** `normalizePeriod` 方法里有一个 switch：
+**Bug: The `year` interval was silently mapped to `month`.** The `normalizePeriod` method contains a switch:
 
 ```java
-case "year", "yearly", "y" -> "month";  // Bug！应该是 "year"
+case "year", "yearly", "y" -> "month";  // Bug: should be "year"
 ```
 
-其他周期都正确映射（`day → "day"`、`week → "week"`、`month → "month"`），唯独 `year` 被映射到了 `month`。调用方请求年度 K 线，实际拿到的是月度 K 线，没有任何报错或提示。
+The other intervals map correctly (`day → "day"`, `week → "week"`, `month → "month"`), but `year` maps to `month`. A caller requesting yearly candlestick data receives monthly data, with no error or warning.
 
-### 什么时候用 `/simplify`
+### When to Use `/simplify`
 
-提交 PR 前，或者刚完成一轮多文件重构，可以先用 `/code-review` 检查逻辑，再让 `/simplify` 清理重复实现和局部复杂度。它会结合项目现有代码给建议，例如改用已有 helper，或者把误放在 Controller 的业务逻辑移回 Service。
+Before submitting a PR or after a multi-file refactor, use `/code-review` to check the logic, then `/simplify` to remove duplicate implementations and local complexity. It can suggest reusing an existing helper or moving business logic from a Controller back to a Service.
 
-它不适合代替全项目审计。裸跑时主要检查当前增量；代码风格交给 formatter，正确性和安全问题则交给 `/code-review`、`/security-review` 与 SAST 工具。
+It is not a substitute for a full-project audit. Without arguments, it mainly checks the current diff. Use a formatter for code style, and `/code-review`, `/security-review`, or SAST tools for correctness and security issues.
 
-## /code-review 和 /review：代码审查
+## `/code-review` and `/review`: Code Review
 
-本地工作区有一份尚未提交的 diff，先用 `/code-review` 查正确性、边界条件和潜在 Bug。已经提交为 Pull Request，则用 `/review` 选择或指定 PR。涉及登录、支付、权限和上传等敏感模块时，还需要 `/security-review`。
+For an uncommitted local diff, use `/code-review` to check correctness, edge cases, and potential bugs. For an existing Pull Request, use `/review` to select or specify the PR. Sensitive areas such as login, payments, permissions, and uploads also need `/security-review`.
 
-`/simplify` 解决的是另一类问题：代码逻辑已经确认可用，还想继续清理重复、低效实现和抽象层级。常见顺序是先 `/code-review`，再 `/simplify`。
+`/simplify` addresses a different need: the logic is known to work, and you want to remove duplication, inefficient implementations, or misplaced abstractions. A common order is `/code-review` followed by `/simplify`.
 
-### `/code-review` 如何产出报告
+### How `/code-review` Produces a Report
 
-`/code-review` 先读取 `git diff` 或指定 PR 的变更，再并行分析并按置信度过滤结果。报告按 Critical、High、Medium、Low 分级，每条问题会指向具体行号，并附原因和修复建议。默认情况下它只报告；传入 `--fix` 后，才会尝试修改其中一部分问题。
+`/code-review` reads `git diff` or a specified PR, analyzes the changes in parallel, and filters findings by confidence. The report groups findings by Critical, High, Medium, and Low severity. Each finding points to a line and includes a reason and suggested fix. By default, the command only reports issues; pass `--fix` to let it try to fix some of them.
 
-### 怎么用
+### Usage
 
 ```bash
-/code-review high    # 只看高严重性问题
-/code-review --fix   # 审查并自动修复部分问题
-/code-review ultra   # 云端深度审查
+/code-review high    # Show only high-severity issues
+/code-review --fix   # Review and automatically fix some issues
+/code-review ultra   # In-depth cloud review
 ```
 
-如果要审查具体 PR，用 `/review`：
+Use `/review` to review a specific PR:
 
 ```bash
-/review              # 列出当前仓库的 Open PR，供你选择
-/review 123          # 审查指定 PR
+/review              # List open PRs in the current repository
+/review 123          # Review the specified PR
 ```
 
-文件级审查建议写成自然语言：比如“review src/auth/login.service.ts”。
+For a file-level review, use a natural-language request such as “review src/auth/login.service.ts”.
 
-报告出来后，可以继续输入“修复所有 Critical 问题”，让 Claude 按审查结果修改。
+After receiving the report, you can ask Claude to “fix all Critical issues” based on its findings.
 
-### /code-review、/review、/security-review 怎么选
+### Choosing Between `/code-review`, `/review`, and `/security-review`
 
-- 当前 diff 或本地变更：`/code-review`
-- 已经创建的 Pull Request：`/review 123`
-- 登录、支付、权限、上传、Webhook 等敏感模块：`/security-review`
-- 核心 PR 合并前需要更重的云端审查：`/code-review ultra`
+- Current diff or local changes: `/code-review`
+- Existing Pull Request: `/review 123`
+- Sensitive areas such as login, payments, permissions, uploads, and webhooks: `/security-review`
+- In-depth cloud review before merging a critical PR: `/code-review ultra`
 
-### /code-review ultra：云端深度审查
+### `/code-review ultra`: In-Depth Cloud Review
 
-`/code-review ultra` 把审查放到云端沙箱中，由多个 Agent 分析同一个 PR。它适合核心 PR 合并前再加一轮检查。旧命令 `/ultrareview` 仍然保留为别名，但当前官方更推荐 `/code-review ultra`。
+`/code-review ultra` runs the review in a cloud sandbox, where multiple Agents analyze the same PR. It can provide an additional check before merging a critical PR. The older `/ultrareview` command remains an alias, but the official recommendation is now `/code-review ultra`.
 
 ```bash
-/code-review ultra        # 深度审查当前 diff / PR 语境
-/code-review ultra 123    # 深度审查指定目标（具体支持以 /help 为准）
+/code-review ultra        # Deeply review the current diff or PR context
+/code-review ultra 123    # Deeply review the specified target (check /help for support)
 ```
 
-云端执行不依赖本地环境，代价是等待时间和 Token 消耗都会增加。官方目前仍将其标记为 research preview，功能与价格以官方文档和本地 `/help` 为准。
+Cloud execution does not depend on the local environment, but takes longer and uses more tokens. It is still marked as a research preview; check the official documentation and local `/help` for current features and pricing.
 
-### `/code-review` 和 `/simplify` 怎么排顺序
+### Ordering `/code-review` and `/simplify`
 
-对一份还不敢确认正确的改动，先跑 `/code-review`。等逻辑错误、边界条件和安全问题处理完，再用 `/simplify` 删除冗余代码。若只是刚写完原型，已经有测试证明行为没变，也可以直接让 `/simplify` 做一轮清理。
+If you are not sure a change is correct, run `/code-review` first. After fixing logic errors, edge cases, and security issues, use `/simplify` to remove redundant code. If you have just finished a prototype and tests confirm its behavior, you can run `/simplify` directly.
 
-### 实战案例
+### Example
 
-有一次我写了一个用户认证模块，自测通过就准备提交了。顺手跑了一遍 `/code-review`，它标出了三个问题：
+I once finished a user authentication module and was ready to submit it after testing it myself. I ran `/code-review` and it flagged three issues:
 
-**Critical：密码重置接口没做速率限制。** 攻击者可以无限次调用重置接口轰炸用户邮箱。这个我自己测试的时候根本想不到——测试环境只有我一个用户，哪来的速率限制需求。
+**Critical: The password-reset endpoint had no rate limit.** An attacker could call it repeatedly and flood a user's inbox. I had not considered this in my own testing; there was only one user in the test environment.
 
-**High：Token 过期时间从配置读取但没兜底。** 配置项没设的话，过期时间会变成 0，意味着 Token 一生成就过期。`/code-review` 建议加一个 `Math.max(config.tokenExpiry, 3600)` 做保底。
+**High: The Token expiration time came from configuration with no fallback.** If the setting was missing, the expiration time became 0, so each Token expired immediately. `/code-review` suggested a fallback such as `Math.max(config.tokenExpiry, 3600)`.
 
-**Medium：日志里把 userId 明文打印了。** 虽然不算敏感信息，但在合规要求严格的场景下还是脱敏比较好。
+**Medium: The logs printed `userId` in plaintext.** It may not be sensitive, but redaction is preferable in environments with strict compliance requirements.
 
-三个问题里有两个与安全性有关。单靠我当时的自测，密码重置频率和空配置这两种情况都没有覆盖到。
+Two of the three issues were security-related. My own tests had not covered repeated password-reset requests or missing configuration.
 
-### 不要用它替代静态检查
+### Do Not Use It as a Substitute for Static Analysis
 
-`/code-review` 默认只给建议，明确传入 `--fix` 才会改代码。它还会读取 `CLAUDE.md`：项目的编码规范、技术选型和安全要求写得越具体，审查时可用的项目约束就越多。
+By default, `/code-review` only provides suggestions; it modifies code only when you pass `--fix`. It also reads `CLAUDE.md`, so specific coding standards, technology choices, and security requirements give it more project context for the review.
 
-SonarQube 这类工具按规则稳定扫描，`/code-review` 则会结合上下文分析 Spring 代理、事务边界和权限链路。两者覆盖的问题不同，不能相互替代。
+Tools such as SonarQube scan consistently against defined rules. `/code-review` can use context to analyze Spring proxies, transaction boundaries, and authorization flows. They cover different issues and do not replace each other.
 
-## `/loop` 与 `/goal`：定时重复和完成条件
+## `/loop` and `/goal`: Recurring Tasks and Completion Criteria
 
-Boris Cherny 曾多次分享 `/loop` 的用法。
+Boris Cherny has shared examples of using `/loop` several times.
 
-![Claude Code 推荐使用 loop 命令](../../ai/images/shared/claudecode-father-loop.png)
+![Claude Code recommends the loop command](../../ai/images/shared/claudecode-father-loop.png)
 
-每隔半小时检查一次 PR，关注的是触发时间，用 `/loop`。现在开始修复失败测试，并持续做到全部通过，关注的是验收条件，用 `/goal`。
+Use `/loop` when the schedule matters, such as checking a PR every 30 minutes. Use `/goal` when the completion criteria matter, such as fixing failing tests until they all pass.
 
-`/loop` 创建当前会话中的重复任务；`/goal` 会立即开始工作，围绕完成条件连续规划、执行和验证。把迁移任务错交给 `/loop`，容易得到一个周期性运行、却没有明确停止点的任务。
+`/loop` creates a recurring task in the current session. `/goal` starts work immediately and keeps planning, acting, and verifying against a completion condition. Using `/loop` for a migration can create a recurring task with no clear stopping point.
 
-### 三种调度方案怎么选
+### Choosing Between the Three Scheduling Options
 
-当前可用的调度入口有 Cloud 任务、Desktop 任务和 `/loop`：
+The available scheduling options are Cloud tasks, Desktop tasks, and `/loop`:
 
-|                  | **Cloud 任务**     | **Desktop 任务** | **/loop**                                                                                                     |
-| ---------------- | ------------------ | ---------------- | ------------------------------------------------------------------------------------------------------------- |
-| 运行位置         | Anthropic 云端     | 你的机器         | 你的机器                                                                                                      |
-| 需要开机吗       | 不需要             | 需要             | 需要                                                                                                          |
-| 需要存活会话吗   | 不需要             | 不需要           | **需要，可保持前台或交给 supervisor 后台托管**                                                                |
-| 重启后还在吗     | 在                 | 在               | 会话级；关闭期间不会执行；使用 `--resume` / `--continue` 恢复同一会话时，7 天内未过期的 recurring task 可恢复 |
-| 能访问本地文件吗 | 不能（重新 clone） | 能               | 能                                                                                                            |
-| MCP 服务器       | 每个任务单独配置   | 配置文件和连接器 | 继承当前会话                                                                                                  |
-| 最小间隔         | 1 小时             | 1 分钟           | 1 分钟                                                                                                        |
+|                           | **Cloud tasks**     | **Desktop tasks**                     | **/loop**                                                                                                                     |
+| ------------------------- | ------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Runs on                   | Anthropic cloud     | Your machine                          | Your machine                                                                                                                  |
+| Requires machine to be on | No                  | Yes                                   | Yes                                                                                                                           |
+| Requires active session   | No                  | No                                    | **Yes; keep it in the foreground or run it under a supervisor**                                                               |
+| Survives restart          | Yes                 | Yes                                   | Session-scoped; does not run while closed; unexpired recurring tasks can resume within 7 days with `--resume` or `--continue` |
+| Can access local files    | No (clones again)   | Yes                                   | Yes                                                                                                                           |
+| MCP servers               | Configured per task | Configured in settings and connectors | Inherits the current session                                                                                                  |
+| Minimum interval          | 1 hour              | 1 minute                              | 1 minute                                                                                                                      |
 
-机器不能保持在线时，选 Cloud 任务。本地文件和 MCP 配置必须参与时，Desktop 任务更合适。`/loop` 留给当前会话里的临时轮询，不适合要求长期可靠执行的任务。
+Choose Cloud tasks when your machine cannot stay online. Desktop tasks are better when local files and MCP configuration are needed. Use `/loop` for temporary polling in the current session, not for work that must run reliably over the long term.
 
-### `/loop`：按间隔重复执行
+### `/loop`: Run at an Interval
 
-Prompt 里写清执行内容和间隔：
+Specify what to do and how often in the Prompt:
 
 ```bash
-/loop 30m "审查当前 diff，列出正确性问题"       # 每 30 分钟执行一次审查 Prompt
-/loop 1h "跑一遍单元测试，看看有没有失败的"  # 每小时检查测试
-/loop 5m "检查 GitHub 上开放的 PR 状态"    # 每 5 分钟看 PR 动态
+/loop 30m "Review the current diff for correctness issues"       # Run the review Prompt every 30 minutes
+/loop 1h "Run the unit tests and report failures"                # Check tests every hour
+/loop 5m "Check the status of open PRs on GitHub"                # Check PRs every 5 minutes
 ```
 
-不要写 `/loop 30m /code-review`。`/code-review` 禁止由模型调用，进入 recurring task 后只会被当成普通文本。需要定时审查时，直接描述要检查的内容，或者改用该环境允许调用的工具。
+Do not write `/loop 30m /code-review`. The model is not allowed to invoke `/code-review`, so a recurring task treats it as plain text. For scheduled reviews, describe what to check or use a tool that is allowed in that environment.
 
-间隔既可以放在前面，如 `/loop 30m 检查构建状态`；也可以写在 Prompt 后面，如 `/loop 检查构建状态 every 2 hours`。省略间隔后，Claude 会动态选择下一次执行时间，通常落在 1 分钟到 1 小时之间；Bedrock、Vertex AI、Microsoft Foundry 场景固定为 10 分钟。
+You can put the interval first, as in `/loop 30m check the build status`, or after the Prompt, as in `/loop check the build status every 2 hours`. If you omit the interval, Claude chooses the next run time dynamically, usually between 1 minute and 1 hour. On Bedrock, Vertex AI, and Microsoft Foundry, the interval is fixed at 10 minutes.
 
-### `/goal`：持续工作到验收条件满足
+### `/goal`: Work Until Completion Criteria Are Met
 
-需要“现在开始，持续修到测试通过”时使用 `/goal`。它会围绕完成条件持续规划、执行和验证；仍要写清停止条件、权限边界以及哪些情况必须停下来请人确认：
+Use `/goal` when you need Claude to “start now and keep fixing until the tests pass.” It continues planning, acting, and verifying against the completion criteria. Still specify when to stop, permission boundaries, and when it must ask for approval:
 
 ```bash
-/goal "修复 auth 模块里所有失败的单元测试，直到全部通过；涉及生产配置时停止并询问"
-/goal "把 src/legacy 下组件迁移到 Tailwind CSS，以现有视觉回归测试通过为完成条件"
-/goal "完成 ESM 迁移，以构建和测试全部通过为完成条件"
+/goal "Fix all failing unit tests in the auth module until they pass; stop and ask before changing production configuration"
+/goal "Migrate components under src/legacy to Tailwind CSS; finish when the existing visual regression tests pass"
+/goal "Complete the ESM migration; finish when the build and all tests pass"
 ```
 
-可执行的验收标准决定了 `/goal` 何时结束。付款、部署、删除数据、修改生产配置等高风险动作不能混进默认授权，应在 Prompt 中写明“停止并询问”。
+Clear, testable acceptance criteria determine when `/goal` finishes. High-risk actions such as payments, deployments, data deletion, and production configuration changes should not be implicitly authorized; state in the Prompt that Claude must stop and ask first.
 
-### 放到实际任务里
+### Applying These Commands to Real Tasks
 
-PR 状态、测试结果、文档同步都适合按时间检查。定时任务最好先保持只读，发现问题后汇报：
+PR status, test results, and documentation updates can be checked on a schedule. Keep scheduled tasks read-only at first and report any issues:
 
 ```bash
-/loop 5m "用 gh 命令检查开放 PR 的状态，标记有冲突的和可以安全合并的"
-/loop 2h "运行测试套件，汇报新增失败及相关提交，不修改代码"
-/loop 2h "检查最近的代码变更，更新对应的公开文档"
+/loop 5m "Use gh to check open PRs and flag conflicts or PRs that appear safe to merge"
+/loop 2h "Run the test suite and report new failures and related commits; do not modify code"
+/loop 2h "Check recent code changes and update the relevant public documentation"
 ```
 
-发现测试失败后，如果希望 Claude 立刻修复，再单独启动 `/goal`。大规模技术迁移也按同样方式处理，把构建和测试结果写成结束条件：
+If tests fail and you want Claude to fix them, start a separate `/goal`. Handle large migrations the same way: make build and test results the completion criteria.
 
 ```bash
-/goal "把项目里所有 CommonJS 的 require/module.exports 改成 ESM 的 import/export，以构建和测试全部通过为完成条件"
+/goal "Convert all CommonJS require/module.exports in the project to ESM import/export; finish when the build and all tests pass"
 ```
 
-项目里有多项固定检查时，可以把 `/loop` 命令收进自定义命令文件，启动项目后统一创建。
+If a project has several routine checks, add the `/loop` commands to a custom command file and create them together when starting the project.
 
-### 怎么管理任务
+### Managing Tasks
 
-任务创建后，可以直接用自然语言查询和停止：
+After creating a task, you can query or stop it in natural language:
 
 ```bash
-我现在有哪些定时任务？
-停掉那个检查部署的任务
+What scheduled tasks do I have?
+Stop the task that checks deployments.
 ```
 
-底层对应三个工具：
+These requests use three tools:
 
-| 工具         | 干什么                                                |
-| ------------ | ----------------------------------------------------- |
-| `CronCreate` | 创建任务，接收 cron 表达式、要执行的 prompt、是否循环 |
-| `CronList`   | 列出所有在跑的任务，显示 ID、调度时间、prompt         |
-| `CronDelete` | 按 ID 删任务                                          |
+| Tool         | Purpose                                                              |
+| ------------ | -------------------------------------------------------------------- |
+| `CronCreate` | Create a task with a cron expression, Prompt, and recurrence setting |
+| `CronList`   | List active tasks with their IDs, schedules, and Prompts             |
+| `CronDelete` | Delete a task by ID                                                  |
 
-### 运行限制
+### Runtime Limitations
 
-调度器每秒检查到期任务，但 Claude 忙于当前对话时不会立刻执行，任务会排队。Recurring Task 还有 jitter：当前最多延迟 30 分钟；间隔小于 1 小时时，延迟上限为半个 interval。要求精确到分钟的调度不要交给 `/loop`。
+The scheduler checks for due tasks every second, but tasks queue while Claude is busy with the current conversation. Recurring tasks also have jitter: runs may currently be delayed by up to 30 minutes, or by up to half the interval when the interval is under an hour. Do not use `/loop` when timing must be precise to the minute.
 
-循环任务创建 7 天后自动过期，并在删除前执行最后一次。它依赖当前 Session；Session 由 supervisor 托管时，关闭终端后仍能继续，否则关闭期间不会执行，也不会补跑。使用 `--resume` 或 `--continue` 恢复同一会话时，尚未过期的任务可以恢复。
+Recurring tasks expire automatically after seven days and run once more before deletion. They depend on the current session. A session managed by a supervisor can continue after the terminal closes; otherwise, tasks do not run or catch up while it is closed. Unexpired tasks can resume when you restore the same session with `--resume` or `--continue`.
 
-高频 `/loop` 和长时间 `/goal` 都会持续消耗 Token。关键路径先提交一份可回滚的版本，定时检查默认只汇报；`/goal` 还要写明验收标准、审批动作和无法继续时的退出方式。需要长期可靠运行时，改用 Cloud 或 Desktop Scheduled Tasks，不要把 `/loop` 当成 CI/CD。
+Frequent `/loop` tasks and long-running `/goal` tasks consume tokens continuously. Commit a recoverable version before working on critical paths, and make scheduled checks report issues without modifying anything by default. For `/goal`, specify acceptance criteria, approval requirements, and how to stop if blocked. Use Cloud or Desktop Scheduled Tasks for reliable long-term execution; `/loop` is not a CI/CD system.
 
-## /debug：排查 Claude Code 运行时问题
+## `/debug`: Diagnose Claude Code Runtime Issues
 
-MCP Server 连不上、Hook 没有触发、工具调用被拒绝，这些问题通常出在 Claude Code 的配置或当前会话。先用对应命令查看实际状态：`/mcp` 检查连接和授权，`/hooks` 查看已经载入的 Hook，`/permissions` 查看生效的权限规则及其来源。状态信息仍解释不了问题时，再运行 `/debug`。
+An unreachable MCP server, a Hook that did not run, or a rejected tool call often points to Claude Code configuration or the current session. Check the state first: use `/mcp` for connections and authorization, `/hooks` for loaded Hooks, and `/permissions` for effective permission rules and their sources. Run `/debug` if this information does not explain the problem.
 
-`/debug` 是一个 Bundled Skill。它会为当前会话启用调试日志，读取日志和相关设置路径，再根据你提供的描述分析原因：
+`/debug` is a Bundled Skill. It enables debug logging for the current session, reads the logs and relevant settings paths, and analyzes the issue you describe:
 
 ```bash
-/debug MCP Server 显示已连接，但没有可用工具
-/debug 为什么这个工具调用被权限规则拒绝
-/debug Hook 为什么没有触发
+/debug The MCP server shows as connected, but no tools are available
+/debug Why was this tool call blocked by a permission rule?
+/debug Why did the Hook not run?
 ```
 
-调试日志默认不会提前开启。如果启动 Claude Code 时没有传入 `--debug`，执行 `/debug` 后需要把问题再复现一次，它才能从新日志里找原因；执行前已经发生的错误不会被补记。MCP 初始化这类发生在启动阶段的问题，可以退出后用 `claude --debug "mcp"` 重新启动，拿到更完整的日志。
+Debug logging is not enabled in advance by default. If Claude Code was not started with `--debug`, reproduce the issue after running `/debug` so it can inspect new logs; earlier errors are not recorded retroactively. For startup issues such as MCP initialization, exit and restart with `claude --debug "mcp"` to collect more complete logs.
 
-`/debug` 解决的是 Claude Code 自身的运行和配置问题。业务代码的 Bug 仍然要用项目的调试器、应用日志和测试排查。
+`/debug` diagnoses Claude Code runtime and configuration issues. Use the project's debugger, application logs, and tests to investigate bugs in application code.
 
-## /run 和 /verify：把改动跑起来
+## `/run` and `/verify`: Run and Check Your Changes
 
-Claude Code v2.1.145+ 提供了 `/run` 和 `/verify` 两个 Bundled Skills。前者启动应用并观察结果，后者侧重构建与运行检查。
+Claude Code v2.1.145+ includes the `/run` and `/verify` Bundled Skills. `/run` starts the application and observes its behavior; `/verify` focuses on build and runtime checks.
 
-### /run：启动应用并观察
+### `/run`: Start and Observe the Application
 
 ```bash
 /run
 ```
 
-`/run` 会尝试识别项目的启动方式并拉起应用。改完登录逻辑后，可以让它启动服务，再检查登录流程是否按预期工作。
+`/run` tries to identify how to start the project and launch the application. After changing login logic, you can ask it to start the service and check whether the login flow works as expected.
 
-### /verify：构建或运行来验证改动
+### `/verify`: Validate Changes with a Build or Run
 
 ```bash
 /verify
 ```
 
-`/verify` 不要求完整走一遍交互流程，主要执行构建和运行检查，适合先排除编译错误与明显的运行时问题。
+`/verify` does not require a complete interactive walkthrough. It mainly runs build and runtime checks, making it useful for catching compilation errors and obvious runtime issues.
 
-### /run-skill-generator：记录项目的启动方式
+### `/run-skill-generator`: Record How to Start the Project
 
 ```bash
 /run-skill-generator
 ```
 
-Claude 通常会从 README、`package.json`、`Makefile` 等文件推断启动方式。多模块项目、特殊环境变量或自定义启动脚本容易让它判断错误。先运行一次 `/run-skill-generator`，确认并记录正确流程，后续 `/run` 和 `/verify` 会复用这份配置。
+Claude usually infers how to start a project from files such as `README`, `package.json`, and `Makefile`. It can get this wrong for multi-module projects, custom environment variables, or custom startup scripts. Run `/run-skill-generator` first to confirm and record the correct steps; `/run` and `/verify` can reuse that configuration.
 
-## /batch：多任务并行编排
+## `/batch`: Coordinate Multiple Tasks in Parallel
 
-`/batch` 适合一次交付多项、彼此相对独立的改动。这组需求同时涉及页面、组件、提示词管理和历史记录：
+Use `/batch` to deliver several relatively independent changes together. This example covers pages, components, Prompt management, and history:
 
 ```bash
-/batch  1、移除自选股界面，直接通过分析界面来管理，每一行股票的最右侧展示选项，支持删除和分组。
-  2、自选股提取一个组件、K线展示和讨论室都单独提取一个组件出来。
-  3、优化提示词管理，例如支持删除和重命名。
-  4、历史记录目前支持10条记录，这块的设计优化一下。
+/batch  1. Remove the watchlist page. Manage watchlists from the analysis page, with delete and grouping options at the end of each stock row.
+  2. Extract the watchlist, candlestick chart, and discussion room into separate components.
+  3. Improve Prompt management, including support for deletion and renaming.
+  4. Improve the history design, which currently supports 10 records.
 ```
 
-Claude 会先把需求拆成多个 Unit（工作单元），通常为 5～30 个，等你确认计划后再启动后台 Worker。每个 Worker 使用独立的 Git Worktree，分别修改对应模块，避免多个 Agent 直接写同一个工作区。
+Claude first splits the request into Units, usually 5 to 30, and starts background Workers after you confirm the plan. Each Worker uses its own Git Worktree to modify the relevant module, avoiding multiple Agents writing to the same working directory.
 
-![Claude Code 运行 /batch 命令](../images/shared/claudecode-batch-run.png)
+![Claude Code running the /batch command](../images/shared/claudecode-batch-run.png)
 
-Worker 完成后，主进程会逐个检查改动，每个单元通常对应一个独立 PR。
+After the Workers finish, the main process reviews the changes one by one. Each Unit usually corresponds to a separate PR.
 
-> **风险提示**：`/batch` 适合边界清晰、模块相对独立的大任务；不适合强耦合核心链路一次性大改。共享文件（如 package.json、路由表、公共类型、数据库迁移脚本）容易冲突。使用前建议先 commit 干净工作区。
+> **Caution:** `/batch` suits large tasks with clear boundaries and relatively independent modules. It is not a good fit for a single large change to a tightly coupled critical flow. Shared files such as `package.json`, route tables, common types, and database migrations can conflict. Commit a clean working tree before using it.
 
-![Claude Code 合并改动](../images/shared/claudecode-batch-create-pr.png)
+![Claude Code merging changes](../images/shared/claudecode-batch-create-pr.png)
 
-## 执行前后的辅助命令
+## Commands to Use Before and After Changes
 
-`/context`、`/permissions` 和 `/diff` 分别回答三个问题：当前上下文还剩多少，Claude 被允许执行哪些操作，它刚才实际修改了什么。
+`/context`, `/permissions`, and `/diff` answer three questions: how much context remains, which actions Claude is allowed to take, and what it actually changed.
 
-### 长会话先看 /context
+### Check `/context` During Long Sessions
 
-长任务开始遗漏约束或重复读取文件时，先检查上下文占用：
+If a long task starts missing constraints or rereading files, check context usage first:
 
 ```bash
 /context
 ```
 
-`/context` 会列出工具输出、历史对话和规则文件占用的空间。如果当前会话仍值得继续，再带着保留要求执行 `/compact`：
+`/context` lists the space used by tool output, conversation history, and rules files. If you want to continue the current session, specify what to preserve when you run `/compact`:
 
 ```bash
-/compact 只保留当前重构目标、已完成改动、剩余 TODO、关键约束
+/compact Keep only the current refactoring goal, completed changes, remaining TODOs, and key constraints
 ```
 
-裸跑 `/compact` 容易把仍在使用的约束一起压缩。示例中明确保留重构目标、已完成改动、剩余 TODO 和关键约束，后续更容易接着做。
+Running `/compact` without instructions may compress constraints that are still needed. The example explicitly preserves the refactoring goal, completed changes, remaining TODOs, and key constraints so you can continue more easily.
 
-### 自动化任务前先收紧 /permissions
+### Tighten `/permissions` Before Automated Tasks
 
-`/loop`、`/goal` 和 `/batch` 会让 Claude 在较长时间内持续执行。开始前运行：
+`/loop`, `/goal`, and `/batch` can keep Claude working for an extended period. Before starting, run:
 
 ```bash
 /permissions
 ```
 
-这个交互界面会列出当前生效的权限规则，以及每条规则来自哪个配置文件。规则分为三类：
+This interactive view lists the active permission rules and the configuration file each rule came from. Rules fall into three categories:
 
-- `allow`：匹配后直接执行，不再询问。
-- `ask`：每次匹配时都请求确认。
-- `deny`：直接阻止操作。
+- `allow`: Run a matching action without asking.
+- `ask`: Request confirmation for each matching action.
+- `deny`: Block the action.
 
-规则按照 `deny → ask → allow` 的顺序匹配，`deny` 的优先级最高。构建、测试等确定且低风险的操作可以按需加入 `allow`；推送远程分支、执行部署脚本等动作更适合设为 `ask`；生产数据库写入和任务范围外的破坏性操作则应设为 `deny`。
+Rules are checked in the order `deny → ask → allow`, with `deny` taking priority. Predictable, low-risk actions such as builds and tests can be added to `allow` when appropriate. Set actions such as pushing a remote branch or running a deployment script to `ask`. Production database writes and destructive actions outside the task scope should be `deny`.
 
-权限由 Claude Code 客户端执行，不依赖模型是否记得你的要求。因此，“不要部署”这类 Prompt 只能作为行为提醒；必须禁止的操作，应落实为 `deny` 规则或 PreToolUse Hook。
+Permissions are enforced by the Claude Code client, not by whether the model remembers your instructions. A Prompt such as “do not deploy” is only a reminder; use a `deny` rule or PreToolUse Hook to prohibit an action.
 
-### 改完先看 /diff
+### Review `/diff` After Changes
 
-Claude 的文字总结可能漏掉顺手修改的文件。执行：
+Claude's written summary may omit files it changed along the way. Run:
 
 ```bash
 /diff
 ```
 
-交互式 diff viewer 会展示工作区里真实变化的文件和行。`/simplify`、`/batch` 跑完后，以这里的改动为准，再决定保留、继续修改还是回滚。
+The interactive diff viewer shows the files and lines actually changed in the working tree. After `/simplify` or `/batch`, use this diff to decide what to keep, change further, or revert.
 
-另外，`/statusline` 可以把模型、目录、上下文和成本常驻显示在状态栏；长任务前后用 `/usage` 或 `/cost` 查看消耗即可。
+`/statusline` can keep the model, directory, context, and cost visible in the status line. Use `/usage` or `/cost` to check consumption before and after a long task.
 
-## 按任务规模组合命令
+## Combine Commands Based on Task Size
 
-普通功能改动不需要把所有命令跑一遍。先用 `/code-review` 检查当前 diff；确认逻辑后执行 `/simplify`；接着用 `/verify` 跑构建和必要的运行检查，最后通过 `/diff` 人工确认。
+You do not need every command for a routine feature change. Run `/code-review` on the current diff; after confirming the logic, run `/simplify`; then use `/verify` for the build and any necessary runtime checks. Finally, inspect the changes with `/diff`.
 
-多模块需求才考虑 `/batch`。开始前检查 `/permissions`，各个 Worker 完成后分别审查；敏感模块追加 `/security-review`，形成 PR 后再用 `/review` 做合并前检查。
+Consider `/batch` for work across multiple modules. Check `/permissions` first, review each Worker’s changes, and add `/security-review` for sensitive modules. Once there is a PR, use `/review` for a pre-merge check.
 
-`/loop` 和 `/goal` 也不属于固定流水线。前者只处理周期性检查，后者处理有明确验收条件的连续任务。会话变长时再看 `/context`，必要时带保留范围执行 `/compact`。
+`/loop` and `/goal` are not part of a fixed workflow. Use the former for recurring checks and the latter for ongoing tasks with clear completion criteria. Check `/context` when a session grows long, and use `/compact` with explicit preservation instructions if needed.
 
-## 非交互模式：脚本和 CI 里用 Claude Code
+## Non-interactive Mode: Use Claude Code in Scripts and CI
 
-脚本和 CI 通常只需要执行一次 Prompt，拿到结果后退出，不必保持交互会话。
+Scripts and CI usually need to run a Prompt once, return the result, and exit; they do not need an interactive session.
 
-### `claude -p`：非交互模式
+### `claude -p`: Non-interactive Mode
 
 ```bash
 claude -p "summarize this diff" --output-format json
 ```
 
-`-p` 接收 Prompt 并在执行后直接输出结果。加上 `--output-format json`，脚本可以直接解析结构化响应。
+`-p` accepts a Prompt and prints the result when execution finishes. Add `--output-format json` so scripts can parse the structured response.
 
-### `--bare`：跳过自动加载
+### `--bare`: Skip Automatic Loading
 
-一次性分析不依赖 Hooks、Skills、MCP、Auto Memory 和 `CLAUDE.md` 时，可以加 `--bare`：
+For a one-off analysis that does not need Hooks, Skills, MCP, Auto Memory, or `CLAUDE.md`, use `--bare`:
 
 ```bash
 claude --bare -p "explain this function"
 ```
 
-`--bare` 少了自动加载过程，启动更快，同时也拿不到这些项目上下文，不适合复杂代码修改。
+`--bare` skips automatic loading, which speeds up startup but also removes this project context. It is not suitable for complex code changes.
 
-### `--teleport`：网页端会话拉回本地
+### `--teleport`: Continue a Web Session Locally
 
 ```bash
 claude --teleport
 ```
 
-Claude Code on the web 中的任务需要访问本地仓库或命令行时，可以用 `--teleport` 把网页会话接到本地终端继续处理。
+If a task in Claude Code on the web needs access to a local repository or command line, use `--teleport` to continue the web session in a local terminal.
 
-## 附录：Claude Code 接入第三方模型
+## Appendix: Connect Claude Code to Third-party Models
 
-部分服务商提供 Anthropic API 兼容端点，Claude Code 因而可以连接 MiniMax、GLM 等第三方模型。这里要求的是 Anthropic API 兼容性，工具调用、流式响应和长上下文等能力还要逐项验证。接入前还需确认服务条款、数据处理位置与密钥保存方式，来源不明的代理不要使用。
+Some providers offer Anthropic API-compatible endpoints, allowing Claude Code to connect to third-party models such as MiniMax and GLM. Anthropic API compatibility is required, but tool use, streaming, long-context support, and other capabilities must still be verified individually. Before connecting, check the terms of service, data processing location, and API key storage. Avoid proxies from unknown sources.
 
-### 1. 获取 API Key
+### 1. Get an API Key
 
-- MiniMax 开放平台：[https://platform.minimaxi.com/user-center/basic-information/interface-key](https://platform.minimaxi.com/user-center/basic-information/interface-key)
-- GLM 开放平台：[https://www.bigmodel.cn/usercenter/proj-mgmt/apikeys](https://www.bigmodel.cn/usercenter/proj-mgmt/apikeys)
+- MiniMax platform: [API key](https://platform.minimaxi.com/user-center/basic-information/interface-key)
+- GLM platform: [API keys](https://www.bigmodel.cn/usercenter/proj-mgmt/apikeys)
 
-![MiniMax Key 获取](../images/shared/minimax-key.webp)
+![Get a MiniMax API key](../images/shared/minimax-key.webp)
 
-![GLM Key 获取](../images/shared/glm-key.png)
+![Get a GLM API key](../images/shared/glm-key.png)
 
-### 2. 使用供应商配置工具
+### 2. Use a Provider Configuration Tool
 
-**CC Switch** 是一个社区配置管理工具，可以管理 Claude Code 供应商配置、Skills、MCP 和提示词。是否采用取决于团队对第三方工具、密钥存储和代理日志的安全要求。
+**CC Switch** is a community configuration manager for Claude Code providers, Skills, MCP, and Prompts. Whether to use it depends on your team's security requirements for third-party tools, API key storage, and proxy logs.
 
-项目地址：[https://github.com/farion1231/cc-switch](https://github.com/farion1231/cc-switch)
+Project: [https://github.com/farion1231/cc-switch](https://github.com/farion1231/cc-switch)
 
-![CC Switch 主界面](../images/shared/cc-switch-main-interface.png)
+![CC Switch main interface](../images/shared/cc-switch-main-interface.png)
 
-启动 CC Switch，点击右上角的 `+`，选择预设的 MiniMax/GLM 供应商，填写 API Key 和模型后添加。
+Open CC Switch, click `+` in the top-right corner, select a preset MiniMax or GLM provider, enter the API key and model, then add it.
 
-![CC Switch 配置 MiniMax/GLM API Key](../images/shared/cc-switch-add-provider.png)
+![Configure a MiniMax or GLM API key in CC Switch](../images/shared/cc-switch-add-provider.png)
 
-![CC Switch 配置模型](../images/shared/cc-switch-model-config.png)
+![Configure a model in CC Switch](../images/shared/cc-switch-model-config.png)
 
-### 3. 验证是否生效
+### 3. Verify the Configuration
 
-在任意目录下输入 `claude` 命令即可启动 Claude Code，选择**信任此文件夹（Trust This Folder）**。
+Run `claude` from any directory to start Claude Code, then select **Trust This Folder**.
 
-![验证是否生效](../images/shared/claude-code-trust-folder.png)
+![Verify the configuration](../images/shared/claude-code-trust-folder.png)
 
-### 4. 接入验证清单
+### 4. Integration Checklist
 
-对话成功只能证明基础请求可用。Claude Code 还依赖工具调用和多步执行，建议在测试仓库逐项验证：
+Successful chat only confirms that basic requests work. Claude Code also relies on tool use and multi-step execution, so verify each item in a test repository:
 
-- [ ] 是否能稳定 stream 输出
-- [ ] 是否能调用 Bash / Read / Edit / Write
-- [ ] 是否能跑 subagent
-- [ ] 是否能处理长上下文和压缩
-- [ ] 是否支持 MCP 工具调用
-- [ ] 是否能完成真实项目的“改代码 → 跑测试 → 修复”闭环
+- [ ] Can it stream output reliably?
+- [ ] Can it call Bash / Read / Edit / Write?
+- [ ] Can it run subagents?
+- [ ] Can it handle long contexts and compaction?
+- [ ] Does it support MCP tool calls?
+- [ ] Can it complete a real project cycle of “change code → run tests → fix issues”?
 
-## 几组命令怎么选
+## Choosing Between Command Groups
 
-`/code-review` 检查当前 diff，`/review` 检查已经创建的 PR。逻辑确认后仍有重复和复杂代码，再运行 `/simplify`。
+Use `/code-review` for the current diff and `/review` for an existing PR. After confirming the logic, run `/simplify` if duplicate or complex code remains.
 
-`/loop` 按时间间隔触发，`/goal` 围绕验收条件持续执行。前者适合定时检查，后者适合修复失败测试或完成技术迁移。
+`/loop` runs at a time interval, while `/goal` continues until its completion criteria are met. Use the former for scheduled checks and the latter to fix failing tests or complete a migration.
 
-`/run` 用来启动应用并观察实际行为，`/verify` 先做构建和运行检查。复杂项目先让 `/run-skill-generator` 记录正确的启动方式。
+Use `/run` to start the application and observe its behavior. `/verify` runs build and runtime checks. For complex projects, use `/run-skill-generator` to record the correct startup process first.
 
-`/batch`、`/simplify`、`/goal` 都可能带来较大范围的修改。执行前检查 `/permissions`，执行后看 `/diff`、跑测试。会话过长时，先用 `/context` 找出占用来源，再决定是否执行 `/compact`。
+`/batch`, `/simplify`, and `/goal` can make broad changes. Check `/permissions` first, then inspect `/diff` and run tests afterward. If the session gets too long, use `/context` to identify what is using space before deciding whether to run `/compact`.
 
-## 参考资料
+## References
 
 - [Claude Code commands](https://code.claude.com/docs/en/commands)
 - [Claude Code CLI reference](https://code.claude.com/docs/en/cli-usage)

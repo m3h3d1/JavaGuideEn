@@ -1,5 +1,5 @@
 ---
-title: Using Claude Code and Codex in IDEA: A CC GUI Guide
+title: "Using Claude Code and Codex in IDEA: A CC GUI Guide"
 description: CC GUI is an open-source JetBrains plugin that provides a visual interface for Claude Code and OpenAI Codex. This guide covers installation, authentication, diffs, agents, MCP, and the plugin's limitations, based on v0.4.7.
 category: AI Coding in Practice
 head:

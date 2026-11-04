@@ -1,59 +1,59 @@
 ---
-title: 技术书籍精选：Java、数据库、分布式系统、计算机基础与软件质量
-description: 后端技术书籍推荐与学习路线，精选 Java、数据库、分布式系统、计算机基础、搜索引擎和软件质量等方向，适合面试复习和工程能力提升。
-category: 计算机书籍
+title: "Recommended Technical Books: Java, Databases, Distributed Systems, Computer Science, and Software Quality"
+description: Recommended books and a learning path for backend developers, covering Java, databases, distributed systems, computer science, search engines, and software quality.
+category: Computer Science Books
 sitemap:
   changefreq: weekly
   priority: 0.9
 head:
   - - meta
     - name: keywords
-      content: 技术书籍推荐,计算机书籍,Java书籍,数据库书籍,分布式系统书籍,计算机基础书籍,软件质量书籍,程序员书单,后端书单
+      content: technical book recommendations,computer science books,Java books,database books,distributed systems books,computer science fundamentals books,software quality books,programmer reading list,backend reading list
 ---
 
 <!-- @include: @small-advertisement.snippet.md -->
 
-这份 **技术书籍精选** 面向程序员系统学习和长期成长，整理 Java、数据库、分布式系统、计算机基础、搜索引擎、软件质量等方向的优质书单。
+This **curated technical book list** is for programmers who want to study systematically and grow over time. It covers Java, databases, distributed systems, computer science fundamentals, search engines, and software quality.
 
-书单来自开源项目 [CodingDocs/awesome-cs](https://github.com/CodingDocs/awesome-cs)，会持续更新。欢迎在项目 [issues 区](https://github.com/CodingDocs/awesome-cs/issues) 推荐你认可的技术书籍，一起维护一个更高质量的中文技术书单。
+The list is based on the open-source project [CodingDocs/awesome-cs](https://github.com/CodingDocs/awesome-cs) and will be updated over time. Recommend technical books you value in the project's [issues](https://github.com/CodingDocs/awesome-cs/issues) to help maintain a high-quality reading list.
 
-## 适合谁看
+## Who Should Read These Books?
 
-- 想系统补基础，但不知道该读哪些书的程序员。
-- 准备校招、社招、中大厂后端面试的同学。
-- 希望从碎片化文章过渡到体系化学习的后端开发者。
-- 想提升架构、数据库、代码质量、工程协作能力的工程师。
+- Programmers who want to build their fundamentals systematically but are unsure which books to read.
+- Candidates preparing for new-graduate or experienced-hire backend interviews, including interviews at mid-sized and large companies.
+- Backend developers who want to move from reading scattered articles to structured study.
+- Engineers looking to improve their skills in architecture, databases, code quality, and engineering collaboration.
 
-## 学习重点
+## Study Tips
 
-- 书单不是越长越好，优先选择和当前阶段最匹配的一两本精读。
-- 计算机基础、Java、数据库是后端开发最常用的底层能力。
-- 分布式系统和搜索引擎适合在有一定工程经验后深入学习。
-- 软件质量类书籍适合用来提升代码可维护性、测试意识和团队协作能力。
-- 读书要结合项目、面试题和源码实践，否则容易停留在概念层面。
+- A longer reading list is not necessarily better. Start with one or two books that fit your current needs and study them carefully.
+- Computer science fundamentals, Java, and databases are core skills for backend development.
+- Study distributed systems and search engines in depth after gaining some engineering experience.
+- Books on software quality can help improve maintainability, testing practices, and teamwork.
+- Combine reading with projects, interview questions, and source code practice; otherwise, it is easy to stay at the conceptual level.
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [计算机基础书籍推荐](./cs-basics.md)：先补操作系统、网络、数据结构与算法等通用基础。
-2. [Java 书籍推荐](./java.md)：再系统学习 Java 基础、并发、JVM、框架和性能优化。
-3. [数据库书籍推荐](./database.md)：掌握 MySQL、Redis、NoSQL 和数据工程相关知识。
-4. [分布式系统书籍推荐](./distributed-system.md)：有项目经验后再深入分布式理论、架构和中间件。
-5. [软件质量书籍推荐](./software-quality.md)：用重构、测试、工程化和协作能力提升长期产出质量。
+1. [Computer Science Fundamentals](./cs-basics.md): Start with operating systems, networking, data structures, algorithms, and other fundamentals.
+2. [Java Books](./java.md): Study Java fundamentals, concurrency, the JVM, frameworks, and performance optimization.
+3. [Database Books](./database.md): Learn about MySQL, Redis, NoSQL, and data engineering.
+4. [Distributed Systems Books](./distributed-system.md): Study distributed systems theory, architecture, and middleware in depth after gaining project experience.
+5. [Software Quality Books](./software-quality.md): Improve long-term work quality through refactoring, testing, engineering practices, and collaboration.
 
-## 核心文章
+## Book Lists
 
-- [计算机基础书籍推荐](./cs-basics.md)：操作系统、计算机网络、数据结构与算法等基础书单，适合打底和面试复习。
-- [Java 书籍推荐](./java.md)：覆盖 Java 基础、并发、JVM、框架、性能优化等方向的经典书籍。
-- [数据库书籍推荐](./database.md)：整理 MySQL、Redis、NoSQL、数据工程等后端常用数据库方向书籍。
-- [分布式系统书籍推荐](./distributed-system.md)：覆盖分布式理论、系统架构、中间件和工程实践。
-- [搜索引擎书籍推荐](./search-engine.md)：整理信息检索、搜索架构、Elasticsearch 等相关书籍与资料。
-- [软件质量书籍推荐](./software-quality.md)：覆盖代码质量、重构、测试、工程化和团队协作相关书籍。
+- [Computer Science Fundamentals](./cs-basics.md): Books on operating systems, computer networks, data structures, and algorithms for fundamentals and interview preparation.
+- [Java Books](./java.md): Classic books on Java fundamentals, concurrency, the JVM, frameworks, and performance optimization.
+- [Database Books](./database.md): Books on backend databases and data engineering, including MySQL, Redis, and NoSQL.
+- [Distributed Systems Books](./distributed-system.md): Books covering distributed systems theory, architecture, middleware, and engineering practice.
+- [Search Engine Books](./search-engine.md): Books and resources on information retrieval, search architecture, and Elasticsearch.
+- [Software Quality Books](./software-quality.md): Books on code quality, refactoring, testing, engineering practices, and teamwork.
 
-## 相关专题
+## Related Topics
 
-- [计算机基础知识体系](../cs-basics/)
-- [Java 知识体系](../java/)
-- [数据库知识体系](../database/)
-- [分布式系统知识体系](../distributed-system/)
-- [高质量技术文章](../high-quality-technical-articles/)
-- [Java 开源项目精选](../open-source-project/)
+- [Computer Science Fundamentals](../cs-basics/)
+- [Java Knowledge Map](../java/)
+- [Database Knowledge Map](../database/)
+- [Distributed Systems Knowledge Map](../distributed-system/)
+- [High-Quality Technical Articles](../high-quality-technical-articles/)
+- [Curated Java Open-Source Projects](../open-source-project/)

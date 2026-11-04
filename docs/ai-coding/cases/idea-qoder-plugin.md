@@ -1,5 +1,5 @@
 ---
-title: IDEA + Qoder in Practice: API Optimization and Legacy Code Refactoring
+title: "IDEA + Qoder in Practice: API Optimization and Legacy Code Refactoring"
 description: Two practical examples of using the Qoder plugin in IDEA to optimize deep pagination and refactor legacy code, with a shift from implementing tasks to directing and reviewing the work.
 category: AI Coding in Practice
 head:

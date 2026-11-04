@@ -1,5 +1,5 @@
 ---
-title: AI Agent Memory Systems: Short-Term Memory, Long-Term Memory, and Memory Evolution
+title: "AI Agent Memory Systems: Short-Term Memory, Long-Term Memory, and Memory Evolution"
 description: Explains Agent memory layers and representations (Token, parameter, and latent), short- and long-term memory lifecycles, vector and Markdown storage, and lightweight approaches such as Claude Code.
 category: AI Application Development
 head:

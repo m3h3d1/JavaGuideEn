@@ -1,494 +1,494 @@
 ---
-title: Spec Coding 规范驱动编程实战：从 Vibe Coding 到 AI 代码规范
-description: 系统梳理 Spec Coding 规范驱动编程的核心思路与落地流程，涵盖 Vibe Coding 与 Spec Coding 的区别、四步落地方法、AI IDE 规范文件配置、三色标签权限控制、Spec 分层管理和多代理协作避坑经验。
-category: AI 编程技巧
+title: "Spec Coding: From Vibe Coding to AI Coding Standards"
+description: A practical guide to Spec Coding, comparing it with Vibe Coding and covering a four-step workflow, AI IDE instruction files, permission labels, layered Specs, and multi-agent collaboration.
+category: AI Coding Techniques
 head:
   - - meta
     - name: keywords
-      content: Spec Coding,Vibe Coding,规范驱动编程,AI代码规范,AI编程,Cursor,Claude Code,Copilot,多代理协作,AI辅助开发
+      content: Spec Coding,Vibe Coding,spec-driven development,AI coding standards,AI coding,Cursor,Claude Code,Copilot,multi-agent collaboration,AI-assisted development
 ---
 
-你好，我是小 G。拖了蛮久，来填坑了。
+Hi, I'm Xiao G. This article took me a while to write, but here it is.
 
-Spec Coding 很早之前就有群友提到说建议写一下。确实还蛮重要的，工作中能用到，面试也开始问了。
+Readers have been asking me to write about Spec Coding for a while. It is useful at work, and interviewers are starting to ask about it too.
 
-![spec coding 被读者催写](../images/shared/readers-urging-spec-coding-to-be-written.webp)
+![Readers ask for an article about Spec Coding](../images/shared/readers-urging-spec-coding-to-be-written.webp)
 
-上周和同事聊到 Spec Coding，他问：“Claude Code 都能自己写代码了，为什么还要花时间写规范？”
+Last week, a colleague asked me about Spec Coding: “Claude Code can write code on its own, so why spend time writing specifications?”
 
-这个问题很实际。AI 写代码确实快，Demo、脚本、一次性页面可以用较轻的约束快速验证。
+It is a practical question. AI can write code quickly, and demos, scripts, and one-off pages can be tested with few constraints.
 
-但把同样的玩法搬到多人协作、长期维护的项目里，缺失信息就会变成风险：需求没写清的部分由模型补全，边界条件按常见模式推断，团队自己的错误码和权限约定也可能没有进入上下文。输出是基于模型学到的模式和当前上下文生成的，不是对项目真实约束的自动发现。
+But applying the same approach to a team project that must be maintained over time turns missing information into risk. The model fills gaps in the requirements, infers edge cases from common patterns, and may not know the team's error-code and permission conventions. Its output comes from learned patterns and the context provided; it does not automatically discover the project's actual constraints.
 
-这篇文章主要说明三个问题：
+This article covers three questions:
 
-1. Vibe Coding 和 Spec Coding 的实际差别，以及什么时候该用哪个
-2. 完整的 Spec Coding 落地流程，从写需求到让 AI 按规矩执行
-3. Spec 在主流 AI IDE（Cursor、Claude Code、Copilot 等）里怎么配、怎么管、怎么防止 AI 越界
+1. How Vibe Coding and Spec Coding differ in practice, and when to use each.
+2. An end-to-end Spec Coding workflow, from writing requirements to guiding AI implementation.
+3. How to configure and manage Specs in popular AI IDEs such as Cursor, Claude Code, and Copilot, and how to keep AI within scope.
 
-## Vibe Coding 不是不能用
+## Vibe Coding Still Has Its Place
 
-Vibe Coding（氛围编程），凭感觉走。给 AI 一句模糊的意图，它就直接开始输出代码。
+Vibe Coding means going by feel. Give AI a vague intent, and it starts generating code.
 
-Karpathy 最早提这个词时，说的也是那种把需求丢给 AI、顺着感觉不断调整、甚至暂时不太管代码细节的写法。
+When Karpathy first used the term, he described giving AI a request, iterating by feel, and sometimes not worrying about the code details at first.
 
-Vibe Coding 不是原罪。下面这些场景，用它反而很合适：
+Vibe Coding is not inherently bad. It can work well for:
 
-- 验证一个想法，先写个 Demo 看看效果
-- 写一次性脚本，跑完就扔
-- 做内部小工具，影响面很小
-- AI 写完后，有完整测试兜底，而且不直接暴露给外部用户
+- Testing an idea with a quick demo.
+- Writing a one-off script that will be discarded after use.
+- Building an internal tool with limited impact.
+- Generating code that has full test coverage and is not exposed directly to external users.
 
-这些情况下，硬写一大堆 Spec 反而是浪费时间。
+In these cases, writing a detailed Spec can waste time.
 
-真正的问题是：很多人验证完想法之后，顺手就把 Vibe 出来的代码推上了生产。
+The real problem is that people often validate an idea and then ship the Vibe-coded implementation to production.
 
-这就不一样了。
+That changes the stakes.
 
-Demo 阶段你可以靠感觉走，因为错了就改，坏了就删。生产代码不行，它后面会接数据库、接支付、接用户数据、接别人的维护成本。你今天省下来的半小时，可能会变成后面几天的排查时间。
+You can work by feel on a demo because you can fix or discard mistakes. Production code is different: it connects to databases, payments, user data, and other people's maintenance work. The half-hour saved today may turn into days of debugging later.
 
-我的判断标准就一条： **这段代码要活多久？**
+I use one criterion: **How long will this code live?**
 
-- **两天就扔掉**的脚本，Vibe 够了。写 Spec 反而拖效率。
-- **3-5 天**这种中间地带，可以写轻量 Spec。不用展开完整设计，只写关键约束和验收标准，半小时差不多能搞定。
-- **超过一周**的代码，只要需要别人维护、涉及数据持久化、接入外部接口，就别裸 Vibe。至少要把约束、边界和验收标准写清楚。
+- **A script that will be discarded in two days:** Vibe Coding is enough; a Spec would slow things down.
+- **A task that will last three to five days:** Use a lightweight Spec. Skip the full design and write only key constraints and acceptance criteria; it should take about half an hour.
+- **Code that will last more than a week:** If others must maintain it, it persists data, or it integrates with external APIs, do not rely on Vibe Coding alone. At minimum, define the constraints, boundaries, and acceptance criteria.
 
-而且，很多时候搭配轻量级 Spec 也没问题，不需要太死板。
+You can also pair Vibe Coding with a lightweight Spec; there is no need to be rigid.
 
-轻量 Spec 可以简单到这种程度：
-
-```markdown
-## 任务目标
-
-实现一个订单导出接口，支持按时间范围导出 CSV。
-
-## 关键约束
-
-- 单次导出最多 5000 条
-- 时间范围不能超过 31 天
-- 必须校验用户权限，只能导出当前租户的数据
-- 查询必须命中 order_tenant_time_idx 联合索引
-- 导出失败要记录失败原因，不能只返回 unknown error
-
-## 验收标准
-
-- 正常导出 CSV，字段顺序符合产品约定
-- 超过 5000 条时返回明确错误
-- 越权租户数据不能被导出
-- 单元测试覆盖空时间、越界时间、无权限、无数据四种场景
-```
-
-## Spec Coding 到底是什么
-
-Spec Coding，直译过来叫规范驱动编程。简单来说就是：先把规范写清楚，再让 AI 干活。
-
-平时让 AI 写代码，很多人会直接丢一句：
-
-> 帮我做一个用户系统。
-
-AI 当然能写，而且看起来还挺像那么回事。但问题也在这里：你没告诉它用户系统到底长什么样，它就只能自己猜。
-
-用户怎么注册？邮箱能不能重复？密码怎么存？接口失败时返回什么格式？哪些功能这期不做？管理员有没有禁用用户的能力？这些东西如果一开始没写清楚，AI 不会停下来反问你，它大概率会先补一套自己觉得合理的方案。
-
-Spec Coding 做的事情，就是把这些规则提前写下来。
-
-这里的 Spec 不是随便写两句需求，而是一份 AI 能照着执行的技术约定。接口、数据结构、错误码、边界条件、安全要求、技术栈限制，甚至哪些操作不允许碰，都要写在里面。
-
-它和 Vibe Coding 的差别，也就在这。
-
-Vibe Coding 更像是你给 AI 一个大方向，然后让它自由发挥。代码生成出来以后，你再去验收、改 bug、补细节。短平快的小脚本这么干没啥问题，甚至很爽。
-
-但项目稍微复杂一点，就容易出事。等你发现 AI 理解错了，代码已经写了一堆。你回头查，也很难说清楚到底是需求没讲明白，还是 AI 自己乱发挥。
-
-简单总结下 Spec Coding 和 Vibe Coding 的差别：**AI 的行为是由你定义的，还是由它猜的？**
-
-## 一种四步落地方式
-
-本文采用 GitHub [Spec Kit](https://github.github.com/spec-kit/index.html) 示例中的 Specify、Plan、Tasks、Implement 四步来说明。它是一种可操作的工作流，不是所有 Spec Coding 工具统一遵循的标准；有的团队会合并设计与任务阶段，有的工具还会增加澄清、验证或变更管理阶段。
-
-| 阶段          | 干什么   | 产出              | 关键动作                         |
-| ------------- | -------- | ----------------- | -------------------------------- |
-| **Specify**   | 产品定义 | `requirements.md` | 明确功能、用户、痛点，定“做什么” |
-| **Plan**      | 技术规划 | `design.md`       | 定技术栈、架构、契约，定“怎么做” |
-| **Tasks**     | 任务拆解 | `tasks.md`        | 拆成原子任务，写验收标准         |
-| **Implement** | AI 执行  | -                 | AI 按 Spec 干活，人验收          |
-
-理解起来其实很简单，核心就是**先写清楚要做什么，再写清楚怎么做，然后拆任务，最后交给 AI 执行**。
-
-![Spec Coding 规范驱动编程流水线](../images/shared/spec-coding-pipeline-flow.png)
-
-### Specify：先搞清楚做什么
-
-第一步是 `Specify`，产出一般是 `requirements.md`，或者叫 `spec.md`。
-
-这一步有点像写 PRD，但面向的使用者是 AI。
-
-所以，它不能只写方向，得把边界也写出来。
-
-比如你写一句：
-
-> 做一个用户系统。
-
-人看着没问题，AI 看了就开始猜了：用户怎么注册？邮箱能不能重复？密码有啥要求？第三方登录做不做？管理员能不能禁人？被禁了数据怎么办？
-
-你不写，它就自己定。
-
-更稳一点的写法是：
-
-> 支持邮箱注册和登录；邮箱必须唯一；单因素密码至少 15 个字符；暂不支持第三方登录；管理员可以禁用用户；用户被禁用后不能登录，但历史数据保留。
-
-这句话让 AI 知道哪些能做，哪些不能做，哪些边界不能碰。
-
-### Plan：敲定技术方案
-
-第二步是 `Plan`，一般会落到 `design.md` 或 `plan.md` 里。
-
-这一步很多人会跳过，觉得反正 AI 会写代码，让它自己发挥就行。
-
-然后问题就来了。
-
-你没说用哪个 Java 版本，它可能给你写 Java 8 的代码；你没说 Spring Boot 版本，它可能按旧写法来；你没说错误码格式，它就每个接口返回一套；你没说分层方式，它可能 Controller 里直接写业务逻辑；你没说表字段怎么命名，它也会按自己的习惯来。
-
-所以 `design.md` 不用写得特别重，但几个关键约束得先定下来。
-
-比如先写成这样就够用：
+For example, a lightweight Spec can be as simple as:
 
 ```markdown
-## 技术栈
+## Goal
 
-- 语言: Java 21 (LTS)
-- 框架: Spring Boot 3.2.x（现有旧项目快照；新项目按当时的支持矩阵选版本）
-- 数据库: PostgreSQL 16
-- 缓存: Redis 7.x
+Implement an order export endpoint that exports CSV files for a given time range.
 
-## 架构设计
+## Key Constraints
 
-- 分层: Controller → Service → Repository
-- 通信: REST API + gRPC（内部服务）
-- 部署: Docker + Kubernetes
+- Export no more than 5,000 records per request.
+- Limit the time range to 31 days.
+- Validate user permissions; users can export data for their current tenant only.
+- The query must use the `order_tenant_time_idx` composite index.
+- Record the reason for export failures; do not return only `unknown error`.
 
-## 接口约定
+## Acceptance Criteria
 
-- API 规范: OpenAPI 3.0
-- 错误码: 统一格式 {"code": "USER_NOT_FOUND", "message": "..."}
-- 日志格式: JSON，必须包含 trace_id
+- Export valid CSV files with fields in the order specified by the product.
+- Return a clear error when the result exceeds 5,000 records.
+- Prevent exporting data from unauthorized tenants.
+- Cover empty time ranges, out-of-range dates, missing permissions, and empty results in unit tests.
 ```
 
-你可能会想：这不就是设计文档吗？
+## What Is Spec Coding?
 
-确实有点像。
+Spec Coding means spec-driven development: define the specifications first, then ask AI to implement them.
 
-但区别在于，传统设计文档主要是给人看的。人看完知道大方向，剩下很多细节可以靠团队习惯补上。比如密码不能明文存、错误码要统一、日志里要带 trace_id，这些东西在成熟团队里通常不用反复强调。
+When asking AI to write code, many people start with:
 
-AI 不一样。
+> Build a user system for me.
 
-你没写，它就猜。猜对了还好，猜错了就得你回来返工。
+AI can produce something that looks plausible. The problem is that you have not explained what the user system should do, so it has to guess.
 
-拿密码存储举个例子。你只写一句“登录要安全”，范围太宽，模型可能选择已经过期或不适合当前系统的方案。
+How do users register? Can email addresses repeat? How are passwords stored? What format should failed requests return? Which features are out of scope? Can administrators disable users? If these details are not specified, AI is unlikely to stop and ask; it will probably fill in what it considers reasonable.
 
-新系统可以把规则写成下面这样，再根据服务器基准测试确定参数：
+Spec Coding puts these rules in writing before implementation.
+
+A Spec is more than a brief request. It is a technical agreement that AI can follow. It can define APIs, data structures, error codes, edge cases, security requirements, technology constraints, and operations that must not be performed.
+
+That is the difference from Vibe Coding.
+
+Vibe Coding gives AI a broad direction and lets it improvise. You review the generated code, fix bugs, and fill in details afterward. This can be effective for small, quick scripts.
+
+But it becomes risky as a project grows more complex. By the time you notice a misunderstanding, a lot of code may already be written. It can then be hard to tell whether the requirements were unclear or the AI went beyond them.
+
+The difference between Spec Coding and Vibe Coding comes down to one question: **Did you define the AI's behavior, or did it have to guess?**
+
+## A Four-step Workflow
+
+This article uses the four steps shown in GitHub's [Spec Kit](https://github.github.com/spec-kit/index.html) example: Specify, Plan, Tasks, and Implement. This is a practical workflow, not a standard followed by every Spec Coding tool. Some teams combine the design and task phases; some tools add clarification, verification, or change-management phases.
+
+| Stage         | Purpose             | Output            | Key activity                                                          |
+| ------------- | ------------------- | ----------------- | --------------------------------------------------------------------- |
+| **Specify**   | Define the product  | `requirements.md` | Define features, users, and pain points; decide what to build         |
+| **Plan**      | Technical planning  | `design.md`       | Define the stack, architecture, and contracts; decide how to build it |
+| **Tasks**     | Break down the work | `tasks.md`        | Create atomic tasks with acceptance criteria                          |
+| **Implement** | AI implementation   | -                 | AI follows the Spec; a person reviews the result                      |
+
+The workflow is simple: **define what to build, decide how to build it, break the work into tasks, then let AI implement it**.
+
+![Spec Coding workflow](../images/shared/spec-coding-pipeline-flow.png)
+
+### Specify: Define What to Build
+
+The first step is `Specify`, which usually produces `requirements.md` or `spec.md`.
+
+This step is similar to writing a PRD, but its reader is AI.
+
+So it must define boundaries as well as direction.
+
+For example, if you write:
+
+> Build a user system.
+
+That may be understandable to a person, but it leaves AI guessing: How do users register? Can email addresses repeat? What are the password requirements? Is third-party login in scope? Can an administrator disable a user? What happens to a disabled user's data?
+
+If you do not specify these details, it decides for itself.
+
+Be more specific:
+
+> Support email registration and login; email addresses must be unique; single-factor passwords must be at least 15 characters; third-party login is out of scope; administrators can disable users; disabled users cannot log in, but their historical data is retained.
+
+This tells AI what it can do, what is out of scope, and which boundaries it must respect.
+
+### Plan: Choose the Technical Approach
+
+The second step is `Plan`, usually recorded in `design.md` or `plan.md`.
+
+Many people skip this step, assuming AI can choose the implementation details itself.
+
+That is where problems start.
+
+If you do not specify the Java version, it may write Java 8 code. If you omit the Spring Boot version, it may use outdated patterns. Without an error-code format, endpoints may return different structures. Without a layering convention, it may put business logic in a Controller. If you do not specify database column naming, it will choose its own style.
+
+`design.md` does not need to be exhaustive, but it should set a few key constraints.
+
+This is enough to get started:
+
+```markdown
+## Technology Stack
+
+- Language: Java 21 (LTS)
+- Framework: Spring Boot 3.2.x (an existing legacy-project snapshot; choose a supported version for new projects)
+- Database: PostgreSQL 16
+- Cache: Redis 7.x
+
+## Architecture
+
+- Layers: Controller → Service → Repository
+- Communication: REST API + gRPC (internal services)
+- Deployment: Docker + Kubernetes
+
+## API Conventions
+
+- API specification: OpenAPI 3.0
+- Error response: Use a consistent format, such as {"code": "USER_NOT_FOUND", "message": "..."}
+- Log format: JSON with a `trace_id` field
+```
+
+You may be thinking: Isn’t this just a design document?
+
+It is similar.
+
+The difference is that traditional design documents are mainly for people. People understand the general direction and can fill in many details from team conventions. Mature teams may not need repeated reminders to avoid plaintext passwords, use consistent error codes, or include `trace_id` in logs.
+
+AI is different.
+
+If you do not specify a detail, it guesses. If the guess is wrong, you have to rework the implementation.
+
+Consider password storage. “Make login secure” is too broad; the model may choose an outdated approach or one that does not fit the system.
+
+For a new system, specify requirements like these, then choose parameters based on benchmarks on the target server:
 
 ```text
-密码使用 Argon2id 哈希存储，参数通过目标服务器基准测试确定，并记录算法版本以便后续迁移。
-如果现有系统必须兼容 bcrypt，保留旧哈希校验，并在用户成功登录后逐步迁移到 Argon2id。
-数据库只保存带盐哈希，不保存明文密码；使用经过维护的密码库生成随机盐。
-单因素密码最少 15 个字符，最大长度至少支持 64 个字符，不强制大小写、数字或特殊字符组合。
-注册和改密时检查泄露密码 Blocklist，登录接口设置速率限制。
+Store passwords as Argon2id hashes. Choose parameters by benchmarking on the target server, and record the algorithm version for future migration.
+If an existing system must support bcrypt, keep verifying existing hashes and migrate users to Argon2id after successful login.
+Store salted hashes, never plaintext passwords. Use a maintained password library to generate random salts.
+Require at least 15 characters for single-factor passwords and support a maximum length of at least 64 characters. Do not require a mix of uppercase, lowercase, digits, or symbols.
+Check passwords against a breached-password blocklist during registration and password changes, and rate-limit login requests.
 ```
 
-这些要求来自 [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)和 [NIST SP 800-63B-4](https://pages.nist.gov/800-63-4/sp800-63b.html)。安全参数仍要经过架构评审和实测，不能只把示例数字复制进 Spec。
+These requirements are based on the [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) and [NIST SP 800-63B-4](https://pages.nist.gov/800-63-4/sp800-63b.html). Security parameters still require architecture review and testing; do not copy example values into a Spec without validation.
 
-错误处理也一样。别写“接口失败时返回友好提示”，这句话基本没约束力。AI 可能这个接口返回 `error`，那个接口返回 `message`，还有的地方直接抛异常。
+The same applies to error handling. “Return a friendly message when the endpoint fails” is not specific enough. AI may return `error` from one endpoint, `message` from another, and throw exceptions elsewhere.
 
-直接写清楚：
+Specify the response directly:
 
 ```json
 {
   "code": "USER_NOT_FOUND",
-  "message": "用户不存在",
+  "message": "User not found",
   "trace_id": "xxx"
 }
 ```
 
-再补一段状态码约定：
+Then define the status-code conventions:
 
 ```text
-参数错误返回 400。
-未登录返回 401。
-无权限返回 403。
-资源不存在返回 404。
-邮箱重复、用户名重复这类冲突返回 409。
+Return 400 for invalid parameters.
+Return 401 when the user is not authenticated.
+Return 403 when the user is not authorized.
+Return 404 when a resource does not exist.
+Return 409 for conflicts such as a duplicate email address or username.
 ```
 
-这样 AI 至少知道该往哪个方向写。
+This gives AI a clear direction for implementation.
 
-说到底，`design.md` 主要是为了减少 AI 自己补设定。你把技术栈、接口格式、错误码、日志、并发、安全这些规则提前写好，后面让 AI 写代码时，它就不太容易跑偏。
+Ultimately, `design.md` reduces the assumptions AI has to make. Specify the stack, API format, error codes, logging, concurrency, and security rules in advance to keep the implementation on track.
 
-### Tasks：任务要小到能验收
+### Tasks: Keep Tasks Small Enough to Verify
 
-第三步是 `Tasks`，一般会写到 `tasks.md` 里。
+The third step is `Tasks`, usually recorded in `tasks.md`.
 
-这里不要一上来就让 AI “完成用户模块”。这个范围太大了。注册、登录、查询、禁用、权限、参数校验、异常处理、单元测试，全都塞在一个任务里，AI 很容易写着写着漏东西。最后你看代码时，还得一项一项往回补。
+Do not ask AI to “complete the user module” in one task; that scope is too large. Registration, login, queries, deactivation, permissions, validation, error handling, and unit tests in a single task make it easy for AI to miss something. You may end up adding each omission by hand during review.
 
-但也别拆得太碎。创建 UserDTO、添加 email 字段、写一个空的 Service 方法——这种任务看起来很细，实际会把人折腾死。你维护任务列表的时间，可能比让 AI 写代码还长。
+But do not split the work too finely either. Creating a `UserDTO`, adding an `email` field, and writing an empty Service method as separate tasks creates busywork. Maintaining the task list may take longer than having AI write the code.
 
-我比较喜欢的粒度是：一个 Task 对应一个 API、一张表的核心操作，或者一个能独立验收的小功能。
+I prefer tasks that each cover one API, a core operation on one table, or a small feature that can be verified independently.
 
-比如用户注册接口，可以这么写：
+For example, a user registration endpoint could be specified like this:
 
 ```markdown
-### Task-001: 用户注册接口
+### Task-001: User Registration Endpoint
 
-描述：实现用户注册，包含参数校验、密码哈希和用户入库。
+Description: Implement user registration, including input validation, password hashing, and saving the user to the database.
 
-验收标准：
+Acceptance criteria:
 
-- [ ] POST /api/v1/users 成功时返回 201
-- [ ] 新密码使用经过基准测试的 Argon2id 参数哈希后存储
-- [ ] 单因素密码至少 15 个字符，最大长度支持至少 64 个字符，并检查泄露密码 Blocklist
-- [ ] 登录与注册相关接口有速率限制
-- [ ] 邮箱唯一，重复注册返回 409
-- [ ] 返回体必须包含 user_id、email、created_at
-- [ ] 分支覆盖率达到项目约定基线（本示例为 80%），且关键安全分支均有断言
+- [ ] Return 201 when `POST /api/v1/users` succeeds.
+- [ ] Hash new passwords with Argon2id parameters benchmarked on the target system.
+- [ ] Require single-factor passwords to be at least 15 characters and support a maximum length of at least 64 characters; check a breached-password blocklist.
+- [ ] Rate-limit login and registration endpoints.
+- [ ] Require unique email addresses; return 409 for duplicate registration.
+- [ ] Include `user_id`, `email`, and `created_at` in the response body.
+- [ ] Meet the project's branch-coverage baseline (80% in this example) and assert critical security branches.
 
-预估工时：2h
+Estimated effort: 2 hours
 ```
 
-这里真正值钱的是验收标准。“保证安全”“代码优雅”“性能要好”——这种话写了跟没写差不多，AI 不知道你心里的安全到底指什么，优雅要优雅到什么程度。
+The acceptance criteria are the valuable part. Phrases such as “make it secure,” “write clean code,” or “make it fast” provide little guidance. AI cannot know what you mean by secure or how clean the code should be.
 
-但密码使用经过基准测试的 Argon2id 参数、重复邮箱返回 `409`、返回体包含 `user_id`、`email`、`created_at`，以及关键分支有测试——这些东西都能验证，不用靠感觉。
+By contrast, using Argon2id parameters benchmarked on the target system, returning `409` for duplicate emails, including `user_id`, `email`, and `created_at` in the response, and testing critical branches can all be verified objectively.
 
-覆盖率阈值别机械套。团队应根据模块风险、历史缺陷和测试类型确定基线；比单个百分比更重要的是权限、金额、状态迁移、重试和异常补偿等关键分支有没有有效断言。
+Do not apply a coverage threshold mechanically. Set the baseline based on module risk, past defects, and test types. Effective assertions for critical branches—permissions, amounts, state transitions, retries, and failure compensation—matter more than a single percentage.
 
-### Implement：让 AI 干活
+### Implement: Let AI Do the Work
 
-提示词不用搞得很玄学，直接把相关 Spec 塞进去就行：
+You do not need elaborate prompt engineering. Provide the relevant Specs directly:
 
 ```text
-请根据以下 Spec 实现 Task-001。
+Implement Task-001 according to the following Specs.
 
-需求说明：
-[粘贴 requirements.md 相关段落]
+Requirements:
+[Paste the relevant section from requirements.md]
 
-技术约束：
-[粘贴 design.md 相关段落]
+Technical constraints:
+[Paste the relevant section from design.md]
 
-任务验收标准：
-[粘贴 tasks.md 里的 Task-001]
+Acceptance criteria:
+[Paste Task-001 from tasks.md]
 ```
 
-这里有个坑：不要把所有 Spec 一股脑塞进上下文。
+One pitfall: do not dump every Spec into the context at once.
 
-单次会话里，我会优先放三类内容：
+In a single session, I prioritize three types of information:
 
-- 全局约束，比如代码风格、错误码格式、日志规范；
-- 当前任务的需求说明；
-- 当前任务的验收标准。
+- Global constraints, such as code style, error formats, and logging conventions.
+- Requirements for the current task.
+- Acceptance criteria for the current task.
 
-其他内容按需补，不要为了“完整”把所有文档都贴进去。
+Add other material as needed. Do not paste every document just to make the context “complete.”
 
-单次应该放多少 Token，没有跨模型和跨任务通用的 3000–8000 阈值。更实用的做法是先放全局硬约束、当前任务和验收标准，再通过索引或文件路径按需读取证据；当无关材料开始干扰判断，或任务可以独立拆分时再拆会话。
+There is no universal 3,000–8,000 token limit that works for every model and task. A more practical approach is to provide the global constraints, current task, and acceptance criteria first, then use indexes or file paths to load supporting evidence as needed. Split the session when irrelevant context starts to interfere or the work can be divided into independent tasks.
 
-别指望模型在一个特别长的上下文里什么都顾得上。上下文越长，关键信息越可能被淹在中间，最后反而漏掉最重要的约束。
+Do not expect the model to keep track of everything in a very long context. The longer it gets, the easier it is for key information to be buried and critical constraints to be missed.
 
-我自己会遵守三条原则：
+I follow three principles:
 
-第一，约定写进文档，不要只写在聊天里。聊天记录下次很可能接不上，文档才是可以复用的上下文。
+First, put conventions in documents, not only in chat. The next conversation may not have the same history, while documents provide reusable context.
 
-第二，验收标准能量化就量化。“高性能”没法验收，`QPS > 1000`、`P95 < 200 ms`、`branch coverage >= 80%` 才能验收。
+Second, quantify acceptance criteria where possible. “High performance” is not verifiable; `QPS > 1000`, `P95 < 200 ms`, and `branch coverage >= 80%` are measurable.
 
-第三，Spec 要进 Git，跟代码一起走。代码变了，Spec 也要改。不然后面继续让 AI 开发，它拿到的就是一份过期说明。
+Third, commit Specs to Git alongside the code. Update them when the code changes, or AI may rely on outdated instructions later.
 
-这一步走通后，AI 不会突然变聪明，但乱猜的空间会小很多。
+This will not make AI smarter, but it will leave much less room for guesswork.
 
-接下来还有个很现实的问题：这些 Spec 到底放哪里，怎么让工具每次都读到？
+That raises a practical question: where should these Specs live, and how can you make sure the tools load them?
 
-## Spec 在 AI IDE 里怎么落地
+## Using Specs in AI IDEs
 
-写完 Spec 之后，有个问题经常被忽略：**这些文件到底放哪里？怎么让 AI 自动读到？**
+After writing a Spec, teams often overlook a practical question: **Where should these files go, and how can AI load them automatically?**
 
-主流工具都有自己的规范文件机制：
+Popular tools have their own instruction-file mechanisms:
 
-| 工具               | 规范文件位置                                                                             | 作用域          | 加载方式                                                                   |
-| ------------------ | ---------------------------------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------- |
-| **Cursor**         | `.cursor/rules/*.mdc`（当前）或 `.cursorrules`（Legacy）                                 | 项目级 / 全局   | Rules 可设 Always apply，也可按 glob 附加                                  |
-| **Claude Code**    | `CLAUDE.md`、`.claude/rules/*.md`                                                        | 项目级 / 目录级 | 根规则常驻，子目录或带 `paths` 的规则按文件访问加载                        |
-| **GitHub Copilot** | `.github/copilot-instructions.md`、`.github/instructions/*.instructions.md`、`AGENTS.md` | 仓库级 / 路径级 | 仓库级说明、路径级 Instructions 和 Agent 指令分别按当前客户端能力加载      |
-| **Windsurf**       | `.windsurf/rules/*.md`、`AGENTS.md`（旧项目可能仍有 `.windsurfrules`）                   | 项目级 / 目录级 | Workspace Rules 与目录级 `AGENTS.md` 按作用域加载                          |
-| **Aider**          | `CONVENTIONS.md`（仓库根目录）                                                           | 项目级          | 通过 `--read CONVENTIONS.md`，或在 `.aider.conf.yml` 里用 `read:` 自动加载 |
+| Tool               | Instruction files                                                                        | Scope               | How they are loaded                                                                                          |
+| ------------------ | ---------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Cursor**         | `.cursor/rules/*.mdc` (current) or `.cursorrules` (legacy)                               | Project / global    | Rules can be set to Always apply or attached by glob                                                         |
+| **Claude Code**    | `CLAUDE.md`, `.claude/rules/*.md`                                                        | Project / directory | Root rules are always loaded; subdirectory or `paths` rules load for matching files                          |
+| **GitHub Copilot** | `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md`, `AGENTS.md` | Repository / path   | Repository instructions, path-specific instructions, and Agent instructions load according to client support |
+| **Windsurf**       | `.windsurf/rules/*.md`, `AGENTS.md` (`.windsurfrules` may remain in older projects)      | Project / directory | Workspace Rules and directory-level `AGENTS.md` load according to scope                                      |
+| **Aider**          | `CONVENTIONS.md` (repository root)                                                       | Project             | Load with `--read CONVENTIONS.md` or configure `read:` in `.aider.conf.yml`                                  |
 
-到这里，另一个问题也会冒出来：Cursor、Claude Code、Copilot 这些是日常写代码的入口，那 Superpowers、Spec-Kit、Open Spec、Kiro、BMAD-METHOD 这些专门围绕 Spec Coding 的工具，到底该怎么选？
+This raises another question: Cursor, Claude Code, and Copilot are everyday coding tools, but how should you choose among Spec-focused tools such as Superpowers, Spec-Kit, Open Spec, Kiro, and BMAD-METHOD?
 
-这个问题展开会比较长，我准备放到下一篇单独聊。这里先把 Spec 怎么写、怎么放、怎么管住 AI 说清楚。
+That deserves a separate article. Here, I will focus on how to write and organize Specs and keep AI within their boundaries.
 
-知道放哪之后，还有一个问题：**哪些 Spec 每次都注入，哪些按需带上？**
+Once you know where to put them, another question remains: **Which Specs should load every time, and which should load only when needed?**
 
-实际操作中，我一般分成两层。
+I usually divide them into two layers.
 
-**几乎每个会话都要带上的（必须注入）：**
+**Include in almost every session (always loaded):**
 
-- **技术栈**：版本和关键库写明，比如 Go 1.21 + Gin + GORM + PostgreSQL 14。别让 AI 自己猜版本号。
-- **代码风格**：给出少量“金标准”文件路径或短代码片段，展示命名、错误处理和返回格式。不要把 150–200 行代码固定塞进 every-session 上下文。
-- **边界条件**：用三色标签（后面会说）划清楚什么能做、什么要问、什么绝不能碰。
+- **Technology stack:** Specify versions and key libraries, such as Go 1.21, Gin, GORM, and PostgreSQL 14. Do not make AI guess versions.
+- **Code style:** Provide a few “gold standard” file paths or short code snippets for naming, error handling, and response formats. Do not load 150–200 lines of code into every session.
+- **Boundaries:** Use the three-color labels described below to define what AI can do, must ask about, or must never touch.
 
-这些放工具的 always-on 规则文件里，每次会话自动注入。
+Put these in the tool's always-on instruction files so they load in every session.
 
-**当前任务相关时才带的（按需注入）：**
+**Include only when relevant to the task (loaded on demand):**
 
-- **项目愿景**：一两句话说清为啥做这个项目，比如“把用户服务从单体拆出来，用 Go 重写，API 兼容”。新任务开始时带一次就行。
-- **命令清单**：列出 build、test、run 命令，比如 `make build`、`go test ./...`。有执行任务时带上。
-- **目录结构**：树状图说清代码、测试、文档分别放哪。涉及新增文件时才需要。
-- **Git 规范**：分支名、commit message、PR 要求。涉及 Git 操作时带上。
+- **Project purpose:** Explain the reason for the project in one or two sentences, such as “Split the user service out of the monolith and rewrite it in Go while preserving API compatibility.” Include this at the start of a new task.
+- **Command list:** List build, test, and run commands, such as `make build` and `go test ./...`. Include them for implementation tasks.
+- **Directory structure:** Show where code, tests, and documentation live. Include it when adding files.
+- **Git conventions:** Specify branch names, commit-message format, and PR requirements when the task involves Git operations.
 
-这么分看的是使用频率：全局约束几乎每次都要遵守，值得常驻。其他的按任务加，避免上下文里堆太多不相关的内容。Spec 塞越多，AI 反而越容易漏掉真正重要的那几条。
+This split is based on frequency. Global constraints apply to nearly every task, so keep them loaded. Add other information as needed to avoid filling the context with unrelated details. The more Specs you include, the easier it is for AI to miss the important ones.
 
-## 三色标签：AI 能干什么、不能干什么
+## Three-color Labels: What AI Can and Cannot Do
 
-AI 遇到拿不准的操作时，到底该自己决定还是停下来问你？
+When AI encounters an uncertain operation, should it decide or stop and ask?
 
-三种颜色，三种权限。
+Use three colors to define three levels of permission.
 
-![三色标签：AI 决策权限的风险控制机制](../images/shared/spec-coding-three-color-labels.png)
+![Three-color labels for managing AI permissions](../images/shared/spec-coding-three-color-labels.png)
 
-- ✅ **Always（自动执行）**：代码检查、测试、格式化这些，AI 自己拍板就行。比如提交前自动跑 `make lint`。
-- ⚠️ **Ask first（需确认）**：可能影响其他模块的变更，AI 出方案等你审。改数据库索引、改 API 路由这种就属于这类。
-- 🚫 **Never（绝对禁止）**：直连生产库、提交密钥、删线上数据。AI 碰到就必须停，报错。
+- ✅ **Always (run automatically):** AI can run checks, tests, and formatters without asking. For example, run `make lint` before a commit.
+- ⚠️ **Ask first (requires approval):** For changes that may affect other modules, AI proposes a plan and waits for review. Database-index and API-route changes are examples.
+- 🚫 **Never (prohibited):** Connect directly to production databases, commit secrets, or delete production data. AI must stop and report if a task requires one of these actions.
 
-落地的时候有几件事容易忽略。
+There are a few details to keep in mind when applying these labels.
 
-**刚开始宁严勿松。** Ask First 多放点，跑一周后看哪些操作 AI 每次都做对了，再放到 Always。
+**Start with stricter rules.** Put more actions under Ask first. After a week, move actions that AI has handled reliably to Always.
 
-**规则必须写具体。** “重要变更需确认”这句话 AI 没法执行，它不知道什么算“重要”。得写成“修改已有 API 的 URL 路径需确认”。“小心操作数据库”也不行，要写“ALTER TABLE 操作需确认”。
+**Be specific.** AI cannot act on “confirm important changes” because it does not know what “important” means. Write “Confirm before changing the URL path of an existing API.” “Be careful with the database” is also too vague; write “Confirm before running `ALTER TABLE`.”
 
-**Never 规则不能只靠 AI 自觉。** 只在文档里写“禁止直连生产库”，并不能真的拦住它。AI 不会主动检查自己的输出是否违规。Never 规则需要多层防线：
+**Do not rely on AI to enforce Never rules.** Writing “Do not connect directly to production” in a document does not actually block the action. AI will not reliably check its own output for violations. Enforce Never rules in multiple layers:
 
-1. **Spec 声明**：影响 AI 生成倾向，但拦不住
-2. **配置模板**：`.env.example` 里不放真实密钥，AI 就没东西可复制
-3. **Pre-commit hook**：正则扫密钥硬编码、生产环境连接串，提交时自动拦截
-4. **AI IDE 配置**：用权限规则和沙箱限制读取范围；`.cursorignore` 可减少索引和上下文访问，但不是完整安全边界
-5. **密钥隔离**：生产凭据不落在 Agent 可访问的工作区，使用短期、最小权限凭据
+1. **State it in the Spec:** This influences AI's output but does not block an action.
+2. **Use configuration templates:** Keep real secrets out of `.env.example` so AI has nothing sensitive to copy.
+3. **Add a pre-commit hook:** Scan for hard-coded secrets and production connection strings, then block the commit.
+4. **Configure the AI IDE:** Use permission rules and a sandbox to limit access. `.cursorignore` can reduce indexing and context access, but it is not a complete security boundary.
+5. **Isolate credentials:** Keep production credentials outside the Agent's accessible workspace; use short-lived, least-privilege credentials.
 
-越重要的 Never 规则，越要推进到 CI 层做硬性检查。停在“文档里有写”这一步，迟早出事。
+The more important a Never rule is, the more important it is to enforce it in CI. Relying on documentation alone will eventually cause problems.
 
-**每周回头看一次**。AI 是不是动不动就停下来问？那 Ask First 里有些操作可以放行了。AI 有没有偷偷干不该干的事？有就补 Never。项目里有没有冒出新的敏感操作？加进去。
+**Review the rules weekly.** If AI keeps stopping to ask, move some Ask first actions to Always. If it performs a prohibited action, add a Never rule. Add any new sensitive operations to the policy.
 
-## 项目大了，Spec 怎么管
+## Managing Specs as a Project Grows
 
-小项目 Spec 少，手动往上下文里丢就行。模块多了之后全塞上下文就废了，AI 看着一堆和当前任务无关的约束，反而更容易跑偏。
+Small projects have few Specs, so you can add them to the context manually. As the number of modules grows, loading everything becomes counterproductive: irrelevant constraints can distract AI from the task.
 
-按规模选策略。
+Choose a strategy that fits the project size.
 
-![Spec 管理策略：分层过滤 + 精准召回](../images/shared/spec-coding-spec-management-strategy.png)
+![Spec management: layered filtering and targeted retrieval](../images/shared/spec-coding-spec-management-strategy.png)
 
-### 规则不多时：分文件存储
+### Few Rules: Store Them in Separate Files
 
-按领域拆就行：
+Organize the files by domain:
 
 ```text
 specs/
-├── global/              # 全局约束
-│   ├── conventions.md   # 代码规范
-│   └── architecture.md  # 架构概览
-├── backend/             # 后端规格
+├── global/              # Global constraints
+│   ├── conventions.md   # Coding conventions
+│   └── architecture.md  # Architecture overview
+├── backend/             # Backend specifications
 │   ├── api/
 │   ├── service/
 │   └── persistence/
-├── frontend/            # 前端规格
-└── shared/              # 共享契约
+├── frontend/            # Frontend specifications
+└── shared/              # Shared contracts
     └── dto.md
 ```
 
-每次只把当前任务相关的两三个文件丢进去，别贪多。
+Include only the two or three files relevant to the current task.
 
-### 人工选择开始吃力时：摘要索引
+### Manual Selection Becomes Difficult: Add a Summary Index
 
-手动挑文件开始累了，就让 AI 先生成一份目录加关键词索引：
+If selecting files manually becomes tedious, ask AI to create an index with keywords:
 
 ```markdown
-## Spec 索引
+## Spec Index
 
-- [数据库设计](specs/db/schema.md) - 关键词: PostgreSQL, 索引优化
-- [用户 API](specs/backend/api/user.md) - 关键词: REST, JWT, 鉴权
-- [订单服务](specs/backend/service/order.md) - 关键词: 事务, 幂等
+- [Database design](specs/db/schema.md) - Keywords: PostgreSQL, index optimization
+- [User API](specs/backend/api/user.md) - Keywords: REST, JWT, authorization
+- [Order service](specs/backend/service/order.md) - Keywords: transactions, idempotency
 ```
 
-需要细节时让 AI 主动来要，不用全量灌进去。
+Ask AI to request more detail when needed instead of loading everything in advance.
 
-### 关键词索引频繁漏召回时：评估 RAG
+### Keyword Search Misses Relevant Specs: Evaluate RAG
 
-模块数不能直接决定是否要上 RAG。先观察几个信号：同一概念分散在大量文档中、关键词检索经常漏掉同义表达、人工选择上下文已经影响交付，而且团队能够维护权限、索引更新和评测集。满足这些条件后，再评估全文检索、向量检索或两者混合。
+The number of modules alone should not determine whether to use RAG. Look for signals such as concepts scattered across many documents, keyword search missing synonyms, manual context selection slowing delivery, and a team able to maintain permissions, index updates, and an evaluation set. If these conditions apply, evaluate full-text search, vector search, or a hybrid approach.
 
-Chunk 大小、Top-K 和相似度阈值都要根据 Embedding 模型、文档结构与任务评测调优。不同模型的相似度分布不同，`Top-K 3–5`、`> 0.7` 不能跨模型直接复用。上线前至少准备一组真实问题，评估召回率、误召回、延迟和成本，并确保权限过滤发生在结果进入模型之前。
+Tune chunk size, Top-K, and similarity thresholds against the embedding model, document structure, and task evaluations. Similarity distributions differ across models, so values such as `Top-K 3–5` or `> 0.7` cannot be reused unchanged. Before launch, evaluate recall, false retrievals, latency, and cost on a set of real queries. Apply permission filters before results reach the model.
 
-### 不分规模都管用的一条：单会话单任务
+### A Rule for Any Project Size: One Task per Session
 
 ```text
-Session 1: 数据库设计
-├── 输入: global/conventions.md + backend/db/
-├── 输出: 完成实体设计
-└── 关闭会话
+Session 1: Database design
+├── Input: global/conventions.md + backend/db/
+├── Output: Entity design completed
+└── Close session
 
-Session 2: API 实现
-├── 输入: Session 1 产出 + backend/api/
-├── 输出: 完成 Controller
-└── 关闭会话
+Session 2: API implementation
+├── Input: Session 1 output + backend/api/
+├── Output: Controller completed
+└── Close session
 ```
 
-上下文干净，AI 就不会被前面任务的边角料带跑。这条比什么花哨的检索策略都管用。
+Clean context keeps AI from being distracted by leftovers from earlier tasks. This is often more useful than a sophisticated retrieval strategy.
 
-## 领域知识为什么这么重要
+## Why Domain Knowledge Matters
 
-AI 训练数据再多，也不知道你项目里那些特定的规则，你得主动告诉它。
+No matter how much training data AI has, it cannot know your project's specific rules unless you tell it.
 
-举个例子：你做了一个商城项目，其中有一个规则是优惠券和秒杀不能叠加。这个规则你不写进 Spec，AI 很可能就把两个折扣都算上了。代码能跑，测试也可能过，但业务直接错了。
+For example, an online store may not allow coupons to be combined with flash-sale discounts. If this rule is missing from the Spec, AI may apply both discounts. The code may run and the tests may pass, but the business logic is wrong.
 
-这类知识一般可以分成几种：
+This knowledge usually falls into a few categories:
 
-- **业务规则**：优惠券和秒杀不能叠加，同一用户每天只能领取一次奖励
-- **技术约束**：订单分页必须走指定联合索引；深分页（> 100 页）改用游标，禁止全表扫描
-- **历史债务**：第三方上传接口只支持 5 MB，超过就会报错，所以代码里要提前校验
-- **性能基线**：单表查询控制在 50 ms 内；关键接口超过 200 ms 要考虑降级或兜底
+- **Business rules:** Coupons and flash-sale discounts cannot be combined; each user can claim a reward only once per day.
+- **Technical constraints:** Order pagination must use a specified composite index; use cursors beyond page 100 and avoid full table scans.
+- **Legacy limitations:** A third-party upload API supports only 5 MB, so validate file size before sending it.
+- **Performance baselines:** Keep single-table queries under 50 ms; consider fallback or degradation when a critical endpoint exceeds 200 ms.
 
-这些东西是 AI 写代码时的边界。
+These rules define the boundaries for AI-generated code.
 
-现在很多 Spec-Driven Development 的思路就是把 Spec 从“写给人看的文档”变成“约束 AI 生成代码的规则”。
+Many Spec-Driven Development approaches turn Specs from “documents written for people” into “rules that constrain AI-generated code.”
 
-不要认为 Spec 只是前期用用，后续实现、校验和维护时都需要。
+Specs are not just for the planning phase; they also matter during implementation, verification, and maintenance.
 
-不过，只把规则写进去还不够，最好再加一段自检清单。因为 AI 很容易写完功能就结束，不会主动回头确认这些隐含约束。
+Writing down the rules is not enough. Add a self-review checklist too, because AI may stop after implementing the feature without checking these constraints.
 
-## 完成自检清单
+## Completion Checklist
 
-任务写完之后，不要让 AI 直接说一句“已完成”。
+Do not let AI finish by simply saying “Done.”
 
-至少让它按清单自己过一遍。比如完成 `Task-001` 后，必须逐项确认：
+Ask it to review a checklist. After completing `Task-001`, for example, it should confirm each item:
 
-- [ ] 所有 API 错误返回都符合统一格式
-- [ ] 数据库查询命中了指定联合索引
-- [ ] 优惠券和秒杀的互斥逻辑已正确实现
-- [ ] 单元测试覆盖了空值、越界、并发等边界场景
-- [ ] 分支覆盖率达到项目约定基线，关键边界分支均有断言
-- [ ] 圈复杂度未超过项目静态检查阈值；例外有评审记录
+- [ ] All API errors use the required response format.
+- [ ] Database queries use the specified composite index.
+- [ ] Coupon and flash-sale discounts cannot be combined.
+- [ ] Unit tests cover null values, out-of-range input, concurrency, and other edge cases.
+- [ ] Branch coverage meets the project baseline, with assertions for critical edge cases.
+- [ ] Cyclomatic complexity stays within the project's static-analysis threshold, or an exception has been reviewed.
 
-如果有哪一项没法确认，不能糊弄过去，要把原因写出来。
+If any item cannot be verified, state why instead of marking it complete.
 
-AI 很容易把代码写完当成任务完成。可真实项目里，功能能跑只是第一步，错误格式、索引命中、边界测试、复杂度控制，这些才是后面少背锅的地方。
+AI may treat finishing the code as finishing the task. In a real project, making the feature run is only the first step. Consistent error formats, index usage, edge-case tests, and complexity limits help prevent later problems.
 
-## 多代理协作的坑
+## Pitfalls of Multi-agent Collaboration
 
-有人会问：一个 AI 不够用，多搞几个行不行？
+You may ask: if one AI is not enough, can you use several?
 
-可以，但坑比你想的多。
+Yes, but it brings more pitfalls than you might expect.
 
-![Multi-Agent 三代理协作流水线](../images/shared/spec-coding-multi-agent-pipeline.png)
+![Three-agent collaboration workflow](../images/shared/spec-coding-multi-agent-pipeline.png)
 
-三代理协作的思路是代码、测试、审查各管一段，流水线推进。代码代理接到 Task 写功能，写完交给测试代理出用例跑测试，通过后再交给审查代理看代码质量，最后人类终审合并。
+In a three-agent workflow, separate implementation, testing, and review. The coding Agent implements the task, then hands it to the testing Agent to create and run tests. After the tests pass, a review Agent checks code quality. A person performs the final review and merges the changes.
 
-有个坑必须提前说清：测试代理在自己的分支上写测试，但被测代码在代码代理的分支上。这两个分支是平行的，测试代理要么先 merge 代码分支，要么根本跑不起来。
+One issue needs to be handled up front: the testing Agent may write tests on its own branch while the implementation is on the coding Agent's branch. Since these branches are separate, the testing Agent must merge the implementation branch first or it cannot run the tests.
 
-两种能跑通的模式：
+Two patterns work:
 
-**串行同分支（推荐起步）。** 三个代理在同一个 feature 分支上按顺序 commit，用 commit message 前缀区分角色。简单，没有合并冲突，适合大多数项目。
+**Sequential work on one branch (recommended to start).** The three Agents commit in sequence on the same feature branch. Use commit-message prefixes to identify each role. This is simple, avoids merge conflicts, and works for most projects.
 
 ```bash
 git commit -m "[code] implement user registration API"
@@ -496,121 +496,121 @@ git commit -m "[test] add unit tests for user registration"
 git commit -m "[review] fix null check in email validation"
 ```
 
-**链式继承（代理能力已验证后）。** 测试代理从代码分支 checkout，审查代理从测试分支 checkout，最后从审查分支 merge 回主线。分支之间是继承关系而不是平行关系，每个代理都能看到前一个代理的产出。
+**Chained branches (after validating the agents).** The testing Agent checks out the coding branch, and the review Agent checks out the testing branch. Finally, merge the review branch into the main branch. Each branch builds on the previous one, so every Agent can see the earlier output.
 
-多代理翻车的场景不少：死锁（A 等 B、B 等 A，设计时确保依赖是 DAG）、无限循环（代理自我迭代停不下来，设最大轮次 Max 3）、输出格式错误（JSON 解析失败，加校验和重试，最多 3 次）。提前设好这些兜底，能避开大部分问题。
+Multi-agent workflows can fail in several ways: deadlocks (A waits for B while B waits for A; make dependencies a DAG), infinite loops (agents keep iterating; set a maximum of three rounds), and invalid output (JSON parsing fails; add validation and retry up to three times). These safeguards prevent many problems.
 
-老实说，多代理这块我自己也还在摸索，目前的经验是串行同分支模式能覆盖八成场景，复杂编排除非团队有人专门维护，否则翻车概率不低。
+I am still exploring multi-agent workflows. So far, sequential work on one branch covers most cases. Complex orchestration is likely to fail unless someone on the team maintains it.
 
-## Spec 不是写完就扔的
+## Keep Specs Up to Date
 
-跑了几个项目后，有几个习惯固定下来了。
+After working on several projects, I settled on a few practices.
 
-**渐进细化。** 别想着一口气写出完美 Spec。先写高层大纲，让 AI 把骨架跑起来，再一个模块一个模块补细节。
+**Refine gradually.** Do not try to write a perfect Spec all at once. Start with a high-level outline, have AI build the skeleton, then add details module by module.
 
-**模块化组织。** API、数据库、样式规范、错误码、权限规则各一个文件。每次只给 AI 当前任务用得到的上下文。
+**Organize by module.** Keep APIs, database design, style conventions, error codes, and permission rules in separate files. Give AI only the context it needs for the current task.
 
-**持续迭代。** 每次 Code Review 发现问题，或者 AI 又把同一个坑踩了一遍，回去改 Spec。只改代码不改规范，下次照样犯。
+**Iterate continuously.** Update the Spec when Code Review finds an issue or AI repeats a mistake. If you change the code but not the instructions, the same problem may happen again.
 
-这里有个高频翻车场景值得特别说一下：Task-001 完成时 Spec 规定错误格式是 `{"code": "USER_NOT_FOUND", "message": "..."}`，两周后 Spec 更新加了 `trace_id` 字段，但 Task-001 的代码已经没人管了。规范和实现就这么悄悄跑偏了。
+One common failure is worth calling out: when Task-001 was completed, the Spec required errors in the format `{"code": "USER_NOT_FOUND", "message": "..."}`. Two weeks later, the Spec added a `trace_id` field, but nobody updated the code for Task-001. The specification and implementation quietly drifted apart.
 
-应对办法：Spec 变更时做影响范围评估。可以在每个 Spec 文件里维护一个“依赖此文件的模块”列表，Spec 更新时主动触发受影响模块的回归测试。CI 流水线里加一条判断：Spec 文件有变动，自动跑相关模块的测试。
+The solution is to assess the impact of every Spec change. Each Spec file can list the modules that depend on it. When a Spec changes, run regression tests for the affected modules. Add a CI rule to run those tests whenever a Spec file changes.
 
-## 分享几套 Spec 模板
+## Spec Templates
 
-我常用的就这三种，按场景选一个就行。
+I use these three templates; choose one based on the task.
 
-**模板一：OpenAPI 风格，适合 API 开发**
+**Template 1: OpenAPI style, for API development**
 
 ````markdown
-## API：POST /api/v1/users
+## API: POST /api/v1/users
 
-### 基本信息
+### Overview
 
-- **端点**：`/api/v1/users`
-- **方法**：POST
+- **Endpoint:** `/api/v1/users`
+- **Method:** POST
 
-### 请求参数
+### Request Parameters
 
-| 字段     | 类型   | 必填 | 约束                                                         | 示例             |
-| -------- | ------ | ---- | ------------------------------------------------------------ | ---------------- |
-| email    | string | 是   | 邮箱格式                                                     | user@example.com |
-| password | string | 是   | 单因素密码至少 15 字符，最大支持至少 64 字符；不强制字符组合 | -                |
+| Field    | Type   | Required | Constraints                                                                    | Example          |
+| -------- | ------ | -------- | ------------------------------------------------------------------------------ | ---------------- |
+| email    | string | Yes      | Valid email address                                                            | user@example.com |
+| password | string | Yes      | At least 15 characters; support a maximum of at least 64; no composition rules | -                |
 
-### 响应格式
+### Response Format
 
-- **201 Created**：用户创建成功
+- **201 Created**: User created successfully.
 
   ```json
   { "id": "uuid", "email": "user@example.com", "created_at": "..." }
   ```
 
-- **409 Conflict**：邮箱已存在
+- **409 Conflict**: Email address already exists.
   ```json
   { "code": "EMAIL_ALREADY_EXISTS", "message": "Email already exists" }
   ```
 
-### 验收标准
+### Acceptance Criteria
 
-- [ ] 新密码使用经过目标服务器基准测试的 Argon2id 参数
-- [ ] 密码经过泄露密码 Blocklist 检查，注册和登录接口有速率限制
-- [ ] 邮箱唯一性由数据库唯一索引保证
-- [ ] 分支覆盖率达到项目约定基线（示例：80%），且关键安全分支有断言
+- [ ] Hash new passwords with Argon2id parameters benchmarked on the target server.
+- [ ] Check passwords against a breached-password blocklist; rate-limit registration and login endpoints.
+- [ ] Enforce email uniqueness with a database unique index.
+- [ ] Meet the project's branch-coverage baseline (80% in this example) and assert critical security branches.
 ````
 
-**模板二：Gherkin 风格，适合 BDD**
+**Template 2: Gherkin style, for BDD**
 
 ```gherkin
-Feature: 用户登录
+Feature: User login
 
-  Scenario: 使用有效凭据登录
-    Given 用户已注册邮箱 "test@example.com" 和密码 "CorrectHorse123!"
-    When 用户提交登录请求
-    Then 返回 200 状态码和 JWT token
-    And token 有效期 24 小时
+  Scenario: Log in with valid credentials
+    Given a user is registered with email "test@example.com" and password "CorrectHorse123!"
+    When the user submits a login request
+    Then return status 200 and a JWT token
+    And the token expires in 24 hours
 
-  Scenario: 使用无效密码登录
-    Given 用户已注册邮箱 "test@example.com"
-    When 用户用错误密码提交登录
-    Then 返回 401
-    And 错误信息为 "Invalid credentials"
-    And 不暴露具体是邮箱还是密码错
+  Scenario: Log in with an incorrect password
+    Given a user is registered with email "test@example.com"
+    When the user submits a login request with an incorrect password
+    Then return status 401
+    And the error message is "Invalid credentials"
+    And do not reveal whether the email or password was incorrect
 ```
 
-**模板三：Checklist 风格，适合代码审查**
+**Template 3: Checklist style, for code review**
 
 ```markdown
 ## Code Review Checklist
 
-### 功能性
+### Functionality
 
-- [ ] 实现符合 Spec 描述
-- [ ] 边界条件已处理：空值、越界、并发
-- [ ] 错误处理完善
+- [ ] The implementation matches the Spec.
+- [ ] Edge cases are handled: null values, out-of-range input, and concurrency.
+- [ ] Error handling is complete.
 
-### 质量
+### Quality
 
-- [ ] 函数长度 <= 50 行
-- [ ] 圈复杂度符合项目静态检查阈值，例外有评审记录
-- [ ] 无重复代码（DRY）
+- [ ] Functions are no longer than 50 lines.
+- [ ] Cyclomatic complexity meets the project's static-analysis threshold; exceptions have review records.
+- [ ] No duplicate code (DRY).
 
-### 安全
+### Security
 
-- [ ] 无敏感信息硬编码
-- [ ] 输入已验证/转义
-- [ ] 权限检查已加
+- [ ] No hard-coded sensitive information.
+- [ ] Inputs are validated or escaped.
+- [ ] Authorization checks are in place.
 ```
 
-## 踩过的坑
+## Lessons from Past Mistakes
 
-说几个我自己踩过的。
+Here are a few mistakes I have made.
 
-约束写太死了，AI 连正常的灵活性都没有。比如你把 Service 层每个方法签名都定好，AI 连个参数名都不敢改。Spec 定的是边界，不是逐行伪代码。
+Overly rigid constraints can prevent AI from using reasonable judgment. If you specify every Service method signature, it may hesitate to change even a parameter name. A Spec defines boundaries; it should not be line-by-line pseudocode.
 
-反过来，约束写少了更常见。关键边界没定义，AI 就自己猜。猜对了算运气，猜错了算日常。我有一个项目，AI 用了 MD5 存密码，就是因为 Spec 里没写用什么加密算法。
+More commonly, the constraints are too vague. If key boundaries are missing, AI guesses. A correct guess is luck; a wrong one is routine. In one project, AI stored passwords with MD5 because the Spec did not specify a hashing algorithm.
 
-Spec 改了没同步，这个最隐蔽。代码和文档慢慢就跑偏了，AI 下次拿到的还是旧版规范，写出来的代码自然也对不上。
+Failing to update the implementation when a Spec changes is more subtle. The code and documentation gradually diverge, and AI later generates code from an outdated specification.
 
-还有一个：只写不验。Spec 写了一大堆，但没接到 CI 里，最后变成形式主义。写完没人检查，跟没写差不多。
+Another mistake is writing Specs without verifying them. If they are not connected to CI, they can become a formality. An unchecked Spec is nearly as useful as no Spec.
 
-那个合并按钮，永远应该握在你自己手里。
+You should always keep control of the merge button.

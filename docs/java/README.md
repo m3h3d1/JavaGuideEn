@@ -1,114 +1,114 @@
 ---
-title: Java 知识体系：基础、集合、并发、JVM、IO 与新特性
-description: Java 面试与知识体系学习路线，涵盖 Java 基础、集合源码、并发编程、JVM、IO/NIO 和 Java 新特性，适合校招、社招和 Java 后端面试复习。
+title: "Java Guide: Fundamentals, Collections, Concurrency, JVM, I/O, and New Features"
+description: A Java learning path for interviews and backend development, covering fundamentals, collections, concurrency, the JVM, I/O and NIO, and Java features.
 category: Java
 tag:
   - Java
-  - Java基础
-  - Java面试
+  - Java Fundamentals
+  - Java Interviews
 sitemap:
   changefreq: weekly
   priority: 0.95
 head:
   - - meta
     - name: keywords
-      content: Java,Java基础,Java集合,Java并发,JVM,Java IO,Java NIO,Java新特性,Java面试题,Java后端面试
+      content: Java,Java fundamentals,Java collections,Java concurrency,JVM,Java IO,Java NIO,Java features,Java interview questions,Java backend interviews
 ---
 
 <!-- @include: @small-advertisement.snippet.md -->
 
-这份 **Java 知识体系** 面向 Java 后端学习和面试复习，按“基础语法 -> 集合容器 -> 并发编程 -> IO/NIO -> JVM -> 新特性”的顺序整理本站 Java 相关文章。
+This **Java guide** is for backend developers studying Java and preparing for interviews. It organizes the site's Java articles in this order: fundamentals, collections, concurrency, I/O and NIO, the JVM, and new features.
 
-如果你时间有限，建议先看 Java 基础、集合、并发和 JVM 的面试题总结，快速建立高频问题清单；如果你想系统补基础，可以按下面的专题顺序阅读。
+If you have limited time, start with the interview guides for Java fundamentals, collections, concurrency, and the JVM. To build a broader foundation, follow the topic order below.
 
-## 适合谁看
+## Who Should Read This?
 
-- 正在系统学习 Java 的后端开发者。
-- 准备校招、社招、中大厂 Java 后端面试的同学。
-- 想把 Java 基础、集合、并发、JVM、IO 和新特性串起来复习的读者。
-- 已经写过 Java 项目，但对底层原理、源码设计和工程实践理解不够系统的工程师。
+- Backend developers learning Java systematically.
+- Candidates preparing for new-graduate or experienced-hire interviews at Java backend teams, including larger companies.
+- Readers reviewing Java fundamentals, collections, concurrency, the JVM, I/O, and new features together.
+- Engineers with Java project experience who want a more systematic understanding of internals, source-code design, and engineering practices.
 
-## 学习重点
+## Key Topics
 
-- Java 基础语法、面向对象、异常、泛型、反射、代理、序列化等核心机制。
-- List、Map、Queue、并发容器的使用边界、源码实现和常见面试题。
-- Java 线程、锁、JMM、CAS、AQS、线程池、CompletableFuture 和虚拟线程。
-- JVM 内存区域、类加载、垃圾回收、参数配置、监控工具和线上问题排查。
-- BIO、NIO、AIO、IO 模型，以及装饰器、适配器等 IO 相关设计模式。
-- Java 8 到 Java 26 的重要新特性，以及哪些特性真正影响日常开发。
+- Core Java mechanisms: syntax, object-oriented programming, exceptions, generics, reflection, proxies, and serialization.
+- Usage, implementation, and interview questions for `List`, `Map`, `Queue`, and concurrent collections.
+- Java threads, locks, the Java Memory Model (JMM), CAS, AQS, thread pools, `CompletableFuture`, and virtual threads.
+- JVM memory areas, class loading, garbage collection, configuration, diagnostic tools, and production troubleshooting.
+- BIO, NIO, AIO, I/O models, and I/O design patterns such as Decorator and Adapter.
+- Important Java features from Java 8 through Java 26, and how they affect day-to-day development.
 
-## 建议阅读顺序
+## Suggested Reading Order
 
-1. [Java 基础专题](./basis/)：先掌握语法、面向对象、泛型、反射、代理、序列化等基础能力。
-2. [Java 集合专题](./collection/)：理解 ArrayList、LinkedList、HashMap、ConcurrentHashMap 等常用容器的使用和源码。
-3. [Java 并发编程专题](./concurrent/)：系统学习线程、锁、JMM、CAS、AQS、线程池和并发工具类。
-4. [JVM 专题](./jvm/)：理解内存区域、类加载、垃圾回收、JVM 参数和线上排查。
-5. [Java IO 专题](./io/)：补齐 BIO、NIO、AIO、Reactor、多路复用和 IO 设计模式。
-6. [Java 新特性专题](./new-features/)：按版本梳理 Lambda、Stream、模块化、var、Record、虚拟线程等关键特性。
+1. [Java Fundamentals](./basis/): Learn syntax, object-oriented programming, generics, reflection, proxies, and serialization.
+2. [Java Collections](./collection/): Study common collections such as `ArrayList`, `LinkedList`, `HashMap`, and `ConcurrentHashMap`, including their implementations.
+3. [Java Concurrency](./concurrent/): Learn threads, locks, the JMM, CAS, AQS, thread pools, and concurrency utilities.
+4. [JVM](./jvm/): Study memory areas, class loading, garbage collection, JVM options, and production troubleshooting.
+5. [Java I/O](./io/): Learn BIO, NIO, AIO, Reactor, I/O multiplexing, and I/O design patterns.
+6. [Java New Features](./new-features/): Review key features by release, including lambdas, streams, modules, `var`, records, and virtual threads.
 
-## 核心文章
+## Core Guides
 
-### Java 基础
+### Java Fundamentals
 
-- [Java 基础专题](./basis/)：从基础语法讲到核心机制和常见 Java 面试题。
-- [Java基础常见面试题总结(上)](./basis/java-basic-questions-01.md)：覆盖 Java 语言特点、基础语法、面向对象和常用类。
-- [Java基础常见面试题总结(中)](./basis/java-basic-questions-02.md)：继续梳理异常、泛型、反射、注解和常见细节。
-- [Java基础常见面试题总结(下)](./basis/java-basic-questions-03.md)：补齐高级基础知识和常见易错点。
-- [Java 值传递详解](./basis/why-there-only-value-passing-in-java.md)：厘清值传递、引用变量和对象修改之间的关系。
-- [Java 序列化详解](./basis/serialization.md)：理解序列化机制、serialVersionUID、安全风险和替代方案。
-- [Java 反射机制详解](./basis/reflection.md) 和 [Java 代理模式详解](./basis/proxy.md)：掌握框架底层常见机制。
+- [Java Fundamentals](./basis/): An overview of core Java mechanisms and common interview topics.
+- [Common Java Interview Questions, Part 1](./basis/java-basic-questions-01.md): Java's characteristics, syntax, object-oriented programming, and common classes.
+- [Common Java Interview Questions, Part 2](./basis/java-basic-questions-02.md): Exceptions, generics, reflection, annotations, and related details.
+- [Common Java Interview Questions, Part 3](./basis/java-basic-questions-03.md): Advanced fundamentals and common pitfalls.
+- [A Detailed Look at Pass-by-Value in Java](./basis/why-there-only-value-passing-in-java.md): How pass-by-value, reference variables, and object mutation relate.
+- [Java Serialization](./basis/serialization.md): Serialization, `serialVersionUID`, security risks, and alternatives.
+- [Java Reflection](./basis/reflection.md) and [Java Proxies](./basis/proxy.md): Common mechanisms used by frameworks.
 
-### Java 集合
+### Java Collections
 
-- [Java 集合专题](./collection/)：串联集合框架、使用注意事项和常见源码分析。
-- [Java集合常见面试题总结(上)](./collection/java-collection-questions-01.md) 和 [Java集合常见面试题总结(下)](./collection/java-collection-questions-02.md)：覆盖 List、Set、Map、Queue 和并发集合高频问题。
-- [Java集合使用注意事项总结](./collection/java-collection-precautions-for-use.md)：总结集合判空、遍历、扩容、线程安全和性能相关注意点。
-- [ArrayList 源码分析](./collection/arraylist-source-code.md)、[HashMap 源码分析](./collection/hashmap-source-code.md)、[ConcurrentHashMap 源码分析](./collection/concurrent-hash-map-source-code.md)：从源码理解常用容器的设计取舍。
+- [Java Collections](./collection/): The Collections Framework, usage guidance, and source-code analysis.
+- [Common Java Collections Interview Questions, Part 1](./collection/java-collection-questions-01.md) and [Part 2](./collection/java-collection-questions-02.md): Common questions about `List`, `Set`, `Map`, `Queue`, and concurrent collections.
+- [Java Collection Usage Guidelines](./collection/java-collection-precautions-for-use.md): Null checks, iteration, resizing, thread safety, and performance.
+- [ArrayList](./collection/arraylist-source-code.md), [HashMap](./collection/hashmap-source-code.md), and [ConcurrentHashMap](./collection/concurrent-hash-map-source-code.md): Understand common collection design choices through source code.
 
-### Java 并发
+### Java Concurrency
 
-- [Java 并发编程专题](./concurrent/)：围绕线程、锁、内存模型、线程池和并发工具展开。
-- [Java并发常见面试题总结（上）](./concurrent/java-concurrent-questions-01.md)、[Java并发常见面试题总结（中）](./concurrent/java-concurrent-questions-02.md)、[Java并发常见面试题总结（下）](./concurrent/java-concurrent-questions-03.md)：建立并发面试问题清单。
-- [JMM（Java 内存模型）详解](./concurrent/jmm.md)：理解可见性、原子性、有序性和 happens-before。
-- [CAS 详解](./concurrent/cas.md)、[AQS 详解](./concurrent/aqs.md)、[Java 线程池详解](./concurrent/java-thread-pool-summary.md)：掌握并发底层高频考点。
-- [虚拟线程常见问题总结](./concurrent/virtual-thread.md)：理解 Project Loom 对并发模型的影响。
+- [Java Concurrency](./concurrent/): Threads, locks, the memory model, thread pools, and concurrency utilities.
+- [Common Java Concurrency Interview Questions, Part 1](./concurrent/java-concurrent-questions-01.md), [Part 2](./concurrent/java-concurrent-questions-02.md), and [Part 3](./concurrent/java-concurrent-questions-03.md): Review common concurrency questions.
+- [Java Memory Model (JMM)](./concurrent/jmm.md): Visibility, atomicity, ordering, and happens-before.
+- [CAS](./concurrent/cas.md), [AQS](./concurrent/aqs.md), and [Java Thread Pools](./concurrent/java-thread-pool-summary.md): Core topics in Java concurrency.
+- [Java Virtual Threads](./concurrent/virtual-thread.md): How Project Loom affects the concurrency model.
 
-### JVM 与 IO
+### JVM and I/O
 
-- [JVM 专题](./jvm/)：围绕内存、类加载、GC、参数、工具和线上排查展开。
-- [Java内存区域详解（重点）](./jvm/memory-area.md)：理解程序计数器、虚拟机栈、本地方法栈、堆和方法区。
-- [JVM垃圾回收详解（重点）](./jvm/jvm-garbage-collection.md)：理解对象存活判断、垃圾收集算法和主流垃圾收集器。
-- [类加载过程详解](./jvm/class-loading-process.md) 和 [类加载器详解（重点）](./jvm/classloader.md)：掌握类生命周期和双亲委派模型。
-- [Java I/O](./io/): Covers BIO, NIO, AIO, I/O models, and design patterns.
-- [Java I/O Basics](./io/io-basis.md), [Java NIO Basics](./io/nio-basis.md), and [Java I/O Models](./io/io-model.md): Build the foundation for network programming and middleware.
+- [JVM](./jvm/): Memory, class loading, garbage collection, options, diagnostic tools, and production troubleshooting.
+- [Java Memory Areas](./jvm/memory-area.md): The program counter, JVM stack, native method stack, heap, and method area.
+- [JVM Garbage Collection](./jvm/jvm-garbage-collection.md): Object reachability, garbage-collection algorithms, and major collectors.
+- [Class Loading](./jvm/class-loading-process.md) and [Class Loaders](./jvm/classloader.md): The class lifecycle and parent delegation.
+- [Java I/O](./io/): BIO, NIO, AIO, I/O models, and design patterns.
+- [Java I/O Basics](./io/io-basis.md), [Java NIO Basics](./io/nio-basis.md), and [Java I/O Models](./io/io-model.md): Foundations for network programming and middleware.
 
-### Java 新特性
+### Java New Features
 
-- [Java 新特性专题](./new-features/)：按版本梳理 Java 8 之后的重要语言、标准库和 JVM 特性。
-- [Java8 新特性实战](./new-features/java8-common-new-features.md)：掌握 Lambda、Stream、Optional、接口默认方法和新日期 API。
-- [Java 11 新特性概览（重要）](./new-features/java11.md)、[Java 17 新特性概览（重要）](./new-features/java17.md)、[Java 21 新特性概览(重要)](./new-features/java21.md)：优先关注 LTS 版本中的长期可用特性。
+- [Java New Features](./new-features/): Language, standard library, and JVM features by release since Java 8.
+- [Practical Java 8 Features](./new-features/java8-common-new-features.md): Lambdas, streams, `Optional`, default methods, and the new date and time API.
+- [Java 11 Features](./new-features/java11.md), [Java 17 Features](./new-features/java17.md), and [Java 21 Features](./new-features/java21.md): Start with the long-term support releases.
 
-## 高频问题
+## Common Questions
 
-- Java 为什么是值传递？对象引用作为参数传递时到底发生了什么？
-- `String`、`StringBuilder`、`StringBuffer` 有什么区别？
-- `equals()` 和 `hashCode()` 有什么关系？
-- `ArrayList` 和 `LinkedList` 如何选择？`HashMap` 为什么线程不安全？
-- `ConcurrentHashMap` 在 JDK 7 和 JDK 8 中有什么变化？
-- `synchronized` 和 `ReentrantLock` 有什么区别？
-- JMM 如何保证可见性、有序性和原子性？
-- 线程池核心参数如何配置？为什么不建议直接使用 `Executors`？
-- JVM 内存区域如何划分？哪些区域可能发生 OOM？
-- G1、ZGC、Shenandoah 分别适合什么场景？
-- BIO、NIO、AIO 有什么区别？Reactor 模型解决什么问题？
-- Java 8、11、17、21 中哪些新特性最值得掌握？
+- Why is Java pass-by-value? What happens when an object reference is passed as an argument?
+- How do `String`, `StringBuilder`, and `StringBuffer` differ?
+- How are `equals()` and `hashCode()` related?
+- When should you choose `ArrayList` or `LinkedList`? Why is `HashMap` not thread-safe?
+- How did `ConcurrentHashMap` change between JDK 7 and JDK 8?
+- How do `synchronized` and `ReentrantLock` differ?
+- How does the JMM ensure visibility, ordering, and atomicity?
+- How should thread-pool parameters be configured? Why should you avoid using `Executors` directly?
+- How is JVM memory divided? Which areas can cause an `OutOfMemoryError`?
+- Which use cases suit G1, ZGC, and Shenandoah?
+- How do BIO, NIO, and AIO differ? What problem does the Reactor pattern solve?
+- Which Java 8, 11, 17, and 21 features are most useful to know?
 
-## 相关专题
+## Related Topics
 
-- [计算机基础](../cs-basics/)
-- [系统设计](../system-design/)
-- [数据库](../database/)
-- [分布式系统知识体系](../distributed-system/)
-- [高性能系统知识体系](../high-performance/)
+- [Computer Science Fundamentals](../cs-basics/)
+- [System Design](../system-design/)
+- [Databases](../database/)
+- [Distributed Systems](../distributed-system/)
+- [High-Performance Systems](../high-performance/)
 
 <!-- @include: @article-footer.snippet.md -->

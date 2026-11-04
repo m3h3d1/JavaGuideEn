@@ -1,272 +1,270 @@
 ---
-title: Git 核心概念总结
-description: 总结 Git 的核心概念与工作流，涵盖分支与合并、提交管理与冲突解决，助力团队协作与代码质量提升。
-category: 开发工具
+title: Git Fundamentals
+description: An introduction to Git and version-control workflows, including branches, merges, commits, conflict resolution, and collaboration.
+category: Developer Tools
 tag:
   - Git
 head:
   - - meta
     - name: keywords
-      content: Git,版本控制,分布式,分支,提交,合并,冲突解决,工作流
+      content: Git,version control,distributed,branches,commits,merges,conflict resolution,workflow
 ---
 
-## 版本控制
+## Version Control
 
-### 什么是版本控制
+### What Is Version Control?
 
-版本控制是一种记录一个或若干文件内容变化，以便将来查阅特定版本修订情况的系统。 除了项目源代码，你可以对任何类型的文件进行版本控制。
+Version control records changes to one or more files so you can review specific versions later. You can use it for any kind of file, not just source code.
 
-### 为什么要版本控制
+### Why Use Version Control?
 
-有了它你就可以将某个文件回溯到之前的状态，甚至将整个项目都回退到过去某个时间点的状态，你可以比较文件的变化细节，查出最后是谁修改了哪个地方，从而找出导致怪异问题出现的原因，又是谁在何时报告了某个功能缺陷等等。
+You can restore a file—or an entire project—to an earlier state, compare changes, see who last changed a line, investigate the cause of an unexpected issue, or find out when a bug was reported.
 
-### 本地版本控制系统
+### Local Version-Control Systems
 
-许多人习惯用复制整个项目目录的方式来保存不同的版本，或许还会改名加上备份时间以示区别。 这么做唯一的好处就是简单，但是特别容易犯错。 有时候会混淆所在的工作目录，一不小心会写错文件或者覆盖意想外的文件。
+Many people save different versions by copying the whole project directory and renaming each copy with a date or other label. This is simple, but easy to get wrong: you can confuse working directories, edit the wrong file, or overwrite something unexpectedly.
 
-为了解决这个问题，人们很久以前就开发了许多种本地版本控制系统，大多都是采用某种简单的数据库来记录文件的历次更新差异。
+To address this, people developed local version-control systems that record file changes in a simple database.
 
-![本地版本控制系统](https://oss.javaguide.cn/github/javaguide/tools/git/%E6%9C%AC%E5%9C%B0%E7%89%88%E6%9C%AC%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F.png)
+![Local version-control system](https://oss.javaguide.cn/github/javaguide/tools/git/%E6%9C%AC%E5%9C%B0%E7%89%88%E6%9C%AC%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F.png)
 
-### 集中化的版本控制系统
+### Centralized Version-Control Systems
 
-接下来人们又遇到一个问题，如何让在不同系统上的开发者协同工作？ 于是，集中化的版本控制系统（Centralized Version Control Systems，简称 CVCS）应运而生。
+The next challenge was enabling developers on different computers to collaborate. Centralized version-control systems (CVCS) addressed this by keeping all file revisions on one central server. Collaborators connect to that server to retrieve the latest files or submit changes.
 
-集中化的版本控制系统都有一个单一的集中管理的服务器，保存所有文件的修订版本，而协同工作的人们都通过客户端连到这台服务器，取出最新的文件或者提交更新。
+![Centralized version-control system](https://oss.javaguide.cn/github/javaguide/tools/git/%E9%9B%86%E4%B8%AD%E5%8C%96%E7%9A%84%E7%89%88%E6%9C%AC%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F.png)
 
-![集中化的版本控制系统](https://oss.javaguide.cn/github/javaguide/tools/git/%E9%9B%86%E4%B8%AD%E5%8C%96%E7%9A%84%E7%89%88%E6%9C%AC%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F.png)
+This solved the collaboration problem, but centralized systems still have some drawbacks:
 
-这么做虽然解决了本地版本控制系统无法让在不同系统上的开发者协同工作的诟病，但也还是存在下面的问题：
+- **Single point of failure:** If the central server goes down, others cannot use it. If its database disk fails and there is no backup, you may lose all the data. Local version-control systems have a similar risk: if the full project history exists in only one place, it can all be lost.
+- **Network required:** Work is affected by the network connection and available bandwidth.
 
-- **单点故障：** 中央服务器宕机，则其他人无法使用；如果中心数据库磁盘损坏又没有进行备份，你将丢失所有数据。本地版本控制系统也存在类似问题，只要整个项目的历史记录被保存在单一位置，就有丢失所有历史更新记录的风险。
-- **必须联网才能工作：** 受网络状况、带宽影响。
+### Distributed Version-Control Systems
 
-### 分布式版本控制系统
+Distributed version-control systems (DVCS) addressed these limitations. Git is a typical DVCS.
 
-于是分布式版本控制系统（Distributed Version Control System，简称 DVCS）面世了。 Git 就是一个典型的分布式版本控制系统。
+Instead of retrieving only the latest file snapshot, each client gets a complete copy of the repository. If a collaboration server fails, any local clone can be used to restore it. Each clone is effectively a full backup of the repository.
 
-这类系统，客户端并不只提取最新版本的文件快照，而是把代码仓库完整地镜像下来。 这么一来，任何一处协同工作用的服务器发生故障，事后都可以用任何一个镜像出来的本地仓库恢复。 因为每一次的克隆操作，实际上都是一次对代码仓库的完整备份。
+![Distributed version-control system](https://oss.javaguide.cn/github/javaguide/tools/git/%E5%88%86%E5%B8%83%E5%BC%8F%E7%89%88%E6%9C%AC%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F.png)
 
-![分布式版本控制系统](https://oss.javaguide.cn/github/javaguide/tools/git/%E5%88%86%E5%B8%83%E5%BC%8F%E7%89%88%E6%9C%AC%E6%8E%A7%E5%88%B6%E7%B3%BB%E7%BB%9F.png)
+Distributed systems can work offline because everyone has a complete repository on their own computer. After changing files, you can send your changes to others. In practice, teams rarely push changes directly to each other. Instead, they use a server as a convenient place to exchange changes. The server is not essential; it just makes sharing easier.
 
-分布式版本控制系统可以不用联网就可以工作，因为每个人的电脑上都是完整的版本库，当你修改了某个文件后，你只需要将自己的修改推送给别人就可以了。但是，在实际使用分布式版本控制系统的时候，很少会直接进行推送修改，而是使用一台充当“中央服务器”的东西。这个服务器的作用仅仅是用来方便“交换”大家的修改，没有它大家也一样干活，只是交换修改不方便而已。
+Not needing a network connection is only one advantage. As we'll see, Git also has powerful branch-management features.
 
-分布式版本控制系统的优势不单是不必联网这么简单，后面我们还会看到 Git 极其强大的分支管理等功能。
+## Getting to Know Git
 
-## 认识 Git
+### A Brief History of Git
 
-### Git 简史
+The Linux kernel team used the distributed version-control system BitKeeper to manage its source code. Later, the commercial company behind BitKeeper ended its relationship with the open-source Linux community and revoked its free-use license. Drawing on their experience with BitKeeper, the Linux community—especially Linus Torvalds—created Git and made many improvements to version control.
 
-Linux 内核项目组当时使用分布式版本控制系统 BitKeeper 来管理和维护代码。但是，后来开发 BitKeeper 的商业公司同 Linux 内核开源社区的合作关系结束，他们收回了 Linux 内核社区免费使用 BitKeeper 的权力。 Linux 开源社区（特别是 Linux 的缔造者 Linus Torvalds）基于使用 BitKeeper 时的经验教训，开发出自己的版本系统，而且对新的版本控制系统做了很多改进。
+### How Git Differs from Other Version-Control Systems
 
-### Git 与其他版本管理系统的主要区别
+Git handles and stores information differently from other version-control systems, even though many commands look similar. Understanding this difference can help prevent confusion.
 
-Git 在保存和对待各种信息的时候与其它版本控制系统有很大差异，尽管操作起来的命令形式非常相近，理解这些差异将有助于防止你使用中的困惑。
+The main difference is **how Git stores data**.
 
-下面我们主要说一个关于 Git 与其他版本管理系统的主要差别：**对待数据的方式**。
+**Git records snapshots directly instead of comparing differences.** The distinction will become clearer below.
 
-**Git 采用的是直接记录快照的方式，而非差异比较。我后面会详细介绍这两种方式的差别。**
+Most version-control systems, including CVS, Subversion, Perforce, and Bazaar, store information as a list of file changes. They treat it as a set of base files plus the changes made to each file over time.
 
-大部分版本控制系统（CVS、Subversion、Perforce、Bazaar 等等）都是以文件变更列表的方式存储信息，这类系统**将它们保存的信息看作是一组基本文件和每个文件随时间逐步累积的差异。**
-
-具体原理如下图所示，理解起来其实很简单，每当我们提交更新一个文件之后，系统都会记录这个文件做了哪些更新，以增量符号 Δ(Delta)表示。
+The diagram below shows the basic idea: whenever you commit a file, the system records its changes as increments, or deltas (Δ).
 
 ![](https://oss.javaguide.cn/github/javaguide/tools/git/2019-3deltas.png)
 
-**我们怎样才能得到一个文件的最终版本呢？**
+**How do we get the latest version of a file?**
 
-很简单，高中数学的基本知识，我们只需要将这些原文件和这些增加进行相加就行了。
+Simply add the original file and all of its changes together.
 
-**这种方式有什么问题呢？**
+**What's the problem with this approach?**
 
-比如我们的增量特别特别多的话，如果我们要得到最终的文件是不是会耗费时间和性能。
+If there are many changes, reconstructing the latest file can take time and computing resources.
 
-Git 不按照以上方式对待或保存数据。 反之，Git 更像是把数据看作是对小型文件系统的一组快照。 每次你提交更新，或在 Git 中保存项目状态时，它主要对当时的全部文件制作一个快照并保存这个快照的索引。 为了高效，如果文件没有修改，Git 不再重新存储该文件，而是只保留一个链接指向之前存储的文件。 Git 对待数据更像是一个 **快照流**。
+Git stores data differently. It treats it more like a series of snapshots of a small filesystem. Whenever you commit an update or save a project state, Git takes a snapshot of the files at that point and stores an index to it. For efficiency, if a file hasn't changed, Git doesn't store it again; it keeps a link to the previously stored file. Git treats data more like a **stream of snapshots**.
 
 ![](https://oss.javaguide.cn/github/javaguide/tools/git/2019-3snapshots.png)
 
-### Git 的三种状态
+### The Three States in Git
 
-Git 有三种状态，你的文件可能处于其中之一：
+A file in Git can be in one of three states:
 
-1. **已提交（committed）**：数据已经安全的保存在本地数据库中。
-2. **已修改（modified）**：已修改表示修改了文件，但还没保存到数据库中。
-3. **已暂存（staged）**：表示对一个已修改文件的当前版本做了标记，使之包含在下次提交的快照中。
+1. **Committed:** The data is safely stored in the local database.
+2. **Modified:** The file has changed but hasn't been saved to the database.
+3. **Staged:** The current version of a modified file is marked to be included in the next commit's snapshot.
 
-由此引入 Git 项目的三个工作区域的概念：**Git 仓库(.git directory)**、**工作目录(Working Directory)** 以及 **暂存区域(Staging Area)** 。
+This leads to three areas in a Git project: the **Git directory** (`.git`), the **working directory**, and the **staging area**.
 
 ![](https://oss.javaguide.cn/github/javaguide/tools/git/2019-3areas.png)
 
-**基本的 Git 工作流程如下：**
+**A basic Git workflow looks like this:**
 
-1. 在工作目录中修改文件。
-2. 暂存文件，将文件的快照放入暂存区域。
-3. 提交更新，找到暂存区域的文件，将快照永久性存储到 Git 仓库目录。
+1. Modify files in the working directory.
+2. Stage files, adding their snapshots to the staging area.
+3. Commit the changes, permanently storing the staged snapshots in the Git directory.
 
-## Git 使用快速入门
+## Get Started with Git
 
-### 获取 Git 仓库
+### Get a Git Repository
 
-有两种取得 Git 项目仓库的方法。
+There are two ways to get a Git repository:
 
-1. 在现有目录中初始化仓库：进入项目目录运行 `git init` 命令，该命令会创建一个名为 `.git` 的子目录。
-2. 从一个服务器克隆一个现有的 Git 仓库：`git clone [url]`。如果想自定义本地目录名，可以使用 `git clone [url] directoryname`。
+1. Initialize a repository in an existing directory by navigating to the project and running `git init`. This creates a `.git` subdirectory.
+2. Clone an existing repository from a server with `git clone [url]`. To choose a local directory name, use `git clone [url] directoryname`.
 
-### 记录每次更新到仓库
+### Record Changes in the Repository
 
-1. **检测当前文件状态** : `git status`
-2. **提出更改（把它们添加到暂存区）**：`git add filename`（针对特定文件）、`git add .`（当前目录下所有改动）、`git add *.txt`（支持通配符，所有 `.txt` 文件）。
-3. **忽略文件**：`.gitignore` 文件
-4. **提交更新**：`git commit -m "代码提交信息"`。每次准备提交前，先用 `git status` 看一下是否都已暂存。
-5. **跳过使用暂存区域更新的方式**：`git commit -a -m "代码提交信息"`。`git commit` 加上 `-a` 选项，Git 会自动把所有已经跟踪过的文件暂存起来一并提交，从而跳过 `git add` 步骤。
-6. **移除文件**：`git rm filename` （从暂存区域移除，然后提交。）
-7. **对文件重命名**：`git mv README.md README`(这个命令相当于`mv README.md README`、`git rm README.md`、`git add README` 这三条命令的集合)
+1. **Check file status:** `git status`
+2. **Stage changes:** `git add filename` stages a specific file; `git add .` stages all changes in the current directory; `git add *.txt` uses a wildcard to stage `.txt` files.
+3. **Ignore files:** Add patterns to a `.gitignore` file.
+4. **Commit changes:** `git commit -m "Commit message"`. Before committing, run `git status` to make sure everything you intend to commit is staged.
+5. **Skip staging:** `git commit -a -m "Commit message"` automatically stages and commits changes to tracked files, skipping the `git add` step.
+6. **Remove a file:** `git rm filename` removes it from the staging area; then commit the change.
+7. **Rename a file:** `git mv README.md README` is equivalent to running `mv README.md README`, `git rm README.md`, and `git add README`.
 
-### 一个好的 Git 提交消息
+### Write a Good Git Commit Message
 
-一个好的 Git 提交消息如下：
+A good commit message can look like this:
 
 ```plain
-标题行：用这一行来描述和解释你的这次提交
+Summary: Describe the commit in one line.
 
-主体部分可以是很少的几行，来加入更多的细节来解释提交，最好是能给出一些相关的背景或者解释这个提交能修复和解决什么问题。
+The body can provide more detail, context, or an explanation of the problem this commit fixes.
 
-主体部分当然也可以有几段，但是一定要注意换行和句子不要太长。因为这样在使用 "git log" 的时候会有缩进比较好看。
+The body can contain several paragraphs. Keep lines short and add line breaks so the output of "git log" is easy to read.
 ```
 
-提交的标题行描述应该尽量的清晰和尽量的一句话概括。这样就方便相关的 Git 日志查看工具显示和其他人的阅读。
+Keep the summary clear and concise. This makes it easier for Git log tools and other people to review the history.
 
-### 推送改动到远程仓库
+### Push Changes to a Remote Repository
 
-- 如果你还没有克隆现有仓库，并想将你的仓库连接到某个远程服务器，可以使用如下命令添加：`git remote add origin <server>`。比如要让本地仓库和 GitHub 上创建的仓库关联，可以这样写：`git remote add origin https://github.com/Snailclimb/test.git`。
-- 将这些改动提交到远端仓库：`git push origin main`。这里的 `main` 可以换成你想要推送的任何分支。很多老项目的默认分支仍然叫 `master`，以实际仓库为准。
+- If you haven't cloned an existing repository and want to connect your local repository to a server, add a remote with `git remote add origin <server>`. For example, to connect to a repository created on GitHub, run `git remote add origin https://github.com/Snailclimb/test.git`.
+- Push changes to the remote repository with `git push origin main`. Replace `main` with the branch you want to push. Many older projects still use `master` as their default branch, so check the repository.
 
-  如此你就能够将你的改动推送到所添加的服务器上去了。
+Your changes will then be available on the remote server.
 
-### 远程仓库的移除与重命名
+### Rename or Remove a Remote Repository
 
-- 将 test 重命名为 test1：`git remote rename test test1`
-- 移除远程仓库 test1:`git remote rm test1`
+- Rename `test` to `test1`: `git remote rename test test1`
+- Remove the `test1` remote: `git remote rm test1`
 
-### 查看提交历史
+### View Commit History
 
-在提交了若干更新，又或者克隆了某个项目之后，你也许想回顾下提交历史。 完成这个任务最简单而又有效的工具是 `git log` 命令。`git log` 会按提交时间列出所有的更新，最近的更新排在最上面。
+After making several commits or cloning a project, you may want to review its history. The simplest and most effective command is `git log`. It lists commits in chronological order, with the latest first.
 
-**可以添加一些参数来查看自己希望看到的内容：**
+**Add options to filter the output:**
 
-只看某个人的提交记录：
+To show commits by a particular author:
 
 ```shell
 git log --author=bob
 ```
 
-### 撤销操作
+### Undo Changes
 
-有时候我们提交完了才发现漏掉了几个文件没有添加，或者提交信息写错了。 此时，可以运行带有 `--amend` 选项的提交命令尝试重新提交：
+Sometimes you commit and then realize that you forgot to add a few files or made a mistake in the commit message. Try recommitting with the `--amend` option:
 
 ```shell
 git commit --amend
 ```
 
-取消暂存的文件：
+To unstage a file:
 
 ```shell
 git restore --staged filename
 ```
 
-老版本 Git 也常见下面这种写法：
+Older Git versions also commonly use:
 
 ```shell
 git reset filename
 ```
 
-撤消对文件的修改：
+To discard changes to a file:
 
 ```shell
 git restore filename
 ```
 
-老版本 Git 也常见下面这种写法：
+Older Git versions also commonly use:
 
 ```shell
 git checkout -- filename
 ```
 
-假如你想丢弃你在本地的所有改动与提交，可以到服务器上获取最新的版本历史，并将你本地主分支指向它：
+To discard all local changes and commits, fetch the latest history from the server and point your local main branch at it:
 
 ```shell
 git fetch origin
 git reset --hard origin/main
 ```
 
-注意：`git reset --hard` 会丢弃本地未提交改动，执行前一定要确认没有需要保留的内容。老项目如果默认分支是 `master`，对应命令改成 `git reset --hard origin/master`。
+**Warning:** `git reset --hard` discards uncommitted local changes. Make sure there is nothing you need to keep before running it. If the older project uses `master` as its default branch, use `git reset --hard origin/master` instead.
 
-### 分支
+### Branches
 
-分支是用来隔离不同开发任务的。在其他分支上开发功能或修复问题，完成后再合并回主分支。现在很多仓库默认分支叫 `main`，老项目中也经常能看到 `master`。
+Branches isolate different development tasks. Develop a feature or fix on another branch, then merge it back into the main branch when it is ready. Many repositories now use `main` as the default branch; older ones often use `master`.
 
-我们通常在开发新功能、修复一个紧急 bug 等等时候会选择创建分支。单分支开发好还是多分支开发好，还是要看具体场景来说。
-
-创建一个名字叫做 test 的分支
+Create a branch named `test`:
 
 ```shell
 git branch test
 ```
 
-切换当前分支到 `test`（当你切换分支的时候，Git 会重置你的工作目录，使其看起来像回到了你在那个分支上最后一次提交的样子。Git 会自动添加、删除、修改文件，以确保此时你的工作目录和这个分支最后一次提交时的样子一致）。
+Switch to `test`:
 
 ```shell
 git switch test
 ```
 
-老版本 Git 也常见 `git checkout test` 这种写法。
+When you switch branches, Git updates the working directory to match the latest commit on that branch, adding, removing, or modifying files as needed.
+
+Older Git versions also commonly use `git checkout test`.
 
 ![](https://oss.javaguide.cn/github/javaguide/tools/git/2019-3%E5%88%87%E6%8D%A2%E5%88%86%E6%94%AF.png)
 
-你也可以直接这样创建分支并切换过去：
+Create and switch to a branch in one command:
 
 ```shell
 git switch -c feature_x
 ```
 
-老版本 Git 也常见 `git checkout -b feature_x` 这种写法。
+Older Git versions also commonly use `git checkout -b feature_x`.
 
-切换到主分支
+Switch to the main branch:
 
 ```shell
 git switch main
 ```
 
-合并分支(可能会有冲突)
+Merge `test` into the current branch (this may produce conflicts):
 
 ```shell
 git merge test
 ```
 
-把新建的分支删掉
+Delete the branch you created:
 
 ```shell
 git branch -d feature_x
 ```
 
-将分支推送到远端仓库（推送成功后其他人可见）：
+Push the branch to the remote repository so others can access it:
 
 ```shell
 git push origin feature_x
 ```
 
-## 学习资料推荐
+## Recommended Learning Resources
 
-**在线演示学习工具：**
+**Interactive learning tool:**
 
-「补充，来自[issue729](https://github.com/Snailclimb/JavaGuide/issues/729)」Learn Git Branching <https://oschina.gitee.io/learn-git-branching/> 。该网站可以方便的演示基本的 git 操作，讲解得明明白白。每一个基本命令的作用和结果。
+As suggested in [issue 729](https://github.com/Snailclimb/JavaGuide/issues/729), try [Learn Git Branching](https://oschina.gitee.io/learn-git-branching/). It demonstrates basic Git operations and clearly explains what each command does and how it changes the repository.
 
-**推荐阅读：**
+**Recommended reading:**
 
-- [Git 入门图文教程(1.5W 字 40 图)](https://www.cnblogs.com/anding/p/16987769.html)：超用心的一篇文章，内容全面且附带详细的图解，强烈推荐！
-- [Git - 简明指南](https://rogerdudler.github.io/git-guide/index.zh.html)：涵盖 Git 常见操作，非常清晰。
-- [图解 Git](https://marklodato.github.io/visual-git-guide/index-zh-cn.html)：图解 Git 中的最常用命令。如果你稍微理解 git 的工作原理，这篇文章能够让你理解的更透彻。
-- [猴子都能懂得 Git 入门](https://backlog.com/git-tutorial/cn/intro/intro1_1.html)：有趣的讲解。
-- [Pro Git book](https://git-scm.com/book/zh/v2)：国外的一本 Git 书籍，被翻译成多国语言，质量很高。
+- [A Visual Git Tutorial (15,000 Chinese characters, 40 diagrams)](https://www.cnblogs.com/anding/p/16987769.html): A thorough article with detailed illustrations.
+- [Git: The Simple Guide](https://rogerdudler.github.io/git-guide/index.zh.html): A clear overview of common Git operations.
+- [Visualizing Git](https://marklodato.github.io/visual-git-guide/index-zh-cn.html): Diagrams of common Git commands. If you understand the basics, it can help you build a deeper understanding.
+- [Git Tutorial for Beginners](https://backlog.com/git-tutorial/cn/intro/intro1_1.html): An approachable introduction.
+- [Pro Git](https://git-scm.com/book/zh/v2): A high-quality book originally written in English and translated into many languages.
 
 <!-- @include: @article-footer.snippet.md -->

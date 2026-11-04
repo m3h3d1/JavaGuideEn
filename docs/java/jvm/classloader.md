@@ -398,11 +398,11 @@ Spring can retrieve the thread context class loader as follows:
 cl = Thread.currentThread().getContextClassLoader();
 ```
 
-For more on how Tomcat changes parent delegation, see [《深入拆解 Tomcat & Jetty》](http://gk.link/a/10Egr) (an in-depth guide to Tomcat and Jetty).
+For more on how Tomcat changes parent delegation, see [In-Depth Analysis of Tomcat & Jetty](http://gk.link/a/10Egr).
 
 ## Further Reading
 
-- 《深入拆解 Java 虚拟机》 (In-Depth Analysis of the Java Virtual Machine)
+- _In-Depth Analysis of the Java Virtual Machine_
 - An in-depth look at Java ClassLoader: <https://blog.csdn.net/xyang81/article/details/7292380>
 - Java class loaders (`ClassLoader`): <http://gityuan.com/2016/01/24/java-classloader/>
 - Class Loaders in Java：<https://www.baeldung.com/java-classloaders>

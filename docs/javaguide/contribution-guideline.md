@@ -1,95 +1,93 @@
 ---
-title: 贡献指南
-description: JavaGuide开源项目贡献指南，讲解如何参与项目维护、提交PR及成为Contributor的完整流程。
-category: 走近项目
+title: Contribution Guide
+description: How to contribute to JavaGuide, submit pull requests, and become a contributor.
+category: About the Project
 icon: "mdi:compass-outline"
 ---
 
-你好，我是 Guide！欢迎来到 JavaGuide 的“开源实验室”。
+Hi, I'm Guide! Welcome to the JavaGuide open-source community.
 
-参与开源项目的维护，不仅是一次技术实战，更是一场“技术反哺”的修行。
+Contributing to an open-source project is a practical way to build your skills and deepen your understanding of technical topics.
 
-在这里，你的每一行文字和代码，都会被全球几十万的开发者看到。
+Your words and code can help developers around the world.
 
-## 为什么要参与 JavaGuide 的维护？
+## Why Contribute to JavaGuide?
 
-很多小伙伴觉得开源社区门槛高，其实不然。参与 JavaGuide 维护的收益非常务实：
+Open-source communities can seem difficult to join, but contributing to JavaGuide has practical benefits:
 
-1. **深度对齐知识点**：在纠错或完善内容的过程中，你会强迫自己进行“穿透式学习”，这种记忆远比死记硬背八股文要深刻。
-2. **影响力背书**：JavaGuide 已经接近 160k Star 了。如果你的 `PR` 被采纳，你的名字将永久留在 `Contributor` 列表中。这在求职面试时，是一份非常有说服力的**“开源实战证明”**。
-3. **实物奖励**：我会不定期给高频贡献的小伙伴寄送耳机、机械键盘等硬核周边，甚至还有直接的现金激励。
+1. **Strengthen your understanding**: Reviewing or improving content encourages you to study a topic in depth. This is more effective than memorizing interview answers.
+2. **Build your track record**: JavaGuide has nearly 160,000 stars. If your pull request is accepted, your name will appear in the `Contributors` list. This is useful experience to discuss in job interviews.
+3. **Contributor rewards**: I occasionally send frequent contributors gifts such as headphones and mechanical keyboards, and sometimes offer cash rewards.
 
-## 可以从哪些方向进行贡献？
+## How Can You Contribute?
 
-你可以根据自己的精力，选择以下三个维度的贡献：
+Choose an area based on your time and experience:
 
-- **纠错（初级）**：发现文档中的错别字、标点误用或代码格式混乱。这类贡献最简单，但最有温度。
-- **完善（进阶）**：对现有的面试题答案进行重构。比如某篇文章的逻辑有断层，或者缺少了最新的技术特性分析。
-- **新增（专家）**：根据大厂最新的面试动向，新增高频面试题详解或硬核知识点的深度剖析。
+- **Corrections (beginner)**: Fix typos, punctuation, or code formatting. These are simple but valuable contributions.
+- **Improvements (intermediate)**: Improve existing interview answers, such as by fixing gaps in the reasoning or adding analysis of newer technical features.
+- **New content (advanced)**: Add detailed answers to frequently asked interview questions or explain important technical topics based on current interview trends.
 
-## 如何丝滑地提交贡献？
+## How to Contribute
 
-### 极简模式：点击“编辑此页”（3 分钟上手）
+### Quick edit: Use “Edit this page”
 
-本站每个页面的**左下角**都有一个 **「编辑此页」** 按钮。
+Every page has an **Edit this page** button in the lower-left corner.
 
-1. **点击跳转**：直接进入 GitHub 在线编辑界面。
-2. **在线修改**：在浏览器里直接改内容，省去 `git clone` 的麻烦。
-3. **提交申请**：填写提交信息（Commit Message），点击提交即可自动触发 `Pull Request`。
+1. **Open the editor**: Go to the GitHub editor for that page.
+2. **Make your changes**: Edit the content in your browser without cloning the repository.
+3. **Submit your changes**: Enter a commit message and submit. GitHub will open a pull request.
 
-这种方式最适合修正笔误或小范围的内容优化。
+This is the easiest way to fix a typo or make a small improvement.
 
 ![](./images/shared/javaguide-contribution-edit-page.png)
 
-### 进阶模式：Fork + PR（标准开源流程）
+### Fork and submit a pull request
 
-如果你想进行大篇幅的重构或新增内容，建议走标准的 GitHub 工作流：
+For larger changes or new content, use the standard GitHub workflow:
 
-1. **Fork 仓库**：点击[原仓库](https://github.com/Snailclimb/JavaGuide)右上角的 `Fork`，将 JavaGuide 复制一份副本到你的账户名下。
-2. **本地开发**：你可以将项目克隆到本地，在本地自由修改，编写内容。内容修改或者编写完成之后，直接提交到副本仓库即可。
-3. **发起 PR**：提交完成后，点击 `New Pull Request`，将你的修改请求合并到 JavaGuide 的主分支。
+1. **Fork the repository**: Click `Fork` in the top-right corner of the [original repository](https://github.com/Snailclimb/JavaGuide) to create a copy under your account.
+2. **Work locally**: Clone your fork, make your changes, and push them to your fork.
+3. **Open a pull request**: Click `New Pull Request` to propose merging your changes into JavaGuide's main branch.
 
 ![](./images/shared/javaguide-contribution-pr.png)
 
-Git 相关的技能非常重要，建议在正式工作之前一定要熟练掌握。
+Git skills are useful for contributing and for professional software development. These guides can help:
 
-我写过两篇相关的文章，推荐看看：
+- [Git: Core Concepts](https://javaguide.cn/tools/git/git-intro.html)
+- [Practical GitHub Tips](https://javaguide.cn/tools/git/github-tips.html)
 
-- [Git 核心概念总结](https://javaguide.cn/tools/git/git-intro.html)
-- [Github 实用小技巧总结](https://javaguide.cn/tools/git/github-tips.html)
+### Open an issue to start a discussion
 
-### 提交 Issue 开启讨论
+If you spot something that could be improved but do not have time to code, or want to propose a new topic, open an **issue**.
 
-如果你发现某些地方需要改进，但暂时没空写代码，或者想提议新增某个专题，请直接通过 **Issue** 发起讨论。
+Here is an example issue:
 
-推荐的模板如下：
-
-> **标题**：建议新增 Redis 与数据库双写一致性方案的对比与选型指南
+> **Title**: Compare approaches for keeping Redis and a database consistent during dual writes
 >
-> **内容描述**：缓存一致性是面试和实战中的重难点，目前文档中缺乏系统性的方案对比。建议补充：
+> **Description**: Cache consistency is a common challenge in interviews and production. The current documentation does not compare the main approaches. Please consider covering:
 >
-> 1. **方案对比**：详细对比“先更新数据库再删缓存”、“延迟双删”、“订阅 binlog 异步删除”等方案的优缺点。
-> 2. **极端场景分析**：分析在主从延迟或网络抖动下，如何最大程度保障最终一致性。
+> 1. **Approach comparison**: Compare updating the database before deleting the cache, delayed double deletion, and asynchronous deletion by subscribing to the binlog.
+> 2. **Failure scenarios**: Explain how to preserve eventual consistency during replication lag or network instability.
 >
-> **认领意向**：我对该领域有深入研究，并整理了一份对比表格和流程图，希望能将其贡献到 JavaGuide。
+> **Offering to contribute**: I have studied this topic and prepared a comparison table and diagrams. I would like to contribute them to JavaGuide.
 
-## 贡献要求
+## Contribution Guidelines
 
-### 排版是第一生产力
+### Follow the style guide
 
-中英文之间要加空格，标点符号要规范。请参考（任选一篇阅读即可）：
+Use consistent punctuation and spacing between English and Chinese text. For Chinese-language contributions, see one of these guides:
 
-- [中文文案排版指北](https://github.com/sparanoid/chinese-copywriting-guidelines)
-- [中文技术文档写作风格指南](https://github.com/yikeke/zh-style-guide/)
-- [中文文案排版细则 - Dawner](https://dawner.top/posts/chinese-copywriting-rules/)
-- [写给大家看的中文排版指南 - 知乎](https://zhuanlan.zhihu.com/p/20506092)
+- [Chinese Copywriting Guidelines](https://github.com/sparanoid/chinese-copywriting-guidelines)
+- [Chinese Technical Writing Style Guide](https://github.com/yikeke/zh-style-guide/)
+- [Chinese Copywriting Rules by Dawner](https://dawner.top/posts/chinese-copywriting-rules/)
+- [Chinese Typesetting Guide](https://zhuanlan.zhihu.com/p/20506092)
 
-### 内容原创
+### Write original content
 
-你可以参考学习别人的文章，但**一定、一定、一定不要复制粘贴**！
+You can consult other articles, but **do not copy and paste**.
 
-你要做的不是“信息的搬运工”，而是“知识的过滤器”。用你自己的话讲出来，努力写得比别人更通俗易懂，突出核心重点。**这种“穿透式”的表达，才是对读者最大的负责。**
+Do more than collect information: explain it in your own words, make it easier to understand, and focus on the key points. Clear explanations are more useful to readers.
 
-## 写在最后
+## Thanks
 
-开源不是一个人的单打独斗，而是一群人的砥砺前行。 **准备 Java 面试，首选 JavaGuide！** 期待在 Contributor 列表中看到你的名字。
+Open source is a shared effort. If you are preparing for Java interviews, start with JavaGuide. I look forward to seeing your name in the `Contributors` list.

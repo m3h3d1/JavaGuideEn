@@ -1,5 +1,5 @@
 ---
-title: JWT Authentication: Advantages, Disadvantages, and Trade-Offs
+title: "JWT Authentication: Advantages, Disadvantages, and Trade-Offs"
 description: An in-depth look at JWT authentication, including revocation, token renewal, security risks, and alternatives.
 category: System Design
 tag:

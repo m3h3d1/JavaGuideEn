@@ -1,299 +1,299 @@
 ---
-title: 大模型实战项目 + Agent实战项目：Spring AI 面试平台与 RAG 知识库
-description: 基于 Spring Boot 4.1 + Java 25 + Spring AI 2.0 的大模型实战项目和 Agent实战项目，集成 RAG 知识库、AI 模拟面试（文字 + 语音）、简历分析、知识库题库面试、多模型配置等功能，适合后端开发者学习 AI 应用开发、Spring AI 框架实战和 RAG/Agent 工程落地。
-category: 知识星球
+title: "AI Application and Agent Project: Spring AI Interview Platform and RAG Knowledge Base"
+description: A hands-on AI and Agent project built with Spring Boot 4.1, Java 25, and Spring AI 2.0. Includes RAG, text and voice mock interviews, resume analysis, knowledge-base interviews, and multiple model providers.
+category: Knowledge Planet
 star: 5
 head:
   - - meta
     - name: keywords
-      content: Spring AI实战,Spring AI项目,Spring Boot AI,RAG知识库,AI面试平台,大模型实战项目,Agent实战项目,大模型项目,Agent项目,AI应用开发实战,Spring Boot 4,AI模拟面试,RAG实战,Java AI项目,大模型落地项目,AI简历项目,Spring AI 2.0
+      content: Spring AI project,Spring Boot AI,RAG knowledge base,AI interview platform,Agent project,LLM application,AI application development,AI mock interview,Java AI project,Spring AI 2.0
 ---
 
-很多后端同学准备简历项目时都会遇到同一个问题：项目里全是增删改查（CRUD），技术栈看起来不少，但面试官很难继续深挖，也很难体现你对 **大模型应用开发、RAG 知识库、Agent 工程落地** 这些新方向的理解。
+Backend developers often face the same problem when choosing a project for their resume: it is mostly CRUD. The technology stack may look broad, but interviewers have little to explore, and the project may not show your understanding of **LLM applications, RAG knowledge bases, or production Agents**.
 
-这篇要介绍的就是一个面向 Java 后端的 **大模型实战项目 + Agent 实战项目**：基于 **Spring Boot 4.1、Java 25、Spring AI 2.0** 构建 AI 智能面试辅助平台，把简历分析、AI 模拟面试（文字 + 语音）、RAG 知识库问答、知识库题库面试、多模型配置、异步任务处理、分布式限流等能力串成一个完整项目。
+This guide introduces a hands-on **LLM and Agent project** for Java backend developers: an AI interview platform built with **Spring Boot 4.1, Java 25, and Spring AI 2.0**. It brings together resume analysis, text and voice mock interviews, RAG knowledge-base Q&A, knowledge-base interviews, multiple model providers, asynchronous jobs, and distributed rate limiting.
 
-如果你想找一个能写进简历、能用于面试讲解、也能系统学习 Spring AI 和 RAG/Agent 实战的项目，这个项目会比单纯堆业务表的 CRUD 项目更适合你。
+If you want a project to present on your resume and discuss in interviews while learning Spring AI, RAG, and Agent engineering, this offers more to explore than a CRUD application built mainly around business tables.
 
-## 项目介绍
+## Project Overview
 
-这是一个基于 Spring Boot 4.1 + Java 25 + Spring AI 2.0 的 AI 智能面试辅助平台，集成了简历分析、模拟面试（文字 + 语音）、面试安排、知识库管理、知识库题库面试和多模型配置，核心能力如下：
+This AI interview platform is built with Spring Boot 4.1, Java 25, and Spring AI 2.0. Its main features are:
 
-1. **智能简历分析**：上传简历后，AI 自动进行多维度评分并给出改进建议
-2. **模拟面试（文字 + 语音）**：基于 Skill 面试方向或简历生成个性化面试题，支持文字实时问答、实时语音对话和答案评估
-3. **RAG 知识库问答**：上传技术文档构建私有知识库，支持向量检索增强的智能问答
-4. **知识库题库面试**：从知识库文档自动生成题库，支持题库维护与专项模拟面试
-5. **面试安排管理**：智能解析面试邀请，日历视图管理面试日程
-6. **多模型配置**：内置多家 OpenAI 兼容模型 Provider，支持运行时切换默认聊天与向量模型
+1. **AI resume analysis**: Upload a resume for multi-dimensional scoring and improvement suggestions.
+2. **Text and voice mock interviews**: Generate personalized questions from an interview Skill or resume; support real-time text Q&A, voice conversations, and answer evaluation.
+3. **RAG knowledge-base Q&A**: Upload technical documents to build a private knowledge base for retrieval-augmented answers.
+4. **Knowledge-base interviews**: Generate and manage question banks from knowledge-base documents, then run focused mock interviews.
+5. **Interview scheduling**: Parse interview invitations and manage them in a calendar.
+6. **Multiple model providers**: Configure OpenAI-compatible providers and switch the default chat or embedding model at runtime.
 
-![效果展示](./images/shared/page-resume-history.png)
+![Platform preview](./images/shared/page-resume-history.png)
 
-**项目地址** （欢迎 star 鼓励）：
+**Project repositories:**
 
 - Github：<https://github.com/Snailclimb/interview-guide>
 - Gitee：<https://gitee.com/SnailClimb/interview-guide>
 
-完整代码完全免费开源，没有 Pro 版本或者付费版！
+The complete project is free and open source; there is no paid or Pro edition.
 
-## 简历写法
+## How to Present the Project on Your Resume
 
-**如何将《SpringAI 智能面试平台+RAG知识库》实战项目写进简历？**我一共提供了五大方向版本任选，精准匹配岗位需求：
+**How can you present the Spring AI interview platform and RAG knowledge base on your resume?** The guide offers versions for five role directions:
 
-1. **后端方向**：提供“架构与分布式能力侧重”、“AI 应用与响应式编程侧重”、“工程化与基础设施侧重”三个版本，无论你面试的是后端、大模型应用还是架构岗位，都能找到最合适的切入点。
-2. **测试/测开方向**：专门设计了“单元测试与 TDD”以及“功能/异常场景覆盖”两个版本，突出测试工程师在 AI 质量保障中的核心竞争力。
+1. **Backend roles**: Three versions emphasize architecture and distributed systems, AI applications and reactive programming, or engineering and infrastructure.
+2. **Testing and test-development roles**: Two versions emphasize unit testing and TDD, or functional and failure-scenario coverage, highlighting quality assurance for AI applications.
 
-![《SpringAI 智能面试平台+RAG知识库》简历写法](./images/shared/project-on-resume.png)
+![Resume examples for the Spring AI interview platform and RAG knowledge base](./images/shared/project-on-resume.png)
 
-每一条描述都紧扣项目真实逻辑，严格遵守项目介绍规范。不仅教你怎么写，更教你怎么补，例如针对本项目未涉及的“用户认证与鉴权”给出补充建议，教你如何基于 SpringSecurity/Sa-Token 包装主流的认证授权方案。
+Each resume bullet reflects the project's actual implementation. The guide also explains how to address gaps—for example, how to add authentication and authorization with Spring Security or Sa-Token, which the project does not currently implement.
 
-并且，我还补充了面试官可深挖的技术难点（如 Redis Stream vs 传统消息队列、分布式限流的实现细节）以及项目难点与解决方案模板。
+It also covers topics interviewers may explore, such as Redis Streams versus traditional message queues and distributed rate limiting, with templates for describing project challenges and solutions.
 
-## 教程概览
+## Tutorial Overview
 
-带大家看看我写的配套教程，用心程度一切都在文字中！整个项目教程，我手绘了几十张技术配图帮助理解。
+The companion tutorial includes dozens of hand-drawn technical diagrams to explain the project.
 
-例如，RAG 面试题总结这篇，耗时一周终于完成了第一版，如今已经扩充到 **5 万字**，包含 **35 道高频 RAG 面试题**，光校对都进行了三次。而且，后续还会继续完善优化！
+For example, the RAG interview guide took a week to draft. It has since grown to **50,000 Chinese characters** and **35 common RAG interview questions**, and has gone through three rounds of proofreading. It will continue to be revised.
 
-![RAG 面试题](./images/shared/rag-interview-questions.png)
+![RAG interview questions](./images/shared/rag-interview-questions.png)
 
-这篇是对应的 RAG 知识库详细开发思路的介绍。
+This article explains the implementation approach for the RAG knowledge base.
 
-![RAG 知识库详细开发思路](./images/shared/rag-knowledge-base-coding.png)
+![RAG knowledge-base implementation](./images/shared/rag-knowledge-base-coding.png)
 
-不仅教你“如何写出代码”，更教你“为什么这么设计”以及“在企业真实场景中如何应对复杂挑战”。
+The tutorial explains not only how to write the code, but also why it is designed this way and how to handle production challenges.
 
-## 配套教程内容安排
+## Companion Tutorial Contents
 
-这个项目功能覆盖面广，但设计上由浅入深、学习门槛友好，涉及到的知识点非常丰富。通过保姆级教程，我们将从零构建一个融合了 **LLM 集成、RAG（检索增强生成）、向量数据库、分布式限流及异步处理**的完整后端架构。
+The project covers many topics and introduces them from the fundamentals upward. Its step-by-step tutorial builds a backend architecture from scratch with **LLM integration, RAG, vector storage, distributed rate limiting, and asynchronous processing**.
 
-无论你是想学习 **Spring AI** 的前沿应用，还是需要一个**高含金量的简历项目**，本项目都将为你提供从基建搭建、业务攻坚到面试话术复盘的全方位指导。
+Whether you want to learn practical **Spring AI** or need a substantial project for your resume, the guide covers infrastructure setup, feature implementation, and interview preparation.
 
-配套项目教程需要付费（**后文/文末**有加入方法），但请大家理解，主要是想覆盖一些时间成本。而且，收费和提供的服务相比绝对是超级良心了。这辈子不可能干割韭菜的事！
+The companion tutorial is paid; instructions for joining appear below. The fee helps cover the time spent creating and maintaining it.
 
-**内容安排如下（已经更完，一共 20w+ 字）**：
+**The complete tutorial contains more than 200,000 Chinese characters:**
 
-![配套教程内容概览](./images/shared/tutorial-overview.png)
+![Companion tutorial contents](./images/shared/tutorial-overview.png)
 
-### 项目介绍与环境搭建
+### Project Overview and Setup
 
-- 本地搭建 PostgreSQL + PGvector 向量数据库
-- Spring Boot + RustFS 构建高性能 S3 兼容的对象存储服务
-- ⭐大模型 API 申请和 Ollama 部署本地模型
-- 环境搭建终章与项目启动（含 Docker Compose 一键部署）
+- Set up PostgreSQL and pgvector locally.
+- Build an S3-compatible object-storage service with Spring Boot and RustFS.
+- ⭐ Obtain an LLM API key and deploy a local model with Ollama.
+- Complete the environment setup and launch the project, including one-command deployment with Docker Compose.
 
-### 核心功能开发
+### Core Features
 
-- 简历上传与解析：Tika 文档解析与双层清洗
-- ⭐Spring AI 与大模型集成
-- ⭐多 LLM 路由实战：LlmProviderRegistry 的核心设计
-- ⭐Spring AI + pgvector 实现 RAG 知识库问答
-- 基于 SSE 实现打字机效果输出
-- 手把手教你写出生产级结构化 Prompt
-- AI 模拟面试功能
-- 基于 iText 8 实现 PDF 报告导出
+- Parse uploaded resumes with Tika and a two-stage cleaning process.
+- ⭐ Integrate Spring AI with LLMs.
+- ⭐ Implement multi-LLM routing and the `LlmProviderRegistry` design.
+- ⭐ Build RAG knowledge-base Q&A with Spring AI and pgvector.
+- Stream responses with a typewriter effect using SSE.
+- Write structured prompts for production use.
+- Implement AI mock interviews.
+- Export PDF reports with iText 8.
 
-### 进阶优化
+### Advanced Engineering
 
-- MapStruct 实体映射最佳实践
-- 统一异常处理与业务错误码设计
-- 虚拟线程实战
-- ⭐基于 Redis Stream 的异步任务处理实现
-- Redis Stream 作为消息队列
-- Redis Stream 异步任务可靠性设计（条件领取、执行代次、卡住任务恢复）
-- 封装 Redis + Lua 多维度分布式限流组件
-- 限流组件升级：从多维度数组到 @Repeatable 独立限流
-- 分布式限流压测实战（wrk 实测）
-- ⭐RAG 离线评测与线上可观测性
-- 长上下文与批量评估的有界降级
-- Spring Boot 4.x 升级实战：Jackson 3、Spring AI 2.0 与 Boot 4.1 踩坑记录
+- MapStruct entity-mapping practices.
+- Centralized exception handling and business error codes.
+- Virtual threads in practice.
+- ⭐ Asynchronous task processing with Redis Streams.
+- Using Redis Streams as a message queue.
+- Redis Stream reliability: conditional claiming, execution generations, and recovery of stuck tasks.
+- Build a multi-dimensional distributed rate limiter with Redis and Lua.
+- Evolve rate-limit configuration from dimension arrays to independent `@Repeatable` limits.
+- Load-test distributed rate limiting with `wrk`.
+- ⭐ Offline RAG evaluation and production observability.
+- Bounded fallbacks for long contexts and batch evaluation.
+- Upgrade to Spring Boot 4.x: lessons from Jackson 3, Spring AI 2.0, and Boot 4.1.
 
-### 面试
+### Interview Preparation
 
-- ⭐简历编写与项目经历深度包装指南
-- 面试官问“这个项目哪里来的”时，如何回答？
-- ⭐Spring AI 面试问题挖掘
-- ⭐知识库 RAG 面试问题挖掘
-- Prompt 工程面试问题挖掘
-- Redis 面试问题挖掘
-- 文件上传解析与 PDF 导出面试问题挖掘
-- 后端亮点面试突击指南
+- ⭐ Resume writing and presenting project experience.
+- How to answer “Where did this project come from?”
+- ⭐ Spring AI interview questions.
+- ⭐ RAG knowledge-base interview questions.
+- Prompt engineering interview questions.
+- Redis interview questions.
+- Interview questions on file parsing and PDF export.
+- A focused guide to backend project highlights.
 
-### 后续优化改进
+### Further Improvements
 
-- ⭐Skill 驱动出题（Skill 架构设计）
-- 知识库面试：从知识库生成题库与专项面试
-- Prompt 注入防御设计
-- RAG 多轮上下文与短查询命中优化
-- Spring AI 结构化输出与 Advisor 链改造实战
+- ⭐ Skill-driven question generation and Skill architecture.
+- Knowledge-base interviews: generate question banks and focused interviews from documents.
+- Prompt-injection defenses.
+- Multi-turn RAG context and retrieval for short queries.
+- Spring AI structured output and Advisor-chain improvements.
 
-## 加入学习
+## Join the Program
 
-**本项目为 [JavaGuide 知识星球](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html) 内部专属实战项目，通过语雀文档在线阅读学习，不单独对外开放。**
+**This is a private hands-on project for the [JavaGuide Knowledge Planet](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html). The tutorial is available online through Yuque and is not offered separately.**
 
-之所以选择在星球内部发布，是为了确保每一位学习者都能获得**深度的技术答疑**和**完整的求职配套服务**。
+It is offered through the Knowledge Planet so that learners can get **in-depth technical Q&A** and **job-search support**.
 
-整个项目教程预计在 **1-2** 个月内更完。每一篇文章（不提供视频，浪费时间且不利于学习能力提高）都经过反复推敲，确保**高质量、零门槛**，即便是基础薄弱的同学也能跟着文档从零跑通。
+The tutorial was expected to be completed in **one to two months**. It consists of written articles rather than videos, and is designed to guide readers through running the project from scratch, even with limited prior experience.
 
-这只是开始。后续星球还会持续推出更多贴合企业真实业务场景的 **Java 实战项目**，带你始终站在技术前沿（预告一下，下一个项目是**企业级智能客服系统**，会带大家实践更多AI能力）。
+More **Java projects based on real business scenarios** are planned for the Knowledge Planet. The next planned project is an **enterprise customer-service system** covering additional AI capabilities.
 
-并且，我的星球还有很多其他服务，比如**一对一提问、简历修改、后端系统面试资料（包含高频系统设计&场景题）、学习打卡**等，其中任何一项服务单独拎出来的价值都已远超星球门票。欢迎详细了解我的[知识星球](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html)！
+The Knowledge Planet also offers **one-on-one Q&A, resume reviews, backend interview materials (including common system-design and scenario questions), and study check-ins**. See the [JavaGuide Knowledge Planet](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html) for details.
 
-已经坚持维护**六年**，内容持续更新，虽白菜价（**0.4 元/天**）但质量很高，主打一个良心！
+The Knowledge Planet has been maintained for **six years** and continues to be updated. The listed price is **CNY 0.40 per day**.
 
-目前星球正在做活动，两本书的价格，就能让你拥有上万培训班的服务！这里再提供一张 **30 元** 的优惠券（价格马上上调，老用户扫码续费半价）：
+The current promotion includes a **CNY 30** coupon. The source also notes that prices may increase and existing members can renew at half price by scanning the code:
 
-![知识星球 30 元优惠券](./images/shared/xingqiuyouhuijuan-30.jpg)
+![CNY 30 Knowledge Planet coupon](./images/shared/xingqiuyouhuijuan-30.jpg)
 
-用心做内容，坚持本心，不割韭菜，其他交给时间！共勉！
+The goal is to keep creating useful content. Thank you for your support.
 
-## 系统架构
+## System Architecture
 
-**提示**：架构图采用 draw.io 绘制，导出为 svg 格式，在 Dark 模式下的显示效果会有问题。
+**Note:** The architecture diagram was created in draw.io and exported as SVG. It may not display correctly in dark mode.
 
-系统采用前后端分离架构，整体分为三层：前端展示层、后端服务层、数据存储层。
+The system uses a frontend-backend architecture with three layers: presentation, backend services, and data storage.
 
-![系统架构图](./images/shared/interview-guide-architecture-diagram.png)
+![System architecture](./images/shared/interview-guide-architecture-diagram.png)
 
-**后端层**：
+**Backend layer:**
 
-- REST Controllers：统一的 API 入口，处理 HTTP 请求
-- 业务服务层：
-  - Resume Service：简历上传、解析、AI 分析
-    - Interview Service：面试会话管理、问题生成、答案评估
-    - Knowledge Service：知识库上传、文本分块、向量化
-    - RAG Chat Service：检索增强生成，流式问答
-    - Question Bank Service：基于知识库生成题库，支撑知识库专项面试
-    - LLM Provider Service：多模型 Provider 与语音服务配置管理
-- 异步处理层：基于 Redis Stream 的消费者，异步处理耗时的 AI 任务（如简历分析、向量化、题库生成、面试评估）
-- AI 集成层：Spring AI 统一 LLM 调用接口，内置 DashScope、Kimi、DeepSeek、GLM、LM Studio 等 OpenAI 兼容 Provider，支持运行时切换默认聊天模型和向量模型。
+- REST Controllers: A unified API entry point for HTTP requests.
+- Business services:
+  - Resume Service: Resume upload, parsing, and AI analysis.
+  - Interview Service: Interview sessions, question generation, and answer evaluation.
+  - Knowledge Service: Knowledge-base uploads, text chunking, and embeddings.
+  - RAG Chat Service: Retrieval-augmented, streaming Q&A.
+  - Question Bank Service: Generate question banks from a knowledge base for focused interviews.
+  - LLM Provider Service: Manage model providers and voice-service configuration.
+- Asynchronous processing: Redis Stream consumers handle long-running AI tasks such as resume analysis, embedding generation, question-bank creation, and interview evaluation.
+- AI integration: Spring AI provides a unified LLM API with OpenAI-compatible providers such as DashScope, Kimi, DeepSeek, GLM, and LM Studio. The default chat and embedding models can be changed at runtime.
 
-**数据存储层**：
+**Data storage layer:**
 
 - PostgreSQL + pgvector：
-  - 关系数据：简历、面试记录、知识库元数据
-  - 向量检索：存储文档向量，支持相似度搜索
+  - Relational data: Resumes, interview records, and knowledge-base metadata.
+  - Vector search: Store document embeddings for similarity search.
 - Redis：
 
-  - 会话缓存：面试会话状态
-  - 消息队列：Redis Stream 实现异步任务队列
+  - Session cache: Interview-session state.
+  - Message queue: Redis Streams for asynchronous jobs.
 
-- RustFS/MinIO (S3)：原始文件（简历 PDF、知识库文档）
+- RustFS/MinIO (S3): Original files such as resume PDFs and knowledge-base documents.
 
-**异步处理流程**：
+**Asynchronous processing flow:**
 
-简历分析、知识库向量化和面试报告生成采用 Redis Stream 异步处理，这里以简历分析和知识库向量化为例介绍一下整体流程：
-
-```
-上传请求 → 保存文件 → 发送消息到 Stream → 立即返回
-                              ↓
-                      Consumer 消费消息
-                              ↓
-                    执行分析/向量化任务
-                              ↓
-                      更新数据库状态
-                              ↓
-                   前端轮询获取最新状态
-```
-
-状态流转： `PENDING` → `PROCESSING` → `COMPLETED` / `FAILED`
-
-**知识库问答处理流程**：
+Resume analysis, knowledge-base embedding, and interview-report generation use Redis Streams. The flow for resume analysis and embedding is:
 
 ```
-知识库问答 → 问题向量化 → pgvector 相似度搜索 → 检索相关文档
+Upload request → Save file → Publish message to Stream → Return immediately
+                              ↓
+                      Consumer processes message
+                              ↓
+                    Run analysis/embedding task
+                              ↓
+                      Update database status
+                              ↓
+                   Frontend polls for the latest status
+```
+
+Status transitions: `PENDING` → `PROCESSING` → `COMPLETED` / `FAILED`
+
+**Knowledge-base Q&A flow:**
+
+```
+Knowledge-base question → Embed query → pgvector similarity search → Retrieve relevant documents
                                                       ↓
-                                构建 Prompt → LLM 生成回答 → SSE 流式返回
+                                Build prompt → LLM generates answer → Stream over SSE
 ```
 
-## 技术栈
+## Technology Stack
 
-### 后端技术
+### Backend
 
-| 技术                  | 版本       | 说明                                       |
-| --------------------- | ---------- | ------------------------------------------ |
-| Spring Boot           | 4.1.0      | 应用框架                                   |
-| Java                  | 25         | 开发语言（虚拟线程）                       |
-| Spring AI             | 2.0.0      | AI 集成框架、OpenAI 兼容模型接入           |
-| PostgreSQL + pgvector | 14+        | 关系数据库 + 向量存储（Compose 默认 PG16） |
-| Redis + Redisson      | 6+ / 4.0.0 | 缓存 + 消息队列（Stream）                  |
-| Apache Tika           | 2.9.2      | 文档解析                                   |
-| iText 8               | 8.0.5      | PDF 导出                                   |
-| MapStruct             | 1.6.3      | 对象映射                                   |
-| SpringDoc OpenAPI     | 3.0.2      | API 接口文档                               |
-| DashScope SDK         | 2.22.7     | 语音识别/合成（Qwen3 ASR/TTS）             |
-| AWS S3 SDK            | 2.29.51    | S3 兼容对象存储（MinIO/RustFS）            |
-| spring-ai-agent-utils | 0.10.0     | Skill 资源加载、Advisor 能力扩展           |
-| WebSocket             | -          | 语音面试实时双向通信                       |
-| Gradle                | 9.6.1      | 构建工具                                   |
+| Technology            | Version    | Description                                                      |
+| --------------------- | ---------- | ---------------------------------------------------------------- |
+| Spring Boot           | 4.1.0      | Application framework                                            |
+| Java                  | 25         | Language, including virtual threads                              |
+| Spring AI             | 2.0.0      | AI integration and OpenAI-compatible models                      |
+| PostgreSQL + pgvector | 14+        | Relational database and vector storage; Compose defaults to PG16 |
+| Redis + Redisson      | 6+ / 4.0.0 | Cache and Stream-based messaging                                 |
+| Apache Tika           | 2.9.2      | Document parsing                                                 |
+| iText 8               | 8.0.5      | PDF export                                                       |
+| MapStruct             | 1.6.3      | Object mapping                                                   |
+| SpringDoc OpenAPI     | 3.0.2      | API documentation                                                |
+| DashScope SDK         | 2.22.7     | Speech recognition and synthesis (Qwen3 ASR/TTS)                 |
+| AWS S3 SDK            | 2.29.51    | S3-compatible storage (MinIO/RustFS)                             |
+| spring-ai-agent-utils | 0.10.0     | Skill loading and Advisor extensions                             |
+| WebSocket             | -          | Real-time, bidirectional voice interviews                        |
+| Gradle                | 9.6.1      | Build tool                                                       |
 
-技术选型常见问题解答：
+Common technology-selection questions:
 
-1. 数据存储为什么选择 PostgreSQL + pgvector？PG 的向量数据存储功能够用了，精简架构，不想引入太多组件。
-2. 为什么引入 Redis？
-   - Redis 替代 `ConcurrentHashMap` 实现面试会话的缓存。
-   - 基于 Redis Stream 实现简历分析、知识库向量化等场景的异步（还能解耦，分析和向量化可以使用其他编程语言来做）。不使用 [Kafka](https://javaguide.cn/high-performance/message-queue/kafka-questions-01.html) 这类成熟的消息队列，也是不想引入太多组件。
-3. 构建工具为什么选择 Gradle？个人更喜欢用 Gradle，也写过相关的文章：[Gradle核心概念总结](https://javaguide.cn/tools/gradle/gradle-core-concepts.html)。
+1. Why PostgreSQL and pgvector? Their vector-storage features are sufficient for this project, and using one database keeps the architecture small.
+2. Why Redis?
+   - Redis replaces `ConcurrentHashMap` for interview-session caching.
+   - Redis Streams handle asynchronous resume analysis and knowledge-base embedding, while decoupling those tasks so they could be implemented in other languages. A mature queue such as [Kafka](https://javaguide.cn/high-performance/message-queue/kafka-questions-01.html) would add another component.
+3. Why Gradle? I prefer it and have written about it in [Gradle Core Concepts](https://javaguide.cn/tools/gradle/gradle-core-concepts.html).
 
-### 前端技术
+### Frontend
 
-| 技术               | 版本  | 说明             |
-| ------------------ | ----- | ---------------- |
-| React              | 18.3  | UI 框架          |
-| TypeScript         | 5.6   | 开发语言         |
-| Vite               | 5.4   | 构建工具         |
-| Tailwind CSS       | 4.1   | 样式框架         |
-| React Router       | 7.11  | 路由管理         |
-| Framer Motion      | 12.23 | 动画库           |
-| Recharts           | 3.6   | 图表库           |
-| Lucide React       | 0.468 | 图标库           |
-| React Big Calendar | 1.19  | 面试日历组件     |
-| React Markdown     | 9.0   | Markdown 渲染    |
-| React Virtuoso     | 4.18  | RAG 聊天虚拟列表 |
-| pnpm               | 10.26 | 前端包管理器     |
+| Technology         | Version | Description               |
+| ------------------ | ------- | ------------------------- |
+| React              | 18.3    | UI framework              |
+| TypeScript         | 5.6     | Language                  |
+| Vite               | 5.4     | Build tool                |
+| Tailwind CSS       | 4.1     | CSS framework             |
+| React Router       | 7.11    | Routing                   |
+| Framer Motion      | 12.23   | Animations                |
+| Recharts           | 3.6     | Charts                    |
+| Lucide React       | 0.468   | Icons                     |
+| React Big Calendar | 1.19    | Interview calendar        |
+| React Markdown     | 9.0     | Markdown rendering        |
+| React Virtuoso     | 4.18    | Virtualized RAG chat list |
+| pnpm               | 10.26   | Package manager           |
 
-## 技术选型常见问题解答
+## Technology-Selection FAQ
 
-这里只是简单介绍，后续我会分享文章详细拷打技术选型。
+This section gives a brief overview. More detailed articles on these technology choices will follow.
 
-### 为什么选择 Spring AI？
+### Why Spring AI?
 
-Spring AI 是 Spring 官方推出的 AI 集成框架，提供了统一的 LLM 调用抽象。选择它的原因：
+Spring AI is Spring's framework for integrating AI, with a unified abstraction for LLM calls. Reasons for choosing it include:
 
-1. 统一抽象：一套代码支持多种 LLM 提供商（OpenAI、阿里云 DashScope、Ollama 等），切换模型只需修改配置
-2. Spring 生态集成：与 Spring Boot 无缝集成，支持自动配置、依赖注入、声明式调用
-3. 内置向量存储支持：原生支持 pgvector、Milvus、Pinecone 等向量数据库，简化 RAG 开发
-4. 结构化输出：通过 `BeanOutputConverter` 将 LLM 输出直接映射为 Java 对象，无需手动解析 JSON
+1. **Unified abstraction**: One codebase supports providers such as OpenAI, Alibaba Cloud DashScope, and Ollama; switch models through configuration.
+2. **Spring integration**: Works with Spring Boot, including auto-configuration, dependency injection, and declarative calls.
+3. **Vector-store support**: Integrates with vector databases such as pgvector, Milvus, and Pinecone, simplifying RAG development.
+4. **Structured output**: `BeanOutputConverter` maps LLM output to Java objects without manual JSON parsing.
 
 ```java
-// 示例：Spring AI 结构化输出
+// Example: structured output with Spring AI.
 var converter = new BeanOutputConverter<>(ResumeAnalysisDTO.class);
 String result = chatClient.prompt()
     .system(systemPrompt)
     .user(userPrompt + converter.getFormat())
     .call()
     .content();
-return converter.convert(result);  // 直接得到 Java 对象
+return converter.convert(result);  // Returns a Java object.
 ```
 
-### 数据存储为什么选择 PostgreSQL + pgvector？
+### Why PostgreSQL and pgvector?
 
-本项目需要同时存储结构化数据（简历、面试记录）和向量数据（文档 Embedding）。方案对比：
+The project stores both structured data, such as resumes and interview records, and vector data, such as document embeddings. Here is a comparison of the options:
 
-| 方案                  | 优点                     | 缺点                       |
-| --------------------- | ------------------------ | -------------------------- |
-| PostgreSQL + pgvector | 一套数据库搞定，运维简单 | 向量检索性能不如专业向量库 |
-| PostgreSQL + Milvus   | 向量检索性能更好         | 多一个组件，运维复杂度增加 |
-| PostgreSQL + Pinecone | 云托管，无需运维         | 成本高，数据在第三方       |
+| Option                | Advantages                                         | Disadvantages                                                      |
+| --------------------- | -------------------------------------------------- | ------------------------------------------------------------------ |
+| PostgreSQL + pgvector | One database and simpler operations.               | Vector search may be slower than with a dedicated vector database. |
+| PostgreSQL + Milvus   | Better vector-search performance.                  | Adds a component and operational complexity.                       |
+| PostgreSQL + Pinecone | Managed service with no infrastructure to operate. | Higher cost and data stored by a third party.                      |
 
-**选择 pgvector 的理由**：
+**Why choose pgvector?**
 
-- 架构简单：不引入额外组件，降低部署和运维复杂度
-- 性能够用：HNSW 索引支持毫秒级检索，万级文档场景完全够用
-- 事务一致性：向量数据和业务数据在同一数据库，天然支持事务
-- SQL 查询：可以结合 WHERE 条件过滤，比如“只在某个分类的知识库中检索”
+- **Simple architecture**: No extra component, reducing deployment and operational complexity.
+- **Sufficient performance**: HNSW indexes support millisecond-scale retrieval, which is sufficient for tens of thousands of documents.
+- **Transactional consistency**: Vector and business data share a database and can use the same transactions.
+- **SQL filtering**: Add `WHERE` conditions, for example to search only one knowledge-base category.
 
 ```sql
--- pgvector 相似度搜索示例
+-- Example: similarity search with pgvector.
 SELECT content, 1 - (embedding <=> \$1) as similarity
 FROM vector_store
 WHERE metadata->>'category' = 'Java'
@@ -301,330 +301,330 @@ ORDER BY embedding <=> \$1
 LIMIT 5;
 ```
 
-**为什么不选择 MySQL 搭配向量数据库呢？**
+**Why not use MySQL with a separate vector database?**
 
-PostgreSQL 最大的优势，也是它在 AI 时代甩开对手的“王牌”，就是其强大的可扩展性。开发者可以在不修改内核的情况下，像“即插即用”一样为数据库安装各种功能强大的插件，这让 PostgreSQL 变成了一个无所不能的“数据瑞士军刀”。
+PostgreSQL's main advantage is its extensibility. Developers can add powerful extensions without modifying the database engine, making it a versatile data platform.
 
-- **AI 向量检索？** 有官方推荐的 **pgvector** 扩展，性能强大，生态成熟，足以媲美专业的向量数据库。
-- **全文搜索？** 内置支持（能满足基础需求），或使用 **pg_bm25** 等扩展。
-- **时序数据？** 有顶级的 **TimescaleDB** 扩展。
-- **地理信息？** 有行业标准的 **PostGIS** 扩展。
+- **AI vector search?** The recommended **pgvector** extension has a mature ecosystem and can serve many workloads that might otherwise use a dedicated vector database.
+- **Full-text search?** Built-in features cover basic needs; extensions such as **pg_bm25** are also available.
+- **Time-series data?** Use the **TimescaleDB** extension.
+- **Geospatial data?** Use the widely adopted **PostGIS** extension.
 
-这种“一站式”解决能力，正是其魅力所在。它意味着许多项目不再需要依赖 Elasticsearch、Milvus 等大量外部中间件，仅凭一个增强版的 PostgreSQL 即可满足多样化需求，从而极大地简化了技术栈，降低了开发和运维的复杂度与成本。
+This all-in-one approach can reduce a project's reliance on external middleware such as Elasticsearch and Milvus. An extended PostgreSQL deployment may satisfy several needs while simplifying the stack and lowering development and operational costs.
 
-关于 MySQL 和 PostgreSQL 的详细对比，可以参考我写的这篇文章：[MySQL vs PostgreSQL，如何选择？](https://mp.weixin.qq.com/s/APWD-PzTcTqGUuibAw7GGw)。
+For a detailed comparison, see [MySQL vs. PostgreSQL: Which Should You Choose?](https://mp.weixin.qq.com/s/APWD-PzTcTqGUuibAw7GGw).
 
-### 为什么引入 Redis？
+### Why Redis?
 
-本项目主要有两个场景用到了 Redis：
+The project uses Redis in two main areas:
 
-1. Redis 替代 `ConcurrentHashMap` 实现会话的缓存。
-2. 基于 Redis Stream 实现简历分析、知识库向量化等场景的异步（还能解耦，分析和向量化可以使用其他编程语言来做）。
+1. Redis replaces `ConcurrentHashMap` for session caching.
+2. Redis Streams handle asynchronous resume analysis and knowledge-base embedding. This also decouples the work so it could be implemented in another language.
 
-**为什么引入 Redis Stream？为何不选择 Kafka、RabbitMQ 等更成熟的消息队列？**
+**Why Redis Streams instead of a more established message queue such as Kafka or RabbitMQ?**
 
-简历分析、知识库向量化等 AI 任务耗时较长（10-60 秒），不适合同步处理。需要消息队列实现异步解耦。
+AI tasks such as resume analysis and knowledge-base embedding take 10–60 seconds, so they should not run synchronously. A message queue provides asynchronous processing and decoupling.
 
-| 维度             | Redis Stream                      | RabbitMQ                       | Kafka                        | 内存队列                           |
-| :--------------- | :-------------------------------- | :----------------------------- | :--------------------------- | :--------------------------------- |
-| **吞吐量**       | 高（十万级 QPS）                  | 中（万级 QPS）                 | 极高（百万级，水平扩展）     | 极高（千万级/秒，受限于 CPU/内存） |
-| **延迟**         | 极低（亚毫秒级）                  | 低（毫秒级）                   | 中（毫秒到十毫秒级）         | 极低（纳秒/微秒级）                |
-| **持久化**       | 支持（RDB/AOF）                   | 支持（Mnesia/磁盘）            | 强支持（原生分段日志）       | 无（进程终止即失）                 |
-| **消息堆积能力** | 一般（受限于内存）                | 中（磁盘堆积，性能下降明显）   | 极强（TB 级磁盘存储）        | 差（受限于堆内存）                 |
-| **消费模式**     | 发布订阅 / 消费者组               | 灵活路由 / 多种交换机模式      | 发布订阅 / 消费者组          | 点对点 / 多消费者（取决于实现）    |
-| **消息回溯**     | 支持（按 ID / 时间范围）          | 不支持                         | 强支持（按 Offset / 时间戳） | 不支持                             |
-| **消息顺序性**   | 单 Stream 有序                    | 单队列有序                     | 单 Partition 有序            | 有序（单队列）                     |
-| **可靠性**       | 中（异步复制可能丢失）            | 高（Publisher Confirm / 事务） | 极高（多副本 ISR + acks）    | 低（无持久化、无确认）             |
-| **运维复杂度**   | 低                                | 中                             | 高（KRaft 模式已简化）       | 极低                               |
-| **适用场景**     | 轻量级流处理、已有 Redis 基础设施 | 复杂路由、企业级集成           | 大数据流、事件溯源、日志聚合 | 进程内解耦、极致性能场景           |
+| Dimension                  | Redis Streams                                      | RabbitMQ                                               | Kafka                                                 | In-memory queue                                                   |
+| :------------------------- | :------------------------------------------------- | :----------------------------------------------------- | :---------------------------------------------------- | :---------------------------------------------------------------- |
+| **Throughput**             | High (around 100,000 QPS)                          | Medium (around 10,000 QPS)                             | Very high (millions with horizontal scaling)          | Very high (tens of millions/sec, CPU and memory limited)          |
+| **Latency**                | Very low (sub-millisecond)                         | Low (milliseconds)                                     | Medium (milliseconds to tens of milliseconds)         | Very low (nanoseconds/microseconds)                               |
+| **Persistence**            | Yes (RDB/AOF)                                      | Yes (Mnesia/disk)                                      | Strong (native segmented logs)                        | None (lost when the process exits)                                |
+| **Backlog capacity**       | Moderate (memory-limited)                          | Medium (disk-backed, with noticeable performance loss) | Very high (terabytes on disk)                         | Low (heap-limited)                                                |
+| **Consumption model**      | Pub/sub and consumer groups                        | Flexible routing and exchange types                    | Pub/sub and consumer groups                           | Point-to-point or multiple consumers, depending on implementation |
+| **Replay**                 | By ID or time range                                | No                                                     | Yes, by offset or timestamp                           | No                                                                |
+| **Ordering**               | Ordered within one Stream                          | Ordered within one queue                               | Ordered within one partition                          | Ordered within one queue                                          |
+| **Reliability**            | Medium (asynchronous replication may lose data)    | High (publisher confirms/transactions)                 | Very high (replicas, ISR, and acknowledgments)        | Low (no persistence or acknowledgment)                            |
+| **Operational complexity** | Low                                                | Medium                                                 | High (simplified by KRaft)                            | Very low                                                          |
+| **Use cases**              | Lightweight streams and existing Redis deployments | Complex routing and enterprise integration             | Big-data streams, event sourcing, and log aggregation | In-process decoupling and extreme performance                     |
 
-选择 Redis Stream 的理由：
+Reasons for choosing Redis Streams:
 
-- 复用现有组件：Redis 已用于会话缓存，无需引入新中间件。
-- 功能满足需求：支持消费者组、消息确认（ACK）、持久化。
-- 运维简单：对于中小型项目，Redis Stream 完全够用。
+- **Reuse existing infrastructure**: Redis already provides session caching, so no new middleware is needed.
+- **Required features**: Consumer groups, acknowledgments (ACKs), and persistence are supported.
+- **Simple operations**: Redis Streams are sufficient for a small or medium-sized project.
 
-### 构建工具为什么选择 Gradle？
+### Why Gradle?
 
-Spring Boot 官方现在用的就是 Gradle，加上国内现在都是 Maven 更多，换个 Gradle 还更新颖一些。
+Spring Boot itself uses Gradle. Maven is more common in China, so Gradle is also a useful alternative to learn.
 
-个人也更喜欢用 Gradle，也写过相关的文章：[Gradle 核心概念总结](https://javaguide.cn/tools/gradle/gradle-core-concepts.html)。
+I also prefer Gradle. See [Gradle Core Concepts](https://javaguide.cn/tools/gradle/gradle-core-concepts.html).
 
-### 为什么使用 MapStruct？
+### Why MapStruct?
 
-项目中有大量 Entity ↔ DTO 转换需求，MapStruct 是编译时代码生成的对象映射框架：
+The project needs many Entity-to-DTO conversions. MapStruct generates mapping code at compile time:
 
-| 方案        | 性能         | 类型安全   | 使用复杂度   |
-| ----------- | ------------ | ---------- | ------------ |
-| MapStruct   | 零反射，最快 | 编译时检查 | 定义接口即可 |
-| BeanUtils   | 反射，慢     | 运行时报错 | 一行代码     |
-| ModelMapper | 反射，较慢   | 运行时报错 | 配置复杂     |
-| 手写转换    | 最快         | 编译时检查 | 重复代码多   |
+| Option         | Performance                  | Type safety          | Complexity             |
+| -------------- | ---------------------------- | -------------------- | ---------------------- |
+| MapStruct      | No reflection; fastest.      | Compile-time checks. | Define an interface.   |
+| BeanUtils      | Reflection; slow.            | Runtime errors.      | One line of code.      |
+| ModelMapper    | Reflection; relatively slow. | Runtime errors.      | Complex configuration. |
+| Manual mapping | Fastest.                     | Compile-time checks. | Repetitive code.       |
 
-### 为什么使用 Apache Tika？
+### Why Apache Tika?
 
-系统需要解析多种格式的文档（PDF、Word、TXT），Apache Tika 是 Apache 基金会的文档解析库：
+The system parses documents in formats such as PDF, Word, and TXT. Apache Tika is an Apache document-parsing library that provides:
 
-- 格式支持全：PDF、DOCX、DOC、TXT、HTML、Markdown 等上百种格式
-- 自动识别：根据文件内容自动检测格式，无需依赖文件扩展名
-- 文本提取：统一的 API 提取纯文本，屏蔽格式差异
+- **Broad format support**: Hundreds of formats, including PDF, DOCX, DOC, TXT, HTML, and Markdown.
+- **Automatic detection**: Detects formats from file contents rather than relying on file extensions.
+- **Text extraction**: A unified API extracts plain text across formats.
 
 ```java
-// Tika 解析示例
+// Example: parsing with Tika.
 Tika tika = new Tika();
-String content = tika.parseToString(inputStream);  // 自动识别格式并提取文本
+String content = tika.parseToString(inputStream);  // Detects the format and extracts text.
 ```
 
-### 为什么使用 SSE 而不是 WebSocket？
+### Why SSE Instead of WebSocket?
 
-知识库问答需要流式输出（像 ChatGPT 那样逐字显示），有两种技术选择：
+Knowledge-base Q&A streams responses so text can appear progressively, as in ChatGPT. Two options are:
 
-| 方案      | 优点                      | 缺点                       |
-| --------- | ------------------------- | -------------------------- |
-| SSE       | 简单，基于 HTTP，单向推送 | 仅支持服务端 → 客户端      |
-| WebSocket | 双向通信，功能强大        | 协议复杂，需要维护连接状态 |
+| Option    | Advantages                        | Disadvantages                                          |
+| --------- | --------------------------------- | ------------------------------------------------------ |
+| SSE       | Simple, HTTP-based, one-way push. | Server-to-client only.                                 |
+| WebSocket | Bidirectional and feature-rich.   | More complex protocol and connection-state management. |
 
-选择 SSE 的理由：
+Reasons for choosing SSE:
 
-- 场景匹配：LLM 流式输出是单向的（服务端 → 客户端），不需要双向通信
-- 实现简单：基于 HTTP，天然支持重连、跨域
-- Spring 支持好：`Flux<ServerSentEvent<String>>` 一行代码搞定
+- **Fits the use case**: LLM responses flow from server to client; bidirectional communication is unnecessary.
+- **Simple implementation**: HTTP-based, with reconnection and cross-origin support.
+- **Spring support**: Return a `Flux<ServerSentEvent<String>>`.
 
-> 补充说明：本项目知识库问答、简历分析等流式输出场景使用 SSE；语音面试因为需要双向实时音频流，用的是 WebSocket。技术选型不是非此即彼，而是按场景选择。
+> The project uses SSE for streaming knowledge-base answers and resume analysis. Voice interviews use WebSocket for bidirectional real-time audio. Choose the protocol for the use case; it is not an either-or decision.
 
-### 前端为什么选择 React + TypeScript + Tailwind CSS？
+### Why React, TypeScript, and Tailwind CSS?
 
-| 技术         | 选择理由                                   |
-| ------------ | ------------------------------------------ |
-| React        | 生态最成熟，组件化开发，社区资源丰富       |
-| TypeScript   | 类型安全，IDE 智能提示，减少运行时错误     |
-| Vite         | 开发服务器启动快（秒级），HMR 热更新体验好 |
-| Tailwind CSS | 原子化 CSS，快速开发，无需写 CSS 文件      |
+| Technology   | Reason                                                                            |
+| ------------ | --------------------------------------------------------------------------------- |
+| React        | Mature ecosystem, component-based development, and extensive community resources. |
+| TypeScript   | Type safety and IDE assistance reduce runtime errors.                             |
+| Vite         | Fast development-server startup and a responsive HMR workflow.                    |
+| Tailwind CSS | Utility classes enable rapid styling without a separate CSS file.                 |
 
-## 功能特性
+## Features
 
-### 简历管理模块
+### Resume Management
 
-- **多格式解析**：支持 PDF、DOCX、DOC、TXT 等多种简历格式。
-- **批量上传**：支持一次上传多份简历，复用知识库上传流程，实时同步处理状态。
-- **异步处理流**：基于 Redis Stream 实现异步简历分析，支持实时查看处理进度（待分析/分析中/已完成/失败）。
-- **稳定性保障**：内置分析失败自动重试机制（最多 3 次）与基于内容哈希的重复检测。
-- **重新处理入口**：对已上传的简历可以重新发起分析，无需重复上传。
-- **分析报告导出**：支持将 AI 分析结果一键导出为结构化的 PDF 简历分析报告。
+- **Multiple formats**: Supports PDF, DOCX, DOC, TXT, and other resume formats.
+- **Batch uploads**: Upload multiple resumes at once, reuse the knowledge-base upload flow, and track processing status.
+- **Asynchronous processing**: Redis Streams handle resume analysis and show progress (pending, processing, completed, or failed).
+- **Reliability**: Retries failed analyses up to three times and detects duplicates using content hashes.
+- **Reprocessing**: Run analysis again on an uploaded resume without uploading it again.
+- **Report export**: Export AI analysis as a structured PDF resume report.
 
-### 模拟面试模块
+### Mock Interviews
 
-- **Skill 驱动出题**：内置 10+ 面试方向（Java 后端、阿里/字节/腾讯专项、前端、Python、算法、系统设计、测开、AI Agent 等），每个方向由 `SKILL.md` 定义考察范围、难度分布和参考知识库。基于 `spring-ai-agent-utils` 的 Progressive Disclosure 机制实现按需加载。
-- **并行双路出题**：有简历时，60% 简历项目深挖题（独立 Prompt）+ 40% 方向基础题（Skill 驱动），使用虚拟线程并行生成后合并，物理隔离避免 Prompt 冲突。
-- **自定义 JD 解析**：粘贴职位描述（JD），LLM 动态提取面试分类并匹配共享题库，无需预设方向即可开始面试。
-- **历史题目去重**：出题时自动排除已有会话中问过的题目，避免重复考察。
-- **面试阶段时长联动**：总时长滑块拖动后，各阶段（自我介绍、技术考察、项目深挖、反问环节）按时比自动分配。
-- **智能追问流**：支持配置多轮智能追问（默认 1 条），模拟多轮问答场景。
-- **统一评估架构**：文字面试和语音面试共用同一套评估引擎（分批评估 + 结构化输出 + 二次汇总 + 降级兜底），评估结果可对比。
-- **报告一键导出**：支持异步生成并导出详细的 PDF 模拟面试评估报告。
-- **面试中心入口**：面试中心页整合文字面试和语音面试入口，支持继续面试和重新面试。
+- **Skill-driven questions**: More than ten interview tracks, including Java backend, company-specific tracks for Alibaba, ByteDance, and Tencent, frontend, Python, algorithms, system design, test development, and AI Agents. Each `SKILL.md` defines topics, difficulty, and reference knowledge bases. `spring-ai-agent-utils` loads Skills through Progressive Disclosure.
+- **Two parallel question streams**: When a resume is available, 60% of questions explore its projects using a separate prompt, while 40% cover track fundamentals through a Skill. Virtual threads generate both sets in parallel; separate prompts avoid conflicts.
+- **Custom job-description parsing**: Paste a job description (JD); the LLM identifies interview categories and matches them to a shared question bank. No preset track is required.
+- **Deduplicate past questions**: Exclude questions already asked in a session.
+- **Time allocation by interview stage**: Adjusting the total duration redistributes time among the introduction, technical questions, project discussion, and candidate questions.
+- **Follow-up questions**: Configure multiple follow-ups (one by default) to simulate multi-turn interviews.
+- **Unified evaluation**: Text and voice interviews use the same engine: batch evaluation, structured output, a second-pass summary, and fallbacks.
+- **Report export**: Generate and export detailed PDF interview reports asynchronously.
+- **Interview hub**: A central page links to text and voice interviews and supports continuing or restarting an interview.
 
-### 面试安排模块
+### Interview Scheduling
 
-- **邀请解析**：规则 + AI 双引擎，支持飞书/腾讯会议/Zoom 格式，自动提取公司、岗位、时间、会议链接
-- **日历管理**：日/周/月视图 + 拖拽调整 + 列表视图
-- **状态流转**：定时任务自动过期，手动标记待面试/已完成/已取消
-- **面试提醒**：可配置提醒，避免错过面试
+- **Invitation parsing**: Rules and AI parse Lark, Tencent Meeting, and Zoom invitations to extract the company, role, time, and meeting link.
+- **Calendar**: Day, week, and month views, drag-and-drop changes, and a list view.
+- **Status management**: Scheduled expiration and manual pending, completed, or canceled states.
+- **Reminders**: Configurable alerts help prevent missed interviews.
 
-### 语音面试模块
+### Voice Interviews
 
-实时语音对话面试，WebSocket + 千问3 语音模型（ASR/TTS/LLM 统一 API Key）：
+Real-time voice interviews use WebSocket and the Qwen3 voice model, with one API key for ASR, TTS, and the LLM:
 
-- **实时流式对话**：句子级并发 TTS，边生成边合成边播放，首包延迟 200ms
-- **服务端 VAD**：自动断句，实时字幕（含中间结果）
-- **回声防护 + 手动提交**：避免 AI 语音被误录入
-- **多轮上下文记忆 + 暂停/恢复**：超时自动暂停
-- **Micrometer 埋点**：TTS/ASR 延迟、会话时长等指标
+- **Streaming conversation**: Concurrent sentence-level TTS generates and plays audio as it is produced, with a 200 ms first-chunk latency.
+- **Server-side VAD**: Automatically detects utterance boundaries and provides live captions, including interim results.
+- **Echo protection and manual submission**: Helps prevent the AI's voice from being captured as user input.
+- **Multi-turn context and pause/resume**: Sessions pause automatically after a timeout.
+- **Micrometer metrics**: Track TTS and ASR latency, session duration, and other measurements.
 
-> **已知问题**：端到端延迟偏高（服务端音频中转）、无耳机时回声泄漏、TTS 音色单一、弱网音频断续。后续计划探索 WebRTC、客户端 VAD 降噪、端到端语音模型等方案。
+> **Known issues:** End-to-end latency is high because audio passes through the server; echo can leak when headphones are not used; TTS has limited voice options; and audio can break up on weak networks. Planned areas to explore include WebRTC, client-side VAD and noise reduction, and end-to-end voice models.
 
-### 知识库管理模块
+### Knowledge-Base Management
 
-- **文档智能处理**：支持 PDF、DOCX、Markdown 等多种格式文档的批量上传、自动分块与异步向量化。
-- **RAG 检索增强**：集成 pgvector，通过查询改写、相似度阈值和 TopK 策略提升 AI 问答的准确性与专业度。
-- **流式响应交互**：基于 SSE（Server-Sent Events）技术实现打字机式流式响应。
-- **智能问答对话**：支持会话管理、置顶、多知识库关联、Markdown 展示和虚拟列表渲染。
-- **知识库运维**：支持分类管理、下载、重新向量化、搜索和统计信息展示。
+- **Document processing**: Batch upload PDF, DOCX, Markdown, and other formats; automatically chunk documents and generate embeddings asynchronously.
+- **RAG retrieval**: Integrates pgvector and improves answer relevance with query rewriting, similarity thresholds, and Top K settings.
+- **Streaming responses**: Uses Server-Sent Events (SSE) for typewriter-style output.
+- **Knowledge-base chat**: Session management, pinned conversations, multiple knowledge bases, Markdown rendering, and virtualized lists.
+- **Knowledge-base operations**: Categories, downloads, re-embedding, search, and usage statistics.
 
-### 知识库题库与面试模块
+### Knowledge-Base Question Banks and Interviews
 
-- **基于知识库生成题目**：从已向量化文档生成主问题、参考答案、关键点、评分标准和追问，并按方向与难度组织题库。
-- **异步生成与质量提示**：题目生成任务通过 Redis Stream 异步执行；生成不足时保留草稿，并展示实际追问数与目标追问数，避免静默丢失题目。
-- **完整题库维护**：支持题目搜索、筛选、分页、手动新增、编辑、删除，以及草稿、已启用、已归档状态的单题或批量管理。
-- **严格面试容量校验**：开始面试前按方向、难度、主问题数和每题追问数实时计算可用容量；追问数量是硬约束，容量不足的选项会直接禁用，后端同时进行兜底校验。
-- **知识库专项面试**：从已启用题目中抽取主问题和追问，完整记录作答过程，并复用统一评估引擎异步生成总分、逐题评价、优势和改进建议。
-- **评估与记录闭环**：交卷后展示评估进度，完成后自动进入本次面试详情；支持方向、时间、完成状态筛选、表现趋势统计和 PDF 报告导出。
+- **Generate questions from knowledge bases**: Create main questions, reference answers, key points, rubrics, and follow-ups from embedded documents, then organize them by track and difficulty.
+- **Asynchronous generation and quality notices**: Redis Streams run question-generation tasks. If generation is incomplete, keep a draft and show actual versus requested follow-up counts instead of silently dropping questions.
+- **Question-bank management**: Search, filter, paginate, add, edit, and delete questions; manage draft, enabled, and archived states individually or in bulk.
+- **Validate interview capacity**: Before an interview, calculate available questions by track, difficulty, main-question count, and follow-ups per question. Follow-up counts are a hard constraint; disable options with insufficient capacity and revalidate on the backend.
+- **Focused knowledge-base interviews**: Select enabled questions and follow-ups, record answers, and asynchronously produce an overall score, per-question feedback, strengths, and improvement suggestions with the shared evaluation engine.
+- **Evaluation and history**: Show evaluation progress after submission and open the interview details when complete. Filter by track, time, and completion status; view performance trends and export PDF reports.
 
-### 多模型与系统设置模块
+### Model Providers and System Settings
 
-- **多 Provider 管理**：内置 DashScope、LM Studio、Kimi、DeepSeek、GLM 等 OpenAI 兼容 Provider 配置。
-- **默认模型切换**：支持在设置页切换默认聊天模型和默认向量模型，不需要频繁修改源码配置。
-- **语音服务配置**：ASR/TTS 配置可视化管理，支持语音服务连通性测试。
-- **配置安全落盘**：运行时配置默认写入用户目录 `~/.interview-guide/`，支持 API Key 加密配置。
+- **Provider management**: Includes OpenAI-compatible configurations for DashScope, LM Studio, Kimi, DeepSeek, GLM, and others.
+- **Default model switching**: Change the default chat or embedding model in settings without editing source configuration.
+- **Voice-service configuration**: Manage ASR/TTS settings and test service connectivity.
+- **Secure configuration storage**: Runtime settings are written to `~/.interview-guide/` by default; API keys can be encrypted.
 
-## 效果展示
+## Screenshots
 
-### 简历与面试
+### Resumes and Interviews
 
-面试中心：
+Interview hub:
 
 ![](./images/shared/page-interview-hub.png)
 
-Skill 出题 + JD 解析：
+Skill-generated questions and JD parsing:
 
 ![](./images/shared/page-skill-jd-parse.png)
 
-简历库：
+Resume library:
 
 ![](./images/shared/page-resume-history.png)
 
-简历上传分析：
+Resume upload and analysis:
 
 ![](./images/shared/page-resume-upload-analysis.png)
 
-简历分析详情：
+Resume analysis details:
 
 ![](./images/shared/page-resume-analysis-detail.png)
 
-面试记录：
+Interview history:
 
 ![](./images/shared/page-interview-history.png)
 
-面试详情：
+Interview details:
 
 ![](./images/shared/page-interview-detail.png)
 
-模拟面试：
+Mock interview:
 
 ![](./images/shared/page-mock-interview.png)
 
-面试安排
+Interview schedule:
 
 ![](./images/shared/page-interview-schedule-list.png)
 
-多模型切换 + 语音服务设置：
+Model switching and voice-service settings:
 
 ![](./images/shared/llm-settings.png)
 
-### 知识库
+### Knowledge Base
 
-知识库管理：
+Knowledge-base management:
 
 ![](./images/shared/page-knowledge-base-management.png)
 
-问答助手：
+Q&A assistant:
 
 ![page-qa-assistant](./images/shared/page-qa-assistant.png)
 
-## 学习本项目你将获得什么？
+## What You Will Learn
 
-本项目采用行业最前沿的 Java 25 + Spring Boot 4.1 技术栈，是市面上首个深度集成 Spring AI 2.0 的全栈实战项目。我们不仅提供高质量的代码，更配套了详尽的架构解析教程。
+The project uses Java 25 and Spring Boot 4.1 and is presented as the first full-stack project to integrate Spring AI 2.0 in depth. It includes the code and a detailed architecture tutorial.
 
-项目整体设计遵循“由浅入深”原则。即使你的编程基础尚浅，只需跟随我们的保姆级教程，也能顺利从零搭建出一套生产级别的 AI 大模型应用。
+The project is taught from fundamentals upward. Its step-by-step tutorial is designed to help readers with limited programming experience build an AI application from scratch.
 
-### 深度掌握 AI 应用开发的核心范式
+### Core Patterns in AI Application Development
 
-本项目是你从传统后端转型 AI 应用开发工程师的最佳敲门砖：
+The project can help backend developers transition to AI application development:
 
-- **Spring AI 2.0 工业级实战**：深入理解 Spring 官方的 AI 抽象层，掌握如何通过统一的声明式接口对接通义千问、OpenAI 等主流模型。
+- **Spring AI 2.0 in practice**: Learn Spring's AI abstractions and connect models such as Qwen and OpenAI through a unified declarative interface.
 
-- **Prompt Engineering（提示词工程）深度应用**：告别简单的字符串拼接。学习如何构建结构化的 System/User Prompt，并利用 BeanOutputConverter 实现 LLM 输出向 Java 对象的自动化映射，彻底终结繁琐的 JSON 手动解析。
+- **Prompt engineering**: Build structured system and user prompts instead of concatenating strings. Use `BeanOutputConverter` to map LLM output to Java objects and avoid manual JSON parsing.
 
-- **Query Rewrite（查询重写）技术**：学习如何利用 LLM 对用户原始查询进行智能改写，补充语义、优化检索词，显著提升 RAG 系统的召回率。掌握“原问题→改写问题→回退原问题”的级联检索策略。
+- **Query rewriting**: Use an LLM to add context and improve retrieval terms. Learn a cascading strategy that tries the original query, a rewritten query, and then falls back to the original.
 
-- **动态检索参数调优**：深入理解如何根据查询长度、语义密度等特征，动态调整 topK 与相似度阈值，实现短查询、中长查询、长查询的差异化检索策略。
+- **Dynamic retrieval tuning**: Adjust `topK` and similarity thresholds based on query length and semantic density, with different strategies for short, medium, and long queries.
 
-- **RAG（检索增强生成）全链路闭环**：深度拆解“文档解析 → 文本分块 → 向量化 (Embedding) → 向量数据库存储 → 相似度检索 → 上下文增强生成”的完整技术链条。学习“有效命中判定”机制，避免弱相关片段触发生效模型的长篇“信息不足”回复。
+- **End-to-end RAG**: Follow document parsing, chunking, embedding, vector storage, similarity search, and context-grounded generation. Learn relevance checks that prevent weak matches from triggering long “insufficient information” answers.
 
-- **结构化输出可靠性与重试策略**：掌握 `StructuredOutputInvoker` 统一封装模式，学习如何通过自动重试、错误注入、严格 JSON 指令等方式，大幅提升 LLM 结构化输出的解析成功率。
+- **Reliable structured output and retries**: Use a shared `StructuredOutputInvoker` pattern, retries, error feedback, and strict JSON instructions to improve parsing success.
 
-- **多模型接入与运行时切换**：学习如何通过 `LlmProviderRegistry` 统一管理 DashScope、Kimi、DeepSeek、GLM、LM Studio 等 OpenAI 兼容 Provider，在不改代码、不重启应用的情况下完成默认聊天模型与向量模型的切换。
+- **Multiple providers and runtime switching**: Manage OpenAI-compatible providers such as DashScope, Kimi, DeepSeek, GLM, and LM Studio through `LlmProviderRegistry`. Switch default chat and embedding models without code changes or application restarts.
 
-- **RAG 效果评测与线上可观测性**：不止实现 RAG，还要量化 RAG。学习如何基于固定评测语料与证据锚点做离线评测（召回率、MRR 等指标），再通过 Micrometer 暴露 `app_rag_*` 线上业务指标，让“检索质量”变成可监控、可回归的工程指标。
+- **RAG evaluation and observability**: Evaluate a fixed dataset and evidence anchors offline using metrics such as recall and MRR. Expose `app_rag_*` metrics through Micrometer so retrieval quality can be monitored and regression-tested.
 
-- **Prompt 注入防御**：用户上传的简历和文档是不可信输入。学习如何通过输入清洗（PromptSanitizer）与数据边界指令，防止文档中的恶意内容劫持 System Prompt。
+- **Prompt-injection defenses**: Treat uploaded resumes and documents as untrusted input. Use input cleaning (`PromptSanitizer`) and data-boundary instructions to prevent malicious content from overriding the system prompt.
 
-### 现代化的 Java 后端架构思维
+### Modern Java Backend Architecture
 
-你可以学习到优秀的工程实践：
+The project demonstrates these engineering practices:
 
-- **拥抱 Java 25 与 Spring Boot 4.1**：抢先布局虚拟线程 (Virtual Threads)、Record 类等高性能特性。针对 Spring Boot 4.x 的模块化设计进行深度适配，让你的技术栈领先市场。
+- **Java 25 and Spring Boot 4.1**: Use features such as virtual threads and records, and adapt to Spring Boot 4.x's modular design.
 
-- **模块化单体架构**：学习如何通过清晰的层级（Modules + Infrastructure + Common）组织代码。这种设计既具备微服务的解耦优势，又极大降低了单体应用的运维心智负担。
+- **Modular monolith**: Organize code into clear layers such as Modules, Infrastructure, and Common. This supports separation of concerns without the operational overhead of microservices.
 
-- **统一异常处理与业务错误码**：全局异常处理器 + `BusinessException(ErrorCode)` + `Result<T>` 统一响应，学习如何在前后端之间建立清晰的错误语义契约，而不是到处 `throw new RuntimeException()`。
+- **Centralized errors and business error codes**: Combine a global exception handler, `BusinessException(ErrorCode)`, and `Result<T>` to define a clear error contract between frontend and backend instead of scattering `throw new RuntimeException()` calls.
 
-- **极致的对象转换性能**：通过 MapStruct 在编译期生成映射代码。学习如何在追求极致响应速度的场景下，优雅、安全地处理 Entity 与 DTO 之间的复杂映射。
+- **Object-mapping performance**: Generate mapping code at compile time with MapStruct and safely handle complex Entity-to-DTO conversions.
 
-### 务实的数据存储与中间件选型
+### Data Storage and Middleware Choices
 
-我们拒绝盲目堆砌中间件，而是教你如何基于业务场景做出“最理智”的选择：
+The project selects middleware based on its use cases rather than adding components without a need:
 
-- **PostgreSQL + pgvector 的“一站式”存储方案**：掌握如何在同一套数据库中高效处理关系型业务数据与高维向量数据。深入学习 HNSW 索引在万级文档场景下的性能调优实践。
+- **PostgreSQL and pgvector**: Store relational business data and high-dimensional vectors together. Tune HNSW indexes for collections of tens of thousands of documents.
 
-- **Redis + Lua 分布式限流体系**：实战封装高性能分布式限流组件。基于 Lua 脚本保证限流逻辑的原子性，支持按用户、IP 或全局维度的精准流量控制，有效防御恶意刷接口行为，保障高价值 AI API 的配额安全。
+- **Distributed rate limiting with Redis and Lua**: Build a rate limiter whose Lua scripts make each decision atomic. Apply limits by user, IP, or globally to protect AI API quotas from abuse.
 
-- **Redis Stream 异步任务处理**：深入探讨在简历分析等耗时场景（10-60s）下，为什么选择轻量级的 Redis Stream 而非 Kafka。实战演示如何通过消息队列实现系统解耦与流量削峰，并进一步学习消费者条件领取、执行代次（fencing）、心跳与卡住任务恢复等生产级可靠性设计。
+- **Asynchronous jobs with Redis Streams**: Learn why the project uses Redis Streams instead of Kafka for 10–60 second tasks such as resume analysis. Explore decoupling and load leveling, plus reliability measures such as conditional claiming, execution generations (fencing), heartbeats, and recovery of stuck jobs.
 
-- **企业级文件处理与清洗优化**：不仅利用 Apache Tika 构建通用的文档解析引擎，还配套实现了 TextCleaningService。通过正则清洗、空行标准化及文本去噪（如剔除图片链接、非法控制字符），显著提升 RAG 的召回质量；同时集成内容哈希检测，从源头拦截重复上传，节省存储与 Token 成本。
+- **Document processing and cleaning**: Use Apache Tika and `TextCleaningService` to parse documents, normalize blank lines, and remove noise such as image links and invalid control characters. Content-hash checks detect duplicate uploads and reduce storage and token use.
 
-### 高级 AI 功能设计模式
+### Advanced AI Design Patterns
 
-- **Skill 架构与 Agent Skills**：学习如何将面试方向配置从代码中解耦，基于 `SKILL.md` + `skill.meta.yml` 的双层配置设计。掌握 `spring-ai-agent-utils` 的 Discovery → Semantic Matching → Execution 三层 Progressive Disclosure 机制，以及文字面试（单次调用预加载）与语音面试（多轮 ReAct 按需加载）的差异化资源加载策略。
+- **Skill architecture and Agent Skills**: Decouple interview-track configuration from code with `SKILL.md` and `skill.meta.yml`. Study the Discovery → Semantic Matching → Execution Progressive Disclosure flow in `spring-ai-agent-utils`, and compare one-time preloading for text interviews with on-demand, multi-turn ReAct loading for voice interviews.
 
-- **并行双路出题架构**：深入理解”单次调用无法兼顾简历和方向”的 Prompt 冲突问题，学习如何通过物理隔离（两套独立 Prompt 模板 + 两路并行 AI 调用）实现 60% 简历题 + 40% 方向题的混合出题，以及索引合并和降级策略的设计。
+- **Parallel question generation**: Avoid prompt conflicts between resume-based and track-based questions by using two isolated templates and parallel AI calls. Generate 60% resume questions and 40% track questions, then merge their indexes and apply fallback strategies.
 
-- **多轮追问生成机制**：学习如何在面试问题生成场景中，通过多层 Prompt 设计实现”主问题 + 追问”的树形结构。掌握可配置追问数量、问题类型权重分配、历史去重等实战技巧。
+- **Multi-turn follow-ups**: Use layered prompts to create a tree of main questions and follow-ups, with configurable follow-up counts, question-type weights, and history-based deduplication.
 
-- **流式输出智能处理**：掌握 SSE 流式场景下的”探测窗口”技术——在保持首字响应速度的同时，快速识别”无信息”输出并统一为固定模板，避免用户看到长篇拒答文字。
+- **Streaming-output handling**: Use an SSE “detection window” to preserve fast first-token responses while detecting uninformative output and replacing it with a consistent template.
 
-- **统一无结果策略**：学习如何在 RAG 系统中设计一致的用户无结果体验，包括命中判定、输出归一化、流式截断等全链路优化。
+- **Consistent no-result behavior**: Design a predictable RAG response when retrieval finds no useful evidence, using relevance checks, output normalization, and stream truncation.
 
-- **知识库驱动的题库生成**：从已向量化的知识库文档自动生成主问题、参考答案、评分标准与追问，题目生成走 Redis Stream 异步链路，配合严格容量校验（追问数量是硬约束）与统一评估引擎，形成“文档 → 题库 → 专项面试 → 评估报告”的完整闭环。
+- **Knowledge-base question generation**: Generate main questions, reference answers, rubrics, and follow-ups from embedded documents. Redis Streams run generation asynchronously; capacity checks enforce follow-up counts, and a shared evaluator completes the flow from documents to question banks, focused interviews, and reports.
 
-### 标准化的工程化交付与部署
+### Standardized Delivery and Deployment
 
-- **Gradle 现代构建体系**：摆脱 Maven 的繁琐配置，掌握 Gradle 9 及其版本目录 (Version Catalog) 的灵活性，学习如何优雅地管理大型项目依赖。
+- **Gradle build system**: Manage dependencies in larger projects with Gradle 9 and Version Catalogs.
 
-- **数据库版本化管理**：基于 Flyway 管理 schema 建表与增量变更，Hibernate `ddl-auto` 仅做 validate 校验，体会“迁移脚本即代码”的生产级数据库演进方式。
+- **Database versioning**: Use Flyway for schema creation and incremental changes, with Hibernate `ddl-auto` set to `validate`. Treat migration scripts as code.
 
-- **生产级容器化部署**：通过 Docker Compose 一键搭建包含数据库扩展、缓存、对象存储在内的全套运行环境，理解云原生时代下的基础设施配置规范。
+- **Containerized deployment**: Use Docker Compose to start the database extensions, cache, object storage, and other services, and learn infrastructure configuration practices for cloud-native environments.
 
-### 丝滑的前端工程化与交互体验
+### Frontend Engineering and Interaction
 
-对于后端开发者，这更是一次补齐“全栈视野”的绝佳机会：
+Backend developers can also use the project to broaden their frontend experience:
 
-- **SSE (Server-Sent Events) 流式渲染**：掌握像 ChatGPT 一样逐字输出回答的底层技术，理解其在单向推送场景下相比 WebSocket 的架构优势。
+- **SSE rendering**: Learn how to stream answers token by token and why SSE can be a better fit than WebSocket for one-way delivery.
 
-- **响应式 UI 与动效设计**：利用 Tailwind CSS 极简构建美观界面，结合 Framer Motion 实现高级交互动效。
+- **Responsive UI and animation**: Build the interface with Tailwind CSS and add interactions with Framer Motion.
 
-- **AI 数据可视化**：通过 Recharts 将 AI 分析后的简历评分、多维对比以直观的雷达图形式呈现，让数据“会说话”。
+- **AI data visualization**: Use Recharts to present resume scores and comparisons across dimensions in radar charts.
 
-## 如何加入学习？
+## Join the Program
 
-很多 AI 项目只停留在调用一个 API。而本项目带你解决的是**真实工程问题**：
+Many AI projects stop at calling an API. This project addresses **engineering problems**, including:
 
-- 如何处理大模型响应慢的问题？（**异步处理 + Redis Stream**）
-- 如何让大模型输出格式固定的数据？（**结构化 Prompt + MapStruct**）
-- 如何让大模型基于私有文档回答？（**RAG + pgvector**）
+- How do you handle slow LLM responses? (**Asynchronous processing + Redis Streams**)
+- How do you get structured output from an LLM? (**Structured prompts + MapStruct**)
+- How do you make an LLM answer from private documents? (**RAG + pgvector**)
 
-**本项目为 [JavaGuide 知识星球](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html) 内部专属实战项目，通过语雀文档在线阅读学习，不单独对外开放。**
+**This is a private hands-on project for the [JavaGuide Knowledge Planet](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html). The tutorial is available online through Yuque and is not offered separately.**
 
-之所以选择在星球内部发布，是为了确保每一位学习者都能获得**深度的技术答疑**和**完整的求职配套服务**。
+It is offered through the Knowledge Planet so that learners can get **in-depth technical Q&A** and **job-search support**.
 
-这只是开始。后续星球还会持续推出更多贴合企业真实业务场景的 **Java 实战项目**，带你始终站在技术前沿（预告一下，下一个项目是**企业级智能客服系统**，会带大家实践更多AI能力）。
+More **Java projects based on real business scenarios** are planned. The next planned project is an **enterprise customer-service system** covering additional AI capabilities.
 
-并且，我的星球还有很多其他服务，比如**一对一提问、简历修改、后端系统面试资料（包含高频系统设计&场景题）、学习打卡**等，其中任何一项服务单独拎出来的价值都已远超星球门票。欢迎详细了解我的[知识星球](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html)！
+The Knowledge Planet also offers **one-on-one Q&A, resume reviews, backend interview materials (including common system-design and scenario questions), and study check-ins**. See the [JavaGuide Knowledge Planet](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html) for details.
 
-已经坚持维护**六年**，内容持续更新，虽白菜价（**0.4 元/天**）但质量很高，主打一个良心！
+The Knowledge Planet has been maintained for **six years** and continues to be updated. The listed price is **CNY 0.40 per day**.
 
-目前星球正在做活动，两本书的价格，就能让你拥有上万培训班的服务！这里再提供一张 **30 元** 的优惠券（价格马上上调，老用户扫码续费半价）：
+The current promotion says the membership costs about as much as two books while providing services comparable to training programs costing over CNY 10,000. A **CNY 30** coupon is also available; the source notes that prices may increase and existing members can renew at half price by scanning the code:
 
-![知识星球 30 元优惠券](./images/shared/xingqiuyouhuijuan-30.jpg)
+![CNY 30 Knowledge Planet coupon](./images/shared/xingqiuyouhuijuan-30.jpg)
 
-用心做内容，坚持本心，不割韭菜，其他交给时间！共勉！
+The goal is to keep creating useful content. Thank you for your support.

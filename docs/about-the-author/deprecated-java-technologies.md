@@ -1,102 +1,102 @@
 ---
-title: 已经淘汰的 Java 技术，不要再学了！
-description: 已淘汰的Java技术盘点，JSP、Struts、EJB、Java Applets、SOAP等过时技术不建议学习，附现代替代方案推荐。
-category: 走近作者
+title: "Outdated Java Technologies You Shouldn't Learn"
+description: An overview of outdated Java technologies, including JSP, Struts, EJB, Java Applets, and SOAP, with modern alternatives.
+category: About the Author
 tag:
-  - 杂谈
+  - General
 ---
 
-前几天，我在知乎上随手回答了一个问题：“Java 学到 JSP 就学不下去了，怎么办？”。
+A few days ago, I answered a question on Zhihu: “I can't get past JSP while learning Java. What should I do?”
 
-出于不想让别人走弯路的心态，我回答说：已经淘汰的技术就不要学了，并顺带列举了一些在 Java 开发领域中已经被淘汰的技术。
+I wanted to help the person avoid a detour, so I said there was no need to learn technologies that had become obsolete. I also listed some technologies that have fallen out of use in Java development.
 
-## 已经淘汰的 Java 技术
+## Outdated Java Technologies
 
-我的回答原内容如下，列举了一些在 Java 开发领域中已经被淘汰的技术：
+Here is my original answer, listing several technologies that have fallen out of use in Java development:
 
 **JSP**
 
-- **原因**：JSP 已经过时，无法满足现代 Web 开发需求；前后端分离成为主流。
-- **替代方案**：模板引擎（如 Thymeleaf、Freemarker）在传统全栈开发中更流行；而在前后端分离架构中，React、Vue、Angular 等现代前端框架已取代 JSP 的角色。
-- **注意**：一些国企和央企的老项目可能仍然在使用 JSP，但这种情况越来越少见。
+- **Why:** JSP is outdated and no longer meets the needs of modern web development. Frontend-backend separation has become the norm.
+- **Alternatives:** Template engines such as Thymeleaf and FreeMarker remain common in traditional full-stack development. In frontend-backend separated architectures, modern frontend frameworks such as React, Vue, and Angular have taken over JSP's role.
+- **Note:** Some legacy projects at state-owned enterprises may still use JSP, but this is becoming less common.
 
-**Struts（尤其是 1.x）**
+**Struts (especially 1.x)**
 
-- **原因**：配置繁琐、开发效率低，且存在严重的安全漏洞（如世界著名的 Apache Struts 2 漏洞）。此外，社区维护不足，生态逐渐萎缩。
-- **替代方案**：Spring MVC 和 Spring WebFlux 提供了更简洁的开发体验、更强大的功能以及完善的社区支持，完全取代了 Struts。
+- **Why:** It requires extensive configuration, slows development, and has had serious security vulnerabilities, including well-known Apache Struts 2 vulnerabilities. Community support has also weakened, and its ecosystem has shrunk.
+- **Alternatives:** Spring MVC and Spring WebFlux offer a simpler development experience, broader capabilities, and active community support. They have largely replaced Struts.
 
 **EJB (Enterprise JavaBeans)**
 
-- **原因**：EJB 过于复杂，开发成本高，学习曲线陡峭，在实际项目中逐步被更轻量化的框架取代。
-- **替代方案**：Spring/Spring Boot 提供了更加简洁且功能强大的企业级开发解决方案，几乎已经成为 Java 企业开发的事实标准。此外，国产的 Solon 和云原生友好的 Quarkus 等框架也非常不错。
+- **Why:** EJB is complex, costly to develop with, and has a steep learning curve. In practice, lighter frameworks have gradually replaced it.
+- **Alternatives:** Spring and Spring Boot provide simpler, capable solutions for enterprise development and have become the de facto standard in Java enterprise development. The Chinese framework Solon and cloud-native-friendly Quarkus are also worth considering.
 
 **Java Applets**
 
-- **原因**：现代浏览器（如 Chrome、Firefox、Edge）早已全面移除对 Java Applets 的支持，同时 Applets 存在严重的安全性问题。
-- **替代方案**：HTML5、WebAssembly 以及现代 JavaScript 框架（如 React、Vue）可以实现更加安全、高效的交互体验，无需插件支持。
+- **Why:** Modern browsers such as Chrome, Firefox, and Edge have removed support for Java Applets. Applets also have serious security issues.
+- **Alternatives:** HTML5, WebAssembly, and modern JavaScript frameworks such as React and Vue can provide safer, more efficient interactive experiences without requiring browser plugins.
 
 **SOAP / JAX-WS**
 
-- **原因**：SOAP 和 JAX-WS 过于复杂，数据格式冗长（XML），对开发效率和性能不友好。
-- **替代方案**：RESTful API 和 RPC 更轻量、高效，是现代微服务架构的首选。
+- **Why:** SOAP and JAX-WS are complex, and their XML payloads are verbose, which can hurt development efficiency and performance.
+- **Alternatives:** RESTful APIs and RPC are lighter and more efficient, making them common choices in modern microservice architectures.
 
-**RMI（Remote Method Invocation）**
+**RMI (Remote Method Invocation)**
 
-- **原因**：RMI 是一种早期的 Java 远程调用技术，但兼容性差、配置繁琐，且性能较差。
-- **替代方案**：RESTful API 和 PRC 提供了更简单、高效的远程调用解决方案，完全取代了 RMI。
+- **Why:** RMI is an early Java technology for remote calls, but it has poor interoperability, requires extensive configuration, and can perform poorly.
+- **Alternatives:** RESTful APIs and RPC provide simpler, more efficient ways to make remote calls and have largely replaced RMI.
 
 **Swing / JavaFX**
 
-- **原因**：桌面应用在开发领域的份额大幅减少，Web 和移动端成为主流。Swing 和 JavaFX 的生态不如现代跨平台框架丰富。
-- **替代方案**：跨平台桌面开发框架（如 Flutter Desktop、Electron）更具现代化体验。
-- **注意**：一些国企和央企的老项目可能仍然在使用 Swing / JavaFX，但这种情况越来越少见。
+- **Why:** Desktop applications have a smaller share of development work, while web and mobile applications have become more common. Swing and JavaFX also have smaller ecosystems than modern cross-platform frameworks.
+- **Alternatives:** Cross-platform desktop frameworks such as Flutter Desktop and Electron offer a more modern development experience.
+- **Note:** Some legacy projects at state-owned enterprises may still use Swing or JavaFX, but this is becoming less common.
 
 **Ant**
 
-- **原因**：Ant 是一种基于 XML 配置的构建工具，缺乏易用性，配置繁琐。
-- **替代方案**：Maven 和 Gradle 提供了更高效的项目依赖管理和构建功能，成为现代构建工具的首选。
+- **Why:** Ant is an XML-based build tool that can be cumbersome to configure and use.
+- **Alternatives:** Maven and Gradle provide more efficient dependency management and build features, and are now common choices for Java projects.
 
-## 杠精言论
+## A Predictable Comment
 
-没想到，评论区果然出现了一类很常见的杠精：
+As expected, the comments included a familiar kind of contrarian:
 
-> “学的不是技术，是思想。那爬也是人类不需要的技术吗？为啥你一生下来得先学会爬？如果基础思想都不会就去学各种框架，到最后只能是只会 CV 的废物！”
+> “You aren't learning technology; you're learning ideas. Is crawling also a skill humans don't need? Why do you have to learn to crawl before you can walk? If you don't understand the fundamentals and just learn frameworks, you'll end up as a useless copy-and-paste programmer!”
 
 <img src="https://oss.javaguide.cn/github/javaguide/about-the-author/prattle/deprecated-java-technologies-zhihu-comments.png" style="zoom:50%;" />
 
-这句话表面上看似有道理，但实际上却暴露了一个人的**无知和偏执**。
+This may sound reasonable at first, but it actually reveals **ignorance and a rigid mindset**.
 
-**知识越贫乏的人，相信的东西就越绝对**，因为他们从未认真了解过与自己观点相对立的角度，也缺乏对技术发展的全局认识。
+**The less people know, the more certain they tend to be**, because they have never seriously considered opposing views or developed a broad understanding of how technology evolves.
 
-举个例子，我刚开始学习 Java 后端开发的时候，完全没什么经验，就随便买了一本书开始看。当时看的是 **《Java Web 整合开发王者归来》** 这本书（梦开始的地方）。
+For example, when I first started learning Java backend development, I had little experience and picked up a book at random. I read **Java Web Integration Development: The Return of the King**—the book that started it all for me.
 
-在我上大学那会儿，这本书的很多内容其实已经过时了，比如它花了大量篇幅介绍 JSP、Struts、Hibernate、EJB 和 SVN 等技术。不过，直到现在，我依然非常感谢这本书，带我走进了 Java 后端开发的大门。
+When I was in college, much of the book was already outdated. It devoted many pages to JSP, Struts, Hibernate, EJB, and SVN. Even so, I'm still grateful to it for introducing me to Java backend development.
 
 ![](https://oss.javaguide.cn/github/javaguide/about-the-author/prattle/java-web-integration-development-king-returns.png)
 
-这本书一共 **1010** 页，我当时可以说是废寝忘食地学，花了很长时间才把整本书完全“啃”下来。
+The book has **1,010** pages. I studied it obsessively and spent a long time working my way through the whole thing.
 
-回头来看，我如果能有意识地避免学习这些已经淘汰的技术，真的可以节省大量时间去学习更加主流和实用的内容。
+Looking back, I could have saved a lot of time for more relevant and practical topics if I had avoided technologies that were already obsolete.
 
-那么，这些被淘汰的技术有用吗？说句实话，**屁用没有，纯粹浪费时间**。
+Are these outdated technologies useful? Honestly, **they're a waste of time**.
 
-**既然都要花时间学习，为什么不去学那些更主流、更有实际价值的技术呢？**
+**If you're going to spend time learning, why not learn technologies that are more widely used and practically valuable?**
 
-现在本身就很卷，不管是 Java 方向还是其他技术方向，要学习的技术都很多。
+The job market is already competitive. Whether you focus on Java or another area, there is a lot to learn.
 
-想要理解所谓的“底层思想”，与其浪费时间在 JSP 这种已经不具备实际应用价值的技术上，不如深入学习一下 Servlet，研究 Spring 的 AOP 和 IoC 原理，从源码角度理解 Spring MVC 的工作机制。
+If you want to understand the underlying ideas, spend your time studying Servlets, the internals of Spring AOP and IoC, or how Spring MVC works by reading its source code. Those are more useful than spending time on JSP, which has little practical value today.
 
-这些内容，不仅能帮助你掌握核心的思想，还能在实际开发中真正派上用场，这难道不比花大量时间在 JSP 上更有意义吗？
+These topics can help you understand core concepts and apply them in real projects. Isn't that more worthwhile than spending a lot of time on JSP?
 
-## 还有公司在用的技术就要学吗？
+## Should You Learn a Technology Just Because Some Companies Still Use It?
 
-我把这篇文章的相关言论发表在我的[公众号](https://mp.weixin.qq.com/s/lf2dXHcrUSU1pn28Ercj0w)之后，又收到另外一类在我看来非常傻叉的言论：
+After I shared this article on my [WeChat public account](https://mp.weixin.qq.com/s/lf2dXHcrUSU1pn28Ercj0w), I got another kind of comment that I found rather misguided:
 
-- “虽然 JSP 很老了，但还是得学学，会用就行，因为我们很多老项目还在用。”
-- “很多央企和国企的老项目还在用，肯定得学学啊！”
+- “JSP is old, but you should still learn the basics because many legacy projects use it.”
+- “Many old projects at state-owned enterprises still use it, so you definitely need to learn it!”
 
-这种观点完全是钻牛角尖！如果按这种逻辑，那你还需要去学 Struts2、SVN、JavaFX 等过时技术，因为它们也还有公司在用。我有一位大学同学毕业后去了武汉的一家国企，写了一年 JavaFX 就受不了跑了。他在之前从来没有接触过 JavaFX，招聘时也没被问过相关问题。
+That argument takes things too far. By the same logic, you'd also need to learn outdated technologies such as Struts 2, SVN, and JavaFX just because some companies still use them. A college classmate of mine joined a state-owned enterprise in Wuhan after graduation, spent a year writing JavaFX, and couldn't take it anymore. He had never used JavaFX before joining, and it never came up in his job interviews.
 
-一定不要假设自己要面对的是过时技术栈的项目。你要找工作肯定要用主流技术栈去找，还要尽量找能让自己技术有成长，干着也舒服点。真要是找不到合适的工作，去维护老项目，那都是后话，现学现卖就行了。
+Don't assume you'll end up working on a project with an outdated technology stack. Look for jobs that use mainstream technologies and offer room to grow in a comfortable environment. If you can't find a suitable role and end up maintaining a legacy project, you can learn what you need as you go.
 
-**对于初学者来说别人劝了还非要学习淘汰的技术，多少脑子有点不够用，基本可以告别这一行了！**
+**Beginners who insist on learning obsolete technologies despite being advised otherwise may want to reconsider whether this field is right for them.**

@@ -1,55 +1,55 @@
 ---
-title: 从毕业到入职半年的感受
-description: 应届生入职半年的工作感受，CRUD业务代码的价值、技术积累靠工作之余、从学校到职场的转变心得分享。
-category: 走近作者
+title: Reflections on My First Six Months at Work
+description: Reflections on a new graduate's first six months at work, the value of CRUD tasks, learning beyond work, and the transition from school to the workplace.
+category: About the Author
 tag:
-  - 个人经历
+  - Personal Experience
 ---
 
-如果大家看过我之前的介绍的话，就会知道我是 19 年毕业的几百万应届毕业生中的一员。这篇文章主要讲了一下我入职大半年的感受，文中有很多自己的主观感受，如果你们有任何不认同的地方都可以直接在评论区说出来，会很尊重其他人的想法。
+If you've read my earlier introduction, you know I'm one of the millions of graduates from 2019. This article shares some personal reflections from my first six months at work. Feel free to disagree in the comments; I respect different perspectives.
 
-简单说一下自己的情况吧！我目前是在一家外企，每天的工作和大部分人一样就是做开发。毕业到现在，差不多也算是工作半年多了，也已经过了公司 6 个月的试用期。目前在公司做过两个偏向于业务方向的项目，其中一个正在做。你很难想象我在公司做的两个业务项目的后端都没有涉及到分布式/微服务，没有接触到 Redis、Kafka 等等比较“高大上”的技术在项目中的实际运用。
+I work as a developer at a foreign-owned company. I've been here for a little over six months and have passed the probation period. I've worked on two business-focused projects, one of which is still in progress. You might be surprised that neither backend involved distributed systems or microservices, or used technologies such as Redis and Kafka in practice.
 
-第一个项目做的是公司的内部项目——员工成长系统。抛去员工成长系统这个名字，实际上这个系统做的就是绩效考核比如你在某个项目组的表现。这个项目的技术是 Spring Boot+ JPA + Spring Security + K8S + Docker + React。第二个目前正在做的是一个集成游戏 (cocos)、Web 管理端 (Spring Boot + Vue) 和小程序 (Taro) 项目。
+The first was an internal employee development and performance review system. Its stack included Spring Boot, JPA, Spring Security, Kubernetes, Docker, and React. The second, which is still underway, combines a game built with Cocos, a web-based admin console built with Spring Boot and Vue, and a mini program built with Taro.
 
-是的，我在工作中的大部分时间都和 CRUD 有关，每天也会写前端页面。之前我认识的一个朋友 ，他听说我做的项目中大部分内容都是写业务代码之后就非常纳闷，他觉得单纯写业务代码得不到提升？what?你一个应届生，连业务代码都写不好你给我说这个！所以，**我就很纳闷不知道为什么现在很多连业务代码都写不好的人为什么人听到 CRUD 就会反感？至少我觉得在我工作这段时间我的代码质量得到了提升、定位问题的能力有了很大的改进、对于业务有了更深的认识，自己也可以独立完成一些前端的开发了。**
+Yes, most of my work involves CRUD, and I write frontend pages every day too. A friend was surprised to hear that most of my project work was business logic; he thought it wouldn't help me grow. Really? You're a new graduate—if you can't even write business code well, what are we talking about? **I don't understand why people who haven't mastered business code are so quick to dismiss CRUD. My code quality has improved, I can diagnose problems better, I understand the business more deeply, and I can now complete some frontend work on my own.**
 
-其实，我个人觉得能把业务代码写好也没那么容易，抱怨自己天天做 CRUD 工作之前，看看自己 CRUD 的代码写好没。再换句话说，单纯写 CRUD 的过程中你搞懂了哪些你常用的注解或者类吗？这就像一个只会 `@Service`、`@Autowired`、`@RestController`等等最简单的注解的人说我已经掌握了 Spring Boot 一样。
+Writing good business code isn't as easy as it sounds. Before complaining about doing CRUD every day, take a look at whether your CRUD code is well written. Have you understood the annotations and classes you use regularly? It's like someone who only knows basic annotations such as `@Service`, `@Autowired`, and `@RestController` claiming to have mastered Spring Boot.
 
-不知道什么时候开始大家都会觉得有实际使用 Redis、MQ 的经验就很牛逼了，这可能和当前的面试环境有关系。你需要和别人有差异，你想进大厂的话，好像就必须要这些技术比较在行，好吧，没有好像，自信点来说对于大部分求职者这些技术都是默认你必备的了。
+At some point, people started treating practical experience with Redis and message queues as a big deal. That may be because of the current interview environment: you need to stand out, and if you want to join a top tech company, these technologies seem to be expected knowledge for most candidates.
 
-**实话实说，我在大学的时候就陷入过这个“伪命题”中**。在大学的时候，我大二因为加入了一个学校的偏技术方向的校媒才接触到 Java ，当时我们学习 Java 的目的就是开发一个校园通。 大二的时候，编程相当于才入门水平的我才接触 Java，花了一段时间才掌握 Java 基础。然后，就开始学习安卓开发。
+**To be honest, I fell into this “false dilemma” in college too.** I first encountered Java in my second year, after joining a technology-focused student media group. We learned Java to build a campus app. I was still a beginner, and it took time to learn the fundamentals before I started studying Android development.
 
-到了大三上学期，我才真正确定要走 Java 后台的方向，找 Java 后台的开发工作。学习了 3 个月左右的 WEB 开发基础之后，我就开始学习分布式方面内容比如 Redis、Dubbo 这些。我当时是通过看书 + 视频 + 博客的方式学习的，自学过程中通过看视频自己做过两个完整的项目，一个普通的业务系统，一个是分布式的系统。**我当时以为自己做完之后就很牛逼了，我觉得普通的 CRUD 工作已经不符合我当前的水平了。哈哈！现在看来，当时的我过于哈皮！**
+In the first semester of my third year, I decided to pursue Java backend development. After about three months of web development fundamentals, I started studying distributed systems, including Redis and Dubbo. I learned from books, videos, and blogs, and built two complete projects by following tutorials: a typical business system and a distributed system. **I thought I was great after finishing them and felt ordinary CRUD work was beneath my level. Looking back, I was pretty full of myself!**
 
-这不！到了大三暑假跟着老师一起做项目的时候就出问题了。大三的时候，我们跟着老师做的是一个绩效考核系统，业务复杂程度中等。这个项目的技术用的是：SSM + Shiro + JSP。当时，做这个项目的时候我遇到各种问题，各种我以为我会写的代码都不会写了，甚至我写一个简单的 CRUD 都要花费好几天的时间。所以，那时候我都是边复习边学习边写代码。虽然很累，但是，那时候学到了很多，也让我在技术面前变得更加踏实。我觉得这“**这个项目已经没有维护的可能性**”这句话是我对我过的这个项目最大的否定了。
+Then I joined a project with a professor during the summer of my third year, and reality hit. We built a moderately complex performance review system using SSM, Shiro, and JSP. I ran into all kinds of problems and couldn't write much of the code I thought I knew. Even simple CRUD took me several days. I had to review, learn, and code at the same time. It was exhausting, but I learned a lot and became more grounded. The biggest criticism I have of that project is that **it was impossible to maintain**.
 
-技术千变万化，掌握最核心的才是王道。我们前几年可能还在用 Spring 基于传统的 XML 开发，现在几乎大家都会用 Spring Boot 这个开发利器来提升开发速度，再比如几年前我们使用消息队列可能还在用 ActiveMQ，到今天几乎都没有人用它了，现在比较常用的就是 Rocket MQ、Kafka 。技术更新换代这么快的今天，你是无法把每一个框架/工具都学习一遍的。
+Technology changes constantly. Mastering the fundamentals matters most. A few years ago, people used Spring with traditional XML configuration; now Spring Boot helps them develop faster. We used to rely on ActiveMQ for message queues, but today RocketMQ and Kafka are more common. With technology changing this quickly, no one can learn every framework and tool.
 
-**很多初学者上来就想通过做项目学习，特别是在公司，我觉得这个是不太可取的。** 如果的 Java 基础或者 Spring Boot 基础不好的话，建议自己先提前学习一下之后再开始看视频或者通过其他方式做项目。 **还有一点就是，我不知道为什么大家都会说边跟着项目边学习做的话效果最好，我觉得这个要加一个前提是你对这门技术有基本的了解或者说你对编程有了一定的了解。**
+**I don't think beginners should jump straight into learning through a project, especially at work.** If your Java or Spring Boot fundamentals are weak, study them first before following a project tutorial or learning by other means. People often say you learn best by working through a project as you go. I think that advice needs a condition: you should already have a basic understanding of the technology and programming.
 
-**划重点！！！在自己基础没打牢的情况下，单纯跟着视频做一点用没有。你会发现你看完视频之后，让你自己写代码的时候又不会写了。**
+**The key point: if your fundamentals are weak, blindly following a video tutorial is not useful. You'll finish the video and still be unable to write the code on your own.**
 
-不知道其他公司的程序员是怎么样的？我感觉技术积累很大程度在乎平时，单纯依靠工作绝大部分情况只会加快自己做需求的熟练度，当然，写多了之后或多或少也会提升你对代码质量的认识（前提是你有这个意识）。
+I don't know how developers at other companies feel, but I think technical growth depends largely on what you do in your own time. In most cases, work alone makes you more efficient at completing familiar tasks. It can also improve your sense of code quality, if you pay attention to it.
 
-工作之余，我会利用业余时间来学习自己想学的东西。工作中的例子就是我刚进公司的第一个项目用到了 Spring Security + JWT ，因为当时自己对于这个技术不太了解，然后就在工作之外大概花了一周的时间学习写了一个 Demo 分享了出来，GitHub 地址：<https://github.com/Snailclimb/spring-security-jwt-guide> 。以次为契机，我还分享了
+In my spare time, I study topics that interest me. For example, my first project at the company used Spring Security and JWT, which I wasn't familiar with. I spent about a week learning the technology and building a demo, then shared it here: <https://github.com/Snailclimb/spring-security-jwt-guide>. That led me to write:
 
-- [《一问带你区分清楚 Authentication、Authorization 以及 Cookie、Session、Token》](https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247485626&idx=1&sn=3247aa9000693dd692de8a04ccffeec1&chksm=cea24771f9d5ce675ea0203633a95b68bfe412dc6a9d05f22d221161147b76161d1b470d54b3&token=684071313&lang=zh_CN&scene=21#wechat_redirect)
-- [JWT 身份认证优缺点分析以及常见问题解决方案](https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247485655&idx=1&sn=583eeeb081ea21a8ec6347c72aa223d6&chksm=cea2471cf9d5ce0aa135f2fb9aa32d98ebb3338292beaccc1aae43d1178b16c0125eb4139ca4&token=1737409938&lang=zh_CN#rd)
+- [Authentication vs. Authorization, and Cookies vs. Sessions vs. Tokens](https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247485626&idx=1&sn=3247aa9000693dd692de8a04ccffeec1&chksm=cea24771f9d5ce675ea0203633a95b68bfe412dc6a9d05f22d221161147b76161d1b470d54b3&token=684071313&lang=zh_CN&scene=21#wechat_redirect)
+- [JWT Authentication: Pros, Cons, and Common Solutions](https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247485655&idx=1&sn=583eeeb081ea21a8ec6347c72aa223d6&chksm=cea2471cf9d5ce0aa135f2fb9aa32d98ebb3338292beaccc1aae43d1178b16c0125eb4139ca4&token=1737409938&lang=zh_CN#rd)
 
-另外一个最近的例子是因为肺炎疫情在家的这段时间，自学了 Kafka，并且正在准备写一系列的入门文章，目前已经完成了：
+Another example: while staying home during the recent pandemic, I studied Kafka and started preparing a series of beginner articles. These are complete:
 
-1. 大白话 Kafka 入门；
-2. Kafka 安装和基本功能体验；
-3. Spring Boot 整合 Kafka 发送和接受消息；
-4. Spring Boot 整合 Kafka 发送和接受消息的一些事务、错误消息处理等等。
+1. Kafka for Beginners, in Plain Language
+2. Installing Kafka and Trying Its Basic Features
+3. Sending and Receiving Messages with Kafka and Spring Boot
+4. Transactions and Error Handling When Sending and Receiving Kafka Messages with Spring Boot
 
-还没完成的：
+Still to come:
 
-1. Kafka 高级特性比如工作流程、Kafka 为什么快等等的分析；
-2. 源码阅读分析；
-3. ……
+1. Advanced Kafka topics, such as its workflow and why Kafka is fast
+2. Source-code analysis
+3. And more...
 
-**所以，我觉得技术的积累和沉淀很大程度在乎工作之外的时间(大佬和一些本身就特别厉害的除外)。**
+**I believe a lot of technical growth happens outside work (unless you're already an expert or naturally very skilled).**
 
-**未来还有很长的路要走，即使再有精力也学不完你想学的所有技术，适当取舍、适当妥协，适当娱乐。**
+**There is a long road ahead, and no matter how much energy you have, you can't learn every technology you want to. Prioritize, make compromises, and make time to enjoy life.**

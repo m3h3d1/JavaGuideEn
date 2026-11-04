@@ -1,186 +1,186 @@
 ---
-title: AI 语音技术详解：从 ASR、TTS 到实时语音 Agent 的工程化落地
-description: 说明 AI 语音系统的工程链路，涵盖音频采集、VAD、ASR、LLM、TTS、流式播放、打断处理、低延迟优化以及云端 API、本地模型、端云混合选型。
-category: AI 应用开发
+title: "AI Voice Engineering: From ASR and TTS to Real-Time Voice Agents"
+description: "An engineering guide to AI voice systems: audio capture, VAD, ASR, LLMs, TTS, streaming playback, interruption handling, latency optimization, and cloud, local, and hybrid deployment."
+category: AI Application Development
 head:
   - - meta
     - name: keywords
-      content: AI语音,ASR,TTS,VAD,实时语音Agent,Speech to Speech,语音识别,语音合成,端云混合,Realtime API
+      content: AI voice,ASR,TTS,VAD,real-time voice agent,Speech to Speech,speech recognition,speech synthesis,cloud and edge,Realtime API
 ---
 
 <!-- @include: @article-header.snippet.md -->
 
-大家好，我是小 G。
+Hi, I'm Xiao G.
 
-很多开发者第一次做 AI 语音应用时，脑子里通常是这条链路：用户说话，转成文字，丢给大模型，再把回答播出来。
+When developers first build a voice application, they often imagine a simple pipeline: the user speaks, speech is converted to text, the text goes to an LLM, and the response is played back.
 
-听起来就是三段调用：**ASR -> LLM -> TTS**。
+That sounds like three calls: **ASR → LLM → TTS**.
 
-推到生产环境，问题马上来了：用户还没说完，系统已经误判结束；用户想打断，AI 还在自顾自朗读；会议室里有空调声和键盘声，ASR 开始胡乱转写；网络稍微抖一下，下行音频就卡成一段一段；文本回答看起来没问题，语音交互却像慢半拍的电话客服。
+Production exposes the gaps: the system thinks the user has finished before they have; the AI keeps speaking when the user tries to interrupt; air-conditioning and keyboard noise throw off ASR in a meeting room; a small network fluctuation breaks the downlink audio into choppy segments; and a good text response still sounds like a slow call-center agent when spoken aloud.
 
-文本 Agent 接上麦克风和扬声器，只能得到一个能说话的 Demo；生产系统还要处理实时音频、语音模型、对话状态和端云协同。
+A text Agent connected to a microphone and speaker is only a talking demo. A production system also has to handle real-time audio, speech models, conversation state, and coordination between the client and cloud.
 
-下文先说明 ASR、TTS 和 VAD 各自负责什么，再结合 interview-guide 项目讨论音频采集、流式传输、播放队列和状态机。最后再看云端 API、本地模型与端云混合方案各自适合什么场景。
+This guide first explains the roles of ASR, TTS, and VAD, then uses the interview-guide project to discuss audio capture, streaming, playback queues, and state machines. It concludes with when to use cloud APIs, local models, or a hybrid architecture.
 
-## 术语说明
+## Terminology
 
-为避免阅读时产生困惑，本文涉及的核心术语做如下说明：
+The following terms are used throughout this article:
 
-- **端侧** = 客户端（浏览器/App），指用户设备上的前端代码
-- **Barge-in** = 打断/插话打断，即用户在大模型响应过程中主动中断 AI 说话
-- **增量结果** = 流式输出 = partial results，指 ASR 实时返回的识别中间结果
-- **级联方案** = ASR + LLM + TTS 分阶段串联的架构
-- **原生 Realtime API** = 实时多模态语音接口，常见形态是音频进、音频出，也可以同时输出文本事件和工具调用事件
+- **Client side**: Frontend code running on the user's device, such as in a browser or app.
+- **Barge-in**: A user interrupting the AI while the model is responding.
+- **Partial results**: Intermediate recognition results returned by streaming ASR in real time.
+- **Cascaded architecture**: A pipeline that runs ASR, LLM, and TTS as separate stages.
+- **Native Realtime API**: A real-time multimodal voice interface, commonly taking audio in and returning audio out. It may also emit text and tool-call events.
 
-## AI 语音系统到底解决了什么问题？
+## What Problems Do AI Voice Systems Solve?
 
-先说清楚我们到底在解决什么问题。
+First, clarify the problem.
 
-语音 Agent 更接近实时协作系统：用户说话时，系统要同步完成理解、生成和播放。和文字对话相比，语音多了几个维度：
+A voice Agent is closer to a real-time collaborative system: while the user speaks, the system must coordinate understanding, generation, and playback. Compared with text chat, voice adds several dimensions:
 
-- **实时性**：用户说话的时候，系统就得开始工作，不能等用户说完再反应。
-- **多模态信息**：语气、停顿、情绪，这些在文字里都丢了。
-- **打断能力**：人说话可以互相插嘴，机器也得支持。
-- **端到端延迟**：文字聊天慢 1 秒用户还能忍，语音慢 1 秒就感觉对方“没反应”。
+- **Real-time response**: The system must start working while the user speaks instead of waiting for them to finish.
+- **Multimodal signals**: Tone, pauses, and emotion are lost in text.
+- **Interruption handling**: People can interrupt each other, and a voice system must support that too.
+- **End-to-end latency**: A one-second delay may be tolerable in text chat but can make a voice interaction feel unresponsive.
 
-市面上常见的语音交互有两类：
+Voice interactions generally fall into two categories:
 
-1. **命令式语音助手**：常见于智能家居和车载控制。用户说“打开空调”，系统把语音映射到预定义意图和设备指令。Siri、小爱同学等产品也在接入开放问答能力，不能简单归为固定菜单。
-2. **大模型语音 Agent**：能理解开放问题、调用工具、持续多轮对话。你问“帮我看看上周那个接口超时是怎么回事”，它需要理解意图、检索上下文、生成回答、还要用语音和你来回确认。
+1. **Command-based voice assistants**: Common in smart-home and in-car controls. The system maps a request such as "turn on the air conditioner" to a predefined intent and device command. Products such as Siri and XiaoAi also support open-ended questions, so they are not simply fixed menus.
+2. **LLM-based voice Agents**: These can understand open-ended questions, call tools, and sustain multi-turn conversations. If you ask what caused an API timeout last week, the Agent must understand the intent, retrieve context, generate an answer, and clarify details with you by voice.
 
-这两类产品的工程重心差别很大。下文讨论大模型语音 Agent 的工程化落地。
+The engineering priorities differ significantly. The rest of this article focuses on building LLM-based voice Agents.
 
-## 语音识别（ASR）是怎么把声音变成文字的？
+## How Does ASR Convert Speech to Text?
 
-ASR（Automatic Speech Recognition）看起来就是“音频进、文字出”，但背后至少包含三个判断：
+ASR (Automatic Speech Recognition) may look like "audio in, text out," but it involves at least three decisions:
 
-1. 这段音频说的是什么字。
-2. 这些字怎么切分成词和句子。
-3. 标点、数字、英文、技术名词怎么规范化。
+1. Which words were spoken.
+2. How to segment them into words and sentences.
+3. How to normalize punctuation, numbers, English, and technical terms.
 
-比如用户说“帮我查一下 Java 21 的虚拟线程”，ASR 要同时识别中文、英文、数字和技术词。如果识别成“加瓦二十一的虚拟线程”，后面的 LLM 再强也得先猜半天。
+For example, if the user asks about Java 21 virtual threads in Chinese, ASR must recognize Chinese, English, numbers, and technical terms together. If it transcribes "Java" phonetically as a Chinese phrase, even a strong LLM must first guess what the user said.
 
-### ASR 的三条技术路线
+### Three ASR Approaches
 
-| 类型         | 代表方案                                                                                                                                                                  | 优势                                                                    | 短板                                                             | 适合场景                       |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------ |
-| 云端 API     | OpenAI Audio Transcriptions（`gpt-4o-transcribe`、`gpt-4o-mini-transcribe`、`whisper-1`、`gpt-4o-transcribe-diarize`）、Azure Speech、Google Speech、Deepgram、阿里云 ASR | 接入快，语言覆盖广，运维成本低                                          | 成本、网络延迟、数据合规受限                                     | 客服、会议转写、轻量语音助手   |
-| 开源通用模型 | Whisper、faster-whisper、Whisper.cpp、FunASR                                                                                                                              | 可本地部署，可控性强，支持私有化；faster-whisper 可接入 Silero VAD 过滤 | 实时性要自己做工程优化；Whisper turbo 未针对翻译训练，翻译效果差 | 私有化转写、离线字幕、企业内网 |
-| 领域定制模型 | 金融、医疗、车载专用 ASR                                                                                                                                                  | 专有名词和口音适配更好                                                  | 数据准备和训练成本高                                             | 高频垂直场景、强业务词表       |
+| Type                               | Examples                                                                                                                                                                        | Strengths                                                                             | Limitations                                                                                                              | Suitable use                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| Cloud API                          | OpenAI Audio Transcriptions (`gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, `whisper-1`, `gpt-4o-transcribe-diarize`), Azure Speech, Google Speech, Deepgram, Alibaba Cloud ASR | Quick to integrate, broad language coverage, low operational overhead                 | Cost, network latency, and data-compliance constraints                                                                   | Customer support, meeting transcription, lightweight voice assistants |
+| General-purpose open-source models | Whisper, faster-whisper, Whisper.cpp, FunASR                                                                                                                                    | Can run locally and be self-hosted; faster-whisper can use Silero VAD to filter audio | Real-time performance requires engineering work; Whisper Turbo was not trained for translation and performs poorly at it | Private transcription, offline subtitles, enterprise networks         |
+| Domain-specific models             | ASR for finance, healthcare, or automotive use                                                                                                                                  | Better adaptation to domain terms and accents                                         | High data-preparation and training costs                                                                                 | High-volume vertical use cases with specialized vocabularies          |
 
-**补充说明**：
+**Notes:**
 
-- OpenAI 的 `gpt-4o-transcribe-diarize` 支持说话人标签，适合会议转写等多人场景。它目前只用于 `/v1/audio/transcriptions`，不支持 Realtime API；当音频超过 30 秒时，需要配置 `chunking_strategy`；它也不支持 `prompt`、`logprobs`、`timestamp_granularities[]`。如果不需要说话人标签，优先看 `gpt-4o-transcribe`、`gpt-4o-mini-transcribe` 或 `whisper-1`。
-- Whisper turbo（large-v3-turbo）是 large-v3 的推理优化版，速度快但**未针对翻译任务训练**，执行 `--task translate` 时会输出原始语言而非英语，需要翻译时请用 medium 或 large。
-- 实时转写要和录音文件转写分开看。OpenAI 当前文档把低延迟实时转写放在 Realtime transcription 里，模型是 `gpt-realtime-whisper`；文件上传、说话人分离这类任务走 Audio Transcriptions。
+- OpenAI's `gpt-4o-transcribe-diarize` supports speaker labels and suits multi-speaker scenarios such as meeting transcription. It is currently available only through `/v1/audio/transcriptions`, not the Realtime API. Audio longer than 30 seconds requires `chunking_strategy`. It does not support `prompt`, `logprobs`, or `timestamp_granularities[]`. If speaker labels are not needed, consider `gpt-4o-transcribe`, `gpt-4o-mini-transcribe`, or `whisper-1`.
+- Whisper Turbo (`large-v3-turbo`) is an inference-optimized version of large-v3. It is faster but **was not trained for translation**; `--task translate` may return the original language instead of English. Use medium or large when translation is required.
+- Distinguish real-time transcription from transcribing audio files. OpenAI's current documentation places low-latency transcription in Realtime transcription, using `gpt-realtime-whisper`; file uploads and speaker diarization use Audio Transcriptions.
 
-**选型建议**：如果你的核心需求是“实时对话”，不要只看离线 WER（Word Error Rate，词错误率）。你更应该关注：
+**Selection guidance:** If your main requirement is real-time conversation, do not focus only on offline WER (Word Error Rate). Also consider:
 
-- **首段延迟**：用户说完到看到第一个字的时间
-- **增量结果稳定性**：能不能实时看到识别进度
-- **端点检测准确率**：能不能准确判断用户说完了
-- **噪声环境表现**：远场、多人说话时准不准
-- **热词能力**：能不能识别你的业务专属词汇
+- **Time to first partial**: Time from the user finishing a phrase to the first recognized text.
+- **Partial-result stability**: Whether recognition progress is visible in real time.
+- **Endpoint-detection accuracy**: Whether the system can tell when the user has finished.
+- **Noise robustness**: Accuracy at a distance or when several people are speaking.
+- **Vocabulary customization**: Whether the system can recognize domain-specific terms.
 
-### 流式 ASR 和非流式 ASR 的区别
+### Streaming vs. Non-Streaming ASR
 
-对首字延迟和自然打断要求较高的实时对话，通常会使用流式 ASR；轮次明确、语音较短的场景也可以采用非流式识别。二者的主要差别是：
+Real-time conversations that require low time-to-first-text and natural interruption handling usually use streaming ASR. Non-streaming recognition can work when turns are clearly defined and utterances are short. The main differences are:
 
-- **非流式 ASR**：等用户说完一段话，再整段识别。延迟 = 说话时长 + 识别时间。
-- **流式 ASR**：边说边识别，用户话音刚落就能拿到结果。延迟 ≈ 端点检测时间 + 实时识别时间。
+- **Non-streaming ASR:** Waits until the user finishes speaking, then recognizes the full utterance. Latency = speech duration + recognition time.
+- **Streaming ASR:** Recognizes speech as the user speaks and returns results shortly after they finish. Latency ≈ endpoint-detection time + real-time recognition time.
 
-interview-guide 项目用的是**阿里云 DashScope 的 qwen3-asr-flash-realtime**。这类接入方式通过 WebSocket 持续追加音频，服务端 VAD 负责判断何时提交一轮识别：
+The interview-guide project uses **Alibaba Cloud DashScope's `qwen3-asr-flash-realtime`**. This integration continuously appends audio over WebSocket, while server-side VAD determines when to submit a recognition turn:
 
 ```java
 // QwenAsrService.java
 OmniRealtimeConfig config = OmniRealtimeConfig.builder()
     .modalities(Collections.singletonList(OmniRealtimeModality.TEXT))
-    .enableTurnDetection(true)  // 开启服务端 VAD
+    .enableTurnDetection(true)  // Enable server-side VAD
     .turnDetectionType("server_vad")
-    .turnDetectionSilenceDurationMs(400)  // 400 ms 静音判定用户说完
+    .turnDetectionSilenceDurationMs(400)  // 400 ms of silence marks the end of a turn
     .transcriptionConfig(transcriptionParam)
     .build();
 ```
 
-服务端 VAD 的好处是不用客户端自己实现完整的语音活动检测逻辑；代价也直接写在参数里：`turnDetectionSilenceDurationMs(400)` 表示静音持续 400 ms 后才认为一句话结束。DashScope 文档给出的取值范围是 200-6000 ms，值越低响应越快，也越容易把自然停顿切断；值越高，断句更保守，延迟也会增加。端侧和服务端 VAD 可以组合使用，但并非固定架构：需要低延迟打断时，可让端侧先报告 `speech_start`，服务端结合 ASR 和 VAD 事件确认轮次结束；客户端较轻或网络环境稳定时，也可以只使用服务端端点检测。
+Server-side VAD means the client does not need to implement full voice activity detection. The tradeoff is reflected in the parameter: `turnDetectionSilenceDurationMs(400)` means the system considers a turn complete after 400 ms of silence. DashScope documents a range of 200–6000 ms. Lower values respond faster but are more likely to split natural pauses; higher values make segmentation more conservative but increase latency. Client-side and server-side VAD can be combined, but this is not a fixed architecture. For low-latency interruption handling, the client can report `speech_start` first while the server uses ASR and VAD events to confirm turn completion. A lightweight client or stable network may use only server-side endpoint detection.
 
-## 语音合成（TTS）是怎么把文字变成声音的？
+## How Does TTS Convert Text to Speech?
 
-TTS（Text To Speech）负责把模型回复合成音频。它看起来是输出层，但其实很影响用户对整个 Agent 的感知。
+TTS (Text-to-Speech) synthesizes the model's response as audio. Although it is an output layer, it has a major effect on how users experience the Agent.
 
-同一句“我帮你查一下”，不同 TTS 的差异可能体现在：
+Different TTS systems can render the same response, such as "Let me check that for you," differently in terms of:
 
-- 首包音频要等多久
-- 音色是否自然，长句是否喘得像真人
-- 数字、代码、英文缩写是否读得准确
-- 是否支持情绪、语速、停顿、音高控制
+- Time to the first audio packet.
+- How natural the voice sounds, including pacing on long sentences.
+- Accuracy when reading numbers, code, and English abbreviations.
+- Support for controlling emotion, speech rate, pauses, and pitch.
 
-### TTS 的技术演进
+### How TTS Has Evolved
 
-传统 TTS 分好几步走：
+Traditional TTS uses several stages:
 
 ```
-文本规范化 -> 文本分析 -> 声学模型 -> 声码器 -> 波形输出
+Text normalization → text analysis → acoustic model → vocoder → waveform output
 ```
 
-神经 TTS、神经音频编解码器和生成式语音模型正在减少传统流水线中的人工模块。VALL-E、Fish Speech、CosyVoice 的建模方法并不相同，音质、延迟、流式能力和部署成本也不能只按“端到端”一项比较。对实时语音 Agent 来说，单句音质之外，还要看首包延迟、能否流式播放以及中断后的状态处理。
+Neural TTS, neural audio codecs, and generative speech models are reducing the number of hand-engineered stages in traditional pipelines. VALL-E, Fish Speech, and CosyVoice use different modeling approaches, so compare them by audio quality, latency, streaming support, and deployment cost—not just whether they are "end-to-end." For a real-time voice Agent, also consider time to first audio packet, streaming playback, and state handling after interruption.
 
-如果你必须等整段文字生成完才能合成，用户体感会非常慢。如果能按短句甚至 token 流式合成，首包体验会好很多。
+If synthesis must wait until the full response is generated, the experience will feel slow. Streaming by short sentences or even tokens can improve time to first audio.
 
-### 实时 TTS 的两条路线
+### Two Approaches to Real-Time TTS
 
-| 类型         | 代表方案                                                                                      | 特点                                                                     |
-| ------------ | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| 云端实时 TTS | OpenAI Speech、阿里云 qwen3-tts-flash-realtime / Qwen-TTS-Realtime、Azure TTS、ElevenLabs     | 流式输出，支持实时合成                                                   |
-| 本地 TTS     | piper1-gpl（GPL-3.0，原 Piper 已归档）、Fish Speech（Fish Audio Research License）、CosyVoice | 可控性强，适合离线场景；商用前需逐项核对代码、模型权重和声音资源的许可证 |
+| Type                | Examples                                                                                                           | Characteristics                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| Cloud real-time TTS | OpenAI Speech, Alibaba Cloud `qwen3-tts-flash-realtime` / Qwen-TTS-Realtime, Azure TTS, ElevenLabs                 | Supports streaming synthesis                                                                                              |
+| Local TTS           | piper1-gpl (GPL-3.0; the original Piper project is archived), Fish Speech (Fish Audio Research License), CosyVoice | More control and suitable for offline use; check licenses for code, model weights, and voice assets before commercial use |
 
-interview-guide 用的也是阿里云实时 TTS，通过 WebSocket 合成音频。DashScope 当前 Java SDK 示例里推荐的模型名是 `qwen3-tts-flash-realtime`，项目里的封装类仍然叫 `QwenTtsRealtime`：
+The interview-guide project also uses Alibaba Cloud real-time TTS over WebSocket. The model name recommended in the current DashScope Java SDK example is `qwen3-tts-flash-realtime`; the project's wrapper class is still named `QwenTtsRealtime`:
 
 ```java
 // QwenTtsService.java
 QwenTtsRealtimeConfig config = QwenTtsRealtimeConfig.builder()
-    .voice(voice)  // 音色选择
+    .voice(voice)  // Select a voice
     .responseFormat(QwenTtsRealtimeAudioFormat.PCM_24000HZ_MONO_16BIT)
-    .mode("commit")  // 提交模式
+    .mode("commit")  // Commit mode
     .languageType(languageType)
     .speechRate(speechRate)
     .volume(volume)
     .build();
 
-// 发送文本，实时接收音频块
+// Send text and receive audio chunks in real time
 qwenTtsRealtime.appendText(text);
 qwenTtsRealtime.commit();
 ```
 
-这段代码采用 `commit` 模式，客户端追加文本后主动调用 `commit()` 触发合成。DashScope 文档里还提供 `server_commit` 模式，由服务端判断提交时机，延迟和句子完整性之间的取舍会不一样。
+This code uses `commit` mode: after appending text, the client calls `commit()` to start synthesis. DashScope also provides `server_commit`, where the server decides when to commit. The tradeoff between latency and sentence completeness differs between these modes.
 
-## VAD 如何控制对话轮次？
+## How Does VAD Control Conversation Turns?
 
-VAD（Voice Activity Detection，语音活动检测）这个组件经常被忽略，但它对体验影响极大。
+VAD (Voice Activity Detection) is often overlooked, but it has a major effect on the user experience.
 
-VAD 不识别说话内容，通常输出某一小段音频包含语音的概率或语音开始、结束事件。应用据此判断：
+VAD does not recognize speech content. It usually outputs the probability that an audio segment contains speech, or events indicating that speech started or ended. An application uses this to determine:
 
-- 用户开始说话了吗？
-- 用户说完了吗？
-- 当前语音活动是否足以触发一次打断或提交。
+- Has the user started speaking?
+- Has the user finished?
+- Is there enough speech activity to trigger an interruption or submit a turn?
 
-普通 VAD 不能单独判断声音来自用户、旁人、音乐还是扬声器回放。系统播放的回声需要 AEC 或播放参考信号处理；多人场景还可能需要说话人分离、声纹或面向目标说话人的 VAD。真实用户的说话方式也会增加端点检测难度：
+Standard VAD cannot determine on its own whether sound comes from the user, another person, music, or speaker playback. Handle playback echo with AEC or a playback reference signal. Multi-speaker scenarios may also require diarization, voiceprints, or target-speaker VAD. Real speech patterns also make endpoint detection harder:
 
-- 句中会停顿：“这个问题……我想问一下……”
-- 会有短反馈：“嗯”“对”“不是”
-- 会边想边说，音量忽大忽小
-- 旁边可能有人说话，扬声器里也可能正在播放 AI 的声音
+- Speakers pause mid-sentence: "About this issue... I wanted to ask..."
+- They give short responses such as "mm," "right," or "no."
+- They may speak while thinking, with changing volume.
+- Someone nearby may be speaking, or the speaker may be playing the AI's voice.
 
-**端侧 VAD 还是服务端 VAD？**
+**Client-side or server-side VAD?**
 
-| 类型       | 代表方案                                                                               | 优势                               | 短板                                                 |
-| ---------- | -------------------------------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------- |
-| 端侧 VAD   | WebRTC VAD、Silero VAD、@ricky0123/vad-web                                             | 响应快，不消耗服务端资源           | 需要在客户端部署模型，阈值和噪声场景要自己调         |
-| 服务端 VAD | DashScope ASR 的 server_vad、OpenAI Realtime turn detection、部分云端 ASR 内置端点检测 | 客户端逻辑简单，和识别服务集成更紧 | 增加服务端负载，有网络延迟，断句策略受供应商接口约束 |
+| Type            | Examples                                                                                                          | Strengths                                                     | Limitations                                                                             |
+| --------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Client-side VAD | WebRTC VAD, Silero VAD, @ricky0123/vad-web                                                                        | Fast response; no server resources required                   | Requires deploying a model on the client and tuning thresholds for noise                |
+| Server-side VAD | DashScope ASR `server_vad`, OpenAI Realtime turn detection, endpoint detection built into some cloud ASR services | Simpler client logic and tighter integration with recognition | Adds server load and network latency; segmentation is constrained by the provider's API |
 
-> ⚠️ **VAD 不能只看离线准确率**：短语音（<1 秒，比如“嗯”“对”“不是”）、低音量插话、远场人声、扬声器回声，都会让 VAD 的线上表现和实验集差很多。faster-whisper 的 README 也把 Silero VAD 默认策略描述为偏保守：默认只移除超过 2 秒的静音。语音 Agent 里如果把 VAD 当成唯一的打断判据，很容易漏掉短反馈。
+> ⚠️ **Do not evaluate VAD by offline accuracy alone.** Short utterances (<1 second, such as "mm," "right," or "no"), quiet interruptions, distant speech, and speaker echo can make production performance differ significantly from test data. The faster-whisper README also describes Silero VAD's default strategy as conservative: it removes only silence longer than two seconds. If VAD is the only interruption signal in a voice Agent, short responses can easily be missed.
 
-interview-guide 前端用的是 **@ricky0123/vad-web**，这是一个基于 ONNX 的端侧 VAD：
+The interview-guide frontend uses **@ricky0123/vad-web**, an ONNX-based client-side VAD:
 
 ```typescript
 // AudioRecorder.tsx
@@ -189,94 +189,94 @@ const vadInstance = await window.vad.MicVAD.new({
   onnxWASMBasePath: "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/",
   baseAssetPath: "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/",
   onSpeechStart: () => {
-    onSpeechStart?.(); // 用户开始说话
+    onSpeechStart?.(); // The user started speaking
   },
   onSpeechEnd: () => {
-    onSpeechEnd?.(); // 用户说完
+    onSpeechEnd?.(); // The user finished speaking
   },
 });
 ```
 
-端侧 VAD 触发 `onSpeechEnd` 后，不宜无条件提交。可以增加一段可配置的静音确认时间，或者结合服务端最终转写事件，避免把用户中途停顿当成结束。确认时间要按语种、说话节奏和延迟目标通过线上样本调节，不能把 300-500 ms 当作通用阈值。
+Do not submit automatically every time client-side VAD triggers `onSpeechEnd`. Add a configurable silence-confirmation interval or combine it with the server's final transcription event to avoid mistaking a pause for the end of a turn. Tune the interval using production samples for each language, speaking rhythm, and latency target; 300–500 ms is not a universal threshold.
 
-我的建议是：**VAD 不要只当开关用，它应该输出一组对话控制信号**。比如：
+My recommendation: **VAD should provide a set of conversation-control signals, not just an on/off switch.** For example:
 
-- `speech_start`：用户开始说话
-- `speech_end`：检测到语音活动结束（可携带置信度）
-- `maybe_barge_in`：可能是用户在打断
-- `non_speech`：当前分片未检测到语音活动
+- `speech_start`: The user started speaking.
+- `speech_end`: Speech activity ended (optionally with a confidence score).
+- `maybe_barge_in`: The user may be interrupting.
+- `non_speech`: No speech activity was detected in this audio segment.
 
-## 一次完整的语音对话是怎么跑起来的？
+## How Does a Complete Voice Conversation Work?
 
-先把链路放在一起看，后面的延迟、打断和端云协同才好理解。
+First, look at the full pipeline. This makes latency, interruption handling, and client-cloud coordination easier to understand.
 
-一次语音 Agent 对话大概经过这些步骤：
+A voice Agent conversation typically has these steps:
 
-1. 音频采集：麦克风采集原始音频
-2. 前处理：AEC 消回声、NS 降噪、AGC 增益
-3. VAD 检测：判断用户是否在说话，是否说完
-4. 音频上传：把处理后的音频发到服务端
-5. ASR 转写：把音频转成文字（流式输出增量结果）
-6. 上下文组装：拼接系统指令、历史对话、工具定义
-7. LLM 推理：理解意图、生成回复、必要时调用工具
-8. TTS 合成：把回复文字转成音频（流式输出音频块）
-9. 音频下行：客户端边收边播
-10. 状态回写：记录本次对话，为下一轮准备上下文
+1. **Audio capture:** The microphone captures raw audio.
+2. **Preprocessing:** AEC removes echo, NS suppresses noise, and AGC adjusts gain.
+3. **VAD:** Detects whether the user is speaking and whether they have finished.
+4. **Audio upload:** Sends processed audio to the server.
+5. **ASR transcription:** Converts audio to text and streams partial results.
+6. **Context assembly:** Combines system instructions, conversation history, and tool definitions.
+7. **LLM inference:** Understands intent, generates a response, and calls tools if needed.
+8. **TTS synthesis:** Converts the response to audio and streams audio chunks.
+9. **Audio delivery:** The client plays audio as it arrives.
+10. **State update:** Records the conversation and prepares context for the next turn.
 
-实时语音链路中，一部分工作可以在用户结束说话前完成。
+Some work in a real-time voice pipeline can happen before the user finishes speaking.
 
-优秀的系统会尽量把可以提前做的事提前做：
+Well-designed systems start work early when possible:
 
-- 用户刚开始说话时，先加载会话状态和工具定义
-- ASR 出现稳定前缀后，提前做意图预判
-- LLM 输出第一个短句时，TTS 立刻开始合成
-- 工具调用较慢时，先播一句自然的过渡语
+- Load session state and tool definitions as soon as the user starts speaking.
+- Predict intent after ASR produces a stable prefix.
+- Start TTS as soon as the LLM generates the first short sentence.
+- If a tool call is slow, play a natural acknowledgement first.
 
-做法很直接：把能并行的环节提前启动，用流式输出把等待拆散。
+The approach is straightforward: start independent stages early and use streaming to reduce perceived wait time.
 
-## 实时语音为什么比文字对话难这么多？
+## Why Is Real-Time Voice Harder Than Text Chat?
 
-语音对话的难点不在某一个模型，而在整条链路都被实时性约束住了。
+The challenge is not any single model. The entire pipeline must meet real-time constraints.
 
-### 难点一：延迟预算非常紧
+### Challenge 1: A Tight Latency Budget
 
-文本聊天慢 1 秒，用户通常还能忍。语音对话慢 1 秒，用户会明显感觉对方“没反应”。
+A one-second delay is often tolerable in text chat. In a voice conversation, it can make the other party seem unresponsive.
 
-一轮语音交互的延迟来自这些环节：
+Latency in a voice turn comes from several stages:
 
-| 环节         | 常见耗时                            | 优化方向                       |
-| ------------ | ----------------------------------- | ------------------------------ |
-| 采集与编码   | 音频帧大小、浏览器缓冲              | 小帧采集，减少无意义缓冲       |
-| VAD 端点检测 | 等待静音确认用户说完                | 动态静音阈值，短句快速提交     |
-| ASR          | 音频上传、解码、增量转写稳定        | 流式 ASR，热词，端侧预处理     |
-| LLM          | 首 token 延迟、工具调用、上下文过长 | Prompt 缓存，短回复，异步工具  |
-| TTS          | 首包合成、长句切分、声码器推理      | 句子级流式合成，预热音色       |
-| 播放         | 网络抖动、解码、播放器缓冲          | 边收边播，控制播放队列和缓冲区 |
+| Stage                  | Common sources of delay                                                  | Optimization                                                      |
+| ---------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| Capture and encoding   | Audio-frame size and browser buffering                                   | Capture smaller frames and reduce unnecessary buffering           |
+| VAD endpoint detection | Waiting for silence to confirm the user has finished                     | Adjust silence thresholds dynamically; submit short turns quickly |
+| ASR                    | Audio upload, decoding, and stabilizing partial transcripts              | Streaming ASR, vocabulary hints, client-side preprocessing        |
+| LLM                    | Time to first token, tool calls, and long context                        | Prompt caching, shorter replies, asynchronous tools               |
+| TTS                    | Time to first audio packet, sentence segmentation, and vocoder inference | Stream sentence by sentence and warm up the voice                 |
+| Playback               | Network jitter, decoding, and player buffering                           | Play as data arrives; manage the playback queue and buffer        |
 
-如果每段都多 200 ms，整轮对话马上就变成“慢半拍”。
+If each stage adds 200 ms, the whole conversation quickly feels sluggish.
 
-所以实时语音优化要盯端到端 P95/P99 延迟，而不是只把某一个组件跑到理论上限。用户感受到的是整条链路，不是某个模型的 benchmark。
+Optimize end-to-end P95 and P99 latency, not just one component's theoretical maximum. Users experience the whole pipeline, not an individual model benchmark.
 
-### 难点二：打断处理不是暂停按钮
+### Challenge 2: Interruption Is More Than a Pause Button
 
-语音 Agent 必须支持 **Barge-in（插话打断）**。
+A voice Agent must support **barge-in**.
 
-用户说“等一下，不是这个意思”，系统需要同时做几件事：
+When the user says, "Wait, that's not what I meant," the system must:
 
-1. 识别出这是用户在说话，而不是背景噪声或扬声器回声
-2. 立即停止本地播放队列，不能继续把旧回答播完
-3. 取消服务端仍在生成的 LLM 和 TTS 流
-4. 把已经播放、未播放、被打断的内容写进对话状态
-5. 用新的用户音频开启下一轮理解
+1. Detect that the user is speaking, rather than background noise or speaker echo.
+2. Stop the local playback queue immediately instead of finishing the old response.
+3. Cancel any LLM and TTS streams still generating on the server.
+4. Record which content was played, not played, or interrupted in the conversation state.
+5. Start the next turn using the new user audio.
 
-很多系统打断失败，不一定是 VAD 不准，更常见的问题是状态机没有把取消语义说清楚。比如播放器停了，但服务端 TTS 还在推流；LLM 停了，但历史里已经把未播出的回答记成了“已说过”。
+Interruption failures are not always caused by inaccurate VAD. More often, the state machine does not define cancellation clearly. For example, playback may stop while the server continues streaming TTS, or the LLM may stop after the conversation history has already recorded unplayed text as "spoken."
 
-interview-guide 的做法是：
+The interview-guide project handles it like this:
 
 ```typescript
 // VoiceInterviewPage.tsx
 const handleAudioData = (audioData: string) => {
-  // AI 播放时停发音频，避免自己的声音被识别
+  // Stop sending audio during AI playback to avoid recognizing its own voice.
   if (isAiSpeakingRef.current) {
     return;
   }
@@ -286,67 +286,67 @@ const handleAudioData = (audioData: string) => {
 };
 ```
 
-前端通过 `isAiSpeakingRef` 标记 AI 是否在说话，说话时停发音频。后端收到 `control` 消息取消生成。
+The frontend uses `isAiSpeakingRef` to track whether the AI is speaking and stops sending audio during playback. The backend cancels generation when it receives a `control` message.
 
-### 难点三：噪声环境比测试环境复杂太多
+### Challenge 3: Real-World Noise Is More Complex Than Test Conditions
 
-语音 Demo 往往在安静办公室里跑，生产环境可能是：
+Voice demos often run in quiet offices, but production environments may include:
 
-- 车内、工厂、商场、地铁站
-- 远场麦克风，用户离设备两三米
-- 多人同时说话
-- 用户开着外放，AI 的声音又被麦克风收回去
+- Cars, factories, shopping centers, or subway stations.
+- A far-field microphone with the user several meters away.
+- Multiple people speaking at once.
+- Speaker playback that the microphone picks up again.
 
-这会影响整条链路：
+This affects the whole pipeline:
 
-- VAD 把噪声当成人声，导致误触发
-- ASR 把背景人声转成文本，污染用户意图
-- TTS 播放被麦克风采集，造成自我打断
+- VAD mistakes noise for speech and triggers incorrectly.
+- ASR transcribes background speech and contaminates the user's intent.
+- The microphone captures TTS playback, causing the Agent to interrupt itself.
 
-interview-guide 前端通过 `getUserMedia` 开了 3 个常见音频前处理选项：
+The interview-guide frontend enables three common audio-processing options through `getUserMedia`:
 
 ```typescript
 const stream = await navigator.mediaDevices.getUserMedia({
   audio: {
-    echoCancellation: true, // AEC：消除扬声器回声
-    noiseSuppression: true, // NS：压低背景噪声
-    autoGainControl: true, // AGC：自动增益，让音量更稳定
+    echoCancellation: true, // AEC: cancel speaker echo
+    noiseSuppression: true, // NS: reduce background noise
+    autoGainControl: true, // AGC: stabilize volume with automatic gain control
     sampleRate: 16000,
   },
 });
 ```
 
-这三个参数能解决一部分问题，但不能指望它们覆盖所有场景。浏览器只是接收约束并尽力匹配，具体效果受浏览器、设备、麦克风和播放环境影响；AEC 在强回声场景下效果有限，NS 也可能把用户声音削掉一截。如果你要做硬件或 App 方案，端侧音频前处理会变成非常现实的工程投入。
+These settings help but do not cover every scenario. The browser treats them as constraints and tries to apply them; actual results depend on the browser, device, microphone, and playback environment. AEC has limits in strong-echo conditions, and NS may suppress part of the user's voice. For a hardware or app product, client-side audio preprocessing becomes a significant engineering investment.
 
-### 难点四：上下文不只是文字历史
+### Challenge 4: Context Includes More Than Text History
 
-文本 Agent 的上下文主要是消息历史。语音 Agent 的上下文更多：
+A text Agent's context is mostly message history. A voice Agent must also track:
 
-- 当前用户是否正在说话
-- 上一段回答播放到了哪里
-- 用户是正常提问，还是正在打断
-- ASR 的增量文本是否稳定
-- 用户语气是疑问、否定、犹豫，还是不耐烦
-- 当前是否有工具调用正在执行
+- Whether the user is currently speaking.
+- How far playback has progressed in the previous response.
+- Whether the user is asking a normal question or interrupting.
+- Whether ASR partial text has stabilized.
+- Whether the user's tone is questioning, negative, hesitant, or impatient.
+- Whether a tool call is currently running.
 
-如果只把最终 ASR 文本喂给 LLM，很多信息会丢掉。
+Feeding only the final ASR transcript to the LLM loses much of this information.
 
-比如用户说“不是……我是说上个月那笔订单”，文本里能看到纠正，但看不到他是在打断 AI；系统如果不知道上一段回答播到哪里，就很难知道用户在否定哪一句。
+For example, a transcript may show the user correcting the Agent—"No... I mean the order from last month"—but not that they interrupted it. Without knowing how much of the previous response played, the system may not know which statement the user is rejecting.
 
-interview-guide 用 WebSocket 消息类型区分了不同状态：
+The interview-guide project uses WebSocket message types to represent different states:
 
 ```typescript
 // voiceInterview.ts
 export interface WebSocketSubtitleMessage {
   type: "subtitle";
   text: string;
-  isFinal: boolean; // true 只表示这一段 ASR 转写已经结束或稳定
+  isFinal: boolean; // true means this ASR segment is final or stable
 }
 
 export interface WebSocketAudioResponseMessage {
   type: "audio";
-  data: string; // Base64 音频
-  text: string; // 对应的文字
+  data: string; // Base64-encoded audio
+  text: string; // Corresponding text
 }
 
 export interface WebSocketControlMessage {
@@ -356,78 +356,78 @@ export interface WebSocketControlMessage {
 }
 ```
 
-`isFinal` 是 ASR 事件状态，不等于用户已经点击或说出“提交”。如果产品采用手动提交，应由独立的 `control: submit` 事件确认；自动轮次模式则由端点检测、ASR 最终事件和业务状态共同决定是否提交，不能复用一个布尔值表达两层含义。
+`isFinal` describes the ASR event; it does not mean the user clicked or said "submit." If the product uses manual submission, confirm it with a separate `control: submit` event. In automatic turn-taking mode, endpoint detection, the final ASR event, and business state should jointly determine whether to submit. Do not use one boolean for both meanings.
 
-### 难点五：回声导致的误打断
+### Challenge 5: Echo Can Cause False Interruptions
 
-AI 播放的声音被麦克风采集后，VAD 或 ASR 可能误判为用户说话，导致 AI 自我打断。
+When the microphone picks up the AI's playback, VAD or ASR may mistake it for the user speaking and cause the AI to interrupt itself.
 
-interview-guide 的当前做法是：
+The current interview-guide implementation is:
 
 ```typescript
 if (isAiSpeakingRef.current) {
-  return; // AI 说话时停发音频
+  return; // Do not send audio while the AI is speaking.
 }
 ```
 
-这种“静默丢弃”的方案能避免自我打断，但也会屏蔽用户在 AI 说话期间的插话。
+This "silent discard" approach prevents self-interruption, but also blocks users from interrupting while the AI is speaking.
 
-更精细的方案一般会这样做：
+More advanced approaches usually:
 
-- AI 说话时继续接收音频，但不发到 ASR
-- 在 AEC 处理后的音频上运行端侧 VAD，而非原始麦克风音频
-- 结合回声参考、连续帧能量、VAD 置信度和播放队列状态判断是不是用户真的在插话
+- Continue capturing audio while the AI speaks, but do not send it to ASR.
+- Run client-side VAD on AEC-processed audio instead of raw microphone input.
+- Combine an echo reference, energy across consecutive frames, VAD confidence, and playback-queue state to determine whether the user is actually interrupting.
 
-### 难点六：端侧能力决定体验下限
+### Challenge 6: Client-Side Capabilities Set the Experience Floor
 
-很多团队把所有能力都放云端，结果在弱网环境下体验崩得很快。
+Many teams put all capabilities in the cloud, where the experience quickly degrades on a weak network.
 
-端侧至少应该承担这些职责：
+The client should handle at least:
 
-- 麦克风采集和音频前处理
-- VAD 或轻量打断检测
-- 播放缓冲和取消播放
-- 网络断开时的提示和重连
+- Microphone capture and audio preprocessing.
+- VAD or lightweight interruption detection.
+- Playback buffering and cancellation.
+- Network-disconnection notices and reconnection.
 
-云端模型决定上限，端侧工程决定下限。这句话在语音系统里很实在。
+Cloud models determine the ceiling; client-side engineering determines the floor. This is especially true for voice systems.
 
-## 从 interview-guide 看基础版语音 Agent 是怎么实现的？
+## How Does a Basic Voice Agent Work in the interview-guide Project?
 
-下面以 interview-guide 项目为例，看一个基础版语音面试 Agent 是怎么跑起来的。
+The interview-guide project illustrates how a basic voice-interview Agent works.
 
-### 整体架构
+### Overall Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        前端 (React)                          │
+│                     Frontend (React)                         │
 ├─────────────────────────────────────────────────────────────┤
 │  AudioRecorder        WebSocket         VoiceInterviewPage   │
-│  - getUserMedia       - sendAudio       - 状态管理          │
-│  - AudioWorklet       - sendControl     - 手动提交          │
-│  - VAD 检测           - 控制消息         - 分块播放          │
+│  - getUserMedia       - sendAudio       - State management  │
+│  - AudioWorklet       - sendControl     - Manual submission │
+│  - VAD detection     - Control messages - Chunked playback  │
 └─────────────────────────────────────────────────────────────┘
                             │
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                     后端 (Spring Boot)                       │
+│                    Backend (Spring Boot)                     │
 ├─────────────────────────────────────────────────────────────┤
 │  VoiceInterviewWebSocketHandler                             │
-│  - 会话管理（创建、暂停、恢复、结束）                         │
-│  - ASR ready / reconnect 状态同步                            │
-│  - 音频路由到 ASR，手动 submit 后触发 LLM                     │
-│  - LLM 句子流输出，TTS 边合成边推送                           │
+│  - Session lifecycle (create, pause, resume, end)             │
+│  - ASR ready / reconnect state synchronization                 │
+│  - Route audio to ASR; trigger LLM after manual submission     │
+│  - Stream LLM sentences and push synthesized TTS audio        │
 ├─────────────────────────────────────────────────────────────┤
 │  QwenAsrService          DashscopeLlmService      QwenTtsService │
 │  - qwen3-asr-flash-      - qwen-max / qwen-plus   - qwen-tts-    │
-│    realtime              - 工具调用支持           realtime       │
+│    realtime              - Tool calling          realtime       │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 前端：音频采集与 VAD
+### Frontend: Audio Capture and VAD
 
-前端的核心是 `AudioRecorder` 组件。它做了这么几件事：
+The `AudioRecorder` component handles the main frontend tasks:
 
-**第一步，获取麦克风权限并配置音频参数：**
+**Step 1: Request microphone access and configure audio parameters:**
 
 ```typescript
 const stream = await navigator.mediaDevices.getUserMedia({
@@ -435,18 +435,18 @@ const stream = await navigator.mediaDevices.getUserMedia({
     echoCancellation: true,
     noiseSuppression: true,
     autoGainControl: true,
-    sampleRate: 16000, // ASR 需要 16 kHz
+    sampleRate: 16000, // ASR requires 16 kHz
   },
 });
 ```
 
-**第二步，初始化端侧 VAD：**
+**Step 2: Initialize client-side VAD:**
 
 ```typescript
 const vadInstance = await window.vad.MicVAD.new({
   getStream: async () => stream,
   onSpeechStart: () => {
-    onSpeechStart?.(); // 触发回调
+    onSpeechStart?.(); // Trigger the callback
   },
   onSpeechEnd: () => {
     onSpeechEnd?.();
@@ -455,9 +455,9 @@ const vadInstance = await window.vad.MicVAD.new({
 await vadInstance.start();
 ```
 
-**第三步，使用 AudioWorklet 做音频分块采集：**
+**Step 3: Capture audio in chunks with AudioWorklet:**
 
-VAD 的 `onSpeechEnd` 只表示语音活动可能结束，音频仍然要分块发送给服务端。interview-guide 的实现是：
+VAD's `onSpeechEnd` only indicates that speech activity may have ended. Audio should still be sent to the server in chunks. The interview-guide implementation does this:
 
 ```typescript
 await audioContext.audioWorklet.addModule("/audio-worklet/pcm-processor.js");
@@ -468,7 +468,7 @@ workletNode.port.onmessage = (event) => {
     return;
   }
   const base64 = arrayBufferToBase64(event.data as ArrayBuffer);
-  onAudioData(base64); // 200 ms Int16 PCM，发送给后端 ASR
+  onAudioData(base64); // Send 200 ms of Int16 PCM to backend ASR
 };
 
 source.connect(workletNode);
@@ -476,29 +476,29 @@ workletNode.connect(gainNode);
 gainNode.connect(audioContext.destination);
 ```
 
-`pcm-processor.js` 运行在音频渲染线程中，负责把浏览器输入的 Float32 音频重采样成 16 kHz、Int16 PCM，并按 200 ms 一块通过 `postMessage` 交回主线程。相比已经废弃的 `ScriptProcessorNode`，`AudioWorkletNode` 不会把音频处理压在 UI 主线程上，延迟和卡顿风险更低。
+`pcm-processor.js` runs on the audio-rendering thread. It resamples the browser's Float32 input to 16 kHz Int16 PCM and sends it to the main thread in 200 ms chunks through `postMessage`. Unlike the deprecated `ScriptProcessorNode`, `AudioWorkletNode` does not put audio processing on the UI main thread, reducing latency and stutter.
 
-这里有个设计选择：**为什么不等 VAD 触发 `onSpeechEnd` 再发音频？**
+This raises a design question: **Why not wait for VAD to trigger `onSpeechEnd` before sending audio?**
 
-因为 VAD 检测有延迟，等它确认用户说完了再开始发音频，会多等一段静音确认时间。更合理的做法是持续分块发送，VAD 触发 `onSpeechEnd` 只是告诉后端“这一段可能结束了，可以准备提交给 LLM”。
+VAD detection takes time. Waiting for it to confirm that the user has finished before sending audio adds the silence-confirmation delay. A better approach is to stream chunks continuously and use `onSpeechEnd` to tell the backend that the segment may be complete and ready for LLM submission.
 
-不过，interview-guide 的语音面试没有采用“检测到静音就自动提交”。它的做法是**ASR 持续转写、用户手动点击提交**。这样可以避免候选人中途停顿时被系统抢答，也能解决“后面的话覆盖前面的回答”的体验问题：前端只把 ASR 结果作为回答草稿，进入下一轮面试由 `submit` 控制消息决定。
+However, interview-guide does not automatically submit when silence is detected. It **keeps transcribing with ASR and lets the user submit manually**. This prevents the system from responding when a candidate pauses mid-answer and avoids later speech overwriting an earlier response. The frontend treats ASR output as a draft; a `submit` control message advances to the next interview turn.
 
-### 前端：音频播放
+### Frontend: Audio Playback
 
-interview-guide 用了两种音频播放模式：
+interview-guide uses two playback modes:
 
-**模式一：HTMLAudioElement（简单场景）：**
+**Mode 1: `HTMLAudioElement` (simple cases):**
 
 ```typescript
 // VoiceInterviewPage.tsx
 const onAudioResponse = (audioData: string, text: string) => {
   if (audioData && audioData.length > 0) {
-    setAiAudio(audioData); // 设置 src，触发自动播放
+    setAiAudio(audioData); // Set src and trigger autoplay
     setAiText(text);
     setAiSpeaking(true);
 
-    // 设置超时 watchdog，防止音频播放异常卡住
+    // Set a watchdog timeout in case audio playback gets stuck
     const durationMs = estimateWavDurationMs(audioData);
     audioPlaybackWatchdogRef.current = setTimeout(
       finishAiPlayback,
@@ -508,24 +508,24 @@ const onAudioResponse = (audioData: string, text: string) => {
 };
 ```
 
-**模式二：AudioContext 分块播放（更精细控制）：**
+**Mode 2: Chunked playback with `AudioContext` (finer control):**
 
 ```typescript
-// 分块处理
+// Process an audio chunk
 const handleAudioChunk = (
   base64Wav: string,
   _index: number,
   isLast: boolean,
 ) => {
-  // 1. 解码 WAV
+  // 1. Decode WAV
   const binaryStr = atob(base64Wav);
   const bytes = new Uint8Array(binaryStr.length);
   for (let i = 0; i < binaryStr.length; i++) {
     bytes[i] = binaryStr.charCodeAt(i);
   }
 
-  // 下面按项目约定处理 44 字节 WAV 头和 24 kHz、单声道、16-bit PCM。
-  // 如果服务端可能返回其他 WAV 格式，应先解析 WAV 头，不能固定写死。
+  // This project expects a 44-byte WAV header and 24 kHz, mono, 16-bit PCM.
+  // Parse the WAV header first if the server may return other formats.
   const pcmOffset = 44;
   const pcmData = new Int16Array(
     bytes.buffer,
@@ -540,19 +540,19 @@ const handleAudioChunk = (
   const audioBuffer = ctx.createBuffer(1, float32.length, 24_000);
   audioBuffer.copyToChannel(float32, 0);
 
-  // 2. 放入播放队列
+  // 2. Add it to the playback queue
   chunkQueueRef.current.push(audioBuffer);
   if (!isChunkPlayingRef.current) {
     playNextChunk();
   }
 
-  // 3. 最后一包或服务端 audio_complete 后，等待队列播完
+  // 3. Wait for the queue to drain after the last chunk or server audio_complete event
   if (isLast) {
     scheduleChunkDrainCompletion();
   }
 };
 
-// 播放下一块
+// Play the next chunk
 const playNextChunk = () => {
   if (chunkQueueRef.current.length === 0) {
     isChunkPlayingRef.current = false;
@@ -567,28 +567,28 @@ const playNextChunk = () => {
 };
 ```
 
-分块播放的好处是能更快开始播放，不用等完整音频文件加载完。代价也很明确：要自己管理队列、顺序、取消和“最后一包”语义。
+Chunked playback starts sooner because it does not wait for the full audio file to load. The tradeoff is that the application must manage the queue, ordering, cancellation, and the meaning of the "last chunk."
 
-新版实现里，服务端还会在所有 TTS 分片发送完成后额外推一个 `audio_complete` 控制消息。这样前端不再依赖某个音频分片必须带 `isLast=true`，即使某一句 TTS 合成失败，也能在已成功分片播放完后正确结束“面试官正在说话”的状态。
+In the newer implementation, the server sends an `audio_complete` control message after all TTS chunks have been sent. The frontend no longer depends on an audio chunk having `isLast=true`. Even if one sentence fails to synthesize, it can correctly end the "interviewer is speaking" state after the successful chunks finish playing.
 
-> ⚠️ **注意**：浏览器要求 AudioContext 必须在用户交互后创建或恢复（autoplay policy）。如果在页面加载时创建 AudioContext，大多数浏览器会将其置于 `suspended` 状态。建议在用户点击“开始面试”按钮时调用 `audioContext.resume()` 确保播放正常。
+> ⚠️ **Note:** Browser autoplay policies require an `AudioContext` to be created or resumed after user interaction. If it is created during page load, most browsers put it in the `suspended` state. Call `audioContext.resume()` when the user clicks **Start Interview** to ensure playback works.
 
-### 后端：WebSocket 会话管理
+### Backend: WebSocket Session Management
 
-后端通过 `VoiceInterviewWebSocketHandler` 管理会话生命周期：
+The backend uses `VoiceInterviewWebSocketHandler` to manage the session lifecycle:
 
 ```java
 // VoiceInterviewWebSocketHandler.java
 public class VoiceInterviewWebSocketHandler {
-    // 会话状态：idle -> listening -> thinking -> speaking -> completed
-    // 支持：pause（暂停）、resume（恢复）、end（结束）
+    // Session states: idle -> listening -> thinking -> speaking -> completed
+    // Supported actions: pause, resume, end
 
-    // 收到客户端音频
+    // Receive client audio
     public void handleAudioMessage(String sessionId, String audioBase64) {
         asrService.sendAudio(sessionId, decodeBase64(audioBase64));
     }
 
-    // 收到客户端控制消息
+    // Receive a client control message
     public void handleControlMessage(String sessionId, String action, Map data) {
         switch (action) {
             case "submit" -> llmService.triggerResponse(sessionId, data);
@@ -599,19 +599,19 @@ public class VoiceInterviewWebSocketHandler {
 }
 ```
 
-interview-guide 的会话状态机：
+The interview-guide session state machine is:
 
-| 状态        | 含义                           | 可转换到          |
-| ----------- | ------------------------------ | ----------------- |
-| IN_PROGRESS | 面试进行中                     | PAUSED, COMPLETED |
-| PAUSED      | 暂停（用户离开页面或主动暂停） | IN_PROGRESS       |
-| COMPLETED   | 面试结束                       | -                 |
+| State       | Meaning                               | Can transition to |
+| ----------- | ------------------------------------- | ----------------- |
+| IN_PROGRESS | Interview in progress                 | PAUSED, COMPLETED |
+| PAUSED      | Paused (user left the page or paused) | IN_PROGRESS       |
+| COMPLETED   | Interview ended                       | -                 |
 
-暂停/恢复机制很有用。比如用户接电话、切换标签页，可以暂停面试，回来后无缝继续。
+Pause and resume are useful when the user takes a call or switches tabs; they can continue the interview when they return.
 
-### 后端：ASR 服务
+### Backend: ASR Service
 
-后端的 ASR 服务封装了阿里云 DashScope 的接口：
+The backend ASR service wraps the Alibaba Cloud DashScope API:
 
 ```java
 // QwenAsrService.java
@@ -622,25 +622,25 @@ public void startTranscription(
     Runnable onReady,
     Consumer<Throwable> onError
 ) {
-    // 1. 创建会话并建立 WebSocket 连接
+    // 1. Create a session and establish a WebSocket connection
     OmniRealtimeConversation conversation = new OmniRealtimeConversation(param, callback);
     conversation.connect();
 
-    // 2. 配置：开启服务端 VAD，400 ms 静音判定结束
+    // 2. Enable server-side VAD and use 400 ms of silence to mark the end of a turn
     OmniRealtimeConfig config = OmniRealtimeConfig.builder()
         .enableTurnDetection(true)
         .turnDetectionSilenceDurationMs(400)
         .build();
 
-    // 3. 发出会话配置。这里不能立刻把本地状态改成 ready
+    // 3. Send the session configuration. Do not mark the local state ready yet.
     conversation.updateSession(config);
 }
 
-// 4. callback 收到服务端 session.updated 事件后再开放音频上行
+// 4. Enable audio upload after the callback receives the server's session.updated event.
 public void onSessionUpdated(String sessionId) {
     AsrSession asrSession = sessions.get(sessionId);
     asrSession.markReady();
-    asrSession.getOnReady().run(); // 通知前端 asr_ready
+    asrSession.getOnReady().run(); // Notify the frontend that ASR is ready
 }
 
 public void sendAudio(String sessionId, byte[] audioData) {
@@ -653,20 +653,20 @@ public void sendAudio(String sessionId, byte[] audioData) {
 }
 ```
 
-这一步很关键。`new OmniRealtimeConversation(...)` 只创建对象，`connect()` 才建立连接；`updateSession(config)` 发出配置后，还要等待服务端 `session.updated` 事件。前端在收到后端 `asr_ready` 之前应禁用麦克风；如果就绪超时或收到 `error`，后端关闭旧连接、重新建立会话，并把重连状态推给前端。上面的回调名称是说明性写法，实际事件类型和方法名要按项目使用的 DashScope SDK 版本实现。
+This is important. `new OmniRealtimeConversation(...)` only creates the object; `connect()` establishes the connection. After `updateSession(config)` sends the configuration, the client must wait for the server's `session.updated` event. The frontend should disable the microphone until it receives `asr_ready` from the backend. If readiness times out or an `error` arrives, the backend should close the old connection, create a new session, and send reconnection status to the frontend. The callback names above are illustrative; implement the actual event types and methods for the DashScope SDK version used by the project.
 
-服务端返回识别结果时，Handler 会把增量文字推送给前端：
+When the server returns recognition results, the handler streams partial text to the frontend:
 
 ```java
-// WebSocket 推送增量文字
+// Stream partial text over WebSocket
 websocket.sendMessage(new WebSocketSubtitleMessage(
     "subtitle",
     transcript,
-    isFinal  // true 表示这是最终结果
+    isFinal  // true means this is the final result
 ));
 ```
 
-### 后端：TTS 服务
+### Backend: TTS Service
 
 ```java
 // QwenTtsService.java
@@ -679,7 +679,7 @@ public byte[] synthesize(String text) throws Exception {
         qwenTts.connect();
 
         QwenTtsRealtimeConfig config = QwenTtsRealtimeConfig.builder()
-            .voice(voice)  // 如 "Cherry"
+            .voice(voice)  // For example, "Cherry"
             .responseFormat(QwenTtsRealtimeAudioFormat.PCM_24000HZ_MONO_16BIT)
             .speechRate(speechRate)
             .build();
@@ -698,38 +698,38 @@ public byte[] synthesize(String text) throws Exception {
 }
 ```
 
-示例省略了音频回调和业务异常映射，但没有把超时当成成功。实际实现还要在取消时关闭连接，并在捕获 `InterruptedException` 后恢复线程中断标记。
+The example omits audio callbacks and business-exception mapping, but does not treat a timeout as success. In production, close the connection on cancellation and restore the thread's interrupt flag after catching `InterruptedException`.
 
-Handler 拿到 PCM 数据后，转成 WAV 推送给前端：
+After the handler receives PCM data, it converts it to WAV and sends it to the frontend:
 
 ```java
-// LLM 每输出一个完整句子，就提交给并发 TTS 队列
+// Submit each complete LLM sentence to the concurrent TTS queue
 OrderedTtsChunkEmitter chunkEmitter = new OrderedTtsChunkEmitter(session, semaphore);
 llmService.chatStreamSentences(userText, sentence -> {
     chunkEmitter.submit(sentence);
 });
 
-// TTS 分片按句子顺序推送，最后发送 audio_complete 控制消息
+// Push TTS chunks in sentence order, then send the audio_complete control message
 chunkEmitter.finish();
 chunkEmitter.awaitCompletion();
 ```
 
-这里要压的是整段等待时间：**LLM 边生成句子，TTS 边合成，前端边播放**。后端用 `max-concurrent-tts-per-session` 控制单会话并发 TTS 数量，用 `tts-timeout-seconds` 避免某一句卡住整轮播放；如果所有句子级 TTS 都失败，再退回整段文本合成兜底。
+The goal is to reduce total wait time: **the LLM generates sentences, TTS synthesizes them, and the frontend plays them concurrently.** The backend uses `max-concurrent-tts-per-session` to limit concurrent TTS requests per session and `tts-timeout-seconds` to prevent one stuck sentence from blocking the turn. If all sentence-level TTS requests fail, it falls back to synthesizing the full response.
 
-## 怎么让语音 Agent 支持打断？
+## How Can a Voice Agent Support Interruptions?
 
-打断是语音 Agent 的高频难点，单靠一个暂停按钮解决不了。
+Interruption handling is a common challenge for voice Agents; a pause button alone is not enough.
 
-### 打断的三层含义
+### Three Layers of Interruption Handling
 
-1. **播放层打断**：用户说话时，停止当前音频播放
-2. **生成层打断**：取消服务端正在生成的 LLM 和 TTS
-3. **上下文层打断**：正确记录已播放和未播放的内容
+1. **Playback interruption:** Stop the current audio when the user speaks.
+2. **Generation interruption:** Cancel LLM and TTS generation on the server.
+3. **Context interruption:** Track which content has and has not played.
 
-interview-guide 当前版本还没有实现真正的 barge-in。下面的代码只是 AI 播放期间停止向后端发送麦克风音频，用来规避回声触发 ASR；代价是用户插话也会被一起丢弃：
+The current version of interview-guide does not implement true barge-in. The code below only stops sending microphone audio to the backend while the AI is playing, avoiding ASR being triggered by echo. The tradeoff is that user interruptions are discarded too:
 
 ```typescript
-// 当前实现：AI 播放期间丢弃麦克风音频
+// Current implementation: discard microphone audio during AI playback.
 const handleAudioData = (audioData: string) => {
   if (isAiSpeakingRef.current) {
     return;
@@ -737,84 +737,84 @@ const handleAudioData = (audioData: string) => {
   wsRef.current.sendAudio(audioData);
 };
 
-// 音频播放完成时
+// When audio playback finishes
 const finishAiPlayback = () => {
   aiAudioPendingRef.current = false;
   clearAudioPlaybackWatchdog();
   setAiSpeaking(false);
   setIsSubmitting(false);
 
-  // 正常播放完成后提交整段文本
+  // Submit the full text after normal playback completes.
   commitAiMessage(aiTextRef.current.trim());
 };
 ```
 
-要支持真正的打断，端侧 VAD 必须在播放期间继续检测用户语音，触发后停止当前播放器、清空未播队列，并把 `cancel` 传到后端正在运行的 LLM/TTS。上下文还要根据播放进度记录已经播出的文本；当前的 `finishAiPlayback()` 只在完整播放结束时提交整段内容，不具备这项能力。
+For true interruption support, client-side VAD must keep detecting user speech during playback. When triggered, stop the player, clear queued audio that has not played, and send `cancel` to the LLM or TTS task running on the backend. The context must also track text that has already played. The current `finishAiPlayback()` submits the full response only after playback finishes, so it does not support this behavior.
 
-### 状态机视角的打断
+### Interruptions as State-Machine Events
 
-从状态机角度看，打断是一个几乎可以从任何状态进入的控制事件：
+In a state machine, an interruption is a control event that can occur in almost any state:
 
-| 当前状态     | 用户打断     | 正确响应                                                           |
-| ------------ | ------------ | ------------------------------------------------------------------ |
-| listening    | 用户继续说话 | 继续收音和转写；这不属于打断                                       |
-| thinking     | 用户补充     | 取消当前推理，用新输入重新触发                                     |
-| speaking     | 用户插话     | 停止播放，清空队列                                                 |
-| tool_calling | 用户说“算了” | 可取消的查询立即取消；已有副作用的操作进入幂等、补偿或人工确认流程 |
+| Current state  | User action             | Correct response                                                                                                             |
+| -------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `listening`    | User continues speaking | Continue capturing and transcribing; this is not an interruption.                                                            |
+| `thinking`     | User adds information   | Cancel the current inference and restart it with the new input.                                                              |
+| `speaking`     | User interrupts         | Stop playback and clear the queue.                                                                                           |
+| `tool_calling` | User says "never mind"  | Cancel queries that can be canceled. For operations with side effects, use idempotency, compensation, or human confirmation. |
 
-如果你的系统没有清晰的取消语义，很快就会出现“AI 一边听新问题，一边还在播旧答案”的混乱体验。
+Without clear cancellation semantics, the system can quickly end up listening to a new question while still playing the old answer.
 
-## 浏览器音频捕获与前处理在语音系统中扮演什么角色？
+## What Roles Do Browser Audio Capture and Preprocessing Play?
 
-WebRTC 经常被笼统地用于指代浏览器音视频能力。语音 Agent 需要区分浏览器的音频捕获/前处理 API 和 WebRTC 实时传输协议。
+WebRTC is often used loosely to refer to browser audio and video capabilities. For voice Agents, distinguish the browser's audio-capture and preprocessing APIs from the WebRTC real-time transport protocol.
 
-**重要区分**：
+**Key distinction:**
 
-- **Media Capture and Streams API**（`getUserMedia`）：负责从麦克风采集音频，可以传入 AEC/NS/AGC、采样率等约束。这是 interview-guide 实际使用的。
-- **WebRTC 协议**（RTCPeerConnection）：负责端到端的实时传输，包含 ICE、DTLS-SRTP、RTP 等协议。如果你接 OpenAI Realtime API 的 WebRTC 模式、Azure Voice Live 或自建实时音视频链路，才会用到这套传输层。
+- **Media Capture and Streams API** (`getUserMedia`): Captures microphone audio and accepts constraints such as AEC, NS, AGC, and sample rate. This is what interview-guide uses.
+- **WebRTC protocol** (`RTCPeerConnection`): Provides end-to-end real-time transport using protocols such as ICE, DTLS-SRTP, and RTP. This transport layer is needed for the WebRTC mode of OpenAI Realtime API, Azure Voice Live, or a custom real-time audio/video pipeline.
 
-interview-guide 的音频通路是：
-
-```
-getUserMedia → AudioWorklet → Base64 编码 → WebSocket 发送
-```
-
-这套通路的传输层是 **WebSocket（TCP）**，不是 WebRTC 的 **RTP/SRTP**。WebSocket 保证顺序，但弱网下会受到 TCP 重传影响；WebRTC 通常优先走 UDP，配合抖动缓冲、丢包隐藏等机制降低实时音频卡顿，网络受限时也可能 fallback 到 TCP/TURN。
-
-### 浏览器音频前处理管线
-
-在语音 Agent 场景下，你主要用到浏览器音频前处理的这些能力：
+The audio path in interview-guide is:
 
 ```
-麦克风输入
+getUserMedia → AudioWorklet → Base64 encoding → WebSocket transmission
+```
+
+This pipeline uses **WebSocket (TCP)** for transport, not WebRTC's **RTP/SRTP**. WebSocket preserves message order but can be affected by TCP retransmissions on weak networks. WebRTC usually prefers UDP and uses jitter buffers and packet-loss concealment to reduce audio stutter; it may fall back to TCP/TURN when network conditions require it.
+
+### Browser Audio-Preprocessing Pipeline
+
+For voice Agents, browser audio preprocessing mainly provides:
+
+```
+Microphone input
     │
     ▼
 ┌─────────────────────────┐
-│  AEC (回声消除)          │  消除扬声器播放的声音
+│  AEC (Acoustic Echo Cancellation) │ Removes speaker playback
 └─────────────────────────┘
     │
     ▼
 ┌─────────────────────────┐
-│  NS (噪声抑制)            │  压低背景噪声
+│  NS (Noise Suppression)           │ Reduces background noise
 └─────────────────────────┘
     │
     ▼
 ┌─────────────────────────┐
-│  AGC (自动增益控制)       │  让音量更稳定
+│  AGC (Automatic Gain Control)      │ Stabilizes volume
 └─────────────────────────┘
     │
     ▼
 ┌─────────────────────────┐
-│  VAD (语音活动检测)       │  判断是否有人声
+│  VAD (Voice Activity Detection)    │ Detects speech
 └─────────────────────────┘
     │
     ▼
-编码输出
+Encoded output
 ```
 
-### getUserMedia 的配置选择
+### Choosing `getUserMedia` Settings
 
-interview-guide 用的是最基础的 `getUserMedia` 配置：
+interview-guide uses a basic `getUserMedia` configuration:
 
 ```typescript
 navigator.mediaDevices.getUserMedia({
@@ -827,98 +827,98 @@ navigator.mediaDevices.getUserMedia({
 });
 ```
 
-但这不是唯一选择，不同场景有不同权衡：
+This is not the only option; settings involve tradeoffs:
 
-| 参数             | true                             | false                          | 建议                                       |
-| ---------------- | -------------------------------- | ------------------------------ | ------------------------------------------ |
-| echoCancellation | 消除扬声器回声，但会损失部分音质 | 保留原始音质，但需要自己做 AEC | 开                                         |
-| noiseSuppression | 压低噪声，但可能把用户声音也削掉 | 需要自己做 NS                  | 环境嘈杂时开，安静时关                     |
-| autoGainControl  | 自动调整音量到合适范围           | 依赖麦克风原始音量             | 开                                         |
-| sampleRate       | 越高音质越好，但数据量越大       | 16 kHz 对多数 ASR 已够用       | 按模型要求配置；浏览器不一定严格按约束输出 |
+| Parameter          | `true`                                                      | `false`                                                   | Guidance                                                                  |
+| ------------------ | ----------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `echoCancellation` | Removes speaker echo but may reduce audio quality           | Preserves raw audio quality but requires implementing AEC | Enable it                                                                 |
+| `noiseSuppression` | Reduces noise but may also suppress the user's voice        | Requires implementing NS                                  | Enable in noisy environments; disable in quiet ones                       |
+| `autoGainControl`  | Automatically adjusts volume                                | Uses the microphone's raw volume                          | Enable it                                                                 |
+| `sampleRate`       | A higher rate may improve quality but increases data volume | 16 kHz is sufficient for many ASR models                  | Follow model requirements; browsers may not strictly honor the constraint |
 
-AEC/NS/AGC 在不同浏览器和设备上的表现差异较大。Chrome 桌面版、Safari 和移动端都要单独测试，测试场景至少覆盖外放、耳机、会议室和移动网络。
+AEC, NS, and AGC vary across browsers and devices. Test desktop Chrome, Safari, and mobile separately, covering speaker playback, headphones, meeting rooms, and mobile networks.
 
-### WebRTC 的边界
+### Where WebRTC Fits
 
-WebRTC 很适合浏览器实时音频，但如果你做的是 App 或硬件方案，就要看平台能力和功耗约束。
+WebRTC works well for real-time browser audio. For an app or hardware product, consider platform capabilities and power constraints.
 
-移动端 native 开发可以用：
+For native mobile development, consider:
 
-- **iOS**：AVAudioEngine + 系统内置的音频处理
-- **Android**：AudioRecord + Oboe/AAudio，或者用 Google 的 WebRTC 库
+- **iOS:** `AVAudioEngine` and built-in system audio processing.
+- **Android:** `AudioRecord` with Oboe/AAudio, or Google's WebRTC library.
 
-硬件场景（智能音箱、车载）通常需要专门的 DSP 或音频前端算法处理回声、阵列波束和远场拾音，单靠浏览器式软件前处理不够。
+Hardware products such as smart speakers and in-car systems usually need dedicated DSP or audio-front-end algorithms for echo cancellation, microphone-array beamforming, and far-field pickup. Browser-style software preprocessing alone is not enough.
 
-## 级联链路和原生实时模型各有什么优劣？
+## Cascaded Pipelines vs. Native Real-Time Models
 
-这是选型时的核心问题。
+This is a key architectural decision.
 
-### 方案一：级联式 ASR + LLM + TTS
-
-```
-音频 -> VAD -> 流式 ASR -> LLM -> 流式 TTS -> 音频
-```
-
-优点：
-
-- ASR 文本可以落库、审计、纠错
-- LLM 输入输出都是文本，方便复用现有 Agent 框架
-- TTS 可以独立替换音色和供应商
-- 每个组件都能单独压测和优化
-
-缺点：
-
-- 每层都有延迟
-- ASR 错误会传导到 LLM
-- 文本中间层会丢失语气、停顿、情绪
-- 打断要跨 ASR、LLM、TTS、播放器统一取消
-
-interview-guide 就是这套方案。它适合的场景：企业知识问答、客服工单、需要合规审计的业务系统。
-
-### 方案二：原生 Realtime Speech-to-Speech
+### Option 1: Cascaded ASR + LLM + TTS
 
 ```
-音频 -> 原生多模态模型 -> 音频
+Audio → VAD → streaming ASR → LLM → streaming TTS → audio
 ```
 
-代表方案：OpenAI Realtime API、Gemini Live API、阿里通义 Qwen-Omni。
+Advantages:
 
-优点：
+- ASR transcripts can be stored, audited, and corrected.
+- The LLM uses text input and output, making it easy to reuse existing Agent frameworks.
+- TTS voices and providers can be replaced independently.
+- Each component can be load-tested and optimized separately.
 
-- 更低的端到端延迟
-- 语气、停顿、情绪等副语言信息保留更多
-- 可以统一处理音频输入、文本事件、工具调用
+Disadvantages:
 
-缺点：
+- Each stage adds latency.
+- ASR errors propagate to the LLM.
+- The intermediate text loses tone, pauses, and emotion.
+- Interruption handling must coordinate cancellation across ASR, LLM, TTS, and the player.
 
-- 中间过程更黑盒，问题定位更依赖供应商日志
-- 文本审计和话术控制需要额外设计
-- 成本模型可能按音频 token 或时长计费
-- 如果业务强依赖私有化部署，供应商 API 未必满足要求
+interview-guide uses this architecture. It suits enterprise knowledge assistants, customer-support workflows, and business systems that require compliance audits.
 
-**连接方式选择**：
+### Option 2: Native Real-Time Speech-to-Speech
 
-OpenAI Realtime API 当前文档提供三类连接方式：
+```
+Audio → native multimodal model → audio
+```
 
-| 连接方式  | 适用场景                                             |
-| --------- | ---------------------------------------------------- |
-| WebRTC    | 浏览器和移动端应用，适合直接采集麦克风并播放模型音频 |
-| WebSocket | 服务端到服务端的中间件场景，低延迟且可控             |
-| SIP       | VoIP 电话系统集成，适合呼叫中心、电话客服场景        |
+Examples include OpenAI Realtime API, Gemini Live API, and Alibaba Qwen-Omni.
 
-### 我的建议
+Advantages:
 
-高频、强实时、强调自然交互的语音产品，可以优先评估原生 Realtime API。需要逐步审计 ASR 文本、控制回复话术或私有化部署时，级联链路通常更容易观测和替换组件，但组件增多也会引入更多超时与故障点。
+- Lower end-to-end latency.
+- Better preservation of paralinguistic signals such as tone, pauses, and emotion.
+- Unified handling of audio input, text events, and tool calls.
 
-**不要第一天就做端云混合**。先把一条链路跑通，再逐步替换。
+Disadvantages:
 
-## 怎么在生产环境中优化语音系统？
+- The internal process is more of a black box, so troubleshooting depends more on provider logs.
+- Text auditing and response control require additional design.
+- Pricing may be based on audio tokens or duration.
+- Provider APIs may not meet requirements for private deployment.
 
-### 1. 调整音频帧和上行分块
+**Connection options:**
 
-编解码和语音处理通常使用 10 ms、20 ms、30 ms 等帧长，应用层可以把多个帧合并成一次网络分块。帧长和上行分块是两个不同概念：处理帧太大会增加算法延迟，网络分块太小则会增加消息和编码开销。
+The current OpenAI Realtime API documentation describes three connection types:
 
-interview-guide 的选择是 **200 ms 分块**：
+| Connection | Suitable use                                                                        |
+| ---------- | ----------------------------------------------------------------------------------- |
+| WebRTC     | Browser and mobile apps that capture microphone input and play model audio directly |
+| WebSocket  | Server-to-server middleware with low latency and more control                       |
+| SIP        | VoIP integration for call centers and telephone support                             |
+
+### Recommendations
+
+For high-volume, real-time products that prioritize natural interaction, evaluate a native Realtime API first. If you need to audit ASR transcripts step by step, control response wording, or deploy privately, a cascaded pipeline is usually easier to observe and modify. However, more components also mean more timeouts and failure points.
+
+**Do not build a client-cloud hybrid on day one.** Get one pipeline working first, then replace components incrementally.
+
+## How Can You Optimize a Voice System in Production?
+
+### 1. Tune Audio Frames and Upload Chunks
+
+Codecs and speech processing often use frame lengths such as 10, 20, or 30 ms. The application can combine several frames into one network chunk. Frame length and upload-chunk size are different: large processing frames add algorithmic latency, while very small network chunks increase message and encoding overhead.
+
+interview-guide uses **200 ms chunks**:
 
 ```typescript
 // pcm-processor.js
@@ -926,53 +926,53 @@ this.targetSampleRate = 16000;
 this.samplesPerChunk = 3200; // 200 ms at 16 kHz
 ```
 
-这不会让 ASR 等到整句话结束才开始工作，但会给上行音频引入最多一个分块周期；再叠加服务端 VAD 的静音断句时间，用户会感到“话音落下后还要等一下”。如果要做得更好，可以：
+This does not make ASR wait for the whole sentence, but it can add up to one chunk interval to audio upload. Combined with the server-side VAD silence threshold, users may still notice a delay after they finish speaking. Improvements include:
 
-- 减小分块到 100 ms
-- 前端先发一小段让 ASR“热启动”
-- 使用 ASR 的稳定增量转写提前做意图判断；VAD 事件只负责提供语音活动和轮次边界
+- Reduce chunks to 100 ms.
+- Send a short initial segment from the frontend to warm up ASR.
+- Use stable ASR partials for early intent prediction; use VAD events only for speech activity and turn boundaries.
 
-### 2. 让 LLM 先说短句
+### 2. Have the LLM Speak in Short Sentences First
 
-语音回复不是写文章。用户不需要一上来听 500 字完整答案。
+A spoken response is not an essay. Users do not need to hear a 500-word answer up front.
 
-更好的策略：
+Better strategies include:
 
-- 先输出确认语：“我看一下”
-- 工具调用期间播过渡语：“正在查最近一次订单”
-- 查到结果后再给结论
-- 长解释拆成多句，每句都能独立合成
+- Start with an acknowledgement: "Let me check."
+- Play a transition while a tool runs: "I'm checking your most recent order."
+- Give the result once it is available.
+- Break long explanations into sentences that can be synthesized independently.
 
-### 3. TTS 按语义边界切分
+### 3. Split TTS at Semantic Boundaries
 
-TTS 切分太碎听起来断断续续；切分太长首包延迟高。
+If TTS segments are too short, speech sounds choppy; if they are too long, time to first audio increases.
 
-建议按优先级切：
+Split text in this order of preference:
 
-1. 句号、问号、感叹号
-2. 分号、冒号
-3. 较长逗号短语
-4. 超长句强制切分
+1. Periods, question marks, and exclamation points.
+2. Semicolons and colons.
+3. Longer comma-separated phrases.
+4. Force-split unusually long sentences.
 
-同时要避免把数字、英文缩写、代码名切坏。比如"GPT-4o-mini-tts"不能被随便拆成几段读。
+Avoid splitting numbers, English abbreviations, or code names incorrectly. For example, do not break `GPT-4o-mini-tts` into arbitrary fragments.
 
-interview-guide 当前采用的就是这个思路：LLM 流式输出过程中，只要检测到一个完整句子，就立刻提交给 `OrderedTtsChunkEmitter` 做句子级 TTS。前端收到 `audio_chunk` 后立即入队播放，收到 `audio_complete` 后再等待播放队列自然清空。这样首段语音不需要等整段回答生成和合成结束。
+interview-guide follows this approach: as the LLM streams output, each complete sentence is immediately passed to `OrderedTtsChunkEmitter` for sentence-level synthesis. The frontend queues and plays each `audio_chunk` as it arrives, then waits for the queue to drain after `audio_complete`. The first spoken segment no longer has to wait for the entire response to be generated and synthesized.
 
-### 4. 控制上下文长度
+### 4. Control Context Length
 
-语音 Agent 很容易把所有转写、工具结果、播放状态都塞进上下文。短期看没事，长会话里会让延迟和成本一起上涨。
+Voice Agents can easily put every transcript, tool result, and playback state into context. This may be manageable at first, but in long sessions it increases both latency and cost.
 
-建议把上下文分成三层：
+Separate context into three layers:
 
-- **短期原文**：最近几轮完整转写和回答
-- **会话摘要**：用户目标、已确认事实、未完成事项
-- **事件状态**：当前播放进度、是否被打断、工具调用结果
+- **Recent transcript:** Full transcripts and responses from the latest turns.
+- **Session summary:** User goals, confirmed facts, and unfinished tasks.
+- **Event state:** Current playback position, interruption status, and tool results.
 
-LLM 不需要知道每个音频帧发生了什么，它需要知道和当前决策相关的高信噪比状态。
+The LLM does not need details of every audio frame. It needs high-signal state relevant to the current decision.
 
-### 5. 全链路可观测
+### 5. Instrument the Full Pipeline
 
-interview-guide 用 Redis 做会话状态缓存：
+interview-guide uses Redis to cache session state:
 
 ```java
 // VoiceInterviewService.java
@@ -985,96 +985,96 @@ private void cacheSession(VoiceInterviewSessionEntity session) {
 }
 ```
 
-生产环境还要记录：
+In production, also record:
 
-- 上行音频时长
-- 有效人声时长
-- ASR token 或分钟数
-- LLM 输入输出 token
-- TTS 字符数、音频秒数、被打断秒数
-- 每轮端到端延迟和取消次数
+- Duration of uploaded audio.
+- Duration of detected speech.
+- ASR tokens or minutes processed.
+- LLM input and output tokens.
+- TTS characters, audio duration, and interrupted duration.
+- End-to-end latency and cancellations per turn.
 
-没有这些指标，语音 Agent 的成本会很难收敛。
+Without these metrics, it is difficult to control the cost of a voice Agent.
 
-## 语音 Agent 还能怎么演进？
+## How Could the Voice Agent Evolve?
 
-interview-guide 是最基础版本，还有很多可以优化的地方。
+interview-guide is a basic implementation with room for improvement.
 
-### 端云混合
+### Client-Cloud Hybrid
 
-目前 interview-guide 基本是“云端为主”的设计。进阶方向是把更多能力下沉到端侧：
+interview-guide is currently designed to rely mostly on the cloud. One direction for improvement is to move more capabilities to the client:
 
-| 环节 | 当前                  | 演进方向                         |
-| ---- | --------------------- | -------------------------------- |
-| VAD  | 端侧 VAD + 服务端 VAD | 纯端侧 VAD，减少服务端压力       |
-| ASR  | 纯云端                | 简单命令放端侧，复杂识别放云端   |
-| LLM  | 纯云端                | 小模型端侧兜底，断网可用         |
-| TTS  | 纯云端                | 固定提示音放端侧，自然对话放云端 |
+| Stage | Current                       | Possible evolution                                                        |
+| ----- | ----------------------------- | ------------------------------------------------------------------------- |
+| VAD   | Client-side + server-side VAD | Use client-side VAD to reduce server load                                 |
+| ASR   | Cloud only                    | Handle simple commands on the client and complex recognition in the cloud |
+| LLM   | Cloud only                    | Use a small client-side model as a fallback during network outages        |
+| TTS   | Cloud only                    | Keep fixed prompts on the client and natural conversation in the cloud    |
 
-端云混合不是把所有模型都塞到客户端。更稳的做法是：实时性强、隐私敏感、断网要兜底的能力优先下沉；需要大模型理解、复杂推理、统一审计的能力留在云端。
+Hybrid deployment does not mean moving every model to the client. A safer approach is to move latency-sensitive, privacy-sensitive, and offline-fallback capabilities to the client, while keeping tasks that need large-model understanding, complex reasoning, or centralized auditing in the cloud.
 
-### 本地模型部署
+### Local Model Deployment
 
-如果你对数据合规有要求，可以考虑本地部署 ASR 和 TTS：
+If you have data-compliance requirements, consider deploying ASR and TTS locally:
 
 - **ASR**：faster-whisper、FunASR、SenseVoice
-- **TTS**：piper1-gpl（原 Piper 已归档）、Fish Speech、CosyVoice
+- **TTS:** piper1-gpl (the original Piper project is archived), Fish Speech, CosyVoice
 
-**注意**：原 Piper 仓库（rhasspy/piper）已于 2025 年 10 月归档，开发已迁移到 [OHF-Voice/piper1-gpl](https://github.com/OHF-Voice/piper1-gpl)。piper1-gpl 采用 GPL-3.0，商业项目需要评估开源合规要求；项目目前也在招募新的维护者，长期支持存在不确定性。Fish Speech 不是 Apache 2.0：其当前模型、代码和文档受 [Fish Audio Research License](https://github.com/fishaudio/fish-speech/blob/main/LICENSE) 约束，研究和非商业用途可免费使用，商业用途需要另行取得 Fish Audio 的书面许可。CosyVoice 也应分别核对代码、模型权重和声音资源的许可证。
+**Note:** The original Piper repository (`rhasspy/piper`) was archived in October 2025, and development moved to [OHF-Voice/piper1-gpl](https://github.com/OHF-Voice/piper1-gpl). piper1-gpl uses GPL-3.0, so commercial projects must assess open-source compliance. The project is also seeking new maintainers, making long-term support uncertain. Fish Speech is not Apache 2.0: its current models, code, and documentation are governed by the [Fish Audio Research License](https://github.com/fishaudio/fish-speech/blob/main/LICENSE). Research and non-commercial use are free; commercial use requires written permission from Fish Audio. Check the licenses for CosyVoice code, model weights, and voice assets separately as well.
 
-本地部署的优势是可控、可离线。劣势是**工程成本高**：GPU/内存/并发容量要自己压测，流式推理、模型热加载、显存回收都要自己做。
+Local deployment offers control and offline operation. Its main disadvantage is **high engineering cost**: you must load-test GPU, memory, and concurrency capacity, and implement streaming inference, model hot-loading, and GPU-memory reclamation.
 
-### 原生 Realtime API
+### Native Realtime APIs
 
-如果级联链路的延迟和自然度已经压不下去，可以评估原生 Realtime API：
+If latency and naturalness remain poor in a cascaded pipeline, evaluate a native Realtime API:
 
-- OpenAI Realtime API（支持 WebRTC、WebSocket 和 SIP，具体模型名从配置或模型网关读取）
+- OpenAI Realtime API (supports WebRTC, WebSocket, and SIP; read the model name from configuration or a model gateway)
 - Gemini Live API
-- 阿里通义 Qwen-Omni
+- Alibaba Qwen-Omni
 
-这些 API 把 ASR、LLM、TTS 融合到统一的多模态链路里，延迟和自然度通常更有优势。代价也很现实：中间过程更黑盒，成本模型变化快，调试和审计都要额外设计。
+These APIs combine ASR, LLM, and TTS in a unified multimodal pipeline, often improving latency and naturalness. The tradeoffs are real: the process is more of a black box, pricing changes quickly, and debugging and auditing need additional design.
 
-OpenAI 在 2025 年 8 月把 Realtime API 推到 GA，并发布专用语音模型 `gpt-realtime`。Realtime 模型更新较快，生产代码不应把模型名散落在业务逻辑里，应该由配置中心或模型网关统一管理，并在上线前核对当前模型目录。
+OpenAI made the Realtime API generally available in August 2025 and released the dedicated voice model `gpt-realtime`. Realtime models change quickly. Do not scatter model names through production business logic; manage them through a configuration service or model gateway, and check the current model catalog before release.
 
-GA 发布时，Realtime API 同时提供或补充了几类能力：
+At general availability, the Realtime API also introduced or expanded several capabilities:
 
-1. **远程 MCP 服务器支持**，可像级联方案一样调用外部工具；
-2. **图像输入支持**，模型可结合用户看到的屏幕内容进行对话；
-3. **SIP 电话集成**，支持与传统电话网络连接。
+1. **Remote MCP server support**, allowing external tools to be called as in a cascaded pipeline.
+2. **Image input**, allowing the model to discuss content visible on the user's screen.
+3. **SIP telephony integration**, connecting to traditional telephone networks.
 
-价格也不要写死。Realtime 模型通常会区分文本、音频、缓存输入和输出等计费口径，实际接入前一定要以官方 pricing 页为准。
+Do not hard-code prices. Realtime models may have separate rates for text, audio, cached input, and output. Check the official pricing page before integration.
 
-### 打断体验优化
+### Improving Interruption Handling
 
-目前 interview-guide 的打断是“静默丢弃”：AI 说话时用户的声音直接不发。这种方式简单，但体验不够自然。
+interview-guide currently uses "silent discard" for interruptions: it does not send the user's voice while the AI is speaking. This is simple but does not feel natural.
 
-更好的做法：
+Better approaches include:
 
-- AI 说话时继续接收音频，但不发到 ASR
-- 检测到用户声音后，先降低 AI 播放音量（渐变而不是突然停止）
-- 打断后保留已播放内容的上下文
+- Continue capturing audio while the AI speaks, but do not send it to ASR.
+- When user speech is detected, lower the AI's playback volume gradually instead of stopping abruptly.
+- Preserve the context of content that has already played after an interruption.
 
-### 多模态扩展
+### Multimodal Extensions
 
-interview-guide 目前只有语音。可以扩展成：
+interview-guide currently supports only voice. It could be extended with:
 
-- **语音 + 屏幕共享**：面试官可以看到候选人的 IDE
-- **语音 + 摄像头**：看候选人的表情和肢体语言
-- **语音 + 白板**：一起画架构图
+- **Voice + screen sharing:** Let the interviewer see the candidate's IDE.
+- **Voice + camera:** Observe the candidate's facial expressions and body language.
+- **Voice + whiteboard:** Draw architecture diagrams together.
 
-这些多模态能力需要更复杂的流管理和状态同步。
+These multimodal capabilities require more complex stream management and state synchronization.
 
-## 面试里怎么回答 AI 语音系统问题？
+## How Should You Answer AI Voice-System Interview Questions?
 
-如果面试官问：“你怎么设计一个实时语音 Agent？”
+If an interviewer asks, "How would you design a real-time voice Agent?"
 
-可以按这个思路回答：
+Structure your answer like this:
 
-1. **先拆链路**：客户端采集音频，VAD 判断说话边界，ASR 流式转写，LLM 做意图理解和工具调用，TTS 流式合成，客户端边收边播。
-2. **再讲难点**：实时语音核心难点是端到端延迟、用户打断、噪声环境、上下文状态和端云协同。
-3. **再讲状态机**：需要管理 listening、thinking、speaking、interrupted 等状态，打断时要取消播放、取消生成，并处理已播放和未播放上下文。
-4. **最后讲选型**：云端 API 上线快，本地模型可控但工程成本高；端云混合和 Speech-to-Speech API 是否合适，要根据延迟、合规、成本和可观测需求评估。
+1. **Describe the pipeline:** The client captures audio, VAD detects speech boundaries, ASR transcribes in a stream, the LLM understands intent and calls tools, TTS synthesizes speech incrementally, and the client plays audio as it arrives.
+2. **Explain the challenges:** End-to-end latency, user interruptions, noisy environments, conversation state, and client-cloud coordination.
+3. **Discuss the state machine:** Manage states such as `listening`, `thinking`, `speaking`, and `interrupted`. On interruption, cancel playback and generation, and track played and unplayed content.
+4. **Explain the architecture choice:** Cloud APIs are quick to launch; local models offer control but cost more to engineer. Evaluate hybrid architectures and speech-to-speech APIs against latency, compliance, cost, and observability requirements.
 
-## 总结
+## Summary
 
-AI 语音 Agent 是一条实时音频流链路：VAD 决定对话轮次，ASR、LLM 和 TTS 需要流式衔接，播放、打断、取消和会话状态必须协同处理。级联方案的中间过程更容易控制和审计，原生实时模型在延迟与自然度上可能更有优势；端云如何划分，则要结合实时性、隐私、离线兜底、成本和运维能力判断。无论采用哪种方案，都应把它设计成可取消、可观测、可降级的系统，而不是三段 API 调用的简单串联。
+An AI voice Agent is a real-time audio pipeline. VAD controls turn-taking; ASR, LLM, and TTS must work together as streams; and playback, interruption, cancellation, and session state must be coordinated. A cascaded pipeline is easier to control and audit, while a native real-time model may offer lower latency and more natural interaction. Choose how to divide work between client and cloud based on real-time requirements, privacy, offline fallback, cost, and operational capacity. Whichever architecture you choose, design it to support cancellation, observability, and graceful degradation rather than treating it as three API calls in sequence.

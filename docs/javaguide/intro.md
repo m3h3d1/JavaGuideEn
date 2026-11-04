@@ -1,41 +1,41 @@
 ---
-title: 项目介绍
-description: JavaGuide项目介绍，一个涵盖Java核心知识体系的学习与面试指南，助力Java开发者成长。
-category: 走近项目
+title: About JavaGuide
+description: An introduction to JavaGuide, a learning and interview guide covering the core Java knowledge required to grow as a Java developer.
+category: About the Project
 icon: "mdi:information-outline"
 ---
 
-我是 19 年大学毕业的，在大三准备面试的时候，我开源了 JavaGuide 。我把自己准备面试过程中的一些总结都毫不保留地通过 JavaGuide 分享了出来。
+I graduated from university in 2019. While preparing for interviews in my third year, I open-sourced JavaGuide and shared all the notes I had made during my interview preparation.
 
-开源 JavaGuide 初始想法源于自己的个人那一段比较迷茫的学习经历，主要目的是为了通过这个开源平台来帮助一些在学习 Java 或者面试过程中遇到问题的小伙伴。
+The idea for JavaGuide came from a period when I felt lost in my own studies. I wanted to use this open-source project to help people who run into difficulties while learning Java or preparing for interviews.
 
-- **对于 Java 初学者来说：** 本文档倾向于给你提供一个比较详细的学习路径，目录清晰，让你对于 Java 整体的知识体系有一个清晰认识。你可以跟着视频或者书籍学习完某个知识点之后，然后来这里找对应的总结，帮助你更好地掌握对应的知识点。
-- **对于非 Java 初学者来说：** 本文档更适合回顾知识，准备面试，让你搞清面试应该把重心放在哪些问题上。
+- **For Java beginners:** This guide provides a detailed learning path and a clear overview of the Java knowledge landscape. After studying a topic through a video or book, you can find a summary here to help you master it.
+- **For more experienced Java developers:** This guide is better suited to reviewing concepts and preparing for interviews. It can help you focus on the right topics.
 
-**由于本网站的内容完全开源，由大家共同维护完善，因此内容质量比较高。** 如果你也想要参与 JavaGuide 的维护建设工作，请查阅[贡献指南](./contribution-guideline.md)。
+**The site is fully open source and maintained by its community, which helps keep the content useful and high quality.** If you would like to help maintain JavaGuide, see the [contribution guidelines](./contribution-guideline.md).
 
-相比于其他通过 JavaGuide 学到东西或者说助力获得 offer 的朋友来说 ， JavaGuide 对我的意义更加重大。不夸张的说，有时候真的感觉像是自己的孩子一点一点长大一样，我一直用心呵护着它。虽然，我花了很长时间来维护它，但是，我觉得非常值得！非常有意义！
+JavaGuide means more to me than it does to people who have learned from it or used it to get a job offer. Honestly, sometimes it feels like watching my child grow up, and I have cared for it along the way. Maintaining it has taken a lot of time, but I think it has been worthwhile and meaningful.
 
-不过，希望大家对面试不要抱有侥幸的心理，打铁还需自身硬！ **我希望这个文档是为你学习 Java 指明方向，而不仅仅是用来应付面试用的。**
+Still, do not count on luck to pass an interview. You need solid skills. **I hope this guide helps you find direction as you learn Java, rather than serving only as interview prep.**
 
-另外，JavaGuide 不可能把面试中的所有内容都给涵盖住，尤其是阿里、美团这种挖的比较深入的面试。你可以根据你的目标公司进行针对性的深入学习，多看一些目标公司的面经进行查漏补缺，没事就自测一下，多多思考总结。
+JavaGuide cannot cover every interview topic, especially for companies such as Alibaba and Meituan, whose interviews go into considerable depth. Study the topics relevant to your target companies, read interview reports to find gaps, quiz yourself regularly, and reflect on what you learn.
 
-加油！奥利给！
+You’ve got this!
 
-## 官方知识星球
+## Official Knowledge Planet Community
 
-对于准备面试的同学来说，强烈推荐我创建的一个纯粹的[Java 面试知识星球](../about-the-author/zhishixingqiu-two-years.md)，干货非常多，学习氛围也很不错！
+If you are preparing for interviews, I highly recommend the [Java interview community](../about-the-author/zhishixingqiu-two-years.md) I created. It offers plenty of practical content and a supportive learning environment.
 
-下面是星球提供的部分服务（点击下方图片即可获取知识星球的详细介绍）：
+Here are some of the community's services (click the image below for more details):
 
-[![星球服务](./images/shared/xingqiufuwu.png)](../about-the-author/zhishixingqiu-two-years.md)
+[![Community services](./images/shared/xingqiufuwu.png)](../about-the-author/zhishixingqiu-two-years.md)
 
-## 项目说明
+## Project Details
 
-- [在线阅读网站](https://javaguide.cn)基于 Vuepress 搭建，使用的是主题是 [vuepress-theme-hope](https://github.com/vuepress-theme-hope/vuepress-theme-hope)（很 Nice 的一个主题）。
-- 项目的 Markdown 格式参考：[GitHub Markdown 格式](https://guides.github.com/features/mastering-markdown/)，表情素材来自：[EMOJI CHEAT SHEET](https://www.webpagefx.com/tools/emoji-cheat-sheet/)。
-- Logo 下的小图标是使用[Shields.IO](https://shields.io/) 生成的。
+- The [online guide](https://javaguide.cn) is built with VuePress and the [vuepress-theme-hope](https://github.com/vuepress-theme-hope/vuepress-theme-hope) theme.
+- The project's Markdown follows the [GitHub Markdown format](https://guides.github.com/features/mastering-markdown/). Emoji references come from the [Emoji Cheat Sheet](https://www.webpagefx.com/tools/emoji-cheat-sheet/).
+- The badges under the logo are generated with [Shields.io](https://shields.io/).
 
-## 贡献者
+## Contributors
 
-[你可以点此链接查看 JavaGuide 的所有贡献者。](https://github.com/Snailclimb/JavaGuide/graphs/contributors) 感谢你们让 JavaGuide 变得更好！如果你们来到武汉一定要找我，我请你们吃饭玩耍。
+[View all JavaGuide contributors here.](https://github.com/Snailclimb/JavaGuide/graphs/contributors) Thank you for making JavaGuide better! If you ever visit Wuhan, let me know—I'll treat you to a meal and show you around.

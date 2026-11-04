@@ -1,108 +1,108 @@
 ---
-title: 后端高频系统设计面试题 | 场景题 | 秒杀系统 | 短链系统（含答案）
-description: 后端面试高频系统设计与场景题解析，涵盖秒杀系统、短链系统、海量数据处理、分布式 ID 等 30+ 道经典面试题，适合中大厂后端面试准备。
-category: 知识星球
+title: Backend System Design and Scenario Interview Questions
+description: More than 30 common backend system-design and scenario questions, covering flash sales, URL shorteners, large-scale data processing, distributed IDs, and more.
+category: Knowledge Planet
 head:
   - - meta
     - name: keywords
-      content: 系统设计面试题,场景题,后端面试系统设计,秒杀系统设计,短链系统设计,海量数据处理面试题,分布式系统设计,高频面试题,系统设计案例,后端场景面试题
+      content: system design interview questions,backend scenario questions,flash-sale system design,URL shortener design,large-scale data processing,distributed system design,backend interviews
 ---
 
-## 介绍
+## About This Guide
 
-**《后端面试高频系统设计&场景题》** 是我的[知识星球](../about-the-author/zhishixingqiu-two-years.md)的一个内部小册，系统性地总结了后端面试中高频出现的系统设计案例和场景题。
+**High-Frequency Backend System Design and Scenario Questions** is a private guide in my [Knowledge Planet](../about-the-author/zhishixingqiu-two-years.md). It brings together system-design cases and scenario questions that commonly appear in backend interviews.
 
-### 为什么你需要这份小册？
+### Why Use This Guide?
 
-近年来，国内技术面试“越来越卷”。越来越多的公司（阿里、美团、字节、腾讯等）开始在面试中考察 **系统设计** 和 **场景问题**，以此来更全面地考察求职者的综合能力——不论是校招还是社招。
+Technical interviews in China have become more competitive. More companies, including Alibaba, Meituan, ByteDance, and Tencent, ask **system-design** and **scenario-based** questions to assess candidates' overall skills in both new-graduate and experienced-hire interviews.
 
-> 很多同学八股文背得滚瓜烂熟，但一遇到“如何设计一个秒杀系统？”这类开放性问题就懵了。
+> Many candidates memorize common interview questions but struggle with open-ended prompts such as “How would you design a flash-sale system?”
 
-**系统设计和场景题的考察特点**：
+System-design and scenario questions typically:
 
-- ✅ 没有标准答案，重点考察思维过程和架构能力
-- ✅ 考察对高并发、高可用、分布式等技术的综合运用
-- ✅ 考察解决实际问题的能力和工程经验
-- ⚠️ 正常面试不会全是场景题，一般会穿插 1-2 道来考察你
+- ✅ Have no single correct answer; they focus on reasoning and architectural judgment.
+- ✅ Test how well you apply high concurrency, high availability, and distributed-systems concepts together.
+- ✅ Assess practical problem-solving and engineering experience.
+- ⚠️ Usually make up only one or two questions in a standard interview.
 
-于是，**《后端面试高频系统设计&场景题》** 小册就诞生了！
+This guide was created to help candidates prepare for these questions.
 
-### 这份小册能带给你什么？
+### What Does the Guide Cover?
 
-**1. 面试加分项**
+**1. Strengthen interview answers**
 
-系统设计和场景题回答得好，面试官会对你印象非常好！这类问题稍微准备就能脱颖而出。
+Good answers to system-design questions can make a strong impression. Preparing for these questions can help you stand out.
 
-**2. 提升系统设计思维**
+**2. Develop system-design skills**
 
-即使不是准备面试，这份小册也能帮助你建立系统设计的思维框架，提升解决实际问题的能力。
+Even outside interview preparation, the guide can help you build a framework for system design and solve practical problems.
 
-**3. 实战落地参考**
+**3. Apply the ideas in projects**
 
-涉及到的很多案例都可以直接用到自己的项目上，比如：
+Many examples can be applied to your own projects, including:
 
-- 第三方授权登录（微信/QQ 登录）
-- Redis 实现延时任务的正确方式
-- 动态线程池的设计与实现
-- 分布式锁的多种实现方案
+- Third-party authorization and login, such as WeChat or QQ login.
+- Implementing delayed tasks with Redis.
+- Designing and implementing dynamic thread pools.
+- Different implementations of distributed locks.
 
-## 内容概览
+## Contents
 
-### 📐 系统设计案例
+### 📐 System-Design Cases
 
-| 主题                                   | 核心知识点                                         |
-| -------------------------------------- | -------------------------------------------------- |
-| ⭐ **如何设计一个动态线程池？**        | 线程池参数动态调整、监控告警、拒绝策略、优雅停机   |
-| **如何设计一个站内消息系统？**         | 消息推送、未读数统计、WebSocket、消息队列          |
-| **如何设计微博 Feed 流/信息流系统？**  | 推拉模型、Timeline、智能推荐、读写扩散、缓存策略   |
-| **如何设计一个排行榜？**               | Redis Sorted Set、实时更新、分页查询、海量数据排序 |
-| **几种典型的系统设计案例（整理补充）** | 点赞、优惠券、红包等综合案例分享                   |
+| Topic                                                | Main concepts                                                                                    |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| ⭐ **How would you design a dynamic thread pool?**   | Dynamic thread-pool configuration, monitoring and alerts, rejection policies, graceful shutdown. |
+| **How would you design an in-app messaging system?** | Message delivery, unread counts, WebSocket, message queues.                                      |
+| **How would you design a social-media feed?**        | Push and pull models, timelines, recommendations, read/write fan-out, caching.                   |
+| **How would you design a leaderboard?**              | Redis Sorted Sets, real-time updates, pagination, sorting large data sets.                       |
+| **Additional system-design examples**                | Combined examples involving likes, coupons, and red packets.                                     |
 
-### 🎯 高频场景题
+### 🎯 Common Scenario Questions
 
-| 主题                                    | 核心知识点                                            |
-| --------------------------------------- | ----------------------------------------------------- |
-| ⭐ **订单超时自动取消如何实现？**       | 延时队列、定时任务、状态机、幂等性保障                |
-| **如何基于 Redis 实现延时任务？**       | 过期事件监听 vs Redisson DelayedQueue、时效性、可靠性 |
-| ⭐ **如何解决大文件上传问题？**         | 分片上传、断点续传、秒传、并发上传、文件校验          |
-| **如何实现 IP 归属地功能？**            | IP 库选择、离线库 vs 在线接口、性能优化               |
-| **如何统计网站 UV？**                   | PV/UV/VV/IP 概念、HyperLogLog、去重统计               |
-| ⭐ **几种典型的后端面试场景题（补充）** | 限流、幂等、缓存穿透等综合场景                        |
+| Topic                                                               | Main concepts                                                                                 |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| ⭐ **How would you automatically cancel an order after a timeout?** | Delayed queues, scheduled jobs, state machines, idempotency.                                  |
+| **How can Redis implement delayed tasks?**                          | Expiration notifications versus Redisson `DelayedQueue`, timeliness, and reliability.         |
+| ⭐ **How would you support large file uploads?**                    | Multipart uploads, resumable transfers, instant uploads, concurrent uploads, file validation. |
+| **How would you determine an IP address's geographic location?**    | IP databases, offline databases versus online APIs, performance tuning.                       |
+| **How would you count unique visitors (UVs) to a website?**         | PV, UV, VV, and IP; HyperLogLog; deduplication.                                               |
+| ⭐ **Additional backend interview scenarios**                       | Rate limiting, idempotency, cache penetration, and related cases.                             |
 
-### 🔐 认证安全与风控
+### 🔐 Authentication, Security, and Risk Controls
 
-| 主题                                | 核心知识点                                   |
-| ----------------------------------- | -------------------------------------------- |
-| ⭐ **项目敏感词脱敏是如何实现的？** | 脱敏策略、正则匹配、性能优化、动态配置       |
-| ⭐ **如何安全传输和存储密码？**     | 加盐哈希、BCrypt、HTTPS、防重放攻击          |
-| **如何实现第三方授权登录？**        | OAuth 2.0 协议、授权码模式、Token 机制、JWT  |
-| **验证码登录场景怎么设计？**        | 验证码生成、存储、校验、防刷、有效期管理     |
-| **多次输错密码后如何限制登录？**    | 限流策略、Redis 计数器、滑动窗口、分布式限流 |
+| Topic                                                            | Main concepts                                                                |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| ⭐ **How would you mask sensitive words in a project?**          | Masking strategies, regular expressions, performance, dynamic configuration. |
+| ⭐ **How should passwords be transmitted and stored securely?**  | Salted hashes, BCrypt, HTTPS, replay-attack prevention.                      |
+| **How would you implement third-party authorization and login?** | OAuth 2.0, authorization-code flow, tokens, JWT.                             |
+| **How should verification-code login be designed?**              | Code generation, storage and validation, abuse prevention, expiration.       |
+| **How should repeated failed password attempts be limited?**     | Rate limiting, Redis counters, sliding windows, distributed rate limiting.   |
 
-### 📊 大数据量场景
+### 📊 Large-Scale Data Scenarios
 
-| 主题                                           | 核心知识点                                |
-| ---------------------------------------------- | ----------------------------------------- |
-| ⭐ **40 亿个 QQ 号，限制 1G 内存，如何去重？** | 位图、布隆过滤器、分治思想、外部排序      |
-| ⭐ **日活上亿，如何保证推荐视频不重复？**      | 布隆过滤器、Redis Set、去重策略、空间优化 |
-| ⭐ **大数据 Top K 问题**                       | 堆排序、快速选择、分治、MapReduce         |
+| Topic                                                                                                | Main concepts                                                  |
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| ⭐ **How would you deduplicate 4 billion QQ numbers with 1 GB of memory?**                           | Bitmaps, Bloom filters, partitioning, external sorting.        |
+| ⭐ **How can a video recommendation system with hundreds of millions of daily users avoid repeats?** | Bloom filters, Redis Sets, deduplication, memory optimization. |
+| ⭐ **How would you find the Top K items in a large data set?**                                       | Heapsort, quickselect, divide and conquer, MapReduce.          |
 
-### 🔄 并发控制与分布式一致性
+### 🔄 Concurrency and Distributed Consistency
 
-| 主题                                   | 核心知识点                              |
-| -------------------------------------- | --------------------------------------- |
-| **多位骑手抢一个订单如何保证不重复？** | 分布式锁、乐观锁、Redis SETNX、并发控制 |
-| **发生提现失败（退单）时怎么处理？**   | 补偿机制、幂等设计、状态回滚、对账系统  |
+| Topic                                                                  | Main concepts                                                              |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| **How can multiple couriers claim the same order without duplicates?** | Distributed locks, optimistic locking, Redis `SETNX`, concurrency control. |
+| **How should a failed withdrawal or refund be handled?**               | Compensation, idempotency, state rollback, reconciliation.                 |
 
-## 内容预览
+## Preview
 
-![《后端面试高频系统设计&场景题》](./images/shared/back-end-interview-high-frequency-system-design-and-scenario-questions-fengmian.png)
+![High-Frequency Backend System Design and Scenario Questions](./images/shared/back-end-interview-high-frequency-system-design-and-scenario-questions-fengmian.png)
 
-## 适合人群
+## Who Is This For?
 
-- 🎓 **校招求职者**：应对大厂系统设计面试
-- 👨‍💻 **社招跳槽者**：提升架构设计能力，拿到更好的 offer
-- 🔧 **初中级工程师**：学习系统设计思维，提升解决实际问题的能力
-- 📚 **技术爱好者**：了解常见系统的设计原理
+- 🎓 **New-graduate candidates** preparing for system-design interviews at large companies.
+- 👨‍💻 **Experienced candidates** strengthening architecture skills for their next role.
+- 🔧 **Junior and mid-level engineers** learning system-design principles and practical problem solving.
+- 📚 **Technology enthusiasts** learning how common systems are designed.
 
 <!-- @include: @planet2.snippet.md -->

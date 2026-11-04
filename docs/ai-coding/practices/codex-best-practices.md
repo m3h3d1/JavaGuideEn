@@ -1,239 +1,239 @@
 ---
-title: Codex 使用指南：配置、AGENTS.md 与 Agentic 工作流
-description: 结合 OpenAI 官方文档和 Codex CLI 社区实践，讲清 Codex 的任务描述、计划阶段、AGENTS.md、config.toml、权限控制、MCP、Skills、Subagents、Hooks 和 Scheduled Tasks。
-category: AI 编程实战
+title: "Codex Guide: Configuration, AGENTS.md, and Agentic Workflows"
+description: A practical guide to Codex task descriptions, planning, AGENTS.md, config.toml, permissions, MCP, Skills, subagents, Hooks, and scheduled tasks, based on official documentation and community practices.
+category: AI Coding in Practice
 head:
   - - meta
     - name: keywords
-      content: OpenAI Codex,Codex CLI,AI编程,AGENTS.md,Agent Skills,MCP,Subagents,Hooks,Scheduled Tasks,AI辅助开发
+      content: OpenAI Codex,Codex CLI,AI coding,AGENTS.md,Agent Skills,MCP,Subagents,Hooks,Scheduled Tasks,AI-assisted development
 ---
 
-你好，我是小 G。前面写过一篇 [Claude Code 使用指南：配置、工作流与进阶技巧](./claudecode-tips.md)，发出去之后，有同学在后台问：Claude Code 讲了这么多，那 Codex 怎么用更稳？
+Hi, I'm Xiao G. After I published [Claude Code: Configuration, Workflows, and Advanced Tips](./claudecode-tips.md), a reader asked how to use Codex reliably after I had written so much about Claude Code.
 
-我最开始用 Codex 的时候，对它的预期其实不高。
+When I first started using Codex, I did not expect much from it.
 
-毕竟从名字上看，很容易以为它就是一个更会写代码的命令行助手。真正用了一段时间之后，感受不太一样：Codex 更像一个能自己读仓库、改文件、跑命令、回来交差的工程助手。它不适合只拿来补几行代码，反而更适合处理那些有明确目标、能验证、边界也说得清的任务。
+From the name, it is easy to think of it as a command-line assistant that is simply better at writing code. After using it for a while, I saw it differently: Codex is more like an engineering assistant that can inspect a repository, edit files, run commands, and report back. It is not just for filling in a few lines of code; it is better suited to tasks with clear goals, verifiable results, and well-defined boundaries.
 
-但这里面有个前提。
+That comes with one condition.
 
-你得先把工作台摆好：任务边界、权限、项目规则和验收标准，都要提前说清楚。
+Set up the workbench first: define task boundaries, permissions, project rules, and acceptance criteria.
 
-任务描述太虚，它就会到处猜；权限给得太宽，它可能顺手做出你没授权的动作；`AGENTS.md` 写成项目宣传稿，它每轮还是得重新理解仓库；验收标准不给，它很容易停在“看起来已经改完了”。
+Vague tasks leave it guessing. Broad permissions may allow actions you did not authorize. If `AGENTS.md` reads like a project brochure, Codex still has to figure out the repository each time. Without acceptance criteria, it may stop when the changes merely look complete.
 
-这篇文章不打算按产品发布史来介绍 Codex，也不围着某个模型名展开。模型、套餐、命令细节变得很快，写死很容易过期。更值得留下来的，是几条在真实项目里比较抗折腾的经验：任务怎么交代，什么时候先进计划阶段（Plan），`AGENTS.md` 放什么，`config.toml` 管什么，权限、Rules、Hooks 怎么分层，MCP、Skills、Subagents、Scheduled Tasks 又分别适合什么场景。
+This article does not trace Codex's release history or focus on a particular model. Models, plans, and command details change quickly and can become outdated. The more durable lessons come from real projects: how to describe tasks, when to use Plan mode, what belongs in `AGENTS.md`, what `config.toml` controls, how permissions, Rules, and Hooks fit together, and when to use MCP, Skills, subagents, and scheduled tasks.
 
-先说个边界：本文主要面向 **Codex CLI + Codex App** 的日常使用。IDE Extension、Web/Cloud 端能看到的命令和能力不一定完全一致。
+One scope note: this article focuses on everyday use of **Codex CLI and the Codex app**. Available commands and features may differ in the IDE extension and web or cloud environments.
 
-## 任务别只写一句话
+## Do Not Describe a Task in One Sentence
 
-很多人第一次把任务丢给 Codex，会这么写：
-
-```text
-帮我优化一下登录逻辑。
-```
-
-这句话对人都不够用，对 Codex 当然也不够用。登录逻辑在哪里？优化的是性能、可读性、安全性，还是线上 Bug？哪些文件不能动？改完后用什么证明它真的好了？
-
-OpenAI 官方最佳实践里有个很实在的框架：Goal、Context、Constraints、Done when。翻成日常写法，就是把“要做什么、看哪里、别碰什么、做到什么程度算完”说清楚。Done when 不要只写“功能正常”，最好写清楚测试、构建、lint、截图、日志或命令输出这类可验证证据。
-
-比如同样是修登录问题，我会改成这样：
+Many people describe a task to Codex like this:
 
 ```text
-目标：修复用户 session 过期后 refresh token 仍有效但刷新失败的问题。
-上下文：重点阅读 src/auth、src/session 和 AuthControllerTest。
-约束：不要改数据库表结构，不要引入新依赖，保持现有 Result<T> 返回格式。
-完成标准：补一个能复现问题的测试，修改实现后运行相关测试，并汇报命令和结果。
+Improve the login logic.
 ```
 
-这样可以减少 Codex 的猜测空间。
+That is not enough context for a person, let alone Codex. Where is the login logic? Does “improve” mean performance, readability, security, or a production bug? Which files must not change? What will prove the fix works?
 
-小任务可以简单一点。比如改一处文案、补一条日志、把某个参数名统一掉，直接说明目标就行。可一旦任务碰到权限、支付、订单状态、数据迁移、并发、兼容性这些东西，最好别省那几行说明。你前面多写 2 分钟，后面少看很多奇怪 diff。
+OpenAI's official best practices offer a practical framework: Goal, Context, Constraints, and Done when. In everyday terms, specify what to do, where to look, what not to touch, and what counts as finished. Do not write only “the feature works” under Done when; name verifiable evidence such as tests, builds, lint results, screenshots, logs, or command output.
 
-还有一个习惯很有用：**把原始材料给 Codex，别只给自己的判断。**
-
-比如线上报错，不要只说“应该是缓存没清”。把堆栈、请求参数、复现步骤、失败测试、浏览器控制台输出贴进去，让它自己定位。你先下一个结论，它很容易顺着你的猜测往下走，最后把一个配置问题修成了业务逻辑问题。
-
-## 复杂任务先让它看路
-
-Codex 能直接改代码，但不代表每次都应该直接改。
-
-我现在会先看任务风险。改文案、补字段、加一条明显的空值保护，这类事情直接让它做。它读文件、改文件、跑一下测试，效率很高。
-
-另一类任务就不一样了。比如你要改订单状态机，或者把一个 600 多行的函数拆开，又或者排查一个偶发超时。你自己都还没完全摸清调用链，这时候让 Codex 上来就写代码，很容易越修越绕。
-
-这类任务我会先让它进入计划阶段：
+For the same login issue, I would write:
 
 ```text
-先进入计划阶段，不要修改文件。
-阅读 src/payment、src/order 和相关测试，搞清楚支付成功后库存扣减的调用链。
-请输出关键文件、当前流程、可能修改点、风险点和建议验证命令。
+Goal: Fix the issue where a refresh fails after the user session expires, even though the refresh token is still valid.
+Context: Focus on src/auth, src/session, and AuthControllerTest.
+Constraints: Do not change the database schema or add dependencies. Preserve the existing Result<T> response format.
+Done when: Add a test that reproduces the issue, update the implementation, run the relevant tests, and report the commands and results.
 ```
 
-等它读完仓库，再让它把计划拆出来：
+This gives Codex less room to guess.
+
+Small tasks can use a shorter description. For a copy change, an added log, or a parameter rename, state the goal directly. For work involving permissions, payments, order states, data migrations, concurrency, or compatibility, include the extra context. A couple of minutes spent upfront can prevent a lot of confusing diffs later.
+
+One more useful habit: **give Codex the source evidence, not just your conclusion.**
+
+For a production error, do not just say, “The cache probably was not cleared.” Provide the stack trace, request parameters, reproduction steps, failing tests, and browser console output so Codex can investigate. If you give it a conclusion first, it may follow your guess and turn a configuration issue into a business-logic change.
+
+## Let It Plan Complex Tasks First
+
+Codex can edit code directly, but that does not mean it should always start editing immediately.
+
+I first consider the task's risk. For copy changes, adding a field, or an obvious null check, I let it work directly. It can read and edit files, then run tests efficiently.
+
+Other tasks are different. You may need to change an order state machine, split a function with more than 600 lines, or investigate an intermittent timeout. If you have not traced the call chain yet, asking Codex to start coding can make the problem more tangled.
+
+For these tasks, I start in Plan mode:
 
 ```text
-基于刚才的分析，给出一个分阶段计划。
-每个阶段写清楚要改哪些文件、补哪些测试、怎么验证。
-不要开始实现，等我确认。
+Enter Plan mode and do not modify files.
+Read src/payment, src/order, and the relevant tests to trace how inventory is deducted after a successful payment.
+List the key files, current flow, likely changes, risks, and suggested verification commands.
 ```
 
-这个流程慢在前 10 分钟，快在后面。
+After it has inspected the repository, ask it to break the work into a plan:
 
-老项目真正麻烦的地方，往往不是某一段代码难写，而是历史兼容逻辑、灰度开关、配置兜底和不敢动的边界混在一起。计划阶段（Plan）的价值，就是先把这些东西捞出来。
+```text
+Based on your analysis, provide a phased plan.
+For each phase, list the files to change, tests to add, and how to verify the result.
+Do not start implementation. Wait for my approval.
+```
 
-计划阶段的输出只是候选方案，不是最终事实。高风险改动仍然要人工确认关键调用链、事务边界和兼容性。
+This process spends more time in the first 10 minutes and saves time later.
 
-不过也别把计划阶段（Plan）当仪式。任务足够小、验收足够明确时，直接执行反而更好。社区里有个观点我挺认同：普通 Codex 配小任务，比复杂 workflow 更容易稳定产出。
+The hard part of a legacy project is often not writing a specific piece of code, but untangling compatibility logic, rollout flags, configuration fallbacks, and boundaries that should not change. Plan mode helps surface these details first.
 
-## AGENTS.md 非常重要
+The plan is a proposal, not a final source of truth. For high-risk changes, a person still needs to verify key call chains, transaction boundaries, and compatibility.
 
-### 不要写成第二份 README
+Do not turn Plan mode into a ritual. For small tasks with clear acceptance criteria, direct execution may be better. I agree with a view shared in the community: standard Codex on a small task can produce more reliable results than a complex workflow.
 
-它有点像 Claude Code 里的 `CLAUDE.md`，都是给 Agent 看的项目级指令文件。更直白一点说，`AGENTS.md` 是一份 **Agent 工作说明**：告诉 Codex 这个项目怎么启动、怎么测试、哪些目录别碰、改完后要给出什么证据。
+## `AGENTS.md` Matters
 
-![多智能股票分析项目中的 CLAUDE.md 和 AGENTS.md](../images/shared/claude-agents-md.png)
+### Do Not Turn It into a Second README
 
-不过两者的定位不完全一样。
+Like `CLAUDE.md` in Claude Code, it is a project-level instruction file for an Agent. More simply, `AGENTS.md` is an **Agent work guide**: it tells Codex how to start and test the project, which directories to avoid, and what evidence to provide after making changes.
 
-`CLAUDE.md` 是 Claude Code 专属入口，主要给 Claude Code 读；`AGENTS.md` 是一个面向 coding agents 的开放指令文件格式，OpenAI Codex 官方支持它。其他工具是否读取、如何读取，要以各自文档为准，不要默认所有 Agent 都会按同一套规则加载。
+![CLAUDE.md and AGENTS.md in a multi-agent stock analysis project](../images/shared/claude-agents-md.png)
 
-如果仓库里已经有 `AGENTS.md`，通常没必要再维护一份内容几乎一样的 `CLAUDE.md`。可以让 `CLAUDE.md` 导入 `AGENTS.md`，再补 Claude Code 特有的要求：
+However, the two files do not have exactly the same role.
+
+`CLAUDE.md` is an entry point specific to Claude Code; `AGENTS.md` is an open instruction-file format for coding agents and is officially supported by OpenAI Codex. Check each tool's documentation to see whether and how it reads the file. Do not assume every Agent loads the same instructions.
+
+If the repository already has an `AGENTS.md`, you usually do not need to maintain a nearly identical `CLAUDE.md`. Have `CLAUDE.md` import `AGENTS.md`, then add Claude Code-specific instructions:
 
 ```markdown
 @AGENTS.md
 
-## Claude Code 特定指令
+## Claude Code-specific instructions
 
-- 使用 plan mode 处理 `src/billing/` 下的改动。
+- Use Plan mode for changes under `src/billing/`.
 ```
 
-这样基础规则只维护一份，Claude Code 和 Codex 都能复用。反过来，如果团队原来只有 `CLAUDE.md`，现在想让 Codex、Cursor 这类工具也读到同一套约定，可以把通用部分抽到 `AGENTS.md`，把 Claude Code 专属命令留在 `CLAUDE.md`。
+This keeps the shared rules in one place for both Claude Code and Codex. If your team has only `CLAUDE.md` and wants tools such as Codex and Cursor to use the same conventions, move the general instructions to `AGENTS.md` and keep Claude Code-specific commands in `CLAUDE.md`.
 
-我建议 `AGENTS.md` 只放 Agent 真会用到的信息：
+I recommend keeping `AGENTS.md` focused on information the Agent needs:
 
-- Codex 容易猜错的规则
-- 代码里读不出来的约定
-- 团队必须遵守的规范
-- 技术栈版本、常用命令、架构取舍、项目坑点
+- Rules Codex is likely to get wrong
+- Conventions that cannot be inferred from the code
+- Requirements the team must follow
+- Technology versions, common commands, architectural decisions, and project-specific pitfalls
 
-### 分层怎么放
+### Organize Instructions by Directory
 
-Codex 启动时会构建一条 instruction chain。当前官方文档里的发现顺序是：先读 Codex home 下的 `AGENTS.override.md`，如果没有再读 `AGENTS.md`；然后从项目根目录一路走到当前目录。每个目录按 `AGENTS.override.md`、`AGENTS.md`、fallback filenames 的顺序最多读取一个文件。越靠近当前工作目录的说明越靠后，也越容易影响本轮任务。
+At startup, Codex builds an instruction chain. The current documentation says it first reads `AGENTS.override.md` in the Codex home directory, or `AGENTS.md` if no override exists. It then walks from the project root to the current directory. In each directory, it reads at most one file, in this order: `AGENTS.override.md`, `AGENTS.md`, then fallback filenames. Instructions closer to the current working directory appear later in the chain and are more likely to affect the current task.
 
-`AGENTS.override.md` 适合临时覆盖同目录下的 `AGENTS.md`。如果你只是想短期改一条规则，不想动基础文件，可以用它。
+Use `AGENTS.override.md` to temporarily override the `AGENTS.md` in the same directory. It is useful for a short-term rule change when you do not want to edit the base file.
 
-还有个不太起眼但很实际的限制：`project_doc_max_bytes` 默认限制的是 Codex 合并后的项目指令大小，官方默认是 32 KiB。即便能调大，也不建议把规则写成大而全的 README。文件太胖以后，重要规则会被淹掉，Codex 也不一定更听话。
+One less obvious but practical limit: `project_doc_max_bytes` caps the size of the merged project instructions. The documented default is 32 KiB. Even if you can raise it, do not turn the file into an exhaustive README. Important rules can get buried in a long file, and adding more instructions does not guarantee better results.
 
-我的判断标准很简单：
+My rule of thumb is simple:
 
-> 这行删掉以后，Codex 会不会更容易犯错？
+> Would removing this line make Codex more likely to make a mistake?
 
-会，就留；不会，就删。
+If yes, keep it. If not, remove it.
 
-有些团队还会把 `AGENTS.md` 当成 Agent 的错误笔记。比如 Codex 在某类任务里反复改错测试命令、误动生成目录、忘记跑某个检查，就把原因和正确做法沉淀进去。这个思路是对的，但别把每次失败都原样粘进去。最好压成一条可执行规则，否则文件会很快变成流水账。
+Some teams also use `AGENTS.md` to record recurring Agent mistakes. If Codex repeatedly uses the wrong test command, edits generated files, or skips a check, record the cause and correct procedure. This can help, but do not paste every failure verbatim. Turn it into an actionable rule, or the file will quickly become a logbook.
 
-`/init` 可以生成一份初始 `AGENTS.md`，但它只能当草稿。自动生成的内容经常会把 README 里的东西搬进来，也可能猜错测试命令。生成后最好人工删一轮，只保留会影响 Codex 行为的部分。
+`/init` can generate a starter `AGENTS.md`, but treat it as a draft. Generated content often repeats the README or guesses the wrong test command. Review it and keep only instructions that affect Codex's behavior.
 
-还有一种更适合大项目的写法：让 `AGENTS.md` 只做目录。
+For large projects, `AGENTS.md` can serve only as an index.
 
-我在 [一文搞懂 Harness Engineering](https://javaguide.cn/ai/agent/harness-engineering.html) 里也提到过，OpenAI 自己的 `AGENTS.md` 大约只有 100 行，更像一个索引：先告诉 Agent 最关键的仓库规则，再指向 `docs/` 下面更细的设计文档、架构图、执行计划和质量评级。Agent 真的需要深入某个模块时，再顺着链接去读。
+As I noted in [Harness Engineering Explained](https://javaguide.cn/ai/agent/harness-engineering.html), OpenAI's own `AGENTS.md` is about 100 lines and works more like an index. It gives the Agent the most important repository rules, then points to more detailed design documents, architecture diagrams, execution plans, and quality assessments under `docs/`. The Agent follows those links when it needs more detail about a module.
 
-这就是渐进式披露。
+This is progressive disclosure.
 
-不要把所有背景一次性塞进上下文。根目录 `AGENTS.md` 放最关键的工作规则；模块级 `AGENTS.md` 放局部约定；更长的设计说明、迁移背景、架构取舍，放到单独文档里，通过链接让 Agent 按需加载。这样既不浪费上下文，也更容易维护。
+Do not load all project context at once. Put the most important work rules in the root `AGENTS.md`, local conventions in module-level `AGENTS.md` files, and longer design notes, migration history, and architecture decisions in separate documents. Link to them so the Agent can load details as needed. This saves context and makes the instructions easier to maintain.
 
-## `config.toml` 管客户端行为
+## `config.toml` Controls Client Behavior
 
-`AGENTS.md` 是项目说明，`config.toml` 是 Codex 客户端自己的配置。
+`AGENTS.md` documents the project; `config.toml` configures the Codex client.
 
-常见位置有几个：用户级配置在 `~/.codex/config.toml`，项目级配置在 `.codex/config.toml`，不同 profile 可以放到 `~/.codex/<profile>.config.toml`，系统级配置在 Unix 上通常是 `/etc/codex/config.toml`。
+Common locations include the user configuration at `~/.codex/config.toml`, project configuration at `.codex/config.toml`, profiles at `~/.codex/<profile>.config.toml`, and system configuration, usually `/etc/codex/config.toml` on Unix.
 
-按当前官方配置文档，优先级从高到低是：CLI flags 和 `--config` 覆盖、项目级 `.codex/config.toml`、通过 `--profile` 选择的 profile、用户级 `~/.codex/config.toml`、系统级 `/etc/codex/config.toml`、内置默认值。项目级配置只有在项目被信任后才会加载；如果项目被标记为 untrusted，项目内的 `.codex/` 配置、Hooks 和 Rules 都会被跳过。
+According to the current official configuration documentation, precedence from highest to lowest is: CLI flags and `--config` overrides, project-level `.codex/config.toml`, the profile selected with `--profile`, user-level `~/.codex/config.toml`, system-level `/etc/codex/config.toml`, and built-in defaults. Project configuration is loaded only for trusted projects. If a project is marked untrusted, its `.codex/` configuration, Hooks, and Rules are skipped.
 
-日常最值得关心的不是某个模型名，而是权限和沙箱。
+For everyday use, permissions and sandbox settings matter more than a specific model name.
 
 ```toml
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 ```
 
-这组配置比较适合日常开发：Codex 可以在工作区里改文件、跑验证，但遇到更敏感的命令会停下来问你。
+These settings suit everyday development: Codex can edit files and run checks in the workspace, but pauses to ask before running more sensitive commands.
 
-`approval_policy = "never"` 或者更宽的沙箱，不是不可以用，只是要放在隔离好的环境里。比如临时 worktree、容器、一次性脚本、CI、测试账号、最小权限凭据。为了少点几次确认就把权限全放开，真实项目里不太划算。
+`approval_policy = "never"` or a broader sandbox can be appropriate in an isolated environment, such as a temporary worktree, container, one-off script, CI job, test account, or setup with least-privilege credentials. Broadening permissions just to avoid a few confirmations is rarely worthwhile in a real project.
 
-Hooks 当前默认启用。如果你确实要关闭，再在 `config.toml` 里设置：
+Hooks are currently enabled by default. To disable them, set this in `config.toml`:
 
 ```toml
 [features]
 hooks = false
 ```
 
-这个方向也更符合安全直觉：别人仓库里带的配置、Rules、Hooks 都可能影响本地执行，不能默认全信。
+This follows a sensible security principle: configuration, Rules, and Hooks in someone else's repository can affect local execution, so do not trust them by default.
 
-这几个文件和机制的分工可以先这么记：
+The roles of these files and mechanisms can be summarized as follows:
 
-| 能力               | 主要解决什么                   | 适合放什么                                   |
-| ------------------ | ------------------------------ | -------------------------------------------- |
-| `AGENTS.md`        | Agent 工作说明                 | 项目规则、常用命令、目录约定、验收标准       |
-| `config.toml`      | Codex 客户端配置               | 模型、sandbox、approval、profile、MCP 等配置 |
-| Rules              | 命令级 allow / prompt / forbid | 哪些命令可放行、哪些必须确认、哪些禁止       |
-| Hooks              | 生命周期脚本                   | 检查、审计、格式化、上下文注入               |
-| sandbox / approval | 最终执行边界                   | 文件系统、网络、命令执行和人工确认策略       |
+| Mechanism          | What it controls                                | What belongs there                                                         |
+| ------------------ | ----------------------------------------------- | -------------------------------------------------------------------------- |
+| `AGENTS.md`        | Agent work instructions                         | Project rules, common commands, directory conventions, acceptance criteria |
+| `config.toml`      | Codex client configuration                      | Model, sandbox, approval, profile, and MCP settings                        |
+| Rules              | Command-level allow / prompt / forbid decisions | Which commands are allowed, require confirmation, or are forbidden         |
+| Hooks              | Lifecycle scripts                               | Checks, audits, formatting, and context injection                          |
+| sandbox / approval | Final execution boundaries                      | Filesystem, network, command execution, and confirmation policies          |
 
-## 权限、Rules 和 Hooks 各管各的
+## Permissions, Rules, and Hooks Have Different Roles
 
-Codex 的安全控制有好几层，刚上手时容易全写到 `AGENTS.md` 里。
+Codex has several layers of security controls. When getting started, it is easy to put all of them in `AGENTS.md`.
 
-这种做法不够可靠，因为 `AGENTS.md` 只是指令，不是执行层面的硬约束。
+That is not reliable because `AGENTS.md` provides instructions, not hard enforcement at runtime.
 
-`AGENTS.md` 是软提醒；sandbox 和 approval 管运行边界；Rules 管命令能不能跑；Hooks 管某个生命周期节点必须做什么。
+`AGENTS.md` provides guidance; the sandbox and approval policy define runtime boundaries; Rules determine whether a command can run; Hooks enforce actions at lifecycle points.
 
-比如“不要执行 `rm -rf`”，只写在 `AGENTS.md` 里，还是一条建议。写进 Rules，Codex 执行前就会被拦住。Rules 当前仍是实验能力，语法和成熟度可能变化；下面写法以当前 Codex Rules 文档为准。如果你的本机版本不支持，先用 `/permissions`、sandbox、approval 或 Hooks 做替代控制。
+For example, “Do not run `rm -rf`” in `AGENTS.md` is only a suggestion. A Rule can block Codex before execution. Rules are still experimental, and their syntax and maturity may change. The example below follows the current Codex Rules documentation. If your version does not support Rules, use `/permissions`, the sandbox, approval policies, or Hooks instead.
 
 ```python
 prefix_rule(
     pattern = ["rm", "-rf"],
     decision = "forbidden",
-    justification = "不要让 Codex 执行递归强删；请人工确认具体目录后手动处理。",
+    justification = "Do not let Codex recursively delete files; confirm the target directory and handle it manually.",
     match = [
         "rm -rf dist",
     ],
 )
 ```
 
-Hooks 解决的是另一类问题。
+Hooks address a different need.
 
-如果你希望 Codex 停止前跑一段校验脚本，或者在工具调用前检查 prompt 里有没有误贴 API key，或者编辑后自动跑格式化，就适合放到 Hook 里。Codex Hooks 当前支持的事件以官方文档为准，比如 `PreToolUse`、`PermissionRequest`、`PostToolUse`、`PreCompact`、`PostCompact`、`UserPromptSubmit`、`SessionStart`、`SubagentStart`、`SubagentStop`、`Stop` 等。
+Use a Hook when you want Codex to run a validation script before stopping, check a Prompt for accidentally pasted API keys before a tool call, or format files after editing. Check the official documentation for the current supported Codex Hook events, such as `PreToolUse`, `PermissionRequest`, `PostToolUse`, `PreCompact`, `PostCompact`, `UserPromptSubmit`, `SessionStart`, `SubagentStart`, `SubagentStop`, and `Stop`.
 
-不过 Hook 最后跑的还是本地脚本，写坏了一样麻烦。官方文档里也提到，非托管命令 Hook 需要 Review 和信任，变更后会重新等待确认。多个匹配同一事件的 command hooks 会并发启动，不能依赖 Hook 之间的执行顺序来做安全拦截。这个限制看着啰嗦，但挺有必要。
+Hooks ultimately run local scripts, so a broken script can still cause problems. The official documentation notes that unmanaged command Hooks require review and trust, and changes trigger another confirmation. Multiple command Hooks matching the same event start concurrently, so do not rely on their execution order for security enforcement. This restriction may seem strict, but it is useful.
 
-## 让 Codex 证明它真的改对了
+## Ask Codex to Prove the Change Works
 
-AI 写代码最麻烦的地方，不是它写不出来，而是它很会写“看起来合理”的代码。
+The hardest part of AI-generated code is not getting code; it is code that looks plausible but may be wrong.
 
-所以我很少只说“改完告诉我”。我更愿意把验证写进任务里：
+So I rarely say only “make the change and tell me.” I include verification steps in the task:
 
 ```text
-先补一个失败测试复现这个问题。
-确认测试失败后再改实现。
-改完运行相关测试。
-如果连续两三轮仍失败，停止并汇报当前阻塞点和证据，不要继续盲改。
+Add a failing test that reproduces the issue.
+Confirm that the test fails before changing the implementation.
+Run the relevant tests after the change.
+If they still fail after two or three attempts, stop and report the blocker and evidence instead of making more blind changes.
 ```
 
-这个顺序能挡住很多假修复。它必须先把问题复现出来，再改实现，最后用测试证明。
+This sequence prevents many false fixes. Codex must reproduce the issue, change the implementation, and verify the result with tests.
 
-Codex 结束时，我一般会看 3 件事：改了哪些文件，跑了哪些命令，还有哪些风险没覆盖。`/diff` 用来快速看改动，`/review` 可以审当前未提交改动、某个 commit，或者按你的自定义要求做检查。
+When Codex finishes, I usually check three things: which files changed, which commands it ran, and which risks remain. Use `/diff` for a quick review of the changes. `/review` can inspect current uncommitted changes, a commit, or a set of custom criteria.
 
-更细一点，AI Coding 的验证证据可以按这个清单要：
+For a more detailed review, ask for evidence using this checklist:
 
-- 失败测试先红后绿。
-- `git diff` 摘要和关键文件说明。
-- 测试、lint、build 命令和结果。
-- 没覆盖到的风险点。
-- 需要人工 Review 的重点。
-- 出问题时怎么回滚。
+- Show that the failing test fails before the fix and passes afterward.
+- Summarize `git diff` and explain the key files.
+- List the test, lint, and build commands with their results.
+- Identify risks that remain untested.
+- Highlight areas that need human review.
+- Explain how to roll back if something goes wrong.
 
-社区实践里有两个提示词也挺好用：
+These two prompts from community practice can also be useful:
 
 ```text
 Prove to me this works. Compare the diff against main and show the evidence.
@@ -243,67 +243,67 @@ Prove to me this works. Compare the diff against main and show the evidence.
 Knowing everything you know now, scrap this approach and propose the simpler implementation.
 ```
 
-前一句是让它拿证据，不要只写结论。后一句适合在第一版方案能跑但很绕的时候用。Codex 已经读过一轮上下文，再让它重新想一次，往往能把实现收得更干净。
+The first asks Codex for evidence instead of conclusions. Use the second when the first implementation works but feels convoluted. After reading the context once, Codex can often find a cleaner approach when asked to reconsider it.
 
-不过最后还是要自己看 diff。Codex 的总结不能代替 Review。它说“只改了测试”，你也得打开关键文件看一眼；它说“没有风险”，你也要自己想想事务、并发、权限、兼容性有没有漏。
+Still, inspect the diff yourself. Codex's summary does not replace review. If it says “only the tests changed,” open the key files and check. If it says “there are no risks,” consider whether it missed transactions, concurrency, permissions, or compatibility.
 
-## MCP 只接真正能省事的工具
+## Use MCP Only for Tools That Save Real Effort
 
-MCP（Model Context Protocol，模型上下文协议）像一套接线规范：**外部系统把能力封装成 MCP Server，支持 MCP 的 AI 应用连接上来之后，就能发现这些能力并调用。**
+MCP (Model Context Protocol) is like a wiring standard: **an external system exposes capabilities through an MCP server, and an MCP-enabled AI application can connect to discover and use them.**
 
-![MCP 图解](../../ai/images/shared/mcp-simple-diagram.png)
+![MCP overview](../../ai/images/shared/mcp-simple-diagram.png)
 
-真实开发里的上下文，不只在仓库里。
+In real development, useful context is not limited to the repository.
 
-报错在 Sentry，需求在 Linear，接口说明在内部文档，设计稿在 Figma，复现步骤在浏览器，PR 讨论在 GitHub。你当然可以一段段复制给 Codex，但次数多了就很烦。
+Errors may be in Sentry, requirements in Linear, API details in internal docs, designs in Figma, reproduction steps in a browser, and PR discussions on GitHub. You can copy each item to Codex, but doing that repeatedly gets tedious.
 
-MCP 适合解决这种问题。按当前 Codex MCP 文档，Codex 支持 STDIO MCP Server 和 Streamable HTTP Server，Streamable HTTP Server 支持 Bearer token 或 OAuth 认证。具体 server 类型、认证字段和配置方式，还是以当前 MCP 文档为准。
+MCP can help with this. According to the current Codex MCP documentation, Codex supports STDIO and Streamable HTTP servers; Streamable HTTP servers support Bearer token or OAuth authentication. Check the current MCP documentation for supported server types, authentication fields, and configuration details.
 
-比如添加 Context7 文档 MCP：
+For example, add the Context7 documentation MCP server:
 
 ```bash
 codex mcp add context7 -- npx -y @upstash/context7-mcp
 ```
 
-加完之后，可以在 TUI 里用 `/mcp` 看当前服务器状态。
+After adding it, use `/mcp` in the TUI to check the server status.
 
-这里有个取舍：**MCP 不是越多越好。**
+Keep in mind: **more MCP servers are not always better.**
 
-我更建议只接高频、明确、最好先只读的工具。经常查线上错误，就接 Sentry 或日志平台；经常改前端，就接浏览器、Playwright、Figma；经常处理 PR，就接 GitHub。带写权限、带 token、能操作外部系统的 MCP，先克制一点。
+Connect tools that you use often and whose purpose is clear; read-only tools are best to start with. If you often investigate production errors, connect Sentry or a logging platform. For frontend work, connect a browser, Playwright, or Figma. For PR work, connect GitHub. Be cautious with MCP servers that have write access, use tokens, or can change external systems.
 
-可以按风险分三层：
+You can group them into three risk levels:
 
-- 只读 MCP：查文档、查错误日志、读 Sentry、看 PR 信息。
-- 半写 MCP：创建 issue、评论 PR、生成草稿、更新非生产文档。
-- 高危 MCP：发版、改生产配置、删除资源、操作云平台或数据库。
+- **Read-only MCP:** Search documentation and error logs, read Sentry, and view PR details.
+- **Limited-write MCP:** Create issues, comment on PRs, generate drafts, or update non-production documentation.
+- **High-risk MCP:** Release software, change production settings, delete resources, or operate cloud platforms or databases.
 
-默认先接只读工具。半写工具要限定 scope，高危工具单独审批和审计，token 尽量用最小权限和短期凭据。
+Start with read-only tools. Limit the scope of tools with write access; require separate approval and auditing for high-risk tools. Use the least-privileged, shortest-lived tokens available.
 
-工具越多，Codex 的选择空间越大，误用概率也会变高。
+More tools give Codex more options and increase the chance of misuse.
 
-自己写 MCP Server 时，别只暴露工具参数。当前 Codex MCP 文档里提到，Codex 会读取 MCP 初始化时返回的 `instructions` 字段，并建议把最重要的说明放在前 512 个字符里。什么时候该用、什么时候不该用、返回内容怎么理解，这些都值得写清楚。
+When building an MCP server, document more than its tool parameters. The current Codex MCP documentation says Codex reads the `instructions` field returned during MCP initialization and recommends putting the most important guidance in the first 512 characters. Explain when to use the server, when not to use it, and how to interpret its output.
 
-## Skills 用来存重复流程
+## Use Skills to Capture Repeatable Workflows
 
-规则文件和 Skill 解决的问题不太一样。
+Rule files and Skills serve different purposes.
 
-规则文件更适合放这个项目一直要遵守什么，比如：技术栈版本、启动命令、目录结构、错误码格式、哪些文件不能碰。
+Rule files are better for conventions that always apply to a project, such as technology versions, startup commands, directory structure, error-code formats, and files that must not be changed.
 
-Skill 更适合放遇到某类任务时应该怎么做。比如做代码审查、写测试、改前端页面、网页调研、写技术文章，这些任务每次流程都差不多，就没必要每次都在聊天里重新提醒一遍。
+Skills are better for instructions on how to perform a type of task. If code review, writing tests, changing a frontend page, web research, or technical writing follows a repeatable process, you do not need to restate it in every conversation.
 
-小 G 之前写过两篇相关的文章：[Agent Skills 是什么？和 Prompt、MCP 到底差在哪？](https://javaguide.cn/ai/agent/skills.html) 和 [AI 编程 Skills 选型清单](https://javaguide.cn/ai-coding/practices/programmer-essential-skills.html)。
+I have also written two related articles: [What Are Agent Skills? How Do They Differ from Prompts and MCP?](https://javaguide.cn/ai/agent/skills.html) and [A Guide to Choosing AI Coding Skills](https://javaguide.cn/ai-coding/practices/programmer-essential-skills.html).
 
-简单说，Skill 就是一份能被 Agent 按需加载的任务说明。它不是插件，也不是 MCP 工具本身，而是把某类任务的流程、约束、检查项和踩坑经验写进 `SKILL.md`。
+In short, a Skill is a set of task instructions that an Agent can load when needed. It is neither a plugin nor an MCP tool. It records a task's workflow, constraints, checks, and lessons learned in a `SKILL.md` file.
 
-Skill 不像 `AGENTS.md` 那样把全文每次都塞进上下文。默认情况下，Codex 会先看到 Skill 的名称和描述，用来判断是否该调用；只有真正用到这个 Skill 时，`SKILL.md` 正文和相关资源才会进入上下文。
+Unlike `AGENTS.md`, a Skill does not load its full contents into context every time. By default, Codex sees the Skill's name and description to decide whether it applies. The body of `SKILL.md` and related resources enter the context only when the Skill is used.
 
-![Agent 执行链路](../../ai/images/shared/skills-agent-execution-link.png)
+![Agent execution flow](../../ai/images/shared/skills-agent-execution-link.png)
 
-这些重复性很强的流程，都适合沉淀成 Skill。比如写功能前固定走 TDD，先写失败测试再实现；代码审查时固定检查安全、事务、性能和边界条件；写技术文章时固定核对事实来源、引用、标题层级和 AI 味。
+Repeatable workflows are good candidates for Skills. For example, follow TDD by writing a failing test before implementing a feature; check security, transactions, performance, and edge cases during code review; or verify sources, citations, heading levels, and generic AI-sounding prose when writing technical articles.
 
-Skill 的价值就在这里：把重复提醒变成可复用的工作手册。Codex 的 Skills 和 Claude 的 Skills 在理念上接近，都是把重复任务流程沉淀成可复用能力；但两者的文件结构、触发方式、可用平台和安全模型，要分别以各自官方文档为准。
+That is the value of a Skill: it turns repeated reminders into a reusable playbook. Codex Skills and Claude Skills share this idea, but their file structures, activation methods, supported platforms, and security models differ. Check each product's official documentation.
 
-一份最小可用的 `SKILL.md`，可以先写到这个粒度：
+A minimal `SKILL.md` can start with this level of detail:
 
 ```markdown
 ---
@@ -332,25 +332,25 @@ Done when:
 - Each finding explains the risk and a concrete fix direction.
 ```
 
-现成 Skill 也可以直接用，比如 Superpowers 把 TDD、Code Review、Spec-Driven、Git Worktree、子 Agent 协作这些流程封装好了。
+You can also use existing Skills. For example, Superpowers packages workflows for TDD, code review, spec-driven development, Git Worktrees, and subagent collaboration.
 
-我在 [AI 编程 Skills 选型清单：需求澄清、TDD、代码审查与 UI 设计](https://javaguide.cn/ai-coding/practices/programmer-essential-skills.html) 这篇文章中有详细推荐。
+See my recommendations in [A Guide to Choosing AI Coding Skills: Requirements, TDD, Code Review, and UI Design](https://javaguide.cn/ai-coding/practices/programmer-essential-skills.html).
 
-但第三方 Skill 不要拿来就跑。`SKILL.md` 也是指令，里面如果带了危险命令、奇怪脚本、过宽权限，Agent 会照着做。装之前至少看一眼正文、`scripts/` 和 `references/`，确认它没有越权操作。
+Do not run third-party Skills without reviewing them. `SKILL.md` contains instructions, and an Agent may follow dangerous commands, unfamiliar scripts, or overly broad permissions. Before installing a Skill, inspect its contents and the `scripts/` and `references/` directories to make sure it does not exceed its intended scope.
 
-## Subagents 适合处理支线调查
+## Use Subagents for Parallel Investigations
 
-长任务里，最占上下文的往往不是最终方案，而是中间调查过程。
+In a long task, the investigation often uses more context than the final solution.
 
-比如排查一个复杂 Bug，Codex 可能要读几十个文件、翻一堆日志、试几个假设。最后真正有用的结论只有几条，但主会话已经被搜索结果和中间推理塞满了。
+For a complex bug, Codex may read dozens of files, inspect many logs, and test several hypotheses. The final useful findings may be brief, but the main conversation can fill up with search results and intermediate reasoning.
 
-这种时候可以用 Subagents。
+Subagents can help in this situation.
 
-按当前 Codex 文档，Subagent workflow 默认启用，但 Codex 只有在你明确要求时才会 spawn subagents。每个 subagent 都会执行自己的模型和工具工作，因此会比单 agent 更耗 token。
+According to the current Codex documentation, the subagent workflow is enabled by default, but Codex spawns subagents only when explicitly asked. Each subagent runs its own model and tool calls, so this uses more tokens than a single Agent.
 
-当前文档里列出的内置 agent 包括：`default` 做通用兜底，`worker` 更偏执行和修复，`explorer` 更偏只读探索。自定义 agent 配置格式、内置 agent 名称和可见入口都可能随版本变化，实际以 `/agent`、官方 Subagents 文档和本机版本为准。你也可以在 `~/.codex/agents/` 或 `.codex/agents/` 里放自定义 TOML Agent。
+The current documentation lists these built-in agents: `default` for general tasks, `worker` for implementation and fixes, and `explorer` for read-only exploration. Custom agent configuration formats, built-in names, and entry points may change by version; check `/agent`, the official Subagents documentation, and your local version. You can also define custom TOML agents under `~/.codex/agents/` or `.codex/agents/`.
 
-比较适合拆出去的任务长这样：
+Tasks that are good candidates for delegation look like this:
 
 ```text
 Review current branch against main.
@@ -359,83 +359,83 @@ Wait for all agents, then summarize findings with file references and severity.
 Do not modify files.
 ```
 
-这类任务边界清楚，也天然并行。
+The tasks have clear boundaries and can run in parallel.
 
-不适合拆的是很小的改动。改一个 DTO 字段还开 4 个 subagent，沟通成本可能比修改本身还高。我的习惯是：主会话负责目标、取舍和最后验收；subagent 只处理局部、明确、能独立汇报的事。
+Small changes are not good candidates. Starting four subagents to change one DTO field may cost more in coordination than the change itself. I use the main session to set goals, make tradeoffs, and perform final acceptance; subagents handle focused tasks they can report on independently.
 
-还有一点要留意：Subagents 继承当前 sandbox 策略。交互式 CLI 里，非当前 thread 的 approval 请求也可能弹出来，批准前看清楚是哪个 agent 发起的请求。
+One more point: subagents inherit the current sandbox policy. In the interactive CLI, approval requests from other threads may also appear. Check which agent made the request before approving it.
 
-## Scheduled Tasks 别一上来就全自动
+## Do Not Automate Everything with Scheduled Tasks Right Away
 
-Codex App 里原先常被称为 Automations 的能力，当前 UI 主要称为 **Scheduled Tasks**。它适合跑重复任务，比如每天扫近期提交、每周生成 release note、定时检查 CI 失败、汇总未处理告警。
+The Codex app feature previously known as Automations is now generally labeled **Scheduled Tasks** in the UI. It suits recurring work such as reviewing recent commits daily, generating release notes weekly, checking CI failures, or summarizing unresolved alerts.
 
-它不是拿来“自动修复一切”的。
+It is not meant to “automatically fix everything.”
 
-Scheduled Tasks 要区分运行方式。绑定当前任务的计划适合回到同一上下文继续检查；独立或项目级计划可以按 schedule 启动运行。项目级任务执行时，本地 Codex App 所在机器要开机，Codex 要运行，项目路径也要还在磁盘上。Git 仓库任务可以在本地项目里跑，也可以在 dedicated background worktree 里跑。Scheduled Tasks 使用默认 sandbox 设置，如果给了 full access，后台任务风险也会变高。
+Scheduled Tasks have different run modes. A task linked to the current session can resume checks in the same context; standalone or project-level tasks start on a schedule. For project-level tasks, the machine running the Codex app must be on, Codex must be running, and the project path must still exist. Git repository tasks can run in the local project or a dedicated background worktree. Scheduled Tasks use the default sandbox settings, so granting full access also increases the risk of background tasks.
 
-我觉得比较稳的顺序是：先把流程写成普通 prompt，手动跑几次；如果每次都在复制同一套步骤，就沉淀成 Skill；等 Skill 稳定之后，再做成 Scheduled Task。
+I recommend this order: write the workflow as a regular Prompt and run it manually a few times. If you keep repeating the same steps, turn them into a Skill. Once the Skill is stable, schedule it as a Scheduled Task.
 
-也就是说，Skill 定方法，Scheduled Task 定时间。任务 Prompt 也要写成可独立运行的 durable prompt，不要依赖上一次对话里的隐含上下文。
+In other words, a Skill defines the method, while a Scheduled Task defines when it runs. Write the task Prompt so it can run independently; do not rely on unstated context from a previous conversation.
 
-比如“每天自动修复所有 Bug 并提交 PR”，听起来很省事，真实项目里大概率制造一堆要人收拾的 diff。更靠谱的是“每天扫描最近 24 小时的 CI 失败并汇总原因”。先让它报告，再决定要不要改。
+For example, “automatically fix every bug and submit a PR each day” sounds convenient, but in a real project it will likely produce diffs that someone has to clean up. “Scan CI failures from the last 24 hours and summarize their causes” is more reliable. Start with reports, then decide whether to make changes.
 
-## 常用命令记几类就够了
+## Learn a Few Command Categories
 
-Codex CLI 的 slash command 会变，CLI、Codex App、IDE Extension 看到的命令也不一定完全一致。下面这些命令只作为当前使用经验，实际以你所在 surface 的 `/` 弹窗和 `/help` 为准。
+Codex CLI slash commands change, and the commands available in the CLI, Codex app, and IDE extension may differ. Treat the following as practical examples; check the `/` menu and `/help` in your environment for the current list.
 
-我一般记几类：
+I group them into a few categories:
 
-- 控制会话与计划：`/permissions`、`/model`、`/fast`、`/status`、`/clear`、`/plan`、`/goal`。
-- 看上下文、记忆和改动：`/diff`、`/compact`、`/copy`、`/memories`。
-- 扩展能力：`/agent`、`/mcp`、`/hooks`、`/plugins`、`/apps`、`/skills`。
-- Review 和恢复：`/review`、`/fork`、`/resume`。
+- Session and plan controls: `/permissions`, `/model`, `/fast`, `/status`, `/clear`, `/plan`, `/goal`.
+- Context, memory, and change review: `/diff`, `/compact`, `/copy`, `/memories`.
+- Extensions: `/agent`, `/mcp`, `/hooks`, `/plugins`, `/apps`, `/skills`.
+- Review and recovery: `/review`, `/fork`, `/resume`.
 
-命令只是入口，不是工作流本身。真正决定结果的，还是任务边界、项目规则、验证标准和权限设置。
+Commands are entry points, not workflows by themselves. Results still depend on task boundaries, project rules, verification criteria, and permissions.
 
-## 几个我常用的工作流
+## Workflows I Use
 
-接手陌生项目时，我会先让 Codex 当临时向导：
-
-```text
-不要修改文件。
-请解释用户登录流程，从 HTTP 请求进入到 session 写入为止。
-列出关键类、方法、配置项，以及你认为需要人工确认的隐式约束。
-```
-
-它总结出来的内容要抽查，尤其是跨服务调用、灰度配置、历史兼容逻辑。让它列文件和方法名，比只听自然语言总结可靠。
-
-修 Bug 时，不要只说“帮我修一下”。我更愿意把材料摊开：
+When I join an unfamiliar project, I first ask Codex to act as a guide:
 
 ```text
-下面是失败测试、错误日志和复现步骤。
-先定位根因，不要马上改代码。
-找到根因后，先补一个能复现的测试，再修改实现。
-完成后运行相关测试，并说明为什么这个测试能覆盖问题。
+Do not modify files.
+Explain the user login flow from the incoming HTTP request through the session write.
+List key classes, methods, configuration, and any implicit constraints that need human confirmation.
 ```
 
-如果它连续两轮都在同一个错误方向上打转，别继续追问“再试试”。停下来，让它复盘已经知道什么、哪些假设被证伪、下一步还缺什么证据。
+Spot-check its summary, especially cross-service calls, rollout configuration, and legacy compatibility logic. Asking it to list files and methods is more reliable than relying on a natural-language summary alone.
 
-TDD 对 AI 编程也很有用：
+When fixing a bug, do not just say “please fix it.” Provide the evidence:
 
 ```text
-先不要改实现。
-为 OrderStatusService 写一个失败测试，覆盖已支付订单重复回调时不能重复扣库存的场景。
-测试失败后再改实现，直到测试通过。
+Here are the failing tests, error logs, and reproduction steps.
+Find the root cause before changing code.
+After finding it, add a test that reproduces the issue, then update the implementation.
+Run the relevant tests and explain how they cover the issue.
 ```
 
-这个顺序能先固定期望行为，再让 Codex 去实现。
+If it goes in the wrong direction twice in a row, do not keep asking it to “try again.” Ask it to review what is known, which assumptions have been disproved, and what evidence is still missing.
 
-前端任务要更具体一点。别只说“现代、简洁、高级”，这类词太空，最后很容易得到紫色渐变、大圆角卡片、营销页布局。后台系统尤其容易翻车。
+TDD is useful for AI-assisted coding too:
 
 ```text
-这是后台运营页面，信息密度优先，不要营销页风格。
-使用现有 Ant Design 组件，不新增 UI 库。
-参考 src/pages/UserList.tsx 的筛选区、表格和分页布局。
-主色沿用 CSS 变量，不要新增渐变背景。
-完成后启动本地页面，检查移动端和桌面端是否有文本重叠。
+Do not change the implementation yet.
+Write a failing test for OrderStatusService to ensure that repeated callbacks for a paid order do not deduct inventory more than once.
+After confirming the test fails, update the implementation until it passes.
 ```
 
-PR Review 也一样，范围越窄越好：
+This order defines the expected behavior before Codex implements it.
+
+Be more specific with frontend tasks. Words like “modern,” “clean,” and “premium” are vague and can produce purple gradients, oversized rounded cards, or a marketing-page layout. Admin systems are especially prone to this.
+
+```text
+This is an operations dashboard. Prioritize information density; do not use a marketing-page style.
+Use the existing Ant Design components; do not add a UI library.
+Follow the filters, table, and pagination layout in src/pages/UserList.tsx.
+Use the existing CSS color variables; do not add gradient backgrounds.
+After implementation, start the page locally and check for text overlap on mobile and desktop.
+```
+
+The same applies to PR reviews: keep the scope narrow:
 
 ```text
 Review current branch against main.
@@ -444,51 +444,51 @@ Return findings ordered by severity with file and line references.
 Do not comment on style unless it can cause a bug.
 ```
 
-Codex 有时会把“可能更好”说得像“必须修”。Review 结果里真正要优先处理的，是会导致 Bug、安全问题、数据不一致、兼容性破坏和测试缺口的发现。
+Codex may present something that “could be better” as something that “must be fixed.” Prioritize review findings that can cause bugs, security issues, inconsistent data, compatibility breaks, or missing tests.
 
-## 安全边界
+## Security Boundaries
 
-Codex 能读文件、写文件、跑命令、接 MCP、调浏览器。能力越强，边界越要清楚。
+Codex can read and write files, run commands, connect to MCP, and control a browser. The more capable it is, the clearer its boundaries need to be.
 
-我建议至少守住几条线：
+At a minimum, I recommend these limits:
 
-- 不把生产数据库密码、云厂商长期 token、SSH key 暴露给 Codex。
-- 不让它默认读取 `.env`、证书、数据库 dump、生产日志和私钥目录。
-- 不让它直接操作生产环境，除非有临时凭据、审批和审计。
-- 不允许默认 push 到主分支或强推远端分支。
-- 不在无隔离环境里执行来源不明的远程脚本。
-- 不把写权限 MCP 一次性全接上。
+- Do not expose production database passwords, long-lived cloud tokens, or SSH keys to Codex.
+- Do not let it read `.env` files, certificates, database dumps, production logs, or private-key directories by default.
+- Do not let it operate directly on production unless temporary credentials, approval, and auditing are in place.
+- Do not allow pushes to the main branch or force pushes by default.
+- Do not run remote scripts from unknown sources in an unisolated environment.
+- Do not connect every write-enabled MCP server at once.
 
-真的要跑高权限自动化，就放进容器、临时账号、最小权限凭据和独立 worktree 里。AI 写错代码还能 Review，AI 拿错权限就麻烦多了。高权限自动化还要保留操作日志、命令输出、diff 和审批记录，并确保能快速回滚。
+If you need high-privilege automation, use a container, temporary account, least-privilege credentials, and a separate worktree. Incorrect AI-generated code can be reviewed; excessive permissions are much harder to contain. Keep operation logs, command output, diffs, and approval records, and make sure you can roll back quickly.
 
-## 容易翻车的地方
+## Common Failure Modes
 
-任务太虚，是最常见的问题。你只说“优化一下”，Codex 就只能自己猜，最后很可能搜一堆文件、改一堆边缘代码。把目标、上下文、限制和完成标准补齐，通常能少掉很多无效探索。
+Vague tasks are the most common problem. If you only say “improve this,” Codex has to guess and may search and change many unrelated files. Add the goal, context, constraints, and completion criteria to avoid wasted exploration.
 
-过度规划也会浪费时间。小改动不需要长计划，直接做、看 diff、跑验证就行。计划阶段（Plan）更适合跨模块、风险高、调用链不清楚的任务。
+Overplanning also wastes time. Small changes do not need a long plan; make the change, inspect the diff, and verify it. Plan mode is better for cross-module, high-risk tasks or tasks with unclear call chains.
 
-`AGENTS.md` 太胖时，效果反而会变差。规则很多，但真正关键的几条被冲淡了。它应该从真实错误里长出来：Codex 反复踩过的坑，写进去；代码里一眼能读出来的事实，删掉。
+An oversized `AGENTS.md` can make results worse. Too many rules dilute the important ones. Build it from real mistakes: add rules for recurring Codex errors and remove facts that are obvious from the code.
 
-工具和权限也别一次放太开。MCP 接太多，Codex 会选错；权限给太宽，后台任务能做的事就超出你的心理预期。高权限任务放隔离环境，日常开发保持最小权限。
+Do not grant too many tools or permissions at once. With too many MCP servers, Codex may choose the wrong one; broad permissions can let background tasks do more than expected. Isolate high-privilege tasks and use least privilege for everyday development.
 
-最后是验证缺失。代码看着合理，不代表行为对。测试、lint、构建、截图、日志，这些东西至少要有一种。长会话开始变慢、变飘时，就 `/compact`，必要时 `/fork` 或新开 thread。多 agent 也一样，主会话做决策，subagent 只处理局部研究。
+Finally, do not skip verification. Plausible-looking code may still behave incorrectly. Use at least one source of evidence, such as tests, lint, a build, screenshots, or logs. If a long session becomes slow or unfocused, use `/compact`, or start a `/fork` or new thread if needed. The same applies to multiple agents: the main session makes decisions, while subagents handle focused research.
 
-## 按风险分层使用
+## Use Codex According to Risk
 
-小任务不用复杂化。改文案、补日志、改一个明显的字段映射，直接让 Codex 执行，结束后看 `/diff`，跑对应单测就行。
+Keep small tasks simple. For copy changes, adding a log, or an obvious field mapping, let Codex make the change, then inspect `/diff` and run the relevant unit tests.
 
-中等任务先走计划阶段（Plan），再执行，再验证。比如改一个模块内的业务流程、补一个接口、重构一个局部服务，最好先让 Codex 读相关文件，列出修改点和验证命令，你确认后再动手。
+For medium-sized tasks, plan first, then implement and verify. For example, before changing a module's business flow, adding an endpoint, or refactoring a service, ask Codex to read the relevant files and list the changes and verification commands. Review its plan before implementation.
 
-高风险任务先只读分析。支付、权限、数据迁移、生产配置、并发一致性这类改动，先让 Codex 找调用链、风险点和测试缺口；人工确认关键判断后，再用 TDD 或小步提交推进。环境上尽量用 worktree、容器、临时凭据和更收紧的权限。
+For high-risk tasks, start with read-only analysis. For payments, permissions, data migrations, production configuration, or concurrency and consistency changes, ask Codex to identify call chains, risks, and missing tests. After a person verifies the key decisions, proceed with TDD or small commits. Use a worktree, container, temporary credentials, and tighter permissions where possible.
 
-自动化任务也别一步到位。先手动跑通一两次，再沉淀成 Skill；等 Skill 稳定，再做成 Scheduled Task。高权限自动化要额外保留审计记录和回滚方案。
+Do not automate a task all at once. Run it manually once or twice, turn the process into a Skill, and schedule it only after the Skill is stable. High-privilege automation also needs audit records and a rollback plan.
 
-## 总结
+## Summary
 
-Codex 用顺之后，感觉会从“让 AI 写代码”变成“调度一个能自己读仓库、跑命令、交付 diff 的工程助手”。
+With a good workflow, Codex feels less like “asking AI to write code” and more like coordinating an engineering assistant that can inspect a repository, run commands, and deliver a diff.
 
-但越是这样，越不能只盯着 prompt。
+That makes it even more important to look beyond the Prompt.
 
-任务边界、项目规则、权限控制、验证标准、外部工具、可复用流程，这些东西一起决定了 Codex 最后交出来的质量。我的建议还是那句：先让它在一个小范围里稳定做对，再慢慢把边界往外推。
+Task boundaries, project rules, permissions, verification criteria, external tools, and reusable workflows all affect the quality of Codex's work. My advice remains the same: first make it reliable on a small scope, then expand its scope gradually.
 
-别一上来就全自动。
+Do not automate everything from the start.

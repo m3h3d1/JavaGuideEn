@@ -1,5 +1,5 @@
 ---
-title: mattpocock/skills: Four AI Coding Skills I Recommend
+title: "mattpocock/skills: Four AI Coding Skills I Recommend"
 description: A practical guide to mattpocock/skills—grilling, research, diagnosing-bugs, and code-review—with project examples showing when and how to use them.
 category: AI Coding in Practice
 tag:

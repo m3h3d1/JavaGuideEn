@@ -1,6 +1,6 @@
 ---
 title: A Guide to Code Refactoring
-description: A practical guide to refactoring: what it is, its principles, how to recognize code smells, and common refactoring techniques.
+description: "A practical guide to refactoring: what it is, its principles, how to recognize code smells, and common refactoring techniques."
 category: Code Quality
 head:
   - - meta

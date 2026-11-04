@@ -1,28 +1,28 @@
 ---
-title: Java 必读源码系列 | Dubbo + Netty + Spring Boot 源码解析
-description: Java 主流框架源码解析专栏，涵盖 Dubbo、Netty、Spring Boot 等框架的源码深入解读，助力后端开发者理解底层原理与设计思想。
-category: 知识星球
+title: Java Source Code Reading Series | Dubbo, Netty, and Spring Boot
+description: An in-depth look at the source code of major Java frameworks, including Dubbo, Netty, and Spring Boot, to help backend developers understand their internals and design.
+category: Knowledge Planet
 star: true
 head:
   - - meta
     - name: keywords
-      content: Java源码,源码解析,Dubbo源码,Netty源码,Spring Boot源码,框架源码,源码阅读,Java源码学习,开源框架源码
+      content: Java source code,source code analysis,Dubbo source code,Netty source code,Spring Boot source code,framework source code,source code reading,learning Java source code,open-source framework internals
 ---
 
-## 介绍
+## Introduction
 
-**《Java 必读源码系列》** 是我的[知识星球](../about-the-author/zhishixingqiu-two-years.md)的一个内部小册，目前已经整理了 Dubbo 2.6.x、Netty 4.x、Spring Boot 2.1 等框架/中间件的源码。后续还会整理更多值得阅读的优质源码，持续完善中。
+**The Java Source Code Reading Series** is an exclusive booklet in my [Knowledge Planet](../about-the-author/zhishixingqiu-two-years.md) community. It currently covers the source code of frameworks and middleware such as Dubbo 2.6.x, Netty 4.x, and Spring Boot 2.1. More worthwhile source code will be added over time.
 
-结构清晰，内容详细，非常适合想要深入学习框架/中间件源码的同学阅读。
+The material is clearly structured and detailed, making it suitable for anyone who wants to study framework and middleware internals.
 
-## 内容概览
+## Contents
 
 ![](./images/shared/image-20220621091832348.png)
 
 <!-- @include: @planet2.snippet.md -->
 
-## 更多专栏
+## More Series
 
-除了《Java 必读源码系列》之外，我的知识星球还有 [《Java 面试指北》](https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247536358&idx=2&sn=a6098093107d596d3c426c9e71e871b8&chksm=cea1012df9d6883b95aab61fd815a238c703b2d4b36d78901553097a4939504e3e6d73f2b14b&token=710779655&lang=zh_CN#rd)、[《后端面试高频系统设计&场景题》](https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247536451&idx=1&sn=5eae2525ac3d79591dd86c6051522c0b&chksm=cea10088f9d6899e0aee4146de162a6de6ece71ba4c80c23f04d12b1fd48c087a31bc7d413f4&token=710779655&lang=zh_CN#rd)、[《手写 RPC 框架》](./handwritten-rpc-framework.md)等多个专栏。进入星球之后，统统都可以免费阅读。
+In addition to the Java Source Code Reading Series, my Knowledge Planet community has several other series, including [_Java Interview Handbook_](https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247536358&idx=2&sn=a6098093107d596d3c426c9e71e871b8&chksm=cea1012df9d6883b95aab61fd815a238c703b2d4b36d78901553097a4939504e3e6d73f2b14b&token=710779655&lang=zh_CN#rd), [_High-Frequency System Design and Scenario Questions for Backend Interviews_](https://mp.weixin.qq.com/s?__biz=Mzg2OTA0Njk0OA==&mid=2247536451&idx=1&sn=5eae2525ac3d79591dd86c6051522c0b&chksm=cea10088f9d6899e0aee4146de162a6de6ece71ba4c80c23f04d12b1fd48c087a31bc7d413f4&token=710779655&lang=zh_CN#rd), and [_Build an RPC Framework from Scratch_](./handwritten-rpc-framework.md). All are available to members at no extra cost.
 
 ![](./images/shared/image-20220211231206733.png)

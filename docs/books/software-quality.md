@@ -1,132 +1,116 @@
 ---
-title: 软件质量必读经典书籍
-description: 软件质量与代码整洁书籍推荐，重构、Clean Code、Effective Java、架构整洁之道等经典书籍，提升代码质量和架构设计能力。
-category: 计算机书籍
+title: Recommended Books on Software Quality
+description: Books on refactoring, clean code, Effective Java, software architecture, and other ways to improve code quality and design.
+category: Computer Science Books
 icon: "mdi:check-network-outline"
 head:
   - - meta
     - name: keywords
-      content: 软件质量书籍精选
+      content: software quality books
 ---
 
-下面推荐都是我看过并且我觉得值得推荐的书籍。
+The books below are ones I have read and recommend.
 
-不过，这些书籍都比较偏理论，只能帮助你建立一个写优秀代码的意识标准。 如果你想要编写更高质量的代码、更高质量的软件，还是应该多去看优秀的源码，多去学习优秀的代码实践。
+Most focus on theory. They can help you build good habits, but improving code and software also requires studying well-written source code and sound engineering practices.
 
-## 代码整洁之道
+## Clean Code
 
-**[《重构》](https://book.douban.com/subject/30468597/)**
+**[Refactoring](https://book.douban.com/subject/30468597/)**
 
 ![](https://oss.javaguide.cn/github/javaguide/books/20210328174841577.png)
 
-必看书籍！无需多言。编程书籍领域的瑰宝。
+Martin Fowler's _Refactoring_ is a software development classic. The second edition is available, and the book rewards repeated reading.
 
-世界顶级、国宝级别的 Martin Fowler 的书籍，可以说是软件开发领域最经典的几本书之一。目前已经出了第二版。
-
-这是一本值得你看很多遍的书籍。
-
-**[《Clean Code》](https://book.douban.com/subject/4199741/)**
+**[Clean Code](https://book.douban.com/subject/4199741/)**
 
 ![](https://oss.javaguide.cn/github/javaguide/books/20210328174824891.png)
 
-《Clean Code》是 Bob 大叔的一本经典著作，强烈建议小伙伴们一定要看看。
+Uncle Bob (Robert C. Martin) explains his approach to clean code in this influential book.
 
-Bob 大叔将自己对整洁代码的理解浓缩在了这本书中，真可谓是对后生的一大馈赠。
-
-**[《Effective Java 》](https://book.douban.com/subject/30412517/)**
+**[Effective Java](https://book.douban.com/subject/30412517/)**
 
 ![](https://oss.javaguide.cn/github/javaguide/books/82d510c951384383b325080428af6c0a.png)
 
-《Effective Java 》这本书是 Java 领域国宝级别的书，非常经典。Java 程序员必看！
+_Effective Java_ is a Java classic. Its practical guidelines address problems developers encounter regularly and help them write clearer, more robust, and more efficient code. Each item is presented as a short, self-contained discussion with code examples.
 
-这本书主要介绍了在 Java 编程中很多极具实用价值的经验规则，这些经验规则涵盖了大多数开发人员每天所面临的问题的解决方案。这篇文章能够非常实际地帮助你写出更加清晰、健壮和高效的代码。本书中的每条规则都以简短、独立的小文章形式出现，并通过例子代码加以进一步说明。
-
-**[《代码大全》](https://book.douban.com/subject/1477390/)**
+**[Code Complete](https://book.douban.com/subject/1477390/)**
 
 ![](https://oss.javaguide.cn/github/javaguide/books/20210314173253221.png)
 
-其实，《代码大全（第 2 版）》这本书我本身是不太想推荐给大家了。但是，看在它的豆瓣评分这么高的份上，还是拿出来说说吧！
+The second edition of _Code Complete_ is a rewrite of the first and remains a classic. I am hesitant to recommend it because some of its content feels abstract and may not help every developer in practice.
 
-这也是一本非常经典的书籍，第二版对第一版进行了重写。
+For improving code quality, I prefer _Clean Code_ and _The Art of Readable Code_. Studying high-quality source code and engineering practices is also essential.
 
-我简单地浏览过全书的内容，感觉内容总体比较虚，对于大部分程序员的作用其实不大。如果你想要切实地提高自己的代码质量，《Clean Code》和 《编写可读代码的艺术》我觉得都要比《代码大全》这本书更好。
-
-不过，最重要的还是要多看优秀的源码，多学习优秀的代码实践。
-
-**[《编写可读代码的艺术》](https://book.douban.com/subject/10797189/)**
+**[The Art of Readable Code](https://book.douban.com/subject/10797189/)**
 
 ![](https://oss.javaguide.cn/github/javaguide/books/20210314175536443.png)
 
-《编写可读代码的艺术》这本书要表达的意思和《Clean Code》很像，你看它俩的目录就可以看出来了。
+This book has goals similar to _Clean Code_, as you can see from their tables of contents.
 
-![](https://oss.javaguide.cn/github/javaguide/books/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzM0MzM3Mjcy,size_16,color_FFFFFF,t_70-20230309230739963.png)
+![](https://oss.javaguide.cn/github/javaguide/books/watermark,type=ZmFuZ3poZW5naGVpdGk,shadow_10,text=aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzM0MzM3Mjcy,size_16,color_FFFFFF,t_70-20230309230739963.png)
 
-在我看来，如果你看过 《Clean Code》 的话，就不需要再看这本书了。当然，如果你有时间和精力，也可以快速过一遍。
+If you have read _Clean Code_, you may not need this one. If you have time, it is still worth a quick read.
 
-另外，我这里还要推荐一个叫做 **[write-readable-code](https://github.com/biezhi/write-readable-code)** 的仓库。这个仓库的作者免费分享了一系列基于《编写可读代码的艺术》这本书的视频。这一系列视频会基于 Java 语言来教你如何优化咱们的代码。
+The [write-readable-code repository](https://github.com/biezhi/write-readable-code) also shares a free series of videos based on _The Art of Readable Code_. The examples use Java to show how to improve code.
 
-在实践中学习的效果肯定会更好！推荐小伙伴们都抓紧学起来啊！
+Practice is an effective way to learn.
 
-![](https://oss.javaguide.cn/github/javaguide/books/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzM0MzM3Mjcy,size_16,color_FFFFFF,t_70-20230309230743258.png)
+![](https://oss.javaguide.cn/github/javaguide/books/watermark,type=ZmFuZ3poZW5naGVpdGk,shadow_10,text=aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzM0MzM3Mjcy,size_16,color_FFFFFF,t_70-20230309230743258.png)
 
-## 程序员职业素养
+## Professionalism
 
-**[《The Clean Coder》](https://book.douban.com/subject/26919457/)**
+**[The Clean Coder](https://book.douban.com/subject/26919457/)**
 
 ![](https://oss.javaguide.cn/github/javaguide/books/20210314191210273.png)
 
-《 The Clean Coder》是 Bob 大叔的又一经典著作。
+This is another book by Uncle Bob.
 
-《Clean Code》和《 The Clean Coder》这两本书在国内都翻译为 《代码整洁之道》，我觉得这个翻译还是不够优雅的。
+Both _Clean Code_ and _The Clean Coder_ are translated into Chinese under the same title, “The Way of Clean Code.” Their subjects are quite different. _Clean Code_ focuses on code quality; _The Clean Coder_ discusses professional practice, including how to work responsibly, say no, manage time, and handle stress.
 
-另外，两者的内容差异也很大。《Clean Code》这本书从代码层面来讲解如何提高自己的代码质量。而《The Clean Coder》这本书则是从如何成为一名更优秀的开发者的角度来写的，比如这书会教你如何在自己的领域更专业、如何说不、如何做时间管理、如何处理压力等等。
+## Clean Architecture
 
-## 架构整洁之道
-
-**[《架构整洁之道》](https://book.douban.com/subject/30333919/)**
+**[Clean Architecture](https://book.douban.com/subject/30333919/)**
 
 ![](https://oss.javaguide.cn/github/javaguide/books/2021031412342771.png)
 
-你没看错，《架构整洁之道》这本书又是 Bob 大叔的经典之作。
+This is another book by Uncle Bob. Reading it can deepen your understanding of programming, software design, and architecture.
 
-这本书我强烈安利！认真读完之后，我保证你对编程本质、编程语言的本质、软件设计、架构设计可以有进一步的认识。
+Many books and courses draw on _Clean Architecture_, a widely read work on software architecture.
 
-国内的很多书籍和专栏都借鉴了《架构整洁之道》 这本书。毫不夸张地说，《架构整洁之道》就是架构领域最经典的书籍之一。
+The author writes:
 
-正如作者说的那样：
-
-> 如果深入研究计算机编程的本质，我们就会发现这 50 年来，计算机编程基本没有什么大的变化。编程语言稍微进步了一点，工具的质量大大提升了，但是计算机程序的基本构造没有什么变化。
+> If we study the nature of computer programming, we find that little has changed in the last 50 years. Languages have improved somewhat and tools have improved considerably, but the basic structure of computer programs has not changed.
 >
-> 虽然我们有了新的编程语言、新的编程框架、新的编程范式，但是软件架构的规则仍然和 1946 年阿兰·图灵写下第一行机器代码的时候一样。
+> We have new languages, frameworks, and programming paradigms, but the rules of software architecture remain the same as when Alan Turing wrote the first line of machine code in 1946.
 >
-> 这本书就是为了把这些永恒不变的软件架构规则展现出来。
+> This book presents those enduring rules of software architecture.
 
-## 项目管理
+## Project Management
 
-**[《人月神话》](https://book.douban.com/subject/1102259/)**
+**[The Mythical Man-Month](https://book.douban.com/subject/1102259/)**
 
 ![](https://oss.javaguide.cn/2021/03/8ece325c-4491-4ffd-9d3d-77e95159ec40.png)
 
-这本书主要描述了软件开发的基本定律：**一个需要 10 天才能干完的活，不可能让 10 个人在 1 天干完！**
+The book discusses a basic constraint in software development: **a task that takes 10 days cannot be completed by 10 people in one day.**
 
-看书名的第一眼，感觉不像是技术类的书籍。但是，就是这样一个看似和编程不沾边的书名，却成了编程领域长久相传的经典。
+Despite its title, this is a long-standing classic in software development.
 
-**这本书对于现代软件尤其是复杂软件的开发的规范化有深刻的意义。**
+It offers useful lessons for organizing work on modern software, especially complex systems.
 
-**[《领域驱动设计:软件核心复杂性应对之道》](https://book.douban.com/subject/5344973/)**
+**[Domain-Driven Design: Tackling Complexity in the Heart of Software](https://book.douban.com/subject/5344973/)**
 
 ![](https://oss.javaguide.cn/2021/03/7e80418d-20b1-4066-b9af-cfe434b1bf1a.png)
 
-这本领域驱动设计方面的经典之作一直被各种推荐，但是我还来及读。
+This is a frequently recommended classic on domain-driven design, though I have not read it yet.
 
-## 其他
+## Other Recommendations
 
-- [《代码的未来》](https://book.douban.com/subject/24536403/)：这本书的作者是 Ruby 之父松本行弘，算是一本年代比较久远的书籍（13 年出版），不过，还是非常值得一读。这本书的内容主要介绍是编程/编程语言的本质。我个人还是比较喜欢松本行弘的文字风格，并且，你看他的文章也确实能够有所收获。
-- [《深入浅出设计模式》](https://book.douban.com/subject/1488876/)：比较有趣的风格，适合设计模式入门。
-- [《软件架构设计:大型网站技术架构与业务架构融合之道》](https://book.douban.com/subject/30443578/)：内容非常全面。适合面试前突击一些比较重要的理论知识，也适合拿来扩充/完善自己的技术广度。
-- [《微服务架构设计模式》](https://book.douban.com/subject/33425123/)：这本书是世界十大软件架构师之一、微服务架构先驱 Chris Richardson 亲笔撰写，豆瓣评分 9.6。示例代码使用 Java 语言和 Spring 框架。帮助你设计、实现、测试和部署基于微服务的应用程序。
+- [The Future of Code](https://book.douban.com/subject/24536403/): By Yukihiro Matsumoto, creator of Ruby. Published in 2013, it explores programming and the nature of programming languages. I enjoy Matsumoto's writing and find his articles informative.
+- [Head First Design Patterns](https://book.douban.com/subject/1488876/): An approachable introduction to design patterns.
+- [Software Architecture Design: Integrating Large-Scale Website and Business Architecture](https://book.douban.com/subject/30443578/): A broad guide to important architectural concepts. It can help with interview review and broaden your understanding.
+- [Microservices Patterns](https://book.douban.com/subject/33425123/): Chris Richardson's guide to designing, implementing, testing, and deploying microservices. The examples use Java and Spring. Douban rated it 9.6 when this article was written.
 
-最后再推荐两个相关的文档：
+Two useful references:
 
-- **阿里巴巴 Java 开发手册**：<https://github.com/alibaba/p3c>
-- **Google Java 编程风格指南**：<http://www.hawstein.com/posts/google-java-style.html>
+- **Alibaba Java Development Guidelines**: <https://github.com/alibaba/p3c>
+- **Google Java Style Guide**: <http://www.hawstein.com/posts/google-java-style.html>

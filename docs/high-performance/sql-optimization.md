@@ -1,183 +1,183 @@
 ---
-title: 常见SQL优化手段总结
-description: 本文系统总结常见的 SQL 优化手段，涵盖慢 SQL 定位与分析（慢查询日志、EXPLAIN、Performance Schema）、索引优化策略、查询重写技巧、分页优化等实战方法，帮助你快速提升数据库查询性能。
-category: 高性能
+title: Common SQL Optimization Techniques
+description: A practical guide to SQL optimization, covering slow-query analysis, indexes, query rewrites, pagination, and Performance Schema.
+category: High Performance
 head:
   - - meta
     - name: keywords
-      content: SQL优化,慢SQL,EXPLAIN执行计划,索引优化,MySQL优化,查询优化,分页优化,Performance Schema
+      content: SQL optimization,slow queries,EXPLAIN plans,index optimization,MySQL,query optimization,pagination,Performance Schema
 ---
 
-SQL 慢了，不要一上来就套“加索引”“不要 `SELECT *`”这类规则。先把慢 SQL 找出来，看它慢在扫描行数、排序、回表、锁等待，还是调用频次太高。执行计划和业务访问方式对上之后，再决定是改索引、改 SQL、改表结构，还是把查询挪到缓存、搜索引擎或离线报表里。
+When SQL is slow, do not immediately apply rules such as "add an index" or "avoid `SELECT *`." First identify the slow query and determine whether it is scanning too many rows, sorting, performing table lookups, waiting on locks, or running too frequently. Compare the execution plan with the application's access pattern, then decide whether to change the index, query, or schema—or move the workload to a cache, search engine, or offline report.
 
-排查时可以按这个顺序来：
+Use this sequence to investigate:
 
-1. 先确认慢的是平均耗时、P99，还是偶发超时；是某条 SQL 慢，还是数据库整体负载高。
-2. 通过慢查询日志、APM、数据库监控定位高频慢 SQL。
-3. 看执行计划里的 `type`、`key`、`rows`、`filtered`、`Extra`，确认有没有全表扫描、回表过多、临时表或文件排序。
-4. 再结合业务访问方式处理：少查字段、补索引、改 SQL、拆大事务、限制分页深度。
-5. 最后用相同数据量和相同条件复测，别只在小数据集上验证。
+1. Identify whether the issue is average latency, P99, or occasional timeouts, and whether one query or the database as a whole is slow.
+2. Find frequent slow queries with the slow query log, APM, or database monitoring.
+3. Inspect `type`, `key`, `rows`, `filtered`, and `Extra` in the execution plan for full table scans, excessive lookups, temporary tables, or filesorts.
+4. Choose a fix that fits the access pattern: select fewer columns, add an index, rewrite the query, split large transactions, or limit pagination depth.
+5. Retest with the same data volume and conditions; do not validate only against a small dataset.
 
-## 避免使用 SELECT \*
+## Avoid `SELECT *`
 
-- `SELECT *` 可能增加 I/O、网络传输、反序列化和应用内存开销，尤其是大字段（如 varchar、blob、text）。
-- `SELECT *` 会降低覆盖索引命中的机会。
-- `SELECT <字段列表>` 可减少表结构变更带来的影响。
+- `SELECT *` can increase I/O, network transfer, deserialization, and application memory costs, especially with large `VARCHAR`, `BLOB`, or `TEXT` columns.
+- `SELECT *` makes a covering-index lookup less likely.
+- Selecting an explicit column list reduces the impact of schema changes.
 
-## 谨慎使用复杂 Join，不要一刀切禁止 Join
+## Use Complex Joins Carefully; Do Not Ban Joins Categorically
 
-阿里巴巴《Java 开发手册》中有这样一段描述：
+Alibaba's _Java Development Manual_ states:
 
-> 【强制】超过三个表禁止 join。需要 join 的字段，数据类型保持绝对一致;多表关联查询时，保证被关联 的字段需要有索引。
+> **Required:** Do not join more than three tables. Columns used in a join must have exactly matching data types. In multi-table joins, ensure that the joined columns are indexed.
 
-![尽量避免多表做 join](./images/shared/alibaba-java-development-handbook-multi-table-join.png)
+![Avoid joining many tables where possible](./images/shared/alibaba-java-development-handbook-multi-table-join.png)
 
-Join 是关系型数据库的基本能力，不应该简单理解成低效。单库内，如果关联字段类型一致、索引合适、返回数据量可控，Join 往往比应用层多次查询再组装更清晰，也更容易保证结果一致。
+Joins are a fundamental relational-database feature and are not inherently inefficient. Within one database, when join-column types match, indexes are appropriate, and the result size is manageable, a join is often clearer and more consistent than issuing several queries and assembling the results in the application.
 
-真正需要谨慎的是复杂 Join：
+Use extra care with complex joins when:
 
-1. 关联字段没有索引，或者字段类型不一致；
-2. Join 表过多，执行计划复杂；
-3. 返回数据量过大，回表、临时表或文件排序成本高；
-4. 跨库、跨分片 Join，需要跨节点查询、合并和排序；
-5. 未来明确要按这个查询路径做分库分表。
+1. Join columns lack indexes or use different data types.
+2. Many tables are joined, making the execution plan complex.
+3. The result is large, increasing the cost of table lookups, temporary tables, or filesorts.
+4. A cross-database or cross-shard join requires querying, merging, and sorting across nodes.
+5. The query path is expected to use database or table sharding later.
 
-MySQL 8.0.20 之后，Block Nested-Loop Join 已被 Hash Join 替代。分析 Join 性能时，不要只背旧版 Join 算法，应该看 `EXPLAIN` / `EXPLAIN ANALYZE` 的真实执行计划，重点关注 `type`、`key`、`rows`、`filtered`、`Extra`，以及是否出现临时表、文件排序或大量回表。
+Since MySQL 8.0.20, Hash Join has replaced Block Nested-Loop Join. Do not rely only on older descriptions of join algorithms. Inspect the actual plan with `EXPLAIN` or `EXPLAIN ANALYZE`, focusing on `type`, `key`, `rows`, `filtered`, `Extra`, temporary tables, filesorts, and excessive table lookups.
 
-实际业务场景里，如果查询跨服务、跨库，或者将来要分库分表，可以考虑把 Join 拆成多次单表查询并在业务层组装。但这不是无条件更快，它会增加网络往返、N+1 查询、应用内存占用和一致性问题，需要结合查询频率、数据量、网络开销和一致性要求判断。
+If a query crosses services or databases, or the data may be sharded later, consider replacing the join with separate queries and assembling the results in the application. This is not always faster: it can add network round trips, N+1 queries, application memory use, and consistency issues. Decide based on query frequency, data volume, network cost, and consistency requirements.
 
-另一种常见做法是**数据冗余**：把高频查询需要的少量稳定字段冗余到主表或宽表里，减少运行时关联。冗余会带来一致性和维护成本，适合表结构比较稳定、读多写少、查询路径很明确的场景。
+Another common approach is **data denormalization**: copy a small number of stable fields needed by frequent queries into a primary or wide table to reduce runtime joins. Denormalization adds consistency and maintenance costs, so it suits stable schemas with read-heavy workloads and well-defined query paths.
 
-## 深度分页优化
+## Optimize Deep Pagination
 
-深度分页问题的根本原因在于：当 `LIMIT` 的偏移量过大时，MySQL 需要扫描并跳过大量记录才能获取目标数据，查询优化器可能放弃索引而选择全表扫描。此时即使有索引，也无法避免大量的回表操作，导致查询性能急剧下降。
+Deep pagination becomes expensive because a large `LIMIT` offset makes MySQL scan and skip many rows before reaching the requested page. The optimizer may choose a full table scan over an index, and even when it uses an index, many table lookups can sharply degrade performance.
 
-本文介绍了四种常见的深度分页优化方案，各方案的特点及适用场景对比如下：
+The table compares four common approaches to deep pagination:
 
-| 优化方案     | 核心思路                                                            | 适用场景                       | 限制                                             |
-| ------------ | ------------------------------------------------------------------- | ------------------------------ | ------------------------------------------------ |
-| **范围查询** | 记录上一页最后一条 ID，通过 `WHERE id > last_id LIMIT n` 获取下一页 | 按 ID 排序、允许游标式翻页     | 不支持跳页、非 ID 排序需使用联合游标             |
-| **子查询**   | 先通过子查询获取起始主键，再根据主键过滤                            | 需要支持传统 OFFSET 翻页       | 子查询可能产生临时表、依赖排序字段的索引         |
-| **延迟关联** | 用 `INNER JOIN` 将分页转移到主键索引，减少回表                      | 大数据量分页、需要传统翻页逻辑 | SQL 相对复杂                                     |
-| **覆盖索引** | 建立包含查询字段的联合索引，避免回表                                | 查询字段固定、可建立合适索引   | 字段较多时索引维护成本高、大结果集可能走全表扫描 |
+| Approach           | Core idea                                                                                         | Suitable use                                             | Limitations                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| **Range query**    | Record the last ID on the previous page and fetch the next page with `WHERE id > last_id LIMIT n` | ID-ordered results and cursor-style pagination           | Cannot jump to an arbitrary page; other sort orders need a composite cursor                   |
+| **Subquery**       | Use a subquery to get the starting primary key, then filter by that key                           | Traditional `OFFSET` pagination is required              | May create a temporary table and depends on an index for the sort columns                     |
+| **Deferred join**  | Paginate through the primary-key index with an `INNER JOIN` to reduce table lookups               | Large datasets that require traditional pagination       | More complex SQL                                                                              |
+| **Covering index** | Create a composite index containing the queried columns to avoid table lookups                    | Query columns are fixed and a suitable index is feasible | More columns increase index-maintenance cost; large result sets may still lead to a full scan |
 
-选方案时，先看产品交互能不能改。如果可以接受“下一页”式浏览，范围查询，也就是游标分页，通常最稳，社交媒体 feed 流、无限滚动这类场景都适合这种方式。
+Choose an approach based first on whether the product interaction can change. If users can browse with a "next page" flow, range queries (cursor pagination) are usually the most reliable. They suit social-media feeds and infinite scrolling.
 
-如果必须保留 `LIMIT offset, size` 和跳页，再考虑延迟关联、覆盖索引或搜索引擎方案。查询字段固定且数量不多时，覆盖索引可以作为补充；偏移量已经到百万级时，更应该先问业务是否真的需要支持这么深的翻页，而不是只在 SQL 上硬扛。
+If `LIMIT offset, size` and arbitrary page jumps are required, consider deferred joins, covering indexes, or a search engine. A covering index can help when the queried columns are few and fixed. When the offset reaches millions, first ask whether the product really needs such deep pagination instead of trying to solve it in SQL alone.
 
-不管用哪种方案，都要看实际执行计划。`EXPLAIN` 里没有按预期走索引，方案写得再漂亮也没用。
+Whichever approach you use, inspect the actual execution plan. A well-written query is not useful if `EXPLAIN` shows that the intended index is not being used.
 
-详细介绍可以阅读这篇文章：[深度分页介绍及优化建议](https://javaguide.cn/high-performance/deep-pagination-optimization.html)。
+For more detail, see [Deep Pagination: Introduction and Optimization](https://javaguide.cn/high-performance/deep-pagination-optimization.html).
 
-## 建议不要使用外键与级联
+## Avoid Foreign Keys and Cascades When Appropriate
 
-阿里巴巴《Java 开发手册》中有这样一段描述：
+Alibaba's _Java Development Manual_ states:
 
-> 不得使用外键与级联，一切外键概念必须在应用层解决。
+> Do not use foreign keys or cascades. Handle referential integrity at the application layer.
 
 ![](./images/shared/alibaba-java-development-handbook-multi-table-join-foreign-keys-and-cascades.png)
 
-这个规范主要面向高并发互联网业务、微服务拆分、分库分表等场景。在这些场景里，依赖外键和级联会增加跨表耦合、迁移成本和线上变更复杂度。
+This guideline mainly targets high-concurrency internet services, microservices, and sharded databases. In these environments, foreign keys and cascades increase coupling between tables, migration costs, and the complexity of production changes.
 
-但外键不是“没用”。在单体应用、后台系统、核心主数据等表规模可控且强一致要求明确的场景，外键可以帮助数据库层兜住引用完整性。更准确的结论是：是否使用外键，要结合架构形态、数据规模和运维成本判断，而不是简单说“外键性能差”。
+Foreign keys are not useless, though. In monolithic applications, back-office systems, or core master-data tables with manageable sizes and clear consistency requirements, they can enforce referential integrity at the database level. Decide based on the architecture, data volume, and operational cost rather than assuming that foreign keys are inherently slow.
 
-## 选择合适的字段类型
+## Choose Appropriate Column Types
 
-存储字节越小，占用也就空间越小，性能也越好。
+Smaller data types use less storage and can improve performance.
 
-**a.某些字符串可以转换成数字类型存储比如可以将 IP 地址转换成整型数据。**
+**a. Some strings can be stored as numeric values. For example, an IP address can be stored as an integer.**
 
-数字是连续的，性能更好，占用空间也更小。
+Numeric values are compact and can be more efficient to process.
 
-MySQL 提供了几个方法来处理 IP 地址：
+MySQL provides several functions for handling IP addresses:
 
-- `INET_ATON()`：把 IPv4 转为无符号整型，建议使用 `INT UNSIGNED` 存储，再用 `INET_NTOA()` 转回字符串。
-- `INET6_ATON()`：把 IPv6 转为二进制字符串，也可以处理 IPv4；如果系统需要支持 IPv6，更推荐统一使用 `VARBINARY(16)` 或 `BINARY(16)` 存储，再用 `INET6_NTOA()` 转回字符串。
+- `INET_ATON()`: Converts IPv4 to an unsigned integer. Store it as `INT UNSIGNED` and use `INET_NTOA()` to convert it back to a string.
+- `INET6_ATON()`: Converts IPv6 to a binary string and also handles IPv4. For systems that need IPv6 support, consider storing all addresses as `VARBINARY(16)` or `BINARY(16)` and converting them back with `INET6_NTOA()`.
 
-如果只存 IPv4，`INET_ATON()` + `INT UNSIGNED` 就够了；如果未来可能接入 IPv6，提前按 16 字节二进制设计更稳。
+For IPv4 only, `INET_ATON()` with `INT UNSIGNED` is sufficient. If IPv6 may be needed later, designing for 16-byte binary storage from the start is safer.
 
-**b.对于非负型的数据 (如自增 ID,整型 IP，年龄) 来说,要优先使用无符号整型来存储。**
+**b. Prefer unsigned integer types for nonnegative values such as auto-increment IDs, integer IP addresses, and ages.**
 
-无符号不会改变整数类型占用的存储字节数，只是把可表示范围从包含负数改为从 0 开始的非负范围；例如 `INT` 无论 signed 还是 unsigned 都占用 4 字节，范围分别如下：
+Unsigned types do not change an integer's storage size. They change its range to start at zero instead of including negative values. For example, both signed and unsigned `INT` use 4 bytes:
 
 ```sql
 SIGNED INT -2147483648~2147483647
 UNSIGNED INT 0~4294967295
 ```
 
-具体存储字节数和取值范围可参考 MySQL 官方文档：[Integer Types](https://dev.mysql.com/doc/refman/8.0/en/integer-types.html) 和 [Data Type Storage Requirements](https://dev.mysql.com/doc/refman/8.0/en/storage-requirements.html)。
+For storage sizes and value ranges, see the MySQL documentation: [Integer Types](https://dev.mysql.com/doc/refman/8.0/en/integer-types.html) and [Data Type Storage Requirements](https://dev.mysql.com/doc/refman/8.0/en/storage-requirements.html).
 
-**c.小数值类型（比如年龄、状态表示如 0/1）优先使用 TINYINT 类型。**
+**c. Use `TINYINT` for small values such as ages or binary states (0/1).**
 
-**d.对于日期类型来说， 一定不要用字符串存储日期。可以考虑 DATETIME、TIMESTAMP 和 数值型时间戳。**
+**d. Do not store dates as strings. Consider `DATETIME`, `TIMESTAMP`, or a numeric timestamp.**
 
-这三种方式都有各自的优势，根据实际场景选择最合适的才是王道。下面再对这三种方式做一个简单的对比，以供大家实际开发中选择正确的存放时间的数据类型：
+Each option has tradeoffs. Choose based on the use case. The table compares them:
 
-> **注意**：以下存储空间基于 MySQL 5.6.4+（支持微秒精度）。5.6.4 之前，DATETIME 固定 8 字节，TIMESTAMP 固定 4 字节。小数秒精度为 1～2 位、3～4 位、5～6 位时，分别额外占用 1、2、3 字节。
+> **Note:** Storage sizes below apply to MySQL 5.6.4 and later, which support fractional seconds. Before 5.6.4, `DATETIME` always used 8 bytes and `TIMESTAMP` 4 bytes. Fractional-second precision of 1–2, 3–4, or 5–6 digits adds 1, 2, or 3 bytes, respectively.
 
-| 类型         | 存储空间    | 日期格式                       | 日期范围                                                     | 时区处理                      |
-| ------------ | ----------- | ------------------------------ | ------------------------------------------------------------ | ----------------------------- |
-| DATETIME     | 5~8 字节    | YYYY-MM-DD hh:mm:ss[.fraction] | 1000-01-01 00:00:00[.000000] ～ 9999-12-31 23:59:59[.999999] | 不做时区转换                  |
-| TIMESTAMP    | 4~7 字节    | YYYY-MM-DD hh:mm:ss[.fraction] | 1970-01-01 00:00:01[.000000] ～ 2038-01-19 03:14:07[.999999] | 按 session time_zone 存取转换 |
-| 数值型时间戳 | 4 或 8 字节 | 全数字如 1578707612            | 取决于整数类型和精度                                         | 不做时区转换                  |
+| Type              | Storage      | Format                         | Range                                                        | Time zone handling                  |
+| ----------------- | ------------ | ------------------------------ | ------------------------------------------------------------ | ----------------------------------- |
+| DATETIME          | 5–8 bytes    | YYYY-MM-DD hh:mm:ss[.fraction] | 1000-01-01 00:00:00[.000000] to 9999-12-31 23:59:59[.999999] | No time zone conversion             |
+| TIMESTAMP         | 4–7 bytes    | YYYY-MM-DD hh:mm:ss[.fraction] | 1970-01-01 00:00:01[.000000] to 2038-01-19 03:14:07[.999999] | Converted using session `time_zone` |
+| Numeric timestamp | 4 or 8 bytes | Digits, e.g. `1578707612`      | Depends on the integer type and precision                    | No time zone conversion             |
 
-`TIMESTAMP` 不保存时区名称，而是按当前 session 的 `time_zone` 做存取转换；`DATETIME` 表示字面日期时间，不做时区转换。秒级 Unix 时间戳可以用 `INT UNSIGNED`，但会受可表示范围限制；毫秒级时间戳通常需要 `BIGINT`。
+`TIMESTAMP` does not store a time zone name; values are converted on read and write using the current session's `time_zone`. `DATETIME` represents a literal date and time and is not converted. A seconds-based Unix timestamp can use `INT UNSIGNED`, subject to its range; millisecond timestamps usually need `BIGINT`.
 
-MySQL 时间类型选择的详细介绍请看这篇：[MySQL 时间类型数据存储建议](https://javaguide.cn/database/mysql/some-thoughts-on-database-storage-time.html)。
+For more on choosing MySQL date and time types, see [Guidance on Storing MySQL Date and Time Values](https://javaguide.cn/database/mysql/some-thoughts-on-database-storage-time.html).
 
-**e.金额字段用 decimal，避免精度丢失。**
+**e. Use `DECIMAL` for monetary values to avoid precision loss.**
 
-decimal 用于存储有精度要求的小数比如与金钱相关的数据，可以避免浮点数带来的精度损失。
+`DECIMAL` stores exact values and is suitable for data that requires precise decimal arithmetic, such as monetary values. It avoids the rounding issues associated with floating-point types.
 
-在 Java 中，MySQL 的 decimal 类型对应的是 Java 类 `java.math.BigDecimal` 。
+In Java, MySQL's `DECIMAL` type maps to `java.math.BigDecimal`.
 
-`BigDecimal`的详细介绍请参考这篇：[BigDecimal 详解](https://javaguide.cn/java/basis/bigdecimal.html)。
+For details, see [A Detailed Guide to `BigDecimal`](https://javaguide.cn/java/basis/bigdecimal.html).
 
-**f.尽量使用自增 id 作为主键。**
+**f. Prefer auto-incrementing IDs as primary keys when appropriate.**
 
-如果主键为自增 id 的话，新数据会追加到 B+ 树的尾部，避免了中间位置的页分裂，性能相对最优。在写满一个数据页的时候，直接申请另一个新数据页接着写就可以了。
+With an auto-incrementing primary key, new rows are appended to the end of the B+ tree, avoiding page splits in the middle of the tree. When a data page fills up, MySQL can allocate a new page and continue writing.
 
-如果主键是非自增 id 的话，为了让新加入数据后 B+ 树的叶子节点还能保持有序，它就需要往叶子结点的中间找位置插入。如果目标页已满，就需要进行**页分裂**——将页一分为二，移动一半数据到新页。页分裂操作需要加悲观锁，涉及大量数据移动，性能较差。
+With a non-sequential primary key, MySQL must insert new entries in the appropriate position among the B+ tree's leaf pages. If the target page is full, it may need a **page split**, moving some data to a new page. This adds data movement and locking overhead.
 
-不过，分库分表场景不建议依赖单库自增 ID 作为全局主键，更常见的是使用 Snowflake、号段模式、趋势递增 ID、UUIDv7/ULID 等分布式 ID。如果使用 UUID，不建议直接用随机 UUID 字符串作为 InnoDB 主键；可以考虑 `BINARY(16)` 存储、时间有序 UUID，或使用 MySQL 的 `UUID_TO_BIN()` 做更紧凑的二进制存储。
+For sharded databases, a single database's auto-incrementing ID is not a suitable global key. Common alternatives include Snowflake IDs, ID segments, roughly time-ordered IDs, and UUIDv7/ULID. Avoid using random UUID strings directly as InnoDB primary keys; consider `BINARY(16)`, time-ordered UUIDs, or MySQL's `UUID_TO_BIN()` for compact binary storage.
 
-相关阅读：[数据库主键一定要自增吗？有哪些场景不建议自增？](https://mp.weixin.qq.com/s/vNRIFKjbe7itRTxmq-bkAA)。
+Related reading: [Should Database Primary Keys Always Auto-Increment? When Should They Not?](https://mp.weixin.qq.com/s/vNRIFKjbe7itRTxmq-bkAA).
 
-**g.`NULL` 要按语义使用，不要机械禁止。**
+**g. Use `NULL` according to its meaning; do not ban it categorically.**
 
-`NULL` 跟 `''`（空字符串）、数字 `0` 是完全不一样的值，表示未知或不存在。判断 `NULL` 要使用 `IS NULL` 或 `IS NOT NULL`，不能用 `=`、`!=`、`<`、`>` 之类的比较运算符。
+`NULL` differs from an empty string (`''`) and the number `0`; it represents an unknown or missing value. Test for it with `IS NULL` or `IS NOT NULL`, not comparison operators such as `=`, `!=`, `<`, or `>`.
 
-不建议一刀切把所有列都设计成可 `NULL`，因为它会增加语义和查询处理复杂度；但也不能说 `NULL` 一定导致索引失效。MySQL 可以对 `IS NULL` 使用索引优化。真正应该优先考虑的是业务语义：如果字段确实可能未知，例如 `paid_at`、`deleted_at`、`last_login_at`，使用 `NULL` 通常比塞一个魔法默认值更清楚。
+Do not make every column nullable by default, since that can complicate semantics and query handling. But `NULL` does not automatically prevent index use; MySQL can use indexes for `IS NULL`. Choose based on the data's meaning: for values that may genuinely be unknown, such as `paid_at`, `deleted_at`, or `last_login_at`, `NULL` is usually clearer than a magic default value.
 
-另外，`NULL` 会影响聚合函数的结果。例如，`SUM`、`AVG`、`MIN`、`MAX` 等聚合函数会忽略 `NULL` 值。`COUNT(*)` 会统计所有记录数，`COUNT(列名)` 只统计非 `NULL` 值。
+`NULL` also affects aggregate results. Functions such as `SUM`, `AVG`, `MIN`, and `MAX` ignore `NULL` values. `COUNT(*)` counts all rows, while `COUNT(column_name)` counts only non-`NULL` values.
 
-## 尽量用 UNION ALL 代替 UNION
+## Prefer `UNION ALL` to `UNION` When Possible
 
-UNION 会把两个结果集的所有数据放到临时表中后再进行去重操作，更耗时，更消耗 CPU 资源。
+`UNION` removes duplicate rows from the combined result, which can require extra work and CPU time.
 
-UNION ALL 不会再对结果集进行去重操作，获取到的数据包含重复的项。
+`UNION ALL` does not remove duplicates, so the result may contain repeated rows.
 
-如果业务上能确定两个结果集不会重复，或允许重复，优先使用 `UNION ALL`。如果必须去重，仍然应该使用 `UNION` 或显式去重。
+If the result sets cannot contain duplicates, or duplicates are acceptable, prefer `UNION ALL`. Use `UNION` or explicit deduplication when duplicates must be removed.
 
-## 优先使用批量操作
+## Prefer Batch Operations
 
-对于数据库中的数据更新，如果能使用批量操作就要尽量使用，减少请求数据库的次数，提高性能。
+For database updates, use batch operations where practical to reduce the number of database requests and improve performance.
 
 ```sql
-# 反例
+# One statement per row
 INSERT INTO `cus_order` (`id`, `score`, `name`) VALUES (1, 426547, 'user1');
 INSERT INTO `cus_order` (`id`, `score`, `name`) VALUES (1, 33, 'user2');
 INSERT INTO `cus_order` (`id`, `score`, `name`) VALUES (1, 293854, 'user3');
 
-# 正例
+# Batch insert
 INSERT into `cus_order` (`id`, `score`, `name`) values(1, 426547, 'user1'),(1, 33, 'user2'),(1, 293854, 'user3');
 ```
 
-## SHOW PROFILE 已废弃，新版本别再依赖它
+## `SHOW PROFILE` Is Deprecated; Use Current Tools
 
-[`SHOW PROFILE`](https://dev.mysql.com/doc/refman/8.0/en/show-profile.html) 和 `SHOW PROFILES` 已被 MySQL 官方标记为 deprecated，未来版本可能删除。现在排查 SQL 性能，一般先用慢查询日志把问题 SQL 找出来，再用 `EXPLAIN` 看优化器怎么执行；MySQL 8.0.18+ 可以用 `EXPLAIN ANALYZE` 看真实耗时和行数，资源消耗再交给 Performance Schema 查。
+MySQL has deprecated [`SHOW PROFILE`](https://dev.mysql.com/doc/refman/8.0/en/show-profile.html) and `SHOW PROFILES`, and may remove them in a future release. To investigate SQL performance, find problematic queries in the slow query log and inspect the optimizer's plan with `EXPLAIN`. MySQL 8.0.18 and later also support `EXPLAIN ANALYZE` for actual timings and row counts; use Performance Schema to inspect resource usage.
 
-比如想看最近执行过的 SQL 耗时，可以查 `events_statements_history_long`：
+To inspect the execution times of recent statements, query `events_statements_history_long`:
 
 ```sql
 SELECT
@@ -194,32 +194,32 @@ ORDER BY TIMER_WAIT DESC
 LIMIT 10;
 ```
 
-`CPU_TIME` 需要 MySQL 8.0.28+；如果版本较低，可以先看 `TIMER_WAIT`、`LOCK_TIME`、`ROWS_EXAMINED`、`ROWS_SENT` 等字段。`events_statements_history_long` 只保存全局最近结束的一部分语句事件，表满后旧记录会被淘汰；相关 consumers 和 instruments 未开启时，也可能采集不到足够信息。
+`CPU_TIME` requires MySQL 8.0.28 or later. On older versions, inspect fields such as `TIMER_WAIT`, `LOCK_TIME`, `ROWS_EXAMINED`, and `ROWS_SENT`. `events_statements_history_long` stores only a bounded set of the most recently completed statement events globally; older records are evicted when it fills. If the relevant consumers and instruments are disabled, it may not collect enough information.
 
-## 优化慢 SQL
+## Optimize Slow SQL
 
-为了优化慢 SQL ，我们首先要找到哪些 SQL 语句执行速度比较慢。
+Before optimizing slow SQL, identify which statements are taking too long.
 
-MySQL 慢查询日志是用来记录 MySQL 在执行命令中，响应时间超过预设阈值的 SQL 语句。因此，通过分析慢查询日志我们就可以找出执行速度比较慢的 SQL 语句。
+The MySQL slow query log records statements whose execution time exceeds a configured threshold. Analyzing it helps find slow queries.
 
-出于性能层面的考虑，慢查询日志功能默认是关闭的，你可以通过以下命令开启：
+The slow query log is disabled by default for performance reasons. Enable it with:
 
 ```sql
-# 开启慢查询日志功能
+# Enable the slow query log.
 SET GLOBAL slow_query_log = 'ON';
-# 慢查询日志存放位置
+# Set the slow query log file.
 SET GLOBAL slow_query_log_file = '/var/lib/mysql/ranking-list-slow.log';
-# 无论是否超时，未使用索引的查询也会记录下来，生产环境谨慎短期开启。
+# Also log queries that do not use indexes, even if they are not slow. Enable this briefly and cautiously in production.
 SET GLOBAL log_queries_not_using_indexes = 'ON';
-# 慢查询阈值（秒），SQL 执行超过这个阈值将被记录在日志中。
+# Log queries that exceed this threshold in seconds.
 SET GLOBAL long_query_time = 1;
-# 慢查询仅记录扫描行数大于此参数的 SQL
+# Log only queries that examine more rows than this limit.
 SET GLOBAL min_examined_row_limit = 100;
 ```
 
-`SET GLOBAL` 只影响新连接；已有连接可能仍保持原 session 值。生产环境更建议写入配置文件，并通过变更流程发布。
+`SET GLOBAL` affects only new connections; existing connections may retain their current session values. In production, it is usually better to update the configuration file and deploy the change through the normal change process.
 
-设置成功之后，使用 `show variables like 'slow%';` 命令进行查看。
+After applying the settings, check them with `SHOW VARIABLES LIKE 'slow%';`.
 
 ```bash
 | Variable_name       | Value                                |
@@ -231,21 +231,21 @@ SET GLOBAL min_examined_row_limit = 100;
 3 rows in set (0.01 sec)
 ```
 
-我们故意在百万数据量的表(未使用索引)中执行一条排序的语句：
+For demonstration, run a sorting query against a million-row table without a suitable index:
 
 ```sql
 SELECT `score`,`name` FROM `cus_order` ORDER BY `score` DESC;
 ```
 
-不要为了查看慢日志直接修改 MySQL 数据目录权限。更稳的做法是用具备权限的账号查看、把慢日志输出到专门目录，或通过日志采集系统收集。
+Do not change permissions on the MySQL data directory just to read the slow query log. Instead, use an account with the required access, write the log to a dedicated directory, or collect it through a logging system.
 
-查看对应的慢查询日志：
+Inspect the corresponding slow query log:
 
 ```bash
  cat /var/lib/mysql/ranking-list-slow.log
 ```
 
-我们刚刚故意执行的 SQL 语句已经被慢查询日志记录了下来：
+The slow query log contains the statement we just ran:
 
 ```plain
 # Time: 2022-10-09T08:55:37.486797Z
@@ -255,30 +255,30 @@ SET timestamp=1665305736;
 SELECT `score`,`name` FROM `cus_order` ORDER BY `score` DESC;
 ```
 
-这里对日志中的一些信息进行说明：
+The log fields mean:
 
-- `Time` ：被日志记录的代码在服务器上的运行时间。
-- `User@Host`：谁执行的这段代码。
-- `Query_time`：这段代码运行时长。
-- `Lock_time`：执行这段代码时，锁定了多久。
-- `Rows_sent`：慢查询返回的记录。
-- `Rows_examined`：慢查询扫描过的行数。
+- `Time`: When the statement was logged on the server.
+- `User@Host`: The user and host that ran the statement.
+- `Query_time`: Total statement execution time.
+- `Lock_time`: Time spent waiting for locks.
+- `Rows_sent`: Number of rows returned by the query.
+- `Rows_examined`: Number of rows scanned by the query.
 
-实际项目中，慢查询日志通常会比较复杂，我们需要借助一些工具对其进行分析。像 MySQL 内置的 `mysqldumpslow` 工具就可以把相同的 SQL 归为一类，并统计出归类项的执行次数和每次执行的耗时等一系列对应的情况。
+In production, slow query logs can be complex, so use tools to analyze them. MySQL's built-in `mysqldumpslow`, for example, groups similar statements and reports execution counts and timings for each group.
 
-慢 SQL 治理时建议同时关注这几个指标：
+When investigating slow queries, track these metrics together:
 
-| 指标            | 说明             | 常见问题                 |
-| --------------- | ---------------- | ------------------------ |
-| `Query_time`    | SQL 总耗时       | 执行慢、等待锁、I/O 慢   |
-| `Lock_time`     | 等锁耗时         | 行锁冲突、表锁、DDL 影响 |
-| `Rows_examined` | 扫描行数         | 索引缺失、索引选择性差   |
-| `Rows_sent`     | 返回行数         | 查询范围过大、分页过深   |
-| 执行频次        | 单位时间执行次数 | 单次不慢但总量压垮数据库 |
+| Metric              | Description                  | Common issues                                               |
+| ------------------- | ---------------------------- | ----------------------------------------------------------- |
+| `Query_time`        | Total query time             | Slow execution, lock waits, slow I/O                        |
+| `Lock_time`         | Time spent waiting for locks | Row-lock contention, table locks, DDL impact                |
+| `Rows_examined`     | Rows scanned                 | Missing indexes or low index selectivity                    |
+| `Rows_sent`         | Rows returned                | Queries that return too much data or paginate too deeply    |
+| Execution frequency | Calls per unit of time       | A fast query that overloads the database through repetition |
 
-不要只盯着耗时最长的 SQL。线上最危险的往往是“单次 50 ms，但每秒执行几千次”的高频 SQL。
+Do not focus only on the slowest statement. A frequent query that takes 50 ms but runs thousands of times per second may be more dangerous.
 
-找到了慢 SQL 之后，我们可以通过 `EXPLAIN` 命令分析对应的 `SELECT` 语句。上线优化前后，最好保存同一 SQL 的 `EXPLAIN FORMAT=TREE`、`EXPLAIN ANALYZE`、慢日志指标和关键业务 QPS，避免出现“改了索引，但执行计划没变”的情况。
+After identifying a slow query, use `EXPLAIN` to analyze its `SELECT` statement. Before and after deploying an optimization, save the same query's `EXPLAIN FORMAT=TREE`, `EXPLAIN ANALYZE`, slow-log metrics, and key business QPS. This helps catch cases where an index changed but the execution plan did not.
 
 ```sql
 mysql> EXPLAIN SELECT `score`,`name` FROM `cus_order` ORDER BY `score` DESC;
@@ -290,90 +290,90 @@ mysql> EXPLAIN SELECT `score`,`name` FROM `cus_order` ORDER BY `score` DESC;
 1 row in set, 1 warning (0.00 sec)
 ```
 
-比较重要的字段说明：
+Important fields include:
 
-- `select_type` ：查询的类型，常用的取值有 SIMPLE（普通查询，即没有联合查询、子查询）、PRIMARY（主查询）、UNION（UNION 中后面的查询）、SUBQUERY（子查询）等。
-- `table` ：表示查询涉及的表或衍生表。
-- `type` ：执行方式，判断查询是否高效的重要参考指标，结果值从差到好依次是：**ALL**（全表扫描）< **index**（索引全扫描）< **range**（索引范围扫描）< **index_merge**（索引合并）< **ref**（非唯一索引查找）< **eq_ref**（唯一索引查找）< **const**（单行常量）< **system**（系统表）。实际性能还需结合 rows、Extra 等字段综合判断。
-- `rows` : SQL 要查找到结果集需要扫描读取的数据行数，原则上 rows 越少越好。
-- ……
+- `select_type`: Query type. Common values include `SIMPLE` (no joins or subqueries), `PRIMARY` (outer query), `UNION` (a query after `UNION`), and `SUBQUERY`.
+- `table`: A table or derived table involved in the query.
+- `type`: Access method and an important indicator of query efficiency. From generally less to more selective: **ALL** (full table scan) < **index** (full index scan) < **range** (index range scan) < **index_merge** (index merge) < **ref** (non-unique index lookup) < **eq_ref** (unique index lookup) < **const** (single-row constant lookup) < **system** (system table). Assess actual performance with `rows`, `Extra`, and other fields too.
+- `rows`: Estimated number of rows the query must read to produce the result. Fewer is generally better.
+- …
 
-> **推荐阅读**：[MySQL 执行计划分析](https://javaguide.cn/database/mysql/mysql-query-execution-plan.html) 详细介绍了 EXPLAIN 各列的含义（id、select_type、type、key、rows、Extra 等），包括 MySQL 8.0.18+ 新增的 `EXPLAIN ANALYZE` 实际执行分析功能。另外，阿里的 [慢 SQL 治理经验总结](https://mp.weixin.qq.com/s/LZRSQJufGRpRw6u4h_Uyww) 也总结得不错。
+> **Further reading:** [MySQL Execution Plan Analysis](https://javaguide.cn/database/mysql/mysql-query-execution-plan.html) explains `EXPLAIN` columns such as `id`, `select_type`, `type`, `key`, `rows`, and `Extra`, including `EXPLAIN ANALYZE`, added in MySQL 8.0.18. Alibaba's [Experience in Managing Slow SQL](https://mp.weixin.qq.com/s/LZRSQJufGRpRw6u4h_Uyww) is also useful.
 
-## 正确使用索引
+## Use Indexes Effectively
 
-正确使用索引可以大大加快数据的检索速度（大大减少检索的数据量）。
+Correct index use can speed up data retrieval by reducing the amount of data scanned.
 
-### 选择合适的字段创建索引
+### Choose Appropriate Columns for Indexes
 
-- **尽量语义清晰且少为 NULL 的字段**：索引字段最好有明确业务语义，并尽量减少 `NULL` 带来的判断复杂度。如果字段确实可能未知，可以保留 `NULL`，不要为了“性能”塞一个含义不清的魔法值。
-- **被频繁查询的字段** ：我们创建索引的字段应该是查询操作非常频繁的字段。
-- **被作为条件查询的字段** ：被作为 WHERE 条件查询的字段，应该被考虑建立索引。
-- **频繁需要排序的字段** ：索引已经排序，这样查询可以利用索引的排序，加快排序查询时间。
-- **被经常频繁用于连接的字段** ：经常用于连接的字段可能是一些外键列，对于外键列并不一定要建立外键，只是说该列涉及到表与表的关系。对于频繁被连接查询的字段，可以考虑建立索引，提高多表连接查询的效率。
+- **Columns with clear semantics and few `NULL` values:** Prefer columns with clear business meaning, and avoid unnecessary complexity from `NULL`. If a value can genuinely be unknown, keep it nullable rather than using an ambiguous magic value for "performance."
+- **Frequently queried columns:** Consider indexing columns used often in queries.
+- **Filter columns:** Consider indexing columns frequently used in `WHERE` conditions.
+- **Sort columns:** An index is ordered, so queries may use it to avoid or reduce sorting.
+- **Join columns:** Frequently joined columns may be foreign-key columns, but this does not mean a foreign-key constraint is required. Consider indexes on columns commonly used in joins.
 
-### 避免索引失效
+### Avoid Making Indexes Ineffective
 
-索引失效也是慢查询的主要原因之一，常见的导致索引失效的情况有下面这两类：
+Ineffective index use is a common cause of slow queries. Common causes fall into two groups:
 
-**1. SQL 写法让索引不好用**
+**1. The SQL form prevents effective index use**
 
-这类问题通常出在写法上：本来可以沿着 B+Tree 有序查找，SQL 写完后却变成了扫描后再过滤。
+These issues often come from query form: a lookup that could follow the ordered B+Tree becomes a scan followed by filtering.
 
-- **违背最左前缀原则**：跳过联合索引前导列，或遇到范围查询（如 `>`、`<`、`BETWEEN`、`LIKE "abc%"`）后，后续列通常不能继续用于精确缩小索引扫描区间，但仍可能用于 ICP 过滤、覆盖索引或排序优化，最终要看 `EXPLAIN` 的 `key_len`、`rows`、`Extra` 和 `EXPLAIN ANALYZE`。
-- **对索引列进行加工**：普通索引建在原始列上时，在 `WHERE` 左侧对索引列进行数学计算或应用函数，通常会让优化器难以使用该索引。更好的写法是把函数转换到常量侧，或改成范围条件；如果确实经常按表达式查询，可以考虑生成列索引或函数索引。
-- **隐式类型转换（隐蔽且致命）**：当“字符串类型的列”去比较“数字类型的值”时，MySQL 会默认在列上套用转换函数，直接破坏树的有序性。
-- **LIKE 模糊查询前置通配符**：如 `LIKE "%abc"`，前缀字符的不确定性使得优化器无法锁定扫描区间的起始点。
-- **ORDER BY 额外排序**：排序列未命中索引、排序方向与索引结构不一致时，MySQL 可能需要额外的内存或磁盘排序，执行计划里通常能看到 `Using filesort`。
+- **Violating the leftmost-prefix rule:** Skipping a leading column in a composite index, or using a range condition (such as `>`, `<`, `BETWEEN`, or `LIKE "abc%"`), usually prevents later columns from further narrowing the exact index range. They may still help with ICP filtering, covering-index access, or sorting. Check `key_len`, `rows`, `Extra`, and `EXPLAIN ANALYZE`.
+- **Applying a function to an indexed column:** When a regular index is built on the original column, doing arithmetic or applying a function to that column in `WHERE` can make the index difficult to use. Move the function to the constant side or rewrite the predicate as a range condition. For frequent expression queries, consider a generated-column index or functional index.
+- **Implicit type conversion:** Comparing a string column with a numeric value may cause MySQL to convert the column, preventing an ordered index lookup.
+- **Leading wildcard in `LIKE`:** In a predicate such as `LIKE "%abc"`, the unknown prefix prevents the optimizer from identifying the start of an index range.
+- **Extra sorting for `ORDER BY`:** If the sort columns are not indexed, or the sort direction does not match the index structure, MySQL may sort in memory or on disk. The plan often shows `Using filesort`.
 
-**2. 优化器算完成本后放弃索引**
+**2. The optimizer estimates that a table scan costs less**
 
-有些情况不是索引不能用，而是优化器算完成本后，觉得全表扫描反而更便宜。
+Sometimes an index is available, but the optimizer estimates that a full table scan will cost less.
 
-- **`SELECT *` 回表太多**：查询大量非索引覆盖列时，如果命中数据量较大（通常超 20%~30%），优化器可能认为全表扫描的顺序 I/O 比频繁回表的随机 I/O 更划算，于是主动放弃索引。
-- **`OR` 条件导致全表扫描**：只要 `OR` 连接的任意一侧条件没有对应索引，就会触发全表扫描。即使两侧都有索引，若 Index Merge（索引合并）的预期成本过高，依然会被放弃。
-- **`IN` 列表过长引发估算失真**：`IN` 列表很长时，优化器估算成本可能不准确。MySQL 通过 `eq_range_index_dive_limit` 控制 equality range 数量达到某个阈值后是否从 index dive 切换到统计估算。不同版本和配置可能不同，不建议只背“200”这个数字，应结合 `EXPLAIN`、统计信息和 `ANALYZE TABLE` 判断。
+- **Too many table lookups for `SELECT *`:** When a query needs many columns not covered by an index and matches a large share of the table (often over 20–30%), the optimizer may prefer sequential I/O from a table scan over repeated random I/O for lookups, and choose not to use the index.
+- **`OR` conditions:** If one side of an `OR` has no matching index, a full table scan may be more efficient. Even when both sides are indexed, the optimizer may reject Index Merge if its estimated cost is too high.
+- **Long `IN` lists:** Cost estimates may be inaccurate for very long lists. MySQL uses `eq_range_index_dive_limit` to control when it switches from index dives to statistics estimates for equality ranges. Behavior varies by version and configuration; do not just memorize "200." Check `EXPLAIN`, table statistics, and `ANALYZE TABLE`.
 
-详细介绍：[MySQL索引失效场景总结](https://javaguide.cn/database/mysql/mysql-index-invalidation.html)。
+For details, see [Common Cases Where MySQL Does Not Use an Index](https://javaguide.cn/database/mysql/mysql-index-invalidation.html).
 
-### 被频繁更新的字段应该慎重建立索引
+### Be Cautious About Indexing Frequently Updated Columns
 
-虽然索引能带来查询上的效率，但是维护索引的成本也是不小的。 如果一个字段不被经常查询，反而被经常修改，那么就更不应该在这种字段上建立索引了。
+Indexes can improve reads, but maintaining them has a cost. If a column is updated often but rarely queried, it may not be worth indexing.
 
-### 尽可能的考虑建立联合索引而不是单列索引
+### Consider Composite Indexes Instead of Several Single-Column Indexes
 
-因为索引是需要占用磁盘空间的，可以简单理解为每个索引都对应着一颗 B+树。如果一个表的字段过多，索引过多，那么当这个表的数据达到一个体量后，索引占用的空间也是很多的，且修改索引时，耗费的时间也是较多的。如果是联合索引，多个字段在一个索引上，那么将会节约很大磁盘空间，且修改数据的操作效率也会提升。
+Indexes use disk space; each index can be thought of as a B+Tree. Too many indexes can consume substantial storage as a table grows, and index maintenance adds write cost. A composite index can cover several columns in one structure, potentially saving space and reducing maintenance compared with several separate indexes. Choose its column order based on query patterns and the leftmost-prefix rule.
 
-### 注意避免冗余索引
+### Avoid Redundant Indexes
 
-冗余索引指的是索引的功能相同，能够命中索引(a, b)就肯定能命中索引(a) ，那么索引(a)就是冗余索引。如（name,city ）和（name ）这两个索引就是冗余索引，能够命中前者的查询肯定是能够命中后者的 在大多数情况下，都应该尽量扩展已有的索引而不是创建新索引。
+An index may be redundant when another index can serve the same queries. For example, a query that can use `(name, city)` may also use `(name)`, so the single-column index may be redundant. In many cases, extend an existing index rather than adding another one, but check sort direction, uniqueness, and workload before removing an index.
 
-### 考虑在字符串类型的字段上使用前缀索引代替普通索引
+### Consider Prefix Indexes for String Columns
 
-前缀索引仅限于字符串类型，较普通索引会占用更小的空间，所以可以考虑使用前缀索引带替普通索引。
+Prefix indexes apply only to string columns and use less space than full-column indexes. Consider them when the chosen prefix provides sufficient selectivity.
 
-### 删除长期未使用的索引
+### Remove Indexes That Are No Longer Needed
 
-删除长期未使用的索引，不用的索引的存在会造成不必要的性能损耗。MySQL 5.7 可以通过查询 sys 库的 `schema_unused_indexes` 视图来查询哪些索引从未被使用。
+Long-unused indexes add unnecessary maintenance cost. In MySQL 5.7, query the `schema_unused_indexes` view in the `sys` schema to find indexes that have not been used.
 
-不过，这个视图只有在服务运行足够久、工作负载有代表性时才有意义。MySQL 8.0+ 删除索引前，可以先把索引设为 invisible，观察执行计划和业务指标，再决定是否真正删除：
+This view is useful only after the server has run long enough to observe a representative workload. In MySQL 8.0 and later, make an index invisible before dropping it, then monitor execution plans and business metrics before deciding whether to remove it:
 
 ```sql
 ALTER TABLE t ALTER INDEX idx_name INVISIBLE;
 ```
 
-## 生产优化注意事项
+## Production Optimization Considerations
 
-- **不要在高峰期直接加索引**：大表加索引可能长时间占用资源，生产环境需要评估在线 DDL、元数据锁、磁盘空间、备份、回滚、业务低峰窗口和从库复制延迟。
-- **不要为了一个低频查询牺牲写入性能**：索引越多，写入、更新和删除的维护成本越高。
-- **不要忽略数据分布**：同一条 SQL 在测试库很快，到了生产库可能因为数据倾斜、统计信息陈旧而走完全不同的执行计划。
-- **不要只优化 SQL 文本**：有些问题需要产品侧限制查询范围，有些需要缓存，有些需要异步报表或数仓承接。
-- **优化后继续观察**：上线后持续观察慢查询数量、CPU、I/O、Buffer Pool 命中率、连接数和锁等待。
+- **Do not add indexes during peak traffic without planning:** Indexing a large table can use resources for a long time. Assess online DDL, metadata locks, disk space, backups, rollback, a low-traffic window, and replica lag.
+- **Do not trade write performance for a rarely used query without justification:** More indexes increase the cost of inserts, updates, and deletes.
+- **Account for data distribution:** A query that is fast in test may get a different plan in production because of skewed data or stale statistics.
+- **Do not optimize SQL text alone:** Some issues require limiting query scope in the product, adding a cache, or moving work to asynchronous reports or a data warehouse.
+- **Keep monitoring after optimization:** Track slow-query counts, CPU, I/O, Buffer Pool hit rate, connections, and lock waits after deployment.
 
-## 参考
+## References
 
-- MySQL 8.2 Optimizing SQL Statements：https://dev.mysql.com/doc/refman/8.0/en/statement-optimization.html
-- 为什么阿里巴巴禁止数据库中做多表 join - Hollis：https://mp.weixin.qq.com/s/GSGVFkDLz1hZ1OjGndUjZg
-- MySQL 的 COUNT 语句，竟然都能被面试官虐的这么惨 - Hollis：https://mp.weixin.qq.com/s/IOHvtel2KLNi-Ol4UBivbQ
-- MySQL 性能优化神器 Explain 使用分析：https://segmentfault.com/a/1190000008131735
-- 如何使用 MySQL 慢查询日志进行性能优化 ：https://kalacloud.com/blog/how-to-use-mysql-slow-query-log-profiling-mysqldumpslow/
+- MySQL 8.2 [Optimizing SQL Statements](https://dev.mysql.com/doc/refman/8.0/en/statement-optimization.html)
+- Hollis: [Why Alibaba Prohibits Multi-Table Joins in Databases](https://mp.weixin.qq.com/s/GSGVFkDLz1hZ1OjGndUjZg)
+- Hollis: [MySQL COUNT Queries: A Difficult Interview Question](https://mp.weixin.qq.com/s/IOHvtel2KLNi-Ol4UBivbQ)
+- [Analyzing MySQL's EXPLAIN for Performance Optimization](https://segmentfault.com/a/1190000008131735)
+- [How to Use the MySQL Slow Query Log for Performance Optimization](https://kalacloud.com/blog/how-to-use-mysql-slow-query-log-profiling-mysqldumpslow/)

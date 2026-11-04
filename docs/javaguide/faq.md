@@ -1,56 +1,56 @@
 ---
-title: 常见问题
-description: JavaGuide常见问题解答，涵盖PDF版本获取、RSS订阅、项目使用等用户高频咨询问题汇总。
-category: 走近项目
+title: Frequently Asked Questions
+description: Answers to common questions about JavaGuide, including PDF access, RSS subscriptions, and using the project.
+category: About the Project
 icon: "mdi:help-circle-outline"
 ---
 
-## JavaGuide 是否支持 RSS？
+## Does JavaGuide Support RSS?
 
-必须支持！推荐 RSS 订阅本网站获取最新更新。
+Yes! Subscribe to the site's RSS feed to receive the latest updates.
 
-## JavaGuide 有没有 PDF 版本？
+## Is There a PDF Version of JavaGuide?
 
-由于 JavaGuide 内容在持续完善，所以并没有一个完全与之同步的 PDF 版本提供。如果你想要 PDF 版本的话，可以考虑 **《JavaGuide 面试突击版》** ，这是对 JavaGuide 内容的浓缩总结。
+JavaGuide is continuously updated, so there is no PDF version that stays fully in sync with the site. If you would like a PDF, consider **the JavaGuide Interview Crash Course**, a condensed summary of the site's content.
 
-《JavaGuide 面试突击版》在我的公众号后台回复“**PDF**”即可获取，免费的。除了 《JavaGuide 面试突击版》之外，还会免费送你多本优质面试 PDF 手册。
+To get the **JavaGuide Interview Crash Course** for free, reply **PDF** to my official WeChat account. You will also receive several other high-quality interview handbooks at no cost.
 
-![公众号](./images/shared/gongzhonghaoxuanchuan.png)
+![Official WeChat account](./images/shared/gongzhonghaoxuanchuan.png)
 
-## 如何看待 JavaGuide 的 star 数量很多？
+## What Does JavaGuide's High Star Count Mean?
 
-[JavaGuide](https://github.com/Snailclimb) 目前已经是 Java 领域 star 数量最多的几个项目之一，登顶过很多次 GitHub Trending。
+At present, [JavaGuide](https://github.com/Snailclimb) is one of the most-starred projects in the Java ecosystem and has topped GitHub Trending several times.
 
-不过，这个真心没啥好嘚瑟的。因为，教程类的含金量其实是比较低的，star 数量比较多主要也是因为受众面比较广，大家觉得不错，点个 star 就相当于收藏了。很多特别优秀的框架，star 数量可能只有几 K。所以，单纯看 star 数量没啥意思，就当看个笑话吧！
+Still, there is not much to boast about. Tutorials are not necessarily as substantial as other projects, and they have a broad audience. Many people star a tutorial because they find it useful, much like bookmarking it. Excellent frameworks may have only a few thousand stars. So star counts alone do not say much—take them with a grain of salt.
 
-维护这个项目的过程中，也被某些人 diss 过：“md 项目，没啥含金量，给国人丢脸！”。
+While maintaining this project, I have also heard criticism such as: “It's just a Markdown project, not worth much, and an embarrassment to the country!”
 
-对于说这类话的人，我觉得对我没啥影响，就持续完善，把 JavaGuide 做的更好吧！其实，国外的很多项目也是纯 MD 啊！就比如外国的朋友发起的 awesome 系列、求职面试系列。无需多说，行动自证！凎！
+Comments like that do not affect me. I'll keep improving JavaGuide and making it better. Many projects from around the world are written entirely in Markdown, including the Awesome lists and job-search and interview guides. Actions speak for themselves!
 
-开源非常重要的一点就是协作。如果你开源了一个项目之后，就不再维护，别人给你提交 issue/pr，你都不处理，那开源也没啥意义了！
+Collaboration is an important part of open source. If you open-source a project but stop maintaining it and ignore issues and pull requests, there is little value in open-sourcing it.
 
-## JavaGuide 会不会推出纸质书籍？
+## Will JavaGuide Be Published as a Print Book?
 
-可以给出一个比较明确的答案：**暂时没有考虑出书** 。
+The short answer is: **I am not planning to publish a book for now.**
 
-JavaGuide 这个项目诞生一年左右就有出版社的老师联系我了，由于自知个人能力尚需沉淀，我都婉拒了。这几年的话，由于项目还是有一点知名度的，找我出书的出版社老师更多了，也都被我一一婉拒了。
+About a year after JavaGuide started, publishers contacted me about writing a book. I politely declined because I felt I needed more experience. The project has become more well known over the years, and more publishers have reached out, but I have declined each offer.
 
-**出书既能博名又能赚点钱，我为啥不考虑出书呢？**
+**Writing a book could bring recognition and some income. Why not do it?**
 
-- JavaGuide 的很多内容我还不是很满意，也一直在维护中，细心的小伙伴看我的[提交记录](https://github.com/Snailclimb/JavaGuide/commits/main)就明白了。
-- 开源版本更容易维护和修改，也能让更多人更方便地参与到项目的建设中，这也是我最初做这个项目的初衷。
-- 我觉得出书是一件神圣的事情，自认能力还不够。
-- 个人精力有限，不光有本职工作，还弄了一个[知识星球](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html)赚点外快，还要维护完善 JavaGuide。
+- I am not satisfied with all of JavaGuide's content yet, and it is still being maintained. You can see this in the [commit history](https://github.com/Snailclimb/JavaGuide/commits/main).
+- The open-source version is easier to maintain and update, and makes it easier for more people to contribute. That was one of my original reasons for starting the project.
+- I consider publishing a book a serious undertaking, and I do not feel ready yet.
+- My time is limited. I have a full-time job, run a [Knowledge Planet](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html) for some extra income, and maintain JavaGuide.
 - ……
 
-这几年一直在默默完善，真心希望 JavaGuide 越来越好，帮助到更多朋友！也欢迎大家参与进来！
+I have been quietly improving JavaGuide over the years and hope it continues to get better and help more people. Contributions are welcome!
 
-## JavaGuide 上为什么有一些付费文章？
+## Why Are Some JavaGuide Articles Paid?
 
-是这样的，JavaGuide 上确实有非常非常少的付费文章，差不多 10 篇不到吧，这对于整个网站的内容来说算是微不足道了。
+There are a very small number of paid articles on JavaGuide—fewer than ten—which is only a tiny fraction of the site's content.
 
-这些付费文章属于[知识星球](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html)专属，是我用来引流知识星球的，对整体阅读其实并没有什么影响的。
+These articles are exclusive to the [Knowledge Planet](https://javaguide.cn/about-the-author/zhishixingqiu-two-years.html) community. They help introduce readers to the community and have little effect on the overall reading experience.
 
-我也知道大家不喜欢营销，所以我会让自己控制好一个度。我一不割韭菜，二不贩卖焦虑，仅仅赚一份小钱提升家人生活品质。
+I know readers dislike aggressive marketing, so I try to keep it in check. I do not exploit readers or sell anxiety; I simply earn a little extra to improve my family's quality of life.
 
-**用心做内容，真心希望能帮助到其他人。**
+**I put care into the content and sincerely hope it helps others.**
