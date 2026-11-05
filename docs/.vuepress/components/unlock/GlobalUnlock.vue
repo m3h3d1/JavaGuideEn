@@ -4,7 +4,7 @@
       <div class="read-more-anchor">
         <div class="read-more-mask" />
         <button class="read-more-btn" @click="showDialog = true">
-          阅读全文
+          Read more
         </button>
       </div>
     </Teleport>
@@ -18,41 +18,47 @@
         >
           <div class="unlock-modal">
             <div class="unlock-modal-header">
-              <h3 class="lock-title">人机验证</h3>
+              <h3 class="lock-title">Verification</h3>
               <button class="close-btn" @click="showDialog = false">×</button>
             </div>
 
             <p class="lock-reason">
-              为保障正常阅读体验，本站部分内容已开启一次性验证。验证后全站解锁。
+              To protect the reading experience, some pages require a one-time
+              verification. After verification, the site will be unlocked.
             </p>
 
             <div class="qr-container">
               <img
                 :src="config.qrCodeUrl"
-                alt="公众号二维码"
+                alt="JavaGuide QR code"
                 class="qr-image"
               />
               <p class="qr-tip">
-                扫码/微信搜索关注
-                <span class="highlight">“JavaGuide”</span>
+                Scan the code or search for
+                <span class="highlight">JavaGuide</span>
               </p>
-              <p class="qr-tip">回复 <span class="highlight">“验证码”</span></p>
+              <p class="qr-tip">
+                Then reply with
+                <span class="highlight">“verification code”</span>.
+              </p>
             </div>
 
             <div class="input-wrapper">
               <input
                 v-model="inputCode"
                 type="text"
-                placeholder="输入验证码"
+                placeholder="Enter the verification code"
                 class="unlock-input"
                 maxlength="4"
                 @keyup.enter="handleUnlock"
               />
-              <button class="unlock-btn" @click="handleUnlock">立即解锁</button>
+              <button class="unlock-btn" @click="handleUnlock">Unlock</button>
             </div>
 
             <transition name="shake">
-              <p v-if="showError" class="error-msg">验证码错误，请重试</p>
+              <p v-if="showError" class="error-msg">
+                Incorrect code. Please try again.
+              </p>
             </transition>
           </div>
         </div>

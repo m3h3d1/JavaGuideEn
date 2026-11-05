@@ -9,17 +9,19 @@
       <div v-if="!isUnlocked" class="unlock-section">
         <div class="unlock-header">
           <span class="lock-icon">🔒</span>
-          <h3 class="lock-title">人机验证</h3>
+          <h3 class="lock-title">Verification</h3>
         </div>
 
         <p class="lock-reason">
-          为保障正常阅读体验，本站部分内容已开启一次性验证。验证后全站自动解锁。
+          To protect the reading experience, some pages require a one-time
+          verification. After verification, the site will be unlocked.
         </p>
 
         <div class="qr-container">
-          <img :src="qrCodeUrl" alt="公众号二维码" class="qr-image" />
+          <img :src="qrCodeUrl" alt="JavaGuide QR code" class="qr-image" />
           <p class="qr-tip">
-            扫码关注公众号，回复 <span class="highlight">“验证码”</span>
+            Scan the code, follow JavaGuide, and reply with
+            <span class="highlight">“verification code”</span>.
           </p>
         </div>
 
@@ -27,19 +29,21 @@
           <input
             v-model="inputCode"
             type="text"
-            placeholder="请输入 4 位验证码"
+            placeholder="Enter the 4-digit verification code"
             class="unlock-input"
             maxlength="4"
             @keyup.enter="handleUnlock"
           />
-          <button class="unlock-btn" @click="handleUnlock">立即解锁</button>
+          <button class="unlock-btn" @click="handleUnlock">Unlock</button>
         </div>
 
         <transition name="shake">
-          <p v-if="showError" class="error-msg">验证码错误，请重新输入</p>
+          <p v-if="showError" class="error-msg">
+            Incorrect code. Please try again.
+          </p>
         </transition>
 
-        <p class="lock-footer">感谢你的理解与支持</p>
+        <p class="lock-footer">Thank you for your understanding and support.</p>
       </div>
     </transition>
   </div>

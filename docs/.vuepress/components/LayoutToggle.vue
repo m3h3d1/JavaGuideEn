@@ -2,7 +2,7 @@
   <button
     class="layout-toggle-btn"
     :class="{ 'is-hidden': isHidden }"
-    :title="isHidden ? '退出沉浸式阅读' : '沉浸式阅读'"
+    :title="isHidden ? 'Exit immersive' : 'Immersive'"
     @click="toggleLayout"
   >
     <svg
@@ -25,7 +25,9 @@
         d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"
       />
     </svg>
-    <span class="btn-text">{{ isHidden ? "退出沉浸" : "沉浸阅读" }}</span>
+    <span class="btn-text">{{
+      isHidden ? "Exit immersive" : "Immersive"
+    }}</span>
   </button>
 </template>
 
@@ -37,9 +39,9 @@ const isHidden = ref(false);
 const pageData = usePageData();
 
 const STORAGE_KEY = "javaguide-layout-hidden";
-const IMMERSIVE_TITLE = "JavaGuide - 沉浸式阅读中";
+const IMMERSIVE_TITLE = "JavaGuide - Immersive";
 
-// 计算当前页面的原始标题
+// Get the current page title.
 const originalTitle = computed(() => {
   const title = pageData.value.title;
   const siteTitle = "JavaGuide";
@@ -50,26 +52,26 @@ const toggleLayout = () => {
   isHidden.value = !isHidden.value;
 };
 
-// 更新浏览器标题
+// Update the browser title.
 const updateBrowserTitle = (hidden: boolean) => {
   if (typeof document === "undefined") return;
   document.title = hidden ? IMMERSIVE_TITLE : originalTitle.value;
 };
 
-// 应用隐藏状态
+// Apply the layout state.
 const applyHiddenState = (hidden: boolean) => {
   if (typeof document === "undefined") return;
   document.documentElement.classList.toggle("layout-hidden", hidden);
   updateBrowserTitle(hidden);
 };
 
-// 监听沉浸模式状态变化
+// Watch for changes to immersive reading mode.
 watch(isHidden, (newVal) => {
   applyHiddenState(newVal);
   localStorage?.setItem(STORAGE_KEY, String(newVal));
 });
 
-// 监听页面切换，更新标题
+// Update the title when the page changes.
 watch(
   () => pageData.value.path,
   () => {
@@ -133,7 +135,7 @@ onMounted(() => {
   }
 }
 
-// 移动端和平板隐藏按钮
+// Hide the button on mobile and tablet screens.
 @media (max-width: 959px) {
   .layout-toggle-btn {
     display: none;
