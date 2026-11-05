@@ -1,4 +1,4 @@
-**[English](./README_EN.md)** | **日本語** | **[简体中文](./README.md)**
+**[English](./README.md)** | **日本語** | **[简体中文](./README_CN.md)**
 
 より快適でスピーディーな体験のため、オンライン閲覧プラットフォームでの閲覧をおすすめします！リンク: [javaguide.cn](https://javaguide.cn/)。
 

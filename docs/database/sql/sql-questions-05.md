@@ -222,7 +222,7 @@ Therefore, only user 1002 meets all the conditions.
 
 Start by writing the main query conditions:
 
-Nicknames of the form `User ` followed by digits: `nick_name REGEXP '^User [0-9]+$'`.
+Nicknames of the form User followed by a space and digits: `nick_name REGEXP '^User [0-9]+$'`.
 
 Achievement points between 1,200 and 2,500: `achievement BETWEEN 1200 AND 2500`.
 
@@ -931,7 +931,7 @@ Example:
 SELECT LENGTH('你好'); -- Returns 6 because each Chinese character uses 3 bytes.
 ```
 
-2. `CHAR_LENGTH` returns the number of characters in a string. Each multibyte character counts as one character.
+1. `CHAR_LENGTH` returns the number of characters in a string. Each multibyte character counts as one character.
 
 Example:
 
